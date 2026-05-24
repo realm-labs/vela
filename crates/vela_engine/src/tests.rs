@@ -208,7 +208,7 @@ fn engine_compiler_options_lower_registered_host_methods() {
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.grant_exp(10);
     return 1;
 }
@@ -245,6 +245,69 @@ fn main(player) {
 }
 
 #[test]
+fn engine_compiler_options_disambiguate_host_methods_by_receiver_type() {
+    let player_method = HostMethodId::new(5);
+    let monster_method = HostMethodId::new(6);
+    let engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(player_method, "grant_exp")),
+        )
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Monster"))
+                .host_type(HostTypeId::new(2))
+                .method(MethodDesc::new(monster_method, "grant_exp")),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player, monster: Monster) {
+    player.grant_exp(10);
+    monster.grant_exp(3);
+    return 1;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let monster = HostRef::new(HostTypeId::new(2), HostObjectId::new(7), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player), Value::HostRef(monster)],
+            &mut host
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(tx.patches().len(), 2);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method: player_method,
+            args: vec![HostValue::Int(10)],
+        }
+    );
+    assert_eq!(
+        tx.patches()[1].op,
+        PatchOp::CallHostMethod {
+            method: monster_method,
+            args: vec![HostValue::Int(3)],
+        }
+    );
+}
+
+#[test]
 fn engine_registers_callable_native_methods_for_host_paths() {
     let method = HostMethodId::new(6);
     let owner = TypeKey::new(TypeId::new(1), "Player");
@@ -275,7 +338,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"
-fn main(player) {
+fn main(player: Player) {
     player.grant_exp(10);
     return 1;
 }
@@ -409,11 +472,7 @@ fn engine_rejects_duplicate_host_method_names() {
     let result = Engine::builder()
         .register_type(
             player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp")),
-        )
-        .register_type(
-            TypeDesc::new(TypeKey::new(TypeId::new(2), "Monster"))
-                .host_type(HostTypeId::new(2))
+                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
                 .method(MethodDesc::new(HostMethodId::new(2), "grant_exp")),
         )
         .build();

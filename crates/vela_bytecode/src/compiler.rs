@@ -10,7 +10,7 @@ mod script_impls;
 mod script_types;
 mod value_flow;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, FieldId, HostMethodId, MethodId, SourceId, Span};
@@ -73,6 +73,8 @@ pub type CompileResult<T> = Result<T, CompileError>;
 pub struct CompilerOptions {
     host_fields: HashMap<String, FieldId>,
     host_methods: HashMap<String, HostMethodId>,
+    host_methods_by_type: HashMap<(String, String), HostMethodId>,
+    host_types: HashSet<String>,
 }
 
 impl CompilerOptions {
@@ -92,6 +94,36 @@ impl CompilerOptions {
         self.host_methods.insert(name.into(), method);
         self
     }
+
+    #[must_use]
+    pub fn with_host_type(mut self, type_name: impl Into<String>) -> Self {
+        self.host_types.insert(type_name.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_method_for_type(
+        mut self,
+        type_name: impl Into<String>,
+        name: impl Into<String>,
+        method: HostMethodId,
+    ) -> Self {
+        let type_name = type_name.into();
+        self.host_types.insert(type_name.clone());
+        self.host_methods_by_type
+            .insert((type_name, name.into()), method);
+        self
+    }
+
+    fn host_method(&self, receiver_type: Option<&str>, name: &str) -> Option<HostMethodId> {
+        receiver_type
+            .and_then(|type_name| {
+                self.host_methods_by_type
+                    .get(&(type_name.to_owned(), name.to_owned()))
+            })
+            .copied()
+            .or_else(|| self.host_methods.get(name).copied())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -103,6 +135,16 @@ struct CompilerFacts {
     type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
+}
+
+impl CompilerFacts {
+    fn known_type_names(&self) -> Vec<String> {
+        self.type_symbols
+            .values()
+            .cloned()
+            .chain(self.options.host_types.iter().cloned())
+            .collect()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -703,6 +745,7 @@ impl<'ast> Compiler<'ast> {
             .filter(|local| local.kind == LocalBindingKind::Parameter)
             .map(|local| local.id)
             .collect::<Vec<_>>();
+        let known_type_names = facts.known_type_names();
         for (index, param) in signature.params.iter().enumerate() {
             let register = u16::try_from(index)
                 .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
@@ -710,7 +753,7 @@ impl<'ast> Compiler<'ast> {
             let script_type = param
                 .type_hint
                 .as_ref()
-                .and_then(|hint| type_hint_script_type(hint, facts.type_symbols.values()));
+                .and_then(|hint| type_hint_script_type(hint, known_type_names.iter()));
             if let Some(local) = parameter_locals.get(index).copied() {
                 hir_locals.insert(local, Register(register));
                 script_types.set_local(local, &param.name, script_type);
@@ -784,6 +827,7 @@ impl<'ast> Compiler<'ast> {
             locals.insert(capture.name.clone(), register);
             hir_locals.insert(capture.local, register);
         }
+        let known_type_names = facts.known_type_names();
         for (index, param) in params.iter().enumerate() {
             let register = Register(
                 capture_count
@@ -795,7 +839,7 @@ impl<'ast> Compiler<'ast> {
             );
             locals.insert(param.name.clone(), register);
             let script_type = param.type_hint.as_ref().and_then(|hint| {
-                type_hint_script_type(&HirTypeHint::from_syntax(hint), facts.type_symbols.values())
+                type_hint_script_type(&HirTypeHint::from_syntax(hint), known_type_names.iter())
             });
             if let Some(local) =
                 bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, lambda_span)
@@ -879,11 +923,9 @@ impl<'ast> Compiler<'ast> {
                 value,
             } => {
                 let hinted_script_fact = type_hint.as_ref().and_then(|hint| {
-                    type_hint_script_type(
-                        &HirTypeHint::from_syntax(hint),
-                        self.facts.type_symbols.values(),
-                    )
-                    .map(ScriptTypeFact::new)
+                    let known_type_names = self.facts.known_type_names();
+                    type_hint_script_type(&HirTypeHint::from_syntax(hint), known_type_names.iter())
+                        .map(ScriptTypeFact::new)
                 });
                 let value_script_fact = value
                     .as_ref()
@@ -1049,7 +1091,10 @@ impl<'ast> Compiler<'ast> {
                     return Ok(dst);
                 }
 
-                if let Some(call) = host_method_call(&self.facts.options, callee) {
+                let host_receiver_type = self.host_method_receiver_type(callee);
+                if let Some(call) =
+                    host_method_call(&self.facts.options, callee, host_receiver_type.as_deref())
+                {
                     reject_named_args(args, "host method call")?;
                     let root = match call.receiver {
                         HostMethodReceiver::Expr(receiver) => self.compile_expr(receiver)?,
@@ -1427,6 +1472,19 @@ impl<'ast> Compiler<'ast> {
     fn script_method_id_for_receiver(&self, receiver: &Expr, method: &str) -> Option<MethodId> {
         let type_name = self.script_type_for_expr(receiver)?;
         self.script_method_id_for_type(&type_name, method)
+    }
+
+    fn host_method_receiver_type(&self, callee: &Expr) -> Option<String> {
+        match &callee.kind {
+            ExprKind::Field { base, .. } => self.script_type_for_expr(base),
+            ExprKind::Path(path) => {
+                let [receiver, _method] = path.as_slice() else {
+                    return None;
+                };
+                self.script_types.name(receiver)
+            }
+            _ => None,
+        }
     }
 
     fn script_record_field_slot_for_receiver(&self, receiver: &Expr, field: &str) -> Option<usize> {

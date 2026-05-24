@@ -95,8 +95,13 @@ impl Engine {
     pub fn compiler_options(&self) -> CompilerOptions {
         let mut options = CompilerOptions::new();
         for desc in self.registry.types() {
+            options = options.with_host_type(desc.key.name.clone());
             for method in &desc.methods {
-                options = options.with_host_method(method.name.clone(), method.id);
+                options = options.with_host_method_for_type(
+                    desc.key.name.clone(),
+                    method.name.clone(),
+                    method.id,
+                );
             }
         }
         options

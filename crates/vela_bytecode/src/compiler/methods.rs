@@ -18,10 +18,11 @@ pub(super) enum HostMethodReceiver<'ast> {
 pub(super) fn host_method_call<'ast>(
     options: &CompilerOptions,
     callee: &'ast Expr,
+    receiver_type: Option<&str>,
 ) -> Option<HostMethodCall<'ast>> {
     match &callee.kind {
         ExprKind::Field { base, name } => {
-            let method = options.host_methods.get(name).copied()?;
+            let method = options.host_method(receiver_type, name)?;
             Some(HostMethodCall {
                 receiver: HostMethodReceiver::Expr(base),
                 method,
@@ -31,7 +32,7 @@ pub(super) fn host_method_call<'ast>(
             let [receiver, method_name] = path.as_slice() else {
                 return None;
             };
-            let method = options.host_methods.get(method_name).copied()?;
+            let method = options.host_method(receiver_type, method_name)?;
             Some(HostMethodCall {
                 receiver: HostMethodReceiver::LocalPath(receiver),
                 method,

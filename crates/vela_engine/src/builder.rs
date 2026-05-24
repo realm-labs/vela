@@ -157,7 +157,7 @@ fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
                     id: method.id.get(),
                 }));
             }
-            if !host_method_names.insert(method.name.as_str()) {
+            if !host_method_names.insert((desc.key.name.as_str(), method.name.as_str())) {
                 return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodName {
                     name: method.name.clone(),
                 }));

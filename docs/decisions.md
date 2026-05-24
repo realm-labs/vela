@@ -2334,8 +2334,9 @@ types would compile nondeterministically if accepted by Engine registration.
 Decision:
 Expose `TypeRegistry::types` for read-only metadata iteration and add
 `Engine::compiler_options`, which derives host method lowering options from
-registered `TypeDesc::methods`. Engine build validation now rejects duplicate
-host method IDs and duplicate host method names across registered host schemas.
+registered `TypeDesc::methods`. Engine build validation rejects duplicate host
+method IDs and duplicate host method names within the same registered host
+schema.
 
 Consequences:
 - Hosts can register method metadata once in Engine schemas and compile source
@@ -2343,7 +2344,7 @@ Consequences:
 - Method calls still enter the existing `CallHostMethod`/`PatchTx` path and do
   not expose mutable Rust references to scripts.
 - Type-aware host method disambiguation and callable native method dispatch
-  remain future work.
+  are handled by later Engine checkpoints.
 
 ## 2026-05-25: Native Method Callables Use HostPath Receivers
 
@@ -2370,4 +2371,30 @@ Consequences:
 - Script-compiled method syntax still lowers to `CallHostMethod` and records
   `PatchTx` operations; VM direct native-method dispatch remains future work.
 - Native method owners must be registered host schemas, and duplicate method
-  IDs/names remain rejected while host method lowering is name-based.
+  IDs/names remain rejected within an owner type.
+
+## 2026-05-25: Host Method Lowering Can Use Receiver Type Facts
+
+Status: Accepted
+
+Context:
+Host method lowering was originally name-based through
+`CompilerOptions::with_host_method`, so two host schemas could not safely share
+the same method name. Engine schemas now know the owner type for each method,
+and the compiler already tracks lightweight receiver type facts from type
+hints.
+
+Decision:
+Extend `CompilerOptions` with known host type names and type-qualified host
+method mappings. During call lowering, the compiler first tries
+`receiver type + method name` when the receiver has a type fact, then falls back
+to the legacy name-only mapping. `Engine::compiler_options` now emits
+type-qualified mappings for registered host methods.
+
+Consequences:
+- Different host types can share a method name when scripts provide receiver
+  type hints such as `player: Player` and `monster: Monster`.
+- Legacy name-only host method mappings still work for existing compiler
+  callers.
+- The VM path is unchanged: typed host method calls still lower to
+  `CallHostMethod` and record patches rather than exposing Rust references.
