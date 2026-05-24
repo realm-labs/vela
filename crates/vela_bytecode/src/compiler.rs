@@ -1,12 +1,13 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
 mod control_flow;
+mod methods;
 mod operators;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_common::{Diagnostic, FieldId, SourceId, Span};
+use vela_common::{Diagnostic, FieldId, HostMethodId, SourceId, Span};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
     ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource,
@@ -21,6 +22,7 @@ use crate::{
     CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
 };
 use control_flow::LoopContext;
+use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,6 +53,7 @@ pub type CompileResult<T> = Result<T, CompileError>;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompilerOptions {
     host_fields: HashMap<String, FieldId>,
+    host_methods: HashMap<String, HostMethodId>,
 }
 
 impl CompilerOptions {
@@ -62,6 +65,12 @@ impl CompilerOptions {
     #[must_use]
     pub fn with_host_field(mut self, name: impl Into<String>, field: FieldId) -> Self {
         self.host_fields.insert(name.into(), field);
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_method(mut self, name: impl Into<String>, method: HostMethodId) -> Self {
+        self.host_methods.insert(name.into(), method);
         self
     }
 }
@@ -642,6 +651,27 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::Call { callee, args } => {
+                if let Some(call) = host_method_call(&self.facts.options, callee) {
+                    let root = match call.receiver {
+                        HostMethodReceiver::Expr(receiver) => self.compile_expr(receiver)?,
+                        HostMethodReceiver::LocalPath(name) => {
+                            self.local_register_at_span(callee.span, name)?
+                        }
+                    };
+                    let arg_registers = args
+                        .iter()
+                        .map(|arg| self.compile_expr(&arg.value))
+                        .collect::<CompileResult<Vec<_>>>()?;
+                    let dst = self.alloc_register()?;
+                    self.emit(InstructionKind::CallHostMethod {
+                        dst: Some(dst),
+                        root,
+                        method: call.method,
+                        args: arg_registers,
+                    });
+                    return Ok(dst);
+                }
+
                 let fallback_name = callable_name(callee)?;
                 let arg_registers = args
                     .iter()
@@ -1686,6 +1716,31 @@ fn main() {
                 InstructionKind::CallFunction { .. }
             ))
         );
+    }
+
+    #[test]
+    fn compiler_lowers_configured_host_method_calls() {
+        let method = HostMethodId::new(5);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.grant_exp(20);
+    return 1;
+}
+"#,
+            "main",
+            &CompilerOptions::new().with_host_method("grant_exp", method),
+        )
+        .expect("host method call should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallHostMethod {
+                method: lowered_method,
+                ..
+            } if lowered_method == method
+        )));
     }
 
     #[test]

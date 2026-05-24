@@ -3397,6 +3397,55 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_host_method_call_records_patch_tx() {
+        let host_ref = player_ref(3);
+        let method = HostMethodId::new(5);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.grant_exp(20);
+    return 1;
+}
+"#,
+            &CompilerOptions::new().with_host_method("grant_exp", method),
+        )
+        .expect("compile host method source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.insert_method_return(method, HostValue::Null);
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(1)));
+        assert!(adapter.method_calls().is_empty());
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method,
+                args: vec![HostValue::Int(20)]
+            }
+        );
+        tx.apply(&mut adapter).expect("apply host method patch");
+        assert_eq!(
+            adapter.method_calls(),
+            &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]
+        );
+    }
+
+    #[test]
     fn compiled_source_uses_reflection_natives_for_host_state() {
         let host_ref = player_ref(3);
         let program = compile_program_source(

@@ -1125,3 +1125,28 @@ Consequences:
 - Inner loop exits remain scoped to the nearest enclosing loop.
 - Future loop forms can reuse the same compiler context stack with their own
   continue target.
+
+## 2026-05-24: Root Host Method Calls Use Configured Bindings
+
+Status: Accepted
+
+Context:
+M9 needs method-call syntax to become executable, and the host bridge already
+has `CallHostMethod` bytecode plus PatchTx recording. M11 will add nested
+PathProxy lowering for calls such as `player.inventory.add(...)`, but root host
+reference method calls can use the current host-safe mutation boundary now.
+
+Decision:
+`CompilerOptions` can register host method names to stable `HostMethodId`
+values. When the bytecode compiler sees a configured method call on a root
+value, such as `player.grant_exp(20)`, it emits `CallHostMethod` with the
+receiver register and compiled argument registers. Unconfigured method syntax
+remains explicitly unsupported instead of falling through to unsafe dynamic
+mutation.
+
+Consequences:
+- Source-level host method calls record PatchTx method-call patches and are
+  applied only at the host safe point.
+- Rust hosts control which source method names lower to host effects.
+- Nested host-path method calls and script/stdlib method dispatch remain
+  separate follow-up slices.

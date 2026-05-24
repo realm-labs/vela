@@ -398,6 +398,10 @@ to the later language constructs that introduce loops and closures.
   loop-scoped jump patching, with explicit diagnostics outside loops.
 - Added compiler and VM coverage proving `break`/`continue` work through nested
   control-flow blocks.
+- Added source lowering for configured root host method calls such as
+  `player.grant_exp(20)` into `CallHostMethod` bytecode.
+- Added VM coverage proving source-level host method calls record `PatchTx`
+  method-call patches and apply them only at the host safe point.
 
 ## Next
 
