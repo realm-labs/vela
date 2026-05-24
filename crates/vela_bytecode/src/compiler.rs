@@ -1975,6 +1975,7 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_match(&mut self, match_expr: &MatchExpr) -> CompileResult<bool> {
+        let scrutinee_type = self.script_type_for_expr(&match_expr.scrutinee);
         let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
@@ -1984,7 +1985,12 @@ impl<'ast> Compiler<'ast> {
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
-            self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
+            self.bind_match_pattern_locals(
+                scrutinee,
+                &arm.pattern,
+                arm.body.span,
+                scrutinee_type.as_deref(),
+            )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
             }
@@ -2022,6 +2028,7 @@ impl<'ast> Compiler<'ast> {
         match_expr: &MatchExpr,
         dst: Register,
     ) -> CompileResult<bool> {
+        let scrutinee_type = self.script_type_for_expr(&match_expr.scrutinee);
         let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
@@ -2032,7 +2039,12 @@ impl<'ast> Compiler<'ast> {
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
-            self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
+            self.bind_match_pattern_locals(
+                scrutinee,
+                &arm.pattern,
+                arm.body.span,
+                scrutinee_type.as_deref(),
+            )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
             }
@@ -2163,6 +2175,7 @@ impl<'ast> Compiler<'ast> {
         scrutinee: Register,
         pattern: &Pattern,
         body_span: Span,
+        script_type: Option<&str>,
     ) -> CompileResult<()> {
         match pattern {
             Pattern::Binding(binding) => {
@@ -2171,7 +2184,7 @@ impl<'ast> Compiler<'ast> {
                     dst,
                     src: scrutinee,
                 });
-                self.bind_match_local(binding, dst, body_span);
+                self.bind_match_local(binding, dst, body_span, script_type);
                 Ok(())
             }
             Pattern::RecordVariant { fields, .. } => {
@@ -2186,8 +2199,10 @@ impl<'ast> Compiler<'ast> {
                         field: field.name.clone(),
                     });
                     match &field.pattern {
-                        Some(pattern) => self.bind_match_pattern_locals(dst, pattern, body_span)?,
-                        None => self.bind_match_local(&field.name, dst, body_span),
+                        Some(pattern) => {
+                            self.bind_match_pattern_locals(dst, pattern, body_span, None)?
+                        }
+                        None => self.bind_match_local(&field.name, dst, body_span, None),
                     }
                 }
                 Ok(())
@@ -2203,7 +2218,7 @@ impl<'ast> Compiler<'ast> {
                         value: scrutinee,
                         field: tuple_variant_field_name(index),
                     });
-                    self.bind_match_pattern_locals(field_value, field, body_span)?;
+                    self.bind_match_pattern_locals(field_value, field, body_span, None)?;
                 }
                 Ok(())
             }
@@ -2211,14 +2226,21 @@ impl<'ast> Compiler<'ast> {
         }
     }
 
-    fn bind_match_local(&mut self, binding: &str, register: Register, body_span: Span) {
+    fn bind_match_local(
+        &mut self,
+        binding: &str,
+        register: Register,
+        body_span: Span,
+        script_type: Option<&str>,
+    ) {
         self.locals.insert(binding.to_owned(), register);
         if let Some(local) =
             self.bindings
                 .local_named_at(binding, LocalBindingKind::Pattern, body_span)
         {
             self.hir_locals.insert(local, register);
-            self.script_types.remove_local(local, binding);
+            self.script_types
+                .set_local(local, binding, script_type.map(str::to_owned));
         }
     }
 
@@ -2844,6 +2866,41 @@ fn main() {
             })
             .expect("capturing closure code");
         assert!(closure.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
+    }
+
+    #[test]
+    fn compiler_specializes_binding_pattern_receiver_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return match player {
+        bound => bound.bonus(5),
+    };
+}
+"#,
+        )
+        .expect("binding pattern receiver method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
             instruction.kind,
             InstructionKind::CallMethodId {
                 method_id: lowered,

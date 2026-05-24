@@ -3164,6 +3164,36 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_binding_pattern_receiver_method_id_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return match player {
+        bound => bound.bonus(5),
+    };
+}
+"#,
+        )
+        .expect("compile binding pattern receiver method id dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(12))
+        );
+    }
+
+    #[test]
     fn explicit_impl_method_overrides_trait_default_dispatch() {
         let program = compile_program_source(
             SourceId::new(1),

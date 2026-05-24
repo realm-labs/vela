@@ -2097,3 +2097,27 @@ Consequences:
   dynamically and hold no Rust references.
 - Pattern-derived receiver facts and broader slot/type-flow propagation remain
   later M10 work.
+
+## 2026-05-25: Match Bindings Preserve Scrutinee Receiver Facts
+
+Status: Accepted
+
+Context:
+Simple binding patterns create fresh local registers that represent the matched
+scrutinee value. When the scrutinee is already known to be a script record or
+enum type, dropping that fact forces method calls on the binding through
+dynamic name dispatch.
+
+Decision:
+When compiling a `match`, compute the script receiver type fact for the
+scrutinee once and apply it to simple binding patterns in each arm. This covers
+patterns like `match player { bound => bound.bonus(5) }` without attempting to
+infer destructured variant-field types yet.
+
+Consequences:
+- Binding-pattern locals can participate in `CallMethodId` dispatch when the
+  scrutinee receiver type was already known.
+- Arm-local facts are restored after each arm, preserving existing match scope
+  isolation and assignment behavior.
+- Destructured enum/record field type facts remain later M10 work because they
+  need schema-aware field metadata.

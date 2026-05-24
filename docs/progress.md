@@ -609,11 +609,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Lambda compilation now carries captured local script type-flow facts into
   nested closure code objects, so captured script record/enum receivers can
   lower method calls to `CallMethodId`.
+- Match binding patterns now preserve known script receiver type facts from
+  the scrutinee for simple bindings such as
+  `match player { bound => bound.bonus(5) }`.
 - Remaining M10 work includes broader type-flow slot lowering, host type impl
-  dispatch, and broader MethodId use for pattern bindings and other
+  dispatch, and broader MethodId use for destructured variant fields and other
   non-literal receiver facts.
 
 ## Next
 
-- Continue M10 by extending MethodId and slot lowering into pattern facts and
-  host type impl dispatch.
+- Continue M10 by extending MethodId and slot lowering into destructured
+  pattern facts and host type impl dispatch.
