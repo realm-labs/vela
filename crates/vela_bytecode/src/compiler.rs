@@ -872,6 +872,12 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::Lambda { params, body } => self.compile_lambda(expr, params, body),
+            ExprKind::Try(value) => {
+                let src = self.compile_expr(value)?;
+                let dst = self.alloc_register()?;
+                self.emit(InstructionKind::TryPropagate { dst, src });
+                Ok(dst)
+            }
             ExprKind::Block(block) => {
                 let dst = self.alloc_register()?;
                 let returned = self.compile_block_value_to(block, dst)?;
@@ -939,7 +945,7 @@ impl<'ast> Compiler<'ast> {
                 }
             }
             ExprKind::Assign { .. } => self.compile_assignment(expr),
-            ExprKind::SelfValue | ExprKind::Try(_) | ExprKind::Error => Err(CompileError::new(
+            ExprKind::SelfValue | ExprKind::Error => Err(CompileError::new(
                 CompileErrorKind::UnsupportedSyntax("expression"),
             )),
             ExprKind::Match(match_expr) => {
@@ -2331,6 +2337,37 @@ fn main() {
             main.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::CallClosure { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_try_propagation() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+enum Result {
+    Ok(value)
+    Err(message)
+}
+
+fn checked(value) {
+    return Result.Ok(value);
+}
+
+fn main() {
+    let value = checked(10)?;
+    return Result.Ok(value + 1);
+}
+"#,
+            "main",
+        )
+        .expect("try propagation should compile");
+
+        assert!(
+            code.instructions.iter().any(|instruction| matches!(
+                instruction.kind,
+                InstructionKind::TryPropagate { .. }
+            ))
         );
     }
 

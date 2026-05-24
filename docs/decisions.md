@@ -1334,3 +1334,28 @@ Consequences:
   needed, are a later runtime feature rather than implicit reference capture.
 - Closure objects can later move to heap-backed storage without changing source
   lambda syntax.
+
+## 2026-05-24: Try Propagation Uses Dynamic Option And Result Enums
+
+Status: Accepted
+
+Context:
+The grammar includes postfix `?`, and the product roadmap calls for
+Option/Result-style propagation without script generics. Vela already represents
+script enums dynamically, including tuple variants with positional payload
+fields.
+
+Decision:
+Lower `expr?` to a dedicated `TryPropagate` bytecode instruction. The VM accepts
+dynamic enum values whose final type segment is `Option` or `Result`.
+`Option.Some(value)` and `Result.Ok(value)` unwrap tuple payload field `"0"`;
+`Option.None {}` and `Result.Err(value)` return the original enum value from the
+current function immediately.
+
+Consequences:
+- Propagation works before a full generic stdlib type system exists.
+- Failure values keep their original enum identity and payload.
+- Non-Option/Result values, unknown variants, and malformed success variants are
+  VM type errors rather than silent fallthrough.
+- Later `vela_std` work can register canonical Option/Result schemas while
+  preserving this dynamic enum execution behavior.

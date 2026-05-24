@@ -441,6 +441,10 @@ to the later language constructs that introduce loops and closures.
   before lambda parameters, preserving captures after the outer function returns.
 - Added compiler and VM coverage proving captured closures and immediate lambda
   calls execute from source.
+- Added bytecode and VM execution for postfix `?` propagation over dynamic
+  `Option.Some`/`Option.None` and `Result.Ok`/`Result.Err` enum values.
+- Added compiler and VM coverage proving `?` unwraps success payloads and
+  returns failure variants early in both inline and managed-heap execution.
 
 ## Next
 

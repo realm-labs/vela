@@ -3,6 +3,7 @@
 pub mod heap;
 mod indexing;
 mod iteration;
+mod try_propagation;
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -10,6 +11,7 @@ use std::sync::Arc;
 
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 pub use iteration::IteratorState;
+use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
@@ -1057,6 +1059,12 @@ impl Vm {
                     }
                     let result = result?;
                     frame.write(*dst, result)?;
+                }
+                InstructionKind::TryPropagate { dst, src } => {
+                    match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
+                        TryPropagation::Continue(value) => frame.write(*dst, value)?,
+                        TryPropagation::Return(value) => return Ok(value),
+                    }
                 }
                 InstructionKind::MakeArray { dst, elements } => {
                     let values = elements
@@ -2861,6 +2869,115 @@ fn main() {
         .expect("compile immediate lambda call");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(11)));
+    }
+
+    #[test]
+    fn runs_try_propagation_for_option_values() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Option {
+    Some(value)
+    None
+}
+
+fn maybe(value) {
+    if value > 0 {
+        return Option.Some(value);
+    }
+    return Option.None {};
+}
+
+fn present() {
+    let value = maybe(4)?;
+    return Option.Some(value + 1);
+}
+
+fn missing() {
+    let value = maybe(0)?;
+    return Option.Some(value + 1);
+}
+"#,
+        )
+        .expect("compile option propagation");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "present", &[]),
+            Ok(Value::Enum {
+                enum_name: "Option".into(),
+                variant: "Some".into(),
+                fields: BTreeMap::from([("0".into(), Value::Int(5))]),
+            })
+        );
+        assert_eq!(
+            Vm::new().run_program(&program, "missing", &[]),
+            Ok(Value::Enum {
+                enum_name: "Option".into(),
+                variant: "None".into(),
+                fields: BTreeMap::new(),
+            })
+        );
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_try_propagation_for_result_values() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Result {
+    Ok(value)
+    Err(message)
+}
+
+fn checked(value) {
+    if value > 0 {
+        return Result.Ok(value);
+    }
+    return Result.Err("bad");
+}
+
+fn ok_case() {
+    let value = checked(3)?;
+    return Result.Ok(value + 7);
+}
+
+fn err_case() {
+    let value = checked(0)?;
+    return Result.Ok(value + 7);
+}
+"#,
+        )
+        .expect("compile result propagation");
+        let mut budget = ExecutionBudget::new(10_000, 4096, 64, 16);
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(
+                &program,
+                "ok_case",
+                &[],
+                &mut budget
+            ),
+            Ok(Value::Enum {
+                enum_name: "Result".into(),
+                variant: "Ok".into(),
+                fields: BTreeMap::from([("0".into(), Value::Int(10))]),
+            })
+        );
+
+        let mut budget = ExecutionBudget::new(10_000, 4096, 64, 16);
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(
+                &program,
+                "err_case",
+                &[],
+                &mut budget
+            ),
+            Ok(Value::Enum {
+                enum_name: "Result".into(),
+                variant: "Err".into(),
+                fields: BTreeMap::from([("0".into(), Value::String("bad".into()))]),
+            })
+        );
     }
 
     #[test]

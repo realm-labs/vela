@@ -223,6 +223,10 @@ pub enum InstructionKind {
         callee: Register,
         args: Vec<Register>,
     },
+    TryPropagate {
+        dst: Register,
+        src: Register,
+    },
     MakeArray {
         dst: Register,
         elements: Vec<Register>,
