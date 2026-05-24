@@ -2122,25 +2122,26 @@ Consequences:
 - Destructured enum/record field type facts remain later M10 work because they
   need schema-aware field metadata.
 
-## 2026-05-25: Typed Struct Field Reads Use HIR Slot Facts
+## 2026-05-25: Typed Struct Fields Use HIR Slot Facts
 
 Status: Accepted
 
 Context:
 Record and enum runtime values already store fields in stable sorted slots, and
 immediate record literals can lower direct field reads to slot bytecode. Field
-reads through typed locals still used dynamic name lookup even when HIR struct
+access through typed locals still used dynamic name lookup even when HIR struct
 shape metadata made the slot known.
 
 Decision:
 Derive script struct field slot facts from HIR `StructShape` metadata and carry
 them in bytecode compiler facts. When type-flow proves a receiver is a script
-struct type, lower field reads to `GetRecordSlot`; otherwise keep the existing
-host-field and dynamic record-field fallback paths.
+struct type, lower field reads to `GetRecordSlot` and field writes to
+`SetRecordSlot`; otherwise keep the existing host-field and dynamic
+record-field fallback paths.
 
 Consequences:
-- Declared script struct field reads can use stable slot bytecode beyond
+- Declared script struct field access can use stable slot bytecode beyond
   immediate literals.
 - The slot facts come from declared script metadata and do not alter dynamic
   runtime values or host mutation boundaries.
-- Slot lowering for writes and enum variant payloads remains separate M10 work.
+- Slot lowering for enum variant payloads remains separate M10 work.

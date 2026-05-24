@@ -102,6 +102,13 @@ struct CompilerFacts {
     options: CompilerOptions,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct RecordFieldAssignmentTarget {
+    record: Register,
+    field: String,
+    slot: Option<usize>,
+}
+
 pub fn compile_function_source(
     source: SourceId,
     text: &str,
@@ -1448,8 +1455,8 @@ impl<'ast> Compiler<'ast> {
         if let ExprKind::Index { base, index } = &target.kind {
             return self.compile_index_assignment(*op, base, index, value);
         }
-        if let Some((record, field)) = self.record_field_assignment_target(target)? {
-            return self.compile_record_field_assignment(*op, record, field, value);
+        if let Some(target) = self.record_field_assignment_target(target)? {
+            return self.compile_record_field_assignment(*op, target, value);
         }
         let (root, field) = self.compile_host_assignment_target(target)?;
         let src = self.compile_expr(value)?;
@@ -1568,22 +1575,25 @@ impl<'ast> Compiler<'ast> {
     fn record_field_assignment_target(
         &mut self,
         target: &Expr,
-    ) -> CompileResult<Option<(Register, String)>> {
+    ) -> CompileResult<Option<RecordFieldAssignmentTarget>> {
         match &target.kind {
             ExprKind::Path(path) => {
                 let [record, field] = path.as_slice() else {
                     return Ok(None);
                 };
-                if self.facts.options.host_fields.contains_key(field) {
+                let slot = self.script_record_field_slot_for_path_root(target.span, record, field);
+                if slot.is_none() && self.facts.options.host_fields.contains_key(field) {
                     return Ok(None);
                 }
-                Ok(Some((
-                    self.local_register_at_span(target.span, record)?,
-                    field.clone(),
-                )))
+                Ok(Some(RecordFieldAssignmentTarget {
+                    record: self.local_register_at_span(target.span, record)?,
+                    field: field.clone(),
+                    slot,
+                }))
             }
             ExprKind::Field { base, name } => {
-                if self.facts.options.host_fields.contains_key(name) {
+                let slot = self.script_record_field_slot_for_receiver(base, name);
+                if slot.is_none() && self.facts.options.host_fields.contains_key(name) {
                     return Ok(None);
                 }
                 let ExprKind::Path(path) = &base.kind else {
@@ -1596,10 +1606,11 @@ impl<'ast> Compiler<'ast> {
                         "record field assignment target",
                     )));
                 };
-                Ok(Some((
-                    self.local_register_at_span(base.span, record)?,
-                    name.clone(),
-                )))
+                Ok(Some(RecordFieldAssignmentTarget {
+                    record: self.local_register_at_span(base.span, record)?,
+                    field: name.clone(),
+                    slot,
+                }))
             }
             _ => Ok(None),
         }
@@ -1608,19 +1619,27 @@ impl<'ast> Compiler<'ast> {
     fn compile_record_field_assignment(
         &mut self,
         op: AssignOp,
-        record: Register,
-        field: String,
+        target: RecordFieldAssignmentTarget,
         value: &Expr,
     ) -> CompileResult<Register> {
         let assigned = match op {
             AssignOp::Set => self.compile_expr(value)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
-                self.emit(InstructionKind::GetRecordField {
-                    dst: current,
-                    record,
-                    field: field.clone(),
-                });
+                if let Some(slot) = target.slot {
+                    self.emit(InstructionKind::GetRecordSlot {
+                        dst: current,
+                        record: target.record,
+                        field: target.field.clone(),
+                        slot,
+                    });
+                } else {
+                    self.emit(InstructionKind::GetRecordField {
+                        dst: current,
+                        record: target.record,
+                        field: target.field.clone(),
+                    });
+                }
                 let rhs = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;
                 self.emit(
@@ -1633,11 +1652,20 @@ impl<'ast> Compiler<'ast> {
                 dst
             }
         };
-        self.emit(InstructionKind::SetRecordField {
-            record,
-            field,
-            src: assigned,
-        });
+        if let Some(slot) = target.slot {
+            self.emit(InstructionKind::SetRecordSlot {
+                record: target.record,
+                field: target.field,
+                slot,
+                src: assigned,
+            });
+        } else {
+            self.emit(InstructionKind::SetRecordField {
+                record: target.record,
+                field: target.field,
+                src: assigned,
+            });
+        }
         Ok(assigned)
     }
 
@@ -4401,6 +4429,59 @@ fn main() {
                 } if field == "count"
             )
         }));
+    }
+
+    #[test]
+    fn compiler_lowers_typed_record_field_writes_to_slots() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    item_id: string,
+    count: int,
+}
+
+fn make_reward() {
+    return Reward { item_id: "gold", count: 2 };
+}
+
+fn main() {
+    let reward: Reward = make_reward();
+    reward.count += 3;
+    reward.item_id = "xp";
+    return reward.count;
+}
+"#,
+        )
+        .expect("typed record field writes should compile to slot bytecode");
+        let main = program.function("main").expect("main function");
+
+        assert!(main.instructions.iter().any(|instruction| {
+            matches!(
+                instruction.kind,
+                InstructionKind::SetRecordSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "count"
+            )
+        }));
+        assert!(main.instructions.iter().any(|instruction| {
+            matches!(
+                instruction.kind,
+                InstructionKind::SetRecordSlot {
+                    ref field,
+                    slot: 1,
+                    ..
+                } if field == "item_id"
+            )
+        }));
+        assert!(
+            !main.instructions.iter().any(|instruction| matches!(
+                instruction.kind,
+                InstructionKind::SetRecordField { .. }
+            ))
+        );
     }
 
     #[test]
