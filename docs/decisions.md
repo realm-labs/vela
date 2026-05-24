@@ -2961,3 +2961,27 @@ Consequences:
   metadata.
 - Parser/HIR extraction of script attributes and deeper access/effect metadata
   remain follow-up M12 work.
+
+## 2026-05-25: Reflection Lookup Budgets Are Per VM Install
+
+Status: Accepted
+
+Context:
+M12 requires reflection to be bounded as well as permissioned. Engine policy
+configuration may be reused to create multiple VMs, but consumed lookup counts
+must not leak from one VM install to another.
+
+Decision:
+Represent reusable reflection configuration with `ReflectPolicy`, containing a
+permission set plus an optional lookup limit. When a VM installs reflection
+natives, it creates a fresh shared `ReflectLookupBudget` counter for that native
+set. Each script-visible reflection native checks permissions first, then
+consumes one lookup before performing metadata queries, reads, writes, or calls.
+
+Consequences:
+- A bounded reflection script fails with `LookupBudgetExceeded` before any host
+  patch is recorded after the limit is exhausted.
+- `EngineBuilder::reflection_lookup_budget` can install bounded reflection
+  without sharing consumed counters across `Engine::into_vm` calls.
+- Finer per-call-frame or per-event reflection budgets can be layered later
+  without changing the schema-safe reflection helper APIs.

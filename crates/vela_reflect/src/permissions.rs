@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{ReflectError, ReflectErrorKind, ReflectResult};
 
@@ -86,6 +87,92 @@ impl Default for ReflectPermissionSet {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReflectPolicy {
+    permissions: ReflectPermissionSet,
+    lookup_limit: Option<u64>,
+}
+
+impl ReflectPolicy {
+    #[must_use]
+    pub fn new(permissions: ReflectPermissionSet) -> Self {
+        Self {
+            permissions,
+            lookup_limit: None,
+        }
+    }
+
+    #[must_use]
+    pub fn all() -> Self {
+        Self::new(ReflectPermissionSet::all())
+    }
+
+    #[must_use]
+    pub fn read_only() -> Self {
+        Self::new(ReflectPermissionSet::read_only())
+    }
+
+    #[must_use]
+    pub fn with_permissions(mut self, permissions: ReflectPermissionSet) -> Self {
+        self.permissions = permissions;
+        self
+    }
+
+    #[must_use]
+    pub fn with_lookup_limit(mut self, limit: u64) -> Self {
+        self.lookup_limit = Some(limit);
+        self
+    }
+
+    #[must_use]
+    pub fn permissions(&self) -> &ReflectPermissionSet {
+        &self.permissions
+    }
+
+    #[must_use]
+    pub const fn lookup_limit(&self) -> Option<u64> {
+        self.lookup_limit
+    }
+
+    pub fn require(&self, permission: ReflectPermission) -> ReflectResult<()> {
+        self.permissions.require(permission)
+    }
+}
+
+impl Default for ReflectPolicy {
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
+#[derive(Debug)]
+pub struct ReflectLookupBudget {
+    limit: Option<u64>,
+    remaining: AtomicU64,
+}
+
+impl ReflectLookupBudget {
+    #[must_use]
+    pub fn new(limit: Option<u64>) -> Self {
+        Self {
+            remaining: AtomicU64::new(limit.unwrap_or(u64::MAX)),
+            limit,
+        }
+    }
+
+    pub fn consume(&self) -> ReflectResult<()> {
+        let Some(limit) = self.limit else {
+            return Ok(());
+        };
+        self.remaining
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining| {
+                remaining.checked_sub(1)
+            })
+            .map(|_| ())
+            .map_err(|_| ReflectError::new(ReflectErrorKind::LookupBudgetExceeded { limit }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,6 +190,18 @@ mod tests {
             ReflectErrorKind::PermissionDenied {
                 permission: ReflectPermission::WriteValueFields
             }
+        );
+    }
+
+    #[test]
+    fn lookup_budget_reports_exhaustion() {
+        let budget = ReflectLookupBudget::new(Some(1));
+
+        budget.consume().expect("first lookup");
+        let error = budget.consume().expect_err("budget exhausted");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::LookupBudgetExceeded { limit: 1 }
         );
     }
 }

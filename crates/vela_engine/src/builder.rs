@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
 
-use vela_reflect::{MethodDesc, ReflectPermissionSet, TypeDesc, TypeKey, TypeRegistry};
+use vela_reflect::{
+    MethodDesc, ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeKey, TypeRegistry,
+};
 use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
@@ -15,7 +17,7 @@ pub struct EngineBuilder {
     host_native_functions: Vec<HostNativeFunctionEntry>,
     native_methods: Vec<NativeMethodEntry>,
     permissions: PermissionSet,
-    reflection_permissions: Option<ReflectPermissionSet>,
+    reflection_policy: Option<ReflectPolicy>,
 }
 
 impl EngineBuilder {
@@ -44,7 +46,29 @@ impl EngineBuilder {
 
     #[must_use]
     pub fn reflection_permissions(mut self, permissions: ReflectPermissionSet) -> Self {
-        self.reflection_permissions = Some(permissions);
+        let policy = self
+            .reflection_policy
+            .take()
+            .unwrap_or_default()
+            .with_permissions(permissions);
+        self.reflection_policy = Some(policy);
+        self
+    }
+
+    #[must_use]
+    pub fn reflection_lookup_budget(mut self, limit: u64) -> Self {
+        let policy = self
+            .reflection_policy
+            .take()
+            .unwrap_or_default()
+            .with_lookup_limit(limit);
+        self.reflection_policy = Some(policy);
+        self
+    }
+
+    #[must_use]
+    pub fn reflection_policy(mut self, policy: ReflectPolicy) -> Self {
+        self.reflection_policy = Some(policy);
         self
     }
 
@@ -108,7 +132,7 @@ impl EngineBuilder {
             self.host_native_functions,
             self.native_methods,
             self.permissions,
-            self.reflection_permissions,
+            self.reflection_policy,
         ))
     }
 }

@@ -18,7 +18,9 @@ pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
     exports as module_exports, function as function_metadata, module as module_metadata,
 };
-pub use permissions::{ReflectPermission, ReflectPermissionSet};
+pub use permissions::{
+    ReflectLookupBudget, ReflectPermission, ReflectPermissionSet, ReflectPolicy,
+};
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId,
 };
@@ -581,6 +583,9 @@ pub enum ReflectErrorKind {
     },
     PermissionDenied {
         permission: ReflectPermission,
+    },
+    LookupBudgetExceeded {
+        limit: u64,
     },
     FieldNotWritable {
         type_name: String,

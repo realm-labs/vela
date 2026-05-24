@@ -741,8 +741,13 @@ permissions.
   Script-visible `reflect.attrs` and `reflect.docs` expose copied type metadata,
   and reflected field/method/trait/variant/module/function records now include
   copied `attrs`/`docs` fields where applicable.
+- Added `ReflectPolicy` and per-VM-install `ReflectLookupBudget` support for
+  reflection natives. `Vm::register_reflection_natives_with_policy` and
+  `EngineBuilder::reflection_lookup_budget` now bound script-visible reflection
+  lookups while preserving permission checks and preventing exhausted lookups
+  from recording host patches.
 
 ## Next
 
-- Continue M12 with lookup budgets and deeper `EffectSet`/access checks for
-  reflective calls.
+- Continue M12 with deeper `EffectSet`/access checks for reflective calls and
+  parser/HIR extraction of script attributes into reflected metadata.
