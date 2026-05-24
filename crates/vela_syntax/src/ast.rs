@@ -34,6 +34,7 @@ pub enum ItemKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UseItem {
     pub path: Vec<String>,
+    pub alias: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

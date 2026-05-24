@@ -79,6 +79,7 @@ pub enum DeclarationKind {
 pub struct Import {
     pub module: ModuleId,
     pub path: Vec<String>,
+    pub alias: Option<String>,
     pub span: Span,
     pub resolution: Option<ImportResolution>,
 }
@@ -199,6 +200,7 @@ impl ModuleGraph {
                     hir_module.imports.push(Import {
                         module,
                         path: use_item.path.clone(),
+                        alias: use_item.alias.clone(),
                         span: item.span,
                         resolution: None,
                     });
@@ -495,7 +497,7 @@ impl ModuleGraph {
             .imports
             .iter()
             .filter_map(|import| {
-                let name = import.path.last()?.clone();
+                let name = import_binding_name(import)?;
                 let declaration = match import.resolution {
                     Some(ImportResolution::Declaration(declaration)) => Some(declaration),
                     None => self.lookup_import_declaration(&import.path),
@@ -514,7 +516,7 @@ impl ModuleGraph {
                     .imports
                     .iter()
                     .filter_map(|import| {
-                        let name = import.path.last()?.clone();
+                        let name = import_binding_name(import)?;
                         let ImportResolution::Declaration(declaration) = import.resolution?;
                         Some((name, declaration))
                     })
@@ -669,6 +671,10 @@ fn impl_declaration_name(trait_path: &[String], target_path: &[String]) -> Strin
         trait_path.join("."),
         target_path.join(".")
     )
+}
+
+fn import_binding_name(import: &Import) -> Option<String> {
+    import.alias.clone().or_else(|| import.path.last().cloned())
 }
 
 fn candidate_distance(wanted: &str, candidate: &str) -> usize {
@@ -951,6 +957,38 @@ fn main() { return grant; }
             .expect("grant declaration");
 
         assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| { resolution == &BindingResolution::Declaration(grant) })
+        );
+    }
+
+    #[test]
+    fn function_bindings_resolve_import_aliases() {
+        let mut graph = ModuleGraph::new();
+        let reward = graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+        let module = graph.add_source(source(
+            2,
+            "game.main",
+            r#"
+use game.reward.grant as give_reward
+fn main() { return give_reward; }
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+        let grant = graph
+            .module(reward)
+            .and_then(|module| module.get("grant"))
+            .expect("grant declaration");
+        let imports = graph.imports(module).expect("module imports");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        assert_eq!(imports[0].alias.as_deref(), Some("give_reward"));
         let bindings = graph.bindings(main).expect("main bindings");
         assert!(
             bindings

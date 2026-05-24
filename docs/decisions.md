@@ -775,3 +775,25 @@ Consequences:
   source-order values, avoiding recursive const dependency walks.
 - Aggregate consts, forward references, and richer expression forms remain
   explicit follow-ups for later language-surface work.
+
+## 2026-05-24: Import Aliases Define Binding Names
+
+Status: Accepted
+
+Context:
+The grammar allows `use path as Alias`, but syntax and HIR only preserved the
+import path. Function-body binding therefore resolved imported names by the
+source declaration name and could not represent aliases as semantic facts.
+
+Decision:
+Preserve import aliases in the syntax AST and HIR import metadata. Binding maps
+use the alias as the imported binding name when present, while import
+resolution still targets the original declaration path.
+
+Consequences:
+- `use game.reward.grant as give_reward` lets function bodies refer to
+  `give_reward` and records the target declaration ID.
+- Candidate suggestions and future tooling can surface the local imported name
+  instead of only the source declaration name.
+- Alias support stays declarative; it does not introduce re-export or wildcard
+  import behavior.

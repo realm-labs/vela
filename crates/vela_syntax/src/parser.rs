@@ -109,8 +109,13 @@ impl Parser {
             self.error_here("expected use path");
             return None;
         }
+        let alias = if self.eat_keyword(Keyword::As).is_some() {
+            self.expect_ident("expected import alias")
+        } else {
+            None
+        };
         self.eat_symbol(Symbol::Semicolon);
-        Some(UseItem { path })
+        Some(UseItem { path, alias })
     }
 
     fn parse_const_item(&mut self) -> Option<ConstItem> {
@@ -1422,7 +1427,11 @@ impl Damageable for Player {
 
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         assert_eq!(parsed.items.len(), 7);
-        assert!(matches!(parsed.items[0].kind, ItemKind::Use(_)));
+        let ItemKind::Use(import) = &parsed.items[0].kind else {
+            panic!("expected use item");
+        };
+        assert_eq!(import.path, ["game", "player", "Player"]);
+        assert_eq!(import.alias, None);
 
         let ItemKind::Const(constant) = &parsed.items[1].kind else {
             panic!("expected const item");
@@ -1465,6 +1474,18 @@ impl Damageable for Player {
         assert_eq!(impl_item.target_path, ["Player"]);
         assert_eq!(impl_item.methods.len(), 1);
         assert_eq!(impl_item.methods[0].function.name, "damage");
+    }
+
+    #[test]
+    fn parses_use_alias_metadata() {
+        let parsed = parse_source(source_id(), "use game.reward.grant as give_reward;");
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Use(import) = &parsed.items[0].kind else {
+            panic!("expected use item");
+        };
+        assert_eq!(import.path, ["game", "reward", "grant"]);
+        assert_eq!(import.alias.as_deref(), Some("give_reward"));
     }
 
     #[test]

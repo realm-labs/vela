@@ -318,6 +318,10 @@ that introduce loops and closures.
   introducing top-level execution.
 - Added compiler and VM coverage proving const expression reads compile and run
   as scalar values.
+- Syntax and HIR now preserve `use path as alias` metadata and bind imported
+  declarations under the alias name in function bodies.
+- Added syntax and HIR coverage proving import aliases resolve to the target
+  declaration while exposing the alias as the local binding name.
 
 ## Next
 
