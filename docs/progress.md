@@ -698,6 +698,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   apply preserve patch instruction spans on transaction read failures,
   permission validation failures, and late apply failures. VM host-read errors
   now keep the bytecode instruction span when converting host errors.
+- Read-modify-write and push patches now carry the base value observed before
+  the transaction overlay mutated the path. `MockStateAdapter` reports a
+  structured patch conflict if the host value changed before safe-point apply,
+  preserving the patch source span and leaving adapter state unchanged.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

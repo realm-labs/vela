@@ -6,6 +6,7 @@ use crate::{HostPath, HostValue};
 pub struct Patch {
     pub path: HostPath,
     pub op: PatchOp,
+    pub expected_base: Option<HostValue>,
     pub source_span: Option<Span>,
 }
 

@@ -2,9 +2,9 @@ use std::fmt;
 
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, Span};
 
-use crate::HostPath;
+use crate::{HostPath, HostValue};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct HostError {
     pub kind: HostErrorKind,
     pub source_span: Option<Span>,
@@ -41,7 +41,7 @@ impl fmt::Display for HostError {
 
 impl std::error::Error for HostError {}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum HostErrorKind {
     StaleGeneration {
         expected: u32,
@@ -64,6 +64,11 @@ pub enum HostErrorKind {
     PermissionDenied {
         path: HostPath,
         action: &'static str,
+    },
+    PatchConflict {
+        path: HostPath,
+        expected: Box<HostValue>,
+        actual: Option<Box<HostValue>>,
     },
     InvalidAdd {
         path: HostPath,

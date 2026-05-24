@@ -2757,3 +2757,31 @@ Consequences:
   carried separately.
 - Broader diagnostic rendering remains future work; this change only preserves
   the structured span data across the host boundary.
+
+## 2026-05-25: RMW Patches Carry Expected Base Values
+
+Status: Accepted
+
+Context:
+M11 requires conflict reporting for host patch transactions. RMW operations
+already read a host path before recording `Add`, `Sub`, or `Push` patches, but
+the recorded patch only stored the delta. If host state changed before
+safe-point apply, the mock adapter would apply the delta to the newer value
+without reporting that the transaction was based on stale data.
+
+Decision:
+Store `expected_base: Option<HostValue>` on patches. `PatchTx` records the
+expected base only for the first RMW/push patch that reads the adapter value
+for a path; later mutations that read the transaction overlay do not add a
+second adapter-base expectation. `MockStateAdapter` compares expected and
+actual host values during patch validation and reports
+`HostErrorKind::PatchConflict { path, expected, actual }` before apply mutates
+state, with copied conflict values boxed so ordinary host results remain small.
+
+Consequences:
+- Mock host transactions now report external host-state changes before
+  committing RMW and push patches.
+- Sequential mutations within the same transaction continue to compose through
+  the overlay without false conflicts.
+- Production adapters can use the same patch metadata for optimistic conflict
+  checks or map it onto their storage transaction semantics.

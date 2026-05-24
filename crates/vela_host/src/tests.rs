@@ -44,6 +44,7 @@ fn add_path_records_patch_and_updates_overlay_from_base() {
 
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+    assert_eq!(tx.patches()[0].expected_base, Some(HostValue::Int(9)));
     assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(10)));
 }
 
@@ -57,6 +58,7 @@ fn add_path_uses_previous_overlay_value() {
     tx.add_path(path.clone(), HostValue::Int(5), HostValue::Int(0), None)
         .expect("add path");
 
+    assert_eq!(tx.patches()[1].expected_base, None);
     assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(15)));
 }
 
@@ -256,7 +258,7 @@ fn apply_commits_push_at_safe_point() {
     tx.push_path(
         path.clone(),
         HostValue::String("gold".into()),
-        HostValue::Array(Vec::new()),
+        HostValue::Array(vec![HostValue::String("xp".into())]),
         None,
     )
     .expect("push path");
@@ -319,12 +321,49 @@ fn failed_apply_leaves_mock_adapter_state_unchanged() {
 
     assert_eq!(
         error.kind,
-        HostErrorKind::InvalidPush {
-            path: rewards.clone()
+        HostErrorKind::PatchConflict {
+            path: rewards.clone(),
+            expected: Box::new(HostValue::Array(Vec::new())),
+            actual: Some(Box::new(HostValue::Int(1))),
         }
     );
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(9)));
     assert_eq!(adapter.read_path(&rewards), Ok(HostValue::Int(1)));
+}
+
+#[test]
+fn conflicting_base_value_reports_patch_conflict_before_apply() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    let span = test_span();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    let mut tx = PatchTx::new();
+
+    tx.add_path(
+        path.clone(),
+        HostValue::Int(1),
+        HostValue::Int(9),
+        Some(span),
+    )
+    .expect("record add path");
+    adapter
+        .write_path(&path, HostValue::Int(12))
+        .expect("simulate host state changing before apply");
+
+    let error = tx
+        .apply(&mut adapter)
+        .expect_err("changed base value should conflict");
+
+    assert_eq!(error.source_span, Some(span));
+    assert_eq!(
+        error.kind,
+        HostErrorKind::PatchConflict {
+            path: path.clone(),
+            expected: Box::new(HostValue::Int(9)),
+            actual: Some(Box::new(HostValue::Int(12))),
+        }
+    );
+    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(12)));
 }
 
 #[test]
@@ -422,7 +461,14 @@ fn apply_error_keeps_patch_source_span() {
         .expect_err("push apply should fail against non-array adapter state");
 
     assert_eq!(error.source_span, Some(span));
-    assert_eq!(error.kind, HostErrorKind::InvalidPush { path });
+    assert_eq!(
+        error.kind,
+        HostErrorKind::PatchConflict {
+            path,
+            expected: Box::new(HostValue::Array(Vec::new())),
+            actual: Some(Box::new(HostValue::Int(9))),
+        }
+    );
 }
 
 #[test]

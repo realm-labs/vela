@@ -97,6 +97,22 @@ impl MockStateAdapter {
             Ok(())
         }
     }
+
+    fn validate_expected_base(&self, patch: &Patch) -> HostResult<()> {
+        let Some(expected) = &patch.expected_base else {
+            return Ok(());
+        };
+        let actual = self.values.get(&patch.path);
+        if actual == Some(expected) {
+            Ok(())
+        } else {
+            Err(HostError::new(HostErrorKind::PatchConflict {
+                path: patch.path.clone(),
+                expected: Box::new(expected.clone()),
+                actual: actual.cloned().map(Box::new),
+            }))
+        }
+    }
 }
 
 impl ScriptStateAdapter for MockStateAdapter {
@@ -153,7 +169,8 @@ impl ScriptStateAdapter for MockStateAdapter {
                         method: *method,
                     }))
                 }
-            });
+            })
+            .and_then(|()| self.validate_expected_base(patch));
         result.map_err(|error| error.with_source_span_if_absent(patch.source_span))
     }
 
