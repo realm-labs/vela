@@ -1,7 +1,7 @@
 use vela_common::{FieldId, TypeId, VariantId};
 use vela_hir::{Declaration, DeclarationKind, ModuleGraph};
 
-use crate::{FieldDesc, TypeDesc, TypeKey, TypeRegistry, VariantDesc};
+use crate::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc};
 
 impl TypeRegistry {
     pub fn register_script_types(&mut self, graph: &ModuleGraph) {
@@ -13,7 +13,9 @@ impl TypeRegistry {
                     };
                     let type_name = qualified_type_name(graph, declaration);
                     let desc = shape.fields.iter().fold(
-                        TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone())),
+                        TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
+                            .kind(TypeKind::ScriptStruct)
+                            .schema_hash(struct_schema_hash(&type_name, shape)),
                         |desc, field| {
                             desc.field(FieldDesc::new(
                                 stable_field_id(&type_name, &field.name),
@@ -29,7 +31,9 @@ impl TypeRegistry {
                     };
                     let type_name = qualified_type_name(graph, declaration);
                     let desc = shape.variants.iter().fold(
-                        TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone())),
+                        TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
+                            .kind(TypeKind::ScriptEnum)
+                            .schema_hash(enum_schema_hash(&type_name, shape)),
                         |desc, variant| {
                             desc.variant(VariantDesc::new(
                                 stable_variant_id(&type_name, &variant.name),
@@ -56,6 +60,64 @@ fn qualified_type_name(graph: &ModuleGraph, declaration: &Declaration) -> String
         declaration.name.clone()
     } else {
         format!("{}.{}", module_path.join(), declaration.name)
+    }
+}
+
+fn struct_schema_hash(type_name: &str, shape: &vela_hir::StructShape) -> SchemaHash {
+    let members = shape
+        .fields
+        .iter()
+        .map(|field| {
+            (
+                stable_field_id(type_name, &field.name).get(),
+                field.name.clone(),
+                field
+                    .type_hint
+                    .as_ref()
+                    .map_or_else(String::new, vela_hir::HirTypeHint::display),
+            )
+        })
+        .collect::<Vec<_>>();
+    schema_hash("struct", type_name, members)
+}
+
+fn enum_schema_hash(type_name: &str, shape: &vela_hir::EnumShape) -> SchemaHash {
+    let members = shape
+        .variants
+        .iter()
+        .map(|variant| {
+            (
+                stable_variant_id(type_name, &variant.name).get(),
+                variant.name.clone(),
+                String::new(),
+            )
+        })
+        .collect::<Vec<_>>();
+    schema_hash("enum", type_name, members)
+}
+
+fn schema_hash(kind: &str, type_name: &str, mut members: Vec<(u32, String, String)>) -> SchemaHash {
+    members.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    let mut hash = 0xcbf2_9ce4_8422_2325;
+    hash_bytes(&mut hash, kind.as_bytes());
+    hash_bytes(&mut hash, &[0]);
+    hash_bytes(&mut hash, type_name.as_bytes());
+    hash_bytes(&mut hash, &[0]);
+    for (member_id, member_name, type_hint) in members {
+        hash_bytes(&mut hash, &member_id.to_le_bytes());
+        hash_bytes(&mut hash, &[0]);
+        hash_bytes(&mut hash, member_name.as_bytes());
+        hash_bytes(&mut hash, &[0]);
+        hash_bytes(&mut hash, type_hint.as_bytes());
+        hash_bytes(&mut hash, &[0]);
+    }
+    SchemaHash::new(hash)
+}
+
+fn hash_bytes(hash: &mut u64, bytes: &[u8]) {
+    for byte in bytes {
+        *hash ^= u64::from(*byte);
+        *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     }
 }
 
@@ -121,6 +183,10 @@ enum QuestProgress {
         let progress = registry
             .type_by_name("game.reward.QuestProgress")
             .expect("QuestProgress type metadata");
+        assert_eq!(reward.kind, TypeKind::ScriptStruct);
+        assert_eq!(progress.kind, TypeKind::ScriptEnum);
+        assert!(reward.schema_hash.is_some());
+        assert!(progress.schema_hash.is_some());
         assert_eq!(
             reward
                 .fields
@@ -211,5 +277,44 @@ enum QuestProgress {
 
         assert_eq!(first_count, second_count);
         assert_eq!(first_active, second_active);
+        assert_eq!(first_reward.schema_hash, second_reward.schema_hash);
+        assert_eq!(first_progress.schema_hash, second_progress.schema_hash);
+    }
+
+    #[test]
+    fn script_type_schema_hash_changes_for_member_or_hint_changes() {
+        let mut original = ModuleGraph::new();
+        original.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.reward"),
+            "struct Reward { count: int, item_id: string }\nenum QuestProgress { None, Active }",
+        ));
+        let mut changed = ModuleGraph::new();
+        changed.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.reward"),
+            "struct Reward { count: float, bonus: int }\nenum QuestProgress { None, Finished }",
+        ));
+        let mut original_registry = TypeRegistry::new();
+        let mut changed_registry = TypeRegistry::new();
+
+        original_registry.register_script_types(&original);
+        changed_registry.register_script_types(&changed);
+
+        let original_reward = original_registry
+            .type_by_name("game.reward.Reward")
+            .expect("original Reward");
+        let changed_reward = changed_registry
+            .type_by_name("game.reward.Reward")
+            .expect("changed Reward");
+        let original_progress = original_registry
+            .type_by_name("game.reward.QuestProgress")
+            .expect("original QuestProgress");
+        let changed_progress = changed_registry
+            .type_by_name("game.reward.QuestProgress")
+            .expect("changed QuestProgress");
+
+        assert_ne!(original_reward.schema_hash, changed_reward.schema_hash);
+        assert_ne!(original_progress.schema_hash, changed_progress.schema_hash);
     }
 }

@@ -554,9 +554,12 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   `VariantId` generation from qualified type and member names.
 - Added reflection tests proving script struct fields and enum variants enter
   the registry and member IDs survive source reordering.
-- This is metadata-only M10 groundwork; runtime record slot layouts, schema
-  hashes, trait dispatch, and replacement of named-map record storage remain
-  future M10 work.
+- Added `TypeKind` and `SchemaHash` metadata to type descriptors, with
+  order-independent schema hashes for script structs and enums.
+- Added reflection tests proving schema hashes survive field/variant reordering
+  and change when script type members or field hints change.
+- This is metadata-only M10 groundwork; runtime record slot layouts, trait
+  dispatch, and replacement of named-map record storage remain future M10 work.
 
 ## Next
 

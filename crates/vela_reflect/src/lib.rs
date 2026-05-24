@@ -24,6 +24,29 @@ impl TypeKey {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct SchemaHash(u64);
+
+impl SchemaHash {
+    #[must_use]
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TypeKind {
+    Host,
+    ScriptStruct,
+    ScriptEnum,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AttrMap {
     attrs: BTreeMap<String, String>,
@@ -39,6 +62,8 @@ impl AttrMap {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypeDesc {
     pub key: TypeKey,
+    pub kind: TypeKind,
+    pub schema_hash: Option<SchemaHash>,
     pub host_type_id: Option<HostTypeId>,
     pub fields: Vec<FieldDesc>,
     pub methods: Vec<MethodDesc>,
@@ -52,6 +77,8 @@ impl TypeDesc {
     pub fn new(key: TypeKey) -> Self {
         Self {
             key,
+            kind: TypeKind::Host,
+            schema_hash: None,
             host_type_id: None,
             fields: Vec::new(),
             methods: Vec::new(),
@@ -59,6 +86,18 @@ impl TypeDesc {
             variants: Vec::new(),
             attrs: AttrMap::new(),
         }
+    }
+
+    #[must_use]
+    pub fn kind(mut self, kind: TypeKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    #[must_use]
+    pub fn schema_hash(mut self, schema_hash: SchemaHash) -> Self {
+        self.schema_hash = Some(schema_hash);
+        self
     }
 
     #[must_use]

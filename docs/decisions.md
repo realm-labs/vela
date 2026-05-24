@@ -1783,11 +1783,15 @@ HIR lowers enum variants into enum-shape metadata, matching the existing
 struct-shape path. Reflection registers script structs and enums from the
 module graph through a focused `script_types` module, using module-qualified
 type names and deterministic IDs derived from type/member names for
-`TypeId`, `FieldId`, and `VariantId`.
+`TypeId`, `FieldId`, and `VariantId`. Script type descriptors also carry a
+`TypeKind` and an order-independent `SchemaHash` derived from the qualified
+type name, script type kind, member IDs, member names, and available field
+type-hint metadata.
 
 Consequences:
 - Script type, field, and variant metadata can be queried through the existing
   registry surface without re-parsing syntax.
-- Field and variant IDs survive declaration member reordering.
-- This does not yet implement slot-based object layout, schema hashes, trait
-  method dispatch, or runtime type-structure mutation.
+- Field and variant IDs, and the script schema hash, survive declaration
+  member reordering.
+- This does not yet implement slot-based object layout, trait method dispatch,
+  or runtime type-structure mutation.
