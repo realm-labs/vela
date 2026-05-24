@@ -63,9 +63,17 @@ M3: HostRef And PatchTx.
   remaining comparison operators used by M2 (`!=`, `<=`, `>`, `>=`), with a
   compiled-source operator test.
 
+### M3: HostRef And PatchTx
+
+- Added the `vela_host` crate with `HostRef`, `HostPath`, `PathSegment`,
+  `Patch`, `PatchOp`, `HostValue`, `HostObjectSnapshot`, and `PatchTx`.
+- Implemented transaction overlay updates for `Set` and read-modify-write
+  `Add` patches without exposing Rust `&mut` references.
+- Added host tests for set patch recording, add patch overlay behavior,
+  read-after-write overlay semantics, and stale generation errors.
+
 ## Next
 
-- Start M3 with a `vela_host` crate containing `HostRef`, `HostPath`,
-  `PathSegment`, `PatchOp`, and `PatchTx` overlay semantics.
-- Add tests for `Set`, `Add`, read-after-write overlay behavior, and stale
-  host generation rejection.
+- Add a mock `ScriptStateAdapter` that reads host snapshot values, validates
+  paths/generations, and applies collected patches at a safe point.
+- Connect VM-level host field bytecode to `PatchTx`.

@@ -60,3 +60,24 @@ Consequences:
 - Function-level hot reload can later replace entries behind this named program
   boundary with stable function identifiers and ABI checks.
 - Native calls stay explicit and separate from script calls.
+
+## 2026-05-24: Start Host Patching With A Host-Scoped Value Type
+
+Status: Accepted
+
+Context:
+M3 needs `PatchTx` and overlay semantics before the VM/host bridge is wired.
+The existing VM `Value` currently lives in `vela_vm`, and making `vela_host`
+depend on the VM would create the wrong crate direction for later bytecode
+operations.
+
+Decision:
+Use a small `HostValue` enum inside `vela_host` for the first PatchTx slice.
+It covers the primitive values needed for `Set` and `Add` overlay tests while
+keeping host patching independent from VM execution internals.
+
+Consequences:
+- The host crate can evolve without a VM dependency cycle.
+- A later bridge can convert between VM values and host patch values at the VM
+  host-boundary instruction layer.
+- PatchTx semantics can be tested before full script-to-host execution exists.

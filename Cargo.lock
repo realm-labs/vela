@@ -15,6 +15,13 @@ name = "vela_common"
 version = "0.1.0"
 
 [[package]]
+name = "vela_host"
+version = "0.1.0"
+dependencies = [
+ "vela_common",
+]
+
+[[package]]
 name = "vela_syntax"
 version = "0.1.0"
 dependencies = [
