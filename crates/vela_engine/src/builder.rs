@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use vela_reflect::{MethodDesc, TypeDesc, TypeKey, TypeRegistry};
+use vela_reflect::{MethodDesc, ReflectPermissionSet, TypeDesc, TypeKey, TypeRegistry};
 use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
@@ -15,6 +15,7 @@ pub struct EngineBuilder {
     host_native_functions: Vec<HostNativeFunctionEntry>,
     native_methods: Vec<NativeMethodEntry>,
     permissions: PermissionSet,
+    reflection_permissions: Option<ReflectPermissionSet>,
 }
 
 impl EngineBuilder {
@@ -38,6 +39,12 @@ impl EngineBuilder {
     #[must_use]
     pub fn permissions(mut self, permissions: PermissionSet) -> Self {
         self.permissions = permissions;
+        self
+    }
+
+    #[must_use]
+    pub fn reflection_permissions(mut self, permissions: ReflectPermissionSet) -> Self {
+        self.reflection_permissions = Some(permissions);
         self
     }
 
@@ -101,6 +108,7 @@ impl EngineBuilder {
             self.host_native_functions,
             self.native_methods,
             self.permissions,
+            self.reflection_permissions,
         ))
     }
 }

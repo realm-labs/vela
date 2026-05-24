@@ -2910,3 +2910,29 @@ Consequences:
   implementation file.
 - Attribute/doc metadata and permission-gated reflection remain follow-up M12
   work.
+
+## 2026-05-25: Reflection Permissions Are Enforced At Native Entry
+
+Status: Accepted
+
+Context:
+M12 requires reflection permission checks while preserving the existing host
+boundary rule that mutations only enter `PatchTx`. Reflection helpers are also
+usable below the VM, so policy enforcement needs a clear embedding boundary.
+
+Decision:
+Add a focused `permissions` module in `vela_reflect` with
+`ReflectPermission` and `ReflectPermissionSet`. Keep the existing permissive
+`Vm::register_reflection_natives` for tests and demos, and add
+`Vm::register_reflection_natives_with_permissions` for bounded installs. The
+Engine API exposes `EngineBuilder::reflection_permissions` as an opt-in hook
+that installs permissioned reflection natives with the registered type
+registry.
+
+Consequences:
+- Missing reflective write/call permissions fail before any host patch is
+  recorded.
+- Hosts can enable read-only, admin, or custom reflection policies through the
+  stable Engine API without bypassing `PatchTx`.
+- Lookup budgets and deeper `EffectSet`/access metadata checks remain follow-up
+  M12 work.

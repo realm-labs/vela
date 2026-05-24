@@ -2,6 +2,7 @@
 
 mod members;
 mod modules;
+mod permissions;
 mod script_types;
 
 use std::collections::BTreeMap;
@@ -16,6 +17,7 @@ pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
     exports as module_exports, function as function_metadata, module as module_metadata,
 };
+pub use permissions::{ReflectPermission, ReflectPermissionSet};
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId,
 };
@@ -465,6 +467,9 @@ pub enum ReflectErrorKind {
     UnknownFunction {
         function: String,
         candidates: Vec<String>,
+    },
+    PermissionDenied {
+        permission: ReflectPermission,
     },
     FieldNotWritable {
         type_name: String,

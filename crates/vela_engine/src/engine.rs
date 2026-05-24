@@ -4,7 +4,7 @@ use std::sync::Arc;
 use vela_bytecode::compiler::CompilerOptions;
 use vela_common::{FunctionId, HostMethodId};
 use vela_host::HostPath;
-use vela_reflect::TypeRegistry;
+use vela_reflect::{ReflectPermissionSet, TypeRegistry};
 use vela_vm::{HostExecution, Value, Vm, VmError, VmErrorKind, VmResult};
 
 use crate::{EngineBuilder, HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry};
@@ -18,6 +18,7 @@ pub struct Engine {
     native_methods: BTreeMap<HostMethodId, NativeMethodEntry>,
     native_function_names: BTreeMap<String, FunctionId>,
     permissions: PermissionSet,
+    reflection_permissions: Option<ReflectPermissionSet>,
 }
 
 impl Engine {
@@ -33,6 +34,7 @@ impl Engine {
         host_native_functions: Vec<HostNativeFunctionEntry>,
         native_methods: Vec<NativeMethodEntry>,
         permissions: PermissionSet,
+        reflection_permissions: Option<ReflectPermissionSet>,
     ) -> Self {
         let native_functions = native_functions
             .into_iter()
@@ -60,6 +62,7 @@ impl Engine {
             native_methods,
             native_function_names,
             permissions,
+            reflection_permissions,
         }
     }
 
@@ -146,7 +149,14 @@ impl Engine {
     }
 
     pub fn install(&self, vm: &mut Vm) {
-        vm.register_type_registry(Arc::clone(&self.registry));
+        if let Some(permissions) = &self.reflection_permissions {
+            vm.register_reflection_natives_with_permissions(
+                Arc::clone(&self.registry),
+                permissions.clone(),
+            );
+        } else {
+            vm.register_type_registry(Arc::clone(&self.registry));
+        }
         for entry in self.native_functions.values() {
             let name = entry.desc.name.clone();
             let access = entry.desc.access.clone();

@@ -731,8 +731,13 @@ permissions.
   `reflect.kind`, `reflect.field`, and `reflect.has_field` natives. Field
   detail records include stable IDs, names, and writable flags, and unknown
   fields keep ranked candidate hints.
+- Added `ReflectPermission` and `ReflectPermissionSet` in a focused reflection
+  permissions module, plus `Vm::register_reflection_natives_with_permissions`
+  and `EngineBuilder::reflection_permissions`. Permissioned reflection natives
+  reject missing read, write, and call permissions before recording host
+  patches.
 
 ## Next
 
-- Continue M12 with reflection permissions, lookup budgets, attributes/docs
-  metadata, and permission-bounded reflective calls.
+- Continue M12 with lookup budgets, attributes/docs metadata, and deeper
+  effect/access checks for reflective calls.

@@ -1,7 +1,9 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_reflect::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
+use vela_reflect::{
+    FieldDesc, MethodDesc, ReflectPermission, ReflectPermissionSet, TypeDesc, TypeKey,
+};
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
@@ -191,6 +193,48 @@ fn main(player) {
             native: "game.set_level".to_owned(),
             permission: "player.write".to_owned(),
         }
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn engine_installs_permissioned_reflection_natives() {
+    let engine = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .reflection_permissions(ReflectPermissionSet::read_only())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    if reflect.name(player) == "Player" && reflect.get(player, "level") == 7 {
+        reflect.set(player, "level", 8);
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(
+        HostPath::new(host_ref).field(FieldId::new(1)),
+        HostValue::Int(7),
+    );
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        Err(error) if error.kind == VmErrorKind::Reflect(vela_reflect::ReflectErrorKind::PermissionDenied {
+            permission: ReflectPermission::WriteValueFields
+        })
     ));
     assert!(tx.patches().is_empty());
 }

@@ -16,6 +16,7 @@ pub use native::{
     NativeFunctionId, NativeParamDesc, TypeHint,
 };
 pub use permission::PermissionSet;
+pub use vela_reflect::{ReflectPermission, ReflectPermissionSet};
 
 #[cfg(test)]
 mod tests;

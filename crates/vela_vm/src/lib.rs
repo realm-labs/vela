@@ -458,9 +458,22 @@ impl Vm {
     }
 
     pub fn register_reflection_natives(&mut self, registry: Arc<TypeRegistry>) {
+        self.register_reflection_natives_with_permissions(
+            registry,
+            reflect::ReflectPermissionSet::all(),
+        );
+    }
+
+    pub fn register_reflection_natives_with_permissions(
+        &mut self,
+        registry: Arc<TypeRegistry>,
+        permissions: reflect::ReflectPermissionSet,
+    ) {
         self.register_type_registry(Arc::clone(&registry));
         let type_of_registry = Arc::clone(&registry);
+        let type_of_permissions = permissions.clone();
         self.register_host_native("reflect.type_of", move |args, _host| {
+            type_of_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.type_of", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.type_of")?;
             Ok(reflect::type_of(&type_of_registry, &target)
@@ -468,21 +481,27 @@ impl Vm {
         });
 
         let name_registry = Arc::clone(&registry);
+        let name_permissions = permissions.clone();
         self.register_host_native("reflect.name", move |args, _host| {
+            name_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.name", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.name")?;
             value_from_reflect(reflect::name_metadata(&name_registry, &target)?)
         });
 
         let kind_registry = Arc::clone(&registry);
+        let kind_permissions = permissions.clone();
         self.register_host_native("reflect.kind", move |args, _host| {
+            kind_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.kind", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.kind")?;
             value_from_reflect(reflect::kind_metadata(&kind_registry, &target)?)
         });
 
         let fields_registry = Arc::clone(&registry);
+        let fields_permissions = permissions.clone();
         self.register_host_native("reflect.fields", move |args, _host| {
+            fields_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.fields", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.fields")?;
             let Some(desc) = reflect::type_of(&fields_registry, &target) else {
@@ -497,7 +516,9 @@ impl Vm {
         });
 
         let field_registry = Arc::clone(&registry);
+        let field_permissions = permissions.clone();
         self.register_host_native("reflect.field", move |args, _host| {
+            field_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.field", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.field")?;
             let field_name = expect_string(&args[1], "reflect.field")?;
@@ -509,7 +530,9 @@ impl Vm {
         });
 
         let has_field_registry = Arc::clone(&registry);
+        let has_field_permissions = permissions.clone();
         self.register_host_native("reflect.has_field", move |args, _host| {
+            has_field_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.has_field", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.has_field")?;
             let field_name = expect_string(&args[1], "reflect.has_field")?;
@@ -521,21 +544,27 @@ impl Vm {
         });
 
         let module_registry = Arc::clone(&registry);
+        let module_permissions = permissions.clone();
         self.register_host_native("reflect.module", move |args, _host| {
+            module_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.module", args, 1)?;
             let module_name = expect_string(&args[0], "reflect.module")?;
             value_from_reflect(reflect::module_metadata(&module_registry, module_name)?)
         });
 
         let exports_registry = Arc::clone(&registry);
+        let exports_permissions = permissions.clone();
         self.register_host_native("reflect.exports", move |args, _host| {
+            exports_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.exports", args, 1)?;
             let module_name = expect_string(&args[0], "reflect.exports")?;
             value_from_reflect(reflect::module_exports(&exports_registry, module_name)?)
         });
 
         let function_registry = Arc::clone(&registry);
+        let function_permissions = permissions.clone();
         self.register_host_native("reflect.function", move |args, _host| {
+            function_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.function", args, 1)?;
             let function_name = expect_string(&args[0], "reflect.function")?;
             value_from_reflect(reflect::function_metadata(
@@ -545,14 +574,18 @@ impl Vm {
         });
 
         let methods_registry = Arc::clone(&registry);
+        let methods_permissions = permissions.clone();
         self.register_host_native("reflect.methods", move |args, _host| {
+            methods_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.methods", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.methods")?;
             value_from_reflect(reflect::methods(&methods_registry, &target)?)
         });
 
         let has_method_registry = Arc::clone(&registry);
+        let has_method_permissions = permissions.clone();
         self.register_host_native("reflect.has_method", move |args, _host| {
+            has_method_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.has_method", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.has_method")?;
             let method_name = expect_string(&args[1], "reflect.has_method")?;
@@ -564,26 +597,34 @@ impl Vm {
         });
 
         let traits_registry = Arc::clone(&registry);
+        let traits_permissions = permissions.clone();
         self.register_host_native("reflect.traits", move |args, _host| {
+            traits_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.traits", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.traits")?;
             value_from_reflect(reflect::trait_metadata(&traits_registry, &target)?)
         });
 
         let variants_registry = Arc::clone(&registry);
+        let variants_permissions = permissions.clone();
         self.register_host_native("reflect.variants", move |args, _host| {
+            variants_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.variants", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.variants")?;
             value_from_reflect(reflect::variant_metadata(&variants_registry, &target)?)
         });
 
+        let variant_permissions = permissions.clone();
         self.register_host_native("reflect.variant", move |args, _host| {
+            variant_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.variant", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.variant")?;
             value_from_reflect(reflect::variant(&target)?)
         });
 
+        let variant_is_permissions = permissions.clone();
         self.register_host_native("reflect.variant_is", move |args, _host| {
+            variant_is_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.variant_is", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.variant_is")?;
             let variant_name = expect_string(&args[1], "reflect.variant_is")?;
@@ -591,7 +632,9 @@ impl Vm {
         });
 
         let get_registry = Arc::clone(&registry);
+        let get_permissions = permissions.clone();
         self.register_host_native("reflect.get", move |args, host| {
+            get_permissions.require(reflect::ReflectPermission::ReadValueFields)?;
             expect_arity("reflect.get", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.get")?;
             let field = expect_string(&args[1], "reflect.get")?;
@@ -606,7 +649,9 @@ impl Vm {
         });
 
         let set_registry = Arc::clone(&registry);
+        let set_permissions = permissions.clone();
         self.register_host_native("reflect.set", move |args, host| {
+            set_permissions.require(reflect::ReflectPermission::WriteValueFields)?;
             expect_arity("reflect.set", args, 3)?;
             let target = value_to_reflect(&args[0], "reflect.set")?;
             let field = expect_string(&args[1], "reflect.set")?;
@@ -622,7 +667,9 @@ impl Vm {
         });
 
         let call_registry = Arc::clone(&registry);
+        let call_permissions = permissions.clone();
         self.register_host_native("reflect.call", move |args, host| {
+            call_permissions.require(reflect::ReflectPermission::CallMethods)?;
             if args.len() < 2 {
                 return Err(VmError::new(VmErrorKind::ArityMismatch {
                     name: "reflect.call".to_owned(),
@@ -646,7 +693,9 @@ impl Vm {
             value_from_reflect(value)
         });
 
+        let implements_permissions = permissions;
         self.register_host_native("reflect.implements", move |args, _host| {
+            implements_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
             expect_arity("reflect.implements", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.implements")?;
             let trait_name = expect_string(&args[1], "reflect.implements")?;
@@ -6606,6 +6655,75 @@ fn main(player) {
             adapter.read_path(&level_path(host_ref)),
             Ok(HostValue::Int(10))
         );
+    }
+
+    #[test]
+    fn reflection_permissions_deny_writes_before_patches() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    reflect.set(player, "level", 10);
+    return 1;
+}
+"#,
+        )
+        .expect("compile denied reflection write source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_permissions(
+            Arc::new(reflection_registry()),
+            reflect::ReflectPermissionSet::read_only(),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+                permission: reflect::ReflectPermission::WriteValueFields
+            })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflection_permissions_deny_calls_before_patches() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    reflect.call(player, "grant_exp", 10);
+    return 1;
+}
+"#,
+        )
+        .expect("compile denied reflection call source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_permissions(
+            Arc::new(reflection_registry()),
+            reflect::ReflectPermissionSet::read_only(),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+                permission: reflect::ReflectPermission::CallMethods
+            })
+        ));
+        assert!(tx.patches().is_empty());
     }
 
     #[test]
