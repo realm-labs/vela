@@ -769,9 +769,13 @@ permissions.
   `TypeRegistry` and validated during `compile_update_with_abi`, rejecting
   removed or changed schema hashes plus function/method effect and reflective
   access changes before a hot update reaches the runtime safe-point swap.
+- Added `Engine::hot_reload_abi()` so hosts can derive hot-reload compatibility
+  manifests from the Engine registry. The CLI hot-reload demo now builds its
+  manifest from the game-server demo `TypeRegistry`, whose host schemas and
+  methods carry stable schema hashes and effect/access metadata, so the
+  runnable function-swap workflow exercises the ABI-checked update path.
 
 ## Next
 
 - Continue M12 with remaining ranked related-span diagnostics for unknown
-  schema names and wiring ABI manifests into the CLI/Engine hot-reload demo
-  path.
+  schema names and broader Engine hot-reload policy ergonomics.

@@ -4,10 +4,11 @@ use std::fs;
 use vela_bytecode::compiler::{CompilerOptions, compile_program_source_with_options};
 use vela_common::SourceId;
 use vela_host::PatchTx;
+use vela_hot_reload::HotReloadAbi;
 use vela_vm::{ExecutionBudget, HostExecution, Vm};
 
 use self::ids::DemoIds;
-use self::registry::register_demo_reflection_natives;
+use self::registry::{demo_type_registry, register_demo_reflection_natives};
 use self::state::DemoHostState;
 
 mod ids;
@@ -64,4 +65,8 @@ pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
     tx.apply(&mut host_state.adapter)
         .map_err(|error| format!("{error:?}"))?;
     host_state.print_result(result, patch_count)
+}
+
+pub(crate) fn hot_reload_abi() -> HotReloadAbi {
+    HotReloadAbi::from_registry(&demo_type_registry(DemoIds::new()))
 }

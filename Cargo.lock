@@ -34,6 +34,7 @@ dependencies = [
  "vela_bytecode",
  "vela_common",
  "vela_host",
+ "vela_hot_reload",
  "vela_reflect",
  "vela_vm",
 ]

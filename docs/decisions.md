@@ -3086,3 +3086,26 @@ Consequences:
   the update boundary.
 - The CLI and Engine hot-reload paths can later pass registry-derived manifests
   without changing the core versioning API.
+
+## 2026-05-25: Engine Registries Are The Hot Reload ABI Source
+
+Status: Accepted
+
+Context:
+The hot-reload ABI manifest needs to match the schema and permission metadata
+that scripts and hosts actually use. Duplicating that metadata in a CLI demo or
+separate host configuration would make the checked path easy to drift from the
+reflection registry.
+
+Decision:
+Expose `Engine::hot_reload_abi()` as a registry-derived manifest and use the
+game-server demo `TypeRegistry` to drive the CLI hot-reload command through
+`compile_initial_with_abi` and `compile_update_with_abi`.
+
+Consequences:
+- Host applications can use one reflected registry as the source for both
+  runtime reflection and hot-reload compatibility checks.
+- The runnable CLI function-swap demo now proves the ABI-checked update path,
+  not only raw function replacement.
+- Future Engine hot-reload policy work can compose around the existing manifest
+  instead of adding another schema description surface.

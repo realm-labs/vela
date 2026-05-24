@@ -1,8 +1,10 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
+use vela_hot_reload::{compile_initial_with_abi, compile_update_with_abi};
 use vela_reflect::{
-    FieldDesc, MethodDesc, ReflectPermission, ReflectPermissionSet, TypeDesc, TypeKey,
+    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission, ReflectPermissionSet,
+    SchemaHash, TypeDesc, TypeKey,
 };
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
@@ -94,6 +96,55 @@ fn engine_registers_native_function_reflection_metadata() {
         &["game.add".to_owned()]
     );
     assert_eq!(function.docs.as_deref(), Some("Adds two integers."));
+}
+
+#[test]
+fn engine_exposes_registry_hot_reload_abi() {
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key.clone())
+                .schema_hash(SchemaHash::new(0xfeed))
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                        .effects(MethodEffectSet::host_write())
+                        .access(
+                            MethodAccess::new()
+                                .reflect_callable(true)
+                                .require_permission("player.write"),
+                        ),
+                ),
+        )
+        .register_native_fn(
+            NativeFunctionDesc::new("game.reward.grant", NativeFunctionId::new(22))
+                .param("player", TypeHint::Host(player_key))
+                .returns(TypeHint::Null)
+                .effects(EffectSet::event_emit())
+                .access(
+                    FunctionAccess::public()
+                        .reflect_callable(true)
+                        .require_permission("reward.grant"),
+                ),
+            |_| Ok(Value::Null),
+        )
+        .build()
+        .expect("engine should build");
+    let abi = engine.hot_reload_abi();
+    let initial = compile_initial_with_abi(
+        SourceId::new(1),
+        "fn main(player) { return 1; }",
+        abi.clone(),
+    )
+    .expect("initial hot reload compile");
+
+    compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main(player) { return 2; }",
+        abi,
+    )
+    .expect("unchanged engine ABI should be hot-reload compatible");
 }
 
 #[test]

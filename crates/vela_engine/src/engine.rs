@@ -4,6 +4,7 @@ use std::sync::Arc;
 use vela_bytecode::compiler::CompilerOptions;
 use vela_common::{FunctionId, HostMethodId};
 use vela_host::HostPath;
+use vela_hot_reload::HotReloadAbi;
 use vela_reflect::{ReflectPolicy, TypeRegistry};
 use vela_vm::{HostExecution, Value, Vm, VmError, VmErrorKind, VmResult};
 
@@ -69,6 +70,11 @@ impl Engine {
     #[must_use]
     pub fn registry(&self) -> Arc<TypeRegistry> {
         Arc::clone(&self.registry)
+    }
+
+    #[must_use]
+    pub fn hot_reload_abi(&self) -> HotReloadAbi {
+        HotReloadAbi::from_registry(&self.registry)
     }
 
     #[must_use]
