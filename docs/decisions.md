@@ -3442,3 +3442,27 @@ Consequences:
 - Compile failures continue to use source diagnostics instead of ABI details.
 - The safe-point code swap semantics and embedded `HotReloadError` remain
   unchanged for hosts that need full internal inspection.
+
+## 2026-05-25: Variant Checks Diagnose Registered Unknown Variants
+
+Status: Accepted
+
+Context:
+M12 requires candidate hints for unknown variant names. `reflect.variants`
+returned copied metadata, but `reflect.variant_is(value, name)` treated every
+misspelled registered variant name as a plain `false`, which made admin/debug
+scripts silently hide typos.
+
+Decision:
+When the target enum type is registered, validate the queried name against the
+registered variant descriptors before comparing it to the value's active
+variant. Unknown names now return `ReflectErrorKind::UnknownVariant` with
+ranked candidates. If no enum schema is registered, preserve the old dynamic
+comparison behavior.
+
+Consequences:
+- Reflection tooling gets the same typo-help behavior for variants that fields,
+  methods, modules, and functions already expose.
+- Existing unregistered dynamic enum values can still be compared by name.
+- The change remains schema-safe: reflection only reads registered metadata and
+  does not mutate type structure.

@@ -604,6 +604,11 @@ pub enum ReflectErrorKind {
         method: String,
         candidates: Vec<String>,
     },
+    UnknownVariant {
+        type_name: String,
+        variant: String,
+        candidates: Vec<String>,
+    },
     UnknownModule {
         module: String,
         candidates: Vec<String>,

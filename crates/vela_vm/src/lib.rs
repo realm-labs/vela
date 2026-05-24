@@ -6869,6 +6869,38 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_reflect_variant_is_reports_unknown_variant_candidates() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let quest = QuestProgress.Active { count: 1 };
+    return reflect.variant_is(quest, "Actve");
+}
+"#,
+        )
+        .expect("compile unknown variant reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(member_reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
+                type_name: "QuestProgress".to_owned(),
+                variant: "Actve".to_owned(),
+                candidates: vec!["Active".to_owned(), "Finished".to_owned()]
+            })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn compiled_source_reflects_script_record_implements() {
         let program = compile_program_source(
             SourceId::new(1),

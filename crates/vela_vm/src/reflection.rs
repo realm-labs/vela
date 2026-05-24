@@ -295,6 +295,7 @@ impl Vm {
             value_from_reflect(reflect::variant(&target)?)
         });
 
+        let variant_is_registry = Arc::clone(&registry);
         let variant_is_policy = policy.clone();
         let variant_is_budget = Arc::clone(&lookup_budget);
         self.register_host_native("reflect.variant_is", move |args, _host| {
@@ -307,7 +308,11 @@ impl Vm {
             let target = value_to_reflect(&args[0], "reflect.variant_is")?;
             check_host_ref_inspection(&variant_is_policy, &target)?;
             let variant_name = expect_string(&args[1], "reflect.variant_is")?;
-            Ok(Value::Bool(reflect::variant_is(&target, variant_name)?))
+            Ok(Value::Bool(reflect::variant_is(
+                &variant_is_registry,
+                &target,
+                variant_name,
+            )?))
         });
 
         let get_registry = Arc::clone(&registry);

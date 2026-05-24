@@ -104,8 +104,26 @@ pub fn variant(target: &ReflectValue) -> ReflectResult<ReflectValue> {
     )))
 }
 
-pub fn variant_is(target: &ReflectValue, name: &str) -> ReflectResult<bool> {
-    Ok(variant_name(target)? == name)
+pub fn variant_is(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+) -> ReflectResult<bool> {
+    let actual = variant_name(target)?;
+    let Some(desc) = type_of(registry, target) else {
+        return Ok(actual == name);
+    };
+    if desc.variants.iter().any(|variant| variant.name == name) {
+        return Ok(actual == name);
+    }
+    Err(ReflectError::new(ReflectErrorKind::UnknownVariant {
+        type_name: desc.key.name.clone(),
+        variant: name.to_owned(),
+        candidates: name_candidates(
+            name,
+            desc.variants.iter().map(|variant| variant.name.as_str()),
+        ),
+    }))
 }
 
 fn target_type<'a>(
@@ -482,12 +500,34 @@ mod tests {
             variant(&target).expect("variant"),
             ReflectValue::Host(HostValue::String("Active".to_owned()))
         );
-        assert!(variant_is(&target, "Active").expect("variant is"));
+        assert!(variant_is(&registry, &target, "Active").expect("variant is"));
         let ReflectValue::Host(HostValue::Array(variants)) =
             variants(&registry, &target).expect("variants")
         else {
             panic!("variants should be an array");
         };
         assert_eq!(variants.len(), 2);
+    }
+
+    #[test]
+    fn unknown_variants_include_candidate_hints() {
+        let registry = registry();
+        let target = ReflectValue::ScriptEnum {
+            enum_name: "QuestProgress".to_owned(),
+            variant: "Active".to_owned(),
+            fields: BTreeMap::new(),
+        };
+
+        let error =
+            variant_is(&registry, &target, "Actve").expect_err("unknown variant should diagnose");
+
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownVariant {
+                type_name: "QuestProgress".to_owned(),
+                variant: "Actve".to_owned(),
+                candidates: vec!["Active".to_owned(), "Finished".to_owned()]
+            }
+        );
     }
 }

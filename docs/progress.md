@@ -841,6 +841,11 @@ permissions.
   changes. Rejected reports now expose this rendering data through
   `HotReloadDiagnostic::detail` without requiring host tooling to parse
   human-readable reasons or unpack internal error variants.
+- Added `ReflectErrorKind::UnknownVariant` candidate diagnostics for
+  `reflect.variant_is` when the target enum schema is registered. Misspelled
+  variant checks now report ranked variant candidates through both the
+  reflection API and compiled VM native path instead of silently returning
+  `false`.
 
 ## Next
 
