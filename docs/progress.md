@@ -718,8 +718,12 @@ permissions.
   function metadata from the HIR module graph, including visibility, type-hint
   display metadata, default-parameter markers, return hints, and module export
   entries.
+- Added read-only script-visible `reflect.module`, `reflect.exports`, and
+  `reflect.function` queries backed by registered module/function metadata.
+  Results are copied records/arrays, and unknown module/function lookups include
+  candidate hints without allowing runtime schema mutation.
 
 ## Next
 
-- Continue M12 with script-visible reflection queries for modules, functions,
-  methods, variants, and permission-bounded calls.
+- Continue M12 with script-visible reflection queries for methods, variants,
+  and permission-bounded calls.

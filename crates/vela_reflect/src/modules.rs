@@ -1,8 +1,14 @@
+use std::collections::BTreeMap;
+
 use vela_common::FunctionId;
 use vela_hir::{DeclarationKind, FunctionSignature, ModuleGraph};
+use vela_host::HostValue;
 use vela_syntax::Visibility;
 
-use crate::{AttrMap, TypeRegistry};
+use crate::{
+    AttrMap, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry,
+    name_candidates,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DeclOrigin {
@@ -201,6 +207,132 @@ impl TypeRegistry {
     }
 }
 
+pub fn module(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
+    let desc = registry.module_by_name(name).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownModule {
+            module: name.to_owned(),
+            candidates: name_candidates(
+                name,
+                registry.modules().map(|module| module.name.as_str()),
+            ),
+        })
+    })?;
+    Ok(module_record(desc))
+}
+
+pub fn exports(registry: &TypeRegistry, module_name: &str) -> ReflectResult<ReflectValue> {
+    let desc = registry.module_by_name(module_name).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownModule {
+            module: module_name.to_owned(),
+            candidates: name_candidates(
+                module_name,
+                registry.modules().map(|module| module.name.as_str()),
+            ),
+        })
+    })?;
+    Ok(ReflectValue::Host(HostValue::Array(
+        desc.exports
+            .iter()
+            .map(|export| HostValue::String(export.name.clone()))
+            .collect(),
+    )))
+}
+
+pub fn function(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
+    let desc = registry.function_by_name(name).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownFunction {
+            function: name.to_owned(),
+            candidates: name_candidates(
+                name,
+                registry.functions().map(|function| function.name.as_str()),
+            ),
+        })
+    })?;
+    Ok(function_record(desc))
+}
+
+fn module_record(desc: &ModuleDesc) -> ReflectValue {
+    let mut fields = BTreeMap::new();
+    fields.insert(
+        "name".to_owned(),
+        ReflectValue::Host(HostValue::String(desc.name.clone())),
+    );
+    fields.insert(
+        "exports".to_owned(),
+        ReflectValue::Host(HostValue::Array(
+            desc.exports
+                .iter()
+                .map(|export| HostValue::String(export.name.clone()))
+                .collect(),
+        )),
+    );
+    ReflectValue::Record(fields)
+}
+
+fn function_record(desc: &FunctionDesc) -> ReflectValue {
+    let mut fields = BTreeMap::new();
+    fields.insert(
+        "name".to_owned(),
+        ReflectValue::Host(HostValue::String(desc.name.clone())),
+    );
+    fields.insert(
+        "module".to_owned(),
+        ReflectValue::Host(
+            desc.module
+                .as_ref()
+                .map_or(HostValue::Null, |module| HostValue::String(module.clone())),
+        ),
+    );
+    fields.insert(
+        "public".to_owned(),
+        ReflectValue::Host(HostValue::Bool(desc.public)),
+    );
+    fields.insert(
+        "origin".to_owned(),
+        ReflectValue::Host(HostValue::String(
+            match desc.origin {
+                DeclOrigin::Host => "host",
+                DeclOrigin::Script => "script",
+            }
+            .to_owned(),
+        )),
+    );
+    fields.insert(
+        "return".to_owned(),
+        ReflectValue::Host(
+            desc.return_type
+                .as_ref()
+                .map_or(HostValue::Null, |return_type| {
+                    HostValue::String(return_type.clone())
+                }),
+        ),
+    );
+    fields.insert(
+        "params".to_owned(),
+        ReflectValue::Host(HostValue::Array(
+            desc.params.iter().map(param_record).collect(),
+        )),
+    );
+    ReflectValue::Record(fields)
+}
+
+fn param_record(param: &FunctionParamDesc) -> HostValue {
+    let mut fields = BTreeMap::new();
+    fields.insert("name".to_owned(), HostValue::String(param.name.clone()));
+    fields.insert(
+        "type".to_owned(),
+        param
+            .type_hint
+            .as_ref()
+            .map_or(HostValue::Null, |hint| HostValue::String(hint.clone())),
+    );
+    fields.insert("defaulted".to_owned(), HostValue::Bool(param.has_default));
+    HostValue::Record {
+        type_name: "ReflectParam".to_owned(),
+        fields,
+    }
+}
+
 fn apply_signature(mut desc: FunctionDesc, signature: &FunctionSignature) -> FunctionDesc {
     for param in &signature.params {
         let mut param_desc = FunctionParamDesc::new(param.name.clone())
@@ -291,5 +423,60 @@ fn helper() {
             .function_by_name("game.reward.helper")
             .expect("helper function metadata");
         assert!(!helper.public);
+    }
+
+    #[test]
+    fn module_function_queries_return_records_and_candidates() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.reward"),
+            r#"
+pub fn grant(amount: int = 1) -> bool {
+    return true;
+}
+"#,
+        ));
+        let mut registry = TypeRegistry::new();
+        registry.register_script_modules(&graph);
+
+        let ReflectValue::Record(module_metadata) =
+            module(&registry, "game.reward").expect("module")
+        else {
+            panic!("module metadata should be a record");
+        };
+        assert_eq!(
+            module_metadata.get("name"),
+            Some(&ReflectValue::Host(HostValue::String("game.reward".into())))
+        );
+        assert_eq!(
+            exports(&registry, "game.reward").expect("exports"),
+            ReflectValue::Host(HostValue::Array(vec![HostValue::String(
+                "game.reward.grant".into()
+            )]))
+        );
+
+        let ReflectValue::Record(function) =
+            function(&registry, "game.reward.grant").expect("function")
+        else {
+            panic!("function metadata should be a record");
+        };
+        assert_eq!(
+            function.get("return"),
+            Some(&ReflectValue::Host(HostValue::String("bool".into())))
+        );
+        assert_eq!(
+            function.get("origin"),
+            Some(&ReflectValue::Host(HostValue::String("script".into())))
+        );
+
+        let error = module(&registry, "game.rewards").expect_err("unknown module");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownModule {
+                module: "game.rewards".to_owned(),
+                candidates: vec!["game.reward".to_owned()]
+            }
+        );
     }
 }

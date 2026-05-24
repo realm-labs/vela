@@ -482,6 +482,30 @@ impl Vm {
             Ok(Value::Array(fields))
         });
 
+        let module_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.module", move |args, _host| {
+            expect_arity("reflect.module", args, 1)?;
+            let module_name = expect_string(&args[0], "reflect.module")?;
+            value_from_reflect(reflect::module_metadata(&module_registry, module_name)?)
+        });
+
+        let exports_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.exports", move |args, _host| {
+            expect_arity("reflect.exports", args, 1)?;
+            let module_name = expect_string(&args[0], "reflect.exports")?;
+            value_from_reflect(reflect::module_exports(&exports_registry, module_name)?)
+        });
+
+        let function_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.function", move |args, _host| {
+            expect_arity("reflect.function", args, 1)?;
+            let function_name = expect_string(&args[0], "reflect.function")?;
+            value_from_reflect(reflect::function_metadata(
+                &function_registry,
+                function_name,
+            )?)
+        });
+
         let get_registry = Arc::clone(&registry);
         self.register_host_native("reflect.get", move |args, host| {
             expect_arity("reflect.get", args, 2)?;
@@ -6576,6 +6600,38 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_reflects_modules_functions_and_exports() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let module = reflect.module("game.reward");
+    let exports = reflect.exports("game.reward");
+    let function = reflect.function("game.reward.grant");
+    if module.get("name") == "game.reward" && exports.len() == 1 && function.get("return") == "bool" {
+        return function.get("params").len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile module reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::Int(2))
+        );
+    }
+
+    #[test]
     fn compiled_source_reflects_script_record_implements() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -6994,6 +7050,22 @@ fn main(player) {
                 .field(FieldDesc::new(FieldId::new(20), "level"))
                 .trait_impl(TraitDesc::new("Damageable")),
         );
+        registry
+    }
+
+    fn script_module_reflection_registry() -> TypeRegistry {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.reward"),
+            r#"
+pub fn grant(player: Player, amount: int = 1) -> bool {
+    return true;
+}
+"#,
+        ));
+        let mut registry = TypeRegistry::new();
+        registry.register_script_modules(&graph);
         registry
     }
 

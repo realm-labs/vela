@@ -8,6 +8,7 @@ use std::fmt;
 
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
+    exports as module_exports, function as function_metadata, module as module_metadata,
 };
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId,
@@ -322,6 +323,10 @@ impl TypeRegistry {
         self.modules_by_name.values()
     }
 
+    pub fn functions(&self) -> impl Iterator<Item = &FunctionDesc> {
+        self.functions_by_id.values()
+    }
+
     #[must_use]
     pub fn module_by_name(&self, name: &str) -> Option<&ModuleDesc> {
         self.modules_by_name.get(name)
@@ -445,6 +450,14 @@ pub enum ReflectErrorKind {
     UnknownMethod {
         type_name: String,
         method: String,
+        candidates: Vec<String>,
+    },
+    UnknownModule {
+        module: String,
+        candidates: Vec<String>,
+    },
+    UnknownFunction {
+        function: String,
         candidates: Vec<String>,
     },
     FieldNotWritable {
@@ -646,7 +659,10 @@ fn record_unknown_field(field: &str, record: &BTreeMap<String, ReflectValue>) ->
     }
 }
 
-fn name_candidates<'a>(name: &str, candidates: impl Iterator<Item = &'a str>) -> Vec<String> {
+pub(crate) fn name_candidates<'a>(
+    name: &str,
+    candidates: impl Iterator<Item = &'a str>,
+) -> Vec<String> {
     let mut candidates = candidates
         .map(|candidate| (edit_distance(name, candidate), candidate.to_owned()))
         .collect::<Vec<_>>();

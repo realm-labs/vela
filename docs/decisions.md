@@ -2838,3 +2838,27 @@ Consequences:
   metadata derived from HIR.
 - Script-visible `reflect.module`, `reflect.exports`, and function permission
   checks remain follow-up M12 work.
+
+## 2026-05-25: Reflection Module Queries Return Copied Metadata
+
+Status: Accepted
+
+Context:
+M12 requires scripts to inspect modules and functions through controlled
+reflection. The registry now stores script module/function descriptors, but the
+script-visible API still needs to preserve the no-monkey-patching rule.
+
+Decision:
+Expose `reflect.module`, `reflect.exports`, and `reflect.function` as read-only
+host natives that return copied metadata records and arrays from `TypeRegistry`.
+Unknown module/function errors include name candidates. These queries do not
+return mutable descriptor handles and do not alter type, module, or function
+structure at runtime.
+
+Consequences:
+- Admin and debug scripts can inspect registered module exports and function
+  signatures.
+- Reflection remains a controlled query surface instead of a schema mutation
+  surface.
+- Permission-bounded reflective calls and method/variant query coverage remain
+  follow-up M12 work.
