@@ -2060,6 +2060,45 @@ pub fn main() {
     }
 
     #[test]
+    fn runs_compiled_cross_module_imported_const_expression() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.tuning.BONUS as REWARD
+
+fn main() {
+    return REWARD + 1;
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.tuning"),
+                r#"
+use game.base.BASE as START
+
+pub const BONUS: int = START + 1;
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_dotted("game.base"),
+                r#"
+pub const BASE: int = 4;
+"#,
+            ),
+        ])
+        .expect("compile imported cross-module const expression");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "game.main.main", &[]),
+            Ok(Value::Int(6))
+        );
+    }
+
+    #[test]
     fn heap_safe_point_gc_preserves_caller_roots_during_nested_calls() {
         let program = compile_program_source(
             SourceId::new(1),

@@ -845,3 +845,27 @@ Consequences:
   `game.main.main`.
 - Future program-version and ABI work has stable module-qualified symbols to
   build on while the single-file prototype path remains unchanged.
+
+## 2026-05-24: Imported Const Evaluation Uses Resolved Imports
+
+Status: Accepted
+
+Context:
+Scalar const evaluation could compose earlier consts in the same module, but
+multi-module compilation did not let const initializers use imported const
+aliases. That left configuration split across modules dependent on runtime
+fallback behavior instead of HIR declaration facts.
+
+Decision:
+Evaluate multi-module scalar consts against resolved HIR import declarations.
+Imported const aliases are available once their target declarations have
+scalar values, while same-module references still only see earlier
+source-order const values.
+
+Consequences:
+- Modules can define consts from imported configuration values without
+  generating module-load bytecode or host side effects.
+- Source input order across modules does not determine whether an imported
+  const value is available.
+- Same-module forward references, recursive const cycles, aggregate consts,
+  and non-scalar const expressions remain unsupported follow-ups.

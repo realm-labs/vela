@@ -6,7 +6,7 @@ use std::num::{ParseFloatError, ParseIntError};
 use vela_common::{Diagnostic, FieldId, SourceId, Span};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
-    LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource,
+    ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource,
 };
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
@@ -312,26 +312,72 @@ impl SemanticModules {
 
     fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
         let mut values_by_declaration = BTreeMap::new();
-        for module in &self.modules {
-            let mut values_by_name = BTreeMap::new();
-            let Some(parsed) = self.parsed.get(module) else {
-                continue;
-            };
-            for item in &parsed.items {
-                let ItemKind::Const(item) = &item.kind else {
+        loop {
+            let mut progressed = false;
+            for module in &self.modules {
+                let mut previous_values = BTreeMap::new();
+                let Some(parsed) = self.parsed.get(module) else {
                     continue;
                 };
-                let Some(declaration) = self.graph.module(*module).and_then(|m| m.get(&item.name))
-                else {
-                    continue;
-                };
-                if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
-                    values_by_declaration.insert(declaration, value.clone());
-                    values_by_name.insert(item.name.clone(), value);
+                for item in &parsed.items {
+                    let ItemKind::Const(item) = &item.kind else {
+                        continue;
+                    };
+                    let Some(declaration) =
+                        self.graph.module(*module).and_then(|m| m.get(&item.name))
+                    else {
+                        continue;
+                    };
+                    if let Some(value) = values_by_declaration.get(&declaration).cloned() {
+                        previous_values.insert(item.name.clone(), value);
+                        continue;
+                    }
+
+                    let mut values_by_name =
+                        self.imported_const_values(*module, &values_by_declaration);
+                    values_by_name.extend(previous_values.clone());
+                    if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
+                        values_by_declaration.insert(declaration, value.clone());
+                        previous_values.insert(item.name.clone(), value);
+                        progressed = true;
+                    }
                 }
+            }
+            if !progressed {
+                break;
             }
         }
         Ok(values_by_declaration)
+    }
+
+    fn imported_const_values(
+        &self,
+        module: ModuleId,
+        values_by_declaration: &BTreeMap<HirDeclId, Constant>,
+    ) -> BTreeMap<String, Constant> {
+        let mut values = BTreeMap::new();
+        let Some(imports) = self.graph.imports(module) else {
+            return values;
+        };
+        for import in imports {
+            let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
+                continue;
+            };
+            let Some(metadata) = self.graph.declaration(declaration) else {
+                continue;
+            };
+            if metadata.kind != DeclarationKind::Const {
+                continue;
+            }
+            let Some(value) = values_by_declaration.get(&declaration).cloned() else {
+                continue;
+            };
+            let Some(name) = import.alias.clone().or_else(|| import.path.last().cloned()) else {
+                continue;
+            };
+            values.insert(name, value);
+        }
+        values
     }
 }
 
@@ -1355,6 +1401,45 @@ fn main() {
             constant.map(|constant| &code.constants[constant.0]),
             Some(&Constant::Int(20))
         );
+    }
+
+    #[test]
+    fn compiler_evaluates_imported_scalar_const_expressions_across_modules() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.tuning.BONUS as REWARD
+
+fn main() {
+    return REWARD + 1;
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.tuning"),
+                r#"
+use game.base.BASE as START
+
+pub const BONUS: int = START + 1;
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_dotted("game.base"),
+                r#"
+pub const BASE: int = 4;
+"#,
+            ),
+        ])
+        .expect("imported scalar const expressions should compile across modules");
+        let main = program
+            .function("game.main.main")
+            .expect("qualified main function");
+
+        assert!(main.constants.contains(&Constant::Int(5)));
     }
 
     #[test]

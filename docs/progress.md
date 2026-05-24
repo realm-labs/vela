@@ -331,6 +331,11 @@ that introduce loops and closures.
   from overwriting each other in `Program`.
 - Added compiler and VM coverage proving same-named functions in separate
   modules compile and dispatch through their qualified symbols.
+- Multi-module scalar const evaluation now follows resolved import
+  declarations, allowing const initializers and function bodies to read
+  imported const aliases without top-level execution.
+- Added compiler and VM coverage proving imported const expressions compile
+  and execute across modules independently of source input order.
 
 ## Next
 
