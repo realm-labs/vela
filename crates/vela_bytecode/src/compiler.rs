@@ -1197,6 +1197,9 @@ impl<'ast> Compiler<'ast> {
         if let ExprKind::Index { base, index } = &target.kind {
             return self.compile_index_assignment(*op, base, index, value);
         }
+        if let Some((record, field)) = self.record_field_assignment_target(target)? {
+            return self.compile_record_field_assignment(*op, record, field, value);
+        }
         let (root, field) = self.compile_host_assignment_target(target)?;
         let src = self.compile_expr(value)?;
         match op {
@@ -1301,6 +1304,82 @@ impl<'ast> Compiler<'ast> {
         self.emit(InstructionKind::SetIndex {
             base,
             index,
+            src: assigned,
+        });
+        Ok(assigned)
+    }
+
+    fn record_field_assignment_target(
+        &mut self,
+        target: &Expr,
+    ) -> CompileResult<Option<(Register, String)>> {
+        match &target.kind {
+            ExprKind::Path(path) => {
+                let [record, field] = path.as_slice() else {
+                    return Ok(None);
+                };
+                if self.facts.options.host_fields.contains_key(field) {
+                    return Ok(None);
+                }
+                Ok(Some((
+                    self.local_register_at_span(target.span, record)?,
+                    field.clone(),
+                )))
+            }
+            ExprKind::Field { base, name } => {
+                if self.facts.options.host_fields.contains_key(name) {
+                    return Ok(None);
+                }
+                let ExprKind::Path(path) = &base.kind else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "record field assignment target",
+                    )));
+                };
+                let [record] = path.as_slice() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "record field assignment target",
+                    )));
+                };
+                Ok(Some((
+                    self.local_register_at_span(base.span, record)?,
+                    name.clone(),
+                )))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn compile_record_field_assignment(
+        &mut self,
+        op: AssignOp,
+        record: Register,
+        field: String,
+        value: &Expr,
+    ) -> CompileResult<Register> {
+        let assigned = match op {
+            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                self.emit(InstructionKind::GetRecordField {
+                    dst: current,
+                    record,
+                    field: field.clone(),
+                });
+                let rhs = self.compile_expr(value)?;
+                let dst = self.alloc_register()?;
+                self.emit(
+                    compound_assignment_instruction(op, dst, current, rhs).ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "compound assignment operator",
+                        ))
+                    })?,
+                );
+                dst
+            }
+        };
+        self.emit(InstructionKind::SetRecordField {
+            record,
+            field,
             src: assigned,
         });
         Ok(assigned)
@@ -3482,6 +3561,27 @@ fn main() {
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::SetIndex { .. }))
         );
+    }
+
+    #[test]
+    fn compiler_lowers_record_field_writes() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let reward = Reward { item_id: "gold", count: 2 };
+    reward.count += 3;
+    reward.item_id = "xp";
+    return reward.count;
+}
+"#,
+            "main",
+        )
+        .expect("record field writes should compile");
+
+        assert!(code.instructions.iter().any(|instruction| {
+            matches!(instruction.kind, InstructionKind::SetRecordField { .. })
+        }));
     }
 
     #[test]

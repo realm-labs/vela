@@ -393,6 +393,11 @@ method-dispatch coverage before moving into stable type metadata.
   assignment expressions, including compound numeric assignment.
 - Added VM coverage proving index writes execute for inline and managed-heap
   arrays/maps while keeping host-path indexing out of this M9 slice.
+- Added `SetRecordField` bytecode and compiler lowering for direct script
+  record field assignment and compound assignment without treating record
+  fields as host paths.
+- Added VM coverage proving existing record fields can be updated in inline and
+  managed-heap execution while preserving heap-safe assigned values.
 - Added `IterInit` and `IterNext` bytecode plus compiler lowering for `for-in`
   loops over script arrays and maps.
 - Added VM coverage proving `for-in` loops execute in inline and managed-heap

@@ -263,6 +263,11 @@ pub enum InstructionKind {
         record: Register,
         field: String,
     },
+    SetRecordField {
+        record: Register,
+        field: String,
+        src: Register,
+    },
     GetEnumField {
         dst: Register,
         value: Register,

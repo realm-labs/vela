@@ -4,6 +4,7 @@ pub mod heap;
 mod indexing;
 mod iteration;
 mod ranges;
+mod record_fields;
 mod script_methods;
 mod try_propagation;
 
@@ -1191,6 +1192,17 @@ impl Vm {
                     let value =
                         get_record_field_value(frame.read(*record)?, field, heap.as_deref())?;
                     frame.write(*dst, value)?;
+                }
+                InstructionKind::SetRecordField { record, field, src } => {
+                    let mut record_value = frame.read(*record)?.clone();
+                    record_fields::set_record_field_value(
+                        &mut record_value,
+                        field,
+                        frame.read(*src)?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*record, record_value)?;
                 }
                 InstructionKind::GetEnumField { dst, value, field } => {
                     let value = get_enum_field_value(frame.read(*value)?, field, heap.as_deref())?;
@@ -2435,6 +2447,26 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_record_field_write_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let reward = Reward { item_id: "gold", count: 2 };
+    reward.count += 3;
+    reward.item_id = "xp";
+    let item_id = reward.item_id;
+    return reward.count + item_id.len();
+}
+"#,
+            "main",
+        )
+        .expect("compile record field write source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    }
+
+    #[test]
     fn managed_heap_execution_writes_heap_index_values() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -2467,6 +2499,30 @@ fn map_case() {
                 .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
                 .expect("run heap map index write"),
             Value::Int(15)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_execution_writes_heap_record_fields() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let reward = Reward { item_id: "gold", count: 2 };
+    reward.count += 5;
+    reward.item_id = "xp";
+    let item_id = reward.item_id;
+    return reward.count + item_id.len();
+}
+"#,
+        )
+        .expect("compile heap record field writes");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            Ok(Value::Int(9))
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
