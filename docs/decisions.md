@@ -2398,3 +2398,28 @@ Consequences:
   callers.
 - The VM path is unchanged: typed host method calls still lower to
   `CallHostMethod` and record patches rather than exposing Rust references.
+
+## 2026-05-25: Host Method Bytecode Carries Field Paths
+
+Status: Accepted
+
+Context:
+Host method syntax could record `PatchTx::CallHostMethod` for a root
+`HostRef`, but calls on host-owned subobjects such as
+`player.inventory.add(...)` first read the field into a register and then hit
+the root-only VM method-call path. The architecture requires these calls to
+target a `HostPath` without exposing mutable Rust references.
+
+Decision:
+Extend `CallHostMethod` with ordered host field path segments. The compiler's
+host-method helper resolves configured host field names in the receiver path,
+emits the root receiver register plus the resolved field IDs, and the VM builds
+the corresponding `HostPath` before recording the method call patch.
+
+Consequences:
+- Host method calls can target field paths such as
+  `HostPath::new(player).field(inventory)` while preserving `PatchTx` as the
+  only mutation channel.
+- Existing root host method calls use an empty field segment list.
+- This slice covers field-only receiver paths; index, key, and variant-field
+  path segments remain future path/proxy lowering work.

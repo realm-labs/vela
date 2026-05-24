@@ -1110,6 +1110,7 @@ impl<'ast> Compiler<'ast> {
                     self.emit(InstructionKind::CallHostMethod {
                         dst: Some(dst),
                         root,
+                        fields: call.fields,
                         method: call.method,
                         args: arg_registers,
                     });
@@ -3458,6 +3459,35 @@ fn main(player) {
                 method: lowered_method,
                 ..
             } if lowered_method == method
+        )));
+    }
+
+    #[test]
+    fn compiler_lowers_configured_host_method_calls_on_field_paths() {
+        let inventory = FieldId::new(3);
+        let method = HostMethodId::new(5);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.inventory.add("gold", 20);
+    return 1;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_method("add", method),
+        )
+        .expect("host field method call should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallHostMethod {
+                method: lowered_method,
+                fields,
+                ..
+            } if *lowered_method == method && fields.as_slice() == [inventory]
         )));
     }
 

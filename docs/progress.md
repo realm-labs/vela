@@ -647,10 +647,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   Native method registration injects method metadata into the owner host type,
   exposes callable lookup/dispatch through `Engine::call_native_method`, and
   still takes a `HostPath` plus `HostExecution` instead of a Rust `&mut`.
+- `CallHostMethod` bytecode now carries host field path segments, allowing
+  configured calls such as `player.inventory.add(...)` to compile and record
+  a `PatchTx` method call against `HostPath::new(player).field(inventory)`.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and deeper host method path/proxy lowering.
+  receiver facts and deeper host path/proxy lowering beyond field-only method
+  receivers.
 
 ## Next
 
-- Continue M10 with broader non-literal receiver facts or deeper host method
-  path/proxy lowering.
+- Continue M10 with broader non-literal receiver facts or deeper host
+  path/proxy lowering beyond field-only method receivers.

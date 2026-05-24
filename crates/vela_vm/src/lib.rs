@@ -1475,11 +1475,15 @@ impl Vm {
                 InstructionKind::CallHostMethod {
                     dst,
                     root,
+                    fields,
                     method,
                     args,
                 } => {
                     let root = expect_host_ref(frame.read(*root)?, "call_host_method")?;
-                    let path = HostPath::new(root);
+                    let mut path = HostPath::new(root);
+                    for field in fields {
+                        path = path.field(*field);
+                    }
                     let values = args
                         .iter()
                         .map(|register| {
@@ -5532,6 +5536,62 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_host_field_method_call_records_path_patch_tx() {
+        let host_ref = player_ref(3);
+        let inventory = FieldId::new(8);
+        let method = HostMethodId::new(9);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.inventory.add("gold", 100);
+    return 1;
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_method("add", method),
+        )
+        .expect("compile host field method source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.insert_method_return(method, HostValue::Null);
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(1)));
+        assert!(adapter.method_calls().is_empty());
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method,
+                args: vec![HostValue::String("gold".into()), HostValue::Int(100)]
+            }
+        );
+        tx.apply(&mut adapter).expect("apply host method patch");
+        assert_eq!(
+            adapter.method_calls(),
+            &[(
+                HostPath::new(host_ref).field(inventory),
+                method,
+                vec![HostValue::String("gold".into()), HostValue::Int(100)]
+            )]
+        );
+    }
+
+    #[test]
     fn compiled_source_context_time_and_emit_records_patch_tx() {
         let ctx_ref = HostRef::new(HostTypeId::new(9), HostObjectId::new(11), 1);
         let now_field = FieldId::new(6);
@@ -5958,6 +6018,7 @@ fn main(player) {
         code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
             dst: Some(Register(2)),
             root: Register(0),
+            fields: Vec::new(),
             method,
             args: vec![Register(1)],
         }));
@@ -6017,6 +6078,7 @@ fn main(player) {
         code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
             dst: Some(Register(2)),
             root: Register(0),
+            fields: Vec::new(),
             method,
             args: vec![Register(1)],
         }));
