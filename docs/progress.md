@@ -746,8 +746,13 @@ permissions.
   `EngineBuilder::reflection_lookup_budget` now bound script-visible reflection
   lookups while preserving permission checks and preventing exhausted lookups
   from recording host patches.
+- Added parser, HIR, and reflection propagation for script attributes on
+  declarations and supported members. String-valued attributes such as
+  `#[event("monster.kill")]` are preserved in HIR; `#[doc("...")]` populates
+  descriptor docs, and other attributes are copied into reflected `AttrMap`
+  metadata for script functions, structs, enum variants, fields, traits, and
+  trait methods.
 
 ## Next
 
-- Continue M12 with deeper `EffectSet`/access checks for reflective calls and
-  parser/HIR extraction of script attributes into reflected metadata.
+- Continue M12 with deeper `EffectSet`/access checks for reflective calls.

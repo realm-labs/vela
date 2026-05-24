@@ -9,6 +9,7 @@ use crate::{
     AttrMap, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry,
     metadata::{attrs_value, docs_value},
     name_candidates,
+    script_attrs::ReflectedScriptAttrs,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -215,6 +216,7 @@ impl TypeRegistry {
             if let Some(signature) = signature {
                 desc = apply_signature(desc, signature);
             }
+            desc = apply_function_attrs(desc, graph.declaration_attrs(declaration.id));
             self.register_function(desc);
         }
     }
@@ -373,6 +375,13 @@ fn apply_signature(mut desc: FunctionDesc, signature: &FunctionSignature) -> Fun
     desc
 }
 
+fn apply_function_attrs(mut desc: FunctionDesc, attrs: &[vela_hir::HirAttribute]) -> FunctionDesc {
+    let reflected = ReflectedScriptAttrs::from_hir(attrs);
+    desc.attrs = reflected.attrs;
+    desc.docs = reflected.docs;
+    desc
+}
+
 fn qualified_function_name(module: &str, name: &str) -> String {
     if module.is_empty() {
         name.to_owned()
@@ -415,6 +424,8 @@ pub fn grant(player: Player, amount: int = 1) -> bool {
     return true;
 }
 
+#[doc("Helper docs.")]
+#[event("reward.helper")]
 fn helper() {
     return null;
 }
@@ -448,6 +459,8 @@ fn helper() {
             .function_by_name("game.reward.helper")
             .expect("helper function metadata");
         assert!(!helper.public);
+        assert_eq!(helper.docs.as_deref(), Some("Helper docs."));
+        assert_eq!(helper.attrs.get("event"), Some("reward.helper"));
     }
 
     #[test]

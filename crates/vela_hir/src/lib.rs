@@ -1,11 +1,13 @@
 //! HIR and module graph for Vela source files.
 
+mod attributes;
 mod binding;
 mod ids;
 mod module_graph;
 mod top_level;
 mod type_hint;
 
+pub use attributes::HirAttribute;
 pub use binding::{BindingMap, BindingResolution, ExprInfo, LocalBinding, LocalBindingKind};
 pub use ids::{HirDeclId, HirExprId, HirLocalId, HirNodeId, ModuleId};
 pub use module_graph::{

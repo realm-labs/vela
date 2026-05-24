@@ -3,7 +3,7 @@ use vela_hir::{Declaration, DeclarationKind, EnumVariantFieldsHint, ModuleGraph}
 
 use crate::{
     FieldDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry,
-    VariantDesc,
+    VariantDesc, script_attrs::ReflectedScriptAttrs,
 };
 
 impl TypeRegistry {
@@ -15,17 +15,21 @@ impl TypeRegistry {
                         continue;
                     };
                     let type_name = qualified_type_name(graph, declaration);
-                    let desc = shape.fields.iter().fold(
+                    let mut desc = shape.fields.iter().fold(
                         TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
                             .kind(TypeKind::ScriptStruct)
                             .schema_hash(struct_schema_hash(&type_name, shape)),
                         |desc, field| {
-                            desc.field(FieldDesc::new(
-                                stable_field_id(&type_name, &field.name),
-                                field.name.clone(),
+                            desc.field(apply_field_attrs(
+                                FieldDesc::new(
+                                    stable_field_id(&type_name, &field.name),
+                                    field.name.clone(),
+                                ),
+                                &field.attrs,
                             ))
                         },
                     );
+                    apply_type_attrs(&mut desc, graph.declaration_attrs(declaration.id));
                     self.register(desc);
                 }
                 DeclarationKind::Enum => {
@@ -33,7 +37,7 @@ impl TypeRegistry {
                         continue;
                     };
                     let type_name = qualified_type_name(graph, declaration);
-                    let desc = shape.variants.iter().fold(
+                    let mut desc = shape.variants.iter().fold(
                         TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
                             .kind(TypeKind::ScriptEnum)
                             .schema_hash(enum_schema_hash(&type_name, shape)),
@@ -41,20 +45,27 @@ impl TypeRegistry {
                             let variant_owner = enum_variant_owner(&type_name, &variant.name);
                             let variant_desc =
                                 enum_variant_fields(&variant.fields).into_iter().fold(
-                                    VariantDesc::new(
-                                        stable_variant_id(&type_name, &variant.name),
-                                        variant.name.clone(),
+                                    apply_variant_attrs(
+                                        VariantDesc::new(
+                                            stable_variant_id(&type_name, &variant.name),
+                                            variant.name.clone(),
+                                        ),
+                                        &variant.attrs,
                                     ),
-                                    |desc, (field_name, _)| {
-                                        desc.field(FieldDesc::new(
-                                            stable_field_id(&variant_owner, &field_name),
-                                            field_name,
+                                    |desc, (field_name, field_attrs, _)| {
+                                        desc.field(apply_field_attrs(
+                                            FieldDesc::new(
+                                                stable_field_id(&variant_owner, &field_name),
+                                                field_name,
+                                            ),
+                                            &field_attrs,
                                         ))
                                     },
                                 );
                             desc.variant(variant_desc)
                         },
                     );
+                    apply_type_attrs(&mut desc, graph.declaration_attrs(declaration.id));
                     self.register(desc);
                 }
                 DeclarationKind::Trait => {
@@ -62,18 +73,20 @@ impl TypeRegistry {
                         continue;
                     };
                     let trait_name = qualified_type_name(graph, declaration);
-                    let desc = shape.methods.iter().fold(
+                    let mut desc = shape.methods.iter().fold(
                         TraitDesc::new(trait_name.clone()),
                         |desc, method| {
-                            desc.method(
+                            desc.method(apply_trait_method_attrs(
                                 TraitMethodDesc::new(
                                     stable_trait_method_id(&trait_name, &method.name),
                                     method.name.clone(),
                                 )
                                 .defaulted(method.has_default),
-                            )
+                                &method.attrs,
+                            ))
                         },
                     );
+                    apply_trait_attrs(&mut desc, graph.declaration_attrs(declaration.id));
                     self.register_trait(desc);
                 }
                 DeclarationKind::Const | DeclarationKind::Function | DeclarationKind::Impl => {}
@@ -97,6 +110,77 @@ impl TypeRegistry {
                 target.traits.push(trait_desc);
             }
         }
+    }
+}
+
+fn apply_type_attrs(desc: &mut TypeDesc, attrs: &[vela_hir::HirAttribute]) {
+    let reflected = ReflectedScriptAttrs::from_hir(attrs);
+    desc.attrs = reflected.attrs;
+    desc.docs = reflected.docs;
+}
+
+fn apply_trait_attrs(desc: &mut TraitDesc, attrs: &[vela_hir::HirAttribute]) {
+    let reflected = ReflectedScriptAttrs::from_hir(attrs);
+    desc.attrs = reflected.attrs;
+    desc.docs = reflected.docs;
+}
+
+fn apply_field_attrs(mut desc: FieldDesc, attrs: &[vela_hir::HirAttribute]) -> FieldDesc {
+    let reflected = ReflectedScriptAttrs::from_hir(attrs);
+    desc.attrs = reflected.attrs;
+    desc.docs = reflected.docs;
+    desc
+}
+
+fn apply_variant_attrs(mut desc: VariantDesc, attrs: &[vela_hir::HirAttribute]) -> VariantDesc {
+    let reflected = ReflectedScriptAttrs::from_hir(attrs);
+    desc.attrs = reflected.attrs;
+    desc.docs = reflected.docs;
+    desc
+}
+
+fn apply_trait_method_attrs(
+    mut desc: TraitMethodDesc,
+    attrs: &[vela_hir::HirAttribute],
+) -> TraitMethodDesc {
+    let reflected = ReflectedScriptAttrs::from_hir(attrs);
+    desc.attrs = reflected.attrs;
+    desc.docs = reflected.docs;
+    desc
+}
+
+fn enum_variant_fields(
+    fields: &EnumVariantFieldsHint,
+) -> Vec<(String, Vec<vela_hir::HirAttribute>, String)> {
+    match fields {
+        EnumVariantFieldsHint::Unit => Vec::new(),
+        EnumVariantFieldsHint::Tuple(fields) => fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                (
+                    index.to_string(),
+                    Vec::new(),
+                    field
+                        .type_hint
+                        .as_ref()
+                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                )
+            })
+            .collect(),
+        EnumVariantFieldsHint::Record(fields) => fields
+            .iter()
+            .map(|field| {
+                (
+                    field.name.clone(),
+                    field.attrs.clone(),
+                    field
+                        .type_hint
+                        .as_ref()
+                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                )
+            })
+            .collect(),
     }
 }
 
@@ -162,7 +246,7 @@ fn enum_variant_signature(type_name: &str, variant: &vela_hir::EnumVariantHint) 
     let variant_owner = enum_variant_owner(type_name, &variant.name);
     let mut fields = enum_variant_fields(&variant.fields)
         .into_iter()
-        .map(|(field_name, type_hint)| {
+        .map(|(field_name, _, type_hint)| {
             (
                 stable_field_id(&variant_owner, &field_name).get(),
                 field_name,
@@ -176,37 +260,6 @@ fn enum_variant_signature(type_name: &str, variant: &vela_hir::EnumVariantHint) 
         .map(|(_, field_name, type_hint)| format!("{field_name}:{type_hint}"))
         .collect::<Vec<_>>()
         .join(",")
-}
-
-fn enum_variant_fields(fields: &EnumVariantFieldsHint) -> Vec<(String, String)> {
-    match fields {
-        EnumVariantFieldsHint::Unit => Vec::new(),
-        EnumVariantFieldsHint::Tuple(fields) => fields
-            .iter()
-            .enumerate()
-            .map(|(index, field)| {
-                (
-                    index.to_string(),
-                    field
-                        .type_hint
-                        .as_ref()
-                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
-                )
-            })
-            .collect(),
-        EnumVariantFieldsHint::Record(fields) => fields
-            .iter()
-            .map(|field| {
-                (
-                    field.name.clone(),
-                    field
-                        .type_hint
-                        .as_ref()
-                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
-                )
-            })
-            .collect(),
-    }
 }
 
 fn enum_variant_owner(type_name: &str, variant: &str) -> String {
@@ -282,13 +335,17 @@ mod tests {
             SourceId::new(1),
             ModulePath::from_dotted("game.reward"),
             r#"
+#[doc("Reward metadata.")]
+#[domain("gameplay")]
 struct Reward {
+    #[doc("Reward count.")]
     count: int,
     item_id: string,
 }
 
 enum QuestProgress {
     None,
+    #[active]
     Active { quest_id: string, count: int },
     Finished(quest_id: string),
 }
@@ -308,6 +365,8 @@ enum QuestProgress {
         assert_eq!(progress.kind, TypeKind::ScriptEnum);
         assert!(reward.schema_hash.is_some());
         assert!(progress.schema_hash.is_some());
+        assert_eq!(reward.docs.as_deref(), Some("Reward metadata."));
+        assert_eq!(reward.attrs.get("domain"), Some("gameplay"));
         assert_eq!(
             reward
                 .fields
@@ -315,6 +374,14 @@ enum QuestProgress {
                 .map(|field| field.name.as_str())
                 .collect::<Vec<_>>(),
             ["count", "item_id"]
+        );
+        assert_eq!(
+            reward
+                .fields
+                .iter()
+                .find(|field| field.name == "count")
+                .and_then(|field| field.docs.as_deref()),
+            Some("Reward count.")
         );
         assert_eq!(
             progress
@@ -329,6 +396,7 @@ enum QuestProgress {
             .iter()
             .find(|variant| variant.name == "Active")
             .expect("Active variant");
+        assert_eq!(active.attrs.get("active"), Some("true"));
         assert_eq!(
             active
                 .fields
@@ -459,7 +527,9 @@ enum QuestProgress {
             SourceId::new(1),
             ModulePath::from_dotted("game.combat"),
             r#"
+#[doc("Damage protocol.")]
 trait Damageable {
+    #[doc("Apply damage.")]
     fn damage(self, amount: int) -> int;
     fn alive(self) -> bool { return true; }
 }
@@ -484,6 +554,7 @@ impl Damageable for Player {
             .type_by_name("game.combat.Player")
             .expect("Player type");
 
+        assert_eq!(damageable.docs.as_deref(), Some("Damage protocol."));
         assert_eq!(
             damageable
                 .methods
@@ -492,6 +563,7 @@ impl Damageable for Player {
                 .collect::<Vec<_>>(),
             [("damage", false), ("alive", true)]
         );
+        assert_eq!(damageable.methods[0].docs.as_deref(), Some("Apply damage."));
         assert_eq!(
             player
                 .traits

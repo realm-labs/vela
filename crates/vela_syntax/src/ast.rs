@@ -73,6 +73,7 @@ pub struct StructItem {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StructField {
+    pub attrs: Vec<Attribute>,
     pub name: String,
     pub type_hint: Option<TypeHint>,
 }
@@ -85,6 +86,7 @@ pub struct EnumItem {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnumVariant {
+    pub attrs: Vec<Attribute>,
     pub name: String,
     pub fields: EnumVariantFields,
 }
@@ -104,6 +106,7 @@ pub struct TraitItem {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitMethod {
+    pub attrs: Vec<Attribute>,
     pub name: String,
     pub params: Vec<Param>,
     pub return_type: Option<TypeHint>,
@@ -127,6 +130,7 @@ pub struct ImplMethod {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attribute {
     pub path: Vec<String>,
+    pub value: Option<String>,
     pub span: Span,
 }
 

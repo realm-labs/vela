@@ -2985,3 +2985,28 @@ Consequences:
   without sharing consumed counters across `Engine::into_vm` calls.
 - Finer per-call-frame or per-event reflection budgets can be layered later
   without changing the schema-safe reflection helper APIs.
+
+## 2026-05-25: Script Attributes Are Copied Into Reflection Metadata
+
+Status: Accepted
+
+Context:
+M12 requires reflection to expose attributes and docs for script-defined
+metadata, not only host-registered descriptors. The parser already recognized
+attribute syntax, but payloads and member attributes were discarded before HIR
+and reflection registration.
+
+Decision:
+Preserve simple string or identifier attribute payloads in syntax and HIR.
+HIR stores declaration and member attributes as copied metadata. Reflection
+registration converts `#[doc("...")]` into descriptor docs and copies all other
+attributes into `AttrMap` using `"true"` for marker attributes without payloads.
+
+Consequences:
+- Script functions, structs, fields, enum variants, traits, and trait methods
+  can now expose copied docs/attrs through the existing reflection query
+  records.
+- Attribute reflection remains schema-safe because scripts receive copied
+  metadata values, not mutable descriptor handles.
+- Richer attribute arguments can be added later without changing the reflection
+  descriptor boundary.

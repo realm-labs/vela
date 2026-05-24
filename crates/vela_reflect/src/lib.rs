@@ -4,6 +4,7 @@ mod members;
 mod metadata;
 mod modules;
 mod permissions;
+mod script_attrs;
 mod script_types;
 
 use std::collections::BTreeMap;

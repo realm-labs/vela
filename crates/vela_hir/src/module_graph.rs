@@ -5,6 +5,7 @@ use vela_syntax::{
     Block, FunctionItem, ItemKind, Param, SourceFile, TraitMethod, Visibility, parse_source,
 };
 
+use crate::attributes::{HirAttribute, attrs_from_syntax};
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
 use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
@@ -137,6 +138,7 @@ pub struct ModuleGraph {
     modules: Vec<HirModule>,
     module_by_path: BTreeMap<ModulePath, ModuleId>,
     declarations: BTreeMap<HirDeclId, Declaration>,
+    declaration_attrs: BTreeMap<HirDeclId, Vec<HirAttribute>>,
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
@@ -221,6 +223,8 @@ impl ModuleGraph {
                     );
                     self.const_metadata
                         .insert(declaration, ConstMetadata::from_syntax(const_item));
+                    self.declaration_attrs
+                        .insert(declaration, attrs_from_syntax(&item.attrs));
                     self.diagnostics
                         .extend(validate_const_initializer(const_item));
                 }
@@ -242,6 +246,8 @@ impl ModuleGraph {
                                 .map(HirTypeHint::from_syntax),
                         },
                     );
+                    self.declaration_attrs
+                        .insert(declaration, attrs_from_syntax(&item.attrs));
                     function_declarations.push((declaration, function.clone()));
                 }
                 ItemKind::Struct(record) => {
@@ -262,6 +268,8 @@ impl ModuleGraph {
                                 .collect(),
                         },
                     );
+                    self.declaration_attrs
+                        .insert(declaration, attrs_from_syntax(&item.attrs));
                 }
                 ItemKind::Enum(enumeration) => {
                     let declaration = self.insert_declaration(
@@ -273,6 +281,8 @@ impl ModuleGraph {
                     );
                     self.enum_shapes
                         .insert(declaration, EnumShape::from_syntax(enumeration));
+                    self.declaration_attrs
+                        .insert(declaration, attrs_from_syntax(&item.attrs));
                 }
                 ItemKind::Trait(trait_item) => {
                     let declaration = self.insert_declaration(
@@ -296,6 +306,8 @@ impl ModuleGraph {
                         declaration,
                         TraitShape::from_syntax(trait_item, default_method_nodes.clone()),
                     );
+                    self.declaration_attrs
+                        .insert(declaration, attrs_from_syntax(&item.attrs));
                     trait_default_method_declarations.extend(
                         trait_item
                             .methods
@@ -324,6 +336,8 @@ impl ModuleGraph {
                         declaration,
                         ImplMetadata::from_syntax(impl_item, method_nodes.clone()),
                     );
+                    self.declaration_attrs
+                        .insert(declaration, attrs_from_syntax(&item.attrs));
                     impl_method_declarations.extend(
                         impl_item
                             .methods
@@ -389,6 +403,14 @@ impl ModuleGraph {
     #[must_use]
     pub fn const_metadata(&self, declaration: HirDeclId) -> Option<&ConstMetadata> {
         self.const_metadata.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn declaration_attrs(&self, declaration: HirDeclId) -> &[HirAttribute] {
+        self.declaration_attrs
+            .get(&declaration)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
     }
 
     #[must_use]
@@ -1700,6 +1722,79 @@ fn main() { return SAFE_LIMIT; }
             diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.message.contains("BAD_ASSIGN"))
+        );
+    }
+
+    #[test]
+    fn lowers_attribute_metadata_for_declarations_and_members() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+#[event("monster.kill")]
+pub fn grant(player: Player) {
+    return null;
+}
+
+#[doc("Reward metadata")]
+#[domain("gameplay")]
+struct Reward {
+    #[doc("Reward item id")]
+    item_id: string,
+}
+
+enum QuestProgress {
+    #[terminal]
+    Finished { #[doc("Quest id")] quest_id: string },
+}
+
+trait Damageable {
+    #[doc("Apply damage")]
+    fn damage(self, amount: int) -> int;
+}
+"#,
+        ));
+        let declarations = graph.module(module).expect("module declarations");
+        let grant = declarations.get("grant").expect("grant declaration");
+        let reward = declarations.get("Reward").expect("Reward declaration");
+        let progress = declarations
+            .get("QuestProgress")
+            .expect("QuestProgress declaration");
+        let damageable = declarations
+            .get("Damageable")
+            .expect("Damageable declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let grant_attrs = graph.declaration_attrs(grant);
+        assert_eq!(grant_attrs[0].name, "event");
+        assert_eq!(grant_attrs[0].value.as_deref(), Some("monster.kill"));
+
+        let reward_attrs = graph.declaration_attrs(reward);
+        assert_eq!(reward_attrs[0].name, "doc");
+        assert_eq!(reward_attrs[0].value.as_deref(), Some("Reward metadata"));
+        assert_eq!(reward_attrs[1].name, "domain");
+        let reward_shape = graph.struct_shape(reward).expect("Reward shape");
+        assert_eq!(reward_shape.fields[0].attrs[0].name, "doc");
+        assert_eq!(
+            reward_shape.fields[0].attrs[0].value.as_deref(),
+            Some("Reward item id")
+        );
+
+        let progress_shape = graph.enum_shape(progress).expect("Progress shape");
+        assert_eq!(progress_shape.variants[0].attrs[0].name, "terminal");
+        let crate::EnumVariantFieldsHint::Record(fields) = &progress_shape.variants[0].fields
+        else {
+            panic!("expected record variant fields");
+        };
+        assert_eq!(fields[0].attrs[0].name, "doc");
+        assert_eq!(fields[0].attrs[0].value.as_deref(), Some("Quest id"));
+
+        let trait_shape = graph.trait_shape(damageable).expect("Damageable shape");
+        assert_eq!(trait_shape.methods[0].attrs[0].name, "doc");
+        assert_eq!(
+            trait_shape.methods[0].attrs[0].value.as_deref(),
+            Some("Apply damage")
         );
     }
 

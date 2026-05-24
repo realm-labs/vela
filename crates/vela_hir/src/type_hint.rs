@@ -3,7 +3,7 @@ use vela_syntax::{
     ConstItem, EnumItem, EnumVariantFields, ImplItem, Param, StructField, TraitItem, TypeHint,
 };
 
-use crate::HirNodeId;
+use crate::{HirAttribute, HirNodeId, attributes::attrs_from_syntax};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
@@ -68,6 +68,7 @@ impl ConstMetadata {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StructFieldHint {
+    pub attrs: Vec<HirAttribute>,
     pub name: String,
     pub type_hint: Option<HirTypeHint>,
 }
@@ -76,6 +77,7 @@ impl StructFieldHint {
     #[must_use]
     pub fn from_syntax(field: &StructField) -> Self {
         Self {
+            attrs: attrs_from_syntax(&field.attrs),
             name: field.name.clone(),
             type_hint: field.type_hint.as_ref().map(HirTypeHint::from_syntax),
         }
@@ -107,6 +109,7 @@ impl EnumShape {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnumVariantHint {
+    pub attrs: Vec<HirAttribute>,
     pub name: String,
     pub fields: EnumVariantFieldsHint,
 }
@@ -124,6 +127,7 @@ impl EnumVariantHint {
             ),
         };
         Self {
+            attrs: attrs_from_syntax(&variant.attrs),
             name: variant.name.clone(),
             fields,
         }
@@ -157,6 +161,7 @@ impl TraitShape {
                     let (default_body_node, default_body_span) =
                         default_body.map_or((None, None), |(node, span)| (Some(node), Some(span)));
                     TraitMethodMetadata {
+                        attrs: attrs_from_syntax(&method.attrs),
                         name: method.name.clone(),
                         signature: FunctionSignature {
                             params: method.params.iter().map(ParamHint::from_syntax).collect(),
@@ -174,6 +179,7 @@ impl TraitShape {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitMethodMetadata {
+    pub attrs: Vec<HirAttribute>,
     pub name: String,
     pub signature: FunctionSignature,
     pub has_default: bool,

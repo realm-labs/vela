@@ -94,14 +94,32 @@ impl Parser {
             let start = self.advance().span.start;
             self.advance();
             let path = self.parse_path();
+            let value = self.parse_attribute_value();
             self.skip_balanced_until(Symbol::RBracket);
             let end = self.previous_span().end;
             attrs.push(Attribute {
                 path,
+                value,
                 span: Span::new(self.current().span.source, start, end),
             });
         }
         attrs
+    }
+
+    fn parse_attribute_value(&mut self) -> Option<String> {
+        self.eat_symbol(Symbol::LParen)?;
+        let value = match &self.current().kind {
+            TokenKind::String(value) | TokenKind::Ident(value) => {
+                let value = value.clone();
+                self.advance();
+                Some(value)
+            }
+            _ => None,
+        };
+        if self.check_symbol(Symbol::RParen) {
+            self.advance();
+        }
+        value
     }
 
     fn parse_use_item(&mut self) -> Option<UseItem> {
@@ -168,7 +186,7 @@ impl Parser {
         }
 
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
-            self.parse_attributes();
+            let attrs = self.parse_attributes();
             if self.eat_keyword(Keyword::Fn).is_some() {
                 if let Some(method) = self.expect_ident("expected trait method name") {
                     let params = self.parse_parameter_list();
@@ -180,6 +198,7 @@ impl Parser {
                         None
                     };
                     methods.push(TraitMethod {
+                        attrs,
                         name: method,
                         params,
                         return_type,
@@ -1008,10 +1027,14 @@ impl Parser {
     fn parse_struct_fields_until_rbrace(&mut self) -> Vec<StructField> {
         let mut fields = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
-            self.parse_attributes();
+            let attrs = self.parse_attributes();
             if let Some(name) = self.eat_ident() {
                 let type_hint = self.parse_type_annotation();
-                fields.push(StructField { name, type_hint });
+                fields.push(StructField {
+                    attrs,
+                    name,
+                    type_hint,
+                });
                 self.skip_member_tail();
             } else {
                 self.advance();
@@ -1032,7 +1055,7 @@ impl Parser {
         }
 
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
-            self.parse_attributes();
+            let attrs = self.parse_attributes();
             if let Some(name) = self.eat_ident() {
                 let fields = if self.check_symbol(Symbol::LParen) {
                     EnumVariantFields::Tuple(self.parse_parameter_list())
@@ -1041,7 +1064,11 @@ impl Parser {
                 } else {
                     EnumVariantFields::Unit
                 };
-                variants.push(EnumVariant { name, fields });
+                variants.push(EnumVariant {
+                    attrs,
+                    name,
+                    fields,
+                });
                 self.skip_member_tail();
             } else {
                 self.advance();
@@ -1492,16 +1519,19 @@ pub fn on_kill(ctx, player, monster) {
 }
 
 struct KillReward {
+    #[doc("Reward item")]
     item_id,
     count,
 }
 
 enum QuestProgress {
+    #[empty]
     None,
     Active { quest_id, count },
 }
 
 trait Damageable {
+    #[doc("Apply damage")]
     fn damage(self, amount);
     fn alive(self) { return true; }
 }
@@ -1540,15 +1570,25 @@ impl Damageable for Player {
         assert_eq!(param_names(&function.params), ["ctx", "player", "monster"]);
         assert_eq!(function.body.statements.len(), 1);
         assert_eq!(parsed.items[2].attrs[0].path, ["event"]);
+        assert_eq!(
+            parsed.items[2].attrs[0].value.as_deref(),
+            Some("monster.kill")
+        );
 
         let ItemKind::Struct(record) = &parsed.items[3].kind else {
             panic!("expected struct item");
         };
         assert_eq!(struct_field_names(&record.fields), ["item_id", "count"]);
+        assert_eq!(record.fields[0].attrs[0].path, ["doc"]);
+        assert_eq!(
+            record.fields[0].attrs[0].value.as_deref(),
+            Some("Reward item")
+        );
 
         let ItemKind::Enum(enumeration) = &parsed.items[4].kind else {
             panic!("expected enum item");
         };
+        assert_eq!(enumeration.variants[0].attrs[0].path, ["empty"]);
         assert_eq!(
             enum_variant_names(&enumeration.variants),
             ["None", "Active"]
@@ -1558,6 +1598,11 @@ impl Damageable for Player {
             panic!("expected trait item");
         };
         assert_eq!(trait_method_names(&trait_item.methods), ["damage", "alive"]);
+        assert_eq!(trait_item.methods[0].attrs[0].path, ["doc"]);
+        assert_eq!(
+            trait_item.methods[0].attrs[0].value.as_deref(),
+            Some("Apply damage")
+        );
         assert!(!trait_item.methods[0].has_default);
         assert!(trait_item.methods[0].default_body.is_none());
         assert!(trait_item.methods[1].has_default);
