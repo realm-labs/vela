@@ -1533,3 +1533,25 @@ Consequences:
 - Shared method names stay explicit and type-directed instead of relying on
   native namespaces or host state.
 - Map callback logic remains separate from the general method-dispatch module.
+
+## 2026-05-24: Array Sum Preserves Integer Totals Until Float Input
+
+Status: Accepted
+
+Context:
+M13 collection coverage includes `array.sum`. The method needs to work in both
+direct and lambda-transformed forms while reusing the existing callback safety
+path for budgets, host context, and managed heap roots.
+
+Decision:
+Implement `array.sum()` and `array.sum(|value| ...)` in the focused
+`array_methods` VM module. Direct and transformed values must be numeric. Empty
+arrays return integer `0`; integer-only sums return an integer with checked
+addition; the result becomes a float once any float participates.
+
+Consequences:
+- Scripts get deterministic numeric aggregate behavior without adding script
+  generics or host-specific collection hooks.
+- Callback-transformed sums share the same execution-budget and heap-root
+  behavior as other array higher-order methods.
+- Numeric aggregation semantics remain isolated from general VM dispatch.

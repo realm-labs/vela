@@ -203,6 +203,18 @@ pub(crate) fn call_method(
             }
         }
         .map(Value::Int),
+        "sum" => array_methods::sum(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host,
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        ),
         "map_values" => map_methods::map_values(
             receiver,
             args,

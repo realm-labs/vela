@@ -501,6 +501,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added map higher-order script methods `map_values` and `filter`, plus
   value-predicate `any`, `all`, and `count`, with receiver-category dispatch
   shared with array methods in inline and managed-heap execution.
+- Added `array.sum` for direct numeric totals and callback-transformed numeric
+  totals, preserving integer results until a float participates and returning
+  `0` for empty arrays.
 
 ## Next
 

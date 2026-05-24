@@ -128,6 +128,74 @@ pub(crate) fn count(
     Ok(count)
 }
 
+pub(crate) fn sum(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    if args.len() > 1 {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: "sum".to_owned(),
+            expected: 1,
+            actual: args.len(),
+        }));
+    }
+    let values = array_values(receiver, runtime.heap.as_deref(), "method sum")?;
+    let mut total = NumericTotal::default();
+    if let Some(callback) = args.first() {
+        for value in values {
+            let mapped = call_unary_callback(&mut runtime, "method sum", callback, value, &[])?;
+            total.add_value(&mapped, "method sum")?;
+        }
+    } else {
+        for value in values {
+            total.add_value(&value, "method sum")?;
+        }
+    }
+    Ok(total.into_value())
+}
+
+enum NumericTotal {
+    Int(i64),
+    Float(f64),
+}
+
+impl Default for NumericTotal {
+    fn default() -> Self {
+        Self::Int(0)
+    }
+}
+
+impl NumericTotal {
+    fn add_value(&mut self, value: &Value, operation: &'static str) -> VmResult<()> {
+        match (&mut *self, value) {
+            (NumericTotal::Int(total), Value::Int(value)) => {
+                *total = total
+                    .checked_add(*value)
+                    .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+            }
+            (NumericTotal::Int(total), Value::Float(value)) => {
+                *self = NumericTotal::Float(*total as f64 + *value);
+            }
+            (NumericTotal::Float(total), Value::Int(value)) => {
+                *total += *value as f64;
+            }
+            (NumericTotal::Float(total), Value::Float(value)) => {
+                *total += *value;
+            }
+            _ => return type_error(operation),
+        }
+        Ok(())
+    }
+
+    fn into_value(self) -> Value {
+        match self {
+            NumericTotal::Int(value) => Value::Int(value),
+            NumericTotal::Float(value) => Value::Float(value),
+        }
+    }
+}
+
 fn array_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
@@ -205,7 +273,7 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, Value, Vm};
+    use crate::{ExecutionBudget, Value, Vm, VmErrorKind};
 
     #[test]
     fn runs_compiled_array_higher_order_methods() {
@@ -263,5 +331,70 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array higher-order methods should run");
         assert_eq!(result, Value::Int(2));
+    }
+
+    #[test]
+    fn runs_compiled_array_sum_methods() {
+        let source = r#"
+fn main() {
+    let values = [1, 2, 3, 4];
+    let empty = [];
+    let direct = values.sum();
+    let weighted = values.sum(|value| value * 2);
+    if direct == 10 && weighted == 20 && empty.sum() == 0 {
+        return 1;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array sum methods should compile");
+
+        let result = Vm::new().run(&code).expect("array sum methods should run");
+        assert_eq!(result, Value::Int(1));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_sum_methods() {
+        let source = r#"
+fn main() {
+    let values = [1, 2, 3, 4];
+    let direct = values.sum();
+    let incremented = values.sum(|value| value + 1);
+    if direct == 10 && incremented == 14 {
+        return values.sum(|value| value * 3);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array sum methods should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array sum methods should run");
+        assert_eq!(result, Value::Int(30));
+    }
+
+    #[test]
+    fn array_sum_rejects_non_numeric_values() {
+        let source = r#"
+fn main() {
+    return ["boar"].sum();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array sum type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array sum should reject non-numeric values");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method sum"
+            }
+        );
     }
 }
