@@ -3134,3 +3134,26 @@ Consequences:
   registry.
 - Later Engine-integrated semantic validation can tighten host-schema checks
   without changing the HIR diagnostic shape.
+
+## 2026-05-25: Engine Hot Reload Uses Engine Compiler Metadata
+
+Status: Accepted
+
+Context:
+The Engine already owns host schemas, native methods, reflection metadata, and
+hot-reload ABI manifests. Requiring embedders to call lower-level hot-reload
+compile functions directly would make them pass compiler options and ABI
+metadata separately, which is easy to get out of sync.
+
+Decision:
+Add option-aware hot-reload compile helpers and Engine methods that compile
+initial versions and updates with `Engine::compiler_options()` plus
+`Engine::hot_reload_abi()`.
+
+Consequences:
+- Host method lowering and ABI validation now share the same Engine registry
+  source in the embedding API.
+- Hot-reload demos and hosts can move through Engine-level helpers instead of
+  manually assembling manifests and compiler options.
+- Lower-level hot-reload APIs remain available for tests and specialized
+  runtimes that build their own manifests.

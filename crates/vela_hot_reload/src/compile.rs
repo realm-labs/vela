@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::CodeObject;
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::compiler::{CompilerOptions, compile_program_source_with_options};
 use vela_common::SourceId;
 
 use crate::{
@@ -11,7 +11,20 @@ use crate::{
 };
 
 pub fn compile_initial(source: SourceId, text: &str) -> HotReloadResult<ProgramVersion> {
-    compile_initial_with_abi(source, text, HotReloadAbi::empty())
+    compile_initial_with_abi_and_options(
+        source,
+        text,
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+}
+
+pub fn compile_initial_with_options(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+) -> HotReloadResult<ProgramVersion> {
+    compile_initial_with_abi_and_options(source, text, HotReloadAbi::empty(), options)
 }
 
 pub fn compile_initial_with_abi(
@@ -19,7 +32,16 @@ pub fn compile_initial_with_abi(
     text: &str,
     abi: HotReloadAbi,
 ) -> HotReloadResult<ProgramVersion> {
-    let program = compile_program_source(source, text)
+    compile_initial_with_abi_and_options(source, text, abi, &CompilerOptions::default())
+}
+
+pub fn compile_initial_with_abi_and_options(
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+) -> HotReloadResult<ProgramVersion> {
+    let program = compile_program_source_with_options(source, text, options)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
     Ok(ProgramVersion::from_program_with_abi(
         ProgramVersionId(0),
@@ -33,7 +55,22 @@ pub fn compile_update(
     source: SourceId,
     text: &str,
 ) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi(previous, source, text, previous.abi().clone())
+    compile_update_with_abi_and_options(
+        previous,
+        source,
+        text,
+        previous.abi().clone(),
+        &CompilerOptions::default(),
+    )
+}
+
+pub fn compile_update_with_options(
+    previous: &ProgramVersion,
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+) -> HotReloadResult<HotUpdate> {
+    compile_update_with_abi_and_options(previous, source, text, previous.abi().clone(), options)
 }
 
 pub fn compile_update_with_abi(
@@ -42,7 +79,17 @@ pub fn compile_update_with_abi(
     text: &str,
     abi: HotReloadAbi,
 ) -> HotReloadResult<HotUpdate> {
-    let program = compile_program_source(source, text)
+    compile_update_with_abi_and_options(previous, source, text, abi, &CompilerOptions::default())
+}
+
+pub fn compile_update_with_abi_and_options(
+    previous: &ProgramVersion,
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+) -> HotReloadResult<HotUpdate> {
+    let program = compile_program_source_with_options(source, text, options)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
     let mut functions = BTreeMap::new();
     for (name, code) in program.functions {

@@ -780,8 +780,14 @@ permissions.
   bytecode compiler rejects these semantic diagnostics before code generation
   while still allowing external host schema names when no local candidate is
   known.
+- Added option-aware hot-reload compile helpers and focused Engine hot-reload
+  methods. `Engine::compile_hot_reload_initial` and
+  `Engine::compile_hot_reload_update` now compile scripts with Engine-derived
+  host schema/method compiler options and validate against the registry-derived
+  ABI manifest, so embedders do not need to manually keep compiler metadata and
+  reload policy metadata in sync.
 
 ## Next
 
-- Continue M12 with broader Engine hot-reload policy ergonomics and remaining
-  reflection permission polish.
+- Continue M12 with remaining reflection permission polish and Engine reload
+  policy controls.

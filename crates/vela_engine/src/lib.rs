@@ -6,6 +6,7 @@ mod error;
 mod method;
 mod native;
 mod permission;
+mod reload;
 
 pub use builder::EngineBuilder;
 pub use engine::Engine;

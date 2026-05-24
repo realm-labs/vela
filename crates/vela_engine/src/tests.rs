@@ -1,7 +1,7 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_hot_reload::{compile_initial_with_abi, compile_update_with_abi};
+use vela_hot_reload::HotReloadRuntime;
 use vela_reflect::{
     FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission, ReflectPermissionSet,
     SchemaHash, TypeDesc, TypeKey,
@@ -101,13 +101,14 @@ fn engine_registers_native_function_reflection_metadata() {
 #[test]
 fn engine_exposes_registry_hot_reload_abi() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let method = HostMethodId::new(9);
     let engine = Engine::builder()
         .register_type(
             TypeDesc::new(player_key.clone())
                 .schema_hash(SchemaHash::new(0xfeed))
                 .host_type(HostTypeId::new(1))
                 .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                    MethodDesc::new(method, "grant_exp")
                         .effects(MethodEffectSet::host_write())
                         .access(
                             MethodAccess::new()
@@ -130,21 +131,56 @@ fn engine_exposes_registry_hot_reload_abi() {
         )
         .build()
         .expect("engine should build");
-    let abi = engine.hot_reload_abi();
-    let initial = compile_initial_with_abi(
-        SourceId::new(1),
-        "fn main(player) { return 1; }",
-        abi.clone(),
-    )
-    .expect("initial hot reload compile");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+fn main(player: Player) {
+    player.grant_exp(10);
+    return 1;
+}
+"#,
+        )
+        .expect("initial hot reload compile");
+    let update = engine
+        .compile_hot_reload_update(
+            &initial,
+            SourceId::new(2),
+            r#"
+fn main(player: Player) {
+    player.grant_exp(11);
+    return 2;
+}
+"#,
+        )
+        .expect("unchanged engine ABI should be hot-reload compatible");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let version = runtime.apply_hot_update(update).expect("apply update");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
 
-    compile_update_with_abi(
-        &initial,
-        SourceId::new(2),
-        "fn main(player) { return 2; }",
-        abi,
-    )
-    .expect("unchanged engine ABI should be hot-reload compatible");
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &version.to_program(),
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(2))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(11)]
+        }
+    );
 }
 
 #[test]
