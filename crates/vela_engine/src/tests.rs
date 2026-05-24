@@ -720,6 +720,10 @@ fn engine_registers_callable_native_methods_for_host_paths() {
         reflected_method.docs.as_deref(),
         Some("Grant player experience.")
     );
+    assert_eq!(reflected_method.params.len(), 1);
+    assert_eq!(reflected_method.params[0].name, "amount");
+    assert_eq!(reflected_method.params[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(reflected_method.return_type.as_deref(), Some("null"));
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"

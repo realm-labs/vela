@@ -1747,6 +1747,9 @@ to nearby schema declarations without parsing human-readable messages.
 Field reflection records also expose the declared `type` hint when one is
 known, or `null` for unhinted/dynamic fields. These are copied documentation and
 tooling hints, not generic script types or static enforcement.
+Method and trait-method reflection records expose copied `params`, `return`,
+and `returns` metadata. `return` matches function reflection naming, while
+`returns` is a script-accessible alias because `return` is a keyword.
 
 ```text
 FieldNotWritable:

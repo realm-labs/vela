@@ -253,6 +253,8 @@ impl FieldDesc {
 pub struct MethodDesc {
     pub id: HostMethodId,
     pub name: String,
+    pub params: Vec<MethodParamDesc>,
+    pub return_type: Option<String>,
     pub effects: MethodEffectSet,
     pub access: MethodAccess,
     pub docs: Option<String>,
@@ -266,6 +268,8 @@ impl MethodDesc {
         Self {
             id,
             name: name.into(),
+            params: Vec::new(),
+            return_type: None,
             effects: MethodEffectSet::default(),
             access: MethodAccess::default(),
             docs: None,
@@ -277,6 +281,18 @@ impl MethodDesc {
     #[must_use]
     pub fn effects(mut self, effects: MethodEffectSet) -> Self {
         self.effects = effects;
+        self
+    }
+
+    #[must_use]
+    pub fn param(mut self, param: MethodParamDesc) -> Self {
+        self.params.push(param);
+        self
+    }
+
+    #[must_use]
+    pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
+        self.return_type = Some(return_type.into());
         self
     }
 
@@ -301,6 +317,36 @@ impl MethodDesc {
     #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
+        self
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MethodParamDesc {
+    pub name: String,
+    pub type_hint: Option<String>,
+    pub has_default: bool,
+}
+
+impl MethodParamDesc {
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            type_hint: None,
+            has_default: false,
+        }
+    }
+
+    #[must_use]
+    pub fn type_hint(mut self, type_hint: impl Into<String>) -> Self {
+        self.type_hint = Some(type_hint.into());
+        self
+    }
+
+    #[must_use]
+    pub fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
         self
     }
 }
@@ -358,6 +404,8 @@ impl TraitDesc {
 pub struct TraitMethodDesc {
     pub id: MethodId,
     pub name: String,
+    pub params: Vec<MethodParamDesc>,
+    pub return_type: Option<String>,
     pub has_default: bool,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -370,6 +418,8 @@ impl TraitMethodDesc {
         Self {
             id,
             name: name.into(),
+            params: Vec::new(),
+            return_type: None,
             has_default: false,
             docs: None,
             attrs: AttrMap::new(),
@@ -380,6 +430,18 @@ impl TraitMethodDesc {
     #[must_use]
     pub fn defaulted(mut self, has_default: bool) -> Self {
         self.has_default = has_default;
+        self
+    }
+
+    #[must_use]
+    pub fn param(mut self, param: MethodParamDesc) -> Self {
+        self.params.push(param);
+        self
+    }
+
+    #[must_use]
+    pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
+        self.return_type = Some(return_type.into());
         self
     }
 

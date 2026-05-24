@@ -37,8 +37,8 @@ pub use permissions::{
     permission_names,
 };
 pub use registry::{
-    AttrMap, FieldDesc, MethodDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
-    TypeKind, TypeRegistry, VariantDesc,
+    AttrMap, FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc,
+    TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
 pub use types::{type_by_name as type_metadata_by_name, type_names as type_metadata_names};
 use vela_host::{HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter};

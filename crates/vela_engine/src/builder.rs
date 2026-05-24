@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use vela_hot_reload::HotReloadPolicy;
 use vela_reflect::{
     DeclOrigin, FunctionAccess as ReflectFunctionAccess, FunctionDesc, FunctionEffectSet,
-    FunctionParamDesc, MethodAccess, MethodDesc, MethodEffectSet, ModuleDesc, ReflectPermissionSet,
-    ReflectPolicy, TypeDesc, TypeKey, TypeRegistry,
+    FunctionParamDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc, ModuleDesc,
+    ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeKey, TypeRegistry,
 };
 use vela_vm::{HostExecution, Value, VmResult};
 
@@ -165,8 +165,14 @@ fn inject_native_method_metadata(
             })
         })?;
         let mut method = MethodDesc::new(entry.desc.id, entry.desc.name.clone())
+            .return_type(type_hint_display(&entry.desc.returns))
             .effects(reflect_effects(&entry.desc.effects))
             .access(reflect_access(&entry.desc.access));
+        for param in &entry.desc.params {
+            method = method.param(
+                MethodParamDesc::new(param.name.clone()).type_hint(type_hint_display(&param.hint)),
+            );
+        }
         if let Some(docs) = &entry.desc.docs {
             method = method.docs(docs.clone());
         }

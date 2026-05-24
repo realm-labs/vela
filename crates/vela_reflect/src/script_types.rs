@@ -2,8 +2,8 @@ use vela_common::{FieldId, MethodId, Span, TypeId, VariantId};
 use vela_hir::{Declaration, DeclarationKind, EnumVariantFieldsHint, ModuleGraph};
 
 use crate::{
-    FieldDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry,
-    VariantDesc, script_attrs::ReflectedScriptAttrs,
+    FieldDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+    TypeKind, TypeRegistry, VariantDesc, script_attrs::ReflectedScriptAttrs,
 };
 
 impl TypeRegistry {
@@ -94,6 +94,7 @@ impl TypeRegistry {
                                 )
                                 .defaulted(method.has_default)
                                 .source_span(method.span),
+                                &method.signature,
                                 &method.attrs,
                             ))
                         },
@@ -168,11 +169,31 @@ fn apply_variant_attrs(mut desc: VariantDesc, attrs: &[vela_hir::HirAttribute]) 
 
 fn apply_trait_method_attrs(
     mut desc: TraitMethodDesc,
+    signature: &vela_hir::FunctionSignature,
     attrs: &[vela_hir::HirAttribute],
 ) -> TraitMethodDesc {
+    desc = apply_trait_method_signature(desc, signature);
     let reflected = ReflectedScriptAttrs::from_hir(attrs);
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
+    desc
+}
+
+fn apply_trait_method_signature(
+    mut desc: TraitMethodDesc,
+    signature: &vela_hir::FunctionSignature,
+) -> TraitMethodDesc {
+    for param in &signature.params {
+        let mut param_desc =
+            MethodParamDesc::new(param.name.clone()).defaulted(param.default_value_span.is_some());
+        if let Some(type_hint) = &param.type_hint {
+            param_desc = param_desc.type_hint(type_hint.display());
+        }
+        desc = desc.param(param_desc);
+    }
+    if let Some(return_type) = &signature.return_type {
+        desc = desc.return_type(return_type.display());
+    }
     desc
 }
 
@@ -634,6 +655,16 @@ impl Damageable for Player {
             [("damage", false), ("alive", true)]
         );
         assert_eq!(damageable.methods[0].docs.as_deref(), Some("Apply damage."));
+        assert_eq!(damageable.methods[0].return_type.as_deref(), Some("int"));
+        assert_eq!(
+            damageable.methods[0]
+                .params
+                .iter()
+                .map(|param| (param.name.as_str(), param.type_hint.as_deref()))
+                .collect::<Vec<_>>(),
+            [("self", None), ("amount", Some("int"))]
+        );
+        assert_eq!(damageable.methods[1].return_type.as_deref(), Some("bool"));
         assert_eq!(
             damageable.methods[0].source_span.map(|span| span.source),
             Some(SourceId::new(1))

@@ -3844,3 +3844,28 @@ Consequences:
 - This remains documentation/tooling metadata; it does not add script generics
   or static enforcement.
 - Unhinted dynamic fields and host schemas without hints remain valid.
+
+## 2026-05-25: Method Reflection Exposes Copied Signatures
+
+Status: Accepted
+
+Context:
+M12 reflection includes `TypeHint` metadata for functions and methods. Function
+reflection already exposed copied parameter and return hints, but reflected
+host methods and script trait methods only exposed IDs, names, effects, access,
+docs, attrs, and source spans. That left admin/debug tooling unable to present
+method call shapes without out-of-band host knowledge.
+
+Decision:
+Add copied method parameter descriptors and optional return hints to
+`MethodDesc` and `TraitMethodDesc`. Host native method registration populates
+them from `NativeMethodDesc`, and script trait registration populates them from
+HIR signatures. Copied reflection records expose `params`, `return`, and
+`returns`; `returns` is a script-accessible alias because `return` is a
+keyword.
+
+Consequences:
+- Tooling can display method signatures consistently with function signatures.
+- Signature metadata remains copied read-only data and does not change runtime
+  dispatch or type enforcement.
+- The no-generics rule remains intact because hints are copied display strings.

@@ -917,6 +917,10 @@ permissions.
   copied type-hint string, script struct fields and enum payload fields
   populate it from HIR, and `reflect.field`/`reflect.fields` expose it as a
   `type` field without introducing script generics or runtime schema mutation.
+- Added reflected method signature metadata. Host native methods and script
+  trait methods now carry copied parameter and return hints, and
+  `reflect.methods`/`reflect.trait_info` expose `params`, `return`, and the
+  script-friendly `returns` alias.
 
 ## Next
 

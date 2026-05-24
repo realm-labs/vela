@@ -297,6 +297,28 @@ fn method_record(method: &MethodDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
+    fields.insert(
+        "params".to_owned(),
+        HostValue::Array(method.params.iter().map(method_param_record).collect()),
+    );
+    fields.insert(
+        "return".to_owned(),
+        method
+            .return_type
+            .as_ref()
+            .map_or(HostValue::Null, |return_type| {
+                HostValue::String(return_type.clone())
+            }),
+    );
+    fields.insert(
+        "returns".to_owned(),
+        method
+            .return_type
+            .as_ref()
+            .map_or(HostValue::Null, |return_type| {
+                HostValue::String(return_type.clone())
+            }),
+    );
     fields.insert("effects".to_owned(), method_effects_record(method));
     fields.insert("access".to_owned(), method_access_record(method));
     fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
@@ -304,6 +326,23 @@ fn method_record(method: &MethodDesc) -> HostValue {
     fields.insert("source_span".to_owned(), span_value(method.source_span));
     HostValue::Record {
         type_name: "ReflectMethod".to_owned(),
+        fields,
+    }
+}
+
+fn method_param_record(param: &crate::MethodParamDesc) -> HostValue {
+    let mut fields = BTreeMap::new();
+    fields.insert("name".to_owned(), HostValue::String(param.name.clone()));
+    fields.insert(
+        "type".to_owned(),
+        param
+            .type_hint
+            .as_ref()
+            .map_or(HostValue::Null, |hint| HostValue::String(hint.clone())),
+    );
+    fields.insert("defaulted".to_owned(), HostValue::Bool(param.has_default));
+    HostValue::Record {
+        type_name: "ReflectParam".to_owned(),
         fields,
     }
 }
@@ -379,6 +418,28 @@ fn trait_method_record(method: &TraitMethodDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
+    fields.insert(
+        "params".to_owned(),
+        HostValue::Array(method.params.iter().map(method_param_record).collect()),
+    );
+    fields.insert(
+        "return".to_owned(),
+        method
+            .return_type
+            .as_ref()
+            .map_or(HostValue::Null, |return_type| {
+                HostValue::String(return_type.clone())
+            }),
+    );
+    fields.insert(
+        "returns".to_owned(),
+        method
+            .return_type
+            .as_ref()
+            .map_or(HostValue::Null, |return_type| {
+                HostValue::String(return_type.clone())
+            }),
+    );
     fields.insert("defaulted".to_owned(), HostValue::Bool(method.has_default));
     fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&method.attrs));
@@ -469,7 +530,7 @@ mod tests {
     };
     use vela_host::HostRef;
 
-    use crate::{TraitMethodDesc, TypeKey, TypeKind};
+    use crate::{MethodParamDesc, TraitMethodDesc, TypeKey, TypeKind};
 
     fn player_ref() -> HostRef {
         HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
@@ -493,6 +554,8 @@ mod tests {
                 )
                 .method(
                     MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .param(MethodParamDesc::new("amount").type_hint("int"))
+                        .return_type("bool")
                         .source_span(Span::new(SourceId::new(8), 60, 80))
                         .effects(crate::MethodEffectSet::host_write())
                         .access(
@@ -510,6 +573,8 @@ mod tests {
                         .attr("combat", "true")
                         .method(
                             TraitMethodDesc::new(MethodId::new(9), "damage")
+                                .param(MethodParamDesc::new("amount").type_hint("int"))
+                                .return_type("int")
                                 .defaulted(true)
                                 .docs("Apply damage.")
                                 .attr("default", "true"),
@@ -630,6 +695,33 @@ mod tests {
         let HostValue::Record { fields, .. } = &methods[0] else {
             panic!("method metadata should be a record");
         };
+        assert_eq!(
+            fields.get("return"),
+            Some(&HostValue::String("bool".to_owned()))
+        );
+        assert_eq!(
+            fields.get("returns"),
+            Some(&HostValue::String("bool".to_owned()))
+        );
+        let Some(HostValue::Array(params)) = fields.get("params") else {
+            panic!("method params should be an array");
+        };
+        assert_eq!(params.len(), 1);
+        let HostValue::Record {
+            fields: param_fields,
+            ..
+        } = &params[0]
+        else {
+            panic!("method param should be a record");
+        };
+        assert_eq!(
+            param_fields.get("name"),
+            Some(&HostValue::String("amount".to_owned()))
+        );
+        assert_eq!(
+            param_fields.get("type"),
+            Some(&HostValue::String("int".to_owned()))
+        );
         let Some(HostValue::Record {
             fields: effect_fields,
             ..
@@ -749,6 +841,28 @@ mod tests {
             fields.get("methods"),
             Some(HostValue::Array(methods)) if methods.len() == 1
         ));
+        let Some(HostValue::Array(methods)) = fields.get("methods") else {
+            panic!("trait methods should be an array");
+        };
+        let HostValue::Record {
+            fields: method_fields,
+            ..
+        } = &methods[0]
+        else {
+            panic!("trait method should be a record");
+        };
+        assert_eq!(
+            method_fields.get("return"),
+            Some(&HostValue::String("int".to_owned()))
+        );
+        assert_eq!(
+            method_fields.get("returns"),
+            Some(&HostValue::String("int".to_owned()))
+        );
+        let Some(HostValue::Array(params)) = method_fields.get("params") else {
+            panic!("trait method params should be an array");
+        };
+        assert_eq!(params.len(), 1);
 
         let error = trait_by_name(&registry, "Damagable").expect_err("unknown trait");
         assert_eq!(

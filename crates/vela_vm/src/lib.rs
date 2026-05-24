@@ -2488,8 +2488,8 @@ mod tests {
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
         FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc,
-        MethodEffectSet, ModuleDesc, ReflectCandidate, TraitDesc, TraitMethodDesc, TypeDesc,
-        TypeKey, TypeKind, VariantDesc,
+        MethodEffectSet, MethodParamDesc, ModuleDesc, ReflectCandidate, TraitDesc, TraitMethodDesc,
+        TypeDesc, TypeKey, TypeKind, VariantDesc,
     };
 
     #[test]
@@ -7076,6 +7076,9 @@ fn main(player) {
     let variants = reflect.variants(quest);
     if reflect.has_method(player, "grant_exp")
         && methods.len() == 1
+        && methods[0].returns == "bool"
+        && methods[0].params[0].name == "amount"
+        && methods[0].params[0].type == "int"
         && traits.len() == 1
         && variants.len() == 2
         && reflect.variant(quest) == "Active"
@@ -7831,6 +7834,8 @@ fn main(player) {
                 )
                 .method(
                     MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .param(MethodParamDesc::new("amount").type_hint("int"))
+                        .return_type("bool")
                         .docs("Grant experience.")
                         .attr("effect", "write"),
                 )
