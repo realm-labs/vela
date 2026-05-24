@@ -869,3 +869,26 @@ Consequences:
   const value is available.
 - Same-module forward references, recursive const cycles, aggregate consts,
   and non-scalar const expressions remain unsupported follow-ups.
+
+## 2026-05-24: Known Constructor Types Use Declaration Symbols
+
+Status: Accepted
+
+Context:
+Record and enum constructor lowering still used source spelling for type
+names. That meant imported aliases such as `Prize { ... }` or
+`Hit.Physical { ... }` produced alias-shaped runtime metadata instead of the
+declared type identity.
+
+Decision:
+Record HIR declaration resolutions for constructor paths when the constructor
+root names a known struct or enum declaration. Multi-module bytecode uses the
+resolved declaration's module-qualified type symbol for record and enum
+construction; single-source bytecode keeps plain type names for compatibility.
+
+Consequences:
+- Imported constructor aliases now execute with stable declared type metadata
+  such as `game.reward.Reward`.
+- Undeclared prototype record literals remain supported and keep their
+  source-spelled type names until script type validation is tightened in M10.
+- Variant validation and slot-based script type layouts remain later M10 work.

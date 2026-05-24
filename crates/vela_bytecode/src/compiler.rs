@@ -61,6 +61,14 @@ impl CompilerOptions {
     }
 }
 
+#[derive(Clone, Debug)]
+struct CompilerFacts {
+    script_function_symbols: BTreeMap<HirDeclId, String>,
+    type_symbols: BTreeMap<HirDeclId, String>,
+    const_values: BTreeMap<HirDeclId, Constant>,
+    options: CompilerOptions,
+}
+
 pub fn compile_function_source(
     source: SourceId,
     text: &str,
@@ -77,21 +85,19 @@ pub fn compile_function_source_with_options(
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
     let script_function_symbols = semantic.script_function_symbols();
+    let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
+    let facts = CompilerFacts {
+        script_function_symbols,
+        type_symbols,
+        const_values,
+        options: options.clone(),
+    };
     let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
     })?;
 
-    Compiler::new(
-        function.name.clone(),
-        function,
-        signature,
-        bindings,
-        script_function_symbols,
-        const_values,
-        options.clone(),
-    )?
-    .compile()
+    Compiler::new(function.name.clone(), function, signature, bindings, facts)?.compile()
 }
 
 pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Program> {
@@ -106,7 +112,14 @@ pub fn compile_program_source_with_options(
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
     let script_function_symbols = semantic.script_function_symbols();
+    let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
+    let facts = CompilerFacts {
+        script_function_symbols,
+        type_symbols,
+        const_values,
+        options: options.clone(),
+    };
     let mut program = Program::new();
 
     for name in &script_functions {
@@ -119,9 +132,7 @@ pub fn compile_program_source_with_options(
                 function,
                 signature,
                 bindings,
-                script_function_symbols.clone(),
-                const_values.clone(),
-                options.clone(),
+                facts.clone(),
             )?
             .compile()?,
         );
@@ -141,28 +152,27 @@ pub fn compile_module_sources_with_options(
     let semantic = parse_semantic_modules(sources)?;
     let script_functions = semantic.script_function_declarations();
     let script_function_symbols = semantic.script_function_symbols();
+    let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
+    let facts = CompilerFacts {
+        script_function_symbols,
+        type_symbols,
+        const_values,
+        options: options.clone(),
+    };
     let mut program = Program::new();
 
     for declaration in script_functions {
         let (function, signature, bindings) = semantic
             .function(declaration)
             .expect("HIR function declaration comes from parsed function item");
-        let code_name = script_function_symbols
+        let code_name = facts
+            .script_function_symbols
             .get(&declaration)
             .expect("script function symbol exists for declaration")
             .clone();
         program.insert_function(
-            Compiler::new(
-                code_name,
-                function,
-                signature,
-                bindings,
-                script_function_symbols.clone(),
-                const_values.clone(),
-                options.clone(),
-            )?
-            .compile()?,
+            Compiler::new(code_name, function, signature, bindings, facts.clone())?.compile()?,
         );
     }
 
@@ -228,6 +238,24 @@ impl SemanticSource {
                 let declaration = declarations.get(name)?;
                 let metadata = self.graph.declaration(declaration)?;
                 (metadata.kind == DeclarationKind::Function).then(|| (declaration, name.to_owned()))
+            })
+            .collect()
+    }
+
+    fn type_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        let Some(declarations) = self.graph.module(self.module) else {
+            return BTreeMap::new();
+        };
+        declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = declarations.get(name)?;
+                let metadata = self.graph.declaration(declaration)?;
+                matches!(
+                    metadata.kind,
+                    DeclarationKind::Struct | DeclarationKind::Enum
+                )
+                .then(|| (declaration, name.to_owned()))
             })
             .collect()
     }
@@ -305,6 +333,28 @@ impl SemanticModules {
                     let metadata = self.graph.declaration(declaration)?;
                     (metadata.kind == DeclarationKind::Function)
                         .then(|| (declaration, format!("{path}.{}", metadata.name)))
+                })
+            })
+            .collect()
+    }
+
+    fn type_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        self.modules
+            .iter()
+            .filter_map(|module| {
+                let path = self.graph.module_path(*module)?.join();
+                let declarations = self.graph.module(*module)?;
+                Some((path, declarations))
+            })
+            .flat_map(|(path, declarations)| {
+                declarations.names().filter_map(move |name| {
+                    let declaration = declarations.get(name)?;
+                    let metadata = self.graph.declaration(declaration)?;
+                    matches!(
+                        metadata.kind,
+                        DeclarationKind::Struct | DeclarationKind::Enum
+                    )
+                    .then(|| (declaration, format!("{path}.{}", metadata.name)))
                 })
             })
             .collect()
@@ -442,9 +492,7 @@ struct Compiler<'ast> {
     bindings: &'ast BindingMap,
     next_register: u16,
     body: &'ast Block,
-    script_function_symbols: BTreeMap<HirDeclId, String>,
-    const_values: BTreeMap<HirDeclId, Constant>,
-    options: CompilerOptions,
+    facts: CompilerFacts,
 }
 
 impl<'ast> Compiler<'ast> {
@@ -453,9 +501,7 @@ impl<'ast> Compiler<'ast> {
         function: &'ast FunctionItem,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
-        script_function_symbols: BTreeMap<HirDeclId, String>,
-        const_values: BTreeMap<HirDeclId, Constant>,
-        options: CompilerOptions,
+        facts: CompilerFacts,
     ) -> CompileResult<Self> {
         let param_count = u16::try_from(signature.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
@@ -487,9 +533,7 @@ impl<'ast> Compiler<'ast> {
             bindings,
             next_register: param_count,
             body: &function.body,
-            script_function_symbols,
-            const_values,
-            options,
+            facts,
         })
     }
 
@@ -568,7 +612,7 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Field { base, name } => {
                 let root = self.compile_expr(base)?;
                 let dst = self.alloc_register()?;
-                if let Some(field) = self.options.host_fields.get(name).copied() {
+                if let Some(field) = self.facts.options.host_fields.get(name).copied() {
                     self.emit(InstructionKind::GetHostField { dst, root, field });
                 } else {
                     self.emit(InstructionKind::GetRecordField {
@@ -636,6 +680,7 @@ impl<'ast> Compiler<'ast> {
                     .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
                 if let Some((enum_name, variant)) = enum_variant_path(path) {
+                    let enum_name = self.type_symbol_at_span(expr.span).unwrap_or(enum_name);
                     self.emit(InstructionKind::MakeEnum {
                         dst,
                         enum_name,
@@ -643,9 +688,12 @@ impl<'ast> Compiler<'ast> {
                         fields,
                     });
                 } else {
+                    let type_name = self
+                        .type_symbol_at_span(expr.span)
+                        .unwrap_or_else(|| path.join("."));
                     self.emit(InstructionKind::MakeRecord {
                         dst,
-                        type_name: path.join("."),
+                        type_name,
                         fields,
                     });
                 }
@@ -684,7 +732,16 @@ impl<'ast> Compiler<'ast> {
         else {
             return None;
         };
-        self.script_function_symbols.get(declaration).cloned()
+        self.facts.script_function_symbols.get(declaration).cloned()
+    }
+
+    fn type_symbol_at_span(&self, span: Span) -> Option<String> {
+        let Some(BindingResolution::Declaration(declaration)) =
+            self.bindings.resolution_at_span(span)
+        else {
+            return None;
+        };
+        self.facts.type_symbols.get(declaration).cloned()
     }
 
     fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<()> {
@@ -728,7 +785,7 @@ impl<'ast> Compiler<'ast> {
         }
         if let Some(BindingResolution::Declaration(declaration)) =
             self.bindings.resolution_at_span(span)
-            && let Some(value) = self.const_values.get(declaration).cloned()
+            && let Some(value) = self.facts.const_values.get(declaration).cloned()
         {
             return self.emit_constant(value);
         }
@@ -746,7 +803,7 @@ impl<'ast> Compiler<'ast> {
         }
         let root = self.local_register_at_span(span, &path[0])?;
         let dst = self.alloc_register()?;
-        if let Some(field) = self.options.host_fields.get(&path[1]).copied() {
+        if let Some(field) = self.facts.options.host_fields.get(&path[1]).copied() {
             self.emit(InstructionKind::GetHostField { dst, root, field });
         } else {
             self.emit(InstructionKind::GetRecordField {
@@ -968,7 +1025,8 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn host_field(&self, name: &str) -> CompileResult<FieldId> {
-        self.options
+        self.facts
+            .options
             .host_fields
             .get(name)
             .copied()
@@ -1645,6 +1703,59 @@ pub fn main() {
         assert!(main.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
             InstructionKind::CallFunction { name, .. } if name == "game.reward.main"
+        )));
+    }
+
+    #[test]
+    fn compiler_uses_hir_type_symbols_for_imported_constructors() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.Reward as Prize
+use game.damage.Damage as Hit
+
+fn make_reward() {
+    return Prize { count: 2 };
+}
+
+fn make_damage() {
+    return Hit.Physical { amount: 7 };
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub struct Reward { count: int }
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_dotted("game.damage"),
+                r#"
+pub enum Damage { Physical }
+"#,
+            ),
+        ])
+        .expect("imported constructors should compile through HIR type symbols");
+        let reward = program
+            .function("game.main.make_reward")
+            .expect("qualified reward function");
+        let damage = program
+            .function("game.main.make_damage")
+            .expect("qualified damage function");
+
+        assert!(reward.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::MakeRecord { type_name, .. } if type_name == "game.reward.Reward"
+        )));
+        assert!(damage.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::MakeEnum { enum_name, variant, .. }
+                if enum_name == "game.damage.Damage" && variant == "Physical"
         )));
     }
 

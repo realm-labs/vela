@@ -998,6 +998,46 @@ fn main() { return give_reward; }
     }
 
     #[test]
+    fn function_bindings_resolve_record_constructor_import_aliases() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.main",
+            r#"
+use game.reward.Reward as Prize
+
+fn main() {
+    return Prize { count: 2 };
+}
+"#,
+        ));
+        let reward = graph.add_source(source(
+            2,
+            "game.reward",
+            r#"
+pub struct Reward { count: int }
+"#,
+        ));
+        graph.resolve_imports();
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+        let reward = graph
+            .module(reward)
+            .and_then(|module| module.get("Reward"))
+            .expect("reward declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| { resolution == &BindingResolution::Declaration(reward) })
+        );
+    }
+
+    #[test]
     fn resolved_imports_refresh_existing_binding_maps() {
         let mut graph = ModuleGraph::new();
         let module = graph.add_source(source(

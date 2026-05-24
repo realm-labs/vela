@@ -2099,6 +2099,63 @@ pub const BASE: int = 4;
     }
 
     #[test]
+    fn runs_compiled_cross_module_imported_type_constructors() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.Reward as Prize
+use game.damage.Damage as Hit
+
+fn make_reward() {
+    return Prize { count: 2 };
+}
+
+fn make_damage() {
+    return Hit.Physical { amount: 7 };
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub struct Reward { count: int }
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_dotted("game.damage"),
+                r#"
+pub enum Damage { Physical }
+"#,
+            ),
+        ])
+        .expect("compile imported cross-module type constructors");
+        let mut reward_fields = BTreeMap::new();
+        reward_fields.insert("count".into(), Value::Int(2));
+        let mut damage_fields = BTreeMap::new();
+        damage_fields.insert("amount".into(), Value::Int(7));
+
+        assert_eq!(
+            Vm::new().run_program(&program, "game.main.make_reward", &[]),
+            Ok(Value::Record {
+                type_name: "game.reward.Reward".into(),
+                fields: reward_fields,
+            })
+        );
+        assert_eq!(
+            Vm::new().run_program(&program, "game.main.make_damage", &[]),
+            Ok(Value::Enum {
+                enum_name: "game.damage.Damage".into(),
+                variant: "Physical".into(),
+                fields: damage_fields,
+            })
+        );
+    }
+
+    #[test]
     fn heap_safe_point_gc_preserves_caller_roots_during_nested_calls() {
         let program = compile_program_source(
             SourceId::new(1),

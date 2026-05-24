@@ -336,6 +336,13 @@ that introduce loops and closures.
   imported const aliases without top-level execution.
 - Added compiler and VM coverage proving imported const expressions compile
   and execute across modules independently of source input order.
+- HIR binding maps now record declaration resolutions for record and enum
+  constructor paths when the type name or alias is known.
+- Multi-module bytecode now emits declaration-qualified type names for imported
+  struct and enum constructors, while undeclared prototype record literals keep
+  their source-spelled names.
+- Added HIR, compiler, and VM coverage proving imported constructor aliases
+  compile and execute with qualified type metadata.
 
 ## Next
 

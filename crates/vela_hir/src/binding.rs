@@ -299,7 +299,8 @@ impl<'a> BindingLowerer<'a> {
                     self.bind_map_entry(entry);
                 }
             }
-            ExprKind::Record { fields, .. } => {
+            ExprKind::Record { path, fields } => {
+                self.bind_constructor_path(id, path);
                 for field in fields {
                     self.bind_record_field(field);
                 }
@@ -439,12 +440,25 @@ impl<'a> BindingLowerer<'a> {
         }
     }
 
+    fn bind_constructor_path(&mut self, id: HirExprId, path: &[String]) {
+        let Some(name) = path.first() else {
+            return;
+        };
+        if let Some(resolution) = self.resolve_declaration_name(name) {
+            self.resolutions.insert(id, resolution);
+        }
+    }
+
     fn resolve_name(&self, name: &str) -> Option<BindingResolution> {
         for scope in self.scopes.iter().rev() {
             if let Some(local) = scope.get(name) {
                 return Some(BindingResolution::Local(*local));
             }
         }
+        self.resolve_declaration_name(name)
+    }
+
+    fn resolve_declaration_name(&self, name: &str) -> Option<BindingResolution> {
         if let Some((_, declaration)) = self
             .module_declarations
             .iter()
