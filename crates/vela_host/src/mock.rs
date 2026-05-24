@@ -159,4 +159,19 @@ impl ScriptStateAdapter for MockStateAdapter {
             }
         }
     }
+
+    fn apply_patches(&mut self, patches: Vec<Patch>) -> HostResult<()> {
+        for patch in &patches {
+            self.validate_patch(patch)?;
+        }
+
+        let snapshot = self.clone();
+        for patch in patches {
+            if let Err(error) = self.apply_patch(patch) {
+                *self = snapshot;
+                return Err(error);
+            }
+        }
+        Ok(())
+    }
 }

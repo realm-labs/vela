@@ -2680,3 +2680,29 @@ Consequences:
 - Host refs remain external to the script heap and keep the existing GC
   behavior.
 - Nullable and descendant overlay conversions remain future M11 work.
+
+## 2026-05-25: Patch Apply Uses Adapter Batch Hook
+
+Status: Accepted
+
+Context:
+M11 requires failed patch apply to leave adapter state unchanged. `PatchTx`
+previously validated all patches and then applied each one individually through
+`ScriptStateAdapter::apply_patch`. A failure during a later patch could leave
+earlier patches committed in adapters that did not provide their own rollback
+mechanism.
+
+Decision:
+Add `ScriptStateAdapter::apply_patches` as the batch apply entry point used by
+`PatchTx::apply`. The default implementation preserves the old validate-then-
+apply behavior for adapters that have not yet implemented rollback. The mock
+adapter overrides the hook by cloning its state after validation and restoring
+that snapshot if any patch fails during the apply phase.
+
+Consequences:
+- `PatchTx` now has a clear adapter-level safe-point commit hook.
+- Mock adapter tests prove late apply failures leave mock state unchanged.
+- Production adapters can implement their own transaction, snapshot, or
+  rollback mechanism behind the same hook.
+- Conflict reporting and mandatory rollback semantics for every external
+  adapter remain future M11 work.

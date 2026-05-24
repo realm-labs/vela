@@ -13,6 +13,10 @@ fn level_path() -> HostPath {
     HostPath::new(player_ref(3)).field(FieldId::new(2))
 }
 
+fn rewards_path() -> HostPath {
+    HostPath::new(player_ref(3)).field(FieldId::new(3))
+}
+
 #[test]
 fn set_path_records_patch_and_overlay_value() {
     let mut tx = PatchTx::new();
@@ -267,6 +271,39 @@ fn apply_commits_remove_at_safe_point() {
         adapter.read_path(&path),
         Err(crate::HostError::new(HostErrorKind::MissingPath { path }))
     );
+}
+
+#[test]
+fn failed_apply_leaves_mock_adapter_state_unchanged() {
+    let mut adapter = MockStateAdapter::new();
+    let level = level_path();
+    let rewards = rewards_path();
+    adapter.insert_value(level.clone(), HostValue::Int(9));
+    adapter.insert_value(rewards.clone(), HostValue::Int(1));
+    let mut tx = PatchTx::new();
+
+    tx.set_path(level.clone(), HostValue::Int(10), None)
+        .expect("set path");
+    tx.push_path(
+        rewards.clone(),
+        HostValue::String("gold".into()),
+        HostValue::Array(Vec::new()),
+        None,
+    )
+    .expect("record push path");
+
+    let error = tx
+        .apply(&mut adapter)
+        .expect_err("push apply should fail against non-array adapter state");
+
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidPush {
+            path: rewards.clone()
+        }
+    );
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(9)));
+    assert_eq!(adapter.read_path(&rewards), Ok(HostValue::Int(1)));
 }
 
 #[test]

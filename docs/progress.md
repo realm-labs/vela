@@ -687,6 +687,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Host boundary value conversion now supports host-ref values as copied
   external handles through `PatchTx`. Host refs remain outside the script heap
   ownership model and are not traced as Rust-owned state.
+- `PatchTx::apply` now routes through an adapter-level batch apply hook.
+  `MockStateAdapter` validates the batch and restores its snapshot if a later
+  patch fails during apply, proving failed mock applies leave adapter state
+  unchanged.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

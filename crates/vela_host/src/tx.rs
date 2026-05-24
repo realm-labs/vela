@@ -173,13 +173,7 @@ impl PatchTx {
     }
 
     pub fn apply(self, adapter: &mut impl ScriptStateAdapter) -> HostResult<()> {
-        for patch in &self.patches {
-            adapter.validate_patch(patch)?;
-        }
-        for patch in self.patches {
-            adapter.apply_patch(patch)?;
-        }
-        Ok(())
+        adapter.apply_patches(self.patches)
     }
 
     fn push_patch(

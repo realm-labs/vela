@@ -17,4 +17,14 @@ pub trait ScriptStateAdapter {
     fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
 
     fn apply_patch(&mut self, patch: Patch) -> HostResult<()>;
+
+    fn apply_patches(&mut self, patches: Vec<Patch>) -> HostResult<()> {
+        for patch in &patches {
+            self.validate_patch(patch)?;
+        }
+        for patch in patches {
+            self.apply_patch(patch)?;
+        }
+        Ok(())
+    }
 }
