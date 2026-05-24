@@ -1871,3 +1871,29 @@ Consequences:
   dispatch is executable.
 - Actual trait method dispatch and default method execution remain later M10
   work.
+
+## 2026-05-25: Script Impl Methods Compile As Hidden Functions
+
+Status: Accepted
+
+Context:
+M10 needs executable script impl methods while preserving function-level hot
+reload semantics and avoiding a separate method-body interpreter. The compiler
+already emits ordinary `CodeObject` values for functions, and the VM already
+has budgeted nested script calls.
+
+Decision:
+Compile each script `impl Trait for Type` method into a hidden `CodeObject`
+whose first parameter remains `self`. Store a `Program` script method dispatch
+table keyed by runtime receiver type name and method name, with the table
+pointing at the hidden function symbol. Runtime `CallMethod` keeps built-in
+value methods first, then falls back to the script method table for record and
+enum receivers.
+
+Consequences:
+- Impl method execution reuses existing call depth, budget, heap root, and hot
+  reload code-object behavior.
+- Top-level script functions are not polluted by source-level impl method
+  names such as `bonus`.
+- Trait default methods, host type impl dispatch, and MethodId-based dispatch
+  caching remain later M10 work.

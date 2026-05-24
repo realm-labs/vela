@@ -5,6 +5,7 @@ mod lambdas;
 mod methods;
 mod operators;
 mod patterns;
+mod script_impls;
 mod value_flow;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -166,6 +167,7 @@ pub fn compile_program_source_with_options(
             .compile()?,
         );
     }
+    insert_script_impl_methods(&mut program, semantic.script_impl_methods(), &facts)?;
 
     Ok(program)
 }
@@ -206,8 +208,34 @@ pub fn compile_module_sources_with_options(
             Compiler::new(code_name, function, signature, bindings, facts.clone())?.compile()?,
         );
     }
+    insert_script_impl_methods(&mut program, semantic.script_impl_methods(), &facts)?;
 
     Ok(program)
+}
+
+fn insert_script_impl_methods(
+    program: &mut Program,
+    methods: Vec<script_impls::ScriptImplMethod<'_>>,
+    facts: &CompilerFacts,
+) -> CompileResult<()> {
+    for method in methods {
+        program.insert_script_method(
+            method.target_type.clone(),
+            method.method_name.clone(),
+            method.symbol.clone(),
+        );
+        program.insert_function(
+            Compiler::new(
+                method.symbol,
+                method.function,
+                method.signature,
+                method.bindings,
+                facts.clone(),
+            )?
+            .compile()?,
+        );
+    }
+    Ok(())
 }
 
 fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
@@ -322,6 +350,10 @@ impl SemanticSource {
             }
         }
         Ok(values_by_declaration)
+    }
+
+    fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
+        script_impls::source_methods(&self.parsed, &self.graph, self.module)
     }
 
     fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
@@ -451,6 +483,10 @@ impl SemanticModules {
             }
         }
         Ok(values_by_declaration)
+    }
+
+    fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
+        script_impls::module_methods(&self.parsed, &self.graph)
     }
 
     fn imported_const_values(
@@ -1019,9 +1055,10 @@ impl<'ast> Compiler<'ast> {
                 }
             }
             ExprKind::Assign { .. } => self.compile_assignment(expr),
-            ExprKind::SelfValue | ExprKind::Error => Err(CompileError::new(
-                CompileErrorKind::UnsupportedSyntax("expression"),
-            )),
+            ExprKind::SelfValue => self.local_register_at_span(expr.span, "self"),
+            ExprKind::Error => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "expression",
+            ))),
             ExprKind::Match(match_expr) => {
                 let dst = self.alloc_register()?;
                 let returned = self.compile_match_value_to(match_expr, dst)?;
@@ -2476,6 +2513,34 @@ fn main() {
                 InstructionKind::CallFunction { .. }
             ))
         );
+    }
+
+    #[test]
+    fn compiler_registers_impl_methods_as_script_dispatch_targets() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    return Player { level: 7 }.bonus(5);
+}
+"#,
+        )
+        .expect("impl method should compile as hidden dispatch target");
+
+        let method = program
+            .script_method("Player", "bonus")
+            .expect("script impl method dispatch target");
+        assert_eq!(method.params, ["self", "amount"]);
+        assert!(program.function("bonus").is_none());
     }
 
     #[test]

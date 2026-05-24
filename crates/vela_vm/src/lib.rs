@@ -793,6 +793,18 @@ impl Vm {
         )
     }
 
+    pub(crate) fn execute_code_object(
+        &self,
+        code: &CodeObject,
+        program: Option<&Program>,
+        args: &[Value],
+        host: Option<&mut HostExecution<'_>>,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<Value> {
+        self.execute(code, program, args, host, heap, budget)
+    }
+
     fn execute_body(
         &self,
         call: ExecutionCall<'_>,
@@ -2906,6 +2918,63 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_script_impl_method_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("compile script impl method dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(12))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_module_qualified_script_impl_method_dispatch() {
+        let program = compile_module_sources(&[ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.combat"),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+pub fn main() {
+    let player = Player { level: 10 };
+    return player.bonus(4);
+}
+"#,
+        )])
+        .expect("compile module-qualified script impl method dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "game.combat.main", &[]),
+            Ok(Value::Int(14))
+        );
+    }
+
+    #[test]
     fn runs_compiled_break_continue_source() {
         let code = compile_function_source(
             SourceId::new(1),
@@ -3385,6 +3454,36 @@ fn main() {
         assert_eq!(
             Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
             Ok(Value::Int(4))
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_script_impl_method_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 8 };
+    return player.bonus(6);
+}
+"#,
+        )
+        .expect("compile heap script impl method dispatch");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            Ok(Value::Int(14))
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }

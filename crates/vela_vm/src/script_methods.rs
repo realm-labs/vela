@@ -279,9 +279,74 @@ pub(crate) fn call_method(
             }
         }
         "entries" => map_entries(receiver, args, heap.as_deref()),
-        _ => Err(VmError::new(VmErrorKind::UnknownMethod {
+        _ => call_script_impl_method(
+            receiver,
+            method,
+            args,
+            vm,
+            program,
+            host,
+            heap,
+            budget,
+            &caller_roots,
+        ),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn call_script_impl_method(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    vm: &Vm,
+    program: Option<&Program>,
+    host: Option<&mut HostExecution<'_>>,
+    mut heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    caller_roots: &[GcRef],
+) -> VmResult<Value> {
+    let type_name = receiver_type_name(receiver, heap.as_deref()).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
             method: method.to_owned(),
-        })),
+        })
+    })?;
+    let Some(function) = program.and_then(|program| program.script_method(&type_name, method))
+    else {
+        return Err(VmError::new(VmErrorKind::UnknownMethod {
+            method: method.to_owned(),
+        }));
+    };
+
+    let mut values = Vec::with_capacity(args.len() + 1);
+    values.push(receiver.clone());
+    values.extend(args.iter().cloned());
+    let protected_root_len = heap
+        .as_deref_mut()
+        .map(|heap| heap.push_protected_roots(caller_roots.to_vec()));
+    let result = vm.execute_code_object(
+        function,
+        program,
+        &values,
+        host,
+        heap.as_deref_mut(),
+        budget,
+    );
+    if let (Some(heap), Some(protected_root_len)) = (heap, protected_root_len) {
+        heap.truncate_protected_roots(protected_root_len);
+    }
+    result
+}
+
+fn receiver_type_name(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Option<String> {
+    match receiver {
+        Value::Record { type_name, .. } => Some(type_name.clone()),
+        Value::Enum { enum_name, .. } => Some(enum_name.clone()),
+        Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
+            HeapValue::Record { type_name, .. } => Some(type_name.clone()),
+            HeapValue::Enum { enum_name, .. } => Some(enum_name.clone()),
+            _ => None,
+        },
+        _ => None,
     }
 }
 

@@ -1,14 +1,18 @@
 //! Register bytecode for Vela code objects.
 
 pub mod compiler;
+pub mod script_methods;
 
 use std::collections::BTreeMap;
 
 use vela_common::{FieldId, HostMethodId, Span};
 
+use crate::script_methods::ScriptMethodTable;
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Program {
     pub functions: BTreeMap<String, CodeObject>,
+    script_methods: ScriptMethodTable,
 }
 
 impl Program {
@@ -21,9 +25,24 @@ impl Program {
         self.functions.insert(function.name.clone(), function);
     }
 
+    pub fn insert_script_method(
+        &mut self,
+        type_name: impl Into<String>,
+        method: impl Into<String>,
+        function: impl Into<String>,
+    ) {
+        self.script_methods.insert(type_name, method, function);
+    }
+
     #[must_use]
     pub fn function(&self, name: &str) -> Option<&CodeObject> {
         self.functions.get(name)
+    }
+
+    #[must_use]
+    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
+        let function = self.script_methods.get(type_name, method)?;
+        self.function(function)
     }
 }
 

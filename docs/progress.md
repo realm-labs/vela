@@ -574,10 +574,17 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   method IDs.
 - Added syntax, HIR, and reflection coverage for trait default metadata and
   script `impl Trait for Type` registration.
-- Remaining M10 work includes broader type-flow slot lowering, trait method
-  dispatch, impl method execution, and dynamic implements checks.
+- Bytecode programs now carry a script method dispatch table, and the compiler
+  emits script impl methods as hidden code objects keyed by receiver type and
+  method name.
+- The VM now falls back from built-in script value methods to script impl method
+  dispatch for record and enum receivers in inline, managed-heap, and
+  module-qualified execution.
+- Remaining M10 work includes broader type-flow slot lowering, trait default
+  method dispatch, host type impl dispatch, MethodId-based inline-cache-ready
+  dispatch, and dynamic implements checks.
 
 ## Next
 
-- Continue M10 by adding executable trait/impl method dispatch over script and
-  host types, then extending slot metadata beyond immediate literals.
+- Continue M10 by adding trait default-method dispatch and dynamic implements
+  checks, then extending slot metadata beyond immediate literals.
