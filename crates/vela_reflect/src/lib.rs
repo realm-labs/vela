@@ -8,7 +8,7 @@ mod permissions;
 mod script_attrs;
 mod script_types;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 pub use access::{FieldAccess, FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
@@ -510,6 +510,20 @@ impl TypeRegistry {
         self.traits_by_name.get(name)
     }
 
+    fn known_trait_names(&self) -> Vec<String> {
+        let mut names = BTreeSet::new();
+        names.extend(self.traits_by_name.keys().cloned());
+        for type_desc in self.types() {
+            names.extend(
+                type_desc
+                    .traits
+                    .iter()
+                    .map(|trait_desc| trait_desc.name.clone()),
+            );
+        }
+        names.into_iter().collect()
+    }
+
     fn type_by_name_mut(&mut self, name: &str) -> Option<&mut TypeDesc> {
         let key = self
             .types_by_key
@@ -610,6 +624,10 @@ pub enum ReflectErrorKind {
     UnknownVariant {
         type_name: String,
         variant: String,
+        candidates: Vec<String>,
+    },
+    UnknownTrait {
+        trait_name: String,
         candidates: Vec<String>,
     },
     UnknownModule {
@@ -807,6 +825,14 @@ pub fn implements(
     target: &ReflectValue,
     trait_name: &str,
 ) -> ReflectResult<bool> {
+    let known_traits = registry.known_trait_names();
+    if !known_traits.iter().any(|candidate| candidate == trait_name) {
+        return Err(ReflectError::new(ReflectErrorKind::UnknownTrait {
+            trait_name: trait_name.to_owned(),
+            candidates: name_candidates(trait_name, known_traits.iter().map(String::as_str)),
+        }));
+    }
+
     match target {
         ReflectValue::HostRef(host_ref) => {
             let desc = registry.type_of_host(*host_ref).ok_or_else(|| {
@@ -942,6 +968,7 @@ mod tests {
 
     fn registry() -> TypeRegistry {
         let mut registry = TypeRegistry::new();
+        registry.register_trait(TraitDesc::new("Trackable"));
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
                 .host_type(HostTypeId::new(1))
@@ -1462,8 +1489,18 @@ mod tests {
             .expect("implements check")
         );
         assert!(
-            !implements(&registry, &ReflectValue::HostRef(player_ref()), "Inventory")
-                .expect("implements check")
+            !implements(&registry, &ReflectValue::HostRef(player_ref()), "Trackable")
+                .expect("known unimplemented trait check")
+        );
+
+        let error = implements(&registry, &ReflectValue::HostRef(player_ref()), "Damagable")
+            .expect_err("unknown trait should diagnose");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownTrait {
+                trait_name: "Damagable".to_owned(),
+                candidates: vec!["Damageable".to_owned(), "Trackable".to_owned()]
+            }
         );
     }
 

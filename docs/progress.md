@@ -866,6 +866,10 @@ permissions.
   changed-function, diagnostic, ABI-detail, repair-hint, source-diagnostic, and
   source-label records with optional diagnostic indexes and spans, and the CLI
   hot-reload demo prints those lines instead of formatting raw errors.
+- Added `ReflectErrorKind::UnknownTrait` candidate diagnostics for
+  `reflect.implements`. Known-but-unimplemented traits still return `false`,
+  while misspelled or unregistered trait names now report ranked candidates
+  through both the reflection API and compiled VM native path.
 
 ## Next
 

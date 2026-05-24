@@ -3566,3 +3566,27 @@ Consequences:
   for compile labels.
 - The core report and diagnostic data remains unchanged, and rendering stays in
   a separate module instead of expanding the crate root or runtime code.
+
+## 2026-05-25: Reflect Implements Diagnoses Unknown Traits
+
+Status: Accepted
+
+Context:
+M12 reflection diagnostics already reported candidates for unknown fields,
+methods, variants, modules, and functions. `reflect.implements(target, name)`
+still returned `false` for misspelled trait names, making typos
+indistinguishable from valid traits that a target simply does not implement.
+
+Decision:
+Add `ReflectErrorKind::UnknownTrait` and validate the queried trait name
+against trait metadata known to the `TypeRegistry`, including explicitly
+registered traits and trait descriptors embedded on registered types. Known
+traits that are not implemented by the target continue to return `false`.
+
+Consequences:
+- Admin/debug scripts get typo diagnostics for trait checks instead of silent
+  negative results.
+- Negative capability checks remain possible when the trait is known to the
+  registry.
+- Reflection still only reads registered metadata and does not mutate type or
+  trait structure at runtime.

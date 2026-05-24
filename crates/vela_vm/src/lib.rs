@@ -7015,6 +7015,37 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflect_implements_reports_unknown_trait_candidates() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return reflect.implements(player, "Damagable");
+}
+"#,
+        )
+        .expect("compile unknown trait reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
+                trait_name: "Damagable".to_owned(),
+                candidates: vec!["Damageable".to_owned()]
+            })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn compiled_source_reflects_script_record_implements() {
         let program = compile_program_source(
             SourceId::new(1),
