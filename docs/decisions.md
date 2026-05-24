@@ -1484,3 +1484,28 @@ Consequences:
 - Qualified math calls execute through the existing native-call bytecode path.
 - Additional stdlib namespaces can grow in the `stdlib` module without adding
   implementation logic to `lib.rs`.
+
+## 2026-05-24: Array Higher-Order Methods Reuse VM Closure Calls
+
+Status: Accepted
+
+Context:
+M13 requires collection methods that work with lambdas. These callbacks must
+not bypass execution budgets, call-depth accounting, host context, or managed
+heap root protection.
+
+Decision:
+Implement `array.map`, `array.filter`, `array.find`, `array.any`, `array.all`,
+and `array.count` through the existing VM closure-call path. Method dispatch
+passes the VM, current program, host execution context, heap execution context,
+budget, and caller frame roots into a focused `array_methods` module. Callback
+results are returned through the normal method result storage path so managed
+heap execution materializes arrays safely.
+
+Consequences:
+- Collection callbacks share the same budget and call-depth behavior as normal
+  closure calls.
+- Heap-backed arrays can be transformed or filtered without collecting caller
+  roots or accumulated callback results during nested calls.
+- The VM facade only exposes a small closure-call helper; array method behavior
+  stays isolated from `lib.rs`.

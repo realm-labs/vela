@@ -1,17 +1,25 @@
 use std::collections::BTreeMap;
 
-use crate::heap::HeapValue;
+use vela_bytecode::Program;
+
+use crate::array_methods::{self, MethodRuntime};
+use crate::heap::{GcRef, HeapValue};
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
-    value_to_heap_slot,
+    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
+    value_from_heap_slot, value_to_heap_slot,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn call_method(
     receiver: &mut Value,
     method: &str,
     args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    vm: &Vm,
+    program: Option<&Program>,
+    mut host: Option<&mut HostExecution<'_>>,
+    mut heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    caller_roots: Vec<GcRef>,
 ) -> VmResult<Value> {
     match method {
         "len" => {
@@ -49,13 +57,88 @@ pub(crate) fn call_method(
             |value, suffix| value.ends_with(suffix),
         )
         .map(Value::Bool),
-        "push" => array_push(receiver, args, heap, budget),
-        "pop" => array_pop(receiver, args, heap),
+        "push" => array_push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
+        "pop" => array_pop(receiver, args, heap.as_deref_mut()),
+        "map" => array_methods::map(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host,
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        ),
+        "filter" => array_methods::filter(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host,
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        ),
+        "find" => array_methods::find(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host: host.as_deref_mut(),
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        ),
+        "any" => array_methods::any(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host: host.as_deref_mut(),
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        )
+        .map(Value::Bool),
+        "all" => array_methods::all(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host: host.as_deref_mut(),
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        )
+        .map(Value::Bool),
+        "count" => array_methods::count(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host,
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        )
+        .map(Value::Int),
         "has" => map_has(receiver, args, heap.as_deref()).map(Value::Bool),
         "get" => map_get(receiver, args, heap.as_deref()),
         "get_or" => map_get_or(receiver, args, heap.as_deref()),
-        "set" => map_set(receiver, args, heap, budget),
-        "remove" => map_remove(receiver, args, heap),
+        "set" => map_set(receiver, args, heap.as_deref_mut(), budget),
+        "remove" => map_remove(receiver, args, heap.as_deref_mut()),
         "keys" => map_keys(receiver, args, heap.as_deref()),
         "values" => map_values(receiver, args, heap.as_deref()),
         "entries" => map_entries(receiver, args, heap.as_deref()),

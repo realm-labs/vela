@@ -495,6 +495,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added VM standard native registration for `math.max`, `math.min`,
   `math.clamp`, `math.floor`, `math.ceil`, and `math.abs`, with source-level
   inline and managed-heap execution coverage.
+- Added array higher-order script methods `map`, `filter`, `find`, `any`,
+  `all`, and `count` backed by script closures, preserving VM budgets, host
+  context, and managed-heap roots during callback execution.
 
 ## Next
 

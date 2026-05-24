@@ -1,5 +1,6 @@
 //! Register VM for Vela bytecode.
 
+mod array_methods;
 pub mod heap;
 mod indexing;
 mod iteration;
@@ -764,6 +765,28 @@ impl Vm {
         result
     }
 
+    pub(crate) fn execute_closure_value(
+        &self,
+        closure: &ClosureValue,
+        program: Option<&Program>,
+        args: &[Value],
+        host: Option<&mut HostExecution<'_>>,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<Value> {
+        self.execute_call(
+            ExecutionCall {
+                code: &closure.code,
+                program,
+                captures: &closure.captures,
+                args,
+            },
+            host,
+            heap,
+            budget,
+        )
+    }
+
     fn execute_body(
         &self,
         call: ExecutionCall<'_>,
@@ -1096,8 +1119,12 @@ impl Vm {
                         &mut receiver_value,
                         method,
                         &values,
+                        self,
+                        program,
+                        host.as_deref_mut(),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
+                        frame.heap_roots(),
                     )?;
                     let result = store_value_in_heap_if_needed(
                         result,
