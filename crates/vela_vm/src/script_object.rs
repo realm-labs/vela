@@ -62,11 +62,23 @@ impl<T> ScriptFields<T> {
     }
 
     #[must_use]
+    pub fn get_slot(&self, slot: usize, expected_field: &str) -> Option<&T> {
+        let field = self.slots.get(slot)?;
+        (field.name == expected_field).then_some(&field.value)
+    }
+
+    #[must_use]
     pub fn get_mut(&mut self, field: &str) -> Option<&mut T> {
         self.slots
             .iter_mut()
             .find(|slot| slot.name == field)
             .map(|slot| &mut slot.value)
+    }
+
+    #[must_use]
+    pub fn get_slot_mut(&mut self, slot: usize, expected_field: &str) -> Option<&mut T> {
+        let field = self.slots.get_mut(slot)?;
+        (field.name == expected_field).then_some(&mut field.value)
     }
 
     #[must_use]
@@ -79,6 +91,19 @@ impl<T> ScriptFields<T> {
             return Err(value);
         };
         *slot = value;
+        Ok(())
+    }
+
+    pub fn set_slot_existing(
+        &mut self,
+        slot: usize,
+        expected_field: &str,
+        value: T,
+    ) -> Result<(), T> {
+        let Some(field) = self.get_slot_mut(slot, expected_field) else {
+            return Err(value);
+        };
+        *field = value;
         Ok(())
     }
 

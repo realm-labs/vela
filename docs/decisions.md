@@ -1821,3 +1821,28 @@ Consequences:
   outputs remain compatible.
 - Bytecode field instructions still need a later slot-index specialization pass
   before field access is fully metadata-driven.
+
+## 2026-05-25: Slot Bytecode Keeps Field Validation
+
+Status: Accepted
+
+Context:
+M10 field access needs to move toward slot-index execution, but Vela is still
+dynamically typed and not every expression has stable type facts yet. A stale
+or overly optimistic slot index must not silently read or write the wrong
+field if a value with a different shape reaches the instruction.
+
+Decision:
+Add `GetRecordSlot`, `SetRecordSlot`, and `GetEnumSlot` bytecode forms that
+carry both the expected field name and the slot index. The VM reads or writes
+by slot only when the slot exists and its field name matches; otherwise it
+reports the same unknown-field error family used by name-based access. The
+compiler emits slot bytecode for immediate record/enum literal field reads,
+where the shape is known locally, and leaves broader dynamic field access on
+the existing name-based instructions until type-flow metadata is available.
+
+Consequences:
+- Slot-index execution can land incrementally without losing dynamic safety.
+- Immediate literal field reads now exercise the slot path end to end.
+- Later HIR type facts can reuse the same bytecode forms for locals,
+  parameters, pattern bindings, and declared script types.

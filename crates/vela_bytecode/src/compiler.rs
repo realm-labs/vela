@@ -795,7 +795,22 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Field { base, name } => {
                 let root = self.compile_expr(base)?;
                 let dst = self.alloc_register()?;
-                if let Some(field) = self.facts.options.host_fields.get(name).copied() {
+                if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
+                    match slot_kind {
+                        LiteralFieldSlotKind::Record => self.emit(InstructionKind::GetRecordSlot {
+                            dst,
+                            record: root,
+                            field: name.clone(),
+                            slot,
+                        }),
+                        LiteralFieldSlotKind::Enum => self.emit(InstructionKind::GetEnumSlot {
+                            dst,
+                            value: root,
+                            field: name.clone(),
+                            slot,
+                        }),
+                    }
+                } else if let Some(field) = self.facts.options.host_fields.get(name).copied() {
                     self.emit(InstructionKind::GetHostField { dst, root, field });
                 } else {
                     self.emit(InstructionKind::GetRecordField {
@@ -2312,6 +2327,34 @@ fn parse_float(value: &str) -> CompileResult<f64> {
         })
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum LiteralFieldSlotKind {
+    Record,
+    Enum,
+}
+
+fn record_literal_field_slot(expr: &Expr, field: &str) -> Option<(LiteralFieldSlotKind, usize)> {
+    let ExprKind::Record { path, fields } = &expr.kind else {
+        return None;
+    };
+    let slot = sorted_field_slot(fields, field)?;
+    let kind = if enum_variant_path(path).is_some() {
+        LiteralFieldSlotKind::Enum
+    } else {
+        LiteralFieldSlotKind::Record
+    };
+    Some((kind, slot))
+}
+
+fn sorted_field_slot(fields: &[vela_syntax::RecordField], field: &str) -> Option<usize> {
+    let mut names = fields
+        .iter()
+        .map(|field| field.name.as_str())
+        .collect::<Vec<_>>();
+    names.sort_unstable();
+    names.iter().position(|name| *name == field)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3592,6 +3635,56 @@ fn main() {
 
         assert!(code.instructions.iter().any(|instruction| {
             matches!(instruction.kind, InstructionKind::SetRecordField { .. })
+        }));
+    }
+
+    #[test]
+    fn compiler_lowers_immediate_record_field_reads_to_slots() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return Reward { item_id: "gold", count: 2 }.count;
+}
+"#,
+            "main",
+        )
+        .expect("immediate record field read should compile");
+
+        assert!(code.instructions.iter().any(|instruction| {
+            matches!(
+                instruction.kind,
+                InstructionKind::GetRecordSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "count"
+            )
+        }));
+    }
+
+    #[test]
+    fn compiler_lowers_immediate_enum_field_reads_to_slots() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return Damage.Physical { amount: 7 }.amount;
+}
+"#,
+            "main",
+        )
+        .expect("immediate enum field read should compile");
+
+        assert!(code.instructions.iter().any(|instruction| {
+            matches!(
+                instruction.kind,
+                InstructionKind::GetEnumSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "amount"
+            )
         }));
     }
 

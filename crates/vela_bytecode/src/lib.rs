@@ -263,15 +263,33 @@ pub enum InstructionKind {
         record: Register,
         field: String,
     },
+    GetRecordSlot {
+        dst: Register,
+        record: Register,
+        field: String,
+        slot: usize,
+    },
     SetRecordField {
         record: Register,
         field: String,
+        src: Register,
+    },
+    SetRecordSlot {
+        record: Register,
+        field: String,
+        slot: usize,
         src: Register,
     },
     GetEnumField {
         dst: Register,
         value: Register,
         field: String,
+    },
+    GetEnumSlot {
+        dst: Register,
+        value: Register,
+        field: String,
+        slot: usize,
     },
     GetIndex {
         dst: Register,

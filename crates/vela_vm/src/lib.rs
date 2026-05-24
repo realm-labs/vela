@@ -1257,6 +1257,16 @@ impl Vm {
                         get_record_field_value(frame.read(*record)?, field, heap.as_deref())?;
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::GetRecordSlot {
+                    dst,
+                    record,
+                    field,
+                    slot,
+                } => {
+                    let value =
+                        get_record_slot_value(frame.read(*record)?, field, *slot, heap.as_deref())?;
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::SetRecordField { record, field, src } => {
                     let mut record_value = frame.read(*record)?.clone();
                     record_fields::set_record_field_value(
@@ -1268,8 +1278,35 @@ impl Vm {
                     )?;
                     frame.write(*record, record_value)?;
                 }
+                InstructionKind::SetRecordSlot {
+                    record,
+                    field,
+                    slot,
+                    src,
+                } => {
+                    let mut record_value = frame.read(*record)?.clone();
+                    record_fields::set_record_slot_value(
+                        &mut record_value,
+                        field,
+                        *slot,
+                        frame.read(*src)?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*record, record_value)?;
+                }
                 InstructionKind::GetEnumField { dst, value, field } => {
                     let value = get_enum_field_value(frame.read(*value)?, field, heap.as_deref())?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::GetEnumSlot {
+                    dst,
+                    value,
+                    field,
+                    slot,
+                } => {
+                    let value =
+                        get_enum_slot_value(frame.read(*value)?, field, *slot, heap.as_deref())?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::GetIndex { dst, base, index } => {
@@ -1838,6 +1875,45 @@ fn get_record_field_value(
     }
 }
 
+fn get_record_slot_value(
+    value: &Value,
+    field: &str,
+    slot: usize,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    match value {
+        Value::Record { type_name, fields } => {
+            fields.get_slot(slot, field).cloned().ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownRecordField {
+                    type_name: type_name.clone(),
+                    field: field.to_owned(),
+                })
+            })
+        }
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Record { type_name, fields }) =
+                heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "record slot",
+                }));
+            };
+            fields
+                .get_slot(slot, field)
+                .map(value_from_heap_slot)
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::UnknownRecordField {
+                        type_name: type_name.clone(),
+                        field: field.to_owned(),
+                    })
+                })
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "record slot",
+        })),
+    }
+}
+
 fn get_enum_field_value(
     value: &Value,
     field: &str,
@@ -1876,6 +1952,52 @@ fn get_enum_field_value(
         }
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "enum field",
+        })),
+    }
+}
+
+fn get_enum_slot_value(
+    value: &Value,
+    field: &str,
+    slot: usize,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    match value {
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields.get_slot(slot, field).cloned().ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownEnumField {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                field: field.to_owned(),
+            })
+        }),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Enum {
+                enum_name,
+                variant,
+                fields,
+            }) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "enum slot",
+                }));
+            };
+            fields
+                .get_slot(slot, field)
+                .map(value_from_heap_slot)
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::UnknownEnumField {
+                        enum_name: enum_name.clone(),
+                        variant: variant.clone(),
+                        field: field.to_owned(),
+                    })
+                })
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "enum slot",
         })),
     }
 }
@@ -2344,6 +2466,73 @@ fn main() {
         assert_eq!(stats.swept, 1);
         assert!(heap.contains(rooted));
         assert!(!heap.contains(garbage));
+    }
+
+    #[test]
+    fn record_slot_bytecode_reads_and_writes_by_slot() {
+        let mut code = CodeObject::new("slot_record", 3);
+        let count = code.push_constant(Constant::Int(2));
+        let updated = code.push_constant(Constant::Int(5));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: count,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::MakeRecord {
+            dst: Register(1),
+            type_name: "Reward".into(),
+            fields: vec![
+                ("item_id".into(), Register(0)),
+                ("count".into(), Register(0)),
+            ],
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: updated,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::SetRecordSlot {
+            record: Register(1),
+            field: "count".into(),
+            slot: 0,
+            src: Register(0),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::GetRecordSlot {
+            dst: Register(2),
+            record: Register(1),
+            field: "count".into(),
+            slot: 0,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(5)));
+    }
+
+    #[test]
+    fn enum_slot_bytecode_reads_by_slot() {
+        let mut code = CodeObject::new("slot_enum", 3);
+        let amount = code.push_constant(Constant::Int(7));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: amount,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::MakeEnum {
+            dst: Register(1),
+            enum_name: "Damage".into(),
+            variant: "Physical".into(),
+            fields: vec![("amount".into(), Register(0))],
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::GetEnumSlot {
+            dst: Register(2),
+            value: Register(1),
+            field: "amount".into(),
+            slot: 0,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
     }
 
     #[test]
@@ -4105,6 +4294,23 @@ fn main() {
                 .collect::<Vec<_>>(),
             ["count", "item_id"]
         );
+    }
+
+    #[test]
+    fn runs_compiled_immediate_slot_field_reads() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return Reward { item_id: "gold", count: 2 }.count
+        + Damage.Physical { amount: 7 }.amount;
+}
+"#,
+            "main",
+        )
+        .expect("compile immediate slot field reads");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(9)));
     }
 
     #[test]

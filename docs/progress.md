@@ -563,10 +563,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   script objects while preserving script-visible field behavior.
 - Added VM coverage proving compiled record constructors produce stable
   slot-shape IDs across source field reordering.
-- Remaining M10 work includes slot-index bytecode lowering, trait dispatch,
+- Added slot-index bytecode for record and enum field reads plus record field
+  writes, with VM validation that the expected field still matches the slot.
+- The bytecode compiler now lowers immediate record/enum literal field reads
+  such as `Reward { count: 2 }.count` to slot-index bytecode.
+- Remaining M10 work includes broader type-flow slot lowering, trait dispatch,
   impl method execution, and dynamic implements checks.
 
 ## Next
 
-- Continue M10 by lowering field accesses through resolved slot metadata and
-  adding trait/impl dispatch over script and host types.
+- Continue M10 by extending resolved slot metadata beyond immediate literals
+  and adding trait/impl dispatch over script and host types.
