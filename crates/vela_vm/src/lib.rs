@@ -6794,6 +6794,47 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_reflect_fields_respect_field_access() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let fields = reflect.fields(player);
+    if reflect.has_field(player, "level")
+        && !reflect.has_field(player, "secret")
+        && reflect.field(player, "level").name == "level" {
+        return fields.len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile policy fields reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        let policy = reflect::ReflectPolicy::new(
+            reflect::ReflectPermissionSet::new()
+                .with(reflect::ReflectPermission::ReadTypeInfo)
+                .with(reflect::ReflectPermission::InspectHostPath),
+        );
+        vm.register_reflection_natives_with_policy(
+            Arc::new(policy_field_reflection_registry()),
+            policy,
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Ok(Value::Int(1))
+        );
+    }
+
+    #[test]
     fn compiled_source_reflects_modules_functions_and_exports() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -7463,6 +7504,20 @@ pub fn grant(player: Player, amount: int = 1) -> bool {
                 .method(
                     MethodDesc::new(HostMethodId::new(4), "admin")
                         .access(MethodAccess::new().require_permission("player.admin")),
+                ),
+        );
+        registry
+    }
+
+    fn policy_field_reflection_registry() -> TypeRegistry {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(600), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(FieldId::new(1), "level"))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "secret")
+                        .access(FieldAccess::new().reflect_readable(false)),
                 ),
         );
         registry

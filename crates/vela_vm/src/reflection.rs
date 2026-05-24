@@ -119,15 +119,11 @@ impl Vm {
             expect_arity("reflect.fields", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.fields")?;
             check_host_ref_inspection(&fields_policy, &target)?;
-            let Some(desc) = reflect::type_of(&fields_registry, &target) else {
-                return Ok(Value::Null);
-            };
-            let fields = reflect::fields(&fields_registry, &desc.key)
-                .unwrap_or(&[])
-                .iter()
-                .map(|field| Value::String(field.name.clone()))
-                .collect();
-            Ok(Value::Array(fields))
+            value_from_reflect(reflect::field_names_with_policy(
+                &fields_registry,
+                &target,
+                &fields_policy,
+            )?)
         });
 
         let field_registry = Arc::clone(&registry);
@@ -143,10 +139,11 @@ impl Vm {
             let target = value_to_reflect(&args[0], "reflect.field")?;
             check_host_ref_inspection(&field_policy, &target)?;
             let field_name = expect_string(&args[1], "reflect.field")?;
-            value_from_reflect(reflect::field_metadata(
+            value_from_reflect(reflect::field_metadata_with_policy(
                 &field_registry,
                 &target,
                 field_name,
+                &field_policy,
             )?)
         });
 
@@ -163,10 +160,11 @@ impl Vm {
             let target = value_to_reflect(&args[0], "reflect.has_field")?;
             check_host_ref_inspection(&has_field_policy, &target)?;
             let field_name = expect_string(&args[1], "reflect.has_field")?;
-            Ok(Value::Bool(reflect::has_field(
+            Ok(Value::Bool(reflect::has_field_with_policy(
                 &has_field_registry,
                 &target,
                 field_name,
+                &has_field_policy,
             )?))
         });
 

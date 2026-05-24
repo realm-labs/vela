@@ -856,6 +856,11 @@ permissions.
   `MethodAccess` and method-specific permissions, so gameplay policies see only
   callable, public, approved methods while raw registry member queries remain
   available for trusted host inspection.
+- Added policy-aware field metadata reflection. Script-visible
+  `reflect.fields`, `reflect.field`, and `reflect.has_field` now respect
+  `FieldAccess::reflect_readable`, so hidden host fields are not enumerated or
+  reported as present to gameplay policies while raw registry field queries
+  remain available for trusted host inspection.
 
 ## Next
 

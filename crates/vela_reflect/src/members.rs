@@ -42,21 +42,42 @@ pub fn field(
     name: &str,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
-    let field = desc
-        .fields
-        .iter()
-        .find(|field| field.name == name)
-        .ok_or_else(|| {
-            ReflectError::new(ReflectErrorKind::UnknownField {
+    let field = find_field(desc, name)?;
+    Ok(ReflectValue::Host(field_record(field)))
+}
+
+pub fn field_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+    _policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    let field = find_field(desc, name)?;
+    if !field.access.reflect_readable {
+        return Err(ReflectError::new(
+            ReflectErrorKind::FieldNotReflectReadable {
                 type_name: desc.key.name.clone(),
                 field: name.to_owned(),
-                candidates: name_candidates(
-                    name,
-                    desc.fields.iter().map(|field| field.name.as_str()),
-                ),
-            })
-        })?;
+            },
+        ));
+    }
     Ok(ReflectValue::Host(field_record(field)))
+}
+
+pub fn field_names_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    _policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(HostValue::Array(
+        desc.fields
+            .iter()
+            .filter(|field| field.access.reflect_readable)
+            .map(|field| HostValue::String(field.name.clone()))
+            .collect(),
+    )))
 }
 
 pub fn has_field(
@@ -66,6 +87,19 @@ pub fn has_field(
 ) -> ReflectResult<bool> {
     let desc = target_type(registry, target)?;
     Ok(desc.fields.iter().any(|field| field.name == name))
+}
+
+pub fn has_field_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+    _policy: &ReflectPolicy,
+) -> ReflectResult<bool> {
+    let desc = target_type(registry, target)?;
+    Ok(desc
+        .fields
+        .iter()
+        .any(|field| field.name == name && field.access.reflect_readable))
 }
 
 pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -184,6 +218,22 @@ fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
     }
+}
+
+fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDesc> {
+    desc.fields
+        .iter()
+        .find(|candidate| candidate.name == field)
+        .ok_or_else(|| {
+            ReflectError::new(ReflectErrorKind::UnknownField {
+                type_name: desc.key.name.clone(),
+                field: field.to_owned(),
+                candidates: name_candidates(
+                    field,
+                    desc.fields.iter().map(|field| field.name.as_str()),
+                ),
+            })
+        })
 }
 
 fn method_record(method: &MethodDesc) -> HostValue {
@@ -635,6 +685,59 @@ mod tests {
         );
         assert!(
             has_method_with_policy(&registry, &target, "admin", &admin_policy).expect("has admin")
+        );
+    }
+
+    #[test]
+    fn fields_with_policy_hide_non_reflect_readable_fields() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(600), "Player"))
+                .host_type(HostTypeId::new(6))
+                .field(FieldDesc::new(FieldId::new(1), "level"))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "secret")
+                        .access(crate::FieldAccess::new().reflect_readable(false)),
+                ),
+        );
+        let target =
+            ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
+
+        assert!(has_field(&registry, &target, "secret").expect("raw has field"));
+        let ReflectValue::Host(HostValue::Array(fields)) =
+            field_names_with_policy(&registry, &target, &ReflectPolicy::read_only())
+                .expect("field names")
+        else {
+            panic!("fields should be an array");
+        };
+        assert_eq!(fields, vec![HostValue::String("level".to_owned())]);
+        assert!(
+            has_field_with_policy(&registry, &target, "level", &ReflectPolicy::read_only())
+                .expect("has level")
+        );
+        assert!(
+            !has_field_with_policy(&registry, &target, "secret", &ReflectPolicy::read_only())
+                .expect("has secret")
+        );
+
+        let error = field_with_policy(&registry, &target, "secret", &ReflectPolicy::read_only())
+            .expect_err("hidden field metadata");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldNotReflectReadable {
+                type_name: "Player".to_owned(),
+                field: "secret".to_owned()
+            }
+        );
+
+        let ReflectValue::Host(HostValue::Record { fields, .. }) =
+            field(&registry, &target, "secret").expect("raw field metadata")
+        else {
+            panic!("field metadata should be a record");
+        };
+        assert_eq!(
+            fields.get("name"),
+            Some(&HostValue::String("secret".to_owned()))
         );
     }
 }

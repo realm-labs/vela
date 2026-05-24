@@ -3515,3 +3515,28 @@ Consequences:
   `AccessPrivate` and the relevant method permissions.
 - Reflection remains schema-safe because the policy filters copied metadata and
   never mutates registered type structure.
+
+## 2026-05-25: Field Metadata Respects FieldAccess Readability
+
+Status: Accepted
+
+Context:
+`reflect.get` rejected host fields marked `reflect_readable = false`, but
+`reflect.fields`, `reflect.field`, and `reflect.has_field` still exposed those
+field names and metadata. That allowed gameplay reflection policies to discover
+fields that controlled reads would deny.
+
+Decision:
+Keep raw field metadata helpers for trusted host-side inspection, and add
+policy-aware field helpers for VM reflection natives. Script-visible
+`reflect.fields` and `reflect.has_field` include only `reflect_readable`
+fields, and `reflect.field` returns `FieldNotReflectReadable` for hidden field
+metadata requests.
+
+Consequences:
+- Gameplay reflection policies no longer leak hidden host field names through
+  metadata enumeration.
+- Admin/debug tooling can still inspect raw registry field metadata from host
+  code.
+- Reflection remains schema-safe because the policy filters copied metadata and
+  never mutates registered field descriptors.
