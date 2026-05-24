@@ -7,6 +7,7 @@ mod modules;
 mod permissions;
 mod script_attrs;
 mod script_types;
+mod types;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -29,6 +30,7 @@ pub use modules::{
 pub use permissions::{
     ReflectLookupBudget, ReflectPermission, ReflectPermissionSet, ReflectPolicy,
 };
+pub use types::{type_by_name as type_metadata_by_name, type_names as type_metadata_names};
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId,
 };
@@ -619,6 +621,10 @@ impl std::error::Error for ReflectError {}
 pub enum ReflectErrorKind {
     UnknownType {
         host_type_id: HostTypeId,
+    },
+    UnknownTypeName {
+        type_name: String,
+        candidates: Vec<String>,
     },
     UnknownField {
         type_name: String,

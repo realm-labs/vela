@@ -880,6 +880,11 @@ permissions.
   inspect copied `ReflectTrait` records by name with ranked unknown-trait
   candidates, while `reflect.traits(value)` continues to report traits
   implemented by a target value.
+- Added registered type metadata lookup in a focused reflection types module.
+  Rust callers can query `type_metadata_by_name`/`type_metadata_names`, and
+  scripts can call `reflect.type_info(name)` plus `reflect.types()` to inspect
+  copied `ReflectType` records with kind, schema hash, docs, attrs, and member
+  counts, including ranked unknown-type candidates.
 
 ## Next
 

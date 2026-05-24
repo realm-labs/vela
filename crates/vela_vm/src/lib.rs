@@ -6971,6 +6971,71 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflects_registered_type_metadata() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let names = reflect.types();
+    let player = reflect.type_info("Player");
+    if names.len() == 1
+        && names[0] == "Player"
+        && player.kind == "host"
+        && player.field_count == 2
+        && player.method_count == 1
+        && player.trait_count == 1 {
+        return player.name;
+    }
+    return "missing";
+}
+"#,
+        )
+        .expect("compile type metadata reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::String("Player".to_owned()))
+        );
+    }
+
+    #[test]
+    fn compiled_source_reflect_type_reports_unknown_type_candidates() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return reflect.type_info("Plyer");
+}
+"#,
+        )
+        .expect("compile unknown type metadata source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTypeName {
+                type_name: "Plyer".to_owned(),
+                candidates: vec!["Player".to_owned()]
+            })
+        ));
+    }
+
+    #[test]
     fn compiled_source_reflect_trait_reports_unknown_trait_candidates() {
         let program = compile_program_source(
             SourceId::new(1),

@@ -47,6 +47,36 @@ impl Vm {
                 .map_or(Value::Null, |desc| Value::String(desc.key.name.clone())))
         });
 
+        let types_registry = Arc::clone(&registry);
+        let types_policy = policy.clone();
+        let types_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.types", move |args, _host| {
+            check_reflect_policy(
+                &types_policy,
+                &types_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.types", args, 0)?;
+            value_from_reflect(reflect::type_metadata_names(&types_registry))
+        });
+
+        let type_info_registry = Arc::clone(&registry);
+        let type_info_policy = policy.clone();
+        let type_info_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.type_info", move |args, _host| {
+            check_reflect_policy(
+                &type_info_policy,
+                &type_info_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.type_info", args, 1)?;
+            let type_name = expect_string(&args[0], "reflect.type_info")?;
+            value_from_reflect(reflect::type_metadata_by_name(
+                &type_info_registry,
+                type_name,
+            )?)
+        });
+
         let name_registry = Arc::clone(&registry);
         let name_policy = policy.clone();
         let name_budget = Arc::clone(&lookup_budget);

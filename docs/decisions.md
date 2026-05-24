@@ -3640,3 +3640,29 @@ Consequences:
   `reflect.trait_info(name)` is the descriptor lookup.
 - The API remains schema-safe because it only copies registered metadata and
   does not permit runtime trait mutation.
+
+## 2026-05-25: Type Descriptors Are Queryable By Name
+
+Status: Accepted
+
+Context:
+Reflection could identify a value's type with `reflect.type_of(value)` and
+query field or method metadata through a target value, but admin/debug scripts
+could not inspect a registered type descriptor by name. M12 expects
+TypeRegistry coverage for types as well as modules, functions, members, traits,
+variants, attributes, and permissions.
+
+Decision:
+Add a focused `vela_reflect::types` module with copied type descriptor records.
+Rust callers can use `type_metadata_by_name` and `type_metadata_names`, while
+scripts can use `reflect.type_info(name)` and `reflect.types()`. Type records
+include stable ID, name, kind, optional schema hash, docs, attrs, and member
+counts. Unknown names report `UnknownTypeName` with ranked candidates.
+
+Consequences:
+- Admin/debug scripts can inspect registered schemas without needing a live
+  host object or script value instance.
+- The descriptor is intentionally copied summary data; detailed fields,
+  methods, traits, and variants remain behind their existing policy-aware
+  reflection calls.
+- Runtime schema mutation remains unavailable.
