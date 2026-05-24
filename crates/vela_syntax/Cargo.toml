@@ -1,0 +1,11 @@
+[package]
+name = "vela_syntax"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+vela_common = { path = "../vela_common" }
+
+[lints]
+workspace = true

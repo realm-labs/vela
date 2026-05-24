@@ -16,6 +16,19 @@ M1: Syntax Frontend.
   construction.
 - Documented the default validation commands in `docs/validation.md`.
 
+### M1: Syntax Frontend
+
+- Added the `vela_syntax` crate.
+- Implemented a lexer that produces tokens with `SourceId`/`Span` metadata and
+  diagnostics for unterminated strings, unterminated block comments, and
+  unexpected characters.
+- Implemented a recoverable declaration parser for `use`, `fn`, `pub fn`,
+  `struct`, `enum`, `trait`, and attributes.
+- Added tests covering core module items, token spans, host-style compound
+  assignment tokens, and recovery after invalid input.
+
 ## Next
 
-- Add the syntax crate skeleton and begin lexer/parser coverage for M1.
+- Expand M1 parsing from declaration-level items into statements and
+  expressions: `let`, `return`, `if/else`, `for-in`, `match`, field access,
+  method calls, array/map literals, lambdas, and assignments.

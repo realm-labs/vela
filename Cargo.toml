@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/vela_common"]
+members = ["crates/vela_common", "crates/vela_syntax"]
 resolver = "3"
 
 [workspace.package]
