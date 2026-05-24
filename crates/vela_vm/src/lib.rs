@@ -2191,6 +2191,43 @@ pub enum Damage { Physical, Magical }
     }
 
     #[test]
+    fn runs_compiled_cross_module_qualified_function_and_const_paths() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+fn main() {
+    return game.reward.grant() + game.config.BONUS;
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub fn grant() {
+    return 4;
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_dotted("game.config"),
+                r#"
+pub const BONUS: int = 5;
+"#,
+            ),
+        ])
+        .expect("compile qualified cross-module paths");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "game.main.main", &[]),
+            Ok(Value::Int(9))
+        );
+    }
+
+    #[test]
     fn heap_safe_point_gc_preserves_caller_roots_during_nested_calls() {
         let program = compile_program_source(
             SourceId::new(1),

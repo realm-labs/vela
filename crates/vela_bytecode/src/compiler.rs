@@ -606,8 +606,7 @@ impl<'ast> Compiler<'ast> {
     fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(literal),
-            ExprKind::Path(path) if path.len() == 1 => self.compile_local_path(expr.span, path),
-            ExprKind::Path(path) => self.compile_path_access(expr.span, path),
+            ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
             ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
             ExprKind::Field { base, name } => {
                 let root = self.compile_expr(base)?;
@@ -786,22 +785,37 @@ impl<'ast> Compiler<'ast> {
         self.local_register_at_span(span, name)
     }
 
+    fn compile_path_expr(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
+        if let Some(value) = self.const_value_at_span(span) {
+            return self.emit_constant(value);
+        }
+        if path.len() == 1 {
+            return self.compile_local_path(span, path);
+        }
+        self.compile_path_access(span, path)
+    }
+
     fn local_register_at_span(&mut self, span: Span, name: &str) -> CompileResult<Register> {
         if let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(span)
             && let Some(register) = self.hir_locals.get(local).copied()
         {
             return Ok(register);
         }
-        if let Some(BindingResolution::Declaration(declaration)) =
-            self.bindings.resolution_at_span(span)
-            && let Some(value) = self.facts.const_values.get(declaration).cloned()
-        {
+        if let Some(value) = self.const_value_at_span(span) {
             return self.emit_constant(value);
         }
         self.locals
             .get(name)
             .copied()
             .ok_or_else(|| CompileError::new(CompileErrorKind::UnknownLocal(name.to_owned())))
+    }
+
+    fn const_value_at_span(&self, span: Span) -> Option<Constant> {
+        let BindingResolution::Declaration(declaration) = self.bindings.resolution_at_span(span)?
+        else {
+            return None;
+        };
+        self.facts.const_values.get(declaration).cloned()
     }
 
     fn compile_path_access(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
@@ -1805,6 +1819,47 @@ pub enum Damage { Physical }
             InstructionKind::EnumTagEqual { enum_name, variant, .. }
                 if enum_name == "game.damage.Damage" && variant == "Physical"
         )));
+    }
+
+    #[test]
+    fn compiler_uses_hir_facts_for_qualified_function_and_const_paths() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+fn main() {
+    return game.reward.grant() + game.config.BONUS;
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub fn grant() {
+    return 4;
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_dotted("game.config"),
+                r#"
+pub const BONUS: int = 5;
+"#,
+            ),
+        ])
+        .expect("qualified function and const paths should compile");
+        let main = program
+            .function("game.main.main")
+            .expect("qualified main function");
+
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallFunction { name, .. } if name == "game.reward.grant"
+        )));
+        assert!(main.constants.contains(&Constant::Int(5)));
     }
 
     #[test]

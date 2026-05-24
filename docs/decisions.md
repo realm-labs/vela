@@ -916,3 +916,28 @@ Consequences:
   binding patterns are unchanged.
 - Richer pattern metadata, variant validation, and pattern-specific node IDs
   remain future HIR/M10 work.
+
+## 2026-05-24: Qualified Paths Refresh Through The Module Graph
+
+Status: Accepted
+
+Context:
+Imports and aliases resolved across modules, but direct module-qualified value
+paths such as `game.reward.grant()` or `game.config.BONUS` still relied on
+source spelling and bytecode fallbacks. This kept common module-style calls
+from using declaration IDs and broke qualified const reads before codegen.
+
+Decision:
+HIR binding maps record unresolved module-qualified paths as refreshable
+semantic placeholders. After `resolve_imports()` has a complete module graph,
+the graph also resolves those placeholders to declaration IDs. Bytecode then
+uses the same declaration facts as imports for script function calls and scalar
+const reads.
+
+Consequences:
+- Direct module-qualified function and const references work across files,
+  including forward module order.
+- Native namespace calls that do not resolve to script declarations still fall
+  back to native dispatch.
+- Qualified constructor and variant validation remain intentionally limited
+  until script type metadata and pattern HIR become richer in later milestones.

@@ -37,6 +37,7 @@ pub enum BindingResolution {
     Local(HirLocalId),
     Declaration(HirDeclId),
     Import(String),
+    QualifiedPath(Vec<String>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -143,6 +144,26 @@ impl BindingMap {
             }
         }
     }
+
+    pub(crate) fn resolve_qualified_declarations(
+        &mut self,
+        declarations: &BTreeMap<Vec<String>, HirDeclId>,
+    ) {
+        for resolution in self.resolutions.values_mut() {
+            if let BindingResolution::QualifiedPath(path) = resolution
+                && let Some(declaration) = declarations.get(path).copied()
+            {
+                *resolution = BindingResolution::Declaration(declaration);
+            }
+        }
+        for resolution in self.pattern_resolutions.values_mut() {
+            if let BindingResolution::QualifiedPath(path) = resolution
+                && let Some(declaration) = declarations.get(path).copied()
+            {
+                *resolution = BindingResolution::Declaration(declaration);
+            }
+        }
+    }
 }
 
 pub(crate) struct FunctionBindingInput<'a> {
@@ -150,6 +171,7 @@ pub(crate) struct FunctionBindingInput<'a> {
     pub params: &'a [Param],
     pub body: &'a Block,
     pub module_declarations: Vec<(String, HirDeclId)>,
+    pub qualified_declarations: Vec<(Vec<String>, HirDeclId)>,
     pub imports: Vec<ImportBinding>,
     pub next_expr_id: &'a mut u32,
     pub next_local_id: &'a mut u32,
@@ -162,6 +184,7 @@ pub(crate) fn bind_function(input: FunctionBindingInput<'_>) -> (BindingMap, Vec
 struct BindingLowerer<'a> {
     declaration: HirDeclId,
     module_declarations: Vec<(String, HirDeclId)>,
+    qualified_declarations: Vec<(Vec<String>, HirDeclId)>,
     imports: Vec<ImportBinding>,
     next_expr_id: &'a mut u32,
     next_local_id: &'a mut u32,
@@ -187,6 +210,7 @@ impl<'a> BindingLowerer<'a> {
         let mut lowerer = Self {
             declaration: input.declaration,
             module_declarations: input.module_declarations,
+            qualified_declarations: input.qualified_declarations,
             imports: input.imports,
             next_expr_id: input.next_expr_id,
             next_local_id: input.next_local_id,
@@ -448,6 +472,8 @@ impl<'a> BindingLowerer<'a> {
                 && let Some(BindingResolution::Local(local)) = self.resolve_name(name)
             {
                 self.resolutions.insert(id, BindingResolution::Local(local));
+            } else if let Some(resolution) = self.resolve_declaration_path(path) {
+                self.resolutions.insert(id, resolution);
             }
             return;
         };
@@ -468,21 +494,32 @@ impl<'a> BindingLowerer<'a> {
     }
 
     fn bind_constructor_path(&mut self, id: HirExprId, path: &[String]) {
-        let Some(name) = path.first() else {
-            return;
-        };
-        if let Some(resolution) = self.resolve_declaration_name(name) {
+        if let Some(resolution) = self.resolve_constructor_path(path) {
             self.resolutions.insert(id, resolution);
         }
     }
 
     fn bind_pattern_path(&mut self, path: &[String]) {
-        let Some(name) = path.first() else {
-            return;
-        };
-        if let Some(resolution) = self.resolve_declaration_name(name) {
+        if let Some(resolution) = self.resolve_constructor_path(path) {
             self.pattern_resolutions.insert(path.to_vec(), resolution);
         }
+    }
+
+    fn resolve_constructor_path(&self, path: &[String]) -> Option<BindingResolution> {
+        if let [name] = path {
+            return self.resolve_declaration_name(name);
+        }
+        if let Some(name) = path.first()
+            && let Some(resolution) = self.resolve_declaration_name(name)
+        {
+            return Some(resolution);
+        }
+        if let Some(declaration) = self.qualified_declaration(path) {
+            return Some(BindingResolution::Declaration(declaration));
+        }
+        let (_, enum_path) = path.split_last()?;
+        self.qualified_declaration(enum_path)
+            .map(BindingResolution::Declaration)
     }
 
     fn resolve_name(&self, name: &str) -> Option<BindingResolution> {
@@ -511,6 +548,24 @@ impl<'a> BindingLowerer<'a> {
                 None => BindingResolution::Import(import.name.clone()),
             })
         })
+    }
+
+    fn resolve_declaration_path(&self, path: &[String]) -> Option<BindingResolution> {
+        let [name] = path else {
+            if let Some(declaration) = self.qualified_declaration(path) {
+                return Some(BindingResolution::Declaration(declaration));
+            }
+            return Some(BindingResolution::QualifiedPath(path.to_vec()));
+        };
+        self.resolve_declaration_name(name)
+    }
+
+    fn qualified_declaration(&self, path: &[String]) -> Option<HirDeclId> {
+        self.qualified_declarations
+            .iter()
+            .find_map(|(declaration_path, declaration)| {
+                (declaration_path == path).then_some(*declaration)
+            })
     }
 
     fn name_candidate_label(&self, name: &str) -> String {

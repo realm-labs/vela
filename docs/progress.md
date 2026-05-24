@@ -350,6 +350,14 @@ that introduce loops and closures.
   imported aliases, keeping constructor and match metadata consistent.
 - Added HIR, compiler, and VM coverage proving imported enum aliases match
   qualified constructed values across modules.
+- HIR binding maps now preserve unresolved module-qualified paths as
+  refreshable semantic placeholders and resolve them to declarations after the
+  full module graph is available.
+- Bytecode path lowering now recognizes HIR-resolved qualified const paths, and
+  call lowering uses HIR-resolved qualified function paths for `CallFunction`.
+- Added HIR, compiler, and VM coverage proving direct paths such as
+  `game.reward.grant()` and `game.config.BONUS` compile and execute across
+  modules even when the target module is parsed later.
 
 ## Next
 

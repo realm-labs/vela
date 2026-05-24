@@ -446,12 +446,14 @@ impl ModuleGraph {
             })
             .collect::<Vec<_>>();
         let imports = self.import_bindings(module);
+        let qualified_declarations = self.qualified_declarations_with(module);
 
         let (bindings, diagnostics) = bind_function(FunctionBindingInput {
             declaration,
             params: &function.params,
             body: &function.body,
             module_declarations,
+            qualified_declarations,
             imports,
             next_expr_id: &mut self.next_expr_id,
             next_local_id: &mut self.next_local_id,
@@ -478,12 +480,14 @@ impl ModuleGraph {
             })
             .collect::<Vec<_>>();
         let imports = self.import_bindings(module);
+        let qualified_declarations = self.qualified_declarations_with(module);
 
         let (bindings, diagnostics) = bind_function(FunctionBindingInput {
             declaration,
             params: &function.params,
             body: &function.body,
             module_declarations,
+            qualified_declarations,
             imports,
             next_expr_id: &mut self.next_expr_id,
             next_local_id: &mut self.next_local_id,
@@ -503,6 +507,21 @@ impl ModuleGraph {
                     None => self.lookup_import_declaration(&import.path),
                 };
                 Some(ImportBinding { name, declaration })
+            })
+            .collect()
+    }
+
+    fn qualified_declarations_with(&self, current: &HirModule) -> Vec<(Vec<String>, HirDeclId)> {
+        self.modules
+            .iter()
+            .chain(std::iter::once(current))
+            .flat_map(|module| {
+                module.declarations.names().filter_map(move |name| {
+                    let declaration = module.declarations.get(name)?;
+                    let mut path = module.path.segments().to_vec();
+                    path.push(name.to_owned());
+                    Some((path, declaration))
+                })
             })
             .collect()
     }
@@ -553,6 +572,30 @@ impl ModuleGraph {
             if let Some(bindings) = self.impl_method_bindings.get_mut(&method) {
                 bindings.resolve_import_declarations(&imports);
             }
+        }
+
+        self.refresh_qualified_binding_resolutions();
+    }
+
+    fn refresh_qualified_binding_resolutions(&mut self) {
+        let declarations = self
+            .modules
+            .iter()
+            .flat_map(|module| {
+                module.declarations.names().filter_map(move |name| {
+                    let declaration = module.declarations.get(name)?;
+                    let mut path = module.path.segments().to_vec();
+                    path.push(name.to_owned());
+                    Some((path, declaration))
+                })
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        for bindings in self.bindings.values_mut() {
+            bindings.resolve_qualified_declarations(&declarations);
+        }
+        for bindings in self.impl_method_bindings.values_mut() {
+            bindings.resolve_qualified_declarations(&declarations);
         }
     }
 
@@ -1128,6 +1171,76 @@ fn main() { return grant; }
                 .any(|(_, resolution)| {
                     resolution == &BindingResolution::Import("grant".to_owned())
                 })
+        );
+    }
+
+    #[test]
+    fn resolved_modules_refresh_qualified_path_binding_maps() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.main",
+            r#"
+fn main() {
+    return game.reward.grant() + game.config.BONUS;
+}
+"#,
+        ));
+        let reward = graph.add_source(source(
+            2,
+            "game.reward",
+            r#"
+pub fn grant() { return 4; }
+"#,
+        ));
+        let config = graph.add_source(source(
+            3,
+            "game.config",
+            r#"
+pub const BONUS: int = 5;
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+        let grant = graph
+            .module(reward)
+            .and_then(|module| module.get("grant"))
+            .expect("grant declaration");
+        let bonus = graph
+            .module(config)
+            .and_then(|module| module.get("BONUS"))
+            .expect("bonus declaration");
+
+        assert!(
+            graph
+                .bindings(main)
+                .expect("main bindings")
+                .resolutions()
+                .any(|(_, resolution)| {
+                    resolution
+                        == &BindingResolution::QualifiedPath(vec![
+                            "game".to_owned(),
+                            "reward".to_owned(),
+                            "grant".to_owned(),
+                        ])
+                })
+        );
+
+        graph.resolve_imports();
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| resolution == &BindingResolution::Declaration(grant))
+        );
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| resolution == &BindingResolution::Declaration(bonus))
         );
     }
 
