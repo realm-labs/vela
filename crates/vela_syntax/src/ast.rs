@@ -95,6 +95,7 @@ pub struct TraitMethod {
     pub params: Vec<Param>,
     pub return_type: Option<TypeHint>,
     pub has_default: bool,
+    pub default_body: Option<Block>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

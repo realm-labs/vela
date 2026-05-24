@@ -1897,3 +1897,27 @@ Consequences:
   names such as `bonus`.
 - Trait default methods, host type impl dispatch, and MethodId-based dispatch
   caching remain later M10 work.
+
+## 2026-05-25: Trait Defaults Reuse Script Method Dispatch
+
+Status: Accepted
+
+Context:
+Trait default methods need to execute without adding a second method-body
+runtime path. The previous trait metadata kept only a `has_default` flag, so
+the compiler could not emit executable code for omitted impl methods.
+
+Decision:
+Preserve trait default bodies in the syntax AST and bind them in HIR with
+stable method body nodes. During bytecode compilation, when a script impl omits
+a trait method with a default body, emit that default body as the dispatch
+target for the impl receiver type. Explicit impl methods keep precedence over
+defaults.
+
+Consequences:
+- Trait defaults share the same hidden `CodeObject`, VM budget, heap root, and
+  dispatch-table behavior as explicit script impl methods.
+- Default bodies can read `self` and other script values without exposing Rust
+  references or changing host mutation boundaries.
+- Dynamic implements checks and MethodId-based dispatch caching remain later
+  M10 work.

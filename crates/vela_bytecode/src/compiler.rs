@@ -225,10 +225,11 @@ fn insert_script_impl_methods(
             method.symbol.clone(),
         );
         program.insert_function(
-            Compiler::new(
+            Compiler::new_body(
                 method.symbol,
-                method.function,
+                method.params,
                 method.signature,
+                method.body,
                 method.bindings,
                 facts.clone(),
             )?
@@ -594,6 +595,24 @@ impl<'ast> Compiler<'ast> {
         bindings: &'ast BindingMap,
         facts: CompilerFacts,
     ) -> CompileResult<Self> {
+        Self::new_body(
+            code_name,
+            &function.params,
+            signature,
+            &function.body,
+            bindings,
+            facts,
+        )
+    }
+
+    fn new_body(
+        code_name: String,
+        params: &'ast [Param],
+        signature: &FunctionSignature,
+        body: &'ast Block,
+        bindings: &'ast BindingMap,
+        facts: CompilerFacts,
+    ) -> CompileResult<Self> {
         let param_count = u16::try_from(signature.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
         let param_names = signature
@@ -601,8 +620,7 @@ impl<'ast> Compiler<'ast> {
             .iter()
             .map(|param| param.name.clone())
             .collect::<Vec<_>>();
-        let param_defaults = function
-            .params
+        let param_defaults = params
             .iter()
             .map(|param| param.default_value.is_some())
             .collect::<Vec<_>>();
@@ -630,12 +648,11 @@ impl<'ast> Compiler<'ast> {
             hir_locals,
             bindings,
             next_register: param_count,
-            param_defaults: function
-                .params
+            param_defaults: params
                 .iter()
                 .map(|param| param.default_value.clone())
                 .collect(),
-            body: &function.body,
+            body,
             facts,
             loop_stack: Vec::new(),
         })
@@ -2539,6 +2556,32 @@ fn main() {
         let method = program
             .script_method("Player", "bonus")
             .expect("script impl method dispatch target");
+        assert_eq!(method.params, ["self", "amount"]);
+        assert!(program.function("bonus").is_none());
+    }
+
+    #[test]
+    fn compiler_registers_trait_default_methods_as_dispatch_targets() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn bonus(self, amount) -> int { return self.level + amount; }
+}
+struct Player { level: int }
+
+impl BonusSource for Player {}
+
+fn main() {
+    return Player { level: 7 }.bonus(5);
+}
+"#,
+        )
+        .expect("trait default method should compile as hidden dispatch target");
+
+        let method = program
+            .script_method("Player", "bonus")
+            .expect("trait default method dispatch target");
         assert_eq!(method.params, ["self", "amount"]);
         assert!(program.function("bonus").is_none());
     }

@@ -580,11 +580,16 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - The VM now falls back from built-in script value methods to script impl method
   dispatch for record and enum receivers in inline, managed-heap, and
   module-qualified execution.
-- Remaining M10 work includes broader type-flow slot lowering, trait default
-  method dispatch, host type impl dispatch, MethodId-based inline-cache-ready
-  dispatch, and dynamic implements checks.
+- Trait default method bodies now remain in the syntax AST, are bound in HIR,
+  and compile into hidden method code objects when an impl omits the method.
+- The VM now executes trait default methods through the same script method
+  dispatch path, with explicit impl methods taking precedence in inline and
+  managed-heap execution.
+- Remaining M10 work includes broader type-flow slot lowering, host type impl
+  dispatch, MethodId-based inline-cache-ready dispatch, and dynamic implements
+  checks.
 
 ## Next
 
-- Continue M10 by adding trait default-method dispatch and dynamic implements
-  checks, then extending slot metadata beyond immediate literals.
+- Continue M10 by adding dynamic implements checks and MethodId-oriented
+  dispatch metadata, then extending slot metadata beyond immediate literals.

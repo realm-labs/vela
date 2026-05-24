@@ -115,18 +115,28 @@ pub struct TraitShape {
 
 impl TraitShape {
     #[must_use]
-    pub fn from_syntax(item: &TraitItem) -> Self {
+    pub fn from_syntax(
+        item: &TraitItem,
+        default_method_nodes: Vec<Option<(HirNodeId, Span)>>,
+    ) -> Self {
         Self {
             methods: item
                 .methods
                 .iter()
-                .map(|method| TraitMethodMetadata {
-                    name: method.name.clone(),
-                    signature: FunctionSignature {
-                        params: method.params.iter().map(ParamHint::from_syntax).collect(),
-                        return_type: method.return_type.as_ref().map(HirTypeHint::from_syntax),
-                    },
-                    has_default: method.has_default,
+                .zip(default_method_nodes)
+                .map(|(method, default_body)| {
+                    let (default_body_node, default_body_span) =
+                        default_body.map_or((None, None), |(node, span)| (Some(node), Some(span)));
+                    TraitMethodMetadata {
+                        name: method.name.clone(),
+                        signature: FunctionSignature {
+                            params: method.params.iter().map(ParamHint::from_syntax).collect(),
+                            return_type: method.return_type.as_ref().map(HirTypeHint::from_syntax),
+                        },
+                        has_default: method.has_default,
+                        default_body_node,
+                        default_body_span,
+                    }
                 })
                 .collect(),
         }
@@ -138,6 +148,8 @@ pub struct TraitMethodMetadata {
     pub name: String,
     pub signature: FunctionSignature,
     pub has_default: bool,
+    pub default_body_node: Option<HirNodeId>,
+    pub default_body_span: Option<Span>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

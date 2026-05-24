@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::{FunctionItem, ItemKind, SourceFile, Visibility, parse_source};
+use vela_syntax::{
+    Block, FunctionItem, ItemKind, Param, SourceFile, TraitMethod, Visibility, parse_source,
+};
 
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
 use crate::top_level::validate_const_initializer;
@@ -142,6 +144,7 @@ pub struct ModuleGraph {
     enum_shapes: BTreeMap<HirDeclId, EnumShape>,
     trait_shapes: BTreeMap<HirDeclId, TraitShape>,
     impl_metadata: BTreeMap<HirDeclId, ImplMetadata>,
+    trait_default_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     impl_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     diagnostics: Vec<Diagnostic>,
     next_node_id: u32,
@@ -194,6 +197,7 @@ impl ModuleGraph {
         };
 
         let mut function_declarations = Vec::new();
+        let mut trait_default_method_declarations = Vec::new();
         let mut impl_method_declarations = Vec::new();
 
         for item in &parsed.items {
@@ -278,8 +282,29 @@ impl ModuleGraph {
                         item.visibility.clone(),
                         item.span,
                     );
-                    self.trait_shapes
-                        .insert(declaration, TraitShape::from_syntax(trait_item));
+                    let default_method_nodes = trait_item
+                        .methods
+                        .iter()
+                        .map(|method| {
+                            method
+                                .default_body
+                                .as_ref()
+                                .map(|body| (self.next_node_id(), body.span))
+                        })
+                        .collect::<Vec<_>>();
+                    self.trait_shapes.insert(
+                        declaration,
+                        TraitShape::from_syntax(trait_item, default_method_nodes.clone()),
+                    );
+                    trait_default_method_declarations.extend(
+                        trait_item
+                            .methods
+                            .iter()
+                            .zip(default_method_nodes)
+                            .filter_map(|(method, default_body)| {
+                                default_body.map(|(node, _)| (declaration, node, method.clone()))
+                            }),
+                    );
                 }
                 ItemKind::Impl(impl_item) => {
                     let name = impl_declaration_name(&impl_item.trait_path, &impl_item.target_path);
@@ -314,6 +339,9 @@ impl ModuleGraph {
 
         for (declaration, function) in function_declarations {
             self.bind_function_body(&hir_module, declaration, &function);
+        }
+        for (declaration, node, method) in trait_default_method_declarations {
+            self.bind_trait_default_method_body(&hir_module, declaration, node, &method);
         }
         for (declaration, node, function) in impl_method_declarations {
             self.bind_impl_method_body(&hir_module, declaration, node, &function);
@@ -398,6 +426,11 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn trait_default_method_bindings(&self, method: HirNodeId) -> Option<&BindingMap> {
+        self.trait_default_method_bindings.get(&method)
+    }
+
+    #[must_use]
     pub fn impl_method_bindings(&self, method: HirNodeId) -> Option<&BindingMap> {
         self.impl_method_bindings.get(&method)
     }
@@ -456,30 +489,25 @@ impl ModuleGraph {
         declaration: HirDeclId,
         function: &FunctionItem,
     ) {
-        let module_declarations = module
-            .declarations
-            .names()
-            .filter_map(|name| {
-                module
-                    .declarations
-                    .get(name)
-                    .map(|declaration| (name.to_owned(), declaration))
-            })
-            .collect::<Vec<_>>();
-        let imports = self.import_bindings(module);
-        let qualified_declarations = self.qualified_declarations_with(module);
-
-        let (bindings, diagnostics) = bind_function(FunctionBindingInput {
-            declaration,
-            params: &function.params,
-            body: &function.body,
-            module_declarations,
-            qualified_declarations,
-            imports,
-            next_expr_id: &mut self.next_expr_id,
-            next_local_id: &mut self.next_local_id,
-        });
+        let (bindings, diagnostics) =
+            self.bind_body(module, declaration, &function.params, &function.body);
         self.bindings.insert(declaration, bindings);
+        self.diagnostics.extend(diagnostics);
+    }
+
+    fn bind_trait_default_method_body(
+        &mut self,
+        module: &HirModule,
+        declaration: HirDeclId,
+        method: HirNodeId,
+        trait_method: &TraitMethod,
+    ) {
+        let Some(body) = &trait_method.default_body else {
+            return;
+        };
+        let (bindings, diagnostics) =
+            self.bind_body(module, declaration, &trait_method.params, body);
+        self.trait_default_method_bindings.insert(method, bindings);
         self.diagnostics.extend(diagnostics);
     }
 
@@ -490,6 +518,19 @@ impl ModuleGraph {
         method: HirNodeId,
         function: &FunctionItem,
     ) {
+        let (bindings, diagnostics) =
+            self.bind_body(module, declaration, &function.params, &function.body);
+        self.impl_method_bindings.insert(method, bindings);
+        self.diagnostics.extend(diagnostics);
+    }
+
+    fn bind_body(
+        &mut self,
+        module: &HirModule,
+        declaration: HirDeclId,
+        params: &[Param],
+        body: &Block,
+    ) -> (BindingMap, Vec<Diagnostic>) {
         let module_declarations = module
             .declarations
             .names()
@@ -503,18 +544,16 @@ impl ModuleGraph {
         let imports = self.import_bindings(module);
         let qualified_declarations = self.qualified_declarations_with(module);
 
-        let (bindings, diagnostics) = bind_function(FunctionBindingInput {
+        bind_function(FunctionBindingInput {
             declaration,
-            params: &function.params,
-            body: &function.body,
+            params,
+            body,
             module_declarations,
             qualified_declarations,
             imports,
             next_expr_id: &mut self.next_expr_id,
             next_local_id: &mut self.next_local_id,
-        });
-        self.impl_method_bindings.insert(method, bindings);
-        self.diagnostics.extend(diagnostics);
+        })
     }
 
     fn import_bindings(&self, module: &HirModule) -> Vec<ImportBinding> {
@@ -601,6 +640,21 @@ impl ModuleGraph {
             }
         }
 
+        let trait_default_method_bindings = self
+            .trait_default_method_bindings
+            .iter()
+            .filter_map(|(method, bindings)| {
+                let module = self.declarations.get(&bindings.declaration)?.module;
+                let imports = imports_by_module.get(&module)?.clone();
+                Some((*method, imports))
+            })
+            .collect::<Vec<_>>();
+        for (method, imports) in trait_default_method_bindings {
+            if let Some(bindings) = self.trait_default_method_bindings.get_mut(&method) {
+                bindings.resolve_import_declarations(&imports);
+            }
+        }
+
         let impl_method_bindings = self
             .impl_method_bindings
             .iter()
@@ -631,6 +685,21 @@ impl ModuleGraph {
             .collect::<Vec<_>>();
         for (declaration, declarations) in function_bindings {
             if let Some(bindings) = self.bindings.get_mut(&declaration) {
+                bindings.resolve_qualified_declarations(&declarations);
+            }
+        }
+
+        let trait_default_method_bindings = self
+            .trait_default_method_bindings
+            .iter()
+            .filter_map(|(method, bindings)| {
+                let module = self.declarations.get(&bindings.declaration)?.module;
+                let declarations = self.qualified_declarations_for(module);
+                Some((*method, declarations))
+            })
+            .collect::<Vec<_>>();
+        for (method, declarations) in trait_default_method_bindings {
+            if let Some(bindings) = self.trait_default_method_bindings.get_mut(&method) {
                 bindings.resolve_qualified_declarations(&declarations);
             }
         }
@@ -1699,6 +1768,14 @@ impl Damageable for Player {
         assert!(!trait_shape.methods[0].has_default);
         assert_eq!(trait_shape.methods[1].name, "alive");
         assert!(trait_shape.methods[1].has_default);
+        let default_node = trait_shape.methods[1]
+            .default_body_node
+            .expect("alive default body node");
+        assert!(trait_shape.methods[1].default_body_span.is_some());
+        let default_bindings = graph
+            .trait_default_method_bindings(default_node)
+            .expect("trait default method bindings");
+        assert_eq!(default_bindings.locals_named("self").len(), 1);
         assert_eq!(
             graph.declaration(impl_decl).map(|decl| decl.kind),
             Some(DeclarationKind::Impl)

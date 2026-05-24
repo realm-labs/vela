@@ -2946,6 +2946,63 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_trait_default_method_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn bonus(self, amount) -> int { return self.level + amount; }
+    fn label(self) -> string { return self.name; }
+}
+struct Player { level: int, name: string }
+
+impl BonusSource for Player {}
+
+fn main() {
+    let player = Player { level: 7, name: "hero" };
+    return player.bonus(5) + player.label().len();
+}
+"#,
+        )
+        .expect("compile trait default method dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(16))
+        );
+    }
+
+    #[test]
+    fn explicit_impl_method_overrides_trait_default_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn bonus(self, amount) -> int { return self.level + amount; }
+}
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return amount * 2;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("compile explicit impl method override");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(10))
+        );
+    }
+
+    #[test]
     fn runs_compiled_module_qualified_script_impl_method_dispatch() {
         let program = compile_module_sources(&[ModuleSource::new(
             SourceId::new(1),
@@ -3484,6 +3541,35 @@ fn main() {
         assert_eq!(
             Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
             Ok(Value::Int(14))
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_trait_default_method_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn bonus(self, amount) -> int { return self.level + amount; }
+    fn label(self) -> string { return self.name; }
+}
+struct Player { level: int, name: string }
+
+impl BonusSource for Player {}
+
+fn main() {
+    let player = Player { level: 8, name: "hero" };
+    return player.bonus(6) + player.label().len();
+}
+"#,
+        )
+        .expect("compile heap trait default method dispatch");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            Ok(Value::Int(18))
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }

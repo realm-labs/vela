@@ -172,20 +172,27 @@ impl Parser {
                 if let Some(method) = self.expect_ident("expected trait method name") {
                     let params = self.parse_parameter_list();
                     let return_type = self.parse_optional_return_type();
+                    let default_body = if self.check_symbol(Symbol::LBrace) {
+                        self.parse_block()
+                    } else {
+                        self.eat_symbol(Symbol::Semicolon);
+                        None
+                    };
                     methods.push(TraitMethod {
                         name: method,
                         params,
                         return_type,
-                        has_default: self.check_symbol(Symbol::LBrace),
+                        has_default: default_body.is_some(),
+                        default_body,
                     });
                 } else {
                     self.parse_parameter_list();
                     self.parse_optional_return_type();
-                }
-                if self.check_symbol(Symbol::LBrace) {
-                    self.skip_block_tokens();
-                } else {
-                    self.eat_symbol(Symbol::Semicolon);
+                    if self.check_symbol(Symbol::LBrace) {
+                        self.skip_block_tokens();
+                    } else {
+                        self.eat_symbol(Symbol::Semicolon);
+                    }
                 }
             } else {
                 self.error_here("expected trait item");
@@ -1531,7 +1538,9 @@ impl Damageable for Player {
         };
         assert_eq!(trait_method_names(&trait_item.methods), ["damage", "alive"]);
         assert!(!trait_item.methods[0].has_default);
+        assert!(trait_item.methods[0].default_body.is_none());
         assert!(trait_item.methods[1].has_default);
+        assert!(trait_item.methods[1].default_body.is_some());
 
         let ItemKind::Impl(impl_item) = &parsed.items[6].kind else {
             panic!("expected impl item");
