@@ -905,6 +905,37 @@ fn main() {
     }
 
     #[test]
+    fn binding_resolves_record_shorthand_fields() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+fn main() {
+    let count = 2;
+    return Reward { count };
+}
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        let [count] = bindings.locals_named("count") else {
+            panic!("expected count binding");
+        };
+
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| { resolution == &BindingResolution::Local(*count) })
+        );
+    }
+
+    #[test]
     fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
         let mut graph = ModuleGraph::new();
         let module = graph.add_source(source(

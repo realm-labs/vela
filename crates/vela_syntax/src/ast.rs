@@ -213,6 +213,7 @@ pub struct MapEntry {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RecordField {
     pub name: String,
+    pub span: Span,
     pub value: Option<Expr>,
 }
 

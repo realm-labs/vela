@@ -295,6 +295,10 @@ that introduce loops and closures.
   declaration.
 - Added compiler regression coverage proving a local that shadows a function
   name no longer compiles as a script function call.
+- Record shorthand fields now carry source spans, bind through HIR like value
+  reads, and compile from HIR local resolutions instead of legacy name lookup.
+- Added HIR and compiler regression coverage proving record shorthand fields
+  resolve the semantic binding even after nested block shadowing.
 
 ## Next
 

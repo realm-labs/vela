@@ -669,6 +669,7 @@ impl Parser {
         self.eat_symbol(Symbol::LBrace);
         let mut fields = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
+            let span = self.current().span;
             let name = self
                 .expect_ident("expected record field")
                 .unwrap_or_default();
@@ -677,7 +678,7 @@ impl Parser {
             } else {
                 None
             };
-            fields.push(RecordField { name, value });
+            fields.push(RecordField { name, span, value });
             if self.eat_symbol(Symbol::Comma).is_none() {
                 break;
             }

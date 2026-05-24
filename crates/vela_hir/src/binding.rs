@@ -328,6 +328,18 @@ impl<'a> BindingLowerer<'a> {
     fn bind_record_field(&mut self, field: &RecordField) {
         if let Some(value) = &field.value {
             self.bind_expr(value, PathUsage::Value);
+        } else {
+            let id = self.next_expr(field.span);
+            if let Some(resolution) = self.resolve_name(&field.name) {
+                self.resolutions.insert(id, resolution);
+            } else {
+                self.diagnostics.push(
+                    Diagnostic::error(format!("unresolved name `{}`", field.name))
+                        .with_code("hir::unresolved_name")
+                        .with_span(field.span)
+                        .with_label(field.span, self.name_candidate_label(&field.name)),
+                );
+            }
         }
     }
 

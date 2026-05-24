@@ -658,3 +658,26 @@ Consequences:
   top-level function names in local scopes.
 - Module-qualified and imported function call lowering remain explicit M8
   follow-ups rather than being inferred from names alone.
+
+## 2026-05-24: Record Shorthand Fields Use HIR Bindings
+
+Status: Accepted
+
+Context:
+Record shorthand syntax such as `Reward { count }` reads a local by name, but
+the compiler previously resolved it through the legacy string-to-register map.
+That allowed nested block shadowing to affect shorthand fields even when HIR
+resolved ordinary path reads correctly.
+
+Decision:
+Record fields now preserve the source span for the field name. HIR records a
+binding resolution for shorthand fields as though the field name were a value
+read, while explicit `field: expr` syntax continues to bind the expression.
+Bytecode lowering uses that span-based HIR resolution when compiling shorthand
+fields.
+
+Consequences:
+- Record shorthand now follows the same semantic local binding rules as path
+  expressions.
+- Unresolved shorthand fields are diagnosed during semantic validation.
+- The syntax AST carries one more span needed by HIR and future tooling.

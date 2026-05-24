@@ -715,9 +715,7 @@ impl<'ast> Compiler<'ast> {
         let value = if let Some(value) = &field.value {
             self.compile_expr(value)?
         } else {
-            self.locals.get(&field.name).copied().ok_or_else(|| {
-                CompileError::new(CompileErrorKind::UnknownLocal(field.name.clone()))
-            })?
+            self.local_register_at_span(field.span, &field.name)?
         };
         Ok((field.name.clone(), value))
     }
@@ -987,6 +985,37 @@ fn main() {
             .expect("return instruction");
 
         assert_eq!(returned, Register(0));
+    }
+
+    #[test]
+    fn compiler_uses_hir_bindings_for_record_shorthand_fields() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 1;
+    {
+        let value = 2;
+    }
+    return Reward { value };
+}
+"#,
+            "main",
+        )
+        .expect("record shorthand should compile through HIR bindings");
+
+        let value_register = code
+            .instructions
+            .iter()
+            .find_map(|instruction| match &instruction.kind {
+                InstructionKind::MakeRecord { fields, .. } => fields
+                    .iter()
+                    .find_map(|(name, register)| (name == "value").then_some(*register)),
+                _ => None,
+            })
+            .expect("record shorthand field register");
+
+        assert_eq!(value_register, Register(0));
     }
 
     #[test]
