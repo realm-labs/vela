@@ -102,10 +102,11 @@ impl ScriptStateAdapter for MockStateAdapter {
     fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
         self.validate_path(&patch.path)?;
         match &patch.op {
-            PatchOp::Set(_) | PatchOp::Add(_) | PatchOp::Sub(_) | PatchOp::Push(_) => Ok(()),
-            PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
-                op: "remove",
-            })),
+            PatchOp::Set(_)
+            | PatchOp::Add(_)
+            | PatchOp::Sub(_)
+            | PatchOp::Push(_)
+            | PatchOp::Remove => Ok(()),
             PatchOp::CallHostMethod { method, .. } if self.method_returns.contains_key(method) => {
                 Ok(())
             }
@@ -139,9 +140,11 @@ impl ScriptStateAdapter for MockStateAdapter {
                 })?;
                 self.write_path(&patch.path, next)
             }
-            PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
-                op: "remove",
-            })),
+            PatchOp::Remove => {
+                self.read_path(&patch.path)?;
+                self.values.remove(&patch.path);
+                Ok(())
+            }
             PatchOp::Push(value) => {
                 let current = self.read_path(&patch.path)?;
                 let next = push_value(&current, value).ok_or_else(|| {

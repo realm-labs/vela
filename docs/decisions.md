@@ -2524,8 +2524,8 @@ Consequences:
 - Scripts can decrement direct and nested host paths without exposing mutable
   Rust references.
 - Reads after host `-=` observe the transaction overlay.
-- Multiplicative/divisive/rem RMW, `Remove`, and `Push` remain future M11
-  transaction work.
+- Multiplicative/divisive/rem RMW operations remain future M11 transaction
+  work.
 
 ## 2026-05-25: Host Path Push Records Array Patch Transactions
 
@@ -2552,5 +2552,32 @@ Consequences:
   method syntax.
 - Reads after `host.path.push(value)` observe the overlay array.
 - Host methods named `push` still take precedence when explicitly configured.
-- `Remove`, non-array push targets, and richer host value conversion for maps,
-  records, and enums remain future M11 work.
+- Non-array push targets and richer host value conversion for maps, records,
+  and enums remain future M11 work.
+
+## 2026-05-25: Host Path Remove Uses Overlay Tombstones
+
+Status: Accepted
+
+Context:
+`PatchOp::Remove` existed in the host patch model, but the transaction overlay
+previously represented only concrete values. Treating a removed path as an
+absent overlay entry would make reads after `remove()` fall through to the
+adapter snapshot, which is incorrect inside a transaction.
+
+Decision:
+Store PatchTx overlay entries as either a host value or a removed tombstone.
+`PatchTx::remove_path` records `PatchOp::Remove` and inserts a tombstone, while
+later reads of that path return `MissingPath` until the same transaction writes
+a replacement value. The compiler lowers `host.path.remove()` to
+`RemoveHostPath` when the receiver resolves as a configured host path, and the
+VM records the remove patch without exposing a mutable host reference.
+
+Consequences:
+- Scripts can delete nested host paths through PatchTx with natural method
+  syntax.
+- Reads after removal observe the transaction tombstone rather than stale host
+  adapter state.
+- A later `set` in the same transaction replaces the tombstone with a value.
+- Rollback-safe multi-patch apply and conflict reporting remain future M11
+  work.

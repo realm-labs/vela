@@ -402,6 +402,10 @@ pub enum InstructionKind {
         segments: Vec<HostPathSegment>,
         value: Register,
     },
+    RemoveHostPath {
+        root: Register,
+        segments: Vec<HostPathSegment>,
+    },
     CallHostMethod {
         dst: Option<Register>,
         root: Register,

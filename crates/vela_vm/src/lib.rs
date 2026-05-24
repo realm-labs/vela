@@ -1623,6 +1623,26 @@ impl Vm {
                     host.tx
                         .push_path(path, value, base_value, instruction.span)?;
                 }
+                InstructionKind::RemoveHostPath { root, segments } => {
+                    let root = expect_host_ref(frame.read(*root)?, "remove_host_path")?;
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    let path = host_path_from_segments(
+                        root,
+                        segments,
+                        &frame,
+                        heap.as_deref(),
+                        &mut symbols,
+                    )?;
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
+                    host.tx.remove_path(path, instruction.span)?;
+                }
                 InstructionKind::CallHostMethod {
                     dst,
                     root,
@@ -2574,7 +2594,7 @@ mod tests {
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol, TypeId};
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
-    use vela_host::{HostValue, MockStateAdapter, PatchOp};
+    use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
 
     #[test]
@@ -5835,6 +5855,65 @@ fn main(player) {
                 HostValue::String("gold".into())
             ]))
         );
+    }
+
+    #[test]
+    fn compiled_source_removes_host_path_through_patch_tx() {
+        let host_ref = player_ref(3);
+        let inventory = FieldId::new(8);
+        let items = FieldId::new(9);
+        let item_key = Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"));
+        let item_path = HostPath::new(host_ref)
+            .field(inventory)
+            .field(items)
+            .key(item_key);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let item_id = "gold";
+    player.inventory.items[item_id].remove();
+    return 1;
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("items", items),
+        )
+        .expect("compile host path remove source");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(item_path.clone(), HostValue::String("gold".into()));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(1)));
+        assert_eq!(
+            adapter.read_path(&item_path),
+            Ok(HostValue::String("gold".into()))
+        );
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].path, item_path);
+        assert_eq!(tx.patches()[0].op, PatchOp::Remove);
+        tx.apply(&mut adapter).expect("apply host remove patch");
+        assert!(matches!(
+            adapter.read_path(&item_path),
+            Err(error)
+                if error.kind == (HostErrorKind::MissingPath {
+                    path: item_path.clone()
+                })
+        ));
     }
 
     #[test]

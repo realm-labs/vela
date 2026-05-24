@@ -17,7 +17,13 @@ pub struct HostObjectSnapshot {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PatchTx {
     patches: Vec<Patch>,
-    overlay: BTreeMap<HostPath, HostValue>,
+    overlay: BTreeMap<HostPath, OverlayEntry>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum OverlayEntry {
+    Value(HostValue),
+    Removed,
 }
 
 impl PatchTx {
@@ -33,7 +39,10 @@ impl PatchTx {
 
     #[must_use]
     pub fn read_overlay(&self, path: &HostPath) -> Option<&HostValue> {
-        self.overlay.get(path)
+        match self.overlay.get(path) {
+            Some(OverlayEntry::Value(value)) => Some(value),
+            Some(OverlayEntry::Removed) | None => None,
+        }
     }
 
     pub fn read_path(
@@ -41,10 +50,13 @@ impl PatchTx {
         adapter: &(impl ScriptStateAdapter + ?Sized),
         path: &HostPath,
     ) -> HostResult<HostValue> {
-        self.overlay
-            .get(path)
-            .cloned()
-            .map_or_else(|| adapter.read_path(path), Ok)
+        match self.overlay.get(path) {
+            Some(OverlayEntry::Value(value)) => Ok(value.clone()),
+            Some(OverlayEntry::Removed) => Err(HostError::new(HostErrorKind::MissingPath {
+                path: path.clone(),
+            })),
+            None => adapter.read_path(path),
+        }
     }
 
     pub fn set_path(
@@ -63,7 +75,7 @@ impl PatchTx {
         base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let current = self.overlay.get(&path).cloned().unwrap_or(base_value);
+        let current = self.overlay_value_or_base(&path, base_value)?;
         let next = add_values(&current, &value)
             .ok_or_else(|| HostError::new(HostErrorKind::InvalidAdd { path: path.clone() }))?;
         self.patches.push(Patch {
@@ -71,7 +83,7 @@ impl PatchTx {
             op: PatchOp::Add(value),
             source_span,
         });
-        self.overlay.insert(path, next);
+        self.overlay.insert(path, OverlayEntry::Value(next));
         Ok(())
     }
 
@@ -82,7 +94,7 @@ impl PatchTx {
         base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let current = self.overlay.get(&path).cloned().unwrap_or(base_value);
+        let current = self.overlay_value_or_base(&path, base_value)?;
         let next = sub_values(&current, &value)
             .ok_or_else(|| HostError::new(HostErrorKind::InvalidSub { path: path.clone() }))?;
         self.patches.push(Patch {
@@ -90,7 +102,7 @@ impl PatchTx {
             op: PatchOp::Sub(value),
             source_span,
         });
-        self.overlay.insert(path, next);
+        self.overlay.insert(path, OverlayEntry::Value(next));
         Ok(())
     }
 
@@ -101,7 +113,7 @@ impl PatchTx {
         base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let current = self.overlay.get(&path).cloned().unwrap_or(base_value);
+        let current = self.overlay_value_or_base(&path, base_value)?;
         let next = push_value(&current, value.clone())
             .ok_or_else(|| HostError::new(HostErrorKind::InvalidPush { path: path.clone() }))?;
         self.patches.push(Patch {
@@ -109,7 +121,17 @@ impl PatchTx {
             op: PatchOp::Push(value),
             source_span,
         });
-        self.overlay.insert(path, next);
+        self.overlay.insert(path, OverlayEntry::Value(next));
+        Ok(())
+    }
+
+    pub fn remove_path(&mut self, path: HostPath, source_span: Option<Span>) -> HostResult<()> {
+        self.patches.push(Patch {
+            path: path.clone(),
+            op: PatchOp::Remove,
+            source_span,
+        });
+        self.overlay.insert(path, OverlayEntry::Removed);
         Ok(())
     }
 
@@ -167,7 +189,8 @@ impl PatchTx {
         source_span: Option<Span>,
     ) -> HostResult<()> {
         if let PatchOp::Set(value) = &op {
-            self.overlay.insert(path.clone(), value.clone());
+            self.overlay
+                .insert(path.clone(), OverlayEntry::Value(value.clone()));
         }
         self.patches.push(Patch {
             path,
@@ -175,5 +198,19 @@ impl PatchTx {
             source_span,
         });
         Ok(())
+    }
+
+    fn overlay_value_or_base(
+        &self,
+        path: &HostPath,
+        base_value: HostValue,
+    ) -> HostResult<HostValue> {
+        match self.overlay.get(path) {
+            Some(OverlayEntry::Value(value)) => Ok(value.clone()),
+            Some(OverlayEntry::Removed) => Err(HostError::new(HostErrorKind::MissingPath {
+                path: path.clone(),
+            })),
+            None => Ok(base_value),
+        }
     }
 }

@@ -127,6 +127,42 @@ fn push_path_uses_previous_overlay_value() {
 }
 
 #[test]
+fn remove_path_records_patch_and_tombstone_overlay() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    let mut tx = PatchTx::new();
+
+    tx.remove_path(path.clone(), None).expect("remove path");
+
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].op, PatchOp::Remove);
+    assert_eq!(tx.read_overlay(&path), None);
+    assert_eq!(
+        tx.read_path(&adapter, &path),
+        Err(crate::HostError::new(HostErrorKind::MissingPath {
+            path: path.clone()
+        }))
+    );
+    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(9)));
+}
+
+#[test]
+fn set_path_overwrites_remove_overlay() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    let mut tx = PatchTx::new();
+
+    tx.remove_path(path.clone(), None).expect("remove path");
+    tx.set_path(path.clone(), HostValue::Int(10), None)
+        .expect("set path");
+
+    assert_eq!(tx.read_path(&adapter, &path), Ok(HostValue::Int(10)));
+    assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(10)));
+}
+
+#[test]
 fn stale_generation_reports_error() {
     let host_ref = player_ref(3);
     let snapshot = HostObjectSnapshot {
@@ -212,6 +248,24 @@ fn apply_commits_push_at_safe_point() {
             HostValue::String("xp".into()),
             HostValue::String("gold".into())
         ]))
+    );
+}
+
+#[test]
+fn apply_commits_remove_at_safe_point() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    let mut tx = PatchTx::new();
+
+    tx.remove_path(path.clone(), None).expect("remove path");
+    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(9)));
+
+    tx.apply(&mut adapter).expect("apply remove transaction");
+
+    assert_eq!(
+        adapter.read_path(&path),
+        Err(crate::HostError::new(HostErrorKind::MissingPath { path }))
     );
 }
 

@@ -1152,6 +1152,10 @@ impl<'ast> Compiler<'ast> {
                     return Ok(dst);
                 }
 
+                if let Some(remove) = self.host_path_remove_call(callee, args)? {
+                    return Ok(remove);
+                }
+
                 if let Some(push) = self.host_path_push_call(callee, args)? {
                     return Ok(push);
                 }
@@ -2134,6 +2138,37 @@ impl<'ast> Compiler<'ast> {
             segments,
             value,
         });
+        let dst = self.alloc_register()?;
+        self.emit_constant_to(dst, Constant::Null);
+        Ok(Some(dst))
+    }
+
+    fn host_path_remove_call(
+        &mut self,
+        callee: &Expr,
+        args: &[Argument],
+    ) -> CompileResult<Option<Register>> {
+        let path = match &callee.kind {
+            ExprKind::Field { base, name } if name == "remove" => {
+                host_field_path(&self.facts.options, base)
+            }
+            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "remove") => {
+                host_field_path_parts(&self.facts.options, &parts[..parts.len() - 1])
+            }
+            _ => None,
+        };
+        let Some(path) = path else {
+            return Ok(None);
+        };
+        reject_named_args(args, "host path remove")?;
+        if !args.is_empty() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "host path remove arity",
+            )));
+        }
+        let root = self.compile_host_path_root(callee.span, path.root)?;
+        let segments = self.compile_host_path_segments(path.segments)?;
+        self.emit(InstructionKind::RemoveHostPath { root, segments });
         let dst = self.alloc_register()?;
         self.emit_constant_to(dst, Constant::Null);
         Ok(Some(dst))
@@ -3820,6 +3855,43 @@ fn main(player) {
                 HostPathSegment::Field(rewards)
             ]
         )));
+    }
+
+    #[test]
+    fn compiler_lowers_host_path_remove_calls() {
+        let inventory = FieldId::new(3);
+        let items = FieldId::new(4);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let item_id = "gold";
+    player.inventory.items[item_id].remove();
+    return 1;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("items", items),
+        )
+        .expect("host path remove should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| match &instruction.kind {
+                    InstructionKind::RemoveHostPath { segments, .. } => matches!(
+                        segments.as_slice(),
+                        [
+                            HostPathSegment::Field(first),
+                            HostPathSegment::Field(second),
+                            HostPathSegment::Value(_)
+                        ] if *first == inventory && *second == items
+                    ),
+                    _ => false,
+                })
+        );
     }
 
     #[test]

@@ -669,6 +669,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - `PatchTx` now supports push patches for array-valued host paths, including
   overlay updates, mock adapter apply, `HostValue::Array` conversion, and
   compiler/VM lowering for `host.path.push(value)` through `PushHostPath`.
+- `PatchTx` now supports remove patches with transaction tombstones, mock
+  adapter apply, and compiler/VM lowering for `host.path.remove()` through
+  `RemoveHostPath`; reads after a remove fail from the overlay instead of
+  falling back to the adapter snapshot.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.
