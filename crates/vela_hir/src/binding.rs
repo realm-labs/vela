@@ -273,7 +273,9 @@ impl<'a> BindingLowerer<'a> {
     }
 
     fn bind_map_entry(&mut self, entry: &MapEntry) {
-        self.bind_expr(&entry.key, PathUsage::Value);
+        if !matches!(entry.key.kind, ExprKind::Path(_)) {
+            self.bind_expr(&entry.key, PathUsage::Value);
+        }
         self.bind_expr(&entry.value, PathUsage::Value);
     }
 

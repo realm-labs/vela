@@ -726,4 +726,20 @@ fn main() { return grant; }
             resolution == &BindingResolution::Import("grant".to_owned())
         }));
     }
+
+    #[test]
+    fn binding_treats_bare_map_keys_as_keys_not_name_reads() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+fn main() {
+    return { exp: 15 };
+}
+"#,
+        ));
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    }
 }

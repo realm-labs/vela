@@ -495,3 +495,27 @@ Consequences:
   type facts, effects, and compiler lowering decisions.
 - Full module-qualified path semantics remain a dedicated resolver follow-up
   instead of being inferred from syntax alone.
+
+## 2026-05-24: Bytecode Compilation Runs Through HIR Diagnostics
+
+Status: Accepted
+
+Context:
+M8 requires the bytecode compiler to consume HIR instead of relying only on raw
+syntax scans. Fully replacing the compiler's AST lowering in one step would
+mix semantic validation, local register allocation, and bytecode emission in a
+large change.
+
+Decision:
+Route source compilation through a single-module `ModuleGraph` before bytecode
+generation. Syntax diagnostics still return as syntax errors. If HIR produces
+semantic diagnostics, compilation stops before bytecode generation. Valid
+sources continue through the existing bytecode lowering path for now.
+
+Consequences:
+- Duplicate declarations and unresolved value names are reported by HIR before
+  code generation.
+- Existing valid compiler and demo behavior remains stable while the compiler
+  is migrated incrementally.
+- The next compiler slice can replace local/script-function scans with HIR
+  declaration and binding facts without changing public entrypoints again.

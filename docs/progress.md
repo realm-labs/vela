@@ -248,8 +248,13 @@ that introduce loops and closures.
   false positives for namespace-style native/module calls.
 - Added HIR tests for local binding resolution, nested `for`/lambda scopes,
   imported names in function bodies, and unresolved-name suggestions.
+- Wired `vela_bytecode` source compilation through the HIR module graph before
+  bytecode generation.
+- Added compiler tests proving HIR diagnostics reject duplicate declarations
+  and unresolved names before bytecode generation, valid program bytecode still
+  compiles, and top-level mutation remains rejected before code generation.
 
 ## Next
 
 - Expand M8 lowering with type-hint metadata, top-level side-effect checks, and
-  compiler integration through HIR.
+  deeper compiler consumption of HIR binding facts.

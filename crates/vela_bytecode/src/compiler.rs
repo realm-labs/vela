@@ -4,6 +4,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, FieldId, SourceId};
+use vela_hir::{ModuleGraph, ModulePath};
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
     MapEntry, MatchExpr, Pattern, RecordPatternField, SourceFile, Stmt, StmtKind, parse_source,
@@ -27,6 +28,7 @@ impl CompileError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompileErrorKind {
     SyntaxDiagnostics(Vec<Diagnostic>),
+    SemanticDiagnostics(Vec<Diagnostic>),
     FunctionNotFound(String),
     UnknownLocal(String),
     InvalidIntLiteral { literal: String, error: String },
@@ -69,7 +71,7 @@ pub fn compile_function_source_with_options(
     function_name: &str,
     options: &CompilerOptions,
 ) -> CompileResult<CodeObject> {
-    let parsed = parse_checked_source(source, text)?;
+    let parsed = parse_semantic_source(source, text)?;
     let script_functions = script_function_names(&parsed);
 
     let function = parsed
@@ -95,7 +97,7 @@ pub fn compile_program_source_with_options(
     text: &str,
     options: &CompilerOptions,
 ) -> CompileResult<Program> {
-    let parsed = parse_checked_source(source, text)?;
+    let parsed = parse_semantic_source(source, text)?;
     let script_functions = script_function_names(&parsed);
     let mut program = Program::new();
 
@@ -117,6 +119,20 @@ fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFil
     } else {
         Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
             parsed.diagnostics,
+        )))
+    }
+}
+
+fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
+    let parsed = parse_checked_source(source, text)?;
+    let mut graph = ModuleGraph::new();
+    graph.add_parsed_source(source, ModulePath::from_dotted("main"), parsed.clone());
+    graph.resolve_imports();
+    if graph.diagnostics().is_empty() {
+        Ok(parsed)
+    } else {
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            graph.diagnostics().to_vec(),
         )))
     }
 }
@@ -733,4 +749,104 @@ fn parse_float(value: &str) -> CompileResult<f64> {
                 error: error.to_string(),
             })
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compiler_rejects_duplicate_declarations_from_hir() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() { return 1; }
+fn main() { return 2; }
+"#,
+        )
+        .expect_err("duplicate function should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_declaration"))
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_unresolved_names_from_hir_with_candidates() {
+        let error = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return plaeyr;
+}
+"#,
+            "main",
+        )
+        .expect_err("unresolved name should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        let unresolved = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::unresolved_name"))
+            .expect("unresolved name diagnostic");
+
+        assert_eq!(unresolved.labels.len(), 1);
+        assert!(unresolved.labels[0].message.contains("player"));
+    }
+
+    #[test]
+    fn compiler_keeps_valid_program_bytecode_equivalent_after_hir_gate() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn add_bonus(value) {
+    return value + 5;
+}
+
+fn main() {
+    let base = 10;
+    return add_bonus(base) * 2;
+}
+"#,
+        )
+        .expect("valid source should compile through HIR gate");
+        let main = program.function("main").expect("main function");
+
+        assert_eq!(main.params, Vec::<String>::new());
+        assert!(!main.instructions.is_empty());
+        assert!(
+            main.instructions.iter().any(|instruction| matches!(
+                instruction.kind,
+                InstructionKind::CallFunction { .. }
+            ))
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_top_level_mutation_as_syntax_before_codegen() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+player.level = 10;
+fn main(player) { return player.level; }
+"#,
+        )
+        .expect_err("top-level mutation should not reach bytecode generation");
+
+        let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
+            panic!("expected syntax diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("expected item"))
+        );
+    }
 }
