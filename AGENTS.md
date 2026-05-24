@@ -42,6 +42,13 @@ Prefer a runnable vertical slice over a large incomplete subsystem. The most imp
 script source -> bytecode -> VM -> HostRef/HostPath/PatchTx -> host apply
 ```
 
+Keep implementation structure modular. Do not pile large unrelated logic into a
+single file such as `lib.rs`; split code by responsibility into focused modules
+that match the crate boundary and architecture documents. For example, syntax
+work should separate lexer, tokens, parser, AST/CST, diagnostics, and tests when
+those pieces become non-trivial. Add a new module when it clarifies ownership,
+keeps files reviewable, or prevents unrelated concepts from sharing one file.
+
 ## Validation Commands
 
 Use these as the default full validation target:
