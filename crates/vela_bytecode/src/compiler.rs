@@ -5,8 +5,8 @@ use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, SourceId};
 use vela_syntax::{
-    BinaryOp, Block, Expr, ExprKind, FunctionItem, ItemKind, Literal, SourceFile, Stmt, StmtKind,
-    parse_source,
+    BinaryOp, Block, Expr, ExprKind, FunctionItem, ItemKind, Literal, MapEntry, SourceFile, Stmt,
+    StmtKind, parse_source,
 };
 
 use crate::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
@@ -215,6 +215,24 @@ impl<'ast> Compiler<'ast> {
                     self.emit_constant(Constant::Null)
                 }
             }
+            ExprKind::Array(items) => {
+                let elements = items
+                    .iter()
+                    .map(|item| self.compile_expr(item))
+                    .collect::<CompileResult<Vec<_>>>()?;
+                let dst = self.alloc_register()?;
+                self.emit(InstructionKind::MakeArray { dst, elements });
+                Ok(dst)
+            }
+            ExprKind::Map(entries) => {
+                let entries = entries
+                    .iter()
+                    .map(|entry| self.compile_map_entry(entry))
+                    .collect::<CompileResult<Vec<_>>>()?;
+                let dst = self.alloc_register()?;
+                self.emit(InstructionKind::MakeMap { dst, entries });
+                Ok(dst)
+            }
             ExprKind::Assign { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment expression",
             ))),
@@ -224,8 +242,6 @@ impl<'ast> Compiler<'ast> {
             | ExprKind::Field { .. }
             | ExprKind::Index { .. }
             | ExprKind::Try(_)
-            | ExprKind::Array(_)
-            | ExprKind::Map(_)
             | ExprKind::Record { .. }
             | ExprKind::Lambda { .. }
             | ExprKind::If(_)
@@ -283,6 +299,12 @@ impl<'ast> Compiler<'ast> {
         Ok(dst)
     }
 
+    fn compile_map_entry(&mut self, entry: &MapEntry) -> CompileResult<(String, Register)> {
+        let key = map_key_name(&entry.key)?;
+        let value = self.compile_expr(&entry.value)?;
+        Ok((key, value))
+    }
+
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {
         let dst = self.alloc_register()?;
         let constant = self.code.push_constant(constant);
@@ -309,6 +331,18 @@ fn callable_name(callee: &Expr) -> CompileResult<String> {
         ExprKind::Path(path) => Ok(path.join(".")),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "callable expression",
+        ))),
+    }
+}
+
+fn map_key_name(key: &Expr) -> CompileResult<String> {
+    match &key.kind {
+        ExprKind::Literal(Literal::String(value))
+        | ExprKind::Literal(Literal::Int(value))
+        | ExprKind::Literal(Literal::Float(value)) => Ok(value.clone()),
+        ExprKind::Path(path) => Ok(path.join(".")),
+        _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "map key",
         ))),
     }
 }

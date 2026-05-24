@@ -221,6 +221,20 @@ impl Vm {
                     let result = self.execute(function, Some(program), &values)?;
                     frame.write(*dst, result)?;
                 }
+                InstructionKind::MakeArray { dst, elements } => {
+                    let values = elements
+                        .iter()
+                        .map(|register| frame.read(*register).cloned())
+                        .collect::<VmResult<Vec<_>>>()?;
+                    frame.write(*dst, Value::Array(values))?;
+                }
+                InstructionKind::MakeMap { dst, entries } => {
+                    let mut values = BTreeMap::new();
+                    for (key, register) in entries {
+                        values.insert(key.clone(), frame.read(*register)?.clone());
+                    }
+                    frame.write(*dst, Value::Map(values))?;
+                }
                 InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
             }
         }
@@ -318,6 +332,7 @@ fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
     use vela_bytecode::compiler::{compile_function_source, compile_program_source};
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::SourceId;
@@ -484,5 +499,39 @@ fn double(value) {
             Vm::new().run_program(&program, "double", &[Value::Int(9)]),
             Ok(Value::Int(18))
         );
+    }
+
+    #[test]
+    fn runs_compiled_array_literal_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            "fn main() { return [1, 2 + 3, \"gold\"]; }",
+            "main",
+        )
+        .expect("compile array literal source");
+
+        assert_eq!(
+            Vm::new().run(&code),
+            Ok(Value::Array(vec![
+                Value::Int(1),
+                Value::Int(5),
+                Value::String("gold".into())
+            ]))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_map_literal_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            "fn main() { return {\"level\": 2, exp: 10 + 5}; }",
+            "main",
+        )
+        .expect("compile map literal source");
+        let mut expected = BTreeMap::new();
+        expected.insert("level".into(), Value::Int(2));
+        expected.insert("exp".into(), Value::Int(15));
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Map(expected)));
     }
 }

@@ -159,6 +159,14 @@ pub enum InstructionKind {
         name: String,
         args: Vec<Register>,
     },
+    MakeArray {
+        dst: Register,
+        elements: Vec<Register>,
+    },
+    MakeMap {
+        dst: Register,
+        entries: Vec<(String, Register)>,
+    },
     Return {
         src: Register,
     },

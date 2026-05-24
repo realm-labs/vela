@@ -53,8 +53,11 @@ M2: Minimal Bytecode VM Loop.
   function calls.
 - Added compiled-source tests for calling one script function from another and
   passing arguments into a program entrypoint.
+- Added `MakeArray` and `MakeMap` bytecode operations, compiler lowering for
+  array/map literals, and VM tests that return array/map values from compiled
+  source.
 
 ## Next
 
-- Extend the compiler and VM value model with arrays/maps as executable
-  bytecode operations.
+- Finish M2 control-flow lowering by compiling `if/else` statements and
+  expressions into branch bytecode.
