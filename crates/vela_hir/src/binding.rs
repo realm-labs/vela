@@ -54,12 +54,29 @@ impl BindingMap {
         self.locals.get(&local)
     }
 
+    pub fn locals(&self) -> impl Iterator<Item = &LocalBinding> {
+        self.locals.values()
+    }
+
     #[must_use]
     pub fn locals_named(&self, name: &str) -> &[HirLocalId] {
         self.locals_by_name
             .get(name)
             .map(Vec::as_slice)
             .unwrap_or(&[])
+    }
+
+    #[must_use]
+    pub fn local_named_at(
+        &self,
+        name: &str,
+        kind: LocalBindingKind,
+        span: Span,
+    ) -> Option<HirLocalId> {
+        self.locals_named(name).iter().copied().find(|local| {
+            self.local(*local)
+                .is_some_and(|binding| binding.kind == kind && binding.span == span)
+        })
     }
 
     #[must_use]
@@ -81,6 +98,15 @@ impl BindingMap {
         self.resolutions
             .iter()
             .map(|(expression, resolution)| (*expression, resolution))
+    }
+
+    #[must_use]
+    pub fn resolution_at_span(&self, span: Span) -> Option<&BindingResolution> {
+        let expression = self
+            .expressions
+            .iter()
+            .find_map(|(id, expression)| (expression.span == span).then_some(*id))?;
+        self.resolution(expression)
     }
 }
 

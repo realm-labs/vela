@@ -3,8 +3,11 @@
 use std::collections::{BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_common::{Diagnostic, FieldId, SourceId};
-use vela_hir::{DeclarationKind, FunctionSignature, HirDeclId, ModuleGraph, ModuleId, ModulePath};
+use vela_common::{Diagnostic, FieldId, SourceId, Span};
+use vela_hir::{
+    BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
+    LocalBindingKind, ModuleGraph, ModuleId, ModulePath,
+};
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
     MapEntry, MatchExpr, Pattern, RecordPatternField, SourceFile, Stmt, StmtKind, parse_source,
@@ -73,11 +76,18 @@ pub fn compile_function_source_with_options(
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
-    let (function, signature) = semantic.function(function_name).ok_or_else(|| {
+    let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
     })?;
 
-    Compiler::new(function, signature, script_functions, options.clone())?.compile()
+    Compiler::new(
+        function,
+        signature,
+        bindings,
+        script_functions,
+        options.clone(),
+    )?
+    .compile()
 }
 
 pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Program> {
@@ -94,13 +104,14 @@ pub fn compile_program_source_with_options(
     let mut program = Program::new();
 
     for name in &script_functions {
-        let (function, signature) = semantic
+        let (function, signature, bindings) = semantic
             .function(name)
             .expect("HIR function declarations come from parsed function items");
         program.insert_function(
             Compiler::new(
                 function,
                 signature,
+                bindings,
                 script_functions.clone(),
                 options.clone(),
             )?
@@ -129,14 +140,15 @@ struct SemanticSource {
 }
 
 impl SemanticSource {
-    fn function(&self, name: &str) -> Option<(&FunctionItem, &FunctionSignature)> {
+    fn function(&self, name: &str) -> Option<(&FunctionItem, &FunctionSignature, &BindingMap)> {
         let declaration = self.function_declaration(name)?;
         let signature = self.graph.function_signature(declaration)?;
+        let bindings = self.graph.bindings(declaration)?;
         let function = self.parsed.items.iter().find_map(|item| match &item.kind {
             ItemKind::Function(function) if function.name == name => Some(function),
             _ => None,
         })?;
-        Some((function, signature))
+        Some((function, signature, bindings))
     }
 
     fn script_function_names(&self) -> BTreeSet<String> {
@@ -181,6 +193,8 @@ fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<Semantic
 struct Compiler<'ast> {
     code: CodeObject,
     locals: HashMap<String, Register>,
+    hir_locals: HashMap<HirLocalId, Register>,
+    bindings: &'ast BindingMap,
     next_register: u16,
     body: &'ast Block,
     script_functions: BTreeSet<String>,
@@ -191,6 +205,7 @@ impl<'ast> Compiler<'ast> {
     fn new(
         function: &'ast FunctionItem,
         signature: &FunctionSignature,
+        bindings: &'ast BindingMap,
         script_functions: BTreeSet<String>,
         options: CompilerOptions,
     ) -> CompileResult<Self> {
@@ -202,15 +217,26 @@ impl<'ast> Compiler<'ast> {
             .map(|param| param.name.clone())
             .collect::<Vec<_>>();
         let mut locals = HashMap::new();
+        let mut hir_locals = HashMap::new();
+        let parameter_locals = bindings
+            .locals()
+            .filter(|local| local.kind == LocalBindingKind::Parameter)
+            .map(|local| local.id)
+            .collect::<Vec<_>>();
         for (index, param) in param_names.iter().enumerate() {
             let register = u16::try_from(index)
                 .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
             locals.insert(param.clone(), Register(register));
+            if let Some(local) = parameter_locals.get(index).copied() {
+                hir_locals.insert(local, Register(register));
+            }
         }
 
         Ok(Self {
             code: CodeObject::new(function.name.clone(), 0).with_params(param_names),
             locals,
+            hir_locals,
+            bindings,
             next_register: param_count,
             body: &function.body,
             script_functions,
@@ -246,6 +272,12 @@ impl<'ast> Compiler<'ast> {
                     self.emit_constant(Constant::Null)?
                 };
                 self.locals.insert(name.clone(), register);
+                if let Some(local) =
+                    self.bindings
+                        .local_named_at(name, LocalBindingKind::Let, stmt.span)
+                {
+                    self.hir_locals.insert(local, register);
+                }
                 Ok(false)
             }
             StmtKind::Return(value) => {
@@ -281,12 +313,8 @@ impl<'ast> Compiler<'ast> {
     fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(literal),
-            ExprKind::Path(path) if path.len() == 1 => {
-                self.locals.get(&path[0]).copied().ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnknownLocal(path[0].clone()))
-                })
-            }
-            ExprKind::Path(path) => self.compile_path_access(path),
+            ExprKind::Path(path) if path.len() == 1 => self.compile_local_path(expr.span, path),
+            ExprKind::Path(path) => self.compile_path_access(expr.span, path),
             ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
             ExprKind::Field { base, name } => {
                 let root = self.compile_expr(base)?;
@@ -425,16 +453,34 @@ impl<'ast> Compiler<'ast> {
         Ok(())
     }
 
-    fn compile_path_access(&mut self, path: &[String]) -> CompileResult<Register> {
+    fn compile_local_path(&self, span: Span, path: &[String]) -> CompileResult<Register> {
+        let [name] = path else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "path expression",
+            )));
+        };
+        self.local_register_at_span(span, name)
+    }
+
+    fn local_register_at_span(&self, span: Span, name: &str) -> CompileResult<Register> {
+        if let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(span)
+            && let Some(register) = self.hir_locals.get(local).copied()
+        {
+            return Ok(register);
+        }
+        self.locals
+            .get(name)
+            .copied()
+            .ok_or_else(|| CompileError::new(CompileErrorKind::UnknownLocal(name.to_owned())))
+    }
+
+    fn compile_path_access(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
         if path.len() != 2 {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "path expression",
             )));
         }
-        let root =
-            self.locals.get(&path[0]).copied().ok_or_else(|| {
-                CompileError::new(CompileErrorKind::UnknownLocal(path[0].clone()))
-            })?;
+        let root = self.local_register_at_span(span, &path[0])?;
         let dst = self.alloc_register()?;
         if let Some(field) = self.options.host_fields.get(&path[1]).copied() {
             self.emit(InstructionKind::GetHostField { dst, root, field });
@@ -458,23 +504,24 @@ impl<'ast> Compiler<'ast> {
                 let field = self.host_field(name)?;
                 Ok((root, field))
             }
-            ExprKind::Path(path) => self.compile_host_path_parts(path),
+            ExprKind::Path(path) => self.compile_host_path_parts(target.span, path),
             _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment target",
             ))),
         }
     }
 
-    fn compile_host_path_parts(&mut self, path: &[String]) -> CompileResult<(Register, FieldId)> {
+    fn compile_host_path_parts(
+        &mut self,
+        span: Span,
+        path: &[String],
+    ) -> CompileResult<(Register, FieldId)> {
         if path.len() != 2 {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "host path",
             )));
         }
-        let root =
-            self.locals.get(&path[0]).copied().ok_or_else(|| {
-                CompileError::new(CompileErrorKind::UnknownLocal(path[0].clone()))
-            })?;
+        let root = self.local_register_at_span(span, &path[0])?;
         let field = self.host_field(&path[1])?;
         Ok((root, field))
     }
@@ -888,6 +935,35 @@ fn main(player: game.Player, amount: int) -> int {
         .expect("typed params should compile through HIR signature metadata");
 
         assert_eq!(code.params, ["player", "amount"]);
+    }
+
+    #[test]
+    fn compiler_uses_hir_local_bindings_for_shadowed_registers() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 1;
+    {
+        let value = 2;
+    }
+    return value;
+}
+"#,
+            "main",
+        )
+        .expect("shadowed locals should compile through HIR bindings");
+
+        let returned = code
+            .instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::Return { src } => Some(src),
+                _ => None,
+            })
+            .expect("return instruction");
+
+        assert_eq!(returned, Register(0));
     }
 
     #[test]

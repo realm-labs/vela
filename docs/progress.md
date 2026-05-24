@@ -283,7 +283,15 @@ that introduce loops and closures.
   function discovery and emitted `CodeObject` parameter names.
 - Added compiler tests proving HIR signatures drive code object params and impl
   methods are not exported as top-level script functions.
+- Exposed focused HIR binding-map lookups for local bindings and expression
+  span resolutions.
+- Bytecode local register allocation now records HIR local IDs and resolves
+  local/path reads through HIR binding facts before falling back to legacy name
+  lookup.
+- Added compiler regression coverage proving nested shadowed locals return the
+  HIR-resolved outer binding instead of the most recent same-name register.
 
 ## Next
 
-- Deepen compiler consumption of HIR binding maps for local/register lowering.
+- Continue M8 compiler migration by replacing remaining syntax-only lowering
+  decisions with HIR expression and declaration facts.

@@ -614,3 +614,25 @@ Consequences:
   as diagnostics and tooling.
 - Body bytecode generation can migrate to HIR binding maps incrementally
   without changing the public source compilation entrypoints again.
+
+## 2026-05-24: Bytecode Local Lookup Prefers HIR Binding IDs
+
+Status: Accepted
+
+Context:
+The initial compiler used a flat string-to-register map for locals, which was
+enough for early examples but could not represent nested shadowing correctly.
+M8 binding maps now provide stable local IDs and expression-to-binding
+resolutions.
+
+Decision:
+Keep the existing AST body lowering, but allocate and look up local registers by
+HIR local ID when binding facts are available. Expression path lowering consults
+HIR span-based binding resolutions before using the legacy name map fallback.
+
+Consequences:
+- Nested shadowed locals compile against the semantic binding chosen by HIR.
+- Existing bytecode lowering remains incremental and compatible with current
+  examples.
+- Later HIR expression lowering can replace the span bridge without changing
+  the register allocation model again.
