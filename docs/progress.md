@@ -498,6 +498,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added array higher-order script methods `map`, `filter`, `find`, `any`,
   `all`, and `count` backed by script closures, preserving VM budgets, host
   context, and managed-heap roots during callback execution.
+- Added map higher-order script methods `map_values` and `filter`, plus
+  value-predicate `any`, `all`, and `count`, with receiver-category dispatch
+  shared with array methods in inline and managed-heap execution.
 
 ## Next
 

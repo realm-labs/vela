@@ -4,6 +4,7 @@ use vela_bytecode::Program;
 
 use crate::array_methods::{self, MethodRuntime};
 use crate::heap::{GcRef, HeapValue};
+use crate::map_methods;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
     value_from_heap_slot, value_to_heap_slot,
@@ -71,18 +72,35 @@ pub(crate) fn call_method(
                 caller_roots: &caller_roots,
             },
         ),
-        "filter" => array_methods::filter(
-            receiver,
-            args,
-            MethodRuntime {
-                vm,
-                program,
-                host,
-                heap: heap.as_deref_mut(),
-                budget: budget.as_deref_mut(),
-                caller_roots: &caller_roots,
-            },
-        ),
+        "filter" => {
+            if map_methods::is_map(receiver, heap.as_deref()) {
+                map_methods::filter(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else {
+                array_methods::filter(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            }
+        }
         "find" => array_methods::find(
             receiver,
             args,
@@ -95,33 +113,97 @@ pub(crate) fn call_method(
                 caller_roots: &caller_roots,
             },
         ),
-        "any" => array_methods::any(
-            receiver,
-            args,
-            MethodRuntime {
-                vm,
-                program,
-                host: host.as_deref_mut(),
-                heap: heap.as_deref_mut(),
-                budget: budget.as_deref_mut(),
-                caller_roots: &caller_roots,
-            },
-        )
+        "any" => {
+            if map_methods::is_map(receiver, heap.as_deref()) {
+                map_methods::any(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else {
+                array_methods::any(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            }
+        }
         .map(Value::Bool),
-        "all" => array_methods::all(
-            receiver,
-            args,
-            MethodRuntime {
-                vm,
-                program,
-                host: host.as_deref_mut(),
-                heap: heap.as_deref_mut(),
-                budget: budget.as_deref_mut(),
-                caller_roots: &caller_roots,
-            },
-        )
+        "all" => {
+            if map_methods::is_map(receiver, heap.as_deref()) {
+                map_methods::all(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else {
+                array_methods::all(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            }
+        }
         .map(Value::Bool),
-        "count" => array_methods::count(
+        "count" => {
+            if map_methods::is_map(receiver, heap.as_deref()) {
+                map_methods::count(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else {
+                array_methods::count(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            }
+        }
+        .map(Value::Int),
+        "map_values" => map_methods::map_values(
             receiver,
             args,
             MethodRuntime {
@@ -132,8 +214,7 @@ pub(crate) fn call_method(
                 budget: budget.as_deref_mut(),
                 caller_roots: &caller_roots,
             },
-        )
-        .map(Value::Int),
+        ),
         "has" => map_has(receiver, args, heap.as_deref()).map(Value::Bool),
         "get" => map_get(receiver, args, heap.as_deref()),
         "get_or" => map_get_or(receiver, args, heap.as_deref()),

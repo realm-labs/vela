@@ -1509,3 +1509,27 @@ Consequences:
   roots or accumulated callback results during nested calls.
 - The VM facade only exposes a small closure-call helper; array method behavior
   stays isolated from `lib.rs`.
+
+## 2026-05-24: Map Higher-Order Methods Dispatch By Receiver Category
+
+Status: Accepted
+
+Context:
+M13 requires map methods with lambdas, including `map_values` and `filter`.
+Some method names such as `filter`, `any`, `all`, and `count` are shared with
+arrays, so dispatch must select behavior from the receiver category without
+falling back to unsafe host mutation or namespace-native glue.
+
+Decision:
+Add a focused `map_methods` VM module. `map.map_values(|v| ...)` transforms map
+values while preserving keys, `map.filter(|k, v| ...)` keeps entries by
+predicate, and `map.any/all/count(|v| ...)` evaluate predicates over values.
+`script_methods` routes shared higher-order names to map or array
+implementations by inspecting inline or heap-backed receiver shape.
+
+Consequences:
+- Maps now support lambda-based transformations in both inline and managed-heap
+  execution.
+- Shared method names stay explicit and type-directed instead of relying on
+  native namespaces or host state.
+- Map callback logic remains separate from the general method-dispatch module.

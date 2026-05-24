@@ -4,6 +4,7 @@ mod array_methods;
 pub mod heap;
 mod indexing;
 mod iteration;
+mod map_methods;
 mod ranges;
 mod record_fields;
 mod script_methods;
