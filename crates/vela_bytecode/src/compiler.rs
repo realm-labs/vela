@@ -3,10 +3,10 @@
 use std::collections::{BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_common::{Diagnostic, SourceId};
+use vela_common::{Diagnostic, FieldId, SourceId};
 use vela_syntax::{
-    BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal, MapEntry,
-    SourceFile, Stmt, StmtKind, parse_source,
+    AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
+    MapEntry, SourceFile, Stmt, StmtKind, parse_source,
 };
 
 use crate::{
@@ -37,10 +37,37 @@ pub enum CompileErrorKind {
 
 pub type CompileResult<T> = Result<T, CompileError>;
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CompilerOptions {
+    host_fields: HashMap<String, FieldId>,
+}
+
+impl CompilerOptions {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn with_host_field(mut self, name: impl Into<String>, field: FieldId) -> Self {
+        self.host_fields.insert(name.into(), field);
+        self
+    }
+}
+
 pub fn compile_function_source(
     source: SourceId,
     text: &str,
     function_name: &str,
+) -> CompileResult<CodeObject> {
+    compile_function_source_with_options(source, text, function_name, &CompilerOptions::default())
+}
+
+pub fn compile_function_source_with_options(
+    source: SourceId,
+    text: &str,
+    function_name: &str,
+    options: &CompilerOptions,
 ) -> CompileResult<CodeObject> {
     let parsed = parse_checked_source(source, text)?;
     let script_functions = script_function_names(&parsed);
@@ -56,17 +83,27 @@ pub fn compile_function_source(
             CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
         })?;
 
-    Compiler::new(function, script_functions)?.compile()
+    Compiler::new(function, script_functions, options.clone())?.compile()
 }
 
 pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Program> {
+    compile_program_source_with_options(source, text, &CompilerOptions::default())
+}
+
+pub fn compile_program_source_with_options(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+) -> CompileResult<Program> {
     let parsed = parse_checked_source(source, text)?;
     let script_functions = script_function_names(&parsed);
     let mut program = Program::new();
 
     for item in &parsed.items {
         if let ItemKind::Function(function) = &item.kind {
-            program.insert_function(Compiler::new(function, script_functions.clone())?.compile()?);
+            program.insert_function(
+                Compiler::new(function, script_functions.clone(), options.clone())?.compile()?,
+            );
         }
     }
 
@@ -101,12 +138,14 @@ struct Compiler<'ast> {
     next_register: u16,
     body: &'ast Block,
     script_functions: BTreeSet<String>,
+    options: CompilerOptions,
 }
 
 impl<'ast> Compiler<'ast> {
     fn new(
         function: &'ast FunctionItem,
         script_functions: BTreeSet<String>,
+        options: CompilerOptions,
     ) -> CompileResult<Self> {
         let param_count = u16::try_from(function.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
@@ -123,6 +162,7 @@ impl<'ast> Compiler<'ast> {
             next_register: param_count,
             body: &function.body,
             script_functions,
+            options,
         })
     }
 
@@ -169,6 +209,10 @@ impl<'ast> Compiler<'ast> {
                 if let ExprKind::If(if_expr) = &expr.kind {
                     return self.compile_if(if_expr);
                 }
+                if let ExprKind::Assign { .. } = &expr.kind {
+                    self.compile_assignment(expr)?;
+                    return Ok(false);
+                }
                 self.compile_expr(expr)?;
                 Ok(false)
             }
@@ -187,7 +231,15 @@ impl<'ast> Compiler<'ast> {
                     CompileError::new(CompileErrorKind::UnknownLocal(path[0].clone()))
                 })
             }
+            ExprKind::Path(path) => self.compile_host_path(path),
             ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
+            ExprKind::Field { base, name } => {
+                let root = self.compile_expr(base)?;
+                let field = self.host_field(name)?;
+                let dst = self.alloc_register()?;
+                self.emit(InstructionKind::GetHostField { dst, root, field });
+                Ok(dst)
+            }
             ExprKind::Call { callee, args } => {
                 let name = callable_name(callee)?;
                 let arg_registers = args
@@ -251,10 +303,8 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Assign { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment expression",
             ))),
-            ExprKind::Path(_)
-            | ExprKind::SelfValue
+            ExprKind::SelfValue
             | ExprKind::Unary { .. }
-            | ExprKind::Field { .. }
             | ExprKind::Index { .. }
             | ExprKind::Try(_)
             | ExprKind::Record { .. }
@@ -264,6 +314,68 @@ impl<'ast> Compiler<'ast> {
                 "expression",
             ))),
         }
+    }
+
+    fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<()> {
+        let ExprKind::Assign { op, target, value } = &expr.kind else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "assignment statement",
+            )));
+        };
+        let (root, field) = self.compile_host_assignment_target(target)?;
+        let src = self.compile_expr(value)?;
+        match op {
+            AssignOp::Set => self.emit(InstructionKind::SetHostField { root, field, src }),
+            AssignOp::Add => self.emit(InstructionKind::AddHostField {
+                root,
+                field,
+                rhs: src,
+            }),
+            AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "compound assignment operator",
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_host_path(&mut self, path: &[String]) -> CompileResult<Register> {
+        let (root, field) = self.compile_host_path_parts(path)?;
+        let dst = self.alloc_register()?;
+        self.emit(InstructionKind::GetHostField { dst, root, field });
+        Ok(dst)
+    }
+
+    fn compile_host_assignment_target(
+        &mut self,
+        target: &Expr,
+    ) -> CompileResult<(Register, FieldId)> {
+        match &target.kind {
+            ExprKind::Field { base, name } => {
+                let root = self.compile_expr(base)?;
+                let field = self.host_field(name)?;
+                Ok((root, field))
+            }
+            ExprKind::Path(path) => self.compile_host_path_parts(path),
+            _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "assignment target",
+            ))),
+        }
+    }
+
+    fn compile_host_path_parts(&mut self, path: &[String]) -> CompileResult<(Register, FieldId)> {
+        if path.len() != 2 {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "host path",
+            )));
+        }
+        let root =
+            self.locals.get(&path[0]).copied().ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnknownLocal(path[0].clone()))
+            })?;
+        let field = self.host_field(&path[1])?;
+        Ok((root, field))
     }
 
     fn compile_literal(&mut self, literal: &Literal) -> CompileResult<Register> {
@@ -338,6 +450,14 @@ impl<'ast> Compiler<'ast> {
         let key = map_key_name(&entry.key)?;
         let value = self.compile_expr(&entry.value)?;
         Ok((key, value))
+    }
+
+    fn host_field(&self, name: &str) -> CompileResult<FieldId> {
+        self.options
+            .host_fields
+            .get(name)
+            .copied()
+            .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("host field")))
     }
 
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {

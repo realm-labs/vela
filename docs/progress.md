@@ -82,8 +82,12 @@ M3: HostRef And PatchTx.
 - Added VM tests that host reads go through `PatchTx`, host writes record
   patches without mutating adapter state until apply, `+=` records `Add`, and
   stale generations fail at the VM host boundary.
+- Added compiler host-field bindings that lower parsed source such as
+  `player.level = 10`, `player.level += 1`, and `return player.level` into
+  host field bytecode.
+- Added an end-to-end source test for script host mutation through
+  parser -> bytecode -> VM -> `PatchTx` -> safe-point apply.
 
 ## Next
 
-- Lower parsed host-style field assignment expressions into host bytecode.
 - Add `CallHostMethod` VM support for controlled host method calls.

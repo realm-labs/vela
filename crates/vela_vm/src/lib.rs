@@ -494,7 +494,10 @@ fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
-    use vela_bytecode::compiler::{compile_function_source, compile_program_source};
+    use vela_bytecode::compiler::{
+        CompilerOptions, compile_function_source, compile_program_source,
+        compile_program_source_with_options,
+    };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
     use vela_host::{HostValue, MockStateAdapter, PatchOp};
@@ -908,6 +911,52 @@ fn main() {
                 expected: 2,
                 actual: 3
             })
+        );
+    }
+
+    #[test]
+    fn compiled_source_mutates_host_field_through_patch_tx() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.level = 10;
+    player.level += 1;
+    return player.level;
+}
+"#,
+            &CompilerOptions::new().with_host_field("level", level_field()),
+        )
+        .expect("compile host field source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(11)));
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(9))
+        );
+        assert_eq!(tx.patches().len(), 2);
+        assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
+        assert_eq!(tx.patches()[1].op, PatchOp::Add(HostValue::Int(1)));
+        tx.apply(&mut adapter).expect("apply patches");
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(11))
         );
     }
 
