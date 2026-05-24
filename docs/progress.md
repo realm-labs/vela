@@ -2,7 +2,8 @@
 
 ## Current Milestone
 
-M0-M6 runnable prototype loop complete. Next milestone: M7 GC.
+M0-M6 runnable prototype loop complete. Current milestone: M7 runtime safety,
+budgets, and GC.
 
 ## Completed
 
@@ -158,4 +159,8 @@ M0-M6 runnable prototype loop complete. Next milestone: M7 GC.
 
 ## Next
 
-- Begin M7 GC planning and implementation when the next milestone starts.
+- Start M7 with `ExecutionBudget` and budget charging in the VM dispatch loop.
+- Add call-depth and patch-count limit tests before adding new looping
+  execution paths.
+- Plan the non-moving heap and root model for strings, arrays, maps, records,
+  enums, closures, and temporary VM values.

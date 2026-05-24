@@ -58,287 +58,396 @@ Engineering principles:
 The following goal can be used as a persistent implementation target:
 
 ```text
-/goal Continue implementing a Hot Reload First dynamic scripting language prototype in the current Rust repository until the runnable loop from M0 through M6 is complete: script source can be parsed, compiled into register bytecode, executed in the VM, read and write Rust host state through HostRef/HostPath/PatchTx, use TypeRegistry and reflect APIs for controlled reflection, and replace function-level CodeObject values through hot reload. Completion must be validated by cargo fmt --all -- --check, cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace, and at least one examples/game_server_demo script run. Maintain these constraints throughout implementation: the script language has no generics; scripts never hold real Rust &mut references; host mutation must enter PatchTx; reflection can only query and perform controlled reads/writes/calls and cannot monkey patch type structure; the first phase does not implement JIT, async, moving GC, or a complex LSP; implementation must be split into focused modules that match crate responsibilities instead of accumulating large unrelated code in one file. Add tests and update docs/progress.md after every verifiable step. Commit at appropriate verified checkpoints using Conventional Commit messages, keeping commits small and coherent so the working tree does not accumulate large unrelated changes. At the start of each iteration, read docs/goal.md, docs/architecture.md, docs/progress.md, and the current failing tests, then pick the smallest verifiable task. If tests fail, prioritize the failures. If the design is unclear, record the assumption and rationale in docs/decisions.md and continue. If progress is blocked under the current constraints, stop and document the blocker, evidence, attempted approaches, and required user decision in docs/blocked.md.
+/goal Continue implementing Vela from the completed M0-M6 runnable prototype into a complete Hot Reload First dynamic scripting language for game server logic. Complete means the full planned language surface in docs/grammar.ebnf can be resolved, analyzed, compiled, and executed; script heap values are managed by a budgeted non-moving GC; scripts mutate host state only through HostRef, HostPath, PathProxy, and PatchTx; TypeRegistry and reflection cover types, modules, functions, fields, methods, traits, variants, attributes, and permissions; Rust hosts can register schemas and native functions through a stable Engine API and derive macros; hot reload performs function, schema, and effect ABI checks at safe points; the standard library covers collections, Option/Result-style propagation, math, time/context, and gameplay helpers; and examples/game_server_demo proves level-up, monster-kill rewards, quest progress, reflection, and hot reload workflows. Maintain these constraints throughout implementation: the script language has no generics; scripts never hold real Rust &mut references; host mutation must enter PatchTx; reflection can only query and perform controlled reads/writes/calls and cannot monkey patch type structure; the first complete interpreter does not implement JIT, script async/coroutines, moving GC, or a full LSP. Every milestone must be runnable, tested, documented in docs/progress.md, and validated by the relevant subset of cargo fmt --all -- --check, cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace, demo script runs, and benchmark/fuzz targets once those exist. Commit appropriate verified checkpoints using Conventional Commit messages.
 ```
 
 ## Milestones
 
-### M0: Workspace And Infrastructure
+These milestones start after the completed M0-M6 prototype. The completed
+history remains in [progress.md](progress.md); the plan below only tracks the
+remaining work needed for the complete non-JIT, non-async interpreter.
 
-Goal: the repository builds, tests, and formats.
+### M7: Runtime Safety, Budgets, And GC
 
-Deliverables:
-
-```text
-Cargo workspace
-crate skeleton
-common ID types
-Symbol interner
-Span and SourceId
-basic Diagnostic structure
-CI command documentation
-```
-
-Acceptance:
-
-```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-```
-
-### M1: Syntax Frontend
-
-Goal: parse the minimal language.
+Goal: script execution is bounded, and script heap objects are reclaimed
+without moving references or owning host state.
 
 Scope:
 
 ```text
-let
-fn
-pub fn
-if/else
-for-in
-return
-struct
-enum
-trait declaration placeholder
-field access
-method call
-array/map literals
-lambda
-attribute
+ExecutionBudget for instruction count, memory bytes, call depth, patch count
+budget charging in VM dispatch, native calls, reflection, and host patching
+script heap with stable GcRef handles
+non-moving mark-sweep collector
+root stack and call frame roots
+tracing for string, array, map, set, record, enum, closure, and upvalue objects
+step_gc pacing and full collection
+host refs treated as external handles, not owned GC objects
 ```
 
 Acceptance:
 
 ```text
-parser snapshot tests cover core syntax
-error recovery reports source spans
+recursive scripts stop at max_call_depth
+infinite loops stop at instruction budget once loops exist
+patch floods stop at max_patches
+live script objects survive GC
+cyclic script objects are reclaimed
+host refs are never traced as Rust-owned objects
 ```
 
-### M2: Minimal Bytecode VM Loop
+### M8: Resolver, HIR, And Module Graph
 
-Goal: script functions can execute basic logic.
+Goal: parsed source lowers into a stable semantic representation shared by the
+compiler, diagnostics, hot reload, and future tooling.
 
 Scope:
 
 ```text
-Value
-CallFrame
-register bytecode
-arithmetic
-comparison
-branching
-function call
-array/map
-native function call
+vela_hir crate
+module graph and use/import resolution
+declaration index for functions, structs, enums, traits, impls, consts
+SymbolTable and BindingMap
+stable node IDs and expression IDs
+type hints parsed into metadata without script generics
+top-level side-effect restrictions
+HIR lowering from AST with source spans preserved
+bytecode compiler consuming HIR instead of raw syntax AST
 ```
 
 Acceptance:
 
 ```text
-basic script calculation tests pass
-function call tests pass
-mock print/log standard functions can be called
+imports resolve across multiple files
+unresolved names report candidate suggestions
+duplicate declarations are diagnosed with both spans
+compiler output remains equivalent for existing examples
+module top-level host mutation is rejected before bytecode generation
 ```
 
-### M3: HostRef And PatchTx
+### M9: Complete Executable Language Surface
 
-Goal: scripts can read and write host state without holding `&mut`.
+Goal: every non-deferred language construct in the grammar can compile and run
+with correct dynamic semantics.
 
 Scope:
 
 ```text
-HostRef
-HostPath
-PathSegment
-PatchOp
-PatchTx overlay
-mock ScriptStateAdapter
-GET_HOST_FIELD
-SET_HOST_FIELD
-ADD_HOST_FIELD / read-modify-write
-CALL_HOST_METHOD
+unary operators and logical short-circuiting
+local assignment and compound assignment
+index reads and writes
+for-in loops
+break and continue
+method calls on script values, host paths, and stdlib values
+lambda and closure values with captured upvalues
+block, if, and match expression values
+match guards, literal patterns, binding patterns, tuple variants
+default parameter values and named call arguments
+return behavior through nested blocks and closures
 ```
 
 Acceptance:
 
 ```text
-player.level = 10 creates a Set patch
-player.level += 1 creates an Add patch
-reads after writes see overlay values
-host generation mismatch reports an error
+grammar executable conformance tests pass for all supported constructs
+lambda closures retain captured values after outer frames return
+for-in loops support arrays, maps, and host-provided iterables
+break/continue work through nested control-flow blocks
+unsupported grammar remains explicitly diagnosed, not silently miscompiled
 ```
 
-### M4: Reflection System
+### M10: Script Types, Shapes, Traits, And Dispatch
 
-Goal: TypeRegistry and reflect APIs are usable.
+Goal: script-defined records, enums, and traits use stable runtime metadata
+instead of syntactic heuristics.
 
 Scope:
 
 ```text
-TypeKey
-TypeDesc
-FieldDesc
-MethodDesc
-TraitDesc
-VariantDesc
-AttrMap
-reflect.type_of
-reflect.fields
-reflect.get
-reflect.set
-reflect.call
-reflect.implements
+script struct declarations lower into TypeRegistry entries
+script enum declarations lower into TypeRegistry entries
+ShapeId and slot-based ObjRecord layout
+ObjEnum with stable VariantId and field slots
+schema hash generation for script types
+trait declarations with default methods
+impl blocks for script types and host types
+dynamic trait/protocol implements checks
+method dispatch through MethodId and fallback dynamic lookup
 ```
 
 Acceptance:
 
 ```text
-reflect.set(host_ref, "level", 10) creates a Patch
-reflect.get(record, "field") can read record fields
-read-only fields report FieldNotWritable
-unknown fields include candidate hints
+field slot access replaces named-map record access
+schema hashes stay stable across field reordering
+trait default method tests pass
+host and script types can both satisfy a script trait
+enum variant additions are represented with stable VariantId values
 ```
 
-### M5: Struct, Enum, And Match
+### M11: Complete Host Bridge And Patch Transactions
 
-Goal: script records and enums are first-class values.
+Goal: natural script syntax can read, call, and mutate nested host state through
+controlled paths and transactions.
 
 Scope:
 
 ```text
-ObjRecord shape
-ObjEnum tag
-record constructor
-enum constructor
-match tag
-field destructuring
+PathProxy value category
+nested HostPath lowering for fields, indexes, keys, and variant fields
+GET_HOST_PATH, SET_HOST_PATH, RMW_HOST_PATH, CALL_HOST_METHOD lowering
+HostValue conversion for arrays, maps, records, enums, host refs, and nullables
+PatchTx overlay for Set, Add, Sub, Remove, Push, and method-call return effects
+patch validation, rollback-safe apply, and conflict reporting
+host access policies for read/write/call permissions
+source-span propagation into patches and host errors
 ```
 
 Acceptance:
 
 ```text
-QuestProgress.Active match tests pass
-field slot access tests pass
-schema hash generation is stable
+player.inventory.items[item_id].count += 1 records a nested RMW patch
+reads after nested writes observe overlay values
+read-only and permission-denied host paths fail before apply
+failed apply leaves adapter state unchanged
+host method calls can return script-visible copied values without exposing &mut
 ```
 
-### M6: Hot Reload First
+### M12: Complete Reflection And Permissions
 
-Goal: function-level code object replacement works.
+Goal: reflection is useful for admin/debug tooling while remaining bounded,
+permissioned, and schema-safe.
 
 Scope:
 
 ```text
-ProgramVersion
-FunctionSymbolId
-CodeObject indirection
-compile_update
-apply_hot_update
-ABI diff
-old version lifetime
-safe point
+TypeRegistry modules, functions, fields, methods, variants, traits, attrs
+TypeHint, TypeKind, FieldAccess, MethodAccess, EffectSet, DeclOrigin, DocString
+reflect.name, kind, field, fields, has_field
+reflect.get and reflect.set for host refs and script records
+reflect.methods, has_method, call
+reflect.variant and variant_is
+reflect.traits and implements
+reflect.module and exports
+reflection permission checks and lookup budgets
+candidate hints for unknown fields, methods, variants, modules, and functions
 ```
 
 Acceptance:
 
 ```text
-old call frames continue running old code
-new calls enter new code
-deleted function parameters are rejected
-new private helper functions are accepted
+reflection cannot mutate type structure at runtime
+gameplay permissions allow approved field reads and method calls only
+GM/admin permissions can inspect configured host paths
+unknown-name diagnostics include ranked candidates and related schema spans
+reflective calls respect EffectSet and MethodAccess
 ```
 
-### M7: GC
+### M13: Standard Library And Language Conveniences
 
-Goal: script heap objects are reclaimed automatically.
+Goal: common game-server logic is compact, readable, deterministic, and
+permission-aware.
 
 Scope:
 
 ```text
-mark-sweep collector
-root stack
-call frame roots
-closure roots
-array/map/record/enum tracing
-step_gc budget
-full collection
+array.len/is_empty/push/pop/map/filter/find/any/all/count/sum/group_by/sort_by
+map.len/has/get/get_or/set/remove/keys/values/entries/map_values/filter
+set APIs
+string APIs needed for gameplay scripts and diagnostics
+Option and Result as dynamic enums
+? operator lowering for Option/Result propagation
+math.max/min/clamp/floor/ceil/abs
+controlled random through permissions or context
+ctx.now, ctx.tick, logging, event emit helpers
+stdlib metadata for TypeFacts without user-visible generics
 ```
 
 Acceptance:
 
 ```text
-live objects survive GC
-cyclic script objects can be reclaimed
-host refs are not treated as owned Rust objects
+collection methods work with lambdas and preserve dynamic values
+? propagates None and Err through script functions
+random and wall-clock APIs require explicit permissions
+monster kill reward script is readable without custom native glue
+stdlib methods expose analysis facts for lambda parameter hints
 ```
 
-### M8: Standard Library And Business Example
+### M14: Engine, Native Functions, And Rust Host Macros
 
-Goal: common game logic is comfortable to write.
+Goal: Rust applications can embed Vela with stable schemas, explicit effects,
+and minimal boilerplate.
 
 Scope:
 
 ```text
-array.map/filter/find/any/all/count/sum
-map.keys/values/entries/get_or/filter
-Option/Result
-? operator
-example game server demo
+Engine and EngineBuilder
+compile_file and compile_dir
+Runtime::call with CallOptions
+args!/host! convenience APIs
+NativeFunctionDesc and FunctionDesc
+NativeCallContext with runtime, state adapter, PatchTx, permissions, budget
+native function and native method registration with stable IDs
+Rust signature conversion rules
+vela_macros crate
+#[derive(ScriptHost, ScriptReflect)]
+#[script_methods] and #[script_method]
+generated schema hashes, field accessors, method dispatch, and docs/origin data
 ```
 
 Acceptance:
 
 ```text
-monster kill reward example passes
-quest progress example passes
-level up example passes
+sample Rust host registers Player, Monster, Inventory, and config types
+derive macro output matches explicit hand-written TypeRegistry metadata
+duplicate stable IDs are rejected at registration or compile time
+native calls consume budgets and enforce permissions
+scripts never receive real Rust references from native APIs
 ```
 
-### M9: Performance Foundation
+### M15: Production Hot Reload Semantics
 
-Goal: establish benchmarks and first-round optimizations.
+Goal: hot reload is safe across function, module, type, reflection, and host
+schema boundaries.
 
 Scope:
 
 ```text
-criterion benchmarks
+Runtime current ProgramVersion with registry, modules, functions, and code objects
+active version epochs and old-version lifetime tracking
+safe points at event end, tick boundary, and before/after patch apply
+compile_update for changed files and module dependency invalidation
+ABI diff for exported functions, event handlers, native descriptors, effects
+schema diff for structs, enums, fields, variants, methods, traits
+default value construction for compatible schema additions
+top-level side-effect rejection during reload
+hot reload reports with accepted/rejected changes and repair hints
+```
+
+Acceptance:
+
+```text
+old call frames continue on old code without seeing partial updates
+new calls enter updated code after a safe point
+event ABI parameter removals, reordering, and effect expansion are rejected
+new private helpers and compatible schema additions are accepted
+module top-level side effects are not re-executed during reload
+```
+
+### M16: Diagnostics, Error Reporting, And Tooling Foundation
+
+Goal: errors are actionable for script authors, and the core data structures are
+ready for editor tooling without requiring a full LSP.
+
+Scope:
+
+```text
+lossless CST or equivalent token tree with comments, newlines, and spans
+diagnostics with primary span, related labels, call stack, candidates, hints
+semantic diagnostics for unresolved names, fields, methods, variants, effects
+runtime diagnostics mapped back to source spans and function stack frames
+TypeFact inference for locals, host refs, arrays, maps, enums, and null checks
+flow narrowing for if, match, and Option/Result-style checks
+completion data for bindings, modules, fields, methods, variants, stdlib APIs
+snapshot tests for diagnostic rendering
+```
+
+Acceptance:
+
+```text
+misspelled host fields report candidates and read/write access hints
+runtime host errors include script call stack and source span
+match exhaustiveness hints are available when enum facts are known
+completion fixtures can suggest fields and methods from TypeRegistry
+diagnostics degrade cleanly to Any at dynamic boundaries
+```
+
+### M17: Game Server Demo And Conformance Suite
+
+Goal: the language is proven by realistic gameplay workflows and reusable
+conformance fixtures.
+
+Scope:
+
+```text
+examples/game_server_demo host world
+level_up script
+monster_kill_reward script
+quest_progress script
+reflect_debug script
+hot_reload_function_swap script
+tests/fixtures source programs
+parser, compiler, VM, host, reflect, hot reload integration tests
+negative tests for permissions, ABI mismatch, stale host refs, bad schemas
+parser fuzz target once grammar stabilizes
+demo CLI commands documented in docs/validation.md
+```
+
+Acceptance:
+
+```text
+all game_server_demo scripts run through Engine and Runtime APIs
+monster kill updates player exp, level, inventory, and quest progress via PatchTx
+reflect debug script can inspect allowed fields but cannot mutate schema
+hot reload demo proves old frames and new calls observe correct code versions
+conformance suite guards every supported grammar feature
+```
+
+### M18: Performance Foundation And Release Hardening
+
+Goal: the interpreter has measured performance, first-round optimizations, and
+clear release-quality behavior.
+
+Scope:
+
+```text
+criterion benchmark suite
 field access benchmark
 host patch benchmark
 array map/filter benchmark
-inline cache prototype
+hot reload benchmark
+GC pacing benchmark
+shape and field slot optimization
+inline cache prototype for fields and method dispatch
+specialized host field read/write fast paths
 peephole optimization
+bytecode cache
+runtime configuration docs
+public API docs and examples
 ```
 
 Acceptance:
 
 ```text
-benchmarks run reliably
-optimization reports compare before and after
-no correctness regressions
+benchmarks run reliably and compare before/after optimization reports
+optimized paths preserve all conformance behavior
+GC pacing keeps configured pause budgets in benchmark scenarios
+public API docs compile
+final validation passes fmt, clippy, tests, demos, and benchmarks
 ```
 
-## Initial Task List
+## Remaining Task List
 
-1. Create the Cargo workspace and crate skeleton.
-2. Implement `vela_common`: `Symbol`, `Span`, `SourceId`, ID newtypes, and `Diagnostic`.
-3. Implement the `vela_syntax` lexer.
-4. Implement the minimal parser: literals, `let`, `fn`, calls, and field access.
-5. Add AST snapshot tests.
-6. Implement the `vela_bytecode` instruction enum and `CodeObject`.
-7. Implement `vela_vm` `Value`, `CallFrame`, and basic arithmetic.
-8. Implement native function calls.
-9. Implement `vela_host` `HostRef`, `HostPath`, and `PatchTx`.
-10. Implement a mock `ScriptStateAdapter`.
-11. Connect VM host field reads and writes to `PatchTx`.
-12. Implement `vela_reflect` `TypeRegistry`, `TypeDesc`, and `FieldDesc`.
-13. Implement `reflect.get` and `reflect.set`.
-14. Implement `ProgramVersion` and `FunctionSymbolId`.
-15. Implement the function-level hot reload demo.
+1. Implement `ExecutionBudget` and charge the current VM dispatch loop.
+2. Move script-owned compound values behind a non-moving heap and `GcRef`.
+3. Add mark-sweep GC roots for VM frames, native calls, and temporary values.
+4. Create `vela_hir` for module resolution, bindings, HIR, and stable node IDs.
+5. Move bytecode lowering from syntax AST to HIR.
+6. Complete bytecode and VM support for loops, indexes, lambdas, closures, and
+   full match patterns.
+7. Replace named-map records/enums with shape, slot, and stable schema metadata.
+8. Implement nested HostPath/PathProxy operations and rollback-safe patch apply.
+9. Expand TypeRegistry and reflection permissions to the full metadata surface.
+10. Build `vela_std` with collections, Option/Result, `?`, math, and context APIs.
+11. Add `Engine`, `Runtime`, `CallOptions`, native descriptors, and permissioned
+    native dispatch.
+12. Add `vela_macros` for host schema and method registration.
+13. Strengthen hot reload ABI/schema/effect checks and safe-point integration.
+14. Add diagnostic rendering, call stacks, TypeFacts, and tooling fixtures.
+15. Expand `examples/game_server_demo` into the final acceptance demo suite.
+16. Add benchmarks, inline caches, peephole optimization, and bytecode caching.
 
-## Suggested Supporting Files
+## Roadmap Maintenance Files
 
 `docs/progress.md`:
 
@@ -347,20 +456,17 @@ no correctness regressions
 
 ## Current Milestone
 
-M0 - Workspace and infrastructure
+M7 - Runtime safety, budgets, and GC
 
 ## Completed
 
-- [ ] Cargo workspace
-- [ ] common IDs
-- [ ] Symbol interner
-- [ ] Span / SourceId
-- [ ] Diagnostic skeleton
+- M0-M6 runnable prototype loop complete.
 
 ## Next
 
-- [ ] Implement vela_common crate
-- [ ] Add unit tests
+- [ ] Implement `ExecutionBudget`
+- [ ] Add GC heap and roots
+- [ ] Validate with focused runtime tests
 
 ## Validation
 
@@ -409,7 +515,9 @@ Risk: the language drifts into a mixture of Rust, Python, Lua, and JavaScript.
 Control:
 
 ```text
-The MVP excludes generics, JIT, async, and macros.
+The complete interpreter excludes script generics, JIT, script async, and
+script macros.
+Rust host derive macros are allowed only to reduce embedding boilerplate.
 Every syntax feature must serve game server logic or the host patch model.
 ```
 
