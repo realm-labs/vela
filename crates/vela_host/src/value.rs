@@ -9,6 +9,10 @@ pub enum HostValue {
     String(String),
     Array(Vec<HostValue>),
     Map(BTreeMap<String, HostValue>),
+    Record {
+        type_name: String,
+        fields: BTreeMap<String, HostValue>,
+    },
 }
 
 pub(crate) fn add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {

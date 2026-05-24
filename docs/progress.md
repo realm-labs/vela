@@ -676,6 +676,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Host boundary value conversion now supports map-valued host paths in
   addition to arrays and scalars, including managed-heap script maps written
   through `PatchTx` and exact-path overlay reads returning script map values.
+- Host boundary value conversion now also supports record-valued host paths
+  with copied type names and fields. VM host conversions live in a focused
+  `host_values` module, and managed-heap script records can be written through
+  `PatchTx` and read back from exact-path overlays as script records.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

@@ -2,6 +2,7 @@
 
 mod array_methods;
 pub mod heap;
+mod host_values;
 mod indexing;
 mod iteration;
 mod map_methods;
@@ -19,6 +20,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
+use host_values::{value_from_host, value_to_host};
 pub use iteration::IteratorState;
 pub use ranges::RangeValue;
 use script_methods::{call_method, call_method_id};
@@ -28,9 +30,7 @@ use vela_bytecode::{
     CallArgument, CodeObject, Constant, HostPathSegment, InstructionKind, Program, Register,
 };
 use vela_common::SymbolInterner;
-use vela_host::{
-    HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
-};
+use vela_host::{HostError, HostErrorKind, HostPath, HostRef, PatchTx, ScriptStateAdapter};
 use vela_reflect::{self as reflect, ReflectError, ReflectErrorKind, TypeRegistry};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2375,73 +2375,6 @@ fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureVal
     match value {
         Value::Closure(closure) => Ok(closure.clone()),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn value_from_host(value: HostValue) -> Value {
-    match value {
-        HostValue::Null => Value::Null,
-        HostValue::Bool(value) => Value::Bool(value),
-        HostValue::Int(value) => Value::Int(value),
-        HostValue::Float(value) => Value::Float(value),
-        HostValue::String(value) => Value::String(value),
-        HostValue::Array(values) => Value::Array(values.into_iter().map(value_from_host).collect()),
-        HostValue::Map(values) => Value::Map(
-            values
-                .into_iter()
-                .map(|(key, value)| (key, value_from_host(value)))
-                .collect(),
-        ),
-    }
-}
-
-fn value_to_host(
-    value: &Value,
-    operation: &'static str,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<HostValue> {
-    match value {
-        Value::Null => Ok(HostValue::Null),
-        Value::Bool(value) => Ok(HostValue::Bool(*value)),
-        Value::Int(value) => Ok(HostValue::Int(*value)),
-        Value::Float(value) => Ok(HostValue::Float(*value)),
-        Value::String(value) => Ok(HostValue::String(value.clone())),
-        Value::Array(values) => values
-            .iter()
-            .map(|value| value_to_host(value, operation, heap))
-            .collect::<VmResult<Vec<_>>>()
-            .map(HostValue::Array),
-        Value::Map(values) => values
-            .iter()
-            .map(|(key, value)| Ok((key.clone(), value_to_host(value, operation, heap)?)))
-            .collect::<VmResult<BTreeMap<_, _>>>()
-            .map(HostValue::Map),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
-            Some(HeapValue::Array(values)) => values
-                .iter()
-                .map(value_from_heap_slot)
-                .map(|value| value_to_host(&value, operation, heap))
-                .collect::<VmResult<Vec<_>>>()
-                .map(HostValue::Array),
-            Some(HeapValue::Map(values)) => values
-                .iter()
-                .map(|(key, value)| {
-                    let value = value_from_heap_slot(value);
-                    Ok((key.clone(), value_to_host(&value, operation, heap)?))
-                })
-                .collect::<VmResult<BTreeMap<_, _>>>()
-                .map(HostValue::Map),
-            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-        },
-        Value::Set(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::Iterator(_)
-        | Value::Missing
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 
@@ -4989,6 +4922,73 @@ fn main(player) {
         assert_eq!(result, Value::Int(2));
         assert_eq!(tx.patches().len(), 1);
         assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Map(expected)));
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Null)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_host_execution_converts_record_for_host_write_and_overlay_read() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    item_id
+    count
+}
+
+fn main(player) {
+    player.level = Reward { item_id: "gold", count: 2 };
+    return player.level;
+}
+"#,
+            &CompilerOptions::new().with_host_field("level", level_field()),
+        )
+        .expect("compile host record write source");
+        let mut adapter = host_adapter(host_ref, HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new()
+                .run_program_with_host_managed_heap_and_budget(
+                    &program,
+                    "main",
+                    &[Value::HostRef(host_ref)],
+                    &mut host,
+                    &mut budget,
+                )
+                .expect("run managed host record source")
+        };
+
+        let mut expected_script_fields = BTreeMap::new();
+        expected_script_fields.insert("count".into(), Value::Int(2));
+        expected_script_fields.insert("item_id".into(), Value::String("gold".into()));
+        let mut expected_host_fields = BTreeMap::new();
+        expected_host_fields.insert("count".into(), HostValue::Int(2));
+        expected_host_fields.insert("item_id".into(), HostValue::String("gold".into()));
+        assert_eq!(
+            result,
+            Value::Record {
+                type_name: "Reward".into(),
+                fields: ScriptFields::from_pairs("Reward", expected_script_fields),
+            }
+        );
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::Set(HostValue::Record {
+                type_name: "Reward".into(),
+                fields: expected_host_fields,
+            })
+        );
         assert_eq!(
             adapter.read_path(&level_path(host_ref)),
             Ok(HostValue::Null)

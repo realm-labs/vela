@@ -2605,5 +2605,30 @@ Consequences:
 - Nested key reads after setting an entire map still require a future
   overlay-descendant lookup model; this change does not reinterpret a
   `HostPath::key` as indexing into an overlaid parent map.
-- Record, enum, host-ref, and richer nullable conversions remain future M11
-  work.
+- Enum, host-ref, and richer nullable conversions remain future M11 work.
+
+## 2026-05-25: Host Values Support Script Records
+
+Status: Accepted
+
+Context:
+M11 requires host value conversion for script records as copied data. The VM
+already represents records with stable `ScriptFields`, but host boundary
+conversion still rejected `Value::Record` and heap-backed `HeapValue::Record`.
+Keeping this conversion logic in `vela_vm/src/lib.rs` would also keep growing a
+large file with host bridge details.
+
+Decision:
+Add `HostValue::Record { type_name, fields }` using a copied type name and
+string-keyed `BTreeMap<String, HostValue>` fields. Move VM host value
+conversion into a focused `host_values` module, and convert both immediate
+script records and heap-backed records through that module. Exact host path
+reads convert the copied host record back into a script `Value::Record`.
+
+Consequences:
+- Managed-heap script records can be recorded in `PatchTx::Set` patches.
+- Exact overlay reads preserve the record type name and script field values.
+- The host still receives copied data only; scripts do not receive Rust
+  references or mutate host-owned record structure.
+- Enum, host-ref, nullable, and descendant overlay conversions remain future
+  M11 work.
