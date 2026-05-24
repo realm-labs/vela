@@ -254,6 +254,26 @@ pub fn module(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue
     Ok(module_record(desc))
 }
 
+pub fn module_with_policy(
+    registry: &TypeRegistry,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = registry.module_by_name(name).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownModule {
+            module: name.to_owned(),
+            candidates: name_candidates(
+                name,
+                registry.modules().map(|module| module.name.as_str()),
+            ),
+        })
+    })?;
+    Ok(module_record_with_exports(
+        desc,
+        visible_export_names(registry, desc, policy),
+    ))
+}
+
 pub fn exports(registry: &TypeRegistry, module_name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.module_by_name(module_name).ok_or_else(|| {
         ReflectError::new(ReflectErrorKind::UnknownModule {
@@ -268,6 +288,28 @@ pub fn exports(registry: &TypeRegistry, module_name: &str) -> ReflectResult<Refl
         desc.exports
             .iter()
             .map(|export| HostValue::String(export.name.clone()))
+            .collect(),
+    )))
+}
+
+pub fn exports_with_policy(
+    registry: &TypeRegistry,
+    module_name: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = registry.module_by_name(module_name).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownModule {
+            module: module_name.to_owned(),
+            candidates: name_candidates(
+                module_name,
+                registry.modules().map(|module| module.name.as_str()),
+            ),
+        })
+    })?;
+    Ok(ReflectValue::Host(HostValue::Array(
+        visible_export_names(registry, desc, policy)
+            .into_iter()
+            .map(HostValue::String)
             .collect(),
     )))
 }
@@ -304,6 +346,13 @@ pub fn function_with_policy(
 }
 
 fn module_record(desc: &ModuleDesc) -> ReflectValue {
+    module_record_with_exports(desc, desc.exports.iter().map(|export| export.name.clone()))
+}
+
+fn module_record_with_exports(
+    desc: &ModuleDesc,
+    exports: impl IntoIterator<Item = String>,
+) -> ReflectValue {
     let mut fields = BTreeMap::new();
     fields.insert(
         "name".to_owned(),
@@ -312,10 +361,7 @@ fn module_record(desc: &ModuleDesc) -> ReflectValue {
     fields.insert(
         "exports".to_owned(),
         ReflectValue::Host(HostValue::Array(
-            desc.exports
-                .iter()
-                .map(|export| HostValue::String(export.name.clone()))
-                .collect(),
+            exports.into_iter().map(HostValue::String).collect(),
         )),
     );
     fields.insert(
@@ -323,6 +369,25 @@ fn module_record(desc: &ModuleDesc) -> ReflectValue {
         ReflectValue::Host(attrs_value(&desc.attrs)),
     );
     ReflectValue::Record(fields)
+}
+
+fn visible_export_names(
+    registry: &TypeRegistry,
+    desc: &ModuleDesc,
+    policy: &ReflectPolicy,
+) -> Vec<String> {
+    desc.exports
+        .iter()
+        .filter(|export| {
+            let Some(function_id) = export.function else {
+                return true;
+            };
+            registry
+                .function_by_id(function_id)
+                .is_some_and(|function| policy.require_function_access(function).is_ok())
+        })
+        .map(|export| export.name.clone())
+        .collect()
 }
 
 fn function_record(desc: &FunctionDesc) -> ReflectValue {
@@ -731,6 +796,73 @@ fn helper() {
         assert_eq!(
             function.get("public"),
             Some(&ReflectValue::Host(HostValue::Bool(false)))
+        );
+    }
+
+    #[test]
+    fn module_exports_with_policy_hide_inaccessible_functions() {
+        let mut registry = TypeRegistry::new();
+        registry.register_module(ModuleDesc::new("game.reward"));
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "game.reward.grant").module("game.reward"),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(2), "game.reward.hidden")
+                .module("game.reward")
+                .access(FunctionAccess::new().reflect_visible(false)),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(3), "game.reward.private")
+                .module("game.reward")
+                .access(FunctionAccess::new().public(false).reflect_visible(true)),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(4), "game.reward.admin")
+                .module("game.reward")
+                .access(FunctionAccess::new().require_permission("game.admin")),
+        );
+
+        assert_eq!(
+            exports(&registry, "game.reward").expect("raw exports"),
+            ReflectValue::Host(HostValue::Array(vec![
+                HostValue::String("game.reward.grant".to_owned()),
+                HostValue::String("game.reward.hidden".to_owned()),
+                HostValue::String("game.reward.private".to_owned()),
+                HostValue::String("game.reward.admin".to_owned()),
+            ]))
+        );
+        assert_eq!(
+            exports_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())
+                .expect("policy exports"),
+            ReflectValue::Host(HostValue::Array(vec![HostValue::String(
+                "game.reward.grant".to_owned()
+            )]))
+        );
+
+        let ReflectValue::Record(module) =
+            module_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())
+                .expect("policy module")
+        else {
+            panic!("module metadata should be a record");
+        };
+        assert_eq!(
+            module.get("exports"),
+            Some(&ReflectValue::Host(HostValue::Array(vec![
+                HostValue::String("game.reward.grant".to_owned())
+            ])))
+        );
+
+        let admin_policy = ReflectPolicy::new(
+            crate::ReflectPermissionSet::read_only().with(crate::ReflectPermission::AccessPrivate),
+        )
+        .with_function_permission("game.admin");
+        assert_eq!(
+            exports_with_policy(&registry, "game.reward", &admin_policy).expect("admin exports"),
+            ReflectValue::Host(HostValue::Array(vec![
+                HostValue::String("game.reward.grant".to_owned()),
+                HostValue::String("game.reward.private".to_owned()),
+                HostValue::String("game.reward.admin".to_owned()),
+            ]))
         );
     }
 }

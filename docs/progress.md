@@ -846,6 +846,11 @@ permissions.
   variant checks now report ranked variant candidates through both the
   reflection API and compiled VM native path instead of silently returning
   `false`.
+- Added policy-aware module export reflection. Script-visible
+  `reflect.module` and `reflect.exports` now filter function exports through
+  the same reflective function access policy as `reflect.function`, preventing
+  hidden, private, or unapproved function names from leaking through module
+  metadata while preserving raw registry queries for trusted host inspection.
 
 ## Next
 

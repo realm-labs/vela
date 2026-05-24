@@ -3466,3 +3466,28 @@ Consequences:
 - Existing unregistered dynamic enum values can still be compared by name.
 - The change remains schema-safe: reflection only reads registered metadata and
   does not mutate type structure.
+
+## 2026-05-25: Module Exports Respect Function Reflection Policy
+
+Status: Accepted
+
+Context:
+`reflect.function` enforced function visibility, private access, and
+function-specific permissions, but `reflect.module` and `reflect.exports`
+returned every registered export name. That allowed script-visible module
+metadata to reveal hidden, private, or unapproved function names even though
+direct function metadata access would be denied.
+
+Decision:
+Keep raw `module` and `exports` helpers for trusted host-side registry
+inspection, and add policy-aware module/export helpers for the VM reflection
+natives. Script-visible `reflect.module` and `reflect.exports` now include only
+function exports allowed by `ReflectPolicy::require_function_access`.
+
+Consequences:
+- Gameplay reflection policies no longer leak inaccessible function names
+  through module export metadata.
+- Admin/debug policies can still reveal private or permissioned exports by
+  granting `AccessPrivate` and the relevant function permissions.
+- Registry metadata remains immutable and schema-safe; the policy only filters
+  copied records and arrays returned to scripts.

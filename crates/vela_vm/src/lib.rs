@@ -2487,8 +2487,8 @@ mod tests {
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
-        FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodDesc, TraitDesc, TypeDesc,
-        TypeKey, TypeKind, VariantDesc,
+        FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodDesc, ModuleDesc, TraitDesc,
+        TypeDesc, TypeKey, TypeKind, VariantDesc,
     };
 
     #[test]
@@ -6826,6 +6826,37 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflect_exports_respect_function_policy() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let module = reflect.module("game.reward");
+    let exports = reflect.exports("game.reward");
+    return module.get("exports").len() * 10 + exports.len();
+}
+"#,
+        )
+        .expect("compile policy exports reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_policy(
+            Arc::new(policy_module_reflection_registry()),
+            reflect::ReflectPolicy::read_only(),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::Int(11))
+        );
+    }
+
+    #[test]
     fn compiled_source_reflects_methods_traits_and_variants() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -7346,6 +7377,30 @@ pub fn grant(player: Player, amount: int = 1) -> bool {
         ));
         let mut registry = TypeRegistry::new();
         registry.register_script_modules(&graph);
+        registry
+    }
+
+    fn policy_module_reflection_registry() -> TypeRegistry {
+        let mut registry = TypeRegistry::new();
+        registry.register_module(ModuleDesc::new("game.reward"));
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "game.reward.grant").module("game.reward"),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(2), "game.reward.hidden")
+                .module("game.reward")
+                .access(FunctionAccess::new().reflect_visible(false)),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(3), "game.reward.private")
+                .module("game.reward")
+                .access(FunctionAccess::new().public(false).reflect_visible(true)),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(4), "game.reward.admin")
+                .module("game.reward")
+                .access(FunctionAccess::new().require_permission("game.admin")),
+        );
         registry
     }
 

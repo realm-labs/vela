@@ -181,7 +181,11 @@ impl Vm {
             )?;
             expect_arity("reflect.module", args, 1)?;
             let module_name = expect_string(&args[0], "reflect.module")?;
-            value_from_reflect(reflect::module_metadata(&module_registry, module_name)?)
+            value_from_reflect(reflect::module_metadata_with_policy(
+                &module_registry,
+                module_name,
+                &module_policy,
+            )?)
         });
 
         let exports_registry = Arc::clone(&registry);
@@ -195,7 +199,11 @@ impl Vm {
             )?;
             expect_arity("reflect.exports", args, 1)?;
             let module_name = expect_string(&args[0], "reflect.exports")?;
-            value_from_reflect(reflect::module_exports(&exports_registry, module_name)?)
+            value_from_reflect(reflect::module_exports_with_policy(
+                &exports_registry,
+                module_name,
+                &exports_policy,
+            )?)
         });
 
         let function_registry = Arc::clone(&registry);
