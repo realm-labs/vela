@@ -3204,3 +3204,28 @@ Consequences:
 - The default policy preserves existing runnable helper-update workflows.
 - Additional reload policy controls can grow in `vela_hot_reload::policy`
   without adding more one-off booleans to `Engine`.
+
+## 2026-05-25: Hot Reload Reports Summarize Safe-Point Updates
+
+Status: Accepted
+
+Context:
+The architecture expects hot reload to return a report with accepted/rejected
+status, errors, and repair hints. The runtime only returned the new
+`ProgramVersion`, which proved code swapping but gave hosts no structured
+summary to log or surface in admin/debug tooling.
+
+Decision:
+Add a focused hot-reload report module with `HotReloadReport` and
+`HotReloadDiagnostic`. `HotReloadRuntime::apply_hot_update_report` returns the
+accepted safe-point update summary, while the existing `apply_hot_update`
+convenience API remains available. Rejected diagnostics can be built from
+`HotReloadError` and include a stable reason plus optional repair hint.
+
+Consequences:
+- Hosts can inspect changed function names and version transitions after an
+  accepted safe-point swap.
+- Rejected reload paths have a common diagnostic shape before richer source
+  span and related-location reporting is added.
+- The CLI hot-reload demo now exercises the report API without changing the
+  underlying function-level swap semantics.

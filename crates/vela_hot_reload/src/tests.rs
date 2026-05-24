@@ -27,6 +27,40 @@ fn new_calls_enter_new_code_after_update() {
 }
 
 #[test]
+fn apply_hot_update_report_summarizes_accepted_changes() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let update = compile_update(
+        &runtime.current(),
+        SourceId::new(2),
+        r#"
+fn helper() {
+    return 5;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("compile update");
+
+    let report = runtime.apply_hot_update_report(update);
+
+    assert!(report.accepted);
+    assert_eq!(report.from_version, ProgramVersionId(0));
+    assert_eq!(report.to_version, Some(ProgramVersionId(1)));
+    assert_eq!(report.changed_functions, ["helper", "main"]);
+    assert!(report.errors.is_empty());
+    let version = report.version().expect("accepted report version");
+    assert_eq!(
+        Vm::new().run_program(&version.to_program(), "main", &[]),
+        Ok(Value::Int(5))
+    );
+}
+
+#[test]
 fn old_version_lifetime_preserves_old_code() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
@@ -44,6 +78,33 @@ fn old_version_lifetime_preserves_old_code() {
     assert_eq!(
         Vm::new().run_program(&new.to_program(), "main", &[]),
         Ok(Value::Int(30))
+    );
+}
+
+#[test]
+fn rejected_report_carries_reason_and_repair_hint() {
+    let error = HotReloadError {
+        kind: HotReloadErrorKind::NewFunctionDenied {
+            function: "helper".to_owned(),
+        },
+    };
+
+    let report = HotReloadReport::rejected(ProgramVersionId(2), error.clone());
+
+    assert!(!report.accepted);
+    assert_eq!(report.from_version, ProgramVersionId(2));
+    assert_eq!(report.to_version, None);
+    assert!(report.changed_functions.is_empty());
+    assert_eq!(report.version(), None);
+    assert_eq!(report.errors.len(), 1);
+    assert_eq!(report.errors[0].error, error);
+    assert_eq!(
+        report.errors[0].reason,
+        "new function `helper` is denied by reload policy"
+    );
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("enable new functions in HotReloadPolicy or remove the new declaration")
     );
 }
 

@@ -5,6 +5,7 @@ mod compile;
 mod error;
 mod function_signature;
 mod policy;
+mod report;
 mod runtime;
 mod symbol;
 mod version;
@@ -18,6 +19,7 @@ pub use compile::{
 };
 pub use error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 pub use policy::HotReloadPolicy;
+pub use report::{HotReloadDiagnostic, HotReloadReport};
 pub use runtime::HotReloadRuntime;
 pub use symbol::{FunctionSymbolId, ProgramVersionId};
 pub use version::{HotUpdate, ProgramVersion};

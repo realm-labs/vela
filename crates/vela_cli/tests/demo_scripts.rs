@@ -92,7 +92,8 @@ fn hot_reload_function_swap_demo_runs_through_cli() {
             "hot_reload_function_swap_v1.lang",
             "hot_reload_function_swap_v2.lang",
         ),
-        "old_version=0 new_version=1 abi=checked old_before=Int(20) old_after=Int(20) \
+        "accepted=true old_version=0 new_version=1 changed_functions=[\"kill_exp\", \"main\"] \
+         abi=checked old_before=Int(20) old_after=Int(20) \
          new_after=Int(30)\n"
     );
 }

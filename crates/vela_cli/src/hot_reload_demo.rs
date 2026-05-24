@@ -17,16 +17,18 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
 
     let update = compile_update_with_abi(&old, SourceId::new(2), &updated_source, abi)
         .map_err(|error| format!("{error:?}"))?;
-    let new = runtime
-        .apply_hot_update(update)
-        .map_err(|error| format!("{error:?}"))?;
+    let report = runtime.apply_hot_update_report(update);
+    let new = report
+        .version()
+        .ok_or_else(|| format!("hot reload rejected: {:?}", report.errors))?;
     let old_after = run_main(&old.to_program())?;
     let new_after = run_main(&new.to_program())?;
 
     println!(
-        "old_version={} new_version={} abi=checked old_before={old_before:?} \
+        "accepted={} old_version={} new_version={} changed_functions={:?} \
+         abi=checked old_before={old_before:?} \
          old_after={old_after:?} new_after={new_after:?}",
-        old.id.0, new.id.0,
+        report.accepted, old.id.0, new.id.0, report.changed_functions,
     );
     Ok(())
 }

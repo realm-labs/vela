@@ -795,6 +795,11 @@ permissions.
   policy through `EngineBuilder::hot_reload_policy`, and
   `Engine::compile_hot_reload_update` applies that policy alongside
   Engine-derived compiler options and ABI manifests.
+- Added structured hot-reload reports in a focused report module.
+  `HotReloadRuntime::apply_hot_update_report` now returns accepted status,
+  version transition IDs, changed function names, and structured diagnostics
+  with reasons and repair hints for rejected errors. The CLI hot-reload demo
+  now exercises the report path and prints the accepted update summary.
 
 ## Next
 
