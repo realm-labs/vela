@@ -361,5 +361,30 @@ Consequences:
   heap access.
 - Host patches can record copied string values from heap-backed scripts without
   exposing Rust references.
-- Reflection still needs its own heap-aware resolution path before heap-backed
-  execution can be made the default.
+- Reflection calls can reuse this materialized boundary for host refs, strings,
+  and aggregate metadata while heap execution remains explicit.
+
+## 2026-05-24: Heap Equality Materializes Values During Migration
+
+Status: Accepted
+
+Context:
+Heap-backed execution stores strings and aggregate values as `Value::HeapRef`,
+but existing language equality expects to compare script-visible values rather
+than temporary heap handles. Reflection exposes common comparisons such as
+`reflect.type_of(player) == "Player"`, where the native returns a heap-backed
+string under heap execution.
+
+Decision:
+Resolve both operands through the same materialization helper used by native
+boundaries before executing `Equal` and `NotEqual`. This keeps equality
+semantic over script values during the heap migration, while leaving ordering
+operators to their existing primitive paths until those operations gain broader
+heap-backed coverage.
+
+Consequences:
+- Reflection type-name checks work under heap-backed execution.
+- Equality remains independent of `GcRef` allocation identity for migrated
+  strings and aggregates.
+- Future default heap execution can preserve the same comparison behavior while
+  replacing materialization with direct heap-aware equality where worthwhile.

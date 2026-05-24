@@ -642,11 +642,19 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Equal { dst, lhs, rhs } => {
-                    let value = Value::Bool(frame.read(*lhs)? == frame.read(*rhs)?);
+                    let value = Value::Bool(values_equal(
+                        frame.read(*lhs)?,
+                        frame.read(*rhs)?,
+                        heap.as_deref(),
+                    )?);
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::NotEqual { dst, lhs, rhs } => {
-                    let value = Value::Bool(frame.read(*lhs)? != frame.read(*rhs)?);
+                    let value = Value::Bool(!values_equal(
+                        frame.read(*lhs)?,
+                        frame.read(*rhs)?,
+                        heap.as_deref(),
+                    )?);
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Less { dst, lhs, rhs } => {
@@ -1210,6 +1218,12 @@ fn materialize_heap_slot(slot: &HeapSlot, heap: Option<&HeapExecution<'_>>) -> V
         HeapSlot::Ref(reference) => materialize_value(&Value::HeapRef(*reference), heap),
         _ => Ok(value_from_heap_slot(slot)),
     }
+}
+
+fn values_equal(lhs: &Value, rhs: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool> {
+    let lhs = materialize_value(lhs, heap)?;
+    let rhs = materialize_value(rhs, heap)?;
+    Ok(lhs == rhs)
 }
 
 fn store_value_in_heap_if_needed(
@@ -2487,6 +2501,52 @@ fn main(player) {
     }
 
     #[test]
+    fn heap_execution_uses_reflection_natives_for_host_state() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    if reflect.type_of(player) == "Player" {
+        if reflect.implements(player, "Damageable") {
+            reflect.set(player, "level", 10);
+            return reflect.get(player, "level");
+        }
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile reflection source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            vm.run_program_with_host_heap_and_budget(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+                &mut heap_execution,
+                &mut budget,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(10)));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
+    }
+
+    #[test]
     fn compiled_source_reflection_fields_returns_metadata() {
         let host_ref = player_ref(3);
         let program = compile_program_source(
@@ -2516,6 +2576,60 @@ fn main(player) {
                 Value::String("id".into()),
                 Value::String("level".into())
             ]))
+        );
+    }
+
+    #[test]
+    fn heap_execution_reflection_fields_returns_heap_metadata_array() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return reflect.fields(player);
+}
+"#,
+        )
+        .expect("compile reflection fields source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            vm.run_program_with_host_heap_and_budget(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+                &mut heap_execution,
+                &mut budget,
+            )
+        }
+        .expect("run heap reflection fields");
+
+        let Value::HeapRef(fields_ref) = result else {
+            panic!("expected heap metadata array");
+        };
+        let Some(HeapValue::Array(fields)) = heap_execution.heap.get(fields_ref).cloned() else {
+            panic!("expected heap metadata array object");
+        };
+        let field_names = fields
+            .iter()
+            .map(|slot| materialize_heap_slot(slot, Some(&heap_execution)))
+            .collect::<VmResult<Vec<_>>>()
+            .expect("materialize field names");
+
+        assert_eq!(
+            field_names,
+            vec![Value::String("id".into()), Value::String("level".into())]
         );
     }
 

@@ -207,9 +207,16 @@ script heap are implemented; VM value migration and GC pacing remain.
   host field writes and host method call arguments.
 - Added VM tests proving heap-backed native args/results and host string patch
   conversions work under memory budgeting.
+- Added heap-aware equality by materializing compared heap refs, allowing
+  comparisons such as `reflect.type_of(player) == "Player"` to work in
+  heap-backed execution.
+- Added VM tests proving heap-backed reflection natives can query traits,
+  read/write host state through `PatchTx`, and return field metadata arrays
+  stored in the script heap.
 
 ## Next
 
-- Move reflection helpers toward heap-aware value resolution.
 - Wire safe-point GC execution to heap-backed bytecode execution using active
   call-frame roots.
+- Continue moving heap-backed execution toward the default VM path while
+  preserving inline compatibility entrypoints during migration.
