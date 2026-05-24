@@ -24,6 +24,7 @@ use script_methods::{call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
+use vela_common::FieldId;
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
 };
@@ -1440,11 +1441,36 @@ impl Vm {
                     let value = host.tx.read_path(host.adapter, &path)?;
                     frame.write(*dst, value_from_host(value))?;
                 }
+                InstructionKind::GetHostPath { dst, root, fields } => {
+                    let root = expect_host_ref(frame.read(*root)?, "get_host_path")?;
+                    let path = host_field_path(root, fields);
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    let value = host.tx.read_path(host.adapter, &path)?;
+                    frame.write(*dst, value_from_host(value))?;
+                }
                 InstructionKind::SetHostField { root, field, src } => {
                     let root = expect_host_ref(frame.read(*root)?, "set_host_field")?;
                     let value =
                         value_to_host(frame.read(*src)?, "set_host_field", heap.as_deref())?;
                     let path = HostPath::new(root).field(*field);
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
+                    host.tx.set_path(path, value, instruction.span)?;
+                }
+                InstructionKind::SetHostPath { root, fields, src } => {
+                    let root = expect_host_ref(frame.read(*root)?, "set_host_path")?;
+                    let value = value_to_host(frame.read(*src)?, "set_host_path", heap.as_deref())?;
+                    let path = host_field_path(root, fields);
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {
                             operation: "host context",
@@ -1472,6 +1498,22 @@ impl Vm {
                     host.tx
                         .add_path(path, value, base_value, instruction.span)?;
                 }
+                InstructionKind::AddHostPath { root, fields, rhs } => {
+                    let root = expect_host_ref(frame.read(*root)?, "add_host_path")?;
+                    let value = value_to_host(frame.read(*rhs)?, "add_host_path", heap.as_deref())?;
+                    let path = host_field_path(root, fields);
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
+                    host.tx
+                        .add_path(path, value, base_value, instruction.span)?;
+                }
                 InstructionKind::CallHostMethod {
                     dst,
                     root,
@@ -1480,10 +1522,7 @@ impl Vm {
                     args,
                 } => {
                     let root = expect_host_ref(frame.read(*root)?, "call_host_method")?;
-                    let mut path = HostPath::new(root);
-                    for field in fields {
-                        path = path.field(*field);
-                    }
+                    let path = host_field_path(root, fields);
                     let values = args
                         .iter()
                         .map(|register| {
@@ -2160,6 +2199,12 @@ fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> 
         Value::HostRef(value) => Ok(*value),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
+}
+
+fn host_field_path(root: HostRef, fields: &[FieldId]) -> HostPath {
+    fields
+        .iter()
+        .fold(HostPath::new(root), |path, field| path.field(*field))
 }
 
 fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureValue> {
@@ -5484,6 +5529,51 @@ fn main(player) {
             adapter.read_path(&level_path(host_ref)),
             Ok(HostValue::Int(11))
         );
+    }
+
+    #[test]
+    fn compiled_source_mutates_nested_host_field_through_patch_tx() {
+        let host_ref = player_ref(3);
+        let stats = FieldId::new(8);
+        let level = FieldId::new(9);
+        let stats_level = HostPath::new(host_ref).field(stats).field(level);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.stats.level += 2;
+    return player.stats.level;
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("stats", stats)
+                .with_host_field("level", level),
+        )
+        .expect("compile nested host field source");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(stats_level.clone(), HostValue::Int(9));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(11)));
+        assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(9)));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].path, stats_level);
+        assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
+        tx.apply(&mut adapter).expect("apply nested host patch");
+        assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
     }
 
     #[test]

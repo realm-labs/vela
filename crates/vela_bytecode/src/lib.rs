@@ -362,14 +362,29 @@ pub enum InstructionKind {
         root: Register,
         field: FieldId,
     },
+    GetHostPath {
+        dst: Register,
+        root: Register,
+        fields: Vec<FieldId>,
+    },
     SetHostField {
         root: Register,
         field: FieldId,
         src: Register,
     },
+    SetHostPath {
+        root: Register,
+        fields: Vec<FieldId>,
+        src: Register,
+    },
     AddHostField {
         root: Register,
         field: FieldId,
+        rhs: Register,
+    },
+    AddHostPath {
+        root: Register,
+        fields: Vec<FieldId>,
         rhs: Register,
     },
     CallHostMethod {

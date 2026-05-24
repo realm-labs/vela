@@ -2,6 +2,7 @@
 
 mod control_flow;
 mod field_slots;
+mod host_paths;
 mod lambdas;
 mod methods;
 mod operators;
@@ -31,6 +32,7 @@ use crate::{
 };
 use control_flow::LoopContext;
 use field_slots::ScriptFieldSlots;
+use host_paths::{HostFieldPath, HostPathRoot, host_field_path, host_field_path_parts};
 use lambdas::{LambdaCapture, collect_lambda_captures};
 use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
@@ -1013,9 +1015,9 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Field { base, name } => {
                 let typed_record_slot = self.script_record_field_slot_for_receiver(base, name);
                 let typed_enum_slot = self.script_enum_field_slot_for_receiver(base, name);
-                let root = self.compile_expr(base)?;
-                let dst = self.alloc_register()?;
                 if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
+                    let root = self.compile_expr(base)?;
+                    let dst = self.alloc_register()?;
                     match slot_kind {
                         LiteralFieldSlotKind::Record => self.emit(InstructionKind::GetRecordSlot {
                             dst,
@@ -1030,30 +1032,53 @@ impl<'ast> Compiler<'ast> {
                             slot,
                         }),
                     }
+                    Ok(dst)
                 } else if let Some(slot) = typed_record_slot {
+                    let root = self.compile_expr(base)?;
+                    let dst = self.alloc_register()?;
                     self.emit(InstructionKind::GetRecordSlot {
                         dst,
                         record: root,
                         field: name.clone(),
                         slot,
                     });
+                    Ok(dst)
                 } else if let Some(slot) = typed_enum_slot {
+                    let root = self.compile_expr(base)?;
+                    let dst = self.alloc_register()?;
                     self.emit(InstructionKind::GetEnumSlot {
                         dst,
                         value: root,
                         field: name.clone(),
                         slot,
                     });
-                } else if let Some(field) = self.facts.options.host_fields.get(name).copied() {
-                    self.emit(InstructionKind::GetHostField { dst, root, field });
+                    Ok(dst)
                 } else {
-                    self.emit(InstructionKind::GetRecordField {
-                        dst,
-                        record: root,
-                        field: name.clone(),
-                    });
+                    if let Some(path) = host_field_path(&self.facts.options, expr)
+                        && path.fields.len() > 1
+                    {
+                        let root = self.compile_host_path_root(expr.span, path.root)?;
+                        let dst = self.alloc_register()?;
+                        self.emit(InstructionKind::GetHostPath {
+                            dst,
+                            root,
+                            fields: path.fields,
+                        });
+                        return Ok(dst);
+                    }
+                    let root = self.compile_expr(base)?;
+                    let dst = self.alloc_register()?;
+                    if let Some(field) = self.facts.options.host_fields.get(name).copied() {
+                        self.emit(InstructionKind::GetHostField { dst, root, field });
+                    } else {
+                        self.emit(InstructionKind::GetRecordField {
+                            dst,
+                            record: root,
+                            field: name.clone(),
+                        });
+                    }
+                    Ok(dst)
                 }
-                Ok(dst)
             }
             ExprKind::Index { base, index } => {
                 let base = self.compile_expr(base)?;
@@ -1570,15 +1595,36 @@ impl<'ast> Compiler<'ast> {
         if let Some(target) = self.record_field_assignment_target(target)? {
             return self.compile_record_field_assignment(*op, target, value);
         }
-        let (root, field) = self.compile_host_assignment_target(target)?;
+        let HostFieldPath { root, fields } = self.compile_host_assignment_target(target)?;
+        let root = self.compile_host_path_root(target.span, root)?;
         let src = self.compile_expr(value)?;
         match op {
-            AssignOp::Set => self.emit(InstructionKind::SetHostField { root, field, src }),
-            AssignOp::Add => self.emit(InstructionKind::AddHostField {
-                root,
-                field,
-                rhs: src,
-            }),
+            AssignOp::Set => {
+                if fields.len() == 1 {
+                    self.emit(InstructionKind::SetHostField {
+                        root,
+                        field: fields[0],
+                        src,
+                    });
+                } else {
+                    self.emit(InstructionKind::SetHostPath { root, fields, src });
+                }
+            }
+            AssignOp::Add => {
+                if fields.len() == 1 {
+                    self.emit(InstructionKind::AddHostField {
+                        root,
+                        field: fields[0],
+                        rhs: src,
+                    });
+                } else {
+                    self.emit(InstructionKind::AddHostPath {
+                        root,
+                        fields,
+                        rhs: src,
+                    });
+                }
+            }
             AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "compound assignment operator",
@@ -1915,6 +1961,18 @@ impl<'ast> Compiler<'ast> {
                 "path expression",
             )));
         }
+        if let Some(host_path) = host_field_path_parts(&self.facts.options, path)
+            && host_path.fields.len() > 1
+        {
+            let root = self.compile_host_path_root(span, host_path.root)?;
+            let dst = self.alloc_register()?;
+            self.emit(InstructionKind::GetHostPath {
+                dst,
+                root,
+                fields: host_path.fields,
+            });
+            return Ok(dst);
+        }
         let mut current = self.local_register_at_span(span, &path[0])?;
         for (index, segment) in path.iter().enumerate().skip(1) {
             let dst = self.alloc_register()?;
@@ -1987,36 +2045,32 @@ impl<'ast> Compiler<'ast> {
             .enum_variant(&fact.type_name, variant, field)
     }
 
-    fn compile_host_assignment_target(
+    fn compile_host_assignment_target<'expr>(
         &mut self,
-        target: &Expr,
-    ) -> CompileResult<(Register, FieldId)> {
-        match &target.kind {
-            ExprKind::Field { base, name } => {
-                let root = self.compile_expr(base)?;
-                let field = self.host_field(name)?;
-                Ok((root, field))
-            }
-            ExprKind::Path(path) => self.compile_host_path_parts(target.span, path),
-            _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+        target: &'expr Expr,
+    ) -> CompileResult<HostFieldPath<'expr>> {
+        let Some(path) = host_field_path(&self.facts.options, target) else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment target",
-            ))),
-        }
-    }
-
-    fn compile_host_path_parts(
-        &mut self,
-        span: Span,
-        path: &[String],
-    ) -> CompileResult<(Register, FieldId)> {
-        if path.len() != 2 {
+            )));
+        };
+        if path.fields.is_empty() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "host path",
             )));
         }
-        let root = self.local_register_at_span(span, &path[0])?;
-        let field = self.host_field(&path[1])?;
-        Ok((root, field))
+        Ok(path)
+    }
+
+    fn compile_host_path_root<'expr>(
+        &mut self,
+        span: Span,
+        root: HostPathRoot<'expr>,
+    ) -> CompileResult<Register> {
+        match root {
+            HostPathRoot::Expr(expr) => self.compile_expr(expr),
+            HostPathRoot::LocalPath(name) => self.local_register_at_span(span, name),
+        }
     }
 
     fn compile_literal(&mut self, literal: &Literal) -> CompileResult<Register> {
@@ -2486,15 +2540,6 @@ impl<'ast> Compiler<'ast> {
             self.local_register_at_span(field.span, &field.name)?
         };
         Ok((field.name.clone(), value))
-    }
-
-    fn host_field(&self, name: &str) -> CompileResult<FieldId> {
-        self.facts
-            .options
-            .host_fields
-            .get(name)
-            .copied()
-            .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("host field")))
     }
 
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {
@@ -3488,6 +3533,41 @@ fn main(player) {
                 fields,
                 ..
             } if *lowered_method == method && fields.as_slice() == [inventory]
+        )));
+    }
+
+    #[test]
+    fn compiler_lowers_nested_host_field_paths() {
+        let stats = FieldId::new(3);
+        let level = FieldId::new(4);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.stats.level += 2;
+    return player.stats.level;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("stats", stats)
+                .with_host_field("level", level),
+        )
+        .expect("nested host field path should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::AddHostPath {
+                fields,
+                ..
+            } if fields.as_slice() == [stats, level]
+        )));
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::GetHostPath {
+                fields,
+                ..
+            } if fields.as_slice() == [stats, level]
         )));
     }
 

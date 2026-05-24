@@ -650,6 +650,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - `CallHostMethod` bytecode now carries host field path segments, allowing
   configured calls such as `player.inventory.add(...)` to compile and record
   a `PatchTx` method call against `HostPath::new(player).field(inventory)`.
+- Added field-only nested host path bytecode for reads, sets, and add-RMW
+  operations. Configured paths such as `player.stats.level += 2` now compile
+  to `AddHostPath`, record a nested `PatchTx` patch, and later reads observe
+  the transaction overlay.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field-only method
   receivers.
@@ -657,4 +661,4 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 ## Next
 
 - Continue M10 with broader non-literal receiver facts or deeper host
-  path/proxy lowering beyond field-only method receivers.
+  path/proxy lowering beyond field-only receiver paths.

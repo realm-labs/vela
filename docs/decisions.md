@@ -2423,3 +2423,29 @@ Consequences:
 - Existing root host method calls use an empty field segment list.
 - This slice covers field-only receiver paths; index, key, and variant-field
   path segments remain future path/proxy lowering work.
+
+## 2026-05-25: Nested Host Field Access Uses Path Bytecode
+
+Status: Accepted
+
+Context:
+Direct host field reads and writes had dedicated bytecode, but nested host
+field syntax such as `player.stats.level` lowered as a read of
+`player.stats` followed by a second root-field read. That only worked if the
+intermediate value was itself a `HostRef`, and it did not model the intended
+single `HostPath` transaction target.
+
+Decision:
+Add `GetHostPath`, `SetHostPath`, and `AddHostPath` bytecode for ordered host
+field paths. The compiler resolves configured host field segments through a
+focused `compiler::host_paths` helper, keeps existing direct host-field
+instructions for one-segment paths, and emits path bytecode for field-only
+nested paths. The VM builds a `HostPath` from the root `HostRef` and field
+segments before reading or recording `PatchTx` operations.
+
+Consequences:
+- `player.stats.level += 2` records one nested add patch against
+  `HostPath::new(player).field(stats).field(level)`.
+- Reads after nested writes use the existing `PatchTx` overlay semantics.
+- This does not yet add path proxy values, index/key/variant host path
+  segments, or non-add RMW operations.
