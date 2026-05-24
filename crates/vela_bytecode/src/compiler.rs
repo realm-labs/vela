@@ -1646,7 +1646,22 @@ impl<'ast> Compiler<'ast> {
                     });
                 }
             }
-            AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+            AssignOp::Sub => {
+                if let Some(field) = field {
+                    self.emit(InstructionKind::SubHostField {
+                        root,
+                        field,
+                        rhs: src,
+                    });
+                } else {
+                    self.emit(InstructionKind::SubHostPath {
+                        root,
+                        segments: segments.expect("host path segments"),
+                        rhs: src,
+                    });
+                }
+            }
+            AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "compound assignment operator",
                 )));
@@ -3702,6 +3717,37 @@ fn main(player, item_id) {
                     HostPathSegment::Field(third)
                 ] if *first == inventory && *second == items && *third == count
             )
+        )));
+    }
+
+    #[test]
+    fn compiler_lowers_host_sub_assignments() {
+        let stats = FieldId::new(3);
+        let level = FieldId::new(4);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.stats.level -= 2;
+    return player.stats.level;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("stats", stats)
+                .with_host_field("level", level),
+        )
+        .expect("host sub assignment should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::SubHostPath {
+                segments,
+                ..
+            } if segments.as_slice() == [
+                HostPathSegment::Field(stats),
+                HostPathSegment::Field(level)
+            ]
         )));
     }
 

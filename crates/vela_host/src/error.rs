@@ -46,6 +46,9 @@ pub enum HostErrorKind {
     InvalidAdd {
         path: HostPath,
     },
+    InvalidSub {
+        path: HostPath,
+    },
     UnsupportedPatch {
         op: &'static str,
     },

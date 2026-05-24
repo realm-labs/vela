@@ -2502,3 +2502,27 @@ Consequences:
 - The method call still records a patch instead of dispatching to Rust with a
   mutable reference; script-visible host method return values remain future
   work.
+
+## 2026-05-25: Host Subtraction Uses RMW Patch Transactions
+
+Status: Accepted
+
+Context:
+`PatchOp::Sub` was part of the host patch model, but there was no transaction
+overlay behavior, mock adapter support, bytecode instruction, or compiler/VM
+lowering for host `-=`. Scripts could record addition RMW patches but could
+not naturally decrement host state through the same boundary.
+
+Decision:
+Add `PatchTx::sub_path`, numeric `HostValue` subtraction, and mock adapter
+validation/apply support for `PatchOp::Sub`. Add `SubHostField` and
+`SubHostPath` bytecode and lower host `-=` assignments to those instructions.
+The VM reads the current transaction overlay or adapter snapshot before
+recording the subtraction patch, matching the existing add-RMW behavior.
+
+Consequences:
+- Scripts can decrement direct and nested host paths without exposing mutable
+  Rust references.
+- Reads after host `-=` observe the transaction overlay.
+- Multiplicative/divisive/rem RMW, `Remove`, and `Push` remain future M11
+  transaction work.

@@ -1524,6 +1524,23 @@ impl Vm {
                     host.tx
                         .add_path(path, value, base_value, instruction.span)?;
                 }
+                InstructionKind::SubHostField { root, field, rhs } => {
+                    let root = expect_host_ref(frame.read(*root)?, "sub_host_field")?;
+                    let value =
+                        value_to_host(frame.read(*rhs)?, "sub_host_field", heap.as_deref())?;
+                    let path = HostPath::new(root).field(*field);
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
+                    host.tx
+                        .sub_path(path, value, base_value, instruction.span)?;
+                }
                 InstructionKind::AddHostPath {
                     root,
                     segments,
@@ -1550,6 +1567,33 @@ impl Vm {
                     }
                     host.tx
                         .add_path(path, value, base_value, instruction.span)?;
+                }
+                InstructionKind::SubHostPath {
+                    root,
+                    segments,
+                    rhs,
+                } => {
+                    let root = expect_host_ref(frame.read(*root)?, "sub_host_path")?;
+                    let value = value_to_host(frame.read(*rhs)?, "sub_host_path", heap.as_deref())?;
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    let path = host_path_from_segments(
+                        root,
+                        segments,
+                        &frame,
+                        heap.as_deref(),
+                        &mut symbols,
+                    )?;
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
+                    host.tx
+                        .sub_path(path, value, base_value, instruction.span)?;
                 }
                 InstructionKind::CallHostMethod {
                     dst,
@@ -5647,6 +5691,51 @@ fn main(player) {
         assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
         tx.apply(&mut adapter).expect("apply nested host patch");
         assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
+    }
+
+    #[test]
+    fn compiled_source_subtracts_nested_host_field_through_patch_tx() {
+        let host_ref = player_ref(3);
+        let stats = FieldId::new(8);
+        let level = FieldId::new(9);
+        let stats_level = HostPath::new(host_ref).field(stats).field(level);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.stats.level -= 2;
+    return player.stats.level;
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("stats", stats)
+                .with_host_field("level", level),
+        )
+        .expect("compile nested host subtraction source");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(stats_level.clone(), HostValue::Int(9));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(7)));
+        assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(9)));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].path, stats_level);
+        assert_eq!(tx.patches()[0].op, PatchOp::Sub(HostValue::Int(2)));
+        tx.apply(&mut adapter).expect("apply nested host sub patch");
+        assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
     }
 
     #[test]

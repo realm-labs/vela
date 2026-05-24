@@ -4,7 +4,7 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
     HostError, HostErrorKind, HostObjectSnapshot, HostPath, HostRef, HostResult, HostValue, Patch,
-    PatchOp, PatchTx, ScriptStateAdapter, add_values,
+    PatchOp, PatchTx, ScriptStateAdapter, add_values, sub_values,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -102,10 +102,7 @@ impl ScriptStateAdapter for MockStateAdapter {
     fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
         self.validate_path(&patch.path)?;
         match &patch.op {
-            PatchOp::Set(_) | PatchOp::Add(_) => Ok(()),
-            PatchOp::Sub(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
-                op: "sub",
-            })),
+            PatchOp::Set(_) | PatchOp::Add(_) | PatchOp::Sub(_) => Ok(()),
             PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
                 op: "remove",
             })),
@@ -136,9 +133,15 @@ impl ScriptStateAdapter for MockStateAdapter {
                 })?;
                 self.write_path(&patch.path, next)
             }
-            PatchOp::Sub(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
-                op: "sub",
-            })),
+            PatchOp::Sub(value) => {
+                let current = self.read_path(&patch.path)?;
+                let next = sub_values(&current, &value).ok_or_else(|| {
+                    HostError::new(HostErrorKind::InvalidSub {
+                        path: patch.path.clone(),
+                    })
+                })?;
+                self.write_path(&patch.path, next)
+            }
             PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
                 op: "remove",
             })),

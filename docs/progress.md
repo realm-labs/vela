@@ -663,6 +663,9 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   reads and writes, so calls such as
   `player.inventory.items[item_id].grant(20)` record method patches against
   indexed/keyed `HostPath` receivers.
+- `PatchTx` now supports subtraction RMW patches with overlay reads, mock
+  adapter validation/apply, and VM/compiler lowering for host `-=` through
+  `SubHostField` and `SubHostPath`.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

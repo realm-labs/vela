@@ -53,6 +53,32 @@ fn add_path_uses_previous_overlay_value() {
 }
 
 #[test]
+fn sub_path_records_patch_and_updates_overlay_from_base() {
+    let mut tx = PatchTx::new();
+    let path = level_path();
+
+    tx.sub_path(path.clone(), HostValue::Int(2), HostValue::Int(9), None)
+        .expect("sub path");
+
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].op, PatchOp::Sub(HostValue::Int(2)));
+    assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(7)));
+}
+
+#[test]
+fn sub_path_uses_previous_overlay_value() {
+    let mut tx = PatchTx::new();
+    let path = level_path();
+
+    tx.set_path(path.clone(), HostValue::Int(10), None)
+        .expect("set path");
+    tx.sub_path(path.clone(), HostValue::Int(3), HostValue::Int(0), None)
+        .expect("sub path");
+
+    assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(7)));
+}
+
+#[test]
 fn stale_generation_reports_error() {
     let host_ref = player_ref(3);
     let snapshot = HostObjectSnapshot {
@@ -89,7 +115,7 @@ fn transaction_read_prefers_overlay_before_adapter_snapshot() {
 }
 
 #[test]
-fn apply_commits_set_and_add_at_safe_point() {
+fn apply_commits_set_add_and_sub_at_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_value(path.clone(), HostValue::Int(9));
@@ -99,11 +125,13 @@ fn apply_commits_set_and_add_at_safe_point() {
         .expect("set path");
     tx.add_path(path.clone(), HostValue::Int(2), HostValue::Int(0), None)
         .expect("add path");
+    tx.sub_path(path.clone(), HostValue::Int(5), HostValue::Int(0), None)
+        .expect("sub path");
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(9)));
 
     tx.apply(&mut adapter).expect("apply transaction");
 
-    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(12)));
+    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(7)));
 }
 
 #[test]
