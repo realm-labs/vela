@@ -2284,6 +2284,54 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_literal_match_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 2;
+    return match value {
+        1 => 10,
+        2 => 20,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("compile literal match patterns");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_literal_match_patterns() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let label = "xp";
+    return match label {
+        "gold" => 1,
+        "xp" => 2,
+        _ => 0,
+    };
+}
+"#,
+        )
+        .expect("compile heap string literal match patterns");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new()
+                .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+                .expect("run heap string literal match patterns"),
+            Value::Int(2)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
     fn managed_heap_execution_runs_for_in_source() {
         let program = compile_program_source(
             SourceId::new(1),

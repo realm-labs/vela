@@ -1374,6 +1374,16 @@ impl<'ast> Compiler<'ast> {
     ) -> CompileResult<Option<usize>> {
         match pattern {
             Pattern::Wildcard => Ok(None),
+            Pattern::Literal(literal) => {
+                let pattern = self.compile_literal(literal)?;
+                let condition = self.alloc_register()?;
+                self.emit(InstructionKind::Equal {
+                    dst: condition,
+                    lhs: scrutinee,
+                    rhs: pattern,
+                });
+                Ok(Some(self.emit_jump_if_false(condition)))
+            }
             Pattern::Path(path) | Pattern::RecordVariant { path, .. } => {
                 let Some((enum_name, variant)) = enum_variant_path(path) else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -1390,9 +1400,9 @@ impl<'ast> Compiler<'ast> {
                 });
                 Ok(Some(self.emit_jump_if_false(condition)))
             }
-            Pattern::Literal(_) | Pattern::Binding(_) | Pattern::TupleVariant { .. } => Err(
-                CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern")),
-            ),
+            Pattern::Binding(_) | Pattern::TupleVariant { .. } => Err(CompileError::new(
+                CompileErrorKind::UnsupportedSyntax("match pattern"),
+            )),
         }
     }
 
@@ -2480,6 +2490,41 @@ fn main() {
             code.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::Move { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_literal_match_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 2;
+    return match value {
+        1 => 10,
+        2 => 20,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("literal match patterns should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Equal { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .filter(|instruction| matches!(
+                    instruction.kind,
+                    InstructionKind::JumpIfFalse { .. }
+                ))
+                .count()
+                >= 2
         );
     }
 

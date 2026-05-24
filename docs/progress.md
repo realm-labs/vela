@@ -414,6 +414,10 @@ to the later language constructs that introduce loops and closures.
   executable enum tag, record-variant, and wildcard patterns.
 - Added VM coverage proving `match` expression arms merge values from both
   expression and block arm bodies.
+- Added compiler lowering for literal match patterns by comparing the scrutinee
+  with compiled literal constants.
+- Added VM coverage proving integer and heap-backed string literal patterns
+  execute from source.
 
 ## Next
 

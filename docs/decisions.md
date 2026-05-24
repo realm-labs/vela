@@ -1202,3 +1202,24 @@ Consequences:
   statement matches.
 - Match guards and richer pattern forms remain explicitly unsupported until
   their dedicated lowering slices.
+
+## 2026-05-24: Literal Match Patterns Use Dynamic Equality
+
+Status: Accepted
+
+Context:
+M9 requires literal patterns. The VM already has dynamic `Equal` bytecode,
+including heap-aware equality for strings and aggregate values where supported.
+Literal patterns do not need new runtime value categories or host access.
+
+Decision:
+The compiler lowers a literal pattern by compiling the pattern literal into a
+constant register, emitting `Equal` against the match scrutinee, and branching
+to the next arm when the result is false. This is shared by statement and
+expression-valued `match` lowering.
+
+Consequences:
+- Integer, float, string, bool, and null literal patterns use the same equality
+  semantics as ordinary expressions.
+- Heap-backed string literal patterns work through existing heap-aware equality.
+- Binding patterns, tuple variants, and guards remain separate M9 slices.
