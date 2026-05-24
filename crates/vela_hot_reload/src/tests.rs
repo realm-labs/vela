@@ -180,6 +180,36 @@ fn main() {
 }
 
 #[test]
+fn rejected_compile_report_carries_source_span_and_labels() {
+    let initial = compile_initial(SourceId::new(1), "fn main(value) { return value; }")
+        .expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+
+    let report = runtime.apply_hot_update_result_report(compile_update(
+        &runtime.current(),
+        SourceId::new(2),
+        "fn main(value: Array<int>) { return value; }",
+    ));
+
+    assert!(!report.accepted);
+    assert_eq!(report.errors.len(), 1);
+    let diagnostic = &report.errors[0];
+    assert_eq!(diagnostic.code, "reload.compile");
+    assert_eq!(diagnostic.target, None);
+    assert_eq!(
+        diagnostic.source_span.expect("compile source span").source,
+        SourceId::new(2)
+    );
+    assert!(
+        diagnostic
+            .labels
+            .iter()
+            .any(|label| label.message == "remove generic type arguments")
+    );
+    assert_eq!(runtime.current().id, ProgramVersionId(0));
+}
+
+#[test]
 fn deleted_function_parameters_are_rejected() {
     let initial = compile_initial(SourceId::new(1), "fn main(value) { return value; }")
         .expect("compile initial");

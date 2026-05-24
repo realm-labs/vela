@@ -1,6 +1,7 @@
 use std::fmt;
 
-use vela_bytecode::compiler::CompileError;
+use vela_bytecode::compiler::{CompileError, CompileErrorKind};
+use vela_common::{Label, Span};
 
 use crate::{AccessAbi, EffectAbi};
 
@@ -140,6 +141,40 @@ impl HotReloadError {
                 Some("preserve reflective access metadata or require host approval before reloading".to_owned())
             }
         }
+    }
+
+    #[must_use]
+    pub fn source_span(&self) -> Option<Span> {
+        let HotReloadErrorKind::Compile(error) = &self.kind else {
+            return None;
+        };
+        compile_diagnostics(error)
+            .and_then(|diagnostics| diagnostics.iter().find_map(|diagnostic| diagnostic.span))
+    }
+
+    #[must_use]
+    pub fn labels(&self) -> Vec<Label> {
+        let HotReloadErrorKind::Compile(error) = &self.kind else {
+            return Vec::new();
+        };
+        compile_diagnostics(error)
+            .into_iter()
+            .flat_map(|diagnostics| diagnostics.iter())
+            .flat_map(|diagnostic| diagnostic.labels.iter().cloned())
+            .collect()
+    }
+}
+
+fn compile_diagnostics(error: &CompileError) -> Option<&[vela_common::Diagnostic]> {
+    match &error.kind {
+        CompileErrorKind::SyntaxDiagnostics(diagnostics)
+        | CompileErrorKind::SemanticDiagnostics(diagnostics) => Some(diagnostics),
+        CompileErrorKind::FunctionNotFound(_)
+        | CompileErrorKind::UnknownLocal(_)
+        | CompileErrorKind::InvalidIntLiteral { .. }
+        | CompileErrorKind::InvalidFloatLiteral { .. }
+        | CompileErrorKind::RegisterOverflow
+        | CompileErrorKind::UnsupportedSyntax(_) => None,
     }
 }
 

@@ -828,8 +828,12 @@ permissions.
   Reflective host field reads now require `reflect_readable`, and reflective
   host field writes require both host writability and `reflect_writable` before
   any `PatchTx` patch is recorded.
+- Extended `HotReloadDiagnostic` for compile rejections with a primary source
+  span and copied compiler labels. Rejected reload reports now surface parser or
+  semantic diagnostic locations directly while preserving the original
+  `HotReloadError` for full host-side inspection.
 
 ## Next
 
-- Continue M12 with remaining reflection access reporting polish and
-  hot-reload report diagnostics.
+- Continue M12 with remaining reflection access/reporting polish and compile
+  diagnostic detail for hot-reload reports.

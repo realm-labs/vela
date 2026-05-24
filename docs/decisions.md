@@ -3372,3 +3372,27 @@ Consequences:
 - Reflective writes can be disabled independently from host writability.
 - Existing `.writable(true)` schema builders continue to opt fields into both
   host writability and reflective writability.
+
+## 2026-05-25: Hot Reload Compile Reports Carry Source Labels
+
+Status: Accepted
+
+Context:
+Rejected hot-reload reports carried stable codes, targets, reasons, hints, and
+the original `HotReloadError`, but compile failures still exposed no direct
+source location. Host tooling had to unpack the embedded compiler error to point
+at parser or semantic diagnostics.
+
+Decision:
+Add `source_span` and copied compiler `labels` to `HotReloadDiagnostic`.
+Compile errors lift the first available primary span plus all compiler labels
+from syntax or semantic diagnostics into the report. ABI and policy errors keep
+these fields empty because their current targets are schema/function/method
+identifiers rather than source locations.
+
+Consequences:
+- Admin/debug tooling can render rejected compile updates without parsing the
+  embedded compiler error first.
+- Existing machine-readable reload codes and targets remain stable.
+- Future richer report details can add more structured fields without changing
+  the safe-point update semantics.

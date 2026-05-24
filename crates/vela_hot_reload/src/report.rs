@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use vela_common::{Label, Span};
+
 use crate::{FunctionSymbolId, HotReloadError, ProgramVersion, ProgramVersionId};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -56,6 +58,8 @@ impl HotReloadReport {
 pub struct HotReloadDiagnostic {
     pub code: &'static str,
     pub target: Option<String>,
+    pub source_span: Option<Span>,
+    pub labels: Vec<Label>,
     pub reason: String,
     pub repair_hint: Option<String>,
     pub error: HotReloadError,
@@ -67,6 +71,8 @@ impl HotReloadDiagnostic {
         Self {
             code: error.code(),
             target: error.target(),
+            source_span: error.source_span(),
+            labels: error.labels(),
             reason: error.reason(),
             repair_hint: error.repair_hint(),
             error,
