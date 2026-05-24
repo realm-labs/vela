@@ -43,9 +43,14 @@ M2: Minimal Bytecode VM Loop.
   comparison, branching, returns, and registered native function calls.
 - Added focused bytecode and VM tests for code-object construction, arithmetic,
   branches, and a mock `log` native call.
+- Added a minimal AST-to-bytecode compiler for function bodies with literal
+  constants, local `let` bindings, arithmetic/comparison expressions, returns,
+  and native calls.
+- Added VM integration tests that execute compiled source strings through the
+  parser, compiler, bytecode, and VM loop.
 
 ## Next
 
-- Add script-function call support and a small compiler from parsed AST
-  expressions/statements into bytecode.
-- Extend the VM value model with arrays/maps as executable bytecode operations.
+- Add script-function call support.
+- Extend the compiler and VM value model with arrays/maps as executable
+  bytecode operations.

@@ -250,7 +250,9 @@ fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vela_bytecode::compiler::compile_function_source;
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
+    use vela_common::SourceId;
 
     #[test]
     fn runs_basic_arithmetic() {
@@ -343,5 +345,35 @@ mod tests {
         }));
 
         assert_eq!(vm.run(&code), Ok(Value::Null));
+    }
+
+    #[test]
+    fn runs_compiled_arithmetic_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            "fn main() { let base = 2; return base + 3 * 4; }",
+            "main",
+        )
+        .expect("compile arithmetic source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(14)));
+    }
+
+    #[test]
+    fn runs_compiled_native_call_source() {
+        let mut vm = Vm::new();
+        vm.register_native("log", |args| {
+            assert_eq!(args, [Value::String("compiled".into())]);
+            Ok(Value::Int(7))
+        });
+
+        let code = compile_function_source(
+            SourceId::new(1),
+            "fn main() { return log(\"compiled\"); }",
+            "main",
+        )
+        .expect("compile native call source");
+
+        assert_eq!(vm.run(&code), Ok(Value::Int(7)));
     }
 }

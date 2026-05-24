@@ -1,5 +1,7 @@
 //! Register bytecode for Vela code objects.
 
+pub mod compiler;
+
 use vela_common::Span;
 
 #[derive(Clone, Debug, PartialEq)]
