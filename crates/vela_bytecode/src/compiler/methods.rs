@@ -1,19 +1,16 @@
-use vela_common::{FieldId, HostMethodId};
+use vela_common::HostMethodId;
 use vela_syntax::{Expr, ExprKind};
 
-use super::CompilerOptions;
+use super::{
+    CompilerOptions,
+    host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path, host_field_path_parts},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct HostMethodCall<'ast> {
-    pub(super) receiver: HostMethodReceiver<'ast>,
-    pub(super) fields: Vec<FieldId>,
+    pub(super) receiver: HostPathRoot<'ast>,
+    pub(super) segments: Vec<HostPathPart<'ast>>,
     pub(super) method: HostMethodId,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum HostMethodReceiver<'ast> {
-    Expr(&'ast Expr),
-    LocalPath(&'ast str),
 }
 
 pub(super) fn host_method_call<'ast>(
@@ -24,10 +21,10 @@ pub(super) fn host_method_call<'ast>(
     match &callee.kind {
         ExprKind::Field { base, name } => {
             let method = options.host_method(receiver_type, name)?;
-            let (receiver, fields) = host_method_receiver_path(options, base)?;
+            let path = host_method_receiver_path(options, base)?;
             Some(HostMethodCall {
-                receiver,
-                fields,
+                receiver: path.root,
+                segments: path.segments,
                 method,
             })
         }
@@ -37,10 +34,10 @@ pub(super) fn host_method_call<'ast>(
             }
             let method_name = path.last()?;
             let method = options.host_method(receiver_type, method_name)?;
-            let (receiver, fields) = host_method_path_receiver(options, &path[..path.len() - 1])?;
+            let path = host_method_path_receiver(options, &path[..path.len() - 1])?;
             Some(HostMethodCall {
-                receiver,
-                fields,
+                receiver: path.root,
+                segments: path.segments,
                 method,
             })
         }
@@ -51,27 +48,24 @@ pub(super) fn host_method_call<'ast>(
 fn host_method_receiver_path<'ast>(
     options: &CompilerOptions,
     receiver: &'ast Expr,
-) -> Option<(HostMethodReceiver<'ast>, Vec<FieldId>)> {
-    match &receiver.kind {
-        ExprKind::Field { base, name } => {
-            let field = options.host_fields.get(name).copied()?;
-            let (receiver, mut fields) = host_method_receiver_path(options, base)?;
-            fields.push(field);
-            Some((receiver, fields))
-        }
-        ExprKind::Path(path) => host_method_path_receiver(options, path),
-        _ => Some((HostMethodReceiver::Expr(receiver), Vec::new())),
-    }
+) -> Option<HostPath<'ast>> {
+    host_field_path(options, receiver).or(Some(HostPath {
+        root: HostPathRoot::Expr(receiver),
+        segments: Vec::new(),
+    }))
 }
 
 fn host_method_path_receiver<'ast>(
     options: &CompilerOptions,
     path: &'ast [String],
-) -> Option<(HostMethodReceiver<'ast>, Vec<FieldId>)> {
+) -> Option<HostPath<'ast>> {
     let root = path.first()?;
-    let fields = path[1..]
-        .iter()
-        .map(|segment| options.host_fields.get(segment).copied())
-        .collect::<Option<Vec<_>>>()?;
-    Some((HostMethodReceiver::LocalPath(root), fields))
+    if path.len() == 1 {
+        Some(HostPath {
+            root: HostPathRoot::LocalPath(root),
+            segments: Vec::new(),
+        })
+    } else {
+        host_field_path_parts(options, path)
+    }
 }

@@ -27,7 +27,7 @@ use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
     CallArgument, CodeObject, Constant, HostPathSegment, InstructionKind, Program, Register,
 };
-use vela_common::{FieldId, SymbolInterner};
+use vela_common::SymbolInterner;
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
 };
@@ -1554,12 +1554,19 @@ impl Vm {
                 InstructionKind::CallHostMethod {
                     dst,
                     root,
-                    fields,
+                    segments,
                     method,
                     args,
                 } => {
                     let root = expect_host_ref(frame.read(*root)?, "call_host_method")?;
-                    let path = host_field_path(root, fields);
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    let path = host_path_from_segments(
+                        root,
+                        segments,
+                        &frame,
+                        heap.as_deref(),
+                        &mut symbols,
+                    )?;
                     let values = args
                         .iter()
                         .map(|register| {
@@ -2236,12 +2243,6 @@ fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> 
         Value::HostRef(value) => Ok(*value),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
-}
-
-fn host_field_path(root: HostRef, fields: &[FieldId]) -> HostPath {
-    fields
-        .iter()
-        .fold(HostPath::new(root), |path, field| path.field(*field))
 }
 
 fn host_path_from_segments(
@@ -5807,6 +5808,69 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_host_indexed_method_call_records_path_patch_tx() {
+        let host_ref = player_ref(3);
+        let inventory = FieldId::new(8);
+        let items = FieldId::new(9);
+        let method = HostMethodId::new(10);
+        let item_key = Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"));
+        let item_path = HostPath::new(host_ref)
+            .field(inventory)
+            .field(items)
+            .key(item_key);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let item_id = "gold";
+    player.inventory.items[item_id].grant(20);
+    return 1;
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("items", items)
+                .with_host_method("grant", method),
+        )
+        .expect("compile indexed host method source");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(item_path.clone(), HostValue::Int(0));
+        adapter.insert_method_return(method, HostValue::Null);
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(1)));
+        assert!(adapter.method_calls().is_empty());
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].path, item_path);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method,
+                args: vec![HostValue::Int(20)]
+            }
+        );
+        tx.apply(&mut adapter)
+            .expect("apply indexed host method patch");
+        assert_eq!(
+            adapter.method_calls(),
+            &[(item_path, method, vec![HostValue::Int(20)])]
+        );
+    }
+
+    #[test]
     fn compiled_source_context_time_and_emit_records_patch_tx() {
         let ctx_ref = HostRef::new(HostTypeId::new(9), HostObjectId::new(11), 1);
         let now_field = FieldId::new(6);
@@ -6233,7 +6297,7 @@ fn main(player) {
         code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
             dst: Some(Register(2)),
             root: Register(0),
-            fields: Vec::new(),
+            segments: Vec::new(),
             method,
             args: vec![Register(1)],
         }));
@@ -6293,7 +6357,7 @@ fn main(player) {
         code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
             dst: Some(Register(2)),
             root: Register(0),
-            fields: Vec::new(),
+            segments: Vec::new(),
             method,
             args: vec![Register(1)],
         }));

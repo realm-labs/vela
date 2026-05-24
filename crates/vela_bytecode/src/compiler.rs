@@ -34,7 +34,7 @@ use control_flow::LoopContext;
 use field_slots::ScriptFieldSlots;
 use host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path, host_field_path_parts};
 use lambdas::{LambdaCapture, collect_lambda_captures};
-use methods::{HostMethodReceiver, host_method_call};
+use methods::host_method_call;
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
 use patterns::{
     enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
@@ -1135,12 +1135,8 @@ impl<'ast> Compiler<'ast> {
                     host_method_call(&self.facts.options, callee, host_receiver_type.as_deref())
                 {
                     reject_named_args(args, "host method call")?;
-                    let root = match call.receiver {
-                        HostMethodReceiver::Expr(receiver) => self.compile_expr(receiver)?,
-                        HostMethodReceiver::LocalPath(name) => {
-                            self.local_register_at_span(callee.span, name)?
-                        }
-                    };
+                    let root = self.compile_host_path_root(callee.span, call.receiver)?;
+                    let segments = self.compile_host_path_segments(call.segments)?;
                     let arg_registers = args
                         .iter()
                         .map(|arg| self.compile_expr(&arg.value))
@@ -1149,7 +1145,7 @@ impl<'ast> Compiler<'ast> {
                     self.emit(InstructionKind::CallHostMethod {
                         dst: Some(dst),
                         root,
-                        fields: call.fields,
+                        segments,
                         method: call.method,
                         args: arg_registers,
                     });
@@ -3569,9 +3565,49 @@ fn main(player) {
             &instruction.kind,
             InstructionKind::CallHostMethod {
                 method: lowered_method,
-                fields,
+                segments,
                 ..
-            } if *lowered_method == method && fields.as_slice() == [inventory]
+            } if *lowered_method == method
+                && segments.as_slice() == [HostPathSegment::Field(inventory)]
+        )));
+    }
+
+    #[test]
+    fn compiler_lowers_configured_host_method_calls_on_indexed_paths() {
+        let inventory = FieldId::new(3);
+        let items = FieldId::new(4);
+        let method = HostMethodId::new(5);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player, item_id) {
+    player.inventory.items[item_id].grant(20);
+    return 1;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("items", items)
+                .with_host_method("grant", method),
+        )
+        .expect("indexed host method call should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallHostMethod {
+                method: lowered_method,
+                segments,
+                ..
+            } if *lowered_method == method
+                && matches!(
+                    segments.as_slice(),
+                    [
+                        HostPathSegment::Field(first),
+                        HostPathSegment::Field(second),
+                        HostPathSegment::Value(_)
+                    ] if *first == inventory && *second == items
+                )
         )));
     }
 

@@ -659,6 +659,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   compile to indexed/keyed `AddHostPath`, and runtime string segment values
   become `HostPath::key` entries while integer values become `HostPath::index`
   entries.
+- `CallHostMethod` now uses the same ordered host path segment bytecode as
+  reads and writes, so calls such as
+  `player.inventory.items[item_id].grant(20)` record method patches against
+  indexed/keyed `HostPath` receivers.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

@@ -2477,3 +2477,28 @@ Consequences:
   persistence or human-readable diagnostics.
 - Variant-field path segments, `PathProxy` values, and non-add RMW operations
   remain future M11 work.
+
+## 2026-05-25: Host Method Calls Share Host Path Segments
+
+Status: Accepted
+
+Context:
+`GetHostPath`, `SetHostPath`, and `AddHostPath` can now represent dynamic
+field/index/key receiver paths, but `CallHostMethod` still carried only static
+field IDs. That left method calls on indexed host paths unable to target the
+same receiver shape as host reads and writes.
+
+Decision:
+Change `CallHostMethod` to carry the same ordered bytecode host path segments
+used by the path read/write instructions. Host method receiver lowering now
+uses the focused compiler host path helper, and the VM constructs the method
+receiver `HostPath` through the same runtime segment conversion path.
+
+Consequences:
+- `player.inventory.items[item_id].grant(20)` records a host method patch
+  against the indexed/keyed receiver path.
+- Direct root method calls use an empty segment list, preserving existing
+  behavior.
+- The method call still records a patch instead of dispatching to Rust with a
+  mutable reference; script-visible host method return values remain future
+  work.

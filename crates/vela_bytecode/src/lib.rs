@@ -390,7 +390,7 @@ pub enum InstructionKind {
     CallHostMethod {
         dst: Option<Register>,
         root: Register,
-        fields: Vec<FieldId>,
+        segments: Vec<HostPathSegment>,
         method: HostMethodId,
         args: Vec<Register>,
     },
