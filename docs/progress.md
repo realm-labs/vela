@@ -885,6 +885,11 @@ permissions.
   scripts can call `reflect.type_info(name)` plus `reflect.types()` to inspect
   copied `ReflectType` records with kind, schema hash, docs, attrs, and member
   counts, including ranked unknown-type candidates.
+- Added effect-specific reflective call permissions for host-read,
+  host-write, and event-emitting methods. `ReflectPolicy` now checks
+  `MethodEffectSet` before `PatchTx` method-call patches are recorded, and the
+  VM `reflect.call` native reports a structured effect-permission denial when a
+  policy approves method calls but not the method's declared side effects.
 
 ## Next
 

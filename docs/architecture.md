@@ -1146,6 +1146,9 @@ pub enum ReflectPermission {
     ReadValueFields,
     WriteValueFields,
     CallMethods,
+    CallHostReadMethods,
+    CallHostWriteMethods,
+    CallEventMethods,
     AccessPrivate,
     InspectHostPath,
 }
@@ -1153,12 +1156,12 @@ pub enum ReflectPermission {
 
 Suggested defaults:
 
-| Script Kind | Read Types | Read Fields | Write Fields | Call Methods | Private | Inspect HostPath |
-|---|---:|---:|---:|---:|---:|---:|
-| gameplay | yes | yes | cautious | yes | no | no |
-| config validation | yes | yes | no | pure only | no | no |
-| GM/admin | yes | yes | yes | yes | configurable | yes |
-| test script | yes | yes | yes | yes | configurable | yes |
+| Script Kind | Read Types | Read Fields | Write Fields | Call Methods | Host Read Effects | Host Write Effects | Event Effects | Private | Inspect HostPath |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| gameplay | yes | yes | cautious | yes | yes | cautious | cautious | no | no |
+| config validation | yes | yes | no | pure only | no | no | no | no | no |
+| GM/admin | yes | yes | yes | yes | configurable | configurable | configurable | configurable | yes |
+| test script | yes | yes | yes | yes | yes | yes | yes | configurable | yes |
 
 ## Struct, Record, And Enum Memory Model
 

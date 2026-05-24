@@ -2487,8 +2487,9 @@ mod tests {
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
-        FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc, ModuleDesc,
-        TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
+        FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc,
+        MethodEffectSet, ModuleDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind,
+        VariantDesc,
     };
 
     #[test]
@@ -6477,6 +6478,58 @@ fn main(player) {
             Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
                 permission: reflect::ReflectPermission::CallMethods
             })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflection_permissions_deny_host_write_effect_calls_before_patches() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    reflect.call(player, "grant_exp", 10);
+    return 1;
+}
+"#,
+        )
+        .expect("compile denied reflection effect source");
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .effects(MethodEffectSet::host_write())
+                        .access(MethodAccess::new().reflect_callable(true)),
+                ),
+        );
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_policy(
+            Arc::new(registry),
+            reflect::ReflectPolicy::new(
+                reflect::ReflectPermissionSet::new()
+                    .with(reflect::ReflectPermission::CallMethods)
+                    .with(reflect::ReflectPermission::CallHostReadMethods)
+                    .with(reflect::ReflectPermission::InspectHostPath),
+            ),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(
+                ReflectErrorKind::MethodEffectPermissionDenied {
+                    method: "grant_exp".to_owned(),
+                    permission: reflect::ReflectPermission::CallHostWriteMethods
+                }
+            )
         ));
         assert!(tx.patches().is_empty());
     }

@@ -9,6 +9,9 @@ pub enum ReflectPermission {
     ReadValueFields,
     WriteValueFields,
     CallMethods,
+    CallHostReadMethods,
+    CallHostWriteMethods,
+    CallEventMethods,
     AccessPrivate,
     InspectHostPath,
 }
@@ -21,6 +24,9 @@ impl ReflectPermission {
             Self::ReadValueFields => "reflect.read_value_fields",
             Self::WriteValueFields => "reflect.write_value_fields",
             Self::CallMethods => "reflect.call_methods",
+            Self::CallHostReadMethods => "reflect.call_host_read_methods",
+            Self::CallHostWriteMethods => "reflect.call_host_write_methods",
+            Self::CallEventMethods => "reflect.call_event_methods",
             Self::AccessPrivate => "reflect.access_private",
             Self::InspectHostPath => "reflect.inspect_host_path",
         }
@@ -47,6 +53,9 @@ impl ReflectPermissionSet {
             .with(ReflectPermission::ReadValueFields)
             .with(ReflectPermission::WriteValueFields)
             .with(ReflectPermission::CallMethods)
+            .with(ReflectPermission::CallHostReadMethods)
+            .with(ReflectPermission::CallHostWriteMethods)
+            .with(ReflectPermission::CallEventMethods)
             .with(ReflectPermission::AccessPrivate)
             .with(ReflectPermission::InspectHostPath)
     }
@@ -229,8 +238,33 @@ impl ReflectPolicy {
                 },
             ));
         }
+        if let Some(permission) = missing_method_effect_permission(method, &self.permissions) {
+            return Err(ReflectError::new(
+                ReflectErrorKind::MethodEffectPermissionDenied {
+                    method: method.name.clone(),
+                    permission,
+                },
+            ));
+        }
         Ok(())
     }
+}
+
+fn missing_method_effect_permission(
+    method: &MethodDesc,
+    permissions: &ReflectPermissionSet,
+) -> Option<ReflectPermission> {
+    if method.effects.reads_host && !permissions.contains(ReflectPermission::CallHostReadMethods) {
+        return Some(ReflectPermission::CallHostReadMethods);
+    }
+    if method.effects.writes_host && !permissions.contains(ReflectPermission::CallHostWriteMethods)
+    {
+        return Some(ReflectPermission::CallHostWriteMethods);
+    }
+    if method.effects.emits_events && !permissions.contains(ReflectPermission::CallEventMethods) {
+        return Some(ReflectPermission::CallEventMethods);
+    }
+    None
 }
 
 impl Default for ReflectPolicy {
@@ -276,6 +310,11 @@ mod tests {
         let permissions = ReflectPermissionSet::read_only();
 
         assert!(permissions.require(ReflectPermission::ReadTypeInfo).is_ok());
+        assert!(
+            permissions
+                .require(ReflectPermission::CallHostWriteMethods)
+                .is_err()
+        );
         let error = permissions
             .require(ReflectPermission::WriteValueFields)
             .expect_err("write should be denied");

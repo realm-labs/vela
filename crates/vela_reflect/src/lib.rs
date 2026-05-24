@@ -667,6 +667,10 @@ pub enum ReflectErrorKind {
         method: String,
         permission: String,
     },
+    MethodEffectPermissionDenied {
+        method: String,
+        permission: ReflectPermission,
+    },
     FunctionPermissionDenied {
         function: String,
         permission: String,
@@ -1363,6 +1367,68 @@ mod tests {
             }
         );
         assert!(ctx.tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .effects(MethodEffectSet::host_write())
+                        .access(MethodAccess::new().reflect_callable(true)),
+                ),
+        );
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+        let policy = ReflectPolicy::new(
+            ReflectPermissionSet::new()
+                .with(ReflectPermission::CallMethods)
+                .with(ReflectPermission::CallHostReadMethods)
+                .with(ReflectPermission::InspectHostPath),
+        );
+
+        let error = call_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "grant_exp",
+            vec![ReflectValue::Host(HostValue::Int(20))],
+            &policy,
+        )
+        .expect_err("host-write method should require effect permission");
+
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::MethodEffectPermissionDenied {
+                method: "grant_exp".to_owned(),
+                permission: ReflectPermission::CallHostWriteMethods
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
+
+        let allowed_permissions = policy
+            .permissions()
+            .clone()
+            .with(ReflectPermission::CallHostWriteMethods);
+        let policy = policy.with_permissions(allowed_permissions);
+        let value = call_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "grant_exp",
+            vec![ReflectValue::Host(HostValue::Int(20))],
+            &policy,
+        )
+        .expect("effect permission should allow method call");
+
+        assert_eq!(value, ReflectValue::Host(HostValue::Null));
+        assert_eq!(ctx.tx.patches().len(), 1);
     }
 
     #[test]

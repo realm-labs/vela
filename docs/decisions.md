@@ -3666,3 +3666,30 @@ Consequences:
   methods, traits, and variants remain behind their existing policy-aware
   reflection calls.
 - Runtime schema mutation remains unavailable.
+
+## 2026-05-25: Reflective Calls Require Effect Permissions
+
+Status: Accepted
+
+Context:
+Reflected host methods already carried `MethodEffectSet` metadata, and
+`reflect.call` enforced `MethodAccess` plus method-specific permissions before
+recording a `PatchTx` method-call patch. The effect bits were still only
+informational, so a policy that allowed method calls could invoke host-reading,
+host-writing, or event-emitting methods without explicitly approving those
+declared side effects.
+
+Decision:
+Add effect-specific reflection permissions for host-read, host-write, and
+event-emitting methods. `ReflectPolicy::require_method_access` now checks the
+method's `MethodEffectSet` after the existing callable/private/specific
+permission checks, and rejects missing effect grants with a structured
+`MethodEffectPermissionDenied` error before any patch is recorded.
+
+Consequences:
+- Gameplay policies can allow pure reflective calls while separately gating
+  host reads, host writes, and event emission.
+- `ReflectPermissionSet::all()` remains an admin/test policy and includes the
+  new effect permissions.
+- Host mutation still enters only through `PatchTx`; effect enforcement happens
+  before patch creation.
