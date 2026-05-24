@@ -35,16 +35,35 @@ pub struct UseItem {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypeHint {
+    pub path: Vec<String>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Param {
+    pub name: String,
+    pub type_hint: Option<TypeHint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionItem {
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<Param>,
+    pub return_type: Option<TypeHint>,
     pub body: Block,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StructItem {
     pub name: String,
-    pub fields: Vec<String>,
+    pub fields: Vec<StructField>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StructField {
+    pub name: String,
+    pub type_hint: Option<TypeHint>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -56,7 +75,14 @@ pub struct EnumItem {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitItem {
     pub name: String,
-    pub methods: Vec<String>,
+    pub methods: Vec<TraitMethod>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraitMethod {
+    pub name: String,
+    pub params: Vec<Param>,
+    pub return_type: Option<TypeHint>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -81,6 +107,7 @@ pub struct Stmt {
 pub enum StmtKind {
     Let {
         name: String,
+        type_hint: Option<TypeHint>,
         value: Option<Expr>,
     },
     Return(Option<Expr>),
@@ -140,7 +167,7 @@ pub enum ExprKind {
         fields: Vec<RecordField>,
     },
     Lambda {
-        params: Vec<String>,
+        params: Vec<Param>,
         body: Box<Expr>,
     },
     If(Box<IfExpr>),

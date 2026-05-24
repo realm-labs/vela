@@ -253,8 +253,17 @@ that introduce loops and closures.
 - Added compiler tests proving HIR diagnostics reject duplicate declarations
   and unresolved names before bytecode generation, valid program bytecode still
   compiles, and top-level mutation remains rejected before code generation.
+- Added syntax AST nodes for lightweight type hints on function parameters,
+  function returns, `let` bindings, lambda parameters, and struct fields.
+- The parser now preserves type-hint metadata, rejects script generic type
+  syntax such as `Array<int>`, and keeps bytecode execution semantics unchanged.
+- HIR now exposes function signature metadata, struct field metadata, and
+  optional local binding type hints for parameters, `let` bindings, and lambda
+  parameters.
+- Added syntax, HIR, and compiler tests proving type hints are preserved as
+  metadata and generic type hints are rejected before bytecode generation.
 
 ## Next
 
-- Expand M8 lowering with type-hint metadata, top-level side-effect checks, and
-  deeper compiler consumption of HIR binding facts.
+- Expand M8 lowering with top-level side-effect checks and deeper compiler
+  consumption of HIR binding facts.

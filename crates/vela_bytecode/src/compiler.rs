@@ -165,15 +165,20 @@ impl<'ast> Compiler<'ast> {
     ) -> CompileResult<Self> {
         let param_count = u16::try_from(function.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
+        let param_names = function
+            .params
+            .iter()
+            .map(|param| param.name.clone())
+            .collect::<Vec<_>>();
         let mut locals = HashMap::new();
-        for (index, param) in function.params.iter().enumerate() {
+        for (index, param) in param_names.iter().enumerate() {
             let register = u16::try_from(index)
                 .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
             locals.insert(param.clone(), Register(register));
         }
 
         Ok(Self {
-            code: CodeObject::new(function.name.clone(), 0).with_params(function.params.clone()),
+            code: CodeObject::new(function.name.clone(), 0).with_params(param_names),
             locals,
             next_register: param_count,
             body: &function.body,
@@ -203,7 +208,7 @@ impl<'ast> Compiler<'ast> {
 
     fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
         match &stmt.kind {
-            StmtKind::Let { name, value } => {
+            StmtKind::Let { name, value, .. } => {
                 let register = if let Some(value) = value {
                     self.compile_expr(value)?
                 } else {
@@ -847,6 +852,28 @@ fn main(player) { return player.level; }
             diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.message.contains("expected item"))
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_generic_type_hints_before_codegen() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(values: Array<int>) {
+    return values;
+}
+"#,
+        )
+        .expect_err("generic type hints should fail in syntax validation");
+
+        let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
+            panic!("expected syntax diagnostics");
+        };
+        assert!(
+            diagnostics.iter().any(|diagnostic| {
+                diagnostic.code.as_deref() == Some("syntax::generic_type_hint")
+            })
         );
     }
 }

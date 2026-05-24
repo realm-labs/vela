@@ -4,6 +4,7 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::{FunctionItem, ItemKind, SourceFile, Visibility, parse_source};
 
 use crate::binding::{BindingMap, FunctionBindingInput, bind_function};
+use crate::type_hint::{FunctionSignature, HirTypeHint, ParamHint, StructFieldHint, StructShape};
 use crate::{HirDeclId, HirNodeId, ModuleId};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -128,6 +129,8 @@ pub struct ModuleGraph {
     module_by_path: BTreeMap<ModulePath, ModuleId>,
     declarations: BTreeMap<HirDeclId, Declaration>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
+    function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
+    struct_shapes: BTreeMap<HirDeclId, StructShape>,
     diagnostics: Vec<Diagnostic>,
     next_node_id: u32,
     next_decl_id: u32,
@@ -198,15 +201,35 @@ impl ModuleGraph {
                         item.visibility.clone(),
                         item.span,
                     );
+                    self.function_signatures.insert(
+                        declaration,
+                        FunctionSignature {
+                            params: function.params.iter().map(ParamHint::from_syntax).collect(),
+                            return_type: function
+                                .return_type
+                                .as_ref()
+                                .map(HirTypeHint::from_syntax),
+                        },
+                    );
                     function_declarations.push((declaration, function.clone()));
                 }
                 ItemKind::Struct(record) => {
-                    self.insert_declaration(
+                    let declaration = self.insert_declaration(
                         &mut hir_module,
                         record.name.clone(),
                         DeclarationKind::Struct,
                         item.visibility.clone(),
                         item.span,
+                    );
+                    self.struct_shapes.insert(
+                        declaration,
+                        StructShape {
+                            fields: record
+                                .fields
+                                .iter()
+                                .map(StructFieldHint::from_syntax)
+                                .collect(),
+                        },
                     );
                 }
                 ItemKind::Enum(enumeration) => {
@@ -274,6 +297,16 @@ impl ModuleGraph {
     #[must_use]
     pub fn bindings(&self, declaration: HirDeclId) -> Option<&BindingMap> {
         self.bindings.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn function_signature(&self, declaration: HirDeclId) -> Option<&FunctionSignature> {
+        self.function_signatures.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn struct_shape(&self, declaration: HirDeclId) -> Option<&StructShape> {
+        self.struct_shapes.get(&declaration)
     }
 
     #[must_use]
@@ -741,5 +774,81 @@ fn main() {
         ));
 
         assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    }
+
+    #[test]
+    fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+fn grant(player: game.Player, amount: int) -> Result {
+    let reward: Reward = Reward { count: amount };
+    let mapper = |entry: Reward| entry.count;
+    return reward;
+}
+
+struct Reward {
+    count: int,
+}
+"#,
+        ));
+        let declarations = graph.module(module).expect("module declarations");
+        let grant = declarations.get("grant").expect("grant declaration");
+        let reward = declarations.get("Reward").expect("Reward declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let signature = graph.function_signature(grant).expect("function signature");
+        assert_eq!(signature.params[0].name, "player");
+        assert_eq!(
+            signature.params[0]
+                .type_hint
+                .as_ref()
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("game.Player")
+        );
+        assert_eq!(
+            signature
+                .return_type
+                .as_ref()
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("Result")
+        );
+
+        let shape = graph.struct_shape(reward).expect("struct shape");
+        assert_eq!(shape.fields[0].name, "count");
+        assert_eq!(
+            shape.fields[0]
+                .type_hint
+                .as_ref()
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("int")
+        );
+
+        let bindings = graph.bindings(grant).expect("grant bindings");
+        let [reward_local] = bindings.locals_named("reward") else {
+            panic!("expected reward local");
+        };
+        assert_eq!(
+            bindings
+                .local(*reward_local)
+                .and_then(|local| local.type_hint.as_ref())
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("Reward")
+        );
+        let entry_bindings = bindings.locals_named("entry");
+        assert_eq!(
+            bindings
+                .local(entry_bindings[0])
+                .and_then(|local| local.type_hint.as_ref())
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("Reward")
+        );
     }
 }

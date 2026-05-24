@@ -2,9 +2,9 @@ use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::ast::{
     Argument, AssignOp, Attribute, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem,
-    IfExpr, Item, ItemKind, Literal, MapEntry, MatchArm, MatchExpr, Pattern, RecordField,
-    RecordPatternField, SourceFile, Stmt, StmtKind, StructItem, TraitItem, UnaryOp, UseItem,
-    Visibility,
+    IfExpr, Item, ItemKind, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField,
+    RecordPatternField, SourceFile, Stmt, StmtKind, StructField, StructItem, TraitItem,
+    TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
 };
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, Token, TokenKind};
@@ -112,14 +112,19 @@ impl Parser {
     fn parse_function_item(&mut self) -> Option<FunctionItem> {
         let name = self.expect_ident("expected function name")?;
         let params = self.parse_parameter_list();
-        self.skip_optional_return_type();
+        let return_type = self.parse_optional_return_type();
         let body = self.parse_block()?;
-        Some(FunctionItem { name, params, body })
+        Some(FunctionItem {
+            name,
+            params,
+            return_type,
+            body,
+        })
     }
 
     fn parse_struct_item(&mut self) -> Option<StructItem> {
         let name = self.expect_ident("expected struct name")?;
-        let fields = self.parse_named_members_in_braces();
+        let fields = self.parse_struct_fields_in_braces();
         Some(StructItem { name, fields })
     }
 
@@ -141,10 +146,17 @@ impl Parser {
             self.parse_attributes();
             if self.eat_keyword(Keyword::Fn).is_some() {
                 if let Some(method) = self.expect_ident("expected trait method name") {
-                    methods.push(method);
+                    let params = self.parse_parameter_list();
+                    let return_type = self.parse_optional_return_type();
+                    methods.push(TraitMethod {
+                        name: method,
+                        params,
+                        return_type,
+                    });
+                } else {
+                    self.parse_parameter_list();
+                    self.parse_optional_return_type();
                 }
-                self.parse_parameter_list();
-                self.skip_optional_return_type();
                 if self.check_symbol(Symbol::LBrace) {
                     self.skip_block_tokens();
                 } else {
@@ -217,13 +229,17 @@ impl Parser {
         let name = self
             .expect_ident("expected binding name")
             .unwrap_or_default();
-        self.skip_type_annotation();
+        let type_hint = self.parse_type_annotation();
         let value = if self.eat_symbol(Symbol::Equal).is_some() {
             Some(self.parse_expression())
         } else {
             None
         };
-        StmtKind::Let { name, value }
+        StmtKind::Let {
+            name,
+            type_hint,
+            value,
+        }
     }
 
     fn parse_for_statement(&mut self) -> StmtKind {
@@ -615,8 +631,11 @@ impl Parser {
         let mut params = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::Pipe) {
             if let Some(param) = self.eat_ident() {
-                params.push(param);
-                self.skip_type_annotation();
+                let type_hint = self.parse_type_annotation();
+                params.push(Param {
+                    name: param,
+                    type_hint,
+                });
             } else {
                 self.error_here("expected lambda parameter");
                 self.advance();
@@ -830,7 +849,7 @@ impl Parser {
         args
     }
 
-    fn parse_parameter_list(&mut self) -> Vec<String> {
+    fn parse_parameter_list(&mut self) -> Vec<Param> {
         let mut params = Vec::new();
         if self.eat_symbol(Symbol::LParen).is_none() {
             self.error_here("expected parameter list");
@@ -839,7 +858,11 @@ impl Parser {
 
         while !self.at_eof() && !self.check_symbol(Symbol::RParen) {
             if let Some(param) = self.eat_ident() {
-                params.push(param);
+                let type_hint = self.parse_type_annotation();
+                params.push(Param {
+                    name: param,
+                    type_hint,
+                });
                 self.skip_parameter_tail();
             } else {
                 self.advance();
@@ -854,6 +877,30 @@ impl Parser {
 
         self.eat_symbol(Symbol::RParen);
         params
+    }
+
+    fn parse_struct_fields_in_braces(&mut self) -> Vec<StructField> {
+        let mut fields = Vec::new();
+        if self.eat_symbol(Symbol::LBrace).is_none() {
+            self.error_here("expected `{`");
+            return fields;
+        }
+
+        while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
+            self.parse_attributes();
+            if let Some(name) = self.eat_ident() {
+                let type_hint = self.parse_type_annotation();
+                fields.push(StructField { name, type_hint });
+                self.skip_member_tail();
+            } else {
+                self.advance();
+            }
+            self.eat_symbol(Symbol::Comma);
+            self.eat_symbol(Symbol::Semicolon);
+        }
+
+        self.eat_symbol(Symbol::RBrace);
+        fields
     }
 
     fn parse_named_members_in_braces(&mut self) -> Vec<String> {
@@ -951,27 +998,97 @@ impl Parser {
         }
     }
 
-    fn skip_type_annotation(&mut self) {
-        if self.eat_symbol(Symbol::Colon).is_none() {
-            return;
+    fn parse_type_annotation(&mut self) -> Option<TypeHint> {
+        self.eat_symbol(Symbol::Colon)?;
+        self.parse_type_hint()
+    }
+
+    fn parse_optional_return_type(&mut self) -> Option<TypeHint> {
+        if self.eat_symbol(Symbol::Arrow).is_some() {
+            return self.parse_type_hint();
         }
-        while !self.at_eof()
-            && !self.check_symbol(Symbol::Equal)
-            && !self.check_symbol(Symbol::Comma)
-            && !self.check_symbol(Symbol::RParen)
-            && !self.check_symbol(Symbol::RBrace)
-            && !self.check_symbol(Symbol::Pipe)
-        {
-            self.advance();
+        None
+    }
+
+    fn parse_type_hint(&mut self) -> Option<TypeHint> {
+        let start = self.current().span;
+        let Some(first) = self.eat_type_hint_segment() else {
+            self.error_here("expected type hint");
+            return None;
+        };
+        let mut path = vec![first];
+
+        while self.eat_symbol(Symbol::Dot).is_some() {
+            if let Some(segment) = self.eat_type_hint_segment() {
+                path.push(segment);
+            } else {
+                self.error_here("expected type path segment");
+                break;
+            }
+        }
+
+        if self.check_symbol(Symbol::Less) {
+            let generic_span = self.current().span;
+            self.diagnostics.push(
+                Diagnostic::error("script type hints do not support generics")
+                    .with_code("syntax::generic_type_hint")
+                    .with_span(generic_span)
+                    .with_label(generic_span, "remove generic type arguments"),
+            );
+            self.skip_generic_type_arguments();
+        }
+
+        Some(TypeHint {
+            path,
+            span: self.join_span(start, self.previous_span()),
+        })
+    }
+
+    fn eat_type_hint_segment(&mut self) -> Option<String> {
+        match self.current().kind.clone() {
+            TokenKind::Ident(name) => {
+                self.advance();
+                Some(name)
+            }
+            TokenKind::Keyword(Keyword::Null) => {
+                self.advance();
+                Some("null".to_owned())
+            }
+            _ => None,
         }
     }
 
-    fn skip_optional_return_type(&mut self) {
-        if self.eat_symbol(Symbol::Arrow).is_some() {
-            while !self.at_eof() && !self.check_symbol(Symbol::LBrace) {
-                self.advance();
+    fn skip_generic_type_arguments(&mut self) {
+        let mut depth = 0_u32;
+        while !(self.at_eof() || depth == 0 && self.is_type_hint_boundary()) {
+            match self.current_symbol() {
+                Some(Symbol::Less) => {
+                    depth = depth.saturating_add(1);
+                    self.advance();
+                }
+                Some(Symbol::Greater) if depth > 0 => {
+                    depth = depth.saturating_sub(1);
+                    self.advance();
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => {
+                    self.advance();
+                }
             }
         }
+    }
+
+    fn is_type_hint_boundary(&self) -> bool {
+        self.check_symbol(Symbol::Equal)
+            || self.check_symbol(Symbol::Comma)
+            || self.check_symbol(Symbol::RParen)
+            || self.check_symbol(Symbol::RBrace)
+            || self.check_symbol(Symbol::LBrace)
+            || self.check_symbol(Symbol::Pipe)
+            || self.check_symbol(Symbol::Semicolon)
+            || self.at_eof()
     }
 
     fn skip_block_tokens(&mut self) {
@@ -1161,6 +1278,18 @@ mod tests {
         SourceId::new(1)
     }
 
+    fn param_names(params: &[Param]) -> Vec<String> {
+        params.iter().map(|param| param.name.clone()).collect()
+    }
+
+    fn struct_field_names(fields: &[StructField]) -> Vec<String> {
+        fields.iter().map(|field| field.name.clone()).collect()
+    }
+
+    fn trait_method_names(methods: &[TraitMethod]) -> Vec<String> {
+        methods.iter().map(|method| method.name.clone()).collect()
+    }
+
     #[test]
     fn lexes_keywords_identifiers_and_operators_with_spans() {
         let lexed = lex(source_id(), "pub fn level_up(player) { player.level += 1 }");
@@ -1214,14 +1343,14 @@ trait Damageable {
         };
         assert_eq!(parsed.items[1].visibility, Visibility::Public);
         assert_eq!(function.name, "on_kill");
-        assert_eq!(function.params, ["ctx", "player", "monster"]);
+        assert_eq!(param_names(&function.params), ["ctx", "player", "monster"]);
         assert_eq!(function.body.statements.len(), 1);
         assert_eq!(parsed.items[1].attrs[0].path, ["event"]);
 
         let ItemKind::Struct(record) = &parsed.items[2].kind else {
             panic!("expected struct item");
         };
-        assert_eq!(record.fields, ["item_id", "count"]);
+        assert_eq!(struct_field_names(&record.fields), ["item_id", "count"]);
 
         let ItemKind::Enum(enumeration) = &parsed.items[3].kind else {
             panic!("expected enum item");
@@ -1231,7 +1360,7 @@ trait Damageable {
         let ItemKind::Trait(trait_item) = &parsed.items[4].kind else {
             panic!("expected trait item");
         };
-        assert_eq!(trait_item.methods, ["damage"]);
+        assert_eq!(trait_method_names(&trait_item.methods), ["damage"]);
     }
 
     #[test]
@@ -1372,6 +1501,109 @@ fn update(player) {
     }
 
     #[test]
+    fn parses_type_hint_metadata_and_rejects_generics() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+fn level_up(player: game.Player, amount: int) -> Result {
+    let next: int = player.level + amount;
+    let mapper = |reward: Reward| reward.count;
+    return next;
+}
+
+struct Reward {
+    item_id: string,
+    count: int,
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Function(function) = &parsed.items[0].kind else {
+            panic!("expected function item");
+        };
+        assert_eq!(
+            function.params[0]
+                .type_hint
+                .as_ref()
+                .expect("player type hint")
+                .path,
+            ["game", "Player"]
+        );
+        assert_eq!(
+            function.params[1]
+                .type_hint
+                .as_ref()
+                .expect("amount type hint")
+                .path,
+            ["int"]
+        );
+        assert_eq!(
+            function
+                .return_type
+                .as_ref()
+                .expect("function return type hint")
+                .path,
+            ["Result"]
+        );
+
+        let StmtKind::Let {
+            type_hint: Some(next_hint),
+            ..
+        } = &function.body.statements[0].kind
+        else {
+            panic!("expected typed let");
+        };
+        assert_eq!(next_hint.path, ["int"]);
+
+        let StmtKind::Let {
+            value: Some(lambda),
+            ..
+        } = &function.body.statements[1].kind
+        else {
+            panic!("expected lambda let");
+        };
+        let ExprKind::Lambda { params, .. } = &lambda.kind else {
+            panic!("expected lambda");
+        };
+        assert_eq!(
+            params[0]
+                .type_hint
+                .as_ref()
+                .expect("lambda param type hint")
+                .path,
+            ["Reward"]
+        );
+
+        let ItemKind::Struct(record) = &parsed.items[1].kind else {
+            panic!("expected struct item");
+        };
+        assert_eq!(
+            record.fields[0]
+                .type_hint
+                .as_ref()
+                .expect("item_id field type hint")
+                .path,
+            ["string"]
+        );
+        assert_eq!(
+            record.fields[1]
+                .type_hint
+                .as_ref()
+                .expect("count field type hint")
+                .path,
+            ["int"]
+        );
+
+        let generic = parse_source(source_id(), "fn bad(xs: Array<int>) { return xs; }");
+        assert!(
+            generic.diagnostics.iter().any(|diagnostic| {
+                diagnostic.code.as_deref() == Some("syntax::generic_type_hint")
+            })
+        );
+    }
+
+    #[test]
     fn snapshots_core_m1_syntax_shape() {
         let parsed = parse_source(
             source_id(),
@@ -1467,14 +1699,19 @@ fn next() {}
                         out,
                         "{visibility}fn {}({})",
                         function.name,
-                        function.params.join(", ")
+                        param_names(&function.params).join(", ")
                     )
                     .expect("write syntax snapshot");
                     snapshot_block(&mut out, &function.body, 1);
                 }
                 ItemKind::Struct(record) => {
-                    writeln!(out, "struct {}({})", record.name, record.fields.join(", "))
-                        .expect("write syntax snapshot");
+                    writeln!(
+                        out,
+                        "struct {}({})",
+                        record.name,
+                        struct_field_names(&record.fields).join(", ")
+                    )
+                    .expect("write syntax snapshot");
                 }
                 ItemKind::Enum(enumeration) => {
                     writeln!(
@@ -1490,7 +1727,7 @@ fn next() {}
                         out,
                         "trait {}({})",
                         trait_item.name,
-                        trait_item.methods.join(", ")
+                        trait_method_names(&trait_item.methods).join(", ")
                     )
                     .expect("write syntax snapshot");
                 }
@@ -1508,7 +1745,7 @@ fn next() {}
     fn snapshot_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
         let pad = "  ".repeat(indent);
         match &stmt.kind {
-            StmtKind::Let { name, value } => {
+            StmtKind::Let { name, value, .. } => {
                 let value = value.as_ref().map_or("<none>", expr_kind_name);
                 writeln!(out, "{pad}let {name} = {value}").expect("write syntax snapshot");
             }

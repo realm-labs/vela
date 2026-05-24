@@ -2,17 +2,18 @@ use std::collections::BTreeMap;
 
 use vela_common::{Diagnostic, Span};
 use vela_syntax::{
-    Argument, Block, ElseBranch, Expr, ExprKind, IfExpr, MapEntry, MatchArm, MatchExpr, Pattern,
-    RecordField, RecordPatternField, Stmt, StmtKind,
+    Argument, Block, ElseBranch, Expr, ExprKind, IfExpr, MapEntry, MatchArm, MatchExpr, Param,
+    Pattern, RecordField, RecordPatternField, Stmt, StmtKind,
 };
 
-use crate::{HirDeclId, HirExprId, HirLocalId};
+use crate::{HirDeclId, HirExprId, HirLocalId, HirTypeHint};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalBinding {
     pub id: HirLocalId,
     pub name: String,
     pub kind: LocalBindingKind,
+    pub type_hint: Option<HirTypeHint>,
     pub span: Span,
 }
 
@@ -85,7 +86,7 @@ impl BindingMap {
 
 pub(crate) struct FunctionBindingInput<'a> {
     pub declaration: HirDeclId,
-    pub params: &'a [String],
+    pub params: &'a [Param],
     pub body: &'a Block,
     pub module_declarations: Vec<(String, HirDeclId)>,
     pub imports: Vec<String>,
@@ -136,7 +137,12 @@ impl<'a> BindingLowerer<'a> {
         };
 
         for param in input.params {
-            lowerer.declare_local(param.clone(), LocalBindingKind::Parameter, input.body.span);
+            lowerer.declare_local(
+                param.name.clone(),
+                LocalBindingKind::Parameter,
+                param.type_hint.as_ref().map(HirTypeHint::from_syntax),
+                input.body.span,
+            );
         }
         lowerer.bind_block_without_new_scope(input.body);
         lowerer
@@ -169,11 +175,20 @@ impl<'a> BindingLowerer<'a> {
 
     fn bind_statement(&mut self, statement: &Stmt) {
         match &statement.kind {
-            StmtKind::Let { name, value } => {
+            StmtKind::Let {
+                name,
+                type_hint,
+                value,
+            } => {
                 if let Some(value) = value {
                     self.bind_expr(value, PathUsage::Value);
                 }
-                self.declare_local(name.clone(), LocalBindingKind::Let, statement.span);
+                self.declare_local(
+                    name.clone(),
+                    LocalBindingKind::Let,
+                    type_hint.as_ref().map(HirTypeHint::from_syntax),
+                    statement.span,
+                );
             }
             StmtKind::Return(value) => {
                 if let Some(value) = value {
@@ -188,7 +203,7 @@ impl<'a> BindingLowerer<'a> {
             } => {
                 self.bind_expr(iterable, PathUsage::Value);
                 self.push_scope();
-                self.declare_local(binding.clone(), LocalBindingKind::For, statement.span);
+                self.declare_local(binding.clone(), LocalBindingKind::For, None, statement.span);
                 self.bind_block_without_new_scope(body);
                 self.pop_scope();
             }
@@ -250,7 +265,12 @@ impl<'a> BindingLowerer<'a> {
             ExprKind::Lambda { params, body } => {
                 self.push_scope();
                 for param in params {
-                    self.declare_local(param.clone(), LocalBindingKind::LambdaParameter, expr.span);
+                    self.declare_local(
+                        param.name.clone(),
+                        LocalBindingKind::LambdaParameter,
+                        param.type_hint.as_ref().map(HirTypeHint::from_syntax),
+                        expr.span,
+                    );
                 }
                 self.bind_expr(body, PathUsage::Value);
                 self.pop_scope();
@@ -315,7 +335,7 @@ impl<'a> BindingLowerer<'a> {
     fn bind_pattern(&mut self, pattern: &Pattern, span: Span) {
         match pattern {
             Pattern::Binding(name) => {
-                self.declare_local(name.clone(), LocalBindingKind::Pattern, span);
+                self.declare_local(name.clone(), LocalBindingKind::Pattern, None, span);
             }
             Pattern::TupleVariant { fields, .. } => {
                 for field in fields {
@@ -335,7 +355,7 @@ impl<'a> BindingLowerer<'a> {
         match &field.pattern {
             Some(pattern) => self.bind_pattern(pattern, span),
             None => {
-                self.declare_local(field.name.clone(), LocalBindingKind::Pattern, span);
+                self.declare_local(field.name.clone(), LocalBindingKind::Pattern, None, span);
             }
         }
     }
@@ -407,7 +427,13 @@ impl<'a> BindingLowerer<'a> {
         }
     }
 
-    fn declare_local(&mut self, name: String, kind: LocalBindingKind, span: Span) -> HirLocalId {
+    fn declare_local(
+        &mut self,
+        name: String,
+        kind: LocalBindingKind,
+        type_hint: Option<HirTypeHint>,
+        span: Span,
+    ) -> HirLocalId {
         let id = self.next_local();
         self.scopes
             .last_mut()
@@ -423,6 +449,7 @@ impl<'a> BindingLowerer<'a> {
                 id,
                 name,
                 kind,
+                type_hint,
                 span,
             },
         );

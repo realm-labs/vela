@@ -519,3 +519,27 @@ Consequences:
   is migrated incrementally.
 - The next compiler slice can replace local/script-function scans with HIR
   declaration and binding facts without changing public entrypoints again.
+
+## 2026-05-24: Type Hints Are Parsed As Non-Generic Metadata
+
+Status: Accepted
+
+Context:
+M8 needs type hints available to HIR, diagnostics, hot reload, and future
+tooling, while the language remains dynamically typed and explicitly excludes
+script-language generics.
+
+Decision:
+Represent syntax type hints as source-spanned path metadata on function
+parameters, returns, `let` bindings, lambda parameters, and struct fields.
+HIR copies those hints into function signatures, struct field metadata, and
+local bindings. Generic type argument syntax such as `Array<int>` is rejected
+by the parser before bytecode generation.
+
+Consequences:
+- Type hints are available for later schema, ABI, and analysis work without
+  changing runtime value semantics.
+- Public hint syntax stays small and does not create script generics or
+  monomorphization pressure.
+- The bytecode compiler can continue executing valid hinted programs while
+  deeper HIR consumption is implemented incrementally.
