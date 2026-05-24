@@ -3010,3 +3010,29 @@ Consequences:
   metadata values, not mutable descriptor handles.
 - Richer attribute arguments can be added later without changing the reflection
   descriptor boundary.
+
+## 2026-05-25: Reflective Host Calls Respect Method Metadata
+
+Status: Accepted
+
+Context:
+M12 requires reflective calls to respect method access and effect metadata.
+Engine native methods already carried `EffectSet` and `FunctionAccess`, but
+reflected `MethodDesc` only exposed identity/docs/attrs, and VM `reflect.call`
+could record a host method patch after only checking the broad
+`ReflectPermission::CallMethods` bit.
+
+Decision:
+Add copied `MethodEffectSet` and `MethodAccess` metadata to `MethodDesc`.
+Engine native method registration converts native descriptor effects/access
+into reflected method metadata. VM-installed reflection natives call
+`reflect.call_with_policy`, which rejects non-reflect-callable methods and
+methods requiring ungranted permissions before entering `PatchTx`.
+
+Consequences:
+- Gameplay/admin reflection policies can allow broad reflection while still
+  restricting which host methods may be called dynamically.
+- Reflected method query records now include copied effects and access records
+  for debug/admin tooling.
+- The host boundary remains patch-only; denied reflective calls do not record
+  host patches or invoke native method callbacks.

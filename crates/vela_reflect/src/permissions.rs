@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::{ReflectError, ReflectErrorKind, ReflectResult};
+use crate::{MethodDesc, ReflectError, ReflectErrorKind, ReflectResult};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ReflectPermission {
@@ -91,6 +91,7 @@ impl Default for ReflectPermissionSet {
 pub struct ReflectPolicy {
     permissions: ReflectPermissionSet,
     lookup_limit: Option<u64>,
+    method_permissions: BTreeSet<String>,
 }
 
 impl ReflectPolicy {
@@ -99,6 +100,7 @@ impl ReflectPolicy {
         Self {
             permissions,
             lookup_limit: None,
+            method_permissions: BTreeSet::new(),
         }
     }
 
@@ -125,6 +127,22 @@ impl ReflectPolicy {
     }
 
     #[must_use]
+    pub fn with_method_permission(mut self, permission: impl Into<String>) -> Self {
+        self.method_permissions.insert(permission.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_method_permissions<'a>(
+        mut self,
+        permissions: impl IntoIterator<Item = &'a str>,
+    ) -> Self {
+        self.method_permissions
+            .extend(permissions.into_iter().map(str::to_owned));
+        self
+    }
+
+    #[must_use]
     pub fn permissions(&self) -> &ReflectPermissionSet {
         &self.permissions
     }
@@ -136,6 +154,31 @@ impl ReflectPolicy {
 
     pub fn require(&self, permission: ReflectPermission) -> ReflectResult<()> {
         self.permissions.require(permission)
+    }
+
+    pub fn require_method_access(&self, type_name: &str, method: &MethodDesc) -> ReflectResult<()> {
+        if !method.access.reflect_callable {
+            return Err(ReflectError::new(
+                ReflectErrorKind::MethodNotReflectCallable {
+                    type_name: type_name.to_owned(),
+                    method: method.name.clone(),
+                },
+            ));
+        }
+        if let Some(permission) = method
+            .access
+            .required_permissions()
+            .iter()
+            .find(|permission| !self.method_permissions.contains(permission.as_str()))
+        {
+            return Err(ReflectError::new(
+                ReflectErrorKind::MethodPermissionDenied {
+                    method: method.name.clone(),
+                    permission: permission.clone(),
+                },
+            ));
+        }
+        Ok(())
     }
 }
 

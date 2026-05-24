@@ -1,7 +1,8 @@
 use std::collections::BTreeSet;
 
 use vela_reflect::{
-    MethodDesc, ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeKey, TypeRegistry,
+    MethodAccess, MethodDesc, MethodEffectSet, ReflectPermissionSet, ReflectPolicy, TypeDesc,
+    TypeKey, TypeRegistry,
 };
 use vela_vm::{HostExecution, Value, VmResult};
 
@@ -147,13 +148,32 @@ fn inject_native_method_metadata(
                 name: entry.desc.owner.name.clone(),
             })
         })?;
-        let mut method = MethodDesc::new(entry.desc.id, entry.desc.name.clone());
+        let mut method = MethodDesc::new(entry.desc.id, entry.desc.name.clone())
+            .effects(reflect_effects(&entry.desc.effects))
+            .access(reflect_access(&entry.desc.access));
         if let Some(docs) = &entry.desc.docs {
             method = method.docs(docs.clone());
         }
         owner.methods.push(method);
     }
     Ok(())
+}
+
+fn reflect_effects(effects: &crate::EffectSet) -> MethodEffectSet {
+    MethodEffectSet {
+        reads_host: effects.reads_host,
+        writes_host: effects.writes_host,
+        emits_events: effects.emits_events,
+    }
+}
+
+fn reflect_access(access: &crate::FunctionAccess) -> MethodAccess {
+    access.required_permissions.iter().fold(
+        MethodAccess::new()
+            .public(access.public)
+            .reflect_callable(access.reflect_callable),
+        |access, permission| access.require_permission(permission),
+    )
 }
 
 fn find_type_mut<'a>(types: &'a mut [TypeDesc], key: &TypeKey) -> Option<&'a mut TypeDesc> {

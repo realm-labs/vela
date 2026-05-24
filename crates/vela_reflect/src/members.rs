@@ -145,11 +145,57 @@ fn method_record(method: &MethodDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
+    fields.insert("effects".to_owned(), method_effects_record(method));
+    fields.insert("access".to_owned(), method_access_record(method));
     fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&method.attrs));
     HostValue::Record {
         type_name: "ReflectMethod".to_owned(),
         fields,
+    }
+}
+
+fn method_effects_record(method: &MethodDesc) -> HostValue {
+    HostValue::Record {
+        type_name: "ReflectEffectSet".to_owned(),
+        fields: BTreeMap::from([
+            (
+                "reads_host".to_owned(),
+                HostValue::Bool(method.effects.reads_host),
+            ),
+            (
+                "writes_host".to_owned(),
+                HostValue::Bool(method.effects.writes_host),
+            ),
+            (
+                "emits_events".to_owned(),
+                HostValue::Bool(method.effects.emits_events),
+            ),
+        ]),
+    }
+}
+
+fn method_access_record(method: &MethodDesc) -> HostValue {
+    HostValue::Record {
+        type_name: "ReflectMethodAccess".to_owned(),
+        fields: BTreeMap::from([
+            ("public".to_owned(), HostValue::Bool(method.access.public)),
+            (
+                "reflect_callable".to_owned(),
+                HostValue::Bool(method.access.reflect_callable),
+            ),
+            (
+                "required_permissions".to_owned(),
+                HostValue::Array(
+                    method
+                        .access
+                        .required_permissions()
+                        .iter()
+                        .map(|permission| HostValue::String(permission.clone()))
+                        .collect(),
+                ),
+            ),
+        ]),
     }
 }
 
@@ -247,6 +293,12 @@ mod tests {
                 )
                 .method(
                     MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .effects(crate::MethodEffectSet::host_write())
+                        .access(
+                            crate::MethodAccess::new()
+                                .reflect_callable(true)
+                                .require_permission("player.grant_exp"),
+                        )
                         .docs("Grant experience.")
                         .attr("effect", "write"),
                 )
@@ -345,6 +397,37 @@ mod tests {
             panic!("methods should be an array");
         };
         assert_eq!(methods.len(), 1);
+        let HostValue::Record { fields, .. } = &methods[0] else {
+            panic!("method metadata should be a record");
+        };
+        let Some(HostValue::Record {
+            fields: effect_fields,
+            ..
+        }) = fields.get("effects")
+        else {
+            panic!("method effects should be a record");
+        };
+        assert_eq!(
+            effect_fields.get("writes_host"),
+            Some(&HostValue::Bool(true))
+        );
+        let Some(HostValue::Record {
+            fields: access_fields,
+            ..
+        }) = fields.get("access")
+        else {
+            panic!("method access should be a record");
+        };
+        assert_eq!(
+            access_fields.get("reflect_callable"),
+            Some(&HostValue::Bool(true))
+        );
+        assert_eq!(
+            access_fields.get("required_permissions"),
+            Some(&HostValue::Array(vec![HostValue::String(
+                "player.grant_exp".to_owned()
+            )]))
+        );
 
         let ReflectValue::Host(HostValue::Array(traits)) =
             traits(&registry, &ReflectValue::HostRef(player_ref())).expect("traits")

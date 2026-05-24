@@ -752,7 +752,14 @@ permissions.
   descriptor docs, and other attributes are copied into reflected `AttrMap`
   metadata for script functions, structs, enum variants, fields, traits, and
   trait methods.
+- Added reflected host method `MethodEffectSet` and `MethodAccess` metadata.
+  Engine native method registration now injects effect bits, reflect-callable
+  status, and required permissions into `MethodDesc`; VM `reflect.call` checks
+  that metadata through `ReflectPolicy` before recording a `PatchTx` method
+  call, so unapproved or unpermissioned reflective calls fail without host
+  patches.
 
 ## Next
 
-- Continue M12 with deeper `EffectSet`/access checks for reflective calls.
+- Continue M12 with richer function effect/access reflection and remaining
+  ranked related-span diagnostics for unknown schema names.

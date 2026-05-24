@@ -368,7 +368,8 @@ impl Vm {
                 adapter,
                 tx: &mut *host.tx,
             };
-            let value = reflect::call(&mut ctx, &target, method, call_args)?;
+            let value =
+                reflect::call_with_policy(&mut ctx, &target, method, call_args, &call_policy)?;
             value_from_reflect(value)
         });
 

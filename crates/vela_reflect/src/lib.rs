@@ -234,6 +234,8 @@ impl FieldDesc {
 pub struct MethodDesc {
     pub id: HostMethodId,
     pub name: String,
+    pub effects: MethodEffectSet,
+    pub access: MethodAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
 }
@@ -244,9 +246,23 @@ impl MethodDesc {
         Self {
             id,
             name: name.into(),
+            effects: MethodEffectSet::default(),
+            access: MethodAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
         }
+    }
+
+    #[must_use]
+    pub fn effects(mut self, effects: MethodEffectSet) -> Self {
+        self.effects = effects;
+        self
+    }
+
+    #[must_use]
+    pub fn access(mut self, access: MethodAccess) -> Self {
+        self.access = access;
+        self
     }
 
     #[must_use]
@@ -259,6 +275,100 @@ impl MethodDesc {
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
         self
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct MethodEffectSet {
+    pub reads_host: bool,
+    pub writes_host: bool,
+    pub emits_events: bool,
+}
+
+impl MethodEffectSet {
+    #[must_use]
+    pub const fn pure() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn host_read() -> Self {
+        Self {
+            reads_host: true,
+            writes_host: false,
+            emits_events: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn host_write() -> Self {
+        Self {
+            reads_host: true,
+            writes_host: true,
+            emits_events: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn event_emit() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MethodAccess {
+    pub public: bool,
+    pub reflect_callable: bool,
+    required_permissions: Vec<String>,
+}
+
+impl MethodAccess {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn public(mut self, public: bool) -> Self {
+        self.public = public;
+        self
+    }
+
+    #[must_use]
+    pub fn reflect_callable(mut self, reflect_callable: bool) -> Self {
+        self.reflect_callable = reflect_callable;
+        self
+    }
+
+    #[must_use]
+    pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
+        self.required_permissions.push(permission.into());
+        self.required_permissions.sort();
+        self.required_permissions.dedup();
+        self
+    }
+
+    #[must_use]
+    pub fn required_permissions(&self) -> &[String] {
+        &self.required_permissions
+    }
+}
+
+impl Default for MethodAccess {
+    fn default() -> Self {
+        Self {
+            public: true,
+            reflect_callable: true,
+            required_permissions: Vec::new(),
+        }
     }
 }
 
@@ -585,6 +695,14 @@ pub enum ReflectErrorKind {
     PermissionDenied {
         permission: ReflectPermission,
     },
+    MethodNotReflectCallable {
+        type_name: String,
+        method: String,
+    },
+    MethodPermissionDenied {
+        method: String,
+        permission: String,
+    },
     LookupBudgetExceeded {
         limit: u64,
     },
@@ -680,10 +798,37 @@ pub fn call(
     method: &str,
     args: Vec<ReflectValue>,
 ) -> ReflectResult<ReflectValue> {
+    call_impl(ctx, target, method, args, None)
+}
+
+pub fn call_with_policy(
+    ctx: &mut ReflectContext<'_>,
+    target: &ReflectValue,
+    method: &str,
+    args: Vec<ReflectValue>,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    call_impl(ctx, target, method, args, Some(policy))
+}
+
+fn call_impl(
+    ctx: &mut ReflectContext<'_>,
+    target: &ReflectValue,
+    method: &str,
+    args: Vec<ReflectValue>,
+    policy: Option<&ReflectPolicy>,
+) -> ReflectResult<ReflectValue> {
     let ReflectValue::HostRef(host_ref) = target else {
         return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
     };
+    let type_name = ctx
+        .registry
+        .type_of_host(*host_ref)
+        .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
     let method_desc = ctx.registry.host_method(*host_ref, method)?;
+    if let Some(policy) = policy {
+        policy.require_method_access(&type_name, method_desc)?;
+    }
     let args = args
         .into_iter()
         .map(host_arg)
@@ -1082,6 +1227,64 @@ mod tests {
         .expect_err("invalid arg");
 
         assert_eq!(error.kind, ReflectErrorKind::InvalidValue);
+        assert!(ctx.tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflect_call_with_policy_denies_unapproved_methods_before_patch() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .access(MethodAccess::new().reflect_callable(false)),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(6), "admin_grant")
+                        .access(MethodAccess::new().require_permission("player.admin")),
+                ),
+        );
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error = call_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "grant_exp",
+            vec![ReflectValue::Host(HostValue::Int(20))],
+            &ReflectPolicy::all(),
+        )
+        .expect_err("not reflect callable");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::MethodNotReflectCallable {
+                type_name: "Player".to_owned(),
+                method: "grant_exp".to_owned()
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
+
+        let error = call_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "admin_grant",
+            vec![ReflectValue::Host(HostValue::Int(20))],
+            &ReflectPolicy::all(),
+        )
+        .expect_err("missing method permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::MethodPermissionDenied {
+                method: "admin_grant".to_owned(),
+                permission: "player.admin".to_owned()
+            }
+        );
         assert!(ctx.tx.patches().is_empty());
     }
 
