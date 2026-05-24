@@ -836,6 +836,11 @@ permissions.
   so host tooling can inspect source diagnostic messages, codes, spans, and
   labels from `HotReloadDiagnostic::source_diagnostics` without unpacking the
   embedded compiler error.
+- Added focused hot-reload diagnostic detail records for function parameter
+  ABI changes, schema hash changes, and function/method effect or access ABI
+  changes. Rejected reports now expose this rendering data through
+  `HotReloadDiagnostic::detail` without requiring host tooling to parse
+  human-readable reasons or unpack internal error variants.
 
 ## Next
 

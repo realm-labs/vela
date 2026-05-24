@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use vela_common::{Diagnostic, Label, Span};
 
-use crate::{FunctionSymbolId, HotReloadError, ProgramVersion, ProgramVersionId};
+use crate::{
+    FunctionSymbolId, HotReloadDiagnosticDetail, HotReloadError, ProgramVersion, ProgramVersionId,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadReport {
@@ -58,6 +60,7 @@ impl HotReloadReport {
 pub struct HotReloadDiagnostic {
     pub code: &'static str,
     pub target: Option<String>,
+    pub detail: Option<HotReloadDiagnosticDetail>,
     pub source_span: Option<Span>,
     pub labels: Vec<Label>,
     pub source_diagnostics: Vec<Diagnostic>,
@@ -69,9 +72,11 @@ pub struct HotReloadDiagnostic {
 impl HotReloadDiagnostic {
     #[must_use]
     pub fn from_error(error: HotReloadError) -> Self {
+        let detail = HotReloadDiagnosticDetail::from_error(&error);
         Self {
             code: error.code(),
             target: error.target(),
+            detail,
             source_span: error.source_span(),
             labels: error.labels(),
             source_diagnostics: error.source_diagnostics(),

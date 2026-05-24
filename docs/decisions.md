@@ -3419,3 +3419,26 @@ Consequences:
   `repair_hint` without unpacking compiler internals.
 - ABI and policy failures keep `source_diagnostics` empty until they gain
   source-location evidence.
+
+## 2026-05-25: Hot Reload Reports Carry ABI Detail Records
+
+Status: Accepted
+
+Context:
+Rejected hot-reload reports had stable diagnostic codes and targets, but ABI
+failures still required hosts to parse human-readable reasons or match the
+embedded `HotReloadErrorKind` to render old/new function parameters, schema
+hashes, effect metadata, or access metadata.
+
+Decision:
+Add a focused `HotReloadDiagnosticDetail` report type and expose it through
+`HotReloadDiagnostic::detail`. The detail records copy the specific ABI data
+needed for report rendering: function parameter lists, added parameters, schema
+hashes, and old/new function or method effect/access metadata.
+
+Consequences:
+- Admin/debug UIs can render ABI rejection details from the report boundary
+  without parsing strings.
+- Compile failures continue to use source diagnostics instead of ABI details.
+- The safe-point code swap semantics and embedded `HotReloadError` remain
+  unchanged for hosts that need full internal inspection.

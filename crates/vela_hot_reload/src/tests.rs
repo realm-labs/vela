@@ -100,6 +100,7 @@ fn rejected_report_carries_reason_and_repair_hint() {
     assert_eq!(report.errors[0].error, error);
     assert_eq!(report.errors[0].code, "reload.function.new_denied");
     assert_eq!(report.errors[0].target.as_deref(), Some("helper"));
+    assert_eq!(report.errors[0].detail, None);
     assert_eq!(
         report.errors[0].reason,
         "new function `helper` is denied by reload policy"
@@ -124,6 +125,13 @@ fn rejected_report_targets_schema_and_method_errors() {
     );
     assert_eq!(schema.errors[0].code, "reload.schema.changed");
     assert_eq!(schema.errors[0].target.as_deref(), Some("Player"));
+    assert_eq!(
+        schema.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::SchemaHash {
+            old_hash: 1,
+            new_hash: Some(2),
+        })
+    );
 
     let method = HotReloadReport::rejected(
         ProgramVersionId(1),
@@ -138,6 +146,68 @@ fn rejected_report_targets_schema_and_method_errors() {
     );
     assert_eq!(method.errors[0].code, "reload.method.access_changed");
     assert_eq!(method.errors[0].target.as_deref(), Some("Player.grant_exp"));
+    assert_eq!(
+        method.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::MethodAccessAbi {
+            old: AccessAbi::public(),
+            new: AccessAbi::new(true, false, Vec::new()),
+        })
+    );
+}
+
+#[test]
+fn rejected_report_carries_function_abi_details() {
+    let deleted = HotReloadReport::rejected(
+        ProgramVersionId(1),
+        HotReloadError {
+            kind: HotReloadErrorKind::DeletedFunctionParameters {
+                function: "main".to_owned(),
+                old: vec!["player".to_owned(), "monster".to_owned()],
+                new: vec!["player".to_owned()],
+            },
+        },
+    );
+    assert_eq!(
+        deleted.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::FunctionParameterList {
+            old: vec!["player".to_owned(), "monster".to_owned()],
+            new: vec!["player".to_owned()],
+        })
+    );
+
+    let added = HotReloadReport::rejected(
+        ProgramVersionId(1),
+        HotReloadError {
+            kind: HotReloadErrorKind::AddedFunctionParametersWithoutDefaults {
+                function: "main".to_owned(),
+                added: vec!["amount".to_owned()],
+            },
+        },
+    );
+    assert_eq!(
+        added.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::AddedFunctionParameters {
+            added: vec!["amount".to_owned()],
+        })
+    );
+
+    let effects = HotReloadReport::rejected(
+        ProgramVersionId(1),
+        HotReloadError {
+            kind: HotReloadErrorKind::ChangedFunctionEffects {
+                function: "game.reward.grant".to_owned(),
+                old: EffectAbi::host_read(),
+                new: EffectAbi::host_write(),
+            },
+        },
+    );
+    assert_eq!(
+        effects.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::FunctionEffectAbi {
+            old: EffectAbi::host_read(),
+            new: EffectAbi::host_write(),
+        })
+    );
 }
 
 #[test]
@@ -196,6 +266,7 @@ fn rejected_compile_report_carries_source_span_and_labels() {
     let diagnostic = &report.errors[0];
     assert_eq!(diagnostic.code, "reload.compile");
     assert_eq!(diagnostic.target, None);
+    assert_eq!(diagnostic.detail, None);
     assert_eq!(
         diagnostic.source_span.expect("compile source span").source,
         SourceId::new(2)
