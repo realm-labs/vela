@@ -881,11 +881,12 @@ impl<'ast> Compiler<'ast> {
                     return Ok(dst);
                 }
                 if let ExprKind::Path(path) = &callee.kind
-                    && let [receiver_name, method] = path.as_slice()
-                    && self.locals.contains_key(receiver_name)
+                    && let Some((method, receiver_path)) = path.split_last()
+                    && !receiver_path.is_empty()
+                    && self.locals.contains_key(&receiver_path[0])
                 {
                     reject_named_args(args, "script method call")?;
-                    let receiver = self.local_register_at_span(callee.span, receiver_name)?;
+                    let receiver = self.compile_path_expr(callee.span, receiver_path)?;
                     let arg_registers = args
                         .iter()
                         .map(|arg| self.compile_expr(&arg.value))
@@ -1513,23 +1514,32 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_path_access(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
-        if path.len() != 2 {
+        if path.len() < 2 {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "path expression",
             )));
         }
-        let root = self.local_register_at_span(span, &path[0])?;
-        let dst = self.alloc_register()?;
-        if let Some(field) = self.facts.options.host_fields.get(&path[1]).copied() {
-            self.emit(InstructionKind::GetHostField { dst, root, field });
-        } else {
-            self.emit(InstructionKind::GetRecordField {
-                dst,
-                record: root,
-                field: path[1].clone(),
-            });
+        let mut current = self.local_register_at_span(span, &path[0])?;
+        for (index, segment) in path.iter().enumerate().skip(1) {
+            let dst = self.alloc_register()?;
+            if index == 1
+                && let Some(field) = self.facts.options.host_fields.get(segment).copied()
+            {
+                self.emit(InstructionKind::GetHostField {
+                    dst,
+                    root: current,
+                    field,
+                });
+            } else {
+                self.emit(InstructionKind::GetRecordField {
+                    dst,
+                    record: current,
+                    field: segment.clone(),
+                });
+            }
+            current = dst;
         }
-        Ok(dst)
+        Ok(current)
     }
 
     fn compile_host_assignment_target(
@@ -2499,7 +2509,8 @@ fn main() {
             r#"
 fn main() {
     let values = [1, 2, 3];
-    return values.len();
+    let reward = Reward { item_id: "gold", count: 3 };
+    return values.len() + reward.item_id.len();
 }
 "#,
             "main",

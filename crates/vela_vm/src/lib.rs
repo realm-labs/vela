@@ -2455,8 +2455,7 @@ fn main() {
     let reward = Reward { item_id: "gold", count: 2 };
     reward.count += 3;
     reward.item_id = "xp";
-    let item_id = reward.item_id;
-    return reward.count + item_id.len();
+    return reward.count + reward.item_id.len();
 }
 "#,
             "main",
@@ -2512,8 +2511,7 @@ fn main() {
     let reward = Reward { item_id: "gold", count: 2 };
     reward.count += 5;
     reward.item_id = "xp";
-    let item_id = reward.item_id;
-    return reward.count + item_id.len();
+    return reward.count + reward.item_id.len();
 }
 "#,
         )

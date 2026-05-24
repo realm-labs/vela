@@ -476,6 +476,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added compiler and VM coverage proving value methods execute in inline and
   managed-heap execution while configured host methods still lower through
   `CallHostMethod`.
+- Added compiler lowering for multi-segment local record paths and chained
+  method receivers such as `reward.item_id.len()` without treating qualified
+  module function calls as methods.
 - Added read-only map script methods `has`, `get`, and `get_or` for inline and
   heap-backed maps.
 - Added VM coverage proving map methods preserve dynamic map values, return
