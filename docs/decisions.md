@@ -1577,3 +1577,28 @@ Consequences:
   adapters.
 - Non-string grouping keys fail with a VM type error instead of silently
   stringifying values.
+
+## 2026-05-24: Array Sort By Is Stable And Non-Mutating
+
+Status: Accepted
+
+Context:
+M13 requires `array.sort_by(|x| ...)` for gameplay collection workflows.
+Callback execution must remain budgeted and heap-safe, and the method should
+not mutate receiver arrays unexpectedly while collection APIs are still dynamic
+value operations rather than shape-specialized methods.
+
+Decision:
+Implement `array.sort_by` in the focused `array_methods` VM module as a
+decorate/sort/undecorate operation. The callback runs once per element and must
+return a numeric or string key. Numeric keys can mix ints and floats; string
+keys sort lexicographically; mixed numeric/string domains fail with a VM type
+error. Equal keys preserve original input order, and the receiver array is not
+mutated.
+
+Consequences:
+- Sorting is deterministic and stable for gameplay scripts.
+- Callback execution reuses the same budget, host context, and heap-root path
+  as other array higher-order methods.
+- More advanced comparator-style sorting remains a later extension instead of
+  running arbitrary callbacks inside a sort comparator.

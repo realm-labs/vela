@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use vela_bytecode::Program;
@@ -190,6 +191,51 @@ pub(crate) fn group_by(
     Ok(Value::Map(groups))
 }
 
+pub(crate) fn sort_by(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("sort_by", args, 1)?;
+    let values = array_values(receiver, runtime.heap.as_deref(), "method sort_by")?;
+    let mut entries = Vec::<SortEntry>::with_capacity(values.len());
+    let mut key_kind = None;
+    for value in values {
+        let protected = entries
+            .iter()
+            .map(|entry| entry.value.clone())
+            .collect::<Vec<_>>();
+        let key_value = call_unary_callback(
+            &mut runtime,
+            "method sort_by",
+            &args[0],
+            value.clone(),
+            &protected,
+        )?;
+        let key = sort_key(&key_value, runtime.heap.as_deref())?;
+        if let Some(expected) = key_kind {
+            if key.kind() != expected {
+                return type_error("method sort_by");
+            }
+        } else {
+            key_kind = Some(key.kind());
+        }
+        entries.push(SortEntry {
+            key,
+            value,
+            index: entries.len(),
+        });
+    }
+    entries.sort_by(|left, right| {
+        left.key
+            .compare(&right.key)
+            .then_with(|| left.index.cmp(&right.index))
+    });
+    Ok(Value::Array(
+        entries.into_iter().map(|entry| entry.value).collect(),
+    ))
+}
+
 enum NumericTotal {
     Int(i64),
     Float(f64),
@@ -239,6 +285,64 @@ fn group_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String
             _ => type_error("method group_by"),
         },
         _ => type_error("method group_by"),
+    }
+}
+
+struct SortEntry {
+    key: SortKey,
+    value: Value,
+    index: usize,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum SortKeyKind {
+    Numeric,
+    String,
+}
+
+enum SortKey {
+    Int(i64),
+    Float(f64),
+    String(String),
+}
+
+impl SortKey {
+    fn kind(&self) -> SortKeyKind {
+        match self {
+            Self::Int(_) | Self::Float(_) => SortKeyKind::Numeric,
+            Self::String(_) => SortKeyKind::String,
+        }
+    }
+
+    fn compare(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Int(left), Self::Int(right)) => left.cmp(right),
+            (Self::Int(left), Self::Float(right)) => {
+                (*left as f64).partial_cmp(right).unwrap_or(Ordering::Equal)
+            }
+            (Self::Float(left), Self::Int(right)) => left
+                .partial_cmp(&(*right as f64))
+                .unwrap_or(Ordering::Equal),
+            (Self::Float(left), Self::Float(right)) => {
+                left.partial_cmp(right).unwrap_or(Ordering::Equal)
+            }
+            (Self::String(left), Self::String(right)) => left.cmp(right),
+            (Self::Int(_) | Self::Float(_), Self::String(_))
+            | (Self::String(_), Self::Int(_) | Self::Float(_)) => Ordering::Equal,
+        }
+    }
+}
+
+fn sort_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<SortKey> {
+    match value {
+        Value::Int(value) => Ok(SortKey::Int(*value)),
+        Value::Float(value) if value.is_finite() => Ok(SortKey::Float(*value)),
+        Value::String(value) => Ok(SortKey::String(value.clone())),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
+            _ => type_error("method sort_by"),
+        },
+        _ => type_error("method sort_by"),
     }
 }
 
@@ -512,6 +616,79 @@ fn main() {
             error.kind,
             VmErrorKind::TypeMismatch {
                 operation: "method group_by"
+            }
+        );
+    }
+
+    #[test]
+    fn runs_compiled_array_sort_by_method() {
+        let source = r#"
+fn main() {
+    let values = [21, 11, 10, 12];
+    let sorted = values.sort_by(|value| value % 10);
+    if sorted[0] == 10
+        && sorted[1] == 21
+        && sorted[2] == 11
+        && sorted[3] == 12
+        && values[0] == 21
+    {
+        return sorted[2];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array sort_by method should compile");
+
+        let result = Vm::new()
+            .run(&code)
+            .expect("array sort_by method should run");
+        assert_eq!(result, Value::Int(11));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_sort_by_method() {
+        let source = r#"
+fn main() {
+    let names = ["wyrm", "boar", "bat", "wolf"];
+    let sorted = names.sort_by(|name| name);
+    if sorted[0] == "bat"
+        && sorted[1] == "boar"
+        && sorted[2] == "wolf"
+        && sorted[3] == "wyrm"
+    {
+        return sorted[1];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array sort_by method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array sort_by method should run");
+        assert_eq!(result, Value::String("boar".to_owned()));
+    }
+
+    #[test]
+    fn array_sort_by_rejects_mixed_key_domains() {
+        let source = r#"
+fn main() {
+    return [1, "two"].sort_by(|value| value);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array sort_by type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array sort_by should reject mixed key domains");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method sort_by"
             }
         );
     }

@@ -507,6 +507,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added `array.group_by` for lambda-derived string keys, returning deterministic
   maps of grouped arrays while preserving input order within each group in
   inline and managed-heap execution.
+- Added `array.sort_by` for stable, non-mutating sorting by numeric or string
+  lambda keys, with managed-heap execution support and explicit type errors for
+  mixed key domains.
 
 ## Next
 
