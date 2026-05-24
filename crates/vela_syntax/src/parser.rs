@@ -1444,6 +1444,14 @@ mod tests {
     }
 
     #[test]
+    fn lexes_unicode_string_escapes() {
+        let lexed = lex(source_id(), r#""\u{41}\u{7a}""#);
+
+        assert!(lexed.diagnostics.is_empty());
+        assert_eq!(lexed.tokens[0].kind, TokenKind::String("Az".into()));
+    }
+
+    #[test]
     fn parses_core_module_items() {
         let parsed = parse_source(
             source_id(),

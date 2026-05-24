@@ -2381,6 +2381,18 @@ fn main() {
     }
 
     #[test]
+    fn compiler_lowers_unicode_string_escapes() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"fn main() { return "\u{41}\u{7a}"; }"#,
+            "main",
+        )
+        .expect("unicode escaped string source should compile");
+
+        assert!(code.constants.contains(&Constant::String("Az".into())));
+    }
+
+    #[test]
     fn compiler_lowers_script_value_method_calls() {
         let code = compile_function_source(
             SourceId::new(1),

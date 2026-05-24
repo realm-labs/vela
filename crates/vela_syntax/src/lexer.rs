@@ -139,6 +139,12 @@ impl<'src> Lexer<'src> {
                 '\\' => {
                     self.bump_char();
                     if let Some(escaped) = self.peek_char() {
+                        if escaped == 'u' && self.peek_next_char() == Some('{') {
+                            if let Some(decoded) = self.consume_unicode_escape() {
+                                value.push(decoded);
+                            }
+                            continue;
+                        }
                         self.bump_char();
                         let decoded = match escaped {
                             'n' => '\n',
@@ -166,6 +172,67 @@ impl<'src> Lexer<'src> {
         self.diagnostics.push(
             Diagnostic::error("unterminated string literal")
                 .with_code("E_LEX_STRING")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn consume_unicode_escape(&mut self) -> Option<char> {
+        let start = self.offset;
+        self.bump_char();
+        self.bump_char();
+        let mut digits = String::new();
+
+        while let Some(ch) = self.peek_char() {
+            match ch {
+                '}' => {
+                    self.bump_char();
+                    return self.decode_unicode_escape(start, &digits);
+                }
+                hex if hex.is_ascii_hexdigit() => {
+                    digits.push(hex);
+                    self.bump_char();
+                }
+                _ => {
+                    self.skip_invalid_unicode_escape();
+                    self.push_unicode_escape_diagnostic(start);
+                    return None;
+                }
+            }
+        }
+
+        self.push_unicode_escape_diagnostic(start);
+        None
+    }
+
+    fn decode_unicode_escape(&mut self, start: usize, digits: &str) -> Option<char> {
+        if digits.is_empty() {
+            self.push_unicode_escape_diagnostic(start);
+            return None;
+        }
+        let Ok(value) = u32::from_str_radix(digits, 16) else {
+            self.push_unicode_escape_diagnostic(start);
+            return None;
+        };
+        let Some(decoded) = char::from_u32(value) else {
+            self.push_unicode_escape_diagnostic(start);
+            return None;
+        };
+        Some(decoded)
+    }
+
+    fn skip_invalid_unicode_escape(&mut self) {
+        while let Some(ch) = self.peek_char() {
+            self.bump_char();
+            if ch == '}' || ch == '"' || ch == '\n' {
+                break;
+            }
+        }
+    }
+
+    fn push_unicode_escape_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid unicode escape")
+                .with_code("E_LEX_UNICODE_ESCAPE")
                 .with_span(self.span(start, self.offset)),
         );
     }

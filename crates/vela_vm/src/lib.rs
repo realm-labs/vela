@@ -2272,6 +2272,18 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_unicode_string_escapes() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"fn main() { return "\u{41}\u{7a}"; }"#,
+            "main",
+        )
+        .expect("compile unicode escaped string source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::String("Az".into())));
+    }
+
+    #[test]
     fn runs_compiled_unary_operator_source() {
         let code = compile_function_source(
             SourceId::new(1),
