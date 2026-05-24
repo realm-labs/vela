@@ -1,5 +1,5 @@
 use super::*;
-use vela_common::{FunctionId, HostMethodId, SourceId, TypeId};
+use vela_common::{FunctionId, HostMethodId, SourceId, Span, TypeId};
 use vela_reflect::{
     FunctionAccess, FunctionDesc, FunctionEffectSet, MethodAccess, MethodDesc, MethodEffectSet,
     SchemaHash, TypeDesc, TypeKey, TypeRegistry,
@@ -162,6 +162,7 @@ fn rejected_report_targets_schema_and_method_errors() {
                 type_name: "Player".to_owned(),
                 old_hash: 1,
                 new_hash: 2,
+                source_span: None,
             },
         },
     );
@@ -183,6 +184,7 @@ fn rejected_report_targets_schema_and_method_errors() {
                 method: "grant_exp".to_owned(),
                 old: AccessAbi::public(),
                 new: AccessAbi::new(true, false, Vec::new()),
+                source_span: None,
             },
         },
     );
@@ -240,6 +242,7 @@ fn rejected_report_carries_function_abi_details() {
                 function: "game.reward.grant".to_owned(),
                 old: EffectAbi::host_read(),
                 new: EffectAbi::host_write(),
+                source_span: None,
             },
         },
     );
@@ -262,6 +265,7 @@ fn rejected_report_render_lines_include_detail_and_hint() {
                 method: "grant_exp".to_owned(),
                 old: AccessAbi::public(),
                 new: AccessAbi::new(true, false, vec!["admin.reload".to_owned()]),
+                source_span: None,
             },
         },
     );
@@ -561,6 +565,7 @@ fn schema_abi_changes_are_rejected() {
             type_name: "Reward".to_owned(),
             old_hash: 0x1111,
             new_hash: 0x2222,
+            source_span: None,
         }
     );
 }
@@ -584,6 +589,7 @@ fn removed_schema_abi_is_rejected() {
         HotReloadErrorKind::RemovedSchema {
             type_name: "Reward".to_owned(),
             old_hash: 0x1111,
+            source_span: None,
         }
     );
 }
@@ -617,6 +623,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
             function: "game.reward.grant".to_owned(),
             old: EffectAbi::host_read(),
             new: EffectAbi::host_write(),
+            source_span: None,
         }
     );
 
@@ -638,6 +645,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
             function: "game.reward.grant".to_owned(),
             old: AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
             new: AccessAbi::new(true, true, vec!["reward.write".to_owned()]),
+            source_span: None,
         }
     );
 }
@@ -674,6 +682,7 @@ fn method_effect_and_access_abi_changes_are_rejected() {
             method: "grant_exp".to_owned(),
             old: EffectAbi::host_write(),
             new: EffectAbi::host_read(),
+            source_span: None,
         }
     );
 
@@ -697,8 +706,80 @@ fn method_effect_and_access_abi_changes_are_rejected() {
             method: "grant_exp".to_owned(),
             old: AccessAbi::new(true, true, vec!["player.write".to_owned()]),
             new: AccessAbi::new(true, false, vec!["player.write".to_owned()]),
+            source_span: None,
         }
     );
+}
+
+#[test]
+fn registry_abi_rejections_carry_new_declaration_spans() {
+    let schema_span = Span::new(SourceId::new(9), 10, 25);
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .schema_hash(SchemaHash::new(0x1111))
+            .source_span(Span::new(SourceId::new(1), 1, 8)),
+    );
+    let mut new_registry = TypeRegistry::new();
+    new_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .schema_hash(SchemaHash::new(0x2222))
+            .source_span(schema_span),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&new_registry))
+        .expect_err("schema hash change should fail");
+    assert_eq!(error.source_span(), Some(schema_span));
+    let report = HotReloadReport::rejected(ProgramVersionId(1), error);
+    assert_eq!(report.errors[0].source_span, Some(schema_span));
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| line.kind == HotReloadReportLineKind::Diagnostic
+                && line.span == Some(schema_span))
+    );
+
+    let function_span = Span::new(SourceId::new(10), 30, 50);
+    let old_abi = HotReloadAbi::empty().function(FunctionAbi::new(
+        "game.reward.grant",
+        EffectAbi::host_read(),
+        AccessAbi::public(),
+    ));
+    let new_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game.reward.grant",
+            EffectAbi::host_write(),
+            AccessAbi::public(),
+        )
+        .source_span(function_span),
+    );
+    let error = old_abi
+        .ensure_compatible_update(&new_abi)
+        .expect_err("function effect change should fail");
+    assert_eq!(error.source_span(), Some(function_span));
+
+    let method_span = Span::new(SourceId::new(11), 60, 75);
+    let old_abi = HotReloadAbi::empty().method(MethodAbi::new(
+        "Player",
+        "grant_exp",
+        EffectAbi::host_write(),
+        AccessAbi::public(),
+    ));
+    let new_abi = HotReloadAbi::empty().method(
+        MethodAbi::new(
+            "Player",
+            "grant_exp",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .source_span(method_span),
+    );
+    let error = old_abi
+        .ensure_compatible_update(&new_abi)
+        .expect_err("method effect change should fail");
+    assert_eq!(error.source_span(), Some(method_span));
 }
 
 #[test]

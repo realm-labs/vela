@@ -145,11 +145,23 @@ impl HotReloadError {
 
     #[must_use]
     pub fn source_span(&self) -> Option<Span> {
-        let HotReloadErrorKind::Compile(error) = &self.kind else {
-            return None;
-        };
-        compile_diagnostics(error)
-            .and_then(|diagnostics| diagnostics.iter().find_map(|diagnostic| diagnostic.span))
+        match &self.kind {
+            HotReloadErrorKind::Compile(error) => compile_diagnostics(error)
+                .and_then(|diagnostics| diagnostics.iter().find_map(|diagnostic| diagnostic.span)),
+            HotReloadErrorKind::RemovedSchema { source_span, .. }
+            | HotReloadErrorKind::ChangedSchema { source_span, .. }
+            | HotReloadErrorKind::ChangedFunctionEffects { source_span, .. }
+            | HotReloadErrorKind::ChangedFunctionAccess { source_span, .. }
+            | HotReloadErrorKind::ChangedMethodEffects { source_span, .. }
+            | HotReloadErrorKind::ChangedMethodAccess { source_span, .. } => {
+                source_span.as_deref().copied()
+            }
+            HotReloadErrorKind::DeletedFunctionParameters { .. }
+            | HotReloadErrorKind::ChangedFunctionParameters { .. }
+            | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. }
+            | HotReloadErrorKind::AddedFunctionParametersDenied { .. }
+            | HotReloadErrorKind::NewFunctionDenied { .. } => None,
+        }
     }
 
     #[must_use]
@@ -221,33 +233,39 @@ pub enum HotReloadErrorKind {
     RemovedSchema {
         type_name: String,
         old_hash: u64,
+        source_span: Option<Box<Span>>,
     },
     ChangedSchema {
         type_name: String,
         old_hash: u64,
         new_hash: u64,
+        source_span: Option<Box<Span>>,
     },
     ChangedFunctionEffects {
         function: String,
         old: EffectAbi,
         new: EffectAbi,
+        source_span: Option<Box<Span>>,
     },
     ChangedFunctionAccess {
         function: String,
         old: AccessAbi,
         new: AccessAbi,
+        source_span: Option<Box<Span>>,
     },
     ChangedMethodEffects {
         type_name: String,
         method: String,
         old: EffectAbi,
         new: EffectAbi,
+        source_span: Option<Box<Span>>,
     },
     ChangedMethodAccess {
         type_name: String,
         method: String,
         old: AccessAbi,
         new: AccessAbi,
+        source_span: Option<Box<Span>>,
     },
 }
 

@@ -921,8 +921,11 @@ permissions.
   trait methods now carry copied parameter and return hints, and
   `reflect.methods`/`reflect.trait_info` expose `params`, `return`, and the
   script-friendly `returns` alias.
+- Added source-span propagation for hot-reload ABI rejections. ABI manifests
+  now copy optional declaration spans from reflected schemas, functions, and
+  methods, and rejected schema/function/method ABI diagnostics plus rendered
+  report lines carry those spans when available.
 
 ## Next
 
-- Continue M12 with remaining reflection access/reporting polish and richer
-  hot-reload report rendering data.
+- Continue M12 with remaining reflection access/reporting polish.

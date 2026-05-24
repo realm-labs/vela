@@ -1715,6 +1715,12 @@ if !report.accepted {
 }
 ```
 
+Hot-reload ABI manifests copy optional declaration spans from reflected schema,
+function, and method descriptors. When schema, function effect/access, or method
+effect/access ABI checks reject an update, the rejected diagnostic points at the
+new declaration span when it is known, and rendered report lines preserve that
+span for editor/admin tooling.
+
 ## Diagnostics
 
 Errors must include:

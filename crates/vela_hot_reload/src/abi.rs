@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use vela_common::Span;
 use vela_reflect::{FunctionDesc, MethodDesc, SchemaHash, TypeRegistry};
 
 use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
@@ -22,7 +23,11 @@ impl HotReloadAbi {
         let mut manifest = Self::empty();
         for type_desc in registry.types() {
             if let Some(schema_hash) = type_desc.schema_hash {
-                manifest = manifest.schema(SchemaAbi::new(type_desc.key.name.clone(), schema_hash));
+                let mut schema = SchemaAbi::new(type_desc.key.name.clone(), schema_hash);
+                if let Some(source_span) = type_desc.source_span {
+                    schema = schema.source_span(source_span);
+                }
+                manifest = manifest.schema(schema);
             }
             for method in &type_desc.methods {
                 manifest = manifest.method(MethodAbi::from_method(&type_desc.key.name, method));
@@ -59,6 +64,7 @@ impl HotReloadAbi {
                 return Err(HotReloadError::new(HotReloadErrorKind::RemovedSchema {
                     type_name: type_name.clone(),
                     old_hash: old_schema.hash,
+                    source_span: old_schema.source_span.map(Box::new),
                 }));
             };
             if old_schema.hash != new_schema.hash {
@@ -66,6 +72,7 @@ impl HotReloadAbi {
                     type_name: type_name.clone(),
                     old_hash: old_schema.hash,
                     new_hash: new_schema.hash,
+                    source_span: new_schema.source_span.map(Box::new),
                 }));
             }
         }
@@ -92,6 +99,7 @@ impl HotReloadAbi {
 pub struct SchemaAbi {
     pub type_name: String,
     pub hash: u64,
+    pub source_span: Option<Span>,
 }
 
 impl SchemaAbi {
@@ -100,7 +108,14 @@ impl SchemaAbi {
         Self {
             type_name: type_name.into(),
             hash: hash.get(),
+            source_span: None,
         }
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
     }
 }
 
@@ -109,6 +124,7 @@ pub struct FunctionAbi {
     pub name: String,
     pub effects: EffectAbi,
     pub access: AccessAbi,
+    pub source_span: Option<Span>,
 }
 
 impl FunctionAbi {
@@ -118,12 +134,13 @@ impl FunctionAbi {
             name: name.into(),
             effects,
             access,
+            source_span: None,
         }
     }
 
     #[must_use]
     pub fn from_function(function: &FunctionDesc) -> Self {
-        Self::new(
+        let mut abi = Self::new(
             function.name.clone(),
             EffectAbi::new(
                 function.effects.reads_host,
@@ -135,7 +152,17 @@ impl FunctionAbi {
                 function.access.reflect_visible,
                 function.access.required_permissions().to_vec(),
             ),
-        )
+        );
+        if let Some(source_span) = function.source_span {
+            abi = abi.source_span(source_span);
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
     }
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
@@ -145,6 +172,7 @@ impl FunctionAbi {
                     function: self.name.clone(),
                     old: self.effects.clone(),
                     new: next.effects.clone(),
+                    source_span: next.source_span.map(Box::new),
                 },
             ));
         }
@@ -154,6 +182,7 @@ impl FunctionAbi {
                     function: self.name.clone(),
                     old: self.access.clone(),
                     new: next.access.clone(),
+                    source_span: next.source_span.map(Box::new),
                 },
             ));
         }
@@ -167,6 +196,7 @@ pub struct MethodAbi {
     pub name: String,
     pub effects: EffectAbi,
     pub access: AccessAbi,
+    pub source_span: Option<Span>,
 }
 
 impl MethodAbi {
@@ -182,12 +212,13 @@ impl MethodAbi {
             name: name.into(),
             effects,
             access,
+            source_span: None,
         }
     }
 
     #[must_use]
     pub fn from_method(type_name: &str, method: &MethodDesc) -> Self {
-        Self::new(
+        let mut abi = Self::new(
             type_name,
             method.name.clone(),
             EffectAbi::new(
@@ -200,7 +231,17 @@ impl MethodAbi {
                 method.access.reflect_callable,
                 method.access.required_permissions().to_vec(),
             ),
-        )
+        );
+        if let Some(source_span) = method.source_span {
+            abi = abi.source_span(source_span);
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
     }
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
@@ -211,6 +252,7 @@ impl MethodAbi {
                     method: self.name.clone(),
                     old: self.effects.clone(),
                     new: next.effects.clone(),
+                    source_span: next.source_span.map(Box::new),
                 },
             ));
         }
@@ -221,6 +263,7 @@ impl MethodAbi {
                     method: self.name.clone(),
                     old: self.access.clone(),
                     new: next.access.clone(),
+                    source_span: next.source_span.map(Box::new),
                 },
             ));
         }

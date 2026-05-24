@@ -3869,3 +3869,30 @@ Consequences:
 - Signature metadata remains copied read-only data and does not change runtime
   dispatch or type enforcement.
 - The no-generics rule remains intact because hints are copied display strings.
+
+## 2026-05-25: Hot Reload ABI Reports Carry Declaration Spans
+
+Status: Accepted
+
+Context:
+Rejected hot-reload reports already carried source spans for compile
+diagnostics, and reflection descriptors already carried optional declaration
+spans for schemas, functions, and methods. ABI rejections for changed schema
+hashes, function effects/access, and method effects/access still dropped that
+location data, so admin/debug tooling could identify the affected target but
+could not navigate to the declaration that caused the rejected update.
+
+Decision:
+Store optional source spans on `SchemaAbi`, `FunctionAbi`, and `MethodAbi`.
+`HotReloadAbi::from_registry` copies spans from reflected descriptors, and ABI
+compatibility errors copy the new declaration span into `HotReloadErrorKind`.
+`HotReloadDiagnostic::source_span` and rendered report lines then expose the
+same span shape used by compile diagnostics.
+
+Consequences:
+- ABI report consumers can navigate directly to changed schema, function, and
+  method declarations when the registry has span metadata.
+- Hand-built host ABI manifests remain valid because spans are optional and
+  constructors default to `None`.
+- This changes only report metadata; compatibility policy and runtime code swap
+  semantics are unchanged.
