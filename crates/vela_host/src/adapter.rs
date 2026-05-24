@@ -14,6 +14,16 @@ pub trait ScriptStateAdapter {
         args: &[HostValue],
     ) -> HostResult<HostValue>;
 
+    fn preview_method_return(
+        &self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        let _ = (path, method, args);
+        Ok(HostValue::Null)
+    }
+
     fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
 
     fn apply_patch(&mut self, patch: Patch) -> HostResult<()>;

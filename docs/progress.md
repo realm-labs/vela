@@ -702,6 +702,11 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   the transaction overlay mutated the path. `MockStateAdapter` reports a
   structured patch conflict if the host value changed before safe-point apply,
   preserving the patch source span and leaving adapter state unchanged.
+- Host state adapters now expose a read-only method-return preview hook.
+  `CallHostMethod` bytecode writes that copied preview value to the destination
+  register while still recording a deferred method-call patch for safe-point
+  apply, so scripts can observe host method returns without receiving mutable
+  Rust references.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

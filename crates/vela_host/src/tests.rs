@@ -499,6 +499,21 @@ fn call_denied_patch_fails_validation_before_method_call() {
 }
 
 #[test]
+fn preview_method_return_copies_configured_value_without_calling_method() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    let method = HostMethodId::new(4);
+    adapter.insert_method_return(method, HostValue::Int(12));
+
+    let value = adapter
+        .preview_method_return(&path, method, &[HostValue::Int(1)])
+        .expect("preview method return");
+
+    assert_eq!(value, HostValue::Int(12));
+    assert!(adapter.method_calls().is_empty());
+}
+
+#[test]
 fn adapter_rejects_stale_generation_on_read_and_apply() {
     let mut adapter = MockStateAdapter::new();
     let fresh_path = level_path();

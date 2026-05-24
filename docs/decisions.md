@@ -2785,3 +2785,29 @@ Consequences:
   the overlay without false conflicts.
 - Production adapters can use the same patch metadata for optimistic conflict
   checks or map it onto their storage transaction semantics.
+
+## 2026-05-25: Host Method Returns Use Copied Previews
+
+Status: Accepted
+
+Context:
+M11 requires host method calls to return script-visible copied values without
+exposing Rust `&mut` references. `CallHostMethod` previously recorded a
+deferred method-call patch and wrote `null` to the destination register. That
+preserved the safe-point mutation boundary, but scripts could not use copied
+host method return values during the same execution.
+
+Decision:
+Add `ScriptStateAdapter::preview_method_return` as a read-only return-value
+hook. `CallHostMethod` asks the adapter for a copied `HostValue`, writes the
+converted script value to the destination register, and still records the
+method call as a `PatchTx` patch for safe-point apply. The mock adapter returns
+configured method-return values without recording a method call during preview.
+
+Consequences:
+- Scripts can consume host method return values while host mutation remains
+  deferred through `PatchTx`.
+- The host boundary still passes copied `HostValue` data rather than Rust
+  references.
+- Production adapters can compute or validate read-only return previews
+  separately from applying the method effect at the safe point.

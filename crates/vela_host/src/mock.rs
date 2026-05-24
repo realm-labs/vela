@@ -150,6 +150,20 @@ impl ScriptStateAdapter for MockStateAdapter {
         Ok(value)
     }
 
+    fn preview_method_return(
+        &self,
+        path: &HostPath,
+        method: HostMethodId,
+        _args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        self.validate_access(path, "call")?;
+        Ok(self
+            .method_returns
+            .get(&method)
+            .cloned()
+            .unwrap_or(HostValue::Null))
+    }
+
     fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
         let result = self
             .validate_path(&patch.path)

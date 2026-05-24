@@ -1699,10 +1699,14 @@ impl Vm {
                     if let Some(budget) = budget.as_deref() {
                         budget.reserve_patch(host.tx.patches().len())?;
                     }
+                    let return_value = host
+                        .adapter
+                        .preview_method_return(&path, *method, &values)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     host.tx
                         .call_method(path, *method, values, instruction.span)?;
                     if let Some(dst) = dst {
-                        frame.write(*dst, Value::Null)?;
+                        frame.write(*dst, value_from_host(return_value))?;
                     }
                 }
                 InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
@@ -6223,7 +6227,7 @@ fn main(player) {
         )
         .expect("compile host method source");
         let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-        adapter.insert_method_return(method, HostValue::Null);
+        adapter.insert_method_return(method, HostValue::Int(12));
         let mut tx = PatchTx::new();
 
         let result = {
@@ -6275,7 +6279,7 @@ fn main(player) {
         )
         .expect("compile host field method source");
         let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-        adapter.insert_method_return(method, HostValue::Null);
+        adapter.insert_method_return(method, HostValue::Int(12));
         let mut tx = PatchTx::new();
 
         let result = {
@@ -6759,7 +6763,7 @@ fn main(player) {
         )
         .expect("compile reflection call source");
         let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-        adapter.insert_method_return(method, HostValue::Null);
+        adapter.insert_method_return(method, HostValue::Int(12));
         let mut tx = PatchTx::new();
         let mut vm = Vm::new();
         vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -6812,7 +6816,7 @@ fn main(player) {
         let mut program = Program::new();
         program.insert_function(code);
         let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-        adapter.insert_method_return(method, HostValue::Null);
+        adapter.insert_method_return(method, HostValue::Int(12));
         let mut tx = PatchTx::new();
 
         let result = {
@@ -6828,7 +6832,7 @@ fn main(player) {
             )
         };
 
-        assert_eq!(result, Ok(Value::Null));
+        assert_eq!(result, Ok(Value::Int(12)));
         assert!(adapter.method_calls().is_empty());
         assert_eq!(tx.patches().len(), 1);
         assert_eq!(
@@ -6900,6 +6904,49 @@ fn main(player) {
             PatchOp::CallHostMethod {
                 method,
                 args: vec![HostValue::String("gold".into())]
+            }
+        );
+    }
+
+    #[test]
+    fn compiled_source_host_method_call_returns_copied_preview_value() {
+        let host_ref = player_ref(3);
+        let method = HostMethodId::new(5);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return player.grant_exp(20);
+}
+"#,
+            &CompilerOptions::new().with_host_method("grant_exp", method),
+        )
+        .expect("compile host method return source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.insert_method_return(method, HostValue::String("accepted".into()));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::String("accepted".into())));
+        assert!(adapter.method_calls().is_empty());
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method,
+                args: vec![HostValue::Int(20)]
             }
         );
     }
