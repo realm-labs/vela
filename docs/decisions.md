@@ -1032,3 +1032,25 @@ Consequences:
 - HIR-resolved shadowing remains authoritative for which local is rebound.
 - Future closure/upvalue work must promote captured locals from simple
   register rebinding into explicit upvalue cells.
+
+## 2026-05-24: Index Reads Start With Arrays And Maps
+
+Status: Accepted
+
+Context:
+M9 requires index reads and writes. The VM already has array and map values in
+both inline and heap-backed execution modes, while host-path indexing and
+write/RMW behavior belongs to the later PathProxy/PatchTx expansion.
+
+Decision:
+Add `GetIndex` bytecode for array integer indexes and map string keys. Index
+lookups work for inline `Value::Array`/`Value::Map` and heap-backed
+`HeapValue::Array`/`HeapValue::Map`. Invalid base types, invalid key types,
+missing keys, and out-of-bounds array indexes are VM errors.
+
+Consequences:
+- Script collection reads are executable without changing host mutation
+  boundaries.
+- Heap-backed index reads return heap slots as VM values, preserving existing
+  managed-heap materialization at return/native boundaries.
+- Index writes and nested host path indexing remain explicit follow-up slices.

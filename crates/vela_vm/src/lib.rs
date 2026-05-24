@@ -1,6 +1,7 @@
 //! Register VM for Vela bytecode.
 
 pub mod heap;
+mod indexing;
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -125,6 +126,13 @@ pub enum VmErrorKind {
         enum_name: String,
         variant: String,
         field: String,
+    },
+    IndexOutOfBounds {
+        index: i64,
+        len: usize,
+    },
+    UnknownMapKey {
+        key: String,
     },
     BudgetExceeded {
         budget: ExecutionBudgetKind,
@@ -987,6 +995,14 @@ impl Vm {
                 }
                 InstructionKind::GetEnumField { dst, value, field } => {
                     let value = get_enum_field_value(frame.read(*value)?, field, heap.as_deref())?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::GetIndex { dst, base, index } => {
+                    let value = indexing::get_index(
+                        frame.read(*base)?,
+                        frame.read(*index)?,
+                        heap.as_deref(),
+                    )?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::EnumTagEqual {
@@ -2001,6 +2017,58 @@ fn main() {
         .expect("compile local assignment source");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    }
+
+    #[test]
+    fn runs_compiled_index_read_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let values = [2, 4, 8];
+    let rewards = { "xp": 6 };
+    return values[1] + rewards["xp"];
+}
+"#,
+            "main",
+        )
+        .expect("compile index read source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(10)));
+    }
+
+    #[test]
+    fn managed_heap_execution_reads_heap_index_values() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn array_case() {
+    let names = ["gold", "xp"];
+    return names[1];
+}
+
+fn map_case() {
+    let rewards = { "gold": 7 };
+    return rewards["gold"];
+}
+"#,
+        )
+        .expect("compile heap index source");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new()
+                .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
+                .expect("run heap array index"),
+            Value::String("xp".into())
+        );
+        assert_eq!(
+            Vm::new()
+                .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
+                .expect("run heap map index"),
+            Value::Int(7)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
     #[test]

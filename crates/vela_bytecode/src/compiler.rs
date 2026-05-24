@@ -626,6 +626,13 @@ impl<'ast> Compiler<'ast> {
                 }
                 Ok(dst)
             }
+            ExprKind::Index { base, index } => {
+                let base = self.compile_expr(base)?;
+                let index = self.compile_expr(index)?;
+                let dst = self.alloc_register()?;
+                self.emit(InstructionKind::GetIndex { dst, base, index });
+                Ok(dst)
+            }
             ExprKind::Call { callee, args } => {
                 let fallback_name = callable_name(callee)?;
                 let arg_registers = args
@@ -713,13 +720,11 @@ impl<'ast> Compiler<'ast> {
                 }
             }
             ExprKind::Assign { .. } => self.compile_assignment(expr),
-            ExprKind::SelfValue
-            | ExprKind::Index { .. }
-            | ExprKind::Try(_)
-            | ExprKind::Lambda { .. }
-            | ExprKind::Error => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "expression",
-            ))),
+            ExprKind::SelfValue | ExprKind::Try(_) | ExprKind::Lambda { .. } | ExprKind::Error => {
+                Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "expression",
+                )))
+            }
             ExprKind::Match(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "match expression",
             ))),
@@ -2092,6 +2097,30 @@ fn main() {
             code.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::Rem { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_index_reads() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let values = [2, 4, 8];
+    let rewards = { "xp": 6 };
+    return values[1] + rewards["xp"];
+}
+"#,
+            "main",
+        )
+        .expect("index reads should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .filter(|instruction| matches!(instruction.kind, InstructionKind::GetIndex { .. }))
+                .count()
+                >= 2
         );
     }
 

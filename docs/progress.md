@@ -382,6 +382,10 @@ to the later language constructs that introduce loops and closures.
   by rebinding HIR local IDs to newly computed registers.
 - Added compiler and VM coverage proving local assignment statements and
   assignment expressions compile and execute from source.
+- Added `GetIndex` bytecode, compiler lowering for index read expressions, and
+  a focused VM indexing module for array/map lookup.
+- Added compiler and VM coverage proving array and map index reads execute in
+  both inline and managed-heap execution modes.
 
 ## Next
 
