@@ -628,10 +628,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - `Vm::register_type_registry` and `Vm::with_type_registry` now install host
   type metadata explicitly, so host ref script impl dispatch no longer depends
   on also registering reflection natives.
+- Added a focused `vela_engine` crate with an initial `Engine`/`EngineBuilder`
+  API for explicit host type/schema registration, native function descriptors
+  with stable IDs, duplicate validation, and installation into `Vm`.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and fuller Engine builder/native registration APIs.
+  receiver facts and fuller Engine builder/native method, permission, and host
+  context registration APIs.
 
 ## Next
 
 - Continue M10 with broader non-literal receiver facts or fuller Engine
-  builder/native registration APIs.
+  builder/native method, permission, and host context registration APIs.

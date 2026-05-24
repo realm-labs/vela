@@ -28,6 +28,17 @@ name = "vela_common"
 version = "0.1.0"
 
 [[package]]
+name = "vela_engine"
+version = "0.1.0"
+dependencies = [
+ "vela_bytecode",
+ "vela_common",
+ "vela_host",
+ "vela_reflect",
+ "vela_vm",
+]
+
+[[package]]
 name = "vela_hir"
 version = "0.1.0"
 dependencies = [

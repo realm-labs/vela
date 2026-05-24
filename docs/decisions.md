@@ -2245,3 +2245,28 @@ Consequences:
   type structure changes or monkey patching.
 - A fuller Engine builder for schema and native function registration remains
   future M10 work.
+
+## 2026-05-25: Engine API Starts In A Focused Crate
+
+Status: Accepted
+
+Context:
+The embedding roadmap requires a stable `Engine`/`EngineBuilder` surface for
+host schemas and native functions. Continuing to add host-facing registration
+logic directly to the VM would couple embedding policy to bytecode execution
+and keep growing an already broad runtime module.
+
+Decision:
+Introduce a focused `vela_engine` crate with separate builder, engine, error,
+and native descriptor modules. The first API slice registers explicit host type
+descriptors, registers native functions with stable IDs and metadata, rejects
+duplicate type/native IDs and names at build time, and installs the immutable
+`TypeRegistry` plus native function table into `Vm`.
+
+Consequences:
+- Hosts gain an initial stable registration boundary without exposing Rust
+  references or bypassing `PatchTx`.
+- VM remains the execution engine while `vela_engine` owns embedding-time
+  validation and installation.
+- Native methods, host-call context, permission enforcement, descriptor
+  serialization, and derive macro output remain future Engine work.
