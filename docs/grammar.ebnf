@@ -1,0 +1,317 @@
+(* Vela grammar draft.
+
+   This grammar defines the first implementable Vela syntax target. It covers
+   the language surface needed by milestones M1 through M6: modules, imports,
+   attributes, functions, structs, enums, traits, blocks, control flow, match,
+   lambdas, literals, calls, field access, indexing, and host-state assignment.
+
+   The grammar intentionally excludes script generics, async/coroutines, eval,
+   macros, classes, and Rust-style borrow syntax.
+
+   Notation:
+   - Terminal symbols are quoted.
+   - Uppercase names such as IDENT and INT are lexer tokens.
+   - { X } means zero or more repetitions.
+   - [ X ] means optional.
+   - ( A | B ) means alternatives.
+*)
+
+(* ========================================================================= *)
+(* Lexical structure                                                         *)
+(* ========================================================================= *)
+
+source_file     = shebang, line_ws, { item, line_ws }, EOF ;
+shebang         = [ "#!", { not_newline }, newline ] ;
+
+ws              = { horizontal_ws | line_comment | block_comment } ;
+line_ws         = { ws | newline } ;
+horizontal_ws   = " " | "\t" | "\r" ;
+newline         = "\n" ;
+line_comment    = "//", { not_newline } ;
+block_comment   = "/*", { block_comment | block_comment_char }, "*/" ;
+
+IDENT           = ident_start, { ident_continue } ;
+ident_start     = "_" | ASCII_ALPHA ;
+ident_continue  = "_" | ASCII_ALPHA | ASCII_DIGIT ;
+
+INT             = decimal_int | hex_int | binary_int ;
+decimal_int     = ASCII_DIGIT, { "_" | ASCII_DIGIT } ;
+hex_int         = "0x", HEX_DIGIT, { "_" | HEX_DIGIT } ;
+binary_int      = "0b", ( "0" | "1" ), { "_" | "0" | "1" } ;
+
+FLOAT           = ASCII_DIGIT, { "_" | ASCII_DIGIT }, ".", ASCII_DIGIT,
+                  { "_" | ASCII_DIGIT }, [ exponent ] ;
+exponent        = ( "e" | "E" ), [ "+" | "-" ], ASCII_DIGIT,
+                  { "_" | ASCII_DIGIT } ;
+
+STRING          = '"', { string_char | escape }, '"' ;
+string_char     = ? any non-quote, non-backslash, non-newline character ? ;
+escape          = "\\", ( '"' | "\\" | "/" | "n" | "r" | "t" | "0"
+                  | unicode_escape ) ;
+unicode_escape  = "u", "{", HEX_DIGIT, { HEX_DIGIT }, "}" ;
+
+(* Keywords are reserved and cannot be used as IDENT. *)
+keyword         = "use" | "pub" | "const" | "let" | "fn" | "struct"
+                | "enum" | "trait" | "impl" | "for" | "if" | "else"
+                | "match" | "return" | "break" | "continue" | "true"
+                | "false" | "null" | "self" | "in" | "as" ;
+
+(* ========================================================================= *)
+(* Module items                                                              *)
+(* ========================================================================= *)
+
+item            = { attribute, line_ws }, visibility, item_kind ;
+visibility      = [ "pub", ws ] ;
+item_kind       = use_decl
+                | const_decl
+                | function_decl
+                | struct_decl
+                | enum_decl
+                | trait_decl
+                | impl_decl ;
+
+use_decl        = "use", ws, use_path, item_term ;
+use_path        = path, [ ws, "as", ws, IDENT ] ;
+
+const_decl      = "const", ws, IDENT, ws, [ type_annotation, ws ],
+                  "=", ws, expr, item_term ;
+
+function_decl   = "fn", ws, IDENT, ws, parameter_list, ws,
+                  [ return_type, ws ], block ;
+
+parameter_list  = "(", ws, [ parameter, { ws, ",", ws, parameter },
+                  [ ws, "," ] ], ws, ")" ;
+parameter       = IDENT, ws, [ type_annotation ], ws, [ default_value ] ;
+default_value   = "=", ws, expr ;
+return_type     = "->", ws, type_hint ;
+
+struct_decl     = "struct", ws, IDENT, ws, "{", line_ws,
+                  [ struct_field, { field_sep, struct_field }, [ field_sep ] ],
+                  line_ws, "}" ;
+struct_field    = { attribute, line_ws }, IDENT, ws, [ type_annotation ],
+                  ws, [ default_value ] ;
+
+enum_decl       = "enum", ws, IDENT, ws, "{", line_ws,
+                  [ enum_variant, { field_sep, enum_variant }, [ field_sep ] ],
+                  line_ws, "}" ;
+enum_variant    = { attribute, line_ws }, IDENT, ws,
+                  [ tuple_fields | record_fields ] ;
+tuple_fields    = "(", ws, [ parameter, { ws, ",", ws, parameter },
+                  [ ws, "," ] ], ws, ")" ;
+record_fields   = "{", line_ws, [ struct_field, { field_sep, struct_field },
+                  [ field_sep ] ], line_ws, "}" ;
+
+trait_decl      = "trait", ws, IDENT, ws, "{", line_ws,
+                  { trait_item, line_ws }, "}" ;
+trait_item      = { attribute, line_ws }, "fn", ws, IDENT, ws, parameter_list,
+                  ws, [ return_type, ws ], ( block | item_term ) ;
+
+impl_decl       = "impl", ws, path, ws, "for", ws, path, ws, "{", line_ws,
+                  { impl_item, line_ws }, "}" ;
+impl_item       = { attribute, line_ws }, function_decl ;
+
+attribute       = "#", ws, "[", ws, attr_path, ws, [ attr_args ], ws, "]" ;
+attr_path       = path ;
+attr_args       = "(", ws, [ attr_arg, { ws, ",", ws, attr_arg },
+                  [ ws, "," ] ], ws, ")" ;
+attr_arg        = [ IDENT, ws, "=", ws ], attr_value ;
+attr_value      = literal | path | attr_array | attr_map ;
+attr_array      = "[", ws, [ attr_value, { ws, ",", ws, attr_value },
+                  [ ws, "," ] ], ws, "]" ;
+attr_map        = "{", ws, [ attr_map_entry, { ws, ",", ws, attr_map_entry },
+                  [ ws, "," ] ], ws, "}" ;
+attr_map_entry  = IDENT, ws, ":", ws, attr_value ;
+
+field_sep       = ws, ( "," | item_term ), line_ws ;
+item_term       = ws, ( ";" | newline ), line_ws ;
+
+(* ========================================================================= *)
+(* Type hints                                                                *)
+(* ========================================================================= *)
+
+type_annotation = ":", ws, type_hint ;
+
+type_hint       = "any"
+                | "null"
+                | "bool"
+                | "int"
+                | "float"
+                | "string"
+                | "array"
+                | "map"
+                | "set"
+                | "function"
+                | path ;
+
+(* Vela does not support generic type syntax. The parser must reject
+   Array<T>, Map<K, V>, Option<T>, Result<T, E>, and similar forms. *)
+
+(* ========================================================================= *)
+(* Statements and blocks                                                     *)
+(* ========================================================================= *)
+
+block           = "{", line_ws, { statement, line_ws }, "}" ;
+
+statement       = { attribute, line_ws }, statement_kind ;
+statement_kind  = let_stmt
+                | return_stmt
+                | break_stmt
+                | continue_stmt
+                | for_stmt
+                | if_stmt
+                | match_stmt
+                | block
+                | expr_stmt ;
+
+let_stmt        = "let", ws, IDENT, ws, [ type_annotation, ws ],
+                  [ "=", ws, expr ], stmt_term ;
+return_stmt     = "return", [ ws, expr ], stmt_term ;
+break_stmt      = "break", stmt_term ;
+continue_stmt   = "continue", stmt_term ;
+
+for_stmt        = "for", ws, pattern, ws, "in", ws, expr, ws, block ;
+if_stmt         = if_expr ;
+match_stmt      = match_expr ;
+
+expr_stmt       = expr, [ stmt_term ] ;
+stmt_term       = ws, ( ";" | newline ), line_ws ;
+
+(* ========================================================================= *)
+(* Expressions                                                               *)
+(* ========================================================================= *)
+
+expr            = assignment ;
+
+assignment      = conditional, ws,
+                  [ assign_op, ws, assignment ] ;
+assign_op       = "=" | "+=" | "-=" | "*=" | "/=" | "%=" ;
+
+conditional     = logical_or ;
+
+logical_or      = logical_and, { ws, "||", ws, logical_and } ;
+logical_and     = equality, { ws, "&&", ws, equality } ;
+equality        = comparison, { ws, ( "==" | "!=" ), ws, comparison } ;
+comparison      = range, { ws, ( "<" | "<=" | ">" | ">=" ), ws, range } ;
+range           = additive, [ ws, ( ".." | "..=" ), ws, additive ] ;
+additive        = multiplicative, { ws, ( "+" | "-" ), ws, multiplicative } ;
+multiplicative  = unary, { ws, ( "*" | "/" | "%" ), ws, unary } ;
+unary           = ( "!" | "-" ), ws, unary
+                | postfix ;
+
+postfix         = primary, { line_ws, postfix_op } ;
+postfix_op      = call_suffix
+                | field_suffix
+                | index_suffix
+                | try_suffix ;
+call_suffix     = argument_list ;
+field_suffix    = ".", ws, IDENT ;
+index_suffix    = "[", ws, expr, ws, "]" ;
+try_suffix      = "?" ;
+
+argument_list   = "(", ws, [ argument, { ws, ",", ws, argument },
+                  [ ws, "," ] ], ws, ")" ;
+argument        = [ IDENT, ws, "=", ws ], expr ;
+
+primary         = literal
+                | "self"
+                | path_or_record_expr
+                | array_literal
+                | map_literal
+                | lambda_expr
+                | if_expr
+                | match_expr
+                | block_expr
+                | "(", ws, expr, ws, ")" ;
+
+path_or_record_expr
+                = path, ws, [ record_literal_body ] ;
+
+array_literal   = "[", line_ws, [ expr, { ws, ",", line_ws, expr },
+                  [ ws, "," ] ], line_ws, "]" ;
+map_literal     = "{", line_ws, [ map_entry, { ws, ",", line_ws, map_entry },
+                  [ ws, "," ] ], line_ws, "}" ;
+map_entry       = ( IDENT | STRING | INT | FLOAT | path ), ws, ":", ws, expr ;
+
+record_literal_body
+                = "{", line_ws, [ record_field_value,
+                  { ws, ",", line_ws, record_field_value }, [ ws, "," ] ],
+                  line_ws, "}" ;
+record_field_value
+                = IDENT, ws, [ ":", ws, expr ] ;
+
+lambda_expr     = "|", ws, [ lambda_param, { ws, ",", ws, lambda_param },
+                  [ ws, "," ] ], ws, "|", ws, ( expr | block ) ;
+lambda_param    = IDENT, ws, [ type_annotation ] ;
+
+if_expr         = "if", ws, expr, ws, block, ws,
+                  [ "else", ws, ( if_expr | block ) ] ;
+
+match_expr      = "match", ws, expr, ws, "{", line_ws,
+                  [ match_arm, { line_ws, match_arm } ], line_ws, "}" ;
+match_arm       = pattern, ws, [ "if", ws, expr, ws ], "=>", ws,
+                  ( block | expr ), [ arm_term ] ;
+arm_term        = ws, ( "," | ";" | newline ), ws ;
+
+block_expr      = block ;
+
+literal         = "true" | "false" | "null" | INT | FLOAT | STRING ;
+
+(* ========================================================================= *)
+(* Patterns                                                                  *)
+(* ========================================================================= *)
+
+pattern         = wildcard_pattern
+                | literal_pattern
+                | binding_pattern
+                | path_pattern
+                | tuple_variant_pattern
+                | record_variant_pattern ;
+
+wildcard_pattern
+                = "_" ;
+literal_pattern = "true" | "false" | "null" | INT | FLOAT | STRING ;
+binding_pattern = IDENT ;
+path_pattern    = path ;
+
+tuple_variant_pattern
+                = path, ws, "(", ws, [ pattern,
+                  { ws, ",", ws, pattern }, [ ws, "," ] ], ws, ")" ;
+
+record_variant_pattern
+                = path, ws, "{", line_ws, [ record_pattern_field,
+                  { ws, ",", line_ws, record_pattern_field }, [ ws, "," ] ],
+                  line_ws, "}" ;
+record_pattern_field
+                = IDENT, ws, [ ":", ws, pattern ] ;
+
+(* ========================================================================= *)
+(* Paths                                                                     *)
+(* ========================================================================= *)
+
+path            = IDENT, { ws, ".", ws, IDENT } ;
+
+(* ========================================================================= *)
+(* Parser constraints not fully represented by EBNF                          *)
+(* ========================================================================= *)
+
+(* 1. The left-hand side of assignment must be assignable:
+      identifier, field access, index access, or a host path proxy.
+
+   2. Record literals are parsed only when a path is followed by "{ ... }".
+      A bare "{ key: value }" is a map literal, and "{ statements }" is a block.
+
+   3. Module top-level side effects are restricted by semantic validation.
+      Top-level code may declare items, but should not perform arbitrary calls,
+      random operations, network calls, or host mutations.
+
+   4. Attribute meaning is semantic. The parser only accepts attribute shape.
+
+   5. Type hints are metadata only. They do not introduce static generics or
+      Rust-style monomorphization.
+
+   6. Semicolon insertion is intentionally minimal. Newlines terminate simple
+      item and statement forms. Blocks, if, match, for, struct, enum, trait, and
+      impl declarations are self-terminating. Parser implementations should keep
+      newline tokens available for item_term and stmt_term instead of skipping
+      all layout before parsing statement boundaries.
+*)

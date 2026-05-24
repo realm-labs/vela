@@ -1,0 +1,1958 @@
+# Architecture
+
+This document describes the technical architecture for a Hot Reload First dynamic scripting language implemented in Rust for game server logic.
+
+The core idea is:
+
+```text
+Scripts describe game logic with natural syntax.
+The VM represents mutations to the Rust world as PatchTx operations.
+The runtime performs reliable function-level hot reload by replacing CodeObject mappings.
+```
+
+## Reference Designs
+
+These projects are useful references, but this language should not copy them directly.
+
+| Project | Useful Ideas | Do Not Copy |
+|---|---|---|
+| Luau | High-quality interpreter, bytecode optimization, inline caches, game-logic performance focus | Lua syntax and table/metatable object model |
+| Wren | Small embedded VM and restrained syntax | The Rust host patch model needs custom design |
+| Rhai | Rust embedding experience and small-language strategy | Expression power and hot reload are not enough for this goal |
+| Rune | Rust-like dynamic language, VM, hot reload, Rust embedding | The host state PatchTx model is more specialized |
+| Starlark | Determinism, restraint, and tool friendliness | It is not a direct fit for high-performance game server logic |
+| Mun | Hot Reload First runtime ideas | Static typing and LLVM/AOT are different from this project |
+
+References:
+
+- Luau performance: https://luau.org/performance/
+- Mun language: https://mun-lang.org/
+- Mun GitHub: https://github.com/mun-lang/mun
+- Codex goals: https://developers.openai.com/codex/use-cases/follow-goals
+- Codex goal cookbook: https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex
+- Codex best practices: https://developers.openai.com/codex/learn/best-practices
+
+## Compile And Runtime Pipeline
+
+```text
+Source Code
+   ↓
+Lexer / Parser
+   ↓
+CST / AST
+   ↓
+Resolver / Symbol Table / Semantic Model
+   ↓
+HIR / Lowered IR / TypeFacts
+   ↓
+Bytecode Compiler
+   ↓
+CodeObject / ProgramVersion
+   ↓
+VM Runtime / GC / Stack / CallFrame
+   ↓
+Host Bridge / Reflection / PatchTx
+   ↓
+Rust World / ECS / Actor State / Database Adapter
+```
+
+## Suggested Workspace Structure
+
+```text
+vela/
+  Cargo.toml
+  crates/
+    vela_common/          # Span, Symbol, IDs, diagnostics
+    vela_syntax/          # Lexer, parser, lossless CST, AST
+    vela_hir/             # Resolver, HIR, name binding
+    vela_analysis/        # Semantic model, TypeFacts, completion data
+    vela_bytecode/        # Instruction, CodeObject, compiler
+    vela_vm/              # Runtime, VM, Value, GC, call frames
+    vela_reflect/         # TypeRegistry, TypeDesc, reflection API
+    vela_host/            # HostRef, HostPath, PatchTx, StateAdapter
+    vela_macros/          # #[derive(ScriptHost)] and related macros
+    vela_std/             # Native standard library implementation
+    vela_hot_reload/      # ProgramVersion, ABI diff, code swap
+    vela_lsp/             # Future language server, not part of MVP
+    vela_cli/             # repl, compile, run, hot reload demo
+  examples/
+    game_server_demo/
+  docs/
+    architecture.md
+    grammar.ebnf
+    goal.md
+    progress.md
+    decisions.md
+    blocked.md
+    reflection.md
+    hot_reload.md
+    host_bridge.md
+  tests/
+    fixtures/
+```
+
+## Critical Vertical Loop
+
+The first phase should close this loop:
+
+```text
+Rust Host Type Metadata
+        ↓
+script dot-syntax access
+        ↓
+FieldId / MethodId compile-time resolution
+        ↓
+VM bytecode execution
+        ↓
+HostRef / PathProxy
+        ↓
+PatchTx collects changes
+        ↓
+host safe-point commit
+        ↓
+hot reload replaces function CodeObject values
+```
+
+## Language Semantics
+
+The first grammar draft lives in [grammar.ebnf](grammar.ebnf). It is the syntax
+target for the parser milestones before semantic validation and lowering.
+
+Parser implementations should preserve source spans for every token and AST
+node. A future LSP needs this for diagnostics, completion replacement ranges,
+go-to-definition, rename, hover, and incremental reparsing. The compiler may
+lower into a simpler AST/HIR, but the syntax layer should keep a lossless CST or
+equivalent token tree with comments and newlines.
+
+Example script:
+
+```rust
+use game.player.Player
+use game.reward.Reward
+
+struct KillReward {
+    item_id
+    count
+}
+
+enum QuestProgress {
+    None
+    Active { quest_id, count }
+    Finished { quest_id }
+}
+
+trait Damageable {
+    fn damage(self, amount)
+}
+
+#[event("monster.kill")]
+pub fn on_kill(ctx, player, monster) {
+    player.exp += monster.exp
+
+    if player.exp >= ctx.config.exp_to_next_level(player.level) {
+        player.level += 1
+        player.exp = 0
+        ctx.emit("player.level_up", player.id, player.level)
+    }
+
+    let rewards = ctx.config.kill_rewards
+        .filter(|r| r.monster_id == monster.id)
+        .map(|r| KillReward {
+            item_id: r.item_id,
+            count: r.count,
+        })
+
+    for reward in rewards {
+        player.inventory.add(reward.item_id, reward.count)
+    }
+
+    match player.quest_progress {
+        QuestProgress.Active { quest_id, count } => {
+            player.quest_progress = QuestProgress.Active {
+                quest_id,
+                count: count + 1,
+            }
+        }
+        _ => {}
+    }
+}
+```
+
+### Dynamic Type Boundary
+
+The language is dynamically typed, with lightweight hints and metadata.
+
+Supported value categories:
+
+```text
+null
+bool
+int
+float
+string
+array
+map
+set
+function
+closure
+record / struct-like value
+enum / tagged union
+host ref
+path proxy
+trait/protocol object
+```
+
+Script generics are not supported:
+
+```text
+Array<T>      not supported
+Map<K, V>     not supported
+Option<T>     not supported
+Result<T, E>  not supported
+```
+
+Dynamic enum definitions can still model Option and Result:
+
+```rust
+enum Option {
+    Some(value)
+    None
+}
+
+enum Result {
+    Ok(value)
+    Err(error)
+}
+```
+
+### Dynamic Traits / Protocols
+
+Traits are runtime capabilities or protocols, not Rust traits.
+
+Supported:
+
+```text
+trait method declarations
+trait default methods
+host type implementations
+script type implementations
+runtime implements checks
+dynamic trait method dispatch
+```
+
+Not supported:
+
+```text
+generic traits
+associated types
+complex where clauses
+traits participating in object memory layout
+static monomorphization
+```
+
+## Host State Bridge
+
+The host state bridge is the central differentiator. Scripts must not receive real mutable Rust references.
+
+Wrong direction:
+
+```rust
+&mut Player
+```
+
+Correct direction:
+
+```rust
+HostRef<Player>
+PathProxy<Player.level>
+PatchTx
+```
+
+Script code looks natural:
+
+```rust
+player.level += 1
+player.exp = 0
+player.inventory.add("gold", 100)
+```
+
+Runtime operations are explicit:
+
+```text
+ReadModifyWrite(player.level, Add(1))
+Set(player.exp, 0)
+CallHostMethod(player.inventory, add, ["gold", 100])
+```
+
+### HostRef
+
+```rust
+pub struct HostRef {
+    pub type_id: HostTypeId,
+    pub object_id: HostObjectId,
+    pub generation: u32,
+}
+```
+
+`generation` prevents stale references from writing to a new object after ID reuse.
+
+### HostPath
+
+```rust
+pub struct HostPath {
+    pub root: HostRef,
+    pub segments: SmallVec<[PathSegment; 4]>,
+}
+
+pub enum PathSegment {
+    Field(FieldId),
+    Index(u32),
+    Key(Symbol),
+    VariantField(FieldId),
+}
+```
+
+### PatchTx
+
+```rust
+pub struct PatchTx {
+    pub patches: Vec<Patch>,
+    pub overlay: PatchOverlay,
+}
+
+pub struct Patch {
+    pub path: HostPath,
+    pub op: PatchOp,
+    pub source_span: SourceSpan,
+}
+
+pub enum PatchOp {
+    Set(Value),
+    Add(Value),
+    Sub(Value),
+    Remove,
+    Push(Value),
+    CallHostMethod {
+        method: HostMethodId,
+        args: Vec<Value>,
+    },
+}
+```
+
+### Read And Write Semantics
+
+Scripts must observe writes made earlier in the same transaction:
+
+```rust
+player.level = 10
+print(player.level) // prints 10
+```
+
+Read logic:
+
+```text
+read_path(path):
+    if tx.overlay has path:
+        return overlay value
+    else:
+        return host snapshot value
+```
+
+Write logic:
+
+```text
+write_path(path, value):
+    validate access
+    record patch
+    update overlay
+```
+
+### Read-Modify-Write
+
+`player.level += 1` should prefer an explicit operation:
+
+```rust
+PatchOp::Add(Value::Int(1))
+```
+
+This lets the host perform atomic validation, range checks, conflict handling, and logging during apply.
+
+### Host State Adapter
+
+```rust
+pub trait ScriptStateAdapter {
+    fn read_path(&self, path: &HostPath) -> HostResult<Value>;
+
+    fn write_path(&mut self, path: &HostPath, value: Value) -> HostResult<()>;
+
+    fn call_method(
+        &mut self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[Value],
+    ) -> HostResult<Value>;
+
+    fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
+
+    fn apply_patch(&mut self, patch: Patch) -> HostResult<()>;
+}
+```
+
+The same runtime can adapt to:
+
+```text
+plain Rust structs
+ECS worlds
+actor state
+database entities
+network-replicated state
+test mock state
+```
+
+## Rust Host Macros
+
+### Type Exposure
+
+```rust
+#[derive(ScriptHost, ScriptReflect)]
+#[script(name = "Player", id = 1001, module = "game.player")]
+pub struct Player {
+    #[script(get, set, id = 1)]
+    pub level: u32,
+
+    #[script(get, set, id = 2)]
+    pub exp: u64,
+
+    #[script(get, set, id = 3)]
+    pub title: String,
+
+    #[script(get, id = 4)]
+    pub inventory: Inventory,
+}
+```
+
+### Method Exposure
+
+```rust
+#[script_methods]
+impl Player {
+    #[script_method(id = 1, effect = "write_host")]
+    pub fn add_exp(
+        ctx: &mut NativeCallContext,
+        player: HostRef<Player>,
+        amount: i64,
+    ) -> HostResult<()> {
+        ctx.tx.push_add(player.field(FieldId(2)), Value::Int(amount))
+    }
+}
+```
+
+Host method implementations may mutate real Rust state later inside the host
+adapter apply path, but the VM-facing callable receives `HostRef`, `HostPath`,
+or copied values rather than `&mut self`.
+
+### Generated Items
+
+Macros should generate at least:
+
+```text
+TypeDesc
+FieldDesc list
+MethodDesc list
+read_field / write_field helpers
+method dispatch helpers
+schema_hash
+stable ID validation
+```
+
+## Host Function Registration
+
+Host functions are Rust functions registered into the Vela engine as native
+callables. They are used for logging, deterministic utility APIs, event context
+helpers, config access, controlled random, metrics, and host-provided services.
+
+There are three registration shapes:
+
+```text
+global function       log("message")
+module function       math.clamp(value, min, max)
+host type method      player.inventory.add(item_id, count)
+```
+
+All three shapes must become registry entries with stable IDs, signatures,
+effects, permissions, docs, and conversion rules. Scripts call them normally,
+but the VM dispatches them through a native function table.
+
+### Native Function Descriptor
+
+```rust
+pub struct NativeFunctionDesc {
+    pub id: NativeFunctionId,
+    pub module: Symbol,
+    pub name: Symbol,
+    pub params: Vec<ParamDesc>,
+    pub returns: TypeHint,
+    pub effects: EffectSet,
+    pub access: FunctionAccess,
+    pub attrs: AttrMap,
+    pub origin: DeclOrigin,
+    pub docs: Option<DocString>,
+}
+
+pub struct NativeFunctionId(pub u64);
+
+pub struct FunctionAccess {
+    pub public: bool,
+    pub reflect_callable: bool,
+    pub required_permissions: PermissionSet,
+}
+```
+
+Native functions are also exposed through `FunctionDesc` so reflection, hot
+reload ABI checks, diagnostics, and future LSP tooling see the same function
+surface as the VM.
+
+```rust
+pub enum FunctionKind {
+    Script(CodeObjectId),
+    HostNative(NativeFunctionId),
+}
+
+pub struct FunctionDesc {
+    pub key: FunctionKey,
+    pub name: Symbol,
+    pub module: Symbol,
+    pub params: Vec<ParamDesc>,
+    pub returns: TypeHint,
+    pub kind: FunctionKind,
+    pub effects: EffectSet,
+    pub access: FunctionAccess,
+    pub attrs: AttrMap,
+    pub origin: DeclOrigin,
+    pub docs: Option<DocString>,
+}
+```
+
+### Native Function Trait
+
+The VM should call host functions through a small erased trait:
+
+```rust
+pub trait NativeFunction: Send + Sync + 'static {
+    fn desc(&self) -> &NativeFunctionDesc;
+
+    fn call(
+        &self,
+        ctx: &mut NativeCallContext,
+        args: &[Value],
+    ) -> HostResult<Value>;
+}
+
+pub struct NativeCallContext<'a> {
+    pub runtime: &'a mut Runtime,
+    pub state: &'a mut dyn ScriptStateAdapter,
+    pub tx: &'a mut PatchTx,
+    pub permissions: &'a PermissionSet,
+    pub budget: &'a mut ExecutionBudget,
+}
+```
+
+`NativeCallContext` is the only native entry point that may touch host services
+or `PatchTx`. A native function must not hand real Rust references back to the
+script. Returned host objects must be represented as `HostRef`, copied
+host-value data, or script-owned `Value`.
+
+The engine owns the executable native function table separately from the
+reflectable descriptors:
+
+```rust
+pub struct Engine {
+    pub registry: Arc<TypeRegistry>,
+    pub native_functions: HashMap<NativeFunctionId, Arc<dyn NativeFunction>>,
+    pub native_methods: HashMap<HostMethodId, Arc<dyn NativeFunction>>,
+}
+```
+
+### Builder API
+
+The engine builder should support explicit descriptors for stable schemas:
+
+```rust
+let engine = Engine::builder()
+    .register_native_fn(
+        NativeFunctionDesc::new("game.log", NativeFunctionId(10_001))
+            .param("message", TypeHint::String)
+            .returns(TypeHint::Null)
+            .effects(EffectSet::pure_host_log())
+            .docs("Writes to the game log."),
+        game_log,
+    )
+    .register_native_fn(
+        NativeFunctionDesc::new("math.clamp", NativeFunctionId(20_001))
+            .param("value", TypeHint::Float)
+            .param("min", TypeHint::Float)
+            .param("max", TypeHint::Float)
+            .returns(TypeHint::Float)
+            .effects(EffectSet::pure()),
+        math_clamp,
+    )
+    .build()?;
+```
+
+For simple cases, a convenience wrapper may infer descriptors from Rust function
+signatures, but production host APIs should prefer explicit stable IDs:
+
+```rust
+let engine = Engine::builder()
+    .register_fn("game.log", game_log)?
+    .build()?;
+```
+
+### Rust Signature Mapping
+
+Native functions should use narrow conversion rules:
+
+```text
+Rust bool/i64/f64/String          <-> Vela bool/int/float/string
+Option<T> in Rust API             <-> nullable argument or return value
+Vec<T> / HashMap<K, V> copies      <-> script array/map values
+HostRef<T>                         <-> host object reference
+&mut NativeCallContext             -> explicit host access and PatchTx access
+HostResult<T>                      -> Vela call success or diagnostic error
+```
+
+Do not expose these Rust types directly to scripts:
+
+```text
+&T
+&mut T
+Arc<Mutex<T>>
+database connection handles
+network connection handles
+runtime-owned service pointers
+```
+
+If a native function needs to mutate host state, it should either:
+
+```text
+record PatchTx operations through NativeCallContext
+call ScriptStateAdapter methods
+return a value that script code later writes through normal PatchTx paths
+```
+
+### Method Registration
+
+Host type methods are registered through `#[script_methods]` and become
+`MethodDesc { kind: MethodKind::HostNative(...) }`. Method calls receive the
+receiver as a host path or host ref, not as `&mut T` in the VM.
+
+```rust
+#[script_methods]
+impl Inventory {
+    #[script_method(
+        id = 1,
+        name = "add",
+        effect = "write_host",
+        docs = "Adds an item stack to this inventory."
+    )]
+    pub fn add(
+        ctx: &mut NativeCallContext,
+        inventory: HostRef<Inventory>,
+        item_id: String,
+        count: i64,
+    ) -> HostResult<()> {
+        ctx.tx.push_method_call(inventory, HostMethodId(1), vec![
+            Value::String(item_id.into()),
+            Value::Int(count),
+        ])?;
+        Ok(())
+    }
+}
+```
+
+This keeps method syntax ergonomic:
+
+```rust
+player.inventory.add("gold", 100)
+```
+
+while preserving the host boundary:
+
+```text
+CallHostMethod(player.inventory, add, ["gold", 100])
+```
+
+### Registration Rules
+
+```text
+function module/name/stable_id must be unique
+registered signatures must be deterministic and serializable into TypeRegistry
+effects must be declared up front
+permission checks happen before native call dispatch
+native calls consume execution budget
+native functions cannot store Value or HostRef beyond the call unless explicitly allowed
+native functions cannot mutate TypeRegistry at runtime
+reflection can call only reflect_callable native functions
+hot reload can replace script functions, but host native function ABI is fixed for the engine version
+```
+
+## Reflection System
+
+Reflection exists for:
+
+1. Host type exposure.
+2. Script type metadata queries.
+3. Dynamic field reads/writes and method calls.
+4. Automatic `HostPath` / `Patch` construction.
+5. Hot reload ABI checks.
+6. Debuggers, GM panels, admin backends, editors, and LSP support.
+
+Allowed:
+
+```text
+query types, fields, methods, variants, traits, modules, and functions
+controlled reflect.get / reflect.set / reflect.call
+query trait implementations
+query attributes
+construct reflect paths
+```
+
+Forbidden:
+
+```text
+runtime add_field
+runtime remove_field
+runtime replace_method
+runtime monkey patch
+runtime eval-generated code
+```
+
+### TypeRegistry
+
+```rust
+pub struct TypeRegistry {
+    pub types: HashMap<TypeKey, TypeDesc>,
+    pub modules: HashMap<ModuleKey, ModuleDesc>,
+    pub traits: HashMap<TraitKey, TraitDesc>,
+    pub functions: HashMap<FunctionKey, FunctionDesc>,
+    pub analysis: Option<RegistryAnalysisData>,
+}
+```
+
+Hot reload creates a new `Arc<TypeRegistry>` instead of mutating the old registry.
+The same registry should be serializable or queryable by editor tooling, so the
+future LSP sees the exact host schema used by the runtime.
+
+### Stable IDs
+
+Do not rely only on strings or Rust `TypeId`.
+
+```rust
+pub struct TypeKey {
+    pub module: Symbol,
+    pub name: Symbol,
+    pub stable_id: u64,
+}
+```
+
+Fields, methods, variants, traits, and functions also need stable IDs:
+
+```rust
+pub struct FieldId(pub u32);
+pub struct MethodId(pub u32);
+pub struct VariantId(pub u32);
+pub struct TraitId(pub u64);
+pub struct FunctionId(pub u64);
+```
+
+Field order may change, but `FieldId` must not.
+
+### TypeDesc
+
+```rust
+pub struct TypeDesc {
+    pub key: TypeKey,
+    pub name: Symbol,
+    pub module: Symbol,
+    pub kind: TypeKind,
+    pub schema_version: u32,
+    pub schema_hash: u64,
+    pub fields: Vec<FieldDesc>,
+    pub methods: Vec<MethodDesc>,
+    pub variants: Vec<VariantDesc>,
+    pub implemented_traits: Vec<TraitKey>,
+    pub attrs: AttrMap,
+    pub origin: DeclOrigin,
+    pub docs: Option<DocString>,
+}
+
+pub enum TypeKind {
+    Null,
+    Bool,
+    Int,
+    Float,
+    String,
+    Array,
+    Map,
+    Set,
+    ScriptRecord,
+    ScriptEnum,
+    HostObject,
+    HostValue,
+    Trait,
+    Function,
+    Closure,
+}
+```
+
+Tooling metadata:
+
+```rust
+pub struct RegistryAnalysisData {
+    pub schema_source: SchemaSource,
+    pub generated_at_schema_hash: u64,
+}
+
+pub enum SchemaSource {
+    Script,
+    HostRust,
+    Generated,
+    ExternalSchema,
+}
+
+pub struct DeclOrigin {
+    pub source_id: Option<SourceId>,
+    pub span: Option<SourceSpan>,
+    pub generated: bool,
+}
+
+pub struct DocString {
+    pub summary: String,
+    pub details: Option<String>,
+}
+```
+
+`DeclOrigin` is optional for host-generated schemas, but host macro output
+should provide enough information for hover and go-to-definition when possible.
+
+### TypeHint
+
+There are no generics, but lightweight type hints are allowed:
+
+```rust
+pub enum TypeHint {
+    Any,
+    Null,
+    Bool,
+    Int,
+    Float,
+    String,
+    Array,
+    Map,
+    Set,
+    Record(TypeKey),
+    Enum(TypeKey),
+    Host(TypeKey),
+    Trait(TraitKey),
+    Function,
+}
+```
+
+`TypeHint` is public metadata and syntax-facing documentation. It is not the
+complete internal analysis type system. Keeping it small preserves the
+no-generics language rule and keeps host schemas stable.
+
+### TypeFacts
+
+The semantic analyzer should produce internal `TypeFact` values for diagnostics,
+completion, hover, and limited type narrowing. These facts are analysis data,
+not script syntax, so they may be more expressive than `TypeHint`.
+
+```rust
+pub enum TypeFact {
+    Unknown,
+    Any,
+    Never,
+    Null,
+    Bool,
+    Int,
+    Float,
+    String,
+    Array {
+        element: Box<TypeFact>,
+    },
+    Map {
+        key: Box<TypeFact>,
+        value: Box<TypeFact>,
+    },
+    Set {
+        element: Box<TypeFact>,
+    },
+    Record(TypeKey),
+    Enum(TypeKey),
+    Host(TypeKey),
+    Trait(TraitKey),
+    Function(FunctionSigFact),
+    PathProxy {
+        root: Box<TypeFact>,
+        path: HostPathShape,
+        value: Box<TypeFact>,
+    },
+    Union(Vec<TypeFact>),
+}
+
+pub struct FunctionSigFact {
+    pub params: Vec<TypeFact>,
+    pub returns: Box<TypeFact>,
+    pub effects: EffectSet,
+}
+
+pub struct HostPathShape {
+    pub root: TypeKey,
+    pub segments: Vec<PathSegmentShape>,
+}
+
+pub enum PathSegmentShape {
+    Field(FieldId),
+    Index,
+    Key,
+    VariantField(FieldId),
+}
+```
+
+Rules:
+
+```text
+Unknown means the analyzer cannot prove a useful type yet.
+Any means the program explicitly entered a dynamic boundary.
+Union is for local analysis and hover; it is not user-facing generic syntax.
+Array/Map/Set element facts are inferred from literals, host schemas, stdlib
+analysis rules, and local flow; scripts still write plain array/map/set hints.
+Dynamic reflection and unknown host calls should degrade to Any instead of
+blocking execution.
+```
+
+Examples:
+
+```rust
+let xs = [1, 2, 3]        // TypeFact::Array { element: Int }
+let ys: array = []        // public TypeHint::Array, internal element Unknown
+let z = reflect.get(x, k) // Any unless k is a known constant and schema exists
+```
+
+### Semantic Model For Tools
+
+The resolver should build a semantic model that can be reused by the compiler,
+diagnostics, and future LSP support:
+
+```rust
+pub struct SemanticModel {
+    pub modules: ModuleGraph,
+    pub symbols: SymbolTable,
+    pub bindings: BindingMap,
+    pub expr_facts: HashMap<ExprId, TypeFact>,
+    pub pattern_facts: HashMap<PatternId, TypeFact>,
+    pub diagnostics: Vec<Diagnostic>,
+}
+```
+
+Minimum capabilities:
+
+```text
+resolve imports and module exports
+resolve local bindings, function parameters, fields, methods, variants, traits
+track source spans for declarations and references
+infer expression facts when cheap and deterministic
+apply flow narrowing for if/match and null checks
+report unresolved names with candidate suggestions
+report field and method errors when receiver facts are known
+degrade to Any at dynamic boundaries
+```
+
+LSP completion should prefer:
+
+```text
+local bindings
+function parameters
+imported symbols
+fields and methods from receiver TypeFact
+enum variants and match patterns
+stdlib functions and methods
+reflect APIs
+```
+
+This design supports strong editor hints where the program provides enough
+metadata, while preserving Vela as a dynamic language at runtime.
+
+### FieldDesc
+
+```rust
+pub struct FieldDesc {
+    pub id: FieldId,
+    pub name: Symbol,
+    pub hint: TypeHint,
+    pub access: FieldAccess,
+    pub storage: FieldStorage,
+    pub default_value: Option<Value>,
+    pub attrs: AttrMap,
+    pub origin: DeclOrigin,
+    pub docs: Option<DocString>,
+}
+
+pub struct FieldAccess {
+    pub readable: bool,
+    pub writable: bool,
+    pub reflect_readable: bool,
+    pub reflect_writable: bool,
+}
+
+pub enum FieldStorage {
+    RecordSlot { slot: u16 },
+    HostField { field_id: FieldId },
+    Computed {
+        getter: HostMethodId,
+        setter: Option<HostMethodId>,
+    },
+}
+```
+
+### MethodDesc
+
+```rust
+pub struct MethodDesc {
+    pub id: MethodId,
+    pub name: Symbol,
+    pub params: Vec<ParamDesc>,
+    pub returns: TypeHint,
+    pub kind: MethodKind,
+    pub effects: EffectSet,
+    pub access: MethodAccess,
+    pub attrs: AttrMap,
+    pub origin: DeclOrigin,
+    pub docs: Option<DocString>,
+}
+
+pub struct ParamDesc {
+    pub name: Symbol,
+    pub hint: TypeHint,
+    pub has_default: bool,
+    pub default_value: Option<Value>,
+}
+
+pub enum MethodKind {
+    ScriptFunction(FunctionKey),
+    HostNative(HostMethodId),
+    TraitMethod(TraitKey, MethodId),
+}
+```
+
+### EffectSet
+
+```rust
+pub struct EffectSet {
+    pub read_host: bool,
+    pub write_host: bool,
+    pub io: bool,
+    pub random: bool,
+    pub network: bool,
+    pub may_yield: bool, // reserved for future coroutine/async support
+}
+```
+
+Effects are used for:
+
+```text
+permission control
+sandboxing
+hot reload ABI checks
+debugger hints
+function budgets
+event-system constraints
+```
+
+For the MVP, script execution does not yield inside a call. `may_yield` exists
+only so future ABI checks can reserve the effect bit; it should remain `false`
+for all MVP functions.
+
+### Attributes
+
+```rust
+pub enum AttrValue {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(Symbol),
+    Array(Vec<AttrValue>),
+    Map(HashMap<Symbol, AttrValue>),
+}
+
+pub type AttrMap = HashMap<Symbol, AttrValue>;
+```
+
+Example:
+
+```rust
+#[event("monster.kill")]
+#[budget(instructions = 50000)]
+pub fn on_kill(ctx, player, monster) {
+    // ...
+}
+```
+
+### Script Reflection API
+
+First-version API:
+
+```rust
+reflect.type_of(value)
+reflect.name(type)
+reflect.kind(type)
+
+reflect.fields(type)
+reflect.field(type, name)
+
+reflect.has_field(value, name)
+reflect.get(value, name)
+reflect.set(value, name, value)
+
+reflect.methods(type)
+reflect.has_method(value, name)
+reflect.call(value, name, args)
+
+reflect.variant(value)
+reflect.variant_is(value, name)
+
+reflect.implements(value, trait)
+reflect.traits(type)
+
+reflect.module(name)
+reflect.exports(module)
+```
+
+For `HostRef`, `reflect.set(player, "level", 10)` creates a `Patch` instead of mutating Rust directly.
+
+Dot syntax and reflection share the same path foundation:
+
+```text
+player.level = 10                -> compile-time FieldId, fast
+reflect.set(player, "level", 10) -> runtime FieldId lookup, slower but flexible
+```
+
+### Reflection Permissions
+
+```rust
+pub enum ReflectPermission {
+    ReadTypeInfo,
+    ReadValueFields,
+    WriteValueFields,
+    CallMethods,
+    AccessPrivate,
+    InspectHostPath,
+}
+```
+
+Suggested defaults:
+
+| Script Kind | Read Types | Read Fields | Write Fields | Call Methods | Private | Inspect HostPath |
+|---|---:|---:|---:|---:|---:|---:|
+| gameplay | yes | yes | cautious | yes | no | no |
+| config validation | yes | yes | no | pure only | no | no |
+| GM/admin | yes | yes | yes | yes | configurable | yes |
+| test script | yes | yes | yes | yes | configurable | yes |
+
+## Struct, Record, And Enum Memory Model
+
+### Record
+
+Script structs are dynamic values with stable shapes:
+
+```rust
+struct Position {
+    x
+    y
+}
+```
+
+Runtime:
+
+```rust
+ObjRecord {
+    shape_id: ShapeId,
+    fields: Vec<Value>,
+}
+```
+
+Field access:
+
+```rust
+pos.x
+```
+
+Compiles to:
+
+```text
+GET_FIELD_CONST r_dst, r_obj, shape=Position, field=x, slot=0
+```
+
+If the shape matches, the VM reads the slot directly. Otherwise it falls back to the slow path.
+
+### Enum
+
+```rust
+enum Damage {
+    Physical { amount }
+    Magical { amount, element }
+    True { amount }
+}
+```
+
+Runtime:
+
+```rust
+ObjEnum {
+    enum_id: TypeKey,
+    variant_id: VariantId,
+    fields: Vec<Value>,
+}
+```
+
+`match` compiles into tag checks and field bindings.
+
+## VM And Bytecode
+
+Use register-based bytecode:
+
+```text
+LOAD_CONST      r0, const#10
+GET_HOST_FIELD  r1, player, FieldId(level)
+ADD             r2, r1, r0
+SET_HOST_FIELD  player, FieldId(level), r2
+RETURN          null
+```
+
+Benefits:
+
+```text
+fewer instructions
+local optimization is easier
+field and method access can be specialized
+good fit for later inline caches
+```
+
+### Value
+
+Use a clear first implementation before low-level layout optimization:
+
+```rust
+pub enum Value {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(GcRef<ObjString>),
+    Array(GcRef<ObjArray>),
+    Map(GcRef<ObjMap>),
+    Set(GcRef<ObjSet>),
+    Record(GcRef<ObjRecord>),
+    Enum(GcRef<ObjEnum>),
+    Closure(GcRef<ObjClosure>),
+    HostRef(HostRef),
+    PathProxy(PathProxy),
+    TraitObject(TraitObject),
+}
+```
+
+Only consider the following after profiling proves `Value` overhead is too high:
+
+```text
+16-byte tagged value
+NaN boxing
+pointer tagging
+specialized arrays
+```
+
+### Execution Budget
+
+The VM charges an instruction budget while executing:
+
+```rust
+pub struct ExecutionBudget {
+    pub instruction_limit: u64,
+    pub memory_limit_bytes: usize,
+    pub max_call_depth: usize,
+    pub max_patches: usize,
+}
+```
+
+Budgets prevent:
+
+```text
+infinite loops
+unbounded memory growth
+recursive stack overflow
+too many state writes in a single event
+```
+
+## Threading Model
+
+Vela is a single-threaded scripting language from the script author's point of
+view. A single `Runtime` executes one script call at a time on one OS thread,
+with one VM stack, one active `PatchTx`, and one script heap/GC context.
+
+The language does not expose:
+
+```text
+thread creation
+shared-memory concurrency
+locks or atomics
+async/await
+coroutines
+channels
+parallel iterators
+```
+
+If a game server needs concurrency, the Rust host owns it. The host may run
+multiple independent Vela runtimes on different threads, shard actors across
+workers, schedule events on an async runtime, or perform IO in background tasks.
+Each script invocation still observes a single-threaded VM boundary.
+
+Allowed host-level concurrency models:
+
+```text
+one Runtime per actor worker
+one Runtime per shard or scene
+runtime pool with no concurrent use of the same Runtime
+host async tasks that call into Vela only at explicit scheduling points
+background IO that returns copied data or HostRef handles to later script calls
+```
+
+Required boundaries:
+
+```text
+do not call the same Runtime concurrently from multiple threads
+do not share script GC objects across runtimes or threads
+do not let native functions store borrowed Value references after a call
+do not expose host locks, atomics, or thread handles to scripts
+do not apply PatchTx concurrently with VM execution for the same host object set
+```
+
+Data crossing host threads must be copied, serialized, or represented by stable
+host handles such as `HostRef`. Cross-thread conflict resolution, ordering,
+locking, database transactions, actor mailboxes, and network IO are host
+responsibilities, not Vela language features.
+
+Hot reload follows the same rule: the host may coordinate update distribution
+across worker threads, but each runtime swaps `ProgramVersion` only at its own
+safe points.
+
+## GC
+
+GC manages:
+
+```text
+string objects
+arrays
+maps
+sets
+records
+enums
+closures
+upvalues
+iterators
+call frame objects
+```
+
+GC does not manage:
+
+```text
+Rust Player
+Rust World
+Rust Inventory
+database objects
+network connections
+```
+
+Scripts hold only `HostRef` values for host state.
+
+First-version GC:
+
+```text
+non-moving mark-sweep
+arena allocation
+explicit root stack
+event/tick boundary step_gc
+configurable GC budget
+```
+
+API:
+
+```rust
+runtime.step_gc(GcBudget::micros(200));
+runtime.collect_full_gc();
+runtime.set_gc_config(GcConfig {
+    max_pause_micros: 500,
+    heap_growth_factor: 1.5,
+});
+```
+
+Moving GC is deferred because it complicates:
+
+```text
+GcRef stability
+host bridge
+debugger
+reflection objects
+call frames
+FFI/native functions
+```
+
+## Hot Reload First
+
+### Core Model
+
+```rust
+pub struct Runtime {
+    pub current: ArcSwap<ProgramVersion>,
+    pub active_versions: VersionEpochs,
+}
+
+pub struct ProgramVersion {
+    pub id: VersionId,
+    pub registry: Arc<TypeRegistry>,
+    pub modules: HashMap<ModuleId, Module>,
+    pub functions: HashMap<FunctionSymbolId, Arc<CodeObject>>,
+}
+```
+
+### Function Calls Use Indirection
+
+Calling:
+
+```rust
+combat.on_kill(player, monster)
+```
+
+Internally uses:
+
+```text
+FunctionSymbolId("combat.on_kill/3")
+```
+
+At call time:
+
+```text
+FunctionSymbolId -> current ProgramVersion -> CodeObject
+```
+
+Hot reload replaces the mapping.
+
+### Old Stack And New Stack
+
+Rules:
+
+```text
+currently executing old functions continue on old CodeObject values
+new calls use new CodeObject values
+old ProgramVersion values are released after all old stacks exit
+updates take effect only at safe points
+```
+
+The first version does not switch bytecode in the middle of an executing function.
+
+### Safe Points
+
+Suggested safe points:
+
+```text
+event end
+tick boundary
+before host patch apply
+after host patch apply
+explicit runtime.check_reload()
+```
+
+Avoid interrupting arbitrary instructions to replace function bodies.
+
+### Top-Level Side Effects
+
+Module top-level code may include:
+
+```text
+const
+struct
+enum
+trait
+fn
+use
+attribute
+```
+
+Disallow or strictly limit:
+
+```text
+register_event(...)
+spawn_task(...)
+open_file(...)
+global_counter += 1
+network call
+random call
+```
+
+Event registration should happen through attributes and reflection scanning:
+
+```rust
+#[event("monster.kill")]
+pub fn on_kill(ctx, player, monster) {
+    // ...
+}
+```
+
+### Hot Reload ABI Checks
+
+Function changes allowed:
+
+```text
+function body changes
+local variable changes
+new private helper functions
+new public functions
+```
+
+Function changes rejected:
+
+```text
+exported event function removes parameters
+exported event function reorders parameters
+effect permissions expand without host approval
+return semantics are incompatible
+```
+
+Struct changes allowed:
+
+```text
+new field with default
+field rename with unchanged FieldId
+field order changes
+new methods
+```
+
+Struct changes rejected or requiring migration:
+
+```text
+deleted field
+FieldId reuse
+incompatible field type hint
+default value cannot be constructed
+```
+
+Enum changes allowed:
+
+```text
+new variant
+variant rename with unchanged VariantId
+new variant field with default
+```
+
+Enum changes requiring caution or rejection:
+
+```text
+deleted variant
+changed existing variant field structure
+VariantId reuse
+```
+
+## Standard Library
+
+### Array
+
+```rust
+arr.len()
+arr.is_empty()
+arr.push(value)
+arr.pop()
+arr.map(|x| ...)
+arr.filter(|x| ...)
+arr.find(|x| ...)
+arr.any(|x| ...)
+arr.all(|x| ...)
+arr.count(|x| ...)
+arr.sum(|x| ...)
+arr.group_by(|x| ...)
+arr.sort_by(|x| ...)
+```
+
+Array methods should expose analysis-only signatures so LSP can infer lambda
+parameter facts without adding script generics. For example, if `arr` has
+`TypeFact::Array { element: E }`, then:
+
+```text
+arr.filter(|x| predicate) gives x: E and returns Array(element = E)
+arr.map(|x| value) gives x: E and returns Array(element = TypeFact(value))
+arr.find(|x| predicate) gives x: E and returns Option-like enum containing E
+arr.sum(|x| value) gives x: E and returns int or float depending on value
+```
+
+### Map
+
+```rust
+map.len()
+map.has(key)
+map.get(key)
+map.get_or(key, default)
+map.set(key, value)
+map.remove(key)
+map.keys()
+map.values()
+map.entries()
+map.map_values(|v| ...)
+map.filter(|k, v| ...)
+```
+
+Map methods follow the same rule. If `map` has
+`TypeFact::Map { key: K, value: V }`, `map.filter(|k, v| ...)` gives `k: K`,
+`v: V`, and returns `Map(key = K, value = V)` as an internal fact only.
+
+These analysis rules are not user-visible generic syntax. They are part of the
+standard library metadata consumed by `vela_analysis` and future LSP tooling.
+
+### Option And Result
+
+```rust
+enum Option {
+    Some(value)
+    None
+}
+
+enum Result {
+    Ok(value)
+    Err(error)
+}
+```
+
+The `?` operator should support Option/Result-style propagation.
+
+### Math And Time
+
+```text
+math.max
+math.min
+math.clamp
+math.floor
+math.ceil
+math.abs
+math.random  # only with permission
+```
+
+Time should come from host context, not direct system time:
+
+```rust
+ctx.now
+ctx.tick
+```
+
+## Embedding API
+
+### Engine
+
+```rust
+let engine = Engine::builder()
+    .with_stdlib(GameStd)
+    .register_host_type::<Player>()
+    .register_host_type::<Monster>()
+    .register_host_type::<Inventory>()
+    .register_native_fn(
+        NativeFunctionDesc::new("game.log", NativeFunctionId(10_001))
+            .param("message", TypeHint::String)
+            .returns(TypeHint::Null)
+            .effects(EffectSet::pure_host_log()),
+        game_log,
+    )
+    .build()?;
+```
+
+### Compile
+
+```rust
+let program = engine.compile_dir("scripts")?;
+let mut runtime = Runtime::new(engine, program);
+```
+
+### Call
+
+```rust
+let mut tx = PatchTx::new();
+
+runtime.call(
+    "combat.on_kill",
+    args![host(player_id), host(monster_id)],
+    CallOptions {
+        instruction_budget: 50_000,
+        memory_budget: 4 * MB,
+        timeout: Duration::from_millis(5),
+        permissions: PermissionSet::gameplay(),
+    },
+    &mut state_adapter,
+    &mut tx,
+)?;
+
+world.apply(tx)?;
+```
+
+### Hot Reload
+
+```rust
+let update = runtime.compile_update(changed_files)?;
+let report = runtime.apply_hot_update(update)?;
+
+if !report.accepted {
+    log::error!("hot reload failed: {:#?}", report.errors);
+}
+```
+
+## Diagnostics
+
+Errors must include:
+
+```text
+error kind
+source span
+call stack
+related type/field/method information
+candidates
+repair hints
+```
+
+Examples:
+
+```text
+FieldNotFound:
+  type: game.player.Player
+  field: levle
+  candidates: ["level"]
+```
+
+```text
+FieldNotWritable:
+  type: game.player.Player
+  field: inventory
+  reason: field is read-only
+  hint: use player.inventory.add(...) instead
+```
+
+```text
+HotReloadAbiMismatch:
+  function: combat.on_kill
+  old_params: [ctx, player, monster]
+  new_params: [ctx, player]
+  reason: exported event function cannot remove parameters
+```
+
+```text
+StaleHostRef:
+  type: game.player.Player
+  object_id: 1024
+  reason: generation mismatch
+```
+
+## IDE And LSP Readiness
+
+A full LSP is not part of the MVP, but the core architecture must not make it
+hard to add later. The required foundation is:
+
+```text
+lossless CST or equivalent token tree with comments, newlines, and spans
+stable AST node IDs and expression IDs after lowering
+incremental-friendly parser with error recovery
+module graph and import resolver
+SymbolTable and BindingMap shared by compiler and tools
+TypeRegistry available as host/schema input
+TypeFact inference for editor hints
+diagnostics that carry spans, related locations, candidates, and fix hints
+```
+
+Strong hints should be gradual, not mandatory static typing:
+
+```text
+known schema or type hint -> precise completion and diagnostics
+known host ref -> precise fields and methods from TypeRegistry
+known array/map element facts -> lambda parameter hints
+known enum -> variant completion and match pattern hints
+unknown dynamic value -> degrade to Any
+reflect with non-constant field name -> degrade to Any
+reflect with constant field name and known schema -> resolve normally
+```
+
+LSP feature mapping:
+
+```text
+completion          SymbolTable + TypeFact + TypeRegistry
+hover               TypeFact + docs + EffectSet + DeclOrigin
+go to definition    BindingMap + DeclOrigin
+find references     BindingMap reference index
+rename              SymbolTable ownership and module visibility
+diagnostics         parser recovery + semantic model + TypeRegistry
+semantic tokens     CST token kinds + resolved symbols
+code actions        diagnostics with structured fix hints
+```
+
+Design constraints for future tooling:
+
+```text
+do not make runtime reflection mutate TypeRegistry in place
+do not allow monkey patching to add fields or methods at runtime
+do not erase source spans during lowering
+do not make host schemas string-only; keep stable IDs and docs/origin metadata
+do not require full static type success before bytecode generation
+```
+
+Record literals and map literals intentionally stay distinct:
+
+```text
+Player { level: 1 }    typed record or host-like constructor
+{ "level": 1 }         map literal
+{ level: 1 }           map literal with identifier key
+```
+
+The parser may use context to disambiguate blocks from map literals, but LSP
+completion should prefer record fields only after a known type path followed by
+`{` or when expected type information exists.
+
+## Performance Roadmap
+
+First phase:
+
+```text
+compile-time FieldId / MethodId
+symbol interning
+register bytecode
+native standard library
+PatchTx batch commit
+shape + slot record access
+simple peephole optimization
+bytecode cache
+```
+
+Second phase:
+
+```text
+inline cache for field access
+inline cache for method dispatch
+specialized host field read/write
+optimized for-in
+closure caching
+GC pacing
+small string optimization
+```
+
+Third phase:
+
+```text
+profile-guided specialization
+internal typed arrays
+hot function specialization
+optional Cranelift JIT
+```
+
+JIT is not part of the MVP.
+
+## Security And Sandbox
+
+### Permissions
+
+```rust
+pub struct PermissionSet {
+    pub reflect: ReflectPermissionSet,
+    pub host_read: HostAccessPolicy,
+    pub host_write: HostAccessPolicy,
+    pub allow_io: bool,
+    pub allow_network: bool,
+    pub allow_random: bool,
+    pub allow_time_now: bool,
+}
+```
+
+Default gameplay script settings:
+
+```text
+allow_io = false
+allow_network = false
+allow_random = false, or only through ctx.rng
+allow_time_now = false; use ctx.now
+host_write = only objects provided by the event context
+reflect_write = disabled by default or tightly controlled
+```
+
+### Budgets
+
+```text
+instruction budget
+memory budget
+max call depth
+max patch count
+max reflection lookup count
+max host method call count
+```
+
+## Testing Strategy
+
+### Unit Tests
+
+```text
+lexer tests
+parser snapshot tests
+parser recovery tests
+CST span preservation tests
+AST lowering tests
+resolver tests
+semantic model tests
+TypeFact inference tests
+bytecode compiler tests
+VM instruction tests
+Value conversion tests
+GC root tests
+reflection registry tests
+PatchTx tests
+ABI diff tests
+```
+
+### Integration Tests
+
+```text
+script reads host field
+script writes host field through PatchTx
+reflect.set creates PatchTx
+player.level += 1 creates Add patch
+lambda parameter facts are inferred from array/map receiver facts
+host schema fields are available through TypeRegistry
+hot reload replaces function body
+old call frame uses old version
+new call frame uses new version
+ABI mismatch rejects update
+```
+
+### Example Tests
+
+```text
+examples/game_server_demo
+  player_level_up
+  monster_kill_reward
+  quest_progress
+  reflect_debug
+  hot_reload_function_swap
+```
+
+### Validation Commands
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.lang
+```
+
+Later:
+
+```bash
+cargo bench --workspace
+cargo fuzz run parser
+```
