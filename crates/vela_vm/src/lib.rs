@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
 
-use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
+use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
@@ -284,6 +284,63 @@ pub struct HostExecution<'host> {
 
 pub struct HeapExecution<'heap> {
     pub heap: &'heap mut ScriptHeap,
+    protected_roots: Vec<GcRef>,
+    safe_point_gc_budget: GcBudget,
+    gc_in_progress: bool,
+    last_gc_step: Option<GcStepStats>,
+}
+
+impl<'heap> HeapExecution<'heap> {
+    #[must_use]
+    pub fn new(heap: &'heap mut ScriptHeap) -> Self {
+        let max_pause_micros = heap.gc_config().max_pause_micros;
+        Self {
+            heap,
+            protected_roots: Vec::new(),
+            safe_point_gc_budget: GcBudget::micros(max_pause_micros),
+            gc_in_progress: false,
+            last_gc_step: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_safe_point_gc_budget(mut self, budget: GcBudget) -> Self {
+        self.safe_point_gc_budget = budget;
+        self
+    }
+
+    #[must_use]
+    pub fn last_gc_step(&self) -> Option<&GcStepStats> {
+        self.last_gc_step.as_ref()
+    }
+
+    fn push_protected_roots(&mut self, roots: Vec<GcRef>) -> usize {
+        let previous_len = self.protected_roots.len();
+        self.protected_roots.extend(roots);
+        previous_len
+    }
+
+    fn truncate_protected_roots(&mut self, len: usize) {
+        self.protected_roots.truncate(len);
+    }
+
+    fn collect_at_safe_point(
+        &mut self,
+        frame_roots: Vec<GcRef>,
+        budget: Option<&mut ExecutionBudget>,
+    ) {
+        if !self.gc_in_progress && !self.heap.should_collect() {
+            return;
+        }
+
+        let mut roots = self.protected_roots.clone();
+        roots.extend(frame_roots);
+        let stats = self
+            .heap
+            .step_gc_with_budget(&roots, self.safe_point_gc_budget, budget);
+        self.gc_in_progress = !stats.complete;
+        self.last_gc_step = Some(stats);
+    }
 }
 
 impl Vm {
@@ -744,6 +801,9 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
+                    let protected_root_len = heap
+                        .as_deref_mut()
+                        .map(|heap| heap.push_protected_roots(frame.heap_roots()));
                     let result = self.execute(
                         function,
                         Some(program),
@@ -751,7 +811,13 @@ impl Vm {
                         host.as_deref_mut(),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
-                    )?;
+                    );
+                    if let (Some(heap), Some(protected_root_len)) =
+                        (heap.as_deref_mut(), protected_root_len)
+                    {
+                        heap.truncate_protected_roots(protected_root_len);
+                    }
+                    let result = result?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::MakeArray { dst, elements } => {
@@ -932,6 +998,10 @@ impl Vm {
                     }
                 }
                 InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
+            }
+
+            if let Some(heap) = heap.as_deref_mut() {
+                heap.collect_at_safe_point(frame.heap_roots(), budget.as_deref_mut());
             }
         }
 
@@ -1787,7 +1857,7 @@ fn main() {
         )
         .expect("compile native call source");
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = vm
@@ -1823,6 +1893,65 @@ fn main() {
         assert_eq!(
             Vm::new().run_program(&program, "main", &[]),
             Ok(Value::Int(30))
+        );
+    }
+
+    #[test]
+    fn heap_safe_point_gc_preserves_caller_roots_during_nested_calls() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn allocate_garbage() {
+    let temporary = "temporary";
+    return 1;
+}
+
+fn main() {
+    let player = Player { name: "outer", level: 1 };
+    let ignored = allocate_garbage();
+    let after = "after";
+    return player.name;
+}
+"#,
+        )
+        .expect("compile nested heap source");
+        let mut heap = ScriptHeap::new();
+        heap.set_gc_config(heap::GcConfig {
+            max_pause_micros: 500,
+            heap_growth_factor: 1.0,
+        });
+        let mut heap_execution =
+            HeapExecution::new(&mut heap).with_safe_point_gc_budget(GcBudget::unlimited());
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = Vm::new()
+            .run_program_with_heap_and_budget(
+                &program,
+                "main",
+                &[],
+                &mut heap_execution,
+                &mut budget,
+            )
+            .expect("run nested heap source");
+
+        let Value::HeapRef(result_ref) = result else {
+            panic!("expected heap-backed field result");
+        };
+        assert_eq!(
+            heap_execution.heap.get(result_ref),
+            Some(&HeapValue::String("outer".into()))
+        );
+        assert_eq!(
+            heap_execution
+                .last_gc_step()
+                .expect("safe-point GC should have run")
+                .swept,
+            1
+        );
+        assert_eq!(heap_execution.heap.live_object_count(), 3);
+        assert_eq!(
+            budget.memory_bytes_allocated(),
+            heap_execution.heap.allocated_bytes()
         );
     }
 
@@ -1872,7 +2001,7 @@ fn double(value) {
         )
         .expect("compile array literal source");
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = Vm::new()
@@ -1945,7 +2074,7 @@ fn main() {
         )
         .expect("compile record source");
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = Vm::new()
@@ -2045,7 +2174,7 @@ fn main() {
         )
         .expect("compile enum match source");
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = Vm::new()
@@ -2065,7 +2194,7 @@ fn main() {
         )
         .expect("compile string source");
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 8, usize::MAX, usize::MAX);
 
         let error = Vm::new()
@@ -2244,7 +2373,7 @@ fn main() {
         let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
         let mut tx = PatchTx::new();
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = {
@@ -2523,7 +2652,7 @@ fn main(player) {
         let mut vm = Vm::new();
         vm.register_reflection_natives(Arc::new(reflection_registry()));
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = {
@@ -2596,7 +2725,7 @@ fn main(player) {
         let mut vm = Vm::new();
         vm.register_reflection_natives(Arc::new(reflection_registry()));
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = {
@@ -2762,7 +2891,7 @@ fn main(player) {
         adapter.insert_method_return(method, HostValue::Null);
         let mut tx = PatchTx::new();
         let mut heap = ScriptHeap::new();
-        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut heap_execution = HeapExecution::new(&mut heap);
         let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
         let result = {

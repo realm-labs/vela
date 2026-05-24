@@ -388,3 +388,30 @@ Consequences:
   strings and aggregates.
 - Future default heap execution can preserve the same comparison behavior while
   replacing materialization with direct heap-aware equality where worthwhile.
+
+## 2026-05-24: Heap Safe Points Protect Caller Frame Roots
+
+Status: Accepted
+
+Context:
+Heap-backed execution now allocates VM values into `ScriptHeap`, and the heap
+has stepped mark-sweep collection. The VM executes script calls recursively, so
+a GC step inside a callee cannot discover heap refs stored in caller registers
+unless those refs are explicitly exposed.
+
+Decision:
+Make `HeapExecution` the owner of a protected-root stack and safe-point GC
+policy. Before a script function call, the VM pushes the caller frame's heap
+roots into that stack, executes the callee, then truncates the stack even when
+the call returns an error. After normal instructions, heap-backed execution
+runs a stepped GC safe point when the heap threshold is reached or an
+incremental collection is already in progress. Roots are the protected caller
+roots plus the current frame's register roots.
+
+Consequences:
+- A callee allocation can trigger GC without collecting heap values still live
+  in suspended caller frames.
+- Safe-point GC releases swept memory back to `ExecutionBudget`, keeping memory
+  accounting aligned with the heap.
+- Heap-backed execution now has a constructor-controlled runtime context,
+  leaving inline compatibility entrypoints unchanged during migration.

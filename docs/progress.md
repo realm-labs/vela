@@ -213,10 +213,13 @@ script heap are implemented; VM value migration and GC pacing remain.
 - Added VM tests proving heap-backed reflection natives can query traits,
   read/write host state through `PatchTx`, and return field metadata arrays
   stored in the script heap.
+- Added safe-point stepped GC execution to heap-backed VM dispatch, using
+  current call-frame roots plus protected caller roots during nested script
+  calls.
+- Added a VM test proving safe-point GC can sweep unreachable objects created
+  by a nested call without collecting heap refs still held by the caller frame.
 
 ## Next
 
-- Wire safe-point GC execution to heap-backed bytecode execution using active
-  call-frame roots.
 - Continue moving heap-backed execution toward the default VM path while
   preserving inline compatibility entrypoints during migration.
