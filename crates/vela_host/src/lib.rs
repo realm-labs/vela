@@ -246,6 +246,21 @@ impl PatchTx {
         Ok(())
     }
 
+    pub fn call_method(
+        &mut self,
+        path: HostPath,
+        method: HostMethodId,
+        args: Vec<HostValue>,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        self.patches.push(Patch {
+            path,
+            op: PatchOp::CallHostMethod { method, args },
+            source_span,
+        });
+        Ok(())
+    }
+
     pub fn require_fresh_ref(host_ref: HostRef, snapshot: &HostObjectSnapshot) -> HostResult<()> {
         if host_ref.type_id != snapshot.type_id {
             return Err(HostError::new(HostErrorKind::TypeMismatch {
@@ -300,6 +315,8 @@ impl PatchTx {
 pub struct MockStateAdapter {
     objects: BTreeMap<HostObjectKey, u32>,
     values: BTreeMap<HostPath, HostValue>,
+    method_returns: BTreeMap<HostMethodId, HostValue>,
+    method_calls: Vec<(HostPath, HostMethodId, Vec<HostValue>)>,
 }
 
 impl MockStateAdapter {
@@ -312,6 +329,15 @@ impl MockStateAdapter {
         self.objects
             .insert(HostObjectKey::from_ref(path.root), path.root.generation);
         self.values.insert(path, value);
+    }
+
+    pub fn insert_method_return(&mut self, method: HostMethodId, value: HostValue) {
+        self.method_returns.insert(method, value);
+    }
+
+    #[must_use]
+    pub fn method_calls(&self) -> &[(HostPath, HostMethodId, Vec<HostValue>)] {
+        &self.method_calls
     }
 }
 
@@ -332,11 +358,19 @@ impl ScriptStateAdapter for MockStateAdapter {
 
     fn call_method(
         &mut self,
-        _path: &HostPath,
+        path: &HostPath,
         method: HostMethodId,
-        _args: &[HostValue],
+        args: &[HostValue],
     ) -> HostResult<HostValue> {
-        Err(HostError::new(HostErrorKind::UnsupportedMethod { method }))
+        self.validate_path(path)?;
+        let value = self
+            .method_returns
+            .get(&method)
+            .cloned()
+            .ok_or_else(|| HostError::new(HostErrorKind::UnsupportedMethod { method }))?;
+        self.method_calls
+            .push((path.clone(), method, args.to_vec()));
+        Ok(value)
     }
 
     fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
@@ -352,6 +386,9 @@ impl ScriptStateAdapter for MockStateAdapter {
             PatchOp::Push(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
                 op: "push",
             })),
+            PatchOp::CallHostMethod { method, .. } if self.method_returns.contains_key(method) => {
+                Ok(())
+            }
             PatchOp::CallHostMethod { method, .. } => {
                 Err(HostError::new(HostErrorKind::UnsupportedMethod {
                     method: *method,
@@ -382,8 +419,8 @@ impl ScriptStateAdapter for MockStateAdapter {
             PatchOp::Push(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
                 op: "push",
             })),
-            PatchOp::CallHostMethod { method, .. } => {
-                Err(HostError::new(HostErrorKind::UnsupportedMethod { method }))
+            PatchOp::CallHostMethod { method, args } => {
+                self.call_method(&patch.path, method, &args).map(|_| ())
             }
         }
     }
@@ -547,6 +584,32 @@ mod tests {
                 expected: 2,
                 actual: 3
             }
+        );
+    }
+
+    #[test]
+    fn call_method_patch_applies_at_safe_point() {
+        let mut adapter = MockStateAdapter::new();
+        let path = level_path();
+        let method = HostMethodId::new(4);
+        adapter.insert_value(path.clone(), HostValue::Int(9));
+        adapter.insert_method_return(method, HostValue::Null);
+        let mut tx = PatchTx::new();
+
+        tx.call_method(
+            path.clone(),
+            method,
+            vec![HostValue::String("gold".into())],
+            None,
+        )
+        .expect("record method call");
+        assert!(adapter.method_calls().is_empty());
+
+        tx.apply(&mut adapter).expect("apply method call");
+
+        assert_eq!(
+            adapter.method_calls(),
+            &[(path, method, vec![HostValue::String("gold".into())])]
         );
     }
 }

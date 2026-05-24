@@ -349,6 +349,29 @@ impl Vm {
                     host.tx
                         .add_path(path, value, base_value, instruction.span)?;
                 }
+                InstructionKind::CallHostMethod {
+                    dst,
+                    root,
+                    method,
+                    args,
+                } => {
+                    let root = expect_host_ref(frame.read(*root)?, "call_host_method")?;
+                    let path = HostPath::new(root);
+                    let values = args
+                        .iter()
+                        .map(|register| value_to_host(frame.read(*register)?, "call_host_method"))
+                        .collect::<VmResult<Vec<_>>>()?;
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    host.tx
+                        .call_method(path, *method, values, instruction.span)?;
+                    if let Some(dst) = dst {
+                        frame.write(*dst, Value::Null)?;
+                    }
+                }
                 InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
             }
         }
@@ -499,7 +522,7 @@ mod tests {
         compile_program_source_with_options,
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
-    use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
+    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId};
     use vela_host::{HostValue, MockStateAdapter, PatchOp};
 
     #[test]
@@ -957,6 +980,65 @@ fn main(player) {
         assert_eq!(
             adapter.read_path(&level_path(host_ref)),
             Ok(HostValue::Int(11))
+        );
+    }
+
+    #[test]
+    fn call_host_method_records_patch_and_applies_later() {
+        let host_ref = player_ref(3);
+        let method = HostMethodId::new(8);
+        let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+        let gold = code.push_constant(Constant::String("gold".into()));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
+            dst: Some(Register(2)),
+            root: Register(0),
+            method,
+            args: vec![Register(1)],
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.insert_method_return(method, HostValue::Null);
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Null));
+        assert!(adapter.method_calls().is_empty());
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method,
+                args: vec![HostValue::String("gold".into())]
+            }
+        );
+        tx.apply(&mut adapter).expect("apply method call");
+        assert_eq!(
+            adapter.method_calls(),
+            &[(
+                HostPath::new(host_ref),
+                method,
+                vec![HostValue::String("gold".into())]
+            )]
         );
     }
 

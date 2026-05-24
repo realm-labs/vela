@@ -87,7 +87,13 @@ M3: HostRef And PatchTx.
   host field bytecode.
 - Added an end-to-end source test for script host mutation through
   parser -> bytecode -> VM -> `PatchTx` -> safe-point apply.
+- Added `CallHostMethod` bytecode plus `PatchTx::call_method` recording and
+  mock adapter safe-point application for controlled host method calls.
+- Added host/VM tests showing host method calls are recorded as patches and
+  applied later through the adapter.
 
 ## Next
 
-- Add `CallHostMethod` VM support for controlled host method calls.
+- Start M4 with a `vela_reflect` crate for `TypeRegistry`, type/field/method
+  descriptors, and controlled `reflect.get`/`reflect.set` over host refs and
+  record-like values.

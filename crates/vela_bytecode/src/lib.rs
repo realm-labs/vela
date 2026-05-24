@@ -4,7 +4,7 @@ pub mod compiler;
 
 use std::collections::BTreeMap;
 
-use vela_common::{FieldId, Span};
+use vela_common::{FieldId, HostMethodId, Span};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Program {
@@ -206,6 +206,12 @@ pub enum InstructionKind {
         root: Register,
         field: FieldId,
         rhs: Register,
+    },
+    CallHostMethod {
+        dst: Option<Register>,
+        root: Register,
+        method: HostMethodId,
+        args: Vec<Register>,
     },
     Return {
         src: Register,
