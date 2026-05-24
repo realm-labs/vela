@@ -3251,3 +3251,27 @@ Consequences:
 - Rejected reload reports now prove which version remained active.
 - CLI hot-reload workflows can surface structured diagnostics for failed update
   compilation or ABI checks without custom branching.
+
+## 2026-05-25: Hot Reload Diagnostics Have Codes And Targets
+
+Status: Accepted
+
+Context:
+Human-readable reload reasons and repair hints are useful for logs, but hosts
+and admin tooling also need stable fields for routing, aggregation, and UI
+actions. Parsing reason strings would make those tools brittle.
+
+Decision:
+`HotReloadError` now exposes a stable diagnostic code and optional affected
+target. `HotReloadDiagnostic` copies these values alongside the reason, repair
+hint, and original error. Function, schema, and method ABI failures all provide
+targets; compile failures keep the target absent until source spans and related
+diagnostics are lifted into reload reports.
+
+Consequences:
+- Host tools can branch on codes such as `reload.function.new_denied` instead
+  of matching human text.
+- Rejected reports can identify affected functions, schemas, or methods in a
+  consistent field.
+- Future source-span and related-location work can extend diagnostics without
+  changing the current report shape.

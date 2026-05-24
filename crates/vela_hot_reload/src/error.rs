@@ -15,6 +15,54 @@ impl HotReloadError {
     }
 
     #[must_use]
+    pub const fn code(&self) -> &'static str {
+        match &self.kind {
+            HotReloadErrorKind::Compile(_) => "reload.compile",
+            HotReloadErrorKind::DeletedFunctionParameters { .. } => {
+                "reload.function.deleted_parameters"
+            }
+            HotReloadErrorKind::ChangedFunctionParameters { .. } => {
+                "reload.function.changed_parameters"
+            }
+            HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. } => {
+                "reload.function.required_added_parameters"
+            }
+            HotReloadErrorKind::AddedFunctionParametersDenied { .. } => {
+                "reload.function.added_parameters_denied"
+            }
+            HotReloadErrorKind::NewFunctionDenied { .. } => "reload.function.new_denied",
+            HotReloadErrorKind::RemovedSchema { .. } => "reload.schema.removed",
+            HotReloadErrorKind::ChangedSchema { .. } => "reload.schema.changed",
+            HotReloadErrorKind::ChangedFunctionEffects { .. } => "reload.function.effects_changed",
+            HotReloadErrorKind::ChangedFunctionAccess { .. } => "reload.function.access_changed",
+            HotReloadErrorKind::ChangedMethodEffects { .. } => "reload.method.effects_changed",
+            HotReloadErrorKind::ChangedMethodAccess { .. } => "reload.method.access_changed",
+        }
+    }
+
+    #[must_use]
+    pub fn target(&self) -> Option<String> {
+        match &self.kind {
+            HotReloadErrorKind::Compile(_) => None,
+            HotReloadErrorKind::DeletedFunctionParameters { function, .. }
+            | HotReloadErrorKind::ChangedFunctionParameters { function, .. }
+            | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, .. }
+            | HotReloadErrorKind::AddedFunctionParametersDenied { function, .. }
+            | HotReloadErrorKind::NewFunctionDenied { function }
+            | HotReloadErrorKind::ChangedFunctionEffects { function, .. }
+            | HotReloadErrorKind::ChangedFunctionAccess { function, .. } => Some(function.clone()),
+            HotReloadErrorKind::RemovedSchema { type_name, .. }
+            | HotReloadErrorKind::ChangedSchema { type_name, .. } => Some(type_name.clone()),
+            HotReloadErrorKind::ChangedMethodEffects {
+                type_name, method, ..
+            }
+            | HotReloadErrorKind::ChangedMethodAccess {
+                type_name, method, ..
+            } => Some(format!("{type_name}.{method}")),
+        }
+    }
+
+    #[must_use]
     pub fn reason(&self) -> String {
         match &self.kind {
             HotReloadErrorKind::Compile(_) => "updated source failed to compile".to_owned(),

@@ -98,6 +98,8 @@ fn rejected_report_carries_reason_and_repair_hint() {
     assert_eq!(report.version(), None);
     assert_eq!(report.errors.len(), 1);
     assert_eq!(report.errors[0].error, error);
+    assert_eq!(report.errors[0].code, "reload.function.new_denied");
+    assert_eq!(report.errors[0].target.as_deref(), Some("helper"));
     assert_eq!(
         report.errors[0].reason,
         "new function `helper` is denied by reload policy"
@@ -106,6 +108,36 @@ fn rejected_report_carries_reason_and_repair_hint() {
         report.errors[0].repair_hint.as_deref(),
         Some("enable new functions in HotReloadPolicy or remove the new declaration")
     );
+}
+
+#[test]
+fn rejected_report_targets_schema_and_method_errors() {
+    let schema = HotReloadReport::rejected(
+        ProgramVersionId(1),
+        HotReloadError {
+            kind: HotReloadErrorKind::ChangedSchema {
+                type_name: "Player".to_owned(),
+                old_hash: 1,
+                new_hash: 2,
+            },
+        },
+    );
+    assert_eq!(schema.errors[0].code, "reload.schema.changed");
+    assert_eq!(schema.errors[0].target.as_deref(), Some("Player"));
+
+    let method = HotReloadReport::rejected(
+        ProgramVersionId(1),
+        HotReloadError {
+            kind: HotReloadErrorKind::ChangedMethodAccess {
+                type_name: "Player".to_owned(),
+                method: "grant_exp".to_owned(),
+                old: AccessAbi::public(),
+                new: AccessAbi::new(true, false, Vec::new()),
+            },
+        },
+    );
+    assert_eq!(method.errors[0].code, "reload.method.access_changed");
+    assert_eq!(method.errors[0].target.as_deref(), Some("Player.grant_exp"));
 }
 
 #[test]

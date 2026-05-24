@@ -54,6 +54,8 @@ impl HotReloadReport {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadDiagnostic {
+    pub code: &'static str,
+    pub target: Option<String>,
     pub reason: String,
     pub repair_hint: Option<String>,
     pub error: HotReloadError,
@@ -63,6 +65,8 @@ impl HotReloadDiagnostic {
     #[must_use]
     pub fn from_error(error: HotReloadError) -> Self {
         Self {
+            code: error.code(),
+            target: error.target(),
             reason: error.reason(),
             repair_hint: error.repair_hint(),
             error,

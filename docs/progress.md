@@ -805,6 +805,9 @@ permissions.
   policy failures can produce rejected reports without advancing the current
   program version. The CLI hot-reload demo now routes compile/update results
   through this report boundary.
+- Extended `HotReloadDiagnostic` with stable machine-readable diagnostic codes
+  and affected targets for function, schema, and method ABI failures, so hosts
+  can route rejected reload reports without parsing human-readable reasons.
 
 ## Next
 
