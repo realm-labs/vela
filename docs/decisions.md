@@ -1436,3 +1436,28 @@ Consequences:
 - Mutating methods such as `set`, `remove`, and collection transforms remain a
   later stdlib/runtime slice that can define receiver mutation semantics
   explicitly.
+
+## 2026-05-24: Record Variant Patterns Match Field Subpatterns
+
+Status: Accepted
+
+Context:
+The grammar allows record-variant match fields to either bind by shorthand or
+specify an explicit nested pattern with `field: pattern`. The first executable
+match implementation only checked the variant tag and treated record fields as
+simple bindings, which meant field literals and nested variant patterns were
+accepted by syntax but not semantically matched.
+
+Decision:
+Record-variant match lowering now emits enum-field reads for explicit field
+subpatterns and recursively applies the existing pattern compiler to those
+field values. Shorthand fields continue to bind the field name, and explicit
+binding or wildcard subpatterns do not add extra equality checks.
+
+Consequences:
+- `Reward.Grant { kind: "xp", amount }` now rejects non-matching `kind`
+  values instead of matching by tag alone.
+- Nested patterns such as `Reward.Grant { payload: Payload.Xp(amount) }`
+  execute through the same bytecode path as top-level tuple variant patterns.
+- Missing or invalid field accesses still surface as VM enum-field errors,
+  matching the current dynamic enum behavior.

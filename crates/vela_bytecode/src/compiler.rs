@@ -30,7 +30,8 @@ use lambdas::{LambdaCapture, collect_lambda_captures};
 use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
 use patterns::{
-    enum_variant_path, pattern_declares_locals, record_pattern_binding, tuple_variant_field_name,
+    enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
+    record_pattern_field_match, tuple_variant_field_name,
 };
 use value_flow::{BlockValue, block_value};
 
@@ -1764,8 +1765,22 @@ impl<'ast> Compiler<'ast> {
                 });
                 Ok(vec![self.emit_jump_if_false(condition)])
             }
-            Pattern::Path(path) | Pattern::RecordVariant { path, .. } => {
-                self.compile_variant_tag_pattern(scrutinee, path)
+            Pattern::Path(path) => self.compile_variant_tag_pattern(scrutinee, path),
+            Pattern::RecordVariant { path, fields } => {
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, path)?;
+                for field in fields {
+                    let Some(pattern) = record_pattern_field_match(field) else {
+                        continue;
+                    };
+                    let field_value = self.alloc_register()?;
+                    self.emit(InstructionKind::GetEnumField {
+                        dst: field_value,
+                        value: scrutinee,
+                        field: field.name.clone(),
+                    });
+                    jumps.extend(self.compile_match_pattern(field_value, pattern)?);
+                }
+                Ok(jumps)
             }
             Pattern::TupleVariant { path, fields } => {
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, path)?;
@@ -1825,14 +1840,19 @@ impl<'ast> Compiler<'ast> {
             }
             Pattern::RecordVariant { fields, .. } => {
                 for field in fields {
-                    let binding = record_pattern_binding(field)?;
+                    if !record_pattern_field_declares_locals(field) {
+                        continue;
+                    }
                     let dst = self.alloc_register()?;
                     self.emit(InstructionKind::GetEnumField {
                         dst,
                         value: scrutinee,
                         field: field.name.clone(),
                     });
-                    self.bind_match_local(&binding, dst, body_span);
+                    match &field.pattern {
+                        Some(pattern) => self.bind_match_pattern_locals(dst, pattern, body_span)?,
+                        None => self.bind_match_local(&field.name, dst, body_span),
+                    }
                 }
                 Ok(())
             }
@@ -3160,6 +3180,44 @@ fn main() {
             code.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::Less { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_record_variant_field_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+enum Reward {
+    Grant { kind, amount }
+}
+
+fn main() {
+    let reward = Reward.Grant { kind: "xp", amount: 7 };
+    return match reward {
+        Reward.Grant { kind: "gold", amount } => amount,
+        Reward.Grant { kind: "xp", amount } => amount + 1,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("record variant field patterns should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Equal { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .filter(|instruction| {
+                    matches!(instruction.kind, InstructionKind::GetEnumField { .. })
+                })
+                .count()
+                >= 2
         );
     }
 

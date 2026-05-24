@@ -2705,6 +2705,64 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_record_variant_field_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+enum Reward {
+    Grant { kind, amount }
+}
+
+fn main() {
+    let reward = Reward.Grant { kind: "xp", amount: 7 };
+    return match reward {
+        Reward.Grant { kind: "gold", amount } => amount,
+        Reward.Grant { kind: "xp", amount } => amount + 1,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("compile record variant field patterns");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_nested_record_variant_field_patterns() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Reward {
+    Grant { payload }
+}
+
+enum Payload {
+    Xp(amount)
+    Gold(amount)
+}
+
+fn main() {
+    let reward = Reward.Grant { payload: Payload.Xp(7) };
+    return match reward {
+        Reward.Grant { payload: Payload.Gold(amount) } => amount,
+        Reward.Grant { payload: Payload.Xp(amount) } => amount + 1,
+        _ => 0,
+    };
+}
+"#,
+        )
+        .expect("compile nested record variant field patterns");
+        let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            Ok(Value::Int(8))
+        );
+    }
+
+    #[test]
     fn runs_compiled_tuple_variant_constructor_and_patterns() {
         let code = compile_function_source(
             SourceId::new(1),
