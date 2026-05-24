@@ -35,8 +35,17 @@ M2: Minimal Bytecode VM Loop.
 - Added compact parser snapshot coverage for core M1 syntax and recovery tests
   that assert malformed function-body diagnostics keep source spans.
 
+### M2: Minimal Bytecode VM Loop
+
+- Added `vela_bytecode` with `CodeObject`, constants, register IDs,
+  instruction offsets, and an initial register instruction set.
+- Added `vela_vm` with dynamic `Value`, call-frame registers, arithmetic,
+  comparison, branching, returns, and registered native function calls.
+- Added focused bytecode and VM tests for code-object construction, arithmetic,
+  branches, and a mock `log` native call.
+
 ## Next
 
-- Start M2 with `vela_bytecode` and `vela_vm` crates.
-- Implement a minimal register `CodeObject`, constants, arithmetic/comparison
-  instructions, function calls, and native print/log call support.
+- Add script-function call support and a small compiler from parsed AST
+  expressions/statements into bytecode.
+- Extend the VM value model with arrays/maps as executable bytecode operations.

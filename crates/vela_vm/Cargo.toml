@@ -1,0 +1,11 @@
+[package]
+name = "vela_vm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+vela_bytecode = { path = "../vela_bytecode" }
+
+[lints]
+workspace = true
