@@ -767,9 +767,17 @@ impl<'ast> Compiler<'ast> {
                     "expression",
                 )))
             }
-            ExprKind::Match(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "match expression",
-            ))),
+            ExprKind::Match(match_expr) => {
+                let dst = self.alloc_register()?;
+                let returned = self.compile_match_value_to(match_expr, dst)?;
+                if returned {
+                    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "returning match expression",
+                    )))
+                } else {
+                    Ok(dst)
+                }
+            }
         }
     }
 
@@ -1299,6 +1307,64 @@ impl<'ast> Compiler<'ast> {
         }
 
         Ok(all_arms_return)
+    }
+
+    fn compile_match_value_to(
+        &mut self,
+        match_expr: &MatchExpr,
+        dst: Register,
+    ) -> CompileResult<bool> {
+        let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
+        let mut end_jumps = Vec::new();
+        let mut all_arms_return = !match_expr.arms.is_empty();
+        let mut has_catch_all = false;
+
+        for arm in &match_expr.arms {
+            if arm.guard.is_some() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "match guard",
+                )));
+            }
+            let next_arm_jump = self.compile_match_pattern(scrutinee, &arm.pattern)?;
+            let previous_locals = self.locals.clone();
+            let previous_hir_locals = self.hir_locals.clone();
+            self.bind_match_fields(scrutinee, &arm.pattern, arm.body.span)?;
+            let arm_returned = self.compile_match_arm_value_to(&arm.body, dst)?;
+            self.locals = previous_locals;
+            self.hir_locals = previous_hir_locals;
+            all_arms_return &= arm_returned;
+            if !arm_returned {
+                end_jumps.push(self.emit_jump());
+            }
+            if let Some(next_arm_jump) = next_arm_jump {
+                self.patch_jump(next_arm_jump, self.current_offset())?;
+            } else {
+                has_catch_all = true;
+                break;
+            }
+        }
+
+        if !has_catch_all {
+            self.emit_constant_to(dst, Constant::Null);
+            all_arms_return = false;
+        }
+
+        for jump in end_jumps {
+            self.patch_jump(jump, self.current_offset())?;
+        }
+
+        Ok(all_arms_return)
+    }
+
+    fn compile_match_arm_value_to(&mut self, body: &Expr, dst: Register) -> CompileResult<bool> {
+        match &body.kind {
+            ExprKind::Block(block) => self.compile_block_value_to(block, dst),
+            _ => {
+                let value = self.compile_expr(body)?;
+                self.emit(InstructionKind::Move { dst, src: value });
+                Ok(false)
+            }
+        }
     }
 
     fn compile_match_pattern(
@@ -2380,6 +2446,40 @@ fn main() {
         assert_eq!(
             error.kind,
             CompileErrorKind::UnsupportedSyntax("if expression without else")
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_match_expression_values() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let damage = Damage.Physical { amount: 7 };
+    let value = match damage {
+        Damage.Magical { amount } => amount + 100,
+        Damage.Physical { amount } => {
+            amount + 1;
+        },
+        _ => 0,
+    };
+    return value;
+}
+"#,
+            "main",
+        )
+        .expect("match expression values should compile");
+
+        assert!(
+            code.instructions.iter().any(|instruction| matches!(
+                instruction.kind,
+                InstructionKind::EnumTagEqual { .. }
+            ))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Move { .. }))
         );
     }
 

@@ -410,6 +410,10 @@ to the later language constructs that introduce loops and closures.
   expression-valued `if` omits `else`.
 - Added compiler and VM coverage proving block and `if` expression values
   compile and execute from source.
+- Added compiler lowering for `match` expression values using the existing
+  executable enum tag, record-variant, and wildcard patterns.
+- Added VM coverage proving `match` expression arms merge values from both
+  expression and block arm bodies.
 
 ## Next
 

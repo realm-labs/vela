@@ -1176,3 +1176,29 @@ Consequences:
   so this first slice treats the final expression statement as a value even if
   the source used a semicolon. A later syntax/HIR refinement can preserve
   terminator intent without changing the VM lowering model.
+
+## 2026-05-24: Match Values Reuse Existing Pattern Lowering
+
+Status: Accepted
+
+Context:
+M9 requires `match` expression values, while the runnable prototype already
+supports statement-style matching for enum tag and record-variant patterns plus
+wildcards. Match guards, literal patterns, binding patterns, and tuple variants
+are still separate M9 work items.
+
+Decision:
+The compiler now lowers expression-valued `match` by compiling each supported
+arm with the existing pattern checks and moving the selected arm value into one
+destination register. Block arm bodies reuse block-value lowering, and
+expression arm bodies compile directly then move into the destination. If no
+arm matches and there is no wildcard, the expression value falls back to
+`null` for now.
+
+Consequences:
+- Existing executable enum-pattern matches can now participate in larger
+  expressions such as `let reward = match value { ... };`.
+- Pattern field bindings keep the same HIR-local restoration behavior as
+  statement matches.
+- Match guards and richer pattern forms remain explicitly unsupported until
+  their dedicated lowering slices.

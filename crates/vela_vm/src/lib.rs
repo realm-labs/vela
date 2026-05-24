@@ -2260,6 +2260,30 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_match_expression_values() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let damage = Damage.Physical { amount: 7 };
+    let value = match damage {
+        Damage.Magical { amount } => amount + 100,
+        Damage.Physical { amount } => {
+            amount + 1;
+        },
+        _ => 0,
+    };
+    return value;
+}
+"#,
+            "main",
+        )
+        .expect("compile match expression values");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_for_in_source() {
         let program = compile_program_source(
             SourceId::new(1),
