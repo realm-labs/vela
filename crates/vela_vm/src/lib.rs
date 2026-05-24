@@ -1,5 +1,7 @@
 //! Register VM for Vela bytecode.
 
+pub mod heap;
+
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
@@ -109,6 +111,7 @@ pub enum VmErrorKind {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ExecutionBudgetKind {
     Instructions,
+    MemoryBytes,
     CallDepth,
     Patches,
 }
@@ -120,6 +123,7 @@ pub struct ExecutionBudget {
     pub max_call_depth: usize,
     pub max_patches: usize,
     instructions_executed: u64,
+    memory_bytes_allocated: usize,
     current_call_depth: usize,
 }
 
@@ -137,6 +141,7 @@ impl ExecutionBudget {
             max_call_depth,
             max_patches,
             instructions_executed: 0,
+            memory_bytes_allocated: 0,
             current_call_depth: 0,
         }
     }
@@ -149,6 +154,11 @@ impl ExecutionBudget {
     #[must_use]
     pub fn instructions_executed(&self) -> u64 {
         self.instructions_executed
+    }
+
+    #[must_use]
+    pub fn memory_bytes_allocated(&self) -> usize {
+        self.memory_bytes_allocated
     }
 
     #[must_use]
@@ -165,6 +175,22 @@ impl ExecutionBudget {
         }
         self.instructions_executed = self.instructions_executed.saturating_add(1);
         Ok(())
+    }
+
+    pub(crate) fn charge_memory(&mut self, bytes: usize) -> VmResult<()> {
+        let next = self.memory_bytes_allocated.saturating_add(bytes);
+        if next > self.memory_limit_bytes {
+            return Err(VmError::new(VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::MemoryBytes,
+                limit: u64::try_from(self.memory_limit_bytes).unwrap_or(u64::MAX),
+            }));
+        }
+        self.memory_bytes_allocated = next;
+        Ok(())
+    }
+
+    pub(crate) fn release_memory(&mut self, bytes: usize) {
+        self.memory_bytes_allocated = self.memory_bytes_allocated.saturating_sub(bytes);
     }
 
     fn enter_call(&mut self) -> VmResult<()> {

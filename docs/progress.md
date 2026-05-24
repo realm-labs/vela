@@ -3,8 +3,8 @@
 ## Current Milestone
 
 M0-M6 runnable prototype loop complete. Current milestone: M7 runtime safety,
-budgets, and GC. Initial execution-budget enforcement is implemented; GC and
-script heap work remain.
+budgets, and GC. Initial execution-budget enforcement and the first non-moving
+script heap are implemented; VM value migration and GC pacing remain.
 
 ## Completed
 
@@ -172,12 +172,21 @@ script heap work remain.
   after opaque host-native calls that may record patches.
 - Added VM tests for instruction exhaustion, recursive call-depth exhaustion,
   and patch-count exhaustion without mutating host adapter state.
+- Added a `vela_vm::heap` module with stable generation-checked `GcRef`
+  handles, shallow memory accounting, explicit roots, and non-moving full
+  mark-sweep collection.
+- Added heap values for strings, arrays, maps, sets, records, and enums, with
+  `HostRef` stored only as an external slot value that is not traced as
+  Rust-owned state.
+- Connected heap allocation and collection to the VM memory budget counters.
+- Added heap tests proving live rooted objects survive collection, cyclic
+  unrooted objects are reclaimed, stale references cannot access reused slots,
+  host refs are not traced, and memory-budget failures do not mutate the heap.
 
 ## Next
 
-- Add the first script heap model with stable `GcRef` handles and explicit root
-  collection from call frames and temporary VM values.
-- Connect memory-budget accounting to heap allocation once arrays, maps,
-  strings, records, and enums move to the script heap.
-- Plan the non-moving heap and root model for strings, arrays, maps, records,
-  enums, closures, and temporary VM values.
+- Migrate VM-owned string, array, map, record, and enum values onto `GcRef`
+  handles while preserving current source behavior.
+- Add call-frame root collection so active registers keep heap objects alive
+  during collection.
+- Add `step_gc` pacing and collection thresholds for event/tick safe points.

@@ -236,3 +236,28 @@ Consequences:
   execution path.
 - Reflection and other host natives need a later `NativeCallContext` to reserve
   patch budget before mutation instead of only being checked after return.
+
+## 2026-05-24: Script Heap Uses Generation-Checked Non-Moving Handles
+
+Status: Accepted
+
+Context:
+M7 requires script heap values to be reclaimed without moving references and
+without placing Rust host state under the script GC. The current VM still stores
+first-class values inline, so the heap model needs to land before value storage
+is migrated.
+
+Decision:
+Add a `vela_vm::heap` module with `GcRef { index, generation }` handles into a
+non-moving arena. Collection is full mark-sweep from explicit roots. Heap values
+trace only script references; `HostRef` may appear as an external slot value but
+does not trace or own Rust host state. Allocation charges the VM memory budget
+before mutating the heap, and sweeping can release charged bytes.
+
+Consequences:
+- Stale handles cannot access new objects after an arena slot is reused.
+- Cyclic script objects can be reclaimed without a moving collector.
+- VM register and value migration can build on the heap API without changing
+  the host mutation boundary.
+- The first memory accounting is shallow; precise recursive object sizing can
+  be refined after VM values are fully heap-backed.
