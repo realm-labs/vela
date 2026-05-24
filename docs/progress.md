@@ -490,6 +490,8 @@ method-dispatch coverage before moving into stable type metadata.
 - Added mutating collection script methods `array.push`, `array.pop`,
   `map.set`, and `map.remove`, with method dispatch writing mutated receiver
   registers back in inline and managed-heap execution.
+- Added string predicate script methods `contains`, `starts_with`, and
+  `ends_with` for inline and heap-backed strings.
 
 ## Next
 

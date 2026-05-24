@@ -2596,6 +2596,7 @@ fn main() {
     let amounts = rewards.values();
     let entries = rewards.entries();
     if empty.is_empty() && values.len() == 3 && popped == 4 && rewards.len() == 2 && ("gold").len() == 4
+        && ("gold").contains("ol") && ("quest").starts_with("que") && ("quest").ends_with("st")
         && removed == 4 && rewards.has("quest") && rewards.get("xp") == 6 && rewards.get_or("missing", 10) == 10
         && keys[0] == "quest" && keys[1] == "xp"
         && amounts[0] == 8 && amounts[1] == 6
@@ -3076,7 +3077,8 @@ fn main() {
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
-    if names.len() == 2 && popped == "quest" && removed == 4 && rewards.is_empty() == false && ("quest").len() == 5
+    if names.len() == 2 && popped == "quest" && popped.contains("ue") && popped.starts_with("que")
+        && popped.ends_with("st") && removed == 4 && rewards.is_empty() == false && ("quest").len() == 5
         && rewards.has("quest") && rewards.get("xp") == 6 && rewards.get_or("missing", "fallback") == "fallback"
         && keys[0] == "quest" && keys[1] == "xp"
         && amounts[0] == "done" && amounts[1] == 6

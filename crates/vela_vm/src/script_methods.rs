@@ -22,6 +22,33 @@ pub(crate) fn call_method(
             expect_no_args(method, args)?;
             is_empty(receiver, heap.as_deref()).map(Value::Bool)
         }
+        "contains" => string_predicate(
+            receiver,
+            method,
+            "method contains",
+            args,
+            heap.as_deref(),
+            |value, needle| value.contains(needle),
+        )
+        .map(Value::Bool),
+        "starts_with" => string_predicate(
+            receiver,
+            method,
+            "method starts_with",
+            args,
+            heap.as_deref(),
+            |value, prefix| value.starts_with(prefix),
+        )
+        .map(Value::Bool),
+        "ends_with" => string_predicate(
+            receiver,
+            method,
+            "method ends_with",
+            args,
+            heap.as_deref(),
+            |value, suffix| value.ends_with(suffix),
+        )
+        .map(Value::Bool),
         "push" => array_push(receiver, args, heap, budget),
         "pop" => array_pop(receiver, args, heap),
         "has" => map_has(receiver, args, heap.as_deref()).map(Value::Bool),
@@ -36,6 +63,20 @@ pub(crate) fn call_method(
             method: method.to_owned(),
         })),
     }
+}
+
+fn string_predicate(
+    receiver: &Value,
+    method: &str,
+    operation: &'static str,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+    predicate: impl FnOnce(&str, &str) -> bool,
+) -> VmResult<bool> {
+    expect_arity(method, args, 1)?;
+    let receiver = string_value(receiver, heap, operation)?;
+    let needle = string_value(&args[0], heap, operation)?;
+    Ok(predicate(receiver, needle))
 }
 
 fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
@@ -351,13 +392,21 @@ fn expect_arity(method: &str, args: &[Value], expected: usize) -> VmResult<()> {
 }
 
 fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
+    string_value(value, heap, "map key").map(str::to_owned)
+}
+
+fn string_value<'a>(
+    value: &'a Value,
+    heap: Option<&'a HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<&'a str> {
     match value {
-        Value::String(key) => Ok(key.clone()),
+        Value::String(value) => Ok(value),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(key)) => Ok(key.clone()),
-            _ => type_error("map key"),
+            Some(HeapValue::String(value)) => Ok(value),
+            _ => type_error(operation),
         },
-        _ => type_error("map key"),
+        _ => type_error(operation),
     }
 }
 
