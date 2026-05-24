@@ -442,3 +442,29 @@ Consequences:
   execution completes or fails.
 - Explicit heap entrypoints remain available for long-lived hosts that own a
   script heap across ticks.
+
+## 2026-05-24: HIR Starts With A Declaration Module Graph
+
+Status: Accepted
+
+Context:
+M8 needs a semantic layer shared by the compiler, diagnostics, hot reload, and
+future tooling. The existing bytecode compiler reads syntax AST directly, which
+is workable for the prototype but does not provide stable declaration IDs,
+cross-module resolution, or duplicate-name diagnostics.
+
+Decision:
+Introduce a dedicated `vela_hir` crate with stable HIR IDs, a `ModuleGraph`,
+per-module declaration indexes, and first-phase lowering from parsed syntax
+items. This slice indexes functions, structs, enums, and traits, preserves
+source spans and visibility, resolves `use` imports across modules, and reports
+duplicate or unresolved names with related spans and candidate hints.
+
+Consequences:
+- Later bytecode compiler work can consume HIR without depending on syntactic
+  item scans for every semantic question.
+- Hot reload and future reflection/schema work gain stable declaration handles
+  before full type metadata lands.
+- Expression lowering, binding maps, top-level side-effect checks, and type
+  hint metadata remain explicit follow-up slices instead of being hidden inside
+  the syntax parser.

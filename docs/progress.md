@@ -2,9 +2,10 @@
 
 ## Current Milestone
 
-M0-M6 runnable prototype loop complete. Current milestone: M7 runtime safety,
-budgets, and GC. Initial execution-budget enforcement and the first non-moving
-script heap are implemented; VM value migration and GC pacing remain.
+M0-M7 runnable prototype loop complete enough to begin semantic lowering.
+Current milestone: M8 resolver, HIR, and module graph. Loop-specific and
+closure/upvalue GC acceptance remains tied to the later language constructs
+that introduce loops and closures.
 
 ## Completed
 
@@ -224,7 +225,22 @@ script heap are implemented; VM value migration and GC pacing remain.
 - Moved the `vela_cli` demo runner onto managed heap execution with explicit
   instruction, memory, call-depth, and patch budgets.
 
+### M8: Resolver, HIR, And Module Graph
+
+- Added the `vela_hir` crate and workspace wiring.
+- Added `ModuleId`, `HirNodeId`, `HirExprId`, and `HirDeclId` stable HIR IDs.
+- Added `ModuleGraph`, `ModulePath`, `ModuleSource`, `DeclarationIndex`, and
+  first-phase declaration metadata for functions, structs, enums, and traits.
+- Lowered parsed module items into HIR declaration indexes while preserving
+  source spans and visibility.
+- Added cross-module `use` resolution for imported declarations.
+- Added diagnostics for duplicate modules, duplicate declarations with both
+  related spans, unresolved modules, and unresolved imports with candidate
+  hints.
+- Added HIR tests for declaration indexing, cross-module import resolution,
+  duplicate declaration spans, and unresolved import suggestions.
+
 ## Next
 
-- Audit remaining M7 acceptance coverage, then begin M8 resolver/HIR work once
-  runtime safety and GC migration are sufficiently verified.
+- Expand M8 lowering with binding maps, expression IDs, type-hint metadata, and
+  compiler integration through HIR.

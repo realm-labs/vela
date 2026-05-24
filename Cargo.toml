@@ -3,6 +3,7 @@ members = [
     "crates/vela_bytecode",
     "crates/vela_cli",
     "crates/vela_common",
+    "crates/vela_hir",
     "crates/vela_hot_reload",
     "crates/vela_host",
     "crates/vela_reflect",
