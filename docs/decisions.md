@@ -2019,3 +2019,29 @@ Consequences:
   into one file.
 - These facts are compile-time hints only; scripts still use dynamic runtime
   values and do not gain generics or Rust references.
+
+## 2026-05-25: Type Hints Seed MethodId Receiver Facts
+
+Status: Accepted
+
+Context:
+M10 MethodId dispatch should benefit from explicit script type metadata without
+turning Vela into a statically typed language. HIR already preserves function,
+lambda, and local `let` type hints as metadata, and scripts still execute with
+dynamic values.
+
+Decision:
+Seed compiler-local script type-flow facts from parameter hints, lambda
+parameter hints, and explicit `let` type hints. The compiler resolves a hint to
+a known script type only when the type name is exact or an unambiguous suffix
+of registered script type metadata. Calls such as `fn main(player: Player) {
+player.bonus(5) }` can then lower to `CallMethodId`; dynamic fallback remains
+for unknown or ambiguous facts.
+
+Consequences:
+- MethodId dispatch now covers typed function parameters and typed locals,
+  including imported module-qualified script types.
+- Type hints remain advisory compile-time metadata and do not introduce script
+  generics, monomorphization, or Rust reference semantics.
+- Broader type-flow for `self`, pattern bindings, captures, and slot lowering
+  remains separate M10 work.

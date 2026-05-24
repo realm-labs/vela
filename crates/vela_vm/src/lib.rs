@@ -3020,6 +3020,37 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_typed_parameter_method_id_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main(player: Player) {
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("compile typed parameter method id dispatch");
+        let player = Value::Record {
+            type_name: "Player".to_owned(),
+            fields: ScriptFields::from_pairs("Player", [("level".to_owned(), Value::Int(7))]),
+        };
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[player]),
+            Ok(Value::Int(12))
+        );
+    }
+
+    #[test]
     fn runs_compiled_immediate_script_method_id_dispatch() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -3129,6 +3160,50 @@ pub fn main() {
         assert_eq!(
             Vm::new().run_program(&program, "game.combat.main", &[]),
             Ok(Value::Int(14))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_module_typed_parameter_method_id_dispatch() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.model"),
+                r#"
+pub trait BonusSource { fn bonus(self, amount) -> int; }
+pub struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.combat"),
+                r#"
+use game.model.Player
+
+pub fn main(player: Player) {
+    return player.bonus(5);
+}
+"#,
+            ),
+        ])
+        .expect("compile module typed parameter method id dispatch");
+        let player = Value::Record {
+            type_name: "game.model.Player".to_owned(),
+            fields: ScriptFields::from_pairs(
+                "game.model.Player",
+                [("level".to_owned(), Value::Int(7))],
+            ),
+        };
+
+        assert_eq!(
+            Vm::new().run_program(&program, "game.combat.main", &[player]),
+            Ok(Value::Int(12))
         );
     }
 

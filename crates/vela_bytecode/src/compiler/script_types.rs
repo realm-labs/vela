@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use vela_common::Span;
-use vela_hir::{BindingMap, BindingResolution, HirLocalId};
+use vela_hir::{BindingMap, BindingResolution, HirLocalId, HirTypeHint};
 use vela_syntax::{Expr, ExprKind};
 
 use super::patterns::enum_variant_path;
@@ -84,4 +84,24 @@ pub(super) fn expression_script_type(
         ExprKind::SelfValue => local_type_at_span(expr.span).or_else(|| local_type_named("self")),
         _ => None,
     }
+}
+
+pub(super) fn type_hint_script_type<'a>(
+    hint: &HirTypeHint,
+    type_names: impl IntoIterator<Item = &'a String>,
+) -> Option<String> {
+    let hinted = hint.display();
+    let mut suffix_match = None;
+    for type_name in type_names {
+        if type_name == &hinted {
+            return Some(type_name.clone());
+        }
+        if hint.path.len() == 1 && type_name.rsplit('.').next() == Some(hinted.as_str()) {
+            if suffix_match.is_some() {
+                return None;
+            }
+            suffix_match = Some(type_name.clone());
+        }
+    }
+    suffix_match
 }

@@ -15,7 +15,8 @@ use std::num::{ParseFloatError, ParseIntError};
 use vela_common::{Diagnostic, FieldId, HostMethodId, MethodId, SourceId, Span};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
-    ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource, ParamHint,
+    HirTypeHint, ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath,
+    ModuleSource, ParamHint,
 };
 use vela_syntax::{
     Argument, AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr,
@@ -35,7 +36,7 @@ use patterns::{
     enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
     record_pattern_field_match, tuple_variant_field_name,
 };
-use script_types::{ScriptTypeFlow, expression_script_type};
+use script_types::{ScriptTypeFlow, expression_script_type, type_hint_script_type};
 use value_flow::{BlockValue, block_value};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -652,17 +653,25 @@ impl<'ast> Compiler<'ast> {
             .collect::<Vec<_>>();
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
+        let mut script_types = ScriptTypeFlow::default();
         let parameter_locals = bindings
             .locals()
             .filter(|local| local.kind == LocalBindingKind::Parameter)
             .map(|local| local.id)
             .collect::<Vec<_>>();
-        for (index, param) in param_names.iter().enumerate() {
+        for (index, param) in signature.params.iter().enumerate() {
             let register = u16::try_from(index)
                 .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
-            locals.insert(param.clone(), Register(register));
+            locals.insert(param.name.clone(), Register(register));
+            let script_type = param
+                .type_hint
+                .as_ref()
+                .and_then(|hint| type_hint_script_type(hint, facts.type_symbols.values()));
             if let Some(local) = parameter_locals.get(index).copied() {
                 hir_locals.insert(local, Register(register));
+                script_types.set_local(local, &param.name, script_type);
+            } else {
+                script_types.set_name(&param.name, script_type);
             }
         }
 
@@ -672,7 +681,7 @@ impl<'ast> Compiler<'ast> {
                 .with_param_defaults(param_defaults),
             locals,
             hir_locals,
-            script_types: ScriptTypeFlow::default(),
+            script_types,
             bindings,
             next_register: param_count,
             param_defaults: params
@@ -705,6 +714,7 @@ impl<'ast> Compiler<'ast> {
         let param_default_flags = vec![false; params.len()];
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
+        let mut script_types = ScriptTypeFlow::default();
 
         for (index, capture) in captures.iter().enumerate() {
             let register = Register(
@@ -724,10 +734,16 @@ impl<'ast> Compiler<'ast> {
                     .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
             locals.insert(param.name.clone(), register);
+            let script_type = param.type_hint.as_ref().and_then(|hint| {
+                type_hint_script_type(&HirTypeHint::from_syntax(hint), facts.type_symbols.values())
+            });
             if let Some(local) =
                 bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, lambda_span)
             {
                 hir_locals.insert(local, register);
+                script_types.set_local(local, &param.name, script_type);
+            } else {
+                script_types.set_name(&param.name, script_type);
             }
         }
 
@@ -738,7 +754,7 @@ impl<'ast> Compiler<'ast> {
                 .with_capture_count(capture_count),
             locals,
             hir_locals,
-            script_types: ScriptTypeFlow::default(),
+            script_types,
             bindings,
             next_register: capture_count
                 .checked_add(param_count)
@@ -797,10 +813,22 @@ impl<'ast> Compiler<'ast> {
 
     fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
         match &stmt.kind {
-            StmtKind::Let { name, value, .. } => {
-                let script_type = value
-                    .as_ref()
-                    .and_then(|value| self.script_type_for_expr(value));
+            StmtKind::Let {
+                name,
+                type_hint,
+                value,
+            } => {
+                let hinted_script_type = type_hint.as_ref().and_then(|hint| {
+                    type_hint_script_type(
+                        &HirTypeHint::from_syntax(hint),
+                        self.facts.type_symbols.values(),
+                    )
+                });
+                let script_type = hinted_script_type.or_else(|| {
+                    value
+                        .as_ref()
+                        .and_then(|value| self.script_type_for_expr(value))
+                });
                 let (register, returned) = if let Some(value) = value {
                     self.compile_let_initializer(value)?
                 } else {
@@ -2743,6 +2771,119 @@ fn main() {
 
         let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
         let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
+    }
+
+    #[test]
+    fn compiler_specializes_typed_parameter_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main(player: Player) {
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("typed script parameter method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
+    }
+
+    #[test]
+    fn compiler_specializes_typed_let_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn source() {
+    return Player { level: 7 };
+}
+
+fn main() {
+    let player: Player = source();
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("typed let method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
+    }
+
+    #[test]
+    fn compiler_specializes_module_typed_parameter_method_calls_by_method_id() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.model"),
+                r#"
+pub trait BonusSource { fn bonus(self, amount) -> int; }
+pub struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.combat"),
+                r#"
+use game.model.Player
+
+pub fn main(player: Player) {
+    return player.bonus(5);
+}
+"#,
+            ),
+        ])
+        .expect("module typed parameter method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("game.model.BonusSource", "bonus");
+        let main = program
+            .function("game.combat.main")
+            .expect("game.combat.main function");
         assert!(main.instructions.iter().any(|instruction| matches!(
             instruction.kind,
             InstructionKind::CallMethodId {
