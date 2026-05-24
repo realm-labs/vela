@@ -1,5 +1,6 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
+mod control_flow;
 mod operators;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -19,6 +20,7 @@ use vela_syntax::{
 use crate::{
     CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
 };
+use control_flow::LoopContext;
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -496,6 +498,7 @@ struct Compiler<'ast> {
     next_register: u16,
     body: &'ast Block,
     facts: CompilerFacts,
+    loop_stack: Vec<LoopContext>,
 }
 
 impl<'ast> Compiler<'ast> {
@@ -537,6 +540,7 @@ impl<'ast> Compiler<'ast> {
             next_register: param_count,
             body: &function.body,
             facts,
+            loop_stack: Vec::new(),
         })
     }
 
@@ -605,9 +609,8 @@ impl<'ast> Compiler<'ast> {
                 iterable,
                 body,
             } => self.compile_for(stmt.span, binding, iterable, body),
-            StmtKind::Break | StmtKind::Continue => Err(CompileError::new(
-                CompileErrorKind::UnsupportedSyntax("control-flow statement"),
-            )),
+            StmtKind::Break => self.compile_break(),
+            StmtKind::Continue => self.compile_continue(),
         }
     }
 
@@ -910,13 +913,25 @@ impl<'ast> Compiler<'ast> {
 
         let loop_start = self.current_offset();
         let done_jump = self.emit_iter_next(iterator, binding_register);
+        self.loop_stack.push(LoopContext::new(loop_start));
         let body_returned = self.compile_statements(&body.statements)?;
+        let loop_context = self
+            .loop_stack
+            .pop()
+            .expect("loop context pushed before compiling for body");
         if !body_returned {
             self.emit(InstructionKind::Jump {
                 target: InstructionOffset(loop_start),
             });
         }
-        self.patch_jump(done_jump, self.current_offset())?;
+        let loop_end = self.current_offset();
+        self.patch_jump(done_jump, loop_end)?;
+        for jump in loop_context.break_jumps() {
+            self.patch_jump(*jump, loop_end)?;
+        }
+        for jump in loop_context.continue_jumps() {
+            self.patch_jump(*jump, loop_context.continue_target())?;
+        }
 
         if let Some(previous) = previous_binding {
             self.locals.insert(binding.to_owned(), previous);
@@ -928,6 +943,34 @@ impl<'ast> Compiler<'ast> {
         }
 
         Ok(false)
+    }
+
+    fn compile_break(&mut self) -> CompileResult<bool> {
+        if self.loop_stack.is_empty() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "break outside loop",
+            )));
+        }
+        let jump = self.emit_jump();
+        self.loop_stack
+            .last_mut()
+            .expect("loop stack checked above")
+            .push_break(jump);
+        Ok(true)
+    }
+
+    fn compile_continue(&mut self) -> CompileResult<bool> {
+        if self.loop_stack.is_empty() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "continue outside loop",
+            )));
+        }
+        let jump = self.emit_jump();
+        self.loop_stack
+            .last_mut()
+            .expect("loop stack checked above")
+            .push_continue(jump);
+        Ok(true)
     }
 
     fn compile_local_path(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
@@ -2285,6 +2328,76 @@ fn main() {
             code.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::IterNext { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_break_and_continue() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let total = 0;
+    for value in [1, 2, 3, 4, 5] {
+        if value == 2 {
+            continue;
+        }
+        if value == 5 {
+            break;
+        }
+        total += value;
+    }
+    return total;
+}
+"#,
+            "main",
+        )
+        .expect("break and continue should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::IterNext { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .filter(|instruction| matches!(instruction.kind, InstructionKind::Jump { .. }))
+                .count()
+                >= 3
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_break_and_continue_outside_loop() {
+        let break_error = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    break;
+}
+"#,
+            "main",
+        )
+        .expect_err("break outside loop should be rejected");
+        assert_eq!(
+            break_error.kind,
+            CompileErrorKind::UnsupportedSyntax("break outside loop")
+        );
+
+        let continue_error = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    continue;
+}
+"#,
+            "main",
+        )
+        .expect_err("continue outside loop should be rejected");
+        assert_eq!(
+            continue_error.kind,
+            CompileErrorKind::UnsupportedSyntax("continue outside loop")
         );
     }
 

@@ -2209,6 +2209,32 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_break_continue_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let total = 0;
+    for value in [1, 2, 3, 4, 5] {
+        if value == 2 {
+            continue;
+        }
+        if value == 5 {
+            break;
+        }
+        total += value;
+    }
+    return total;
+}
+"#,
+            "main",
+        )
+        .expect("compile break and continue source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_for_in_source() {
         let program = compile_program_source(
             SourceId::new(1),

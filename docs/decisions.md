@@ -1102,3 +1102,26 @@ Consequences:
 - Mutating the iterated collection during iteration does not change the current
   iterator snapshot.
 - Break/continue and host-provided iterables remain explicit follow-up slices.
+
+## 2026-05-24: Break And Continue Use Loop-Scoped Jump Patching
+
+Status: Accepted
+
+Context:
+M9 requires `break` and `continue` to work through nested control-flow blocks.
+The bytecode VM already supports unconditional jumps, and `for-in` loops have a
+stable iteration head at the `IterNext` instruction.
+
+Decision:
+The bytecode compiler keeps a stack of loop contexts while compiling loop
+bodies. `break` emits a placeholder `Jump` recorded on the innermost loop and
+patches to the loop end. `continue` emits a placeholder `Jump` recorded on the
+innermost loop and patches to the loop iteration head. Using these statements
+outside a loop remains an explicit unsupported-syntax diagnostic.
+
+Consequences:
+- Nested `if` and `match` blocks can produce loop exits without special loop
+  lowering cases.
+- Inner loop exits remain scoped to the nearest enclosing loop.
+- Future loop forms can reuse the same compiler context stack with their own
+  continue target.

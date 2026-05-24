@@ -394,6 +394,10 @@ to the later language constructs that introduce loops and closures.
   loops over script arrays and maps.
 - Added VM coverage proving `for-in` loops execute in inline and managed-heap
   modes, with map loops iterating values in key order.
+- Added compiler lowering for `break` and `continue` inside `for-in` loops via
+  loop-scoped jump patching, with explicit diagnostics outside loops.
+- Added compiler and VM coverage proving `break`/`continue` work through nested
+  control-flow blocks.
 
 ## Next
 
