@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
 
+use heap::GcRef;
 use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
@@ -30,7 +31,31 @@ pub enum Value {
         variant: String,
         fields: BTreeMap<String, Value>,
     },
+    HeapRef(GcRef),
     HostRef(HostRef),
+}
+
+impl Value {
+    pub fn trace_heap_refs(&self, refs: &mut Vec<GcRef>) {
+        match self {
+            Self::HeapRef(reference) => refs.push(*reference),
+            Self::Array(values) => values.iter().for_each(|value| value.trace_heap_refs(refs)),
+            Self::Map(values) => values
+                .values()
+                .for_each(|value| value.trace_heap_refs(refs)),
+            Self::Record { fields, .. } | Self::Enum { fields, .. } => {
+                fields
+                    .values()
+                    .for_each(|value| value.trace_heap_refs(refs));
+            }
+            Self::Null
+            | Self::Bool(_)
+            | Self::Int(_)
+            | Self::Float(_)
+            | Self::String(_)
+            | Self::HostRef(_) => {}
+        }
+    }
 }
 
 impl From<&Constant> for Value {
@@ -847,6 +872,15 @@ impl CallFrame {
         *slot = value;
         Ok(())
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn heap_roots(&self) -> Vec<GcRef> {
+        let mut roots = Vec::new();
+        self.registers
+            .iter()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        roots
+    }
 }
 
 fn binary_numeric(
@@ -925,6 +959,7 @@ fn value_to_host(value: &Value, operation: &'static str) -> VmResult<HostValue> 
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::HeapRef(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -942,6 +977,7 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
         Value::Array(_) | Value::Enum { .. } => {
             Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
+        Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
             reflect::ReflectValue::Host(value_to_host(value, operation)?),
         ),
@@ -973,6 +1009,7 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::HeapRef(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -1017,6 +1054,7 @@ fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::heap::{HeapValue, ScriptHeap};
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use vela_bytecode::compiler::{
@@ -1182,6 +1220,52 @@ fn main() {
             }
         );
         assert_eq!(budget.current_call_depth(), 0);
+    }
+
+    #[test]
+    fn call_frame_registers_expose_heap_roots_for_gc() {
+        let mut heap = ScriptHeap::new();
+        let rooted = heap.allocate(HeapValue::String("rooted".into()));
+        let garbage = heap.allocate(HeapValue::String("garbage".into()));
+        let mut frame = CallFrame::new(2);
+        frame
+            .write(Register(0), Value::HeapRef(rooted))
+            .expect("write heap root");
+
+        let roots = frame.heap_roots();
+        let stats = heap.collect_full(&roots);
+
+        assert_eq!(roots, vec![rooted]);
+        assert_eq!(stats.marked, 1);
+        assert_eq!(stats.swept, 1);
+        assert!(heap.contains(rooted));
+        assert!(!heap.contains(garbage));
+    }
+
+    #[test]
+    fn nested_values_expose_heap_roots_for_gc() {
+        let mut heap = ScriptHeap::new();
+        let rooted = heap.allocate(HeapValue::String("nested".into()));
+        let garbage = heap.allocate(HeapValue::String("garbage".into()));
+        let mut fields = BTreeMap::new();
+        fields.insert("item".into(), Value::HeapRef(rooted));
+        let mut frame = CallFrame::new(1);
+        frame
+            .write(
+                Register(0),
+                Value::Record {
+                    type_name: "Reward".into(),
+                    fields,
+                },
+            )
+            .expect("write nested root");
+
+        let stats = heap.collect_full(&frame.heap_roots());
+
+        assert_eq!(stats.marked, 1);
+        assert_eq!(stats.swept, 1);
+        assert!(heap.contains(rooted));
+        assert!(!heap.contains(garbage));
     }
 
     #[test]

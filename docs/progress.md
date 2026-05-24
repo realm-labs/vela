@@ -182,11 +182,15 @@ script heap are implemented; VM value migration and GC pacing remain.
 - Added heap tests proving live rooted objects survive collection, cyclic
   unrooted objects are reclaimed, stale references cannot access reused slots,
   host refs are not traced, and memory-budget failures do not mutate the heap.
+- Added `Value::HeapRef` plus VM value tracing so active call-frame registers
+  and nested inline aggregate values can be converted into explicit GC roots.
+- Added VM tests proving register-held and nested heap refs keep heap objects
+  alive during full collection while unrooted objects are swept.
 
 ## Next
 
 - Migrate VM-owned string, array, map, record, and enum values onto `GcRef`
   handles while preserving current source behavior.
-- Add call-frame root collection so active registers keep heap objects alive
-  during collection.
 - Add `step_gc` pacing and collection thresholds for event/tick safe points.
+- Wire safe-point GC execution to the call-frame root collector once heap-backed
+  values are produced by normal bytecode execution.

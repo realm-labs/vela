@@ -261,3 +261,28 @@ Consequences:
   the host mutation boundary.
 - The first memory accounting is shallow; precise recursive object sizing can
   be refined after VM values are fully heap-backed.
+
+## 2026-05-24: VM Values Trace HeapRefs Before Full Value Migration
+
+Status: Accepted
+
+Context:
+M7 needs call frames to provide GC roots, but the current runnable prototype
+still stores strings, arrays, maps, records, and enums inline in `Value`.
+Switching every executable value to heap-backed storage will touch compiler,
+VM, reflection, native calls, and existing tests, so the root contract should
+land first.
+
+Decision:
+Add a temporary `Value::HeapRef(GcRef)` bridge and a `Value::trace_heap_refs`
+helper that recursively visits current inline aggregate values. `CallFrame`
+can derive explicit root lists from active registers. Normal script execution
+does not produce `HeapRef` yet; later value migration will replace inline
+owned values with heap-backed values while reusing the same tracing path.
+
+Consequences:
+- GC root discovery can be tested against VM call-frame registers now.
+- Existing source behavior and public script values remain unchanged for the
+  runnable prototype.
+- The next GC step is to produce heap refs from normal bytecode execution and
+  call collection only at safe points with active frame roots.
