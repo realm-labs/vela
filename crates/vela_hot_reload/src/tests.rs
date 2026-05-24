@@ -109,6 +109,45 @@ fn rejected_report_carries_reason_and_repair_hint() {
 }
 
 #[test]
+fn apply_hot_update_result_report_preserves_current_version_on_rejection() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 1; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let old = runtime.current();
+    let policy = HotReloadPolicy::locked_down();
+    let update = compile_update_with_policy(
+        &old,
+        SourceId::new(2),
+        r#"
+fn helper() {
+    return 2;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        &policy,
+    );
+
+    let report = runtime.apply_hot_update_result_report(update);
+
+    assert!(!report.accepted);
+    assert_eq!(report.from_version, old.id);
+    assert_eq!(report.to_version, None);
+    assert_eq!(runtime.current().id, old.id);
+    assert_eq!(report.errors.len(), 1);
+    assert_eq!(
+        report.errors[0].reason,
+        "new function `helper` is denied by reload policy"
+    );
+    assert_eq!(
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
 fn deleted_function_parameters_are_rejected() {
     let initial = compile_initial(SourceId::new(1), "fn main(value) { return value; }")
         .expect("compile initial");

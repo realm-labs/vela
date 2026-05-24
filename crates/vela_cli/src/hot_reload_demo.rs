@@ -15,9 +15,12 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
     let old = runtime.current();
     let old_before = run_main(&old.to_program())?;
 
-    let update = compile_update_with_abi(&old, SourceId::new(2), &updated_source, abi)
-        .map_err(|error| format!("{error:?}"))?;
-    let report = runtime.apply_hot_update_report(update);
+    let report = runtime.apply_hot_update_result_report(compile_update_with_abi(
+        &old,
+        SourceId::new(2),
+        &updated_source,
+        abi,
+    ));
     let new = report
         .version()
         .ok_or_else(|| format!("hot reload rejected: {:?}", report.errors))?;

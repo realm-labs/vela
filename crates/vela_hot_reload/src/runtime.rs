@@ -43,4 +43,15 @@ impl HotReloadRuntime {
         self.current = Arc::clone(&next);
         HotReloadReport::accepted(from_version, next, changed_functions)
     }
+
+    #[must_use]
+    pub fn apply_hot_update_result_report(
+        &mut self,
+        update: HotReloadResult<HotUpdate>,
+    ) -> HotReloadReport {
+        match update {
+            Ok(update) => self.apply_hot_update_report(update),
+            Err(error) => HotReloadReport::rejected(self.current.id, error),
+        }
+    }
 }

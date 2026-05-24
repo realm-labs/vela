@@ -3229,3 +3229,25 @@ Consequences:
   span and related-location reporting is added.
 - The CLI hot-reload demo now exercises the report API without changing the
   underlying function-level swap semantics.
+
+## 2026-05-25: Rejected Hot Reload Results Do Not Advance Versions
+
+Status: Accepted
+
+Context:
+Compile, ABI, and policy checks happen before a hot update reaches the
+safe-point swap. Hosts still need the same report shape for these rejected
+updates as they get for accepted swaps, and rejected updates must not change the
+runtime's current `ProgramVersion`.
+
+Decision:
+Add `HotReloadRuntime::apply_hot_update_result_report`, which accepts a
+`HotReloadResult<HotUpdate>`. Successful updates delegate to
+`apply_hot_update_report`; rejected results produce `HotReloadReport::rejected`
+using the current version ID and leave the runtime unchanged.
+
+Consequences:
+- Embedders can route compile/update results through one reporting boundary.
+- Rejected reload reports now prove which version remained active.
+- CLI hot-reload workflows can surface structured diagnostics for failed update
+  compilation or ABI checks without custom branching.

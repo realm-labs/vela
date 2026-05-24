@@ -800,6 +800,11 @@ permissions.
   version transition IDs, changed function names, and structured diagnostics
   with reasons and repair hints for rejected errors. The CLI hot-reload demo
   now exercises the report path and prints the accepted update summary.
+- Extended the same runtime report boundary with
+  `HotReloadRuntime::apply_hot_update_result_report`, so compile, ABI, and
+  policy failures can produce rejected reports without advancing the current
+  program version. The CLI hot-reload demo now routes compile/update results
+  through this report boundary.
 
 ## Next
 
