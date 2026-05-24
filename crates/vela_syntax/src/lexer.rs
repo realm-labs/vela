@@ -219,6 +219,15 @@ impl<'src> Lexer<'src> {
             '{' => Some(Symbol::LBrace),
             '}' => Some(Symbol::RBrace),
             ',' => Some(Symbol::Comma),
+            '.' if self.peek_char() == Some('.') => {
+                self.bump_char();
+                if self.peek_char() == Some('=') {
+                    self.bump_char();
+                    Some(Symbol::DotDotEqual)
+                } else {
+                    Some(Symbol::DotDot)
+                }
+            }
             '.' => Some(Symbol::Dot),
             ':' => Some(Symbol::Colon),
             ';' => Some(Symbol::Semicolon),

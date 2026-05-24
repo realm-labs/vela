@@ -1,27 +1,49 @@
 use crate::heap::HeapValue;
+use crate::ranges::RangeCursor;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
-    values: Vec<Value>,
-    next: usize,
+    kind: IteratorKind,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum IteratorKind {
+    Values { values: Vec<Value>, next: usize },
+    Range(RangeCursor),
 }
 
 impl IteratorState {
     fn new(values: Vec<Value>) -> Self {
-        Self { values, next: 0 }
+        Self {
+            kind: IteratorKind::Values { values, next: 0 },
+        }
+    }
+
+    fn range(cursor: RangeCursor) -> Self {
+        Self {
+            kind: IteratorKind::Range(cursor),
+        }
     }
 
     pub(crate) fn next(&mut self) -> Option<Value> {
-        let value = self.values.get(self.next).cloned()?;
-        self.next = self.next.saturating_add(1);
-        Some(value)
+        match &mut self.kind {
+            IteratorKind::Values { values, next } => {
+                let value = values.get(*next).cloned()?;
+                *next = next.saturating_add(1);
+                Some(value)
+            }
+            IteratorKind::Range(cursor) => cursor.next().map(Value::Int),
+        }
     }
 
     pub(crate) fn trace_heap_refs(&self, refs: &mut Vec<crate::heap::GcRef>) {
-        self.values
-            .iter()
-            .for_each(|value| value.trace_heap_refs(refs));
+        match &self.kind {
+            IteratorKind::Values { values, .. } => {
+                values.iter().for_each(|value| value.trace_heap_refs(refs))
+            }
+            IteratorKind::Range(_) => {}
+        }
     }
 }
 
@@ -32,6 +54,7 @@ pub(crate) fn make_iterator(
     match iterable {
         Value::Array(values) => Ok(IteratorState::new(values.clone())),
         Value::Map(values) => Ok(IteratorState::new(values.values().cloned().collect())),
+        Value::Range(range) => Ok(IteratorState::range(range.cursor())),
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch {

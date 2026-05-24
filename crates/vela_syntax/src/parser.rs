@@ -377,7 +377,7 @@ impl Parser {
 
     fn parse_comparison(&mut self) -> Expr {
         self.parse_binary_left_assoc(
-            Self::parse_additive,
+            Self::parse_range,
             &[
                 (Symbol::Less, BinaryOp::Less),
                 (Symbol::LessEqual, BinaryOp::LessEqual),
@@ -385,6 +385,27 @@ impl Parser {
                 (Symbol::GreaterEqual, BinaryOp::GreaterEqual),
             ],
         )
+    }
+
+    fn parse_range(&mut self) -> Expr {
+        let left = self.parse_additive();
+        let op = if self.eat_symbol(Symbol::DotDotEqual).is_some() {
+            BinaryOp::RangeInclusive
+        } else if self.eat_symbol(Symbol::DotDot).is_some() {
+            BinaryOp::Range
+        } else {
+            return left;
+        };
+        let right = self.parse_additive();
+        let span = self.join_span(left.span, right.span);
+        Expr {
+            kind: ExprKind::Binary {
+                op,
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+            span,
+        }
     }
 
     fn parse_additive(&mut self) -> Expr {
@@ -1369,7 +1390,10 @@ mod tests {
 
     #[test]
     fn lexes_keywords_identifiers_and_operators_with_spans() {
-        let lexed = lex(source_id(), "pub fn level_up(player) { player.level += 1 }");
+        let lexed = lex(
+            source_id(),
+            "pub fn level_up(player) { player.level += 1; 1..10; 1..=10 }",
+        );
 
         assert!(lexed.diagnostics.is_empty());
         assert_eq!(lexed.tokens[0].kind, TokenKind::Keyword(Keyword::Pub));
@@ -1380,6 +1404,18 @@ mod tests {
                 .tokens
                 .iter()
                 .any(|token| token.kind == TokenKind::Symbol(Symbol::PlusEqual))
+        );
+        assert!(
+            lexed
+                .tokens
+                .iter()
+                .any(|token| token.kind == TokenKind::Symbol(Symbol::DotDot))
+        );
+        assert!(
+            lexed
+                .tokens
+                .iter()
+                .any(|token| token.kind == TokenKind::Symbol(Symbol::DotDotEqual))
         );
     }
 
@@ -1617,6 +1653,53 @@ fn update(player) {
             panic!("expected return value");
         };
         assert_eq!(value.kind, ExprKind::Literal(Literal::Int("42".into())));
+    }
+
+    #[test]
+    fn parses_range_expressions() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+fn main() {
+    let exclusive = 1..4;
+    let inclusive = 1..=4;
+    return inclusive;
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Function(function) = &parsed.items[0].kind else {
+            panic!("expected function item");
+        };
+        let StmtKind::Let {
+            value: Some(exclusive),
+            ..
+        } = &function.body.statements[0].kind
+        else {
+            panic!("expected exclusive range let");
+        };
+        assert!(matches!(
+            exclusive.kind,
+            ExprKind::Binary {
+                op: BinaryOp::Range,
+                ..
+            }
+        ));
+        let StmtKind::Let {
+            value: Some(inclusive),
+            ..
+        } = &function.body.statements[1].kind
+        else {
+            panic!("expected inclusive range let");
+        };
+        assert!(matches!(
+            inclusive.kind,
+            ExprKind::Binary {
+                op: BinaryOp::RangeInclusive,
+                ..
+            }
+        ));
     }
 
     #[test]

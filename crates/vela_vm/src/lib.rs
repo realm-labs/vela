@@ -3,6 +3,7 @@
 pub mod heap;
 mod indexing;
 mod iteration;
+mod ranges;
 mod try_propagation;
 
 use std::collections::{BTreeMap, HashMap};
@@ -11,6 +12,7 @@ use std::sync::Arc;
 
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 pub use iteration::IteratorState;
+pub use ranges::RangeValue;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
@@ -38,6 +40,7 @@ pub enum Value {
         fields: BTreeMap<String, Value>,
     },
     Closure(ClosureValue),
+    Range(RangeValue),
     HeapRef(GcRef),
     HostRef(HostRef),
     Iterator(IteratorState),
@@ -67,6 +70,7 @@ impl Value {
             | Self::Int(_)
             | Self::Float(_)
             | Self::String(_)
+            | Self::Range(_)
             | Self::HostRef(_) => {}
         }
     }
@@ -1092,6 +1096,16 @@ impl Vm {
                     };
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::MakeRange {
+                    dst,
+                    start,
+                    end,
+                    inclusive,
+                } => {
+                    let start = expect_int(frame.read(*start)?, "range")?;
+                    let end = expect_int(frame.read(*end)?, "range")?;
+                    frame.write(*dst, Value::Range(RangeValue::new(start, end, *inclusive)))?;
+                }
                 InstructionKind::MakeRecord {
                     dst,
                     type_name,
@@ -1473,7 +1487,7 @@ pub(crate) fn value_to_heap_slot(
             };
             Ok(HeapSlot::Ref(reference))
         }
-        Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
+        Value::Range(_) | Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
             Err(VmError::new(VmErrorKind::TypeMismatch {
                 operation: "heap slot",
             }))
@@ -1552,6 +1566,7 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
         | Value::Int(_)
         | Value::Float(_)
         | Value::String(_)
+        | Value::Range(_)
         | Value::HostRef(_) => Ok(value.clone()),
         Value::Iterator(_) | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "materialize",
@@ -1637,6 +1652,7 @@ fn store_value_in_heap_if_needed(
         | Value::Float(_)
         | Value::HeapRef(_)
         | Value::HostRef(_)
+        | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_) => Ok(value),
         Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -1859,6 +1875,7 @@ fn value_to_host(
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
         | Value::Missing
@@ -1876,9 +1893,11 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::ReflectValue::Record(values))
         }
-        Value::Array(_) | Value::Enum { .. } | Value::Closure(_) | Value::Missing => {
-            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
-        }
+        Value::Array(_)
+        | Value::Enum { .. }
+        | Value::Range(_)
+        | Value::Closure(_)
+        | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
@@ -1913,10 +1932,18 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Range(_)
         | Value::Closure(_)
         | Value::HeapRef(_)
         | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    }
+}
+
+fn expect_int(value: &Value, operation: &'static str) -> VmResult<i64> {
+    match value {
+        Value::Int(value) => Ok(*value),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 
@@ -2400,6 +2427,29 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_range_for_in_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let total = 0;
+    for value in 1..4 {
+        total += value;
+    }
+    for value in 4..=5 {
+        total += value;
+    }
+    return total;
+}
+"#,
+            "main",
+        )
+        .expect("compile range for-in source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(15)));
+    }
+
+    #[test]
     fn runs_compiled_break_continue_source() {
         let code = compile_function_source(
             SourceId::new(1),
@@ -2698,6 +2748,30 @@ fn last_name() {
                 .run_program_with_managed_heap_and_budget(&program, "last_name", &[], &mut budget)
                 .expect("run heap for-in string"),
             Value::String("xp".into())
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_range_for_in_source() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let total = 0;
+    for value in 2..=4 {
+        total += value;
+    }
+    return total;
+}
+"#,
+        )
+        .expect("compile heap range for-in source");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            Ok(Value::Int(9))
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }

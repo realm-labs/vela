@@ -65,6 +65,7 @@ pub(crate) fn get_index(
         | Value::String(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -128,6 +129,7 @@ pub(crate) fn set_index(
         | Value::String(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -203,6 +205,7 @@ fn array_index(index: &Value) -> VmResult<usize> {
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::HeapRef(_)
+        | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -229,6 +232,7 @@ fn map_key(index: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> 
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {

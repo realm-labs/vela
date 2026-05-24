@@ -1359,3 +1359,28 @@ Consequences:
   VM type errors rather than silent fallthrough.
 - Later `vela_std` work can register canonical Option/Result schemas while
   preserving this dynamic enum execution behavior.
+
+## 2026-05-24: Range Expressions Produce Lazy Integer Iterables
+
+Status: Accepted
+
+Context:
+The grammar includes `range = additive, [ (".." | "..="), additive ]`, and M9
+requires executable grammar coverage. Eagerly expanding `1..large_number` into
+an array would create a large allocation from a tiny source expression and work
+poorly with budgeted execution.
+
+Decision:
+Lex and parse `..` and `..=` as range operators. The compiler lowers them to
+`MakeRange`, and the VM stores an inline `RangeValue` with integer start/end
+bounds plus an inclusive flag. `for-in` iteration uses a range cursor that yields
+integers lazily instead of allocating an array.
+
+Consequences:
+- Range-based loops execute in both inline and managed-heap VM modes without
+  charging script heap memory.
+- Descending ranges are empty in the MVP; step values and reverse ranges remain
+  later stdlib/language conveniences.
+- Non-integer range bounds are VM type errors.
+- Range values stay outside host conversion and reflection until the standard
+  library defines a public range API.

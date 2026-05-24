@@ -1440,6 +1440,8 @@ impl<'ast> Compiler<'ast> {
         match op {
             BinaryOp::And => return self.compile_logical_and(left, right),
             BinaryOp::Or => return self.compile_logical_or(left, right),
+            BinaryOp::Range => return self.compile_range(left, right, false),
+            BinaryOp::RangeInclusive => return self.compile_range(left, right, true),
             _ => {}
         }
 
@@ -1449,6 +1451,24 @@ impl<'ast> Compiler<'ast> {
         let instruction = non_logical_binary_instruction(op, dst, lhs, rhs)
             .expect("logical operators handled above");
         self.emit(instruction);
+        Ok(dst)
+    }
+
+    fn compile_range(
+        &mut self,
+        left: &Expr,
+        right: &Expr,
+        inclusive: bool,
+    ) -> CompileResult<Register> {
+        let start = self.compile_expr(left)?;
+        let end = self.compile_expr(right)?;
+        let dst = self.alloc_register()?;
+        self.emit(InstructionKind::MakeRange {
+            dst,
+            start,
+            end,
+            inclusive,
+        });
         Ok(dst)
     }
 
@@ -2058,7 +2078,7 @@ fn evaluate_binary_const(op: BinaryOp, left: Constant, right: Constant) -> Optio
         BinaryOp::LessEqual => evaluate_numeric_compare_const(left, right, |a, b| a <= b),
         BinaryOp::Greater => evaluate_numeric_compare_const(left, right, |a, b| a > b),
         BinaryOp::GreaterEqual => evaluate_numeric_compare_const(left, right, |a, b| a >= b),
-        BinaryOp::Or | BinaryOp::And => None,
+        BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => None,
     }
 }
 
@@ -2369,6 +2389,29 @@ fn main() {
                 InstructionKind::TryPropagate { .. }
             ))
         );
+    }
+
+    #[test]
+    fn compiler_lowers_range_expressions() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let values = 1..=4;
+    return values;
+}
+"#,
+            "main",
+        )
+        .expect("range expression should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::MakeRange {
+                inclusive: true,
+                ..
+            }
+        )));
     }
 
     #[test]

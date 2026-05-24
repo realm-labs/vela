@@ -20,7 +20,7 @@ pub(super) fn non_logical_binary_instruction(
         BinaryOp::LessEqual => Some(InstructionKind::LessEqual { dst, lhs, rhs }),
         BinaryOp::Greater => Some(InstructionKind::Greater { dst, lhs, rhs }),
         BinaryOp::GreaterEqual => Some(InstructionKind::GreaterEqual { dst, lhs, rhs }),
-        BinaryOp::Or | BinaryOp::And => None,
+        BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => None,
     }
 }
 

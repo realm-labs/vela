@@ -85,6 +85,8 @@ pub enum Symbol {
     RBrace,
     Comma,
     Dot,
+    DotDot,
+    DotDotEqual,
     Colon,
     Semicolon,
     Arrow,

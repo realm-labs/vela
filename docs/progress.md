@@ -4,8 +4,8 @@
 
 M0-M8 runnable prototype and semantic lowering complete enough to expand the
 executable language surface. Current milestone: M9 complete executable
-language surface. Loop-specific and closure/upvalue GC acceptance remains tied
-to the later language constructs that introduce loops and closures.
+language surface. Remaining M9 work is focused on executable grammar gaps and
+method-dispatch coverage before moving into stable type metadata.
 
 ## Completed
 
@@ -445,6 +445,11 @@ to the later language constructs that introduce loops and closures.
   `Option.Some`/`Option.None` and `Result.Ok`/`Result.Err` enum values.
 - Added compiler and VM coverage proving `?` unwraps success payloads and
   returns failure variants early in both inline and managed-heap execution.
+- Added lexer/parser support for exclusive `..` and inclusive `..=` range
+  expressions.
+- Added bytecode and VM execution for integer range values as lazy iterables,
+  with compiler and VM coverage for range-based `for-in` loops in inline and
+  managed-heap execution.
 
 ## Next
 

@@ -235,6 +235,12 @@ pub enum InstructionKind {
         dst: Register,
         entries: Vec<(String, Register)>,
     },
+    MakeRange {
+        dst: Register,
+        start: Register,
+        end: Register,
+        inclusive: bool,
+    },
     MakeRecord {
         dst: Register,
         type_name: String,

@@ -292,6 +292,8 @@ pub enum BinaryOp {
     LessEqual,
     Greater,
     GreaterEqual,
+    Range,
+    RangeInclusive,
     Add,
     Sub,
     Mul,
