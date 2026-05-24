@@ -231,13 +231,20 @@ impl<'ast> Compiler<'ast> {
                     CompileError::new(CompileErrorKind::UnknownLocal(path[0].clone()))
                 })
             }
-            ExprKind::Path(path) => self.compile_host_path(path),
+            ExprKind::Path(path) => self.compile_path_access(path),
             ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
             ExprKind::Field { base, name } => {
                 let root = self.compile_expr(base)?;
-                let field = self.host_field(name)?;
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::GetHostField { dst, root, field });
+                if let Some(field) = self.options.host_fields.get(name).copied() {
+                    self.emit(InstructionKind::GetHostField { dst, root, field });
+                } else {
+                    self.emit(InstructionKind::GetRecordField {
+                        dst,
+                        record: root,
+                        field: name.clone(),
+                    });
+                }
                 Ok(dst)
             }
             ExprKind::Call { callee, args } => {
@@ -290,6 +297,20 @@ impl<'ast> Compiler<'ast> {
                 self.emit(InstructionKind::MakeMap { dst, entries });
                 Ok(dst)
             }
+            ExprKind::Record { path, fields } => {
+                let type_name = path.join(".");
+                let fields = fields
+                    .iter()
+                    .map(|field| self.compile_record_field(field))
+                    .collect::<CompileResult<Vec<_>>>()?;
+                let dst = self.alloc_register()?;
+                self.emit(InstructionKind::MakeRecord {
+                    dst,
+                    type_name,
+                    fields,
+                });
+                Ok(dst)
+            }
             ExprKind::If(if_expr) => {
                 let returned = self.compile_if(if_expr)?;
                 if returned {
@@ -307,7 +328,6 @@ impl<'ast> Compiler<'ast> {
             | ExprKind::Unary { .. }
             | ExprKind::Index { .. }
             | ExprKind::Try(_)
-            | ExprKind::Record { .. }
             | ExprKind::Lambda { .. }
             | ExprKind::Match(_)
             | ExprKind::Error => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -340,10 +360,26 @@ impl<'ast> Compiler<'ast> {
         Ok(())
     }
 
-    fn compile_host_path(&mut self, path: &[String]) -> CompileResult<Register> {
-        let (root, field) = self.compile_host_path_parts(path)?;
+    fn compile_path_access(&mut self, path: &[String]) -> CompileResult<Register> {
+        if path.len() != 2 {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "path expression",
+            )));
+        }
+        let root =
+            self.locals.get(&path[0]).copied().ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnknownLocal(path[0].clone()))
+            })?;
         let dst = self.alloc_register()?;
-        self.emit(InstructionKind::GetHostField { dst, root, field });
+        if let Some(field) = self.options.host_fields.get(&path[1]).copied() {
+            self.emit(InstructionKind::GetHostField { dst, root, field });
+        } else {
+            self.emit(InstructionKind::GetRecordField {
+                dst,
+                record: root,
+                field: path[1].clone(),
+            });
+        }
         Ok(dst)
     }
 
@@ -450,6 +486,20 @@ impl<'ast> Compiler<'ast> {
         let key = map_key_name(&entry.key)?;
         let value = self.compile_expr(&entry.value)?;
         Ok((key, value))
+    }
+
+    fn compile_record_field(
+        &mut self,
+        field: &vela_syntax::RecordField,
+    ) -> CompileResult<(String, Register)> {
+        let value = if let Some(value) = &field.value {
+            self.compile_expr(value)?
+        } else {
+            self.locals.get(&field.name).copied().ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnknownLocal(field.name.clone()))
+            })?
+        };
+        Ok((field.name.clone(), value))
     }
 
     fn host_field(&self, name: &str) -> CompileResult<FieldId> {

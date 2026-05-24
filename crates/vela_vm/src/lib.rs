@@ -19,6 +19,10 @@ pub enum Value {
     String(String),
     Array(Vec<Value>),
     Map(BTreeMap<String, Value>),
+    Record {
+        type_name: String,
+        fields: BTreeMap<String, Value>,
+    },
     HostRef(HostRef),
 }
 
@@ -81,6 +85,10 @@ pub enum VmErrorKind {
     },
     Host(HostErrorKind),
     Reflect(ReflectErrorKind),
+    UnknownRecordField {
+        type_name: String,
+        field: String,
+    },
     MissingReturn,
 }
 
@@ -440,6 +448,37 @@ impl Vm {
                     }
                     frame.write(*dst, Value::Map(values))?;
                 }
+                InstructionKind::MakeRecord {
+                    dst,
+                    type_name,
+                    fields,
+                } => {
+                    let mut values = BTreeMap::new();
+                    for (name, register) in fields {
+                        values.insert(name.clone(), frame.read(*register)?.clone());
+                    }
+                    frame.write(
+                        *dst,
+                        Value::Record {
+                            type_name: type_name.clone(),
+                            fields: values,
+                        },
+                    )?;
+                }
+                InstructionKind::GetRecordField { dst, record, field } => {
+                    let Value::Record { type_name, fields } = frame.read(*record)? else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "record field",
+                        }));
+                    };
+                    let value = fields.get(field).cloned().ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownRecordField {
+                            type_name: type_name.clone(),
+                            field: field.clone(),
+                        })
+                    })?;
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::GetHostField { dst, root, field } => {
                     let root = expect_host_ref(frame.read(*root)?, "get_host_field")?;
                     let path = HostPath::new(root).field(*field);
@@ -608,7 +647,7 @@ fn value_to_host(value: &Value, operation: &'static str) -> VmResult<HostValue> 
         Value::Int(value) => Ok(HostValue::Int(*value)),
         Value::Float(value) => Ok(HostValue::Float(*value)),
         Value::String(value) => Ok(HostValue::String(value.clone())),
-        Value::Array(_) | Value::Map(_) | Value::HostRef(_) => {
+        Value::Array(_) | Value::Map(_) | Value::Record { .. } | Value::HostRef(_) => {
             Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
     }
@@ -617,7 +656,7 @@ fn value_to_host(value: &Value, operation: &'static str) -> VmResult<HostValue> 
 fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect::ReflectValue> {
     match value {
         Value::HostRef(host_ref) => Ok(reflect::ReflectValue::HostRef(*host_ref)),
-        Value::Map(values) => {
+        Value::Map(values) | Value::Record { fields: values, .. } => {
             let values = values
                 .iter()
                 .map(|(key, value)| Ok((key.clone(), value_to_reflect(value, operation)?)))
@@ -654,6 +693,7 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Float(_)
         | Value::Array(_)
         | Value::Map(_)
+        | Value::Record { .. }
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -905,6 +945,49 @@ fn double(value) {
         expected.insert("exp".into(), Value::Int(15));
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Map(expected)));
+    }
+
+    #[test]
+    fn runs_record_constructor_and_field_reads() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let level = 3;
+    let player = Player { level, exp: 7 };
+    return player.level + player.exp;
+}
+"#,
+            "main",
+        )
+        .expect("compile record source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(10)));
+    }
+
+    #[test]
+    fn returns_first_class_record_values() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return Reward { item_id: "gold", count: 2 };
+}
+"#,
+            "main",
+        )
+        .expect("compile record source");
+        let mut fields = BTreeMap::new();
+        fields.insert("count".into(), Value::Int(2));
+        fields.insert("item_id".into(), Value::String("gold".into()));
+
+        assert_eq!(
+            Vm::new().run(&code),
+            Ok(Value::Record {
+                type_name: "Reward".into(),
+                fields,
+            })
+        );
     }
 
     #[test]

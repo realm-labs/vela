@@ -192,6 +192,16 @@ pub enum InstructionKind {
         dst: Register,
         entries: Vec<(String, Register)>,
     },
+    MakeRecord {
+        dst: Register,
+        type_name: String,
+        fields: Vec<(String, Register)>,
+    },
+    GetRecordField {
+        dst: Register,
+        record: Register,
+        field: String,
+    },
     GetHostField {
         dst: Register,
         root: Register,

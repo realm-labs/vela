@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-M4: Reflection System.
+M5: Struct, Enum, And Match.
 
 ## Completed
 
@@ -118,7 +118,17 @@ M4: Reflection System.
   values, writes through `PatchTx`, returns field metadata, checks trait
   metadata, and records reflective host method calls for deferred apply.
 
+### M5: Struct, Enum, And Match
+
+- Added first-class VM record values with a type name and named fields.
+- Added `MakeRecord` and `GetRecordField` bytecode operations.
+- Lowered parsed record literals such as `Reward { item_id: "gold", count: 2 }`
+  into record bytecode, including shorthand fields resolved from locals.
+- Lowered two-part field reads to host-field access when a host binding exists,
+  otherwise to record-field access.
+- Added compiled-source tests for returning record values and reading record
+  fields in arithmetic.
+
 ## Next
 
-- Begin M5 by adding first-class record and enum runtime values, constructors,
-  and match-tag execution.
+- Add enum constructor values and minimal match-tag execution.

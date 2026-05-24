@@ -147,3 +147,25 @@ Consequences:
 - Reflection is script-visible without exposing real Rust `&mut` references.
 - Reflective writes and calls continue to be deferred until host safe-point
   patch application.
+
+## 2026-05-24: MVP Records Use Named Fields Before Shape Slots
+
+Status: Accepted
+
+Context:
+M5 needs a runnable record constructor and field-read loop before the runtime has
+full shape interning, slot specialization, or GC-managed object layouts.
+
+Decision:
+Represent first-phase script records in the VM as a type name plus a deterministic
+map of named fields. Compile record literals to `MakeRecord` and record field
+reads to `GetRecordField` when no host field binding is configured. Shape and
+slot optimization remain a later implementation detail.
+
+Consequences:
+- Script records become first-class values now, without blocking on object
+  layout optimization.
+- Host field reads still use `FieldId` specialization when the compiler is given
+  a host-field binding.
+- Later shape-slot work can replace the internal representation without changing
+  the source-level record constructor behavior.
