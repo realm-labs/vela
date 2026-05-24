@@ -327,6 +327,7 @@ pub type HostNativeFunction = Arc<
 pub struct Vm {
     natives: HashMap<String, NativeFunction>,
     host_natives: HashMap<String, HostNativeFunction>,
+    type_registry: Option<Arc<TypeRegistry>>,
 }
 
 pub struct HostExecution<'host> {
@@ -431,6 +432,7 @@ impl Vm {
     }
 
     pub fn register_reflection_natives(&mut self, registry: Arc<TypeRegistry>) {
+        self.type_registry = Some(Arc::clone(&registry));
         let type_of_registry = Arc::clone(&registry);
         self.register_host_native("reflect.type_of", move |args, _host| {
             expect_arity("reflect.type_of", args, 1)?;
@@ -518,6 +520,10 @@ impl Vm {
                 &registry, &target, trait_name,
             )?))
         });
+    }
+
+    fn type_registry(&self) -> Option<&TypeRegistry> {
+        self.type_registry.as_deref()
     }
 
     pub fn run(&self, code: &CodeObject) -> VmResult<Value> {
@@ -3191,6 +3197,42 @@ fn main() {
             Vm::new().run_program(&program, "main", &[]),
             Ok(Value::Int(12))
         );
+    }
+
+    #[test]
+    fn runs_compiled_host_ref_script_impl_method_dispatch() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return reflect.get(self, "level") + amount;
+    }
+}
+
+fn main(player) {
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("compile host ref script impl method dispatch");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(7));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Ok(Value::Int(12))
+        );
+        assert!(tx.patches().is_empty());
     }
 
     #[test]

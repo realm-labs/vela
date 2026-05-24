@@ -1,5 +1,6 @@
 use vela_bytecode::Program;
 use vela_common::MethodId;
+use vela_reflect::TypeRegistry;
 
 use crate::array_methods::{self, MethodRuntime};
 use crate::heap::{GcRef, HeapValue};
@@ -335,11 +336,12 @@ fn call_script_impl_method(
     budget: Option<&mut ExecutionBudget>,
     caller_roots: &[GcRef],
 ) -> VmResult<Value> {
-    let type_name = receiver_type_name(receiver, heap.as_deref()).ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownMethod {
-            method: method.to_owned(),
-        })
-    })?;
+    let type_name =
+        receiver_type_name(receiver, heap.as_deref(), vm.type_registry()).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMethod {
+                method: method.to_owned(),
+            })
+        })?;
     let Some(function) = program.and_then(|program| match lookup {
         ScriptMethodLookup::Name(name) => program.script_method(&type_name, name),
         ScriptMethodLookup::Id(method_id) => program.script_method_by_id(&type_name, method_id),
@@ -375,10 +377,17 @@ enum ScriptMethodLookup<'a> {
     Id(MethodId),
 }
 
-fn receiver_type_name(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Option<String> {
+fn receiver_type_name(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    registry: Option<&TypeRegistry>,
+) -> Option<String> {
     match receiver {
         Value::Record { type_name, .. } => Some(type_name.clone()),
         Value::Enum { enum_name, .. } => Some(enum_name.clone()),
+        Value::HostRef(reference) => registry
+            .and_then(|registry| registry.type_of_host(*reference))
+            .map(|desc| desc.key.name.clone()),
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
             HeapValue::Record { type_name, .. } => Some(type_name.clone()),
             HeapValue::Enum { enum_name, .. } => Some(enum_name.clone()),

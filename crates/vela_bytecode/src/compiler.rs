@@ -2926,6 +2926,34 @@ fn main() {
     }
 
     #[test]
+    fn compiler_registers_host_target_impl_methods_as_script_dispatch_targets() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return reflect.get(self, "level") + amount;
+    }
+}
+
+fn main(player) {
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("host target impl method should compile as hidden dispatch target");
+
+        let method = program
+            .script_method("Player", "bonus")
+            .expect("host target script impl method dispatch target");
+        assert_eq!(method.params, ["self", "amount"]);
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
+    }
+
+    #[test]
     fn compiler_registers_trait_default_methods_as_dispatch_targets() {
         let program = compile_program_source(
             SourceId::new(1),

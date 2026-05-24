@@ -622,10 +622,13 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Destructured record and tuple variant pattern locals now preserve declared
   enum payload script type facts, allowing method calls on those locals to
   lower to `CallMethodId`.
-- Remaining M10 work includes host type impl dispatch and broader MethodId use
-  for other non-literal receiver facts.
+- Host refs can now dispatch to script impl methods by registered host type
+  name through VM-held `TypeRegistry` metadata, while script method bodies keep
+  host interaction behind reflection/host APIs.
+- Remaining M10 work includes broader MethodId use for other non-literal
+  receiver facts and fuller host Engine API registration.
 
 ## Next
 
-- Continue M10 with host type impl dispatch or broader non-literal receiver
-  facts.
+- Continue M10 with broader non-literal receiver facts or fuller host Engine
+  API registration.

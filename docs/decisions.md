@@ -2196,3 +2196,28 @@ Consequences:
 - The facts are still compiler-local metadata; runtime enum layout and host
   mutation boundaries are unchanged.
 - Host type impl dispatch remains separate M10 work.
+
+## 2026-05-25: HostRef Script Impl Dispatch Uses Registered Type Names
+
+Status: Accepted
+
+Context:
+Script impl methods can be compiled for target names that are not script
+structs or enums, but VM script method lookup previously only knew how to get
+receiver type names from script records and enums. A host ref therefore could
+implement a script trait in metadata but still fail dynamic method dispatch.
+
+Decision:
+Keep the reflection `TypeRegistry` attached to the VM when reflection natives
+are registered. Script method lookup now resolves `HostRef` receiver type names
+through that registry and dispatches to the program's hidden script impl method
+table by registered host type name. Script method bodies still interact with
+host state through reflection/host APIs such as `reflect.get`, preserving the
+PatchTx boundary for mutation.
+
+Consequences:
+- Host refs can enter script impl/default method dispatch when their host type
+  is registered in `TypeRegistry`.
+- Scripts still do not receive Rust references or direct mutable host access.
+- A fuller Engine API for explicit type registry installation remains future
+  work.
