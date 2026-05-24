@@ -2221,3 +2221,27 @@ Consequences:
 - Scripts still do not receive Rust references or direct mutable host access.
 - A fuller Engine API for explicit type registry installation remains future
   work.
+
+## 2026-05-25: VM TypeRegistry Registration Is Explicit
+
+Status: Accepted
+
+Context:
+The VM needs host schema metadata for host-ref script impl dispatch even when a
+host does not expose reflection natives to scripts. Previously the VM retained
+the `TypeRegistry` only as a side effect of `register_reflection_natives`, which
+coupled script method dispatch metadata to reflection function installation.
+
+Decision:
+Add `Vm::register_type_registry` and `Vm::with_type_registry` as explicit
+registration APIs for immutable host type metadata. Keep
+`register_reflection_natives` as a convenience that delegates to the explicit
+registration path before installing reflection native functions.
+
+Consequences:
+- Host refs can dispatch to script impl methods using registered host type
+  metadata without exposing reflection natives.
+- Reflection metadata remains read-only from scripts and does not allow runtime
+  type structure changes or monkey patching.
+- A fuller Engine builder for schema and native function registration remains
+  future M10 work.

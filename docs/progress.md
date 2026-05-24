@@ -625,10 +625,13 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Host refs can now dispatch to script impl methods by registered host type
   name through VM-held `TypeRegistry` metadata, while script method bodies keep
   host interaction behind reflection/host APIs.
+- `Vm::register_type_registry` and `Vm::with_type_registry` now install host
+  type metadata explicitly, so host ref script impl dispatch no longer depends
+  on also registering reflection natives.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and fuller host Engine API registration.
+  receiver facts and fuller Engine builder/native registration APIs.
 
 ## Next
 
-- Continue M10 with broader non-literal receiver facts or fuller host Engine
-  API registration.
+- Continue M10 with broader non-literal receiver facts or fuller Engine
+  builder/native registration APIs.

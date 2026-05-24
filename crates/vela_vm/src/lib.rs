@@ -431,8 +431,18 @@ impl Vm {
         self
     }
 
+    pub fn register_type_registry(&mut self, registry: Arc<TypeRegistry>) {
+        self.type_registry = Some(registry);
+    }
+
+    #[must_use]
+    pub fn with_type_registry(mut self, registry: Arc<TypeRegistry>) -> Self {
+        self.register_type_registry(registry);
+        self
+    }
+
     pub fn register_reflection_natives(&mut self, registry: Arc<TypeRegistry>) {
-        self.type_registry = Some(Arc::clone(&registry));
+        self.register_type_registry(Arc::clone(&registry));
         let type_of_registry = Arc::clone(&registry);
         self.register_host_native("reflect.type_of", move |args, _host| {
             expect_arity("reflect.type_of", args, 1)?;
@@ -3223,6 +3233,41 @@ fn main(player) {
         let mut tx = PatchTx::new();
         let mut vm = Vm::new();
         vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Ok(Value::Int(12))
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn host_ref_script_impl_dispatch_uses_registered_type_registry() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return amount + 7;
+    }
+}
+
+fn main(player) {
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("compile host ref script impl method dispatch");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(7));
+        let mut tx = PatchTx::new();
+        let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
