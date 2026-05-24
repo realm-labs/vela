@@ -467,6 +467,14 @@ impl<'a> BindingLowerer<'a> {
     }
 
     fn bind_path(&mut self, id: HirExprId, path: &[String], span: Span, usage: PathUsage) {
+        if path.len() > 1
+            && matches!(usage, PathUsage::Callee)
+            && let Some(resolution) = self.resolve_constructor_path(path)
+        {
+            self.resolutions.insert(id, resolution);
+            return;
+        }
+
         let [name] = path else {
             if let Some(name) = path.first()
                 && let Some(BindingResolution::Local(local)) = self.resolve_name(name)

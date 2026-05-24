@@ -426,6 +426,10 @@ to the later language constructs that introduce loops and closures.
   with false guards falling through to the next arm.
 - Added VM coverage proving guards can read binding-pattern locals and
   record-pattern field bindings.
+- Added HIR resolution and compiler lowering for declared tuple-style enum
+  constructor calls such as `Damage.Physical(7, 2)`.
+- Added tuple variant pattern destructuring with positional enum fields and VM
+  coverage for inline and managed-heap execution.
 
 ## Next
 

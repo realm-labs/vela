@@ -2409,9 +2409,63 @@ fn main() {
 "#,
             "main",
         )
-        .expect("compile guarded record pattern");
+        .expect("compile tuple variant literal pattern");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
+    fn runs_compiled_tuple_variant_constructor_and_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+enum Damage {
+    Physical(amount, bonus),
+    Magical(amount),
+}
+
+fn main() {
+    let damage = Damage.Physical(7, 2);
+    return match damage {
+        Damage.Physical(amount, bonus) => amount + bonus,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("compile tuple variant constructor and pattern");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(9)));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_tuple_variant_literal_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+enum Damage {
+    Typed(kind, amount),
+}
+
+fn main() {
+    let damage = Damage.Typed("fire", 7);
+    return match damage {
+        Damage.Typed("frost", amount) => amount + 100,
+        Damage.Typed("fire", amount) => amount + 1,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("compile guarded record pattern");
+
+        let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
+        assert_eq!(
+            Vm::new().run_with_managed_heap_and_budget(&code, &mut budget),
+            Ok(Value::Int(8))
+        );
     }
 
     #[test]

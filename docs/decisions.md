@@ -1264,3 +1264,26 @@ Consequences:
 - Guarded binding or wildcard arms no longer stop later arms from being
   considered when the guard is false.
 - Guard expressions reuse ordinary truthiness and budgeted bytecode execution.
+
+## 2026-05-24: Tuple Enum Variants Use Positional Field Slots
+
+Status: Accepted
+
+Context:
+M9 requires tuple variants. The current runtime enum representation stores
+variant payloads as named fields, and record-style enum variants already use
+field names. Tuple constructors and patterns need a stable MVP mapping without
+introducing script generics or new enum storage yet.
+
+Decision:
+The compiler lowers declared enum constructor calls such as
+`Damage.Physical(7, 2)` into `MakeEnum` with positional field names `"0"`,
+`"1"`, and so on. Tuple variant patterns check the enum tag first, then read
+positional fields for subpattern checks and pattern-local bindings.
+
+Consequences:
+- Tuple variant source now executes through the existing enum value path.
+- HIR resolves constructor-call callee paths through enum constructor rules, so
+  imported enum aliases work consistently with record-style constructors.
+- M10 can replace the string positional field names with stable `VariantId` and
+  field-slot metadata without changing source syntax.

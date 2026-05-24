@@ -1224,6 +1224,46 @@ pub enum Damage { Physical }
     }
 
     #[test]
+    fn function_bindings_resolve_tuple_constructor_call_aliases() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.main",
+            r#"
+use game.damage.Damage as Hit
+
+fn main() {
+    return Hit.Physical(7);
+}
+"#,
+        ));
+        let damage = graph.add_source(source(
+            2,
+            "game.damage",
+            r#"
+pub enum Damage { Physical(amount) }
+"#,
+        ));
+        graph.resolve_imports();
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+        let damage = graph
+            .module(damage)
+            .and_then(|module| module.get("Damage"))
+            .expect("damage declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| { resolution == &BindingResolution::Declaration(damage) })
+        );
+    }
+
+    #[test]
     fn resolved_imports_refresh_existing_binding_maps() {
         let mut graph = ModuleGraph::new();
         let module = graph.add_source(source(

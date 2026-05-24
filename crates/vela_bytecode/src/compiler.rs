@@ -3,6 +3,7 @@
 mod control_flow;
 mod methods;
 mod operators;
+mod patterns;
 mod value_flow;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -15,8 +16,7 @@ use vela_hir::{
 };
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
-    MapEntry, MatchExpr, Pattern, RecordPatternField, SourceFile, Stmt, StmtKind, UnaryOp,
-    parse_source,
+    MapEntry, MatchExpr, Pattern, SourceFile, Stmt, StmtKind, UnaryOp, parse_source,
 };
 
 use crate::{
@@ -25,6 +25,9 @@ use crate::{
 use control_flow::LoopContext;
 use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
+use patterns::{
+    enum_variant_path, pattern_declares_locals, record_pattern_binding, tuple_variant_field_name,
+};
 use value_flow::{BlockValue, block_value};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -653,6 +656,34 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::Call { callee, args } => {
+                if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
+                    let fields = args
+                        .iter()
+                        .enumerate()
+                        .map(|(index, arg)| {
+                            if arg.name.is_some() {
+                                return Err(CompileError::new(
+                                    CompileErrorKind::UnsupportedSyntax(
+                                        "named tuple variant argument",
+                                    ),
+                                ));
+                            }
+                            Ok((
+                                tuple_variant_field_name(index),
+                                self.compile_expr(&arg.value)?,
+                            ))
+                        })
+                        .collect::<CompileResult<Vec<_>>>()?;
+                    let dst = self.alloc_register()?;
+                    self.emit(InstructionKind::MakeEnum {
+                        dst,
+                        enum_name,
+                        variant,
+                        fields,
+                    });
+                    return Ok(dst);
+                }
+
                 if let Some(call) = host_method_call(&self.facts.options, callee) {
                     let root = match call.receiver {
                         HostMethodReceiver::Expr(receiver) => self.compile_expr(receiver)?,
@@ -779,6 +810,15 @@ impl<'ast> Compiler<'ast> {
                 }
             }
         }
+    }
+
+    fn tuple_enum_constructor_call(&self, callee: &Expr) -> Option<(String, String)> {
+        let ExprKind::Path(path) = &callee.kind else {
+            return None;
+        };
+        let (_, variant) = enum_variant_path(path)?;
+        let enum_name = self.type_symbol_at_span(callee.span)?;
+        Some((enum_name, variant))
     }
 
     fn script_function_call_name(&self, callee: &Expr) -> Option<String> {
@@ -1273,10 +1313,7 @@ impl<'ast> Compiler<'ast> {
         let mut all_arms_return = !match_expr.arms.is_empty();
 
         for arm in &match_expr.arms {
-            let mut next_arm_jumps = Vec::new();
-            if let Some(jump) = self.compile_match_pattern(scrutinee, &arm.pattern)? {
-                next_arm_jumps.push(jump);
-            }
+            let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
@@ -1322,10 +1359,7 @@ impl<'ast> Compiler<'ast> {
         let mut has_catch_all = false;
 
         for arm in &match_expr.arms {
-            let mut next_arm_jumps = Vec::new();
-            if let Some(jump) = self.compile_match_pattern(scrutinee, &arm.pattern)? {
-                next_arm_jumps.push(jump);
-            }
+            let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
@@ -1383,9 +1417,9 @@ impl<'ast> Compiler<'ast> {
         &mut self,
         scrutinee: Register,
         pattern: &Pattern,
-    ) -> CompileResult<Option<usize>> {
+    ) -> CompileResult<Vec<usize>> {
         match pattern {
-            Pattern::Wildcard => Ok(None),
+            Pattern::Wildcard | Pattern::Binding(_) => Ok(Vec::new()),
             Pattern::Literal(literal) => {
                 let pattern = self.compile_literal(literal)?;
                 let condition = self.alloc_register()?;
@@ -1394,29 +1428,49 @@ impl<'ast> Compiler<'ast> {
                     lhs: scrutinee,
                     rhs: pattern,
                 });
-                Ok(Some(self.emit_jump_if_false(condition)))
+                Ok(vec![self.emit_jump_if_false(condition)])
             }
             Pattern::Path(path) | Pattern::RecordVariant { path, .. } => {
-                let Some((enum_name, variant)) = enum_variant_path(path) else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "match pattern",
-                    )));
-                };
-                let enum_name = self.type_symbol_for_pattern(path).unwrap_or(enum_name);
-                let condition = self.alloc_register()?;
-                self.emit(InstructionKind::EnumTagEqual {
-                    dst: condition,
-                    value: scrutinee,
-                    enum_name,
-                    variant,
-                });
-                Ok(Some(self.emit_jump_if_false(condition)))
+                self.compile_variant_tag_pattern(scrutinee, path)
             }
-            Pattern::Binding(_) => Ok(None),
-            Pattern::TupleVariant { .. } => Err(CompileError::new(
-                CompileErrorKind::UnsupportedSyntax("match pattern"),
-            )),
+            Pattern::TupleVariant { path, fields } => {
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, path)?;
+                for (index, field) in fields.iter().enumerate() {
+                    if matches!(field, Pattern::Wildcard | Pattern::Binding(_)) {
+                        continue;
+                    }
+                    let field_value = self.alloc_register()?;
+                    self.emit(InstructionKind::GetEnumField {
+                        dst: field_value,
+                        value: scrutinee,
+                        field: tuple_variant_field_name(index),
+                    });
+                    jumps.extend(self.compile_match_pattern(field_value, field)?);
+                }
+                Ok(jumps)
+            }
         }
+    }
+
+    fn compile_variant_tag_pattern(
+        &mut self,
+        scrutinee: Register,
+        path: &[String],
+    ) -> CompileResult<Vec<usize>> {
+        let Some((enum_name, variant)) = enum_variant_path(path) else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "match pattern",
+            )));
+        };
+        let enum_name = self.type_symbol_for_pattern(path).unwrap_or(enum_name);
+        let condition = self.alloc_register()?;
+        self.emit(InstructionKind::EnumTagEqual {
+            dst: condition,
+            value: scrutinee,
+            enum_name,
+            variant,
+        });
+        Ok(vec![self.emit_jump_if_false(condition)])
     }
 
     fn bind_match_pattern_locals(
@@ -1448,10 +1502,22 @@ impl<'ast> Compiler<'ast> {
                 }
                 Ok(())
             }
+            Pattern::TupleVariant { fields, .. } => {
+                for (index, field) in fields.iter().enumerate() {
+                    if !pattern_declares_locals(field) {
+                        continue;
+                    }
+                    let field_value = self.alloc_register()?;
+                    self.emit(InstructionKind::GetEnumField {
+                        dst: field_value,
+                        value: scrutinee,
+                        field: tuple_variant_field_name(index),
+                    });
+                    self.bind_match_pattern_locals(field_value, field, body_span)?;
+                }
+                Ok(())
+            }
             Pattern::Wildcard | Pattern::Literal(_) | Pattern::Path(_) => Ok(()),
-            Pattern::TupleVariant { .. } => Err(CompileError::new(
-                CompileErrorKind::UnsupportedSyntax("match pattern"),
-            )),
         }
     }
 
@@ -1584,24 +1650,6 @@ fn callable_name(callee: &Expr) -> CompileResult<String> {
         ExprKind::Path(path) => Ok(path.join(".")),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "callable expression",
-        ))),
-    }
-}
-
-fn enum_variant_path(path: &[String]) -> Option<(String, String)> {
-    let (variant, enum_path) = path.split_last()?;
-    if enum_path.is_empty() {
-        return None;
-    }
-    Some((enum_path.join("."), variant.clone()))
-}
-
-fn record_pattern_binding(field: &RecordPatternField) -> CompileResult<String> {
-    match &field.pattern {
-        None => Ok(field.name.clone()),
-        Some(Pattern::Binding(name)) => Ok(name.clone()),
-        Some(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "record pattern",
         ))),
     }
 }
@@ -2619,6 +2667,44 @@ fn main() {
             code.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::Less { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_tuple_variant_constructors_and_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+enum Damage {
+    Physical(amount, bonus),
+    Magical(amount),
+}
+
+fn main() {
+    let damage = Damage.Physical(7, 2);
+    return match damage {
+        Damage.Physical(amount, bonus) => amount + bonus,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("tuple variant constructor and pattern should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::MakeEnum { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .filter(|instruction| {
+                    matches!(instruction.kind, InstructionKind::GetEnumField { .. })
+                })
+                .count()
+                >= 2
         );
     }
 
