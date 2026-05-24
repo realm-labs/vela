@@ -3109,3 +3109,28 @@ Consequences:
   not only raw function replacement.
 - Future Engine hot-reload policy work can compose around the existing manifest
   instead of adding another schema description surface.
+
+## 2026-05-25: Schema Hint Diagnostics Are Candidate Driven
+
+Status: Accepted
+
+Context:
+Scripts can refer to script-defined schemas and traits, but hosts may also
+provide schema names that HIR cannot know without Engine context. M12 still
+needs useful related-span diagnostics when a script misspells a known schema or
+trait name.
+
+Decision:
+HIR validates type hints and `impl Trait for Type` paths only when an
+unresolved name has a close visible schema/trait candidate. The diagnostic uses
+the unknown reference as the primary span and adds ranked related labels on the
+candidate declarations. Names without any close local candidate remain metadata
+so host-provided schemas can be resolved by later Engine/compiler context.
+
+Consequences:
+- Misspelled script schemas fail before bytecode generation with actionable
+  candidate spans.
+- External host schema names are not rejected just because HIR lacks a host
+  registry.
+- Later Engine-integrated semantic validation can tighten host-schema checks
+  without changing the HIR diagnostic shape.

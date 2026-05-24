@@ -3037,6 +3037,38 @@ fn main(player) {
     }
 
     #[test]
+    fn compiler_rejects_unknown_schema_hints_from_hir_with_candidates() {
+        let error = compile_function_source(
+            SourceId::new(1),
+            r#"
+struct Player { level: int }
+
+fn main(player: Plyer) {
+    return 1;
+}
+"#,
+            "main",
+        )
+        .expect_err("unknown schema hint should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        let unknown_schema = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::unknown_schema"))
+            .expect("unknown schema diagnostic");
+
+        assert_eq!(unknown_schema.message, "unknown schema `Plyer`");
+        assert!(
+            unknown_schema
+                .labels
+                .iter()
+                .any(|label| label.message == "candidate `Player` is declared here")
+        );
+    }
+
+    #[test]
     fn compiler_rejects_private_imports_before_codegen() {
         let error = compile_module_sources(&[
             ModuleSource::new(

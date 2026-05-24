@@ -774,8 +774,14 @@ permissions.
   manifest from the game-server demo `TypeRegistry`, whose host schemas and
   methods carry stable schema hashes and effect/access metadata, so the
   runnable function-swap workflow exercises the ABI-checked update path.
+- Added HIR schema-reference diagnostics for close-but-unresolved type hints
+  and `impl Trait for Type` paths. Unknown schema/trait names now report a
+  primary span plus ranked related candidate declaration spans, and the
+  bytecode compiler rejects these semantic diagnostics before code generation
+  while still allowing external host schema names when no local candidate is
+  known.
 
 ## Next
 
-- Continue M12 with remaining ranked related-span diagnostics for unknown
-  schema names and broader Engine hot-reload policy ergonomics.
+- Continue M12 with broader Engine hot-reload policy ergonomics and remaining
+  reflection permission polish.

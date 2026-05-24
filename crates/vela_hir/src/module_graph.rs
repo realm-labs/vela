@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
+mod schema_diagnostics;
+
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::{
     Block, FunctionItem, ItemKind, Param, SourceFile, TraitMethod, Visibility, parse_source,
@@ -149,6 +151,7 @@ pub struct ModuleGraph {
     trait_default_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     impl_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     diagnostics: Vec<Diagnostic>,
+    schema_references_validated: bool,
     next_node_id: u32,
     next_decl_id: u32,
     next_expr_id: u32,
@@ -361,6 +364,7 @@ impl ModuleGraph {
             self.bind_impl_method_body(&hir_module, declaration, node, &function);
         }
 
+        self.schema_references_validated = false;
         self.modules.push(hir_module);
         module
     }
@@ -379,6 +383,7 @@ impl ModuleGraph {
             }
         }
         self.refresh_import_binding_resolutions();
+        schema_diagnostics::validate_once(self);
     }
 
     #[must_use]
@@ -1655,6 +1660,94 @@ struct Reward {
                 .as_deref(),
             Some("Reward")
         );
+    }
+
+    #[test]
+    fn unknown_schema_type_hints_report_ranked_related_candidates() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.combat",
+            r#"
+struct Player { hp: int }
+
+fn grant(player: Plyer) {
+    return null;
+}
+"#,
+        ));
+
+        graph.resolve_imports();
+
+        let player = graph
+            .module(module)
+            .and_then(|module| module.get("Player"))
+            .and_then(|declaration| graph.declaration(declaration))
+            .expect("Player declaration");
+        let diagnostics = graph.diagnostics();
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+        let diagnostic = &diagnostics[0];
+        assert_eq!(diagnostic.code.as_deref(), Some("hir::unknown_schema"));
+        assert_eq!(diagnostic.message, "unknown schema `Plyer`");
+        assert_eq!(diagnostic.labels.len(), 2);
+        assert_eq!(
+            diagnostic.labels[0].message,
+            "`Plyer` does not resolve to a known schema"
+        );
+        assert_eq!(diagnostic.labels[1].span, player.span);
+        assert_eq!(
+            diagnostic.labels[1].message,
+            "candidate `Player` is declared here"
+        );
+    }
+
+    #[test]
+    fn unknown_impl_schema_names_report_trait_and_target_candidates() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.combat",
+            r#"
+trait Damageable {
+    fn damage(self);
+}
+
+struct Player { hp: int }
+
+impl Damageabl for Playr {}
+"#,
+        ));
+
+        graph.resolve_imports();
+
+        let declarations = graph.module(module).expect("module declarations");
+        let damageable = declarations
+            .get("Damageable")
+            .and_then(|declaration| graph.declaration(declaration))
+            .expect("Damageable declaration");
+        let player = declarations
+            .get("Player")
+            .and_then(|declaration| graph.declaration(declaration))
+            .expect("Player declaration");
+        let diagnostics = graph.diagnostics();
+        assert_eq!(diagnostics.len(), 2, "{diagnostics:?}");
+        assert_eq!(
+            diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.message.as_str())
+                .collect::<Vec<_>>(),
+            ["unknown trait `Damageabl`", "unknown schema `Playr`"]
+        );
+        assert!(
+            diagnostics[0]
+                .labels
+                .iter()
+                .any(|label| label.span == damageable.span
+                    && label.message == "candidate `Damageable` is declared here")
+        );
+        assert!(diagnostics[1].labels.iter().any(|label| {
+            label.span == player.span && label.message == "candidate `Player` is declared here"
+        }));
     }
 
     #[test]
