@@ -1133,6 +1133,10 @@ reflect.has_permission(name)
 ```
 
 For `HostRef`, `reflect.set(player, "level", 10)` creates a `Patch` instead of mutating Rust directly.
+For script records and enum payload records, `reflect.set(value, name, new_value)`
+returns an updated copied value. It does not mutate the caller's existing local
+binding unless the script assigns the returned value, and it rejects unknown
+fields instead of adding runtime schema members.
 
 Dot syntax and reflection share the same path foundation:
 

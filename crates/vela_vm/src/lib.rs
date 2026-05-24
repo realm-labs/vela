@@ -7448,6 +7448,43 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflect_set_returns_updated_script_record() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Player { level: int, name: string }
+
+fn main() {
+    let player = Player { level: 7, name: "hero" };
+    let updated = reflect.set(player, "level", 10);
+    if reflect.get(player, "level") == 7
+        && reflect.get(updated, "level") == 10
+        && reflect.name(updated) == "Player"
+        && updated.name == "hero" {
+        return 1;
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile script record reflect set source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(script_reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::Int(1))
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn heap_execution_reflection_fields_returns_heap_metadata_array() {
         let host_ref = player_ref(3);
         let program = compile_program_source(

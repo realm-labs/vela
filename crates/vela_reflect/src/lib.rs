@@ -117,7 +117,7 @@ pub fn set(
     target: &ReflectValue,
     field: &str,
     value: ReflectValue,
-) -> ReflectResult<()> {
+) -> ReflectResult<ReflectValue> {
     match target {
         ReflectValue::HostRef(host_ref) => {
             let field_desc = ctx.registry.host_field(*host_ref, field)?;
@@ -145,12 +145,25 @@ pub fn set(
             ctx.tx
                 .set_path(HostPath::new(*host_ref).field(field_desc.id), value, None)
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
-            Ok(())
+            Ok(ReflectValue::Host(HostValue::Null))
         }
-        ReflectValue::Record(_)
-        | ReflectValue::ScriptRecord { .. }
-        | ReflectValue::ScriptEnum { .. }
-        | ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+        ReflectValue::Record(fields) => Ok(ReflectValue::Record(set_record_field(
+            "record", field, fields, value,
+        )?)),
+        ReflectValue::ScriptRecord { type_name, fields } => Ok(ReflectValue::ScriptRecord {
+            type_name: type_name.clone(),
+            fields: set_record_field(type_name, field, fields, value)?,
+        }),
+        ReflectValue::ScriptEnum {
+            enum_name,
+            variant,
+            fields,
+        } => Ok(ReflectValue::ScriptEnum {
+            enum_name: enum_name.clone(),
+            variant: variant.clone(),
+            fields: set_record_field(&format!("{enum_name}.{variant}"), field, fields, value)?,
+        }),
+        ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
 
@@ -263,6 +276,22 @@ fn get_record_field(
         .ok_or_else(|| ReflectError::new(record_unknown_field(field, record)))
 }
 
+fn set_record_field(
+    type_name: &str,
+    field: &str,
+    record: &BTreeMap<String, ReflectValue>,
+    value: ReflectValue,
+) -> ReflectResult<BTreeMap<String, ReflectValue>> {
+    if !record.contains_key(field) {
+        return Err(ReflectError::new(record_unknown_field_with_type(
+            type_name, field, record,
+        )));
+    }
+    let mut record = record.clone();
+    record.insert(field.to_owned(), value);
+    Ok(record)
+}
+
 fn host_arg(value: ReflectValue) -> ReflectResult<HostValue> {
     let ReflectValue::Host(value) = value else {
         return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
@@ -271,8 +300,16 @@ fn host_arg(value: ReflectValue) -> ReflectResult<HostValue> {
 }
 
 fn record_unknown_field(field: &str, record: &BTreeMap<String, ReflectValue>) -> ReflectErrorKind {
+    record_unknown_field_with_type("record", field, record)
+}
+
+fn record_unknown_field_with_type(
+    type_name: &str,
+    field: &str,
+    record: &BTreeMap<String, ReflectValue>,
+) -> ReflectErrorKind {
     ReflectErrorKind::UnknownField {
-        type_name: "record".to_owned(),
+        type_name: type_name.to_owned(),
         field: field.to_owned(),
         candidates: name_candidates(field, record.keys().map(String::as_str)),
         related: Vec::new(),
@@ -371,6 +408,86 @@ mod tests {
         let value = get(&mut ctx, &ReflectValue::Record(record), "field").expect("record get");
 
         assert_eq!(value, ReflectValue::Host(HostValue::Int(42)));
+    }
+
+    #[test]
+    fn reflect_set_script_record_returns_updated_copy() {
+        let registry = TypeRegistry::new();
+        let adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut fields = BTreeMap::new();
+        fields.insert("level".to_owned(), ReflectValue::Host(HostValue::Int(7)));
+        fields.insert(
+            "name".to_owned(),
+            ReflectValue::Host(HostValue::String("hero".to_owned())),
+        );
+        let record = ReflectValue::ScriptRecord {
+            type_name: "Player".to_owned(),
+            fields,
+        };
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let updated = set(
+            &mut ctx,
+            &record,
+            "level",
+            ReflectValue::Host(HostValue::Int(10)),
+        )
+        .expect("script record set");
+
+        let ReflectValue::ScriptRecord { fields, .. } = updated else {
+            panic!("script record set should return an updated record");
+        };
+        assert_eq!(
+            fields.get("level"),
+            Some(&ReflectValue::Host(HostValue::Int(10)))
+        );
+        assert_eq!(
+            get(&mut ctx, &record, "level").expect("original record remains readable"),
+            ReflectValue::Host(HostValue::Int(7))
+        );
+        assert!(ctx.tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflect_set_script_record_rejects_unknown_fields() {
+        let registry = TypeRegistry::new();
+        let adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut fields = BTreeMap::new();
+        fields.insert("level".to_owned(), ReflectValue::Host(HostValue::Int(7)));
+        let record = ReflectValue::ScriptRecord {
+            type_name: "Player".to_owned(),
+            fields,
+        };
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error = set(
+            &mut ctx,
+            &record,
+            "leve",
+            ReflectValue::Host(HostValue::Int(10)),
+        )
+        .expect_err("unknown script record field should fail");
+
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownField {
+                type_name: "Player".to_owned(),
+                field: "leve".to_owned(),
+                candidates: vec!["level".to_owned()],
+                related: Vec::new(),
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
     }
 
     #[test]

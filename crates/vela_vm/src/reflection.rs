@@ -452,8 +452,7 @@ impl Vm {
                 adapter,
                 tx: &mut *host.tx,
             };
-            reflect::set(&mut ctx, &target, field, value)?;
-            Ok(Value::Null)
+            value_from_reflect(reflect::set(&mut ctx, &target, field, value)?)
         });
 
         let call_registry = Arc::clone(&registry);

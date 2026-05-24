@@ -925,6 +925,10 @@ permissions.
   now copy optional declaration spans from reflected schemas, functions, and
   methods, and rejected schema/function/method ABI diagnostics plus rendered
   report lines carry those spans when available.
+- Added script-value support for `reflect.set`. Host refs still record
+  `PatchTx` writes and return `null`, while script records and enum payload
+  records now return updated copied values, reject unknown fields, and never
+  mutate type structure or expose mutable references.
 
 ## Next
 

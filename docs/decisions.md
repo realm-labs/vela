@@ -3896,3 +3896,27 @@ Consequences:
   constructors default to `None`.
 - This changes only report metadata; compatibility policy and runtime code swap
   semantics are unchanged.
+
+## 2026-05-25: Script Reflect Set Returns Updated Values
+
+Status: Accepted
+
+Context:
+M12 requires `reflect.get` and `reflect.set` for host refs and script records,
+but VM native calls receive materialized argument values. Letting a native
+mutate the caller's local script record in place would require exposing a
+by-reference VM/native boundary that conflicts with the existing value model
+and the rule that scripts never hold real mutable host references.
+
+Decision:
+Keep HostRef `reflect.set` as a patch-producing operation that returns `null`.
+For script records, generic reflection records, and enum payload records,
+`reflect.set(value, field, new_value)` returns an updated copied value. It
+requires the field to already exist and reports `UnknownField` for misses, so
+reflection can change values without monkey-patching type structure.
+
+Consequences:
+- Scripts that dynamically update script values assign the return value, e.g.
+  `player = reflect.set(player, "level", 10)`.
+- Host mutation remains exclusively routed through `PatchTx`.
+- Reflection writes remain schema-safe because they update existing fields only.
