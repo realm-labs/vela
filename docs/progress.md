@@ -861,6 +861,11 @@ permissions.
   `FieldAccess::reflect_readable`, so hidden host fields are not enumerated or
   reported as present to gameplay policies while raw registry field queries
   remain available for trusted host inspection.
+- Added structured hot-reload report render lines in a focused renderer module.
+  `HotReloadReport::render_lines` now returns categorized summary,
+  changed-function, diagnostic, ABI-detail, repair-hint, source-diagnostic, and
+  source-label records with optional diagnostic indexes and spans, and the CLI
+  hot-reload demo prints those lines instead of formatting raw errors.
 
 ## Next
 

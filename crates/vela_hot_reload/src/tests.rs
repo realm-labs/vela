@@ -61,6 +61,48 @@ fn main() {
 }
 
 #[test]
+fn accepted_report_render_lines_include_changed_functions() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let update = compile_update(
+        &runtime.current(),
+        SourceId::new(2),
+        r#"
+fn helper() {
+    return 5;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("compile update");
+
+    let report = runtime.apply_hot_update_report(update);
+    let lines = report.render_lines();
+
+    assert_eq!(
+        lines,
+        vec![
+            HotReloadReportLine::new(
+                HotReloadReportLineKind::Summary,
+                None,
+                None,
+                "hot reload accepted: v0 -> v1",
+            ),
+            HotReloadReportLine::new(
+                HotReloadReportLineKind::ChangedFunctions,
+                None,
+                None,
+                "changed functions: helper, main",
+            ),
+        ]
+    );
+}
+
+#[test]
 fn old_version_lifetime_preserves_old_code() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
@@ -211,6 +253,53 @@ fn rejected_report_carries_function_abi_details() {
 }
 
 #[test]
+fn rejected_report_render_lines_include_detail_and_hint() {
+    let report = HotReloadReport::rejected(
+        ProgramVersionId(7),
+        HotReloadError {
+            kind: HotReloadErrorKind::ChangedMethodAccess {
+                type_name: "Player".to_owned(),
+                method: "grant_exp".to_owned(),
+                old: AccessAbi::public(),
+                new: AccessAbi::new(true, false, vec!["admin.reload".to_owned()]),
+            },
+        },
+    );
+
+    let lines = report.render_lines();
+
+    assert_eq!(
+        lines,
+        vec![
+            HotReloadReportLine::new(
+                HotReloadReportLineKind::Summary,
+                None,
+                None,
+                "hot reload rejected: v7 unchanged",
+            ),
+            HotReloadReportLine::new(
+                HotReloadReportLineKind::Diagnostic,
+                Some(0),
+                None,
+                "[reload.method.access_changed] Player.grant_exp: method `Player.grant_exp` changed reflective access ABI",
+            ),
+            HotReloadReportLine::new(
+                HotReloadReportLineKind::Detail,
+                Some(0),
+                None,
+                "method access: old=(public=true reflective=true permissions=[]) new=(public=true reflective=false permissions=[admin.reload])",
+            ),
+            HotReloadReportLine::new(
+                HotReloadReportLineKind::RepairHint,
+                Some(0),
+                None,
+                "repair: preserve reflective access metadata or require host approval before reloading",
+            ),
+        ]
+    );
+}
+
+#[test]
 fn apply_hot_update_result_report_preserves_current_version_on_rejection() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 1; }").expect("compile initial");
@@ -282,6 +371,18 @@ fn rejected_compile_report_carries_source_span_and_labels() {
             .iter()
             .any(|label| label.message == "remove generic type arguments")
     );
+    let lines = report.render_lines();
+    assert!(lines.iter().any(|line| {
+        line.kind == HotReloadReportLineKind::SourceDiagnostic
+            && line
+                .text
+                .contains("script type hints do not support generics")
+    }));
+    assert!(lines.iter().any(|line| {
+        line.kind == HotReloadReportLineKind::SourceLabel
+            && line.text.contains("remove generic type arguments")
+            && line.span.is_some()
+    }));
     assert_eq!(runtime.current().id, ProgramVersionId(0));
 }
 

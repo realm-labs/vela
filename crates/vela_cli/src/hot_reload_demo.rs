@@ -21,17 +21,27 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
         &updated_source,
         abi,
     ));
-    let new = report
-        .version()
-        .ok_or_else(|| format!("hot reload rejected: {:?}", report.errors))?;
+    let report_lines = report.render_lines();
+    let new = report.version().ok_or_else(|| {
+        format!(
+            "hot reload rejected:\n{}",
+            report_lines
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    })?;
     let old_after = run_main(&old.to_program())?;
     let new_after = run_main(&new.to_program())?;
 
+    for line in &report_lines {
+        println!("{}", line.text);
+    }
     println!(
-        "accepted={} old_version={} new_version={} changed_functions={:?} \
-         abi=checked old_before={old_before:?} \
+        "abi=checked old_version={} new_version={} old_before={old_before:?} \
          old_after={old_after:?} new_after={new_after:?}",
-        report.accepted, old.id.0, new.id.0, report.changed_functions,
+        old.id.0, new.id.0,
     );
     Ok(())
 }

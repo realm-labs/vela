@@ -3540,3 +3540,29 @@ Consequences:
   code.
 - Reflection remains schema-safe because the policy filters copied metadata and
   never mutates registered field descriptors.
+
+## 2026-05-25: Hot Reload Reports Expose Render Lines
+
+Status: Accepted
+
+Context:
+Hot-reload reports carried structured diagnostics, ABI detail records, source
+diagnostics, labels, and hints, but hosts still had to assemble those fields
+into display rows themselves. The CLI demo also fell back to debug-formatting
+raw errors on rejection, which was not a useful admin/debug rendering boundary.
+
+Decision:
+Add a focused `report_render` module with `HotReloadReportLine` and
+`HotReloadReportLineKind`. `HotReloadReport::render_lines` returns categorized
+summary, changed-function, diagnostic, ABI-detail, repair-hint,
+source-diagnostic, and source-label rows with optional diagnostic indexes and
+source spans. The CLI hot-reload demo now prints these lines and uses them for
+rejection messages.
+
+Consequences:
+- Embedders can render reload reports without parsing reasons or matching
+  internal error variants.
+- UIs can group lines by kind and diagnostic index while retaining source spans
+  for compile labels.
+- The core report and diagnostic data remains unchanged, and rendering stays in
+  a separate module instead of expanding the crate root or runtime code.

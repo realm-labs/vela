@@ -3,7 +3,8 @@ use std::sync::Arc;
 use vela_common::{Diagnostic, Label, Span};
 
 use crate::{
-    FunctionSymbolId, HotReloadDiagnosticDetail, HotReloadError, ProgramVersion, ProgramVersionId,
+    FunctionSymbolId, HotReloadDiagnosticDetail, HotReloadError, HotReloadReportLine,
+    ProgramVersion, ProgramVersionId,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -53,6 +54,11 @@ impl HotReloadReport {
     #[must_use]
     pub fn version(&self) -> Option<Arc<ProgramVersion>> {
         self.version.as_ref().map(Arc::clone)
+    }
+
+    #[must_use]
+    pub fn render_lines(&self) -> Vec<HotReloadReportLine> {
+        crate::report_render::render_lines(self)
     }
 }
 
