@@ -26,9 +26,16 @@ M1: Syntax Frontend.
   `struct`, `enum`, `trait`, and attributes.
 - Added tests covering core module items, token spans, host-style compound
   assignment tokens, and recovery after invalid input.
+- Split syntax code into focused AST, token, lexer, and parser modules.
+- Added function-body AST parsing for `let`, `return`, `if/else`, `for-in`,
+  `match`, blocks, field access, method calls, indexing, array/map literals,
+  record literals, lambdas, assignments, and binary/unary expressions.
+- Added parser tests for body statements, host-style assignment expressions,
+  match arms, record/map literals, lambdas, and literal returns.
 
 ## Next
 
-- Expand M1 parsing from declaration-level items into statements and
-  expressions: `let`, `return`, `if/else`, `for-in`, `match`, field access,
-  method calls, array/map literals, lambdas, and assignments.
+- Finish M1 hardening with parser snapshot fixtures and broader recovery tests
+  for malformed statement and expression input.
+- Start M2 with a `vela_bytecode` crate and a minimal register bytecode
+  `CodeObject` once the syntax snapshots are stable.
