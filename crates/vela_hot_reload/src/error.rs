@@ -40,6 +40,13 @@ pub enum HotReloadErrorKind {
         function: String,
         added: Vec<String>,
     },
+    AddedFunctionParametersDenied {
+        function: String,
+        added: Vec<String>,
+    },
+    NewFunctionDenied {
+        function: String,
+    },
     RemovedSchema {
         type_name: String,
         old_hash: u64,

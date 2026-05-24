@@ -1,7 +1,7 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_hot_reload::HotReloadRuntime;
+use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
 use vela_reflect::{
     FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission, ReflectPermissionSet,
     SchemaHash, TypeDesc, TypeKey,
@@ -179,6 +179,41 @@ fn main(player: Player) {
         PatchOp::CallHostMethod {
             method,
             args: vec![HostValue::Int(11)]
+        }
+    );
+}
+
+#[test]
+fn engine_applies_configured_hot_reload_policy() {
+    let engine = Engine::builder()
+        .hot_reload_policy(HotReloadPolicy::locked_down())
+        .build()
+        .expect("engine should build");
+    assert_eq!(engine.hot_reload_policy(), &HotReloadPolicy::locked_down());
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .expect("initial hot reload compile");
+
+    let error = engine
+        .compile_hot_reload_update(
+            &initial,
+            SourceId::new(2),
+            r#"
+fn helper() {
+    return 2;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        )
+        .expect_err("locked-down policy should reject new helper functions");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::NewFunctionDenied {
+            function: "helper".to_owned(),
         }
     );
 }

@@ -5,8 +5,9 @@ use vela_bytecode::compiler::{CompilerOptions, compile_program_source_with_optio
 use vela_common::SourceId;
 
 use crate::{
-    FunctionSymbolId, HotReloadAbi, HotReloadError, HotReloadErrorKind, HotReloadResult, HotUpdate,
-    ProgramVersion, ProgramVersionId, function_signature::ensure_compatible_function_signature,
+    FunctionSymbolId, HotReloadAbi, HotReloadError, HotReloadErrorKind, HotReloadPolicy,
+    HotReloadResult, HotUpdate, ProgramVersion, ProgramVersionId,
+    function_signature::ensure_compatible_function_signature,
 };
 
 pub fn compile_initial(source: SourceId, text: &str) -> HotReloadResult<ProgramVersion> {
@@ -54,12 +55,22 @@ pub fn compile_update(
     source: SourceId,
     text: &str,
 ) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_options(
+    compile_update_with_policy(previous, source, text, &HotReloadPolicy::default())
+}
+
+pub fn compile_update_with_policy(
+    previous: &ProgramVersion,
+    source: SourceId,
+    text: &str,
+    policy: &HotReloadPolicy,
+) -> HotReloadResult<HotUpdate> {
+    compile_update_with_abi_and_options_and_policy(
         previous,
         source,
         text,
         previous.abi().clone(),
         &CompilerOptions::default(),
+        policy,
     )
 }
 
@@ -69,7 +80,14 @@ pub fn compile_update_with_options(
     text: &str,
     options: &CompilerOptions,
 ) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_options(previous, source, text, previous.abi().clone(), options)
+    compile_update_with_abi_and_options_and_policy(
+        previous,
+        source,
+        text,
+        previous.abi().clone(),
+        options,
+        &HotReloadPolicy::default(),
+    )
 }
 
 pub fn compile_update_with_abi(
@@ -78,7 +96,24 @@ pub fn compile_update_with_abi(
     text: &str,
     abi: HotReloadAbi,
 ) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_options(previous, source, text, abi, &CompilerOptions::default())
+    compile_update_with_abi_and_policy(previous, source, text, abi, &HotReloadPolicy::default())
+}
+
+pub fn compile_update_with_abi_and_policy(
+    previous: &ProgramVersion,
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+    policy: &HotReloadPolicy,
+) -> HotReloadResult<HotUpdate> {
+    compile_update_with_abi_and_options_and_policy(
+        previous,
+        source,
+        text,
+        abi,
+        &CompilerOptions::default(),
+        policy,
+    )
 }
 
 pub fn compile_update_with_abi_and_options(
@@ -88,12 +123,34 @@ pub fn compile_update_with_abi_and_options(
     abi: HotReloadAbi,
     options: &CompilerOptions,
 ) -> HotReloadResult<HotUpdate> {
+    compile_update_with_abi_and_options_and_policy(
+        previous,
+        source,
+        text,
+        abi,
+        options,
+        &HotReloadPolicy::default(),
+    )
+}
+
+pub fn compile_update_with_abi_and_options_and_policy(
+    previous: &ProgramVersion,
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+    policy: &HotReloadPolicy,
+) -> HotReloadResult<HotUpdate> {
     let program = compile_program_source_with_options(source, text, options)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
     let mut functions = BTreeMap::new();
     for (name, code) in program.functions {
         if let Some(old_code) = previous.functions.get(&FunctionSymbolId::new(&name)) {
-            ensure_compatible_function_signature(&name, old_code, &code)?;
+            ensure_compatible_function_signature(&name, old_code, &code, policy)?;
+        } else if !policy.allow_new_functions() {
+            return Err(HotReloadError::new(HotReloadErrorKind::NewFunctionDenied {
+                function: name,
+            }));
         }
         functions.insert(FunctionSymbolId::new(name), Arc::new(code));
     }

@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use vela_hot_reload::HotReloadPolicy;
 use vela_reflect::{
     DeclOrigin, FunctionAccess as ReflectFunctionAccess, FunctionDesc, FunctionEffectSet,
     FunctionParamDesc, MethodAccess, MethodDesc, MethodEffectSet, ModuleDesc, ReflectPermissionSet,
@@ -21,6 +22,7 @@ pub struct EngineBuilder {
     native_methods: Vec<NativeMethodEntry>,
     permissions: PermissionSet,
     reflection_policy: Option<ReflectPolicy>,
+    hot_reload_policy: HotReloadPolicy,
 }
 
 impl EngineBuilder {
@@ -72,6 +74,12 @@ impl EngineBuilder {
     #[must_use]
     pub fn reflection_policy(mut self, policy: ReflectPolicy) -> Self {
         self.reflection_policy = Some(policy);
+        self
+    }
+
+    #[must_use]
+    pub fn hot_reload_policy(mut self, policy: HotReloadPolicy) -> Self {
+        self.hot_reload_policy = policy;
         self
     }
 
@@ -141,6 +149,7 @@ impl EngineBuilder {
             self.native_methods,
             self.permissions,
             self.reflection_policy,
+            self.hot_reload_policy,
         ))
     }
 }

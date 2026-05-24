@@ -122,6 +122,59 @@ fn appended_function_parameters_without_defaults_are_rejected() {
 }
 
 #[test]
+fn policy_can_reject_defaulted_parameter_additions() {
+    let initial = compile_initial(SourceId::new(1), "fn main(player) { return 1; }")
+        .expect("compile initial");
+    let policy = HotReloadPolicy::new().with_defaulted_parameter_additions(false);
+
+    let error = compile_update_with_policy(
+        &initial,
+        SourceId::new(2),
+        "fn main(player, amount = 1) { return amount; }",
+        &policy,
+    )
+    .expect_err("policy should reject appended params");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::AddedFunctionParametersDenied {
+            function: "main".to_owned(),
+            added: vec!["amount".to_owned()],
+        }
+    );
+}
+
+#[test]
+fn policy_can_reject_new_functions() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 1; }").expect("compile initial");
+    let policy = HotReloadPolicy::new().with_new_functions(false);
+
+    let error = compile_update_with_policy(
+        &initial,
+        SourceId::new(2),
+        r#"
+fn helper() {
+    return 2;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        &policy,
+    )
+    .expect_err("policy should reject new helper");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::NewFunctionDenied {
+            function: "helper".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn new_private_helper_functions_are_accepted() {
     let initial = compile_initial(SourceId::new(1), "fn main() { return 1; }").expect("initial");
     let mut runtime = HotReloadRuntime::new(initial);

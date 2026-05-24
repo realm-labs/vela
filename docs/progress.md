@@ -790,8 +790,13 @@ permissions.
   now reject reordered or renamed existing function parameters, continue to
   reject deleted parameters, and still allow appending new defaulted parameters,
   tightening the function ABI checks required before a safe-point code swap.
+- Added `HotReloadPolicy` and Engine-level policy wiring. Hosts can now keep
+  the default helper/defaulted-parameter behavior or install a locked-down
+  policy through `EngineBuilder::hot_reload_policy`, and
+  `Engine::compile_hot_reload_update` applies that policy alongside
+  Engine-derived compiler options and ABI manifests.
 
 ## Next
 
-- Continue M12 with remaining reflection permission polish and Engine reload
-  policy controls.
+- Continue M12 with remaining reflection permission polish and broader
+  hot-reload report diagnostics.

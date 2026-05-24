@@ -17,6 +17,7 @@ pub use native::{
     NativeFunctionId, NativeParamDesc, TypeHint,
 };
 pub use permission::PermissionSet;
+pub use vela_hot_reload::HotReloadPolicy;
 pub use vela_reflect::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 
 #[cfg(test)]

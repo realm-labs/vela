@@ -4,6 +4,7 @@ use std::sync::Arc;
 use vela_bytecode::compiler::CompilerOptions;
 use vela_common::{FunctionId, HostMethodId};
 use vela_host::HostPath;
+use vela_hot_reload::HotReloadPolicy;
 use vela_reflect::{ReflectPolicy, TypeRegistry};
 use vela_vm::{HostExecution, Value, Vm, VmError, VmErrorKind, VmResult};
 
@@ -19,6 +20,7 @@ pub struct Engine {
     native_function_names: BTreeMap<String, FunctionId>,
     permissions: PermissionSet,
     reflection_policy: Option<ReflectPolicy>,
+    hot_reload_policy: HotReloadPolicy,
 }
 
 impl Engine {
@@ -35,6 +37,7 @@ impl Engine {
         native_methods: Vec<NativeMethodEntry>,
         permissions: PermissionSet,
         reflection_policy: Option<ReflectPolicy>,
+        hot_reload_policy: HotReloadPolicy,
     ) -> Self {
         let native_functions = native_functions
             .into_iter()
@@ -63,6 +66,7 @@ impl Engine {
             native_function_names,
             permissions,
             reflection_policy,
+            hot_reload_policy,
         }
     }
 
@@ -92,6 +96,11 @@ impl Engine {
     #[must_use]
     pub fn permissions(&self) -> &PermissionSet {
         &self.permissions
+    }
+
+    #[must_use]
+    pub fn hot_reload_policy(&self) -> &HotReloadPolicy {
+        &self.hot_reload_policy
     }
 
     #[must_use]

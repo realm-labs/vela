@@ -1,7 +1,7 @@
 use vela_common::SourceId;
 use vela_hot_reload::{
     HotReloadAbi, HotReloadResult, HotUpdate, ProgramVersion, compile_initial_with_abi_and_options,
-    compile_update_with_abi_and_options,
+    compile_update_with_abi_and_options_and_policy,
 };
 
 use crate::Engine;
@@ -31,12 +31,13 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> HotReloadResult<HotUpdate> {
-        compile_update_with_abi_and_options(
+        compile_update_with_abi_and_options_and_policy(
             previous,
             source,
             text,
             self.hot_reload_abi(),
             &self.compiler_options(),
+            self.hot_reload_policy(),
         )
     }
 }

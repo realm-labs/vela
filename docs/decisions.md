@@ -3180,3 +3180,27 @@ Consequences:
   policy, while existing call sites continue to see the same prefix contract.
 - The compile driver delegates signature policy instead of accumulating more
   compatibility logic directly in `compile.rs`.
+
+## 2026-05-25: Engine Owns Hot Reload Policy Selection
+
+Status: Accepted
+
+Context:
+The default hot-reload behavior accepts new helper functions and defaulted
+parameter additions, but production hosts may want narrower policies for live
+game shards or privileged admin workflows. Requiring hosts to bypass
+`Engine::compile_hot_reload_update` to enforce those choices would split policy
+from the registry-derived compiler and ABI metadata.
+
+Decision:
+Represent reload choices with `HotReloadPolicy`, expose policy-aware compile
+helpers in `vela_hot_reload`, and store the selected policy on `Engine`.
+`EngineBuilder::hot_reload_policy` configures the policy used by
+`Engine::compile_hot_reload_update`.
+
+Consequences:
+- Embedders can opt into locked-down reload behavior without giving up Engine
+  compiler options or ABI checks.
+- The default policy preserves existing runnable helper-update workflows.
+- Additional reload policy controls can grow in `vela_hot_reload::policy`
+  without adding more one-off booleans to `Engine`.

@@ -4,6 +4,7 @@ mod abi;
 mod compile;
 mod error;
 mod function_signature;
+mod policy;
 mod runtime;
 mod symbol;
 mod version;
@@ -12,9 +13,11 @@ pub use abi::{AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi, Schema
 pub use compile::{
     compile_initial, compile_initial_with_abi, compile_initial_with_abi_and_options,
     compile_initial_with_options, compile_update, compile_update_with_abi,
-    compile_update_with_abi_and_options, compile_update_with_options,
+    compile_update_with_abi_and_options, compile_update_with_abi_and_options_and_policy,
+    compile_update_with_abi_and_policy, compile_update_with_options, compile_update_with_policy,
 };
 pub use error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+pub use policy::HotReloadPolicy;
 pub use runtime::HotReloadRuntime;
 pub use symbol::{FunctionSymbolId, ProgramVersionId};
 pub use version::{HotUpdate, ProgramVersion};
