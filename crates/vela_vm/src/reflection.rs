@@ -236,7 +236,11 @@ impl Vm {
             expect_arity("reflect.methods", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.methods")?;
             check_host_ref_inspection(&methods_policy, &target)?;
-            value_from_reflect(reflect::methods(&methods_registry, &target)?)
+            value_from_reflect(reflect::methods_with_policy(
+                &methods_registry,
+                &target,
+                &methods_policy,
+            )?)
         });
 
         let has_method_registry = Arc::clone(&registry);
@@ -252,10 +256,11 @@ impl Vm {
             let target = value_to_reflect(&args[0], "reflect.has_method")?;
             check_host_ref_inspection(&has_method_policy, &target)?;
             let method_name = expect_string(&args[1], "reflect.has_method")?;
-            Ok(Value::Bool(reflect::has_method(
+            Ok(Value::Bool(reflect::has_method_with_policy(
                 &has_method_registry,
                 &target,
                 method_name,
+                &has_method_policy,
             )?))
         });
 

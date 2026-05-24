@@ -3491,3 +3491,27 @@ Consequences:
   granting `AccessPrivate` and the relevant function permissions.
 - Registry metadata remains immutable and schema-safe; the policy only filters
   copied records and arrays returned to scripts.
+
+## 2026-05-25: Method Metadata Respects Method Reflection Policy
+
+Status: Accepted
+
+Context:
+`reflect.call` enforced `MethodAccess`, private access, and method-specific
+permissions, but `reflect.methods` and `reflect.has_method` still exposed raw
+method names and metadata. That allowed gameplay policies to discover hidden,
+private, or unapproved method names even though calls would be rejected.
+
+Decision:
+Keep raw member helpers for trusted host-side inspection, and add policy-aware
+method metadata helpers for VM reflection natives. Script-visible
+`reflect.methods` and `reflect.has_method` now include only methods accepted by
+`ReflectPolicy::require_method_access`.
+
+Consequences:
+- Gameplay reflection policies can enumerate only callable, public, approved
+  methods.
+- Admin/debug policies can reveal private or permissioned methods by granting
+  `AccessPrivate` and the relevant method permissions.
+- Reflection remains schema-safe because the policy filters copied metadata and
+  never mutates registered type structure.

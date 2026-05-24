@@ -851,6 +851,11 @@ permissions.
   the same reflective function access policy as `reflect.function`, preventing
   hidden, private, or unapproved function names from leaking through module
   metadata while preserving raw registry queries for trusted host inspection.
+- Added policy-aware method metadata reflection. Script-visible
+  `reflect.methods` and `reflect.has_method` now filter host methods through
+  `MethodAccess` and method-specific permissions, so gameplay policies see only
+  callable, public, approved methods while raw registry member queries remain
+  available for trusted host inspection.
 
 ## Next
 

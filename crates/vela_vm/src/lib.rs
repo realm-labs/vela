@@ -2487,8 +2487,8 @@ mod tests {
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
-        FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodDesc, ModuleDesc, TraitDesc,
-        TypeDesc, TypeKey, TypeKind, VariantDesc,
+        FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc, ModuleDesc,
+        TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
     };
 
     #[test]
@@ -6900,6 +6900,48 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_reflect_methods_respect_method_policy() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let methods = reflect.methods(player);
+    if reflect.has_method(player, "visible")
+        && !reflect.has_method(player, "hidden")
+        && !reflect.has_method(player, "private")
+        && !reflect.has_method(player, "admin") {
+        return methods.len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile policy methods reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        let policy = reflect::ReflectPolicy::new(
+            reflect::ReflectPermissionSet::new()
+                .with(reflect::ReflectPermission::ReadTypeInfo)
+                .with(reflect::ReflectPermission::InspectHostPath),
+        );
+        vm.register_reflection_natives_with_policy(
+            Arc::new(policy_method_reflection_registry()),
+            policy,
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Ok(Value::Int(1))
+        );
+    }
+
+    #[test]
     fn compiled_source_reflect_variant_is_reports_unknown_variant_candidates() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -7400,6 +7442,28 @@ pub fn grant(player: Player, amount: int = 1) -> bool {
             FunctionDesc::new(FunctionId::new(4), "game.reward.admin")
                 .module("game.reward")
                 .access(FunctionAccess::new().require_permission("game.admin")),
+        );
+        registry
+    }
+
+    fn policy_method_reflection_registry() -> TypeRegistry {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(500), "Player"))
+                .host_type(HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(1), "visible"))
+                .method(
+                    MethodDesc::new(HostMethodId::new(2), "hidden")
+                        .access(MethodAccess::new().reflect_callable(false)),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(3), "private")
+                        .access(MethodAccess::new().public(false).reflect_callable(true)),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(4), "admin")
+                        .access(MethodAccess::new().require_permission("player.admin")),
+                ),
         );
         registry
     }

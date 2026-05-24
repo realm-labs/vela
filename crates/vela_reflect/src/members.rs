@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use vela_host::HostValue;
 
 use crate::{
-    FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TraitDesc,
-    TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
+    FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult,
+    ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
     metadata::{attrs_value, docs_value},
     name_candidates, type_of,
 };
@@ -75,6 +75,21 @@ pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<
     )))
 }
 
+pub fn methods_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(HostValue::Array(
+        desc.methods
+            .iter()
+            .filter(|method| policy.require_method_access(&desc.key.name, method).is_ok())
+            .map(method_record)
+            .collect(),
+    )))
+}
+
 pub fn has_method(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -82,6 +97,18 @@ pub fn has_method(
 ) -> ReflectResult<bool> {
     let desc = target_type(registry, target)?;
     Ok(desc.methods.iter().any(|method| method.name == name))
+}
+
+pub fn has_method_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<bool> {
+    let desc = target_type(registry, target)?;
+    Ok(desc.methods.iter().any(|method| {
+        method.name == name && policy.require_method_access(&desc.key.name, method).is_ok()
+    }))
 }
 
 pub fn traits(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -528,6 +555,86 @@ mod tests {
                 variant: "Actve".to_owned(),
                 candidates: vec!["Active".to_owned(), "Finished".to_owned()]
             }
+        );
+    }
+
+    #[test]
+    fn methods_with_policy_hide_inaccessible_methods() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(500), "Player"))
+                .host_type(HostTypeId::new(5))
+                .method(MethodDesc::new(HostMethodId::new(1), "visible"))
+                .method(
+                    MethodDesc::new(HostMethodId::new(2), "hidden")
+                        .access(crate::MethodAccess::new().reflect_callable(false)),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(3), "private").access(
+                        crate::MethodAccess::new()
+                            .public(false)
+                            .reflect_callable(true),
+                    ),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(4), "admin")
+                        .access(crate::MethodAccess::new().require_permission("player.admin")),
+                ),
+        );
+        let target =
+            ReflectValue::HostRef(HostRef::new(HostTypeId::new(5), HostObjectId::new(1), 1));
+
+        let ReflectValue::Host(HostValue::Array(raw_methods)) =
+            methods(&registry, &target).expect("raw methods")
+        else {
+            panic!("methods should be an array");
+        };
+        assert_eq!(raw_methods.len(), 4);
+        assert!(has_method(&registry, &target, "private").expect("raw has private"));
+
+        let ReflectValue::Host(HostValue::Array(policy_methods)) =
+            methods_with_policy(&registry, &target, &ReflectPolicy::read_only())
+                .expect("policy methods")
+        else {
+            panic!("methods should be an array");
+        };
+        assert_eq!(policy_methods.len(), 1);
+        let HostValue::Record { fields, .. } = &policy_methods[0] else {
+            panic!("method metadata should be a record");
+        };
+        assert_eq!(
+            fields.get("name"),
+            Some(&HostValue::String("visible".to_owned()))
+        );
+        assert!(
+            has_method_with_policy(&registry, &target, "visible", &ReflectPolicy::read_only())
+                .expect("has visible")
+        );
+        assert!(
+            !has_method_with_policy(&registry, &target, "private", &ReflectPolicy::read_only())
+                .expect("has private")
+        );
+        assert!(
+            !has_method_with_policy(&registry, &target, "admin", &ReflectPolicy::read_only())
+                .expect("has admin")
+        );
+
+        let admin_policy = ReflectPolicy::new(
+            crate::ReflectPermissionSet::read_only().with(crate::ReflectPermission::AccessPrivate),
+        )
+        .with_method_permission("player.admin");
+        let ReflectValue::Host(HostValue::Array(admin_methods)) =
+            methods_with_policy(&registry, &target, &admin_policy).expect("admin methods")
+        else {
+            panic!("methods should be an array");
+        };
+        assert_eq!(admin_methods.len(), 3);
+        assert!(
+            has_method_with_policy(&registry, &target, "private", &admin_policy)
+                .expect("has private")
+        );
+        assert!(
+            has_method_with_policy(&registry, &target, "admin", &admin_policy).expect("has admin")
         );
     }
 }

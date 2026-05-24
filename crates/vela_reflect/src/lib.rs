@@ -14,8 +14,9 @@ use std::fmt;
 pub use access::{FieldAccess, FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
 pub use members::{
     attrs as attrs_metadata, docs as docs_metadata, field as field_metadata, has_field, has_method,
-    kind as kind_metadata, methods, name as name_metadata, traits as trait_metadata, variant,
-    variant_is, variants as variant_metadata,
+    has_method_with_policy, kind as kind_metadata, methods, methods_with_policy,
+    name as name_metadata, traits as trait_metadata, variant, variant_is,
+    variants as variant_metadata,
 };
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
