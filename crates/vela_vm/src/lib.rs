@@ -1947,6 +1947,40 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_logical_short_circuit_source() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn and_case() {
+    return false && fail();
+}
+
+fn or_case() {
+    return true || fail();
+}
+
+fn truthy_case() {
+    return true && 5 && ("reward" || fail());
+}
+"#,
+        )
+        .expect("compile logical short-circuit source");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "and_case", &[]),
+            Ok(Value::Bool(false))
+        );
+        assert_eq!(
+            Vm::new().run_program(&program, "or_case", &[]),
+            Ok(Value::Bool(true))
+        );
+        assert_eq!(
+            Vm::new().run_program(&program, "truthy_case", &[]),
+            Ok(Value::Bool(true))
+        );
+    }
+
+    #[test]
     fn runs_compiled_const_expression_source() {
         let code = compile_function_source(
             SourceId::new(1),

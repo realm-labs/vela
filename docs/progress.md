@@ -374,6 +374,10 @@ to the later language constructs that introduce loops and closures.
   including overflow/type errors through the VM error path.
 - Added compiler and VM coverage proving unary operators compile and execute
   from source.
+- Added compiler lowering for short-circuiting `&&` and `||` using existing
+  truthiness, branch, constant, and unary-not bytecode.
+- Added VM coverage proving short-circuited logical RHS calls are not executed
+  and logical expressions produce boolean results.
 
 ## Next
 

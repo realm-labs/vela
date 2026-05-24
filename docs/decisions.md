@@ -986,3 +986,24 @@ Consequences:
   conversion rules.
 - Logical binary operators and richer expression forms remain separate M9
   slices.
+
+## 2026-05-24: Logical Operators Short-Circuit To Booleans
+
+Status: Accepted
+
+Context:
+M9 needs `&&` and `||` to execute with short-circuit behavior. The VM already
+has truthiness for conditions and conditional jumps, but the language has not
+defined operand-returning logical values.
+
+Decision:
+Compile `&&` and `||` into branch-based bytecode that skips the right-hand side
+when the left-hand side decides the result. Logical expressions normalize their
+result to `Bool` using the same truthiness rules as `if` and unary `!`.
+
+Consequences:
+- Side effects and unknown calls on a skipped RHS are not executed.
+- Logical expressions have predictable boolean results independent of operand
+  value categories.
+- If operand-returning logic is ever desired, it will be an explicit language
+  change instead of accidental VM behavior.

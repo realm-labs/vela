@@ -880,6 +880,12 @@ impl<'ast> Compiler<'ast> {
         left: &Expr,
         right: &Expr,
     ) -> CompileResult<Register> {
+        match op {
+            BinaryOp::And => return self.compile_logical_and(left, right),
+            BinaryOp::Or => return self.compile_logical_or(left, right),
+            _ => {}
+        }
+
         let lhs = self.compile_expr(left)?;
         let rhs = self.compile_expr(right)?;
         let dst = self.alloc_register()?;
@@ -895,14 +901,49 @@ impl<'ast> Compiler<'ast> {
             BinaryOp::LessEqual => InstructionKind::LessEqual { dst, lhs, rhs },
             BinaryOp::Greater => InstructionKind::Greater { dst, lhs, rhs },
             BinaryOp::GreaterEqual => InstructionKind::GreaterEqual { dst, lhs, rhs },
-            BinaryOp::Or | BinaryOp::And => {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "binary operator",
-                )));
-            }
+            BinaryOp::Or | BinaryOp::And => unreachable!("logical operators handled above"),
         };
         self.emit(instruction);
         Ok(dst)
+    }
+
+    fn compile_logical_and(&mut self, left: &Expr, right: &Expr) -> CompileResult<Register> {
+        let lhs = self.compile_expr(left)?;
+        let dst = self.alloc_register()?;
+        let false_branch = self.emit_jump_if_false(lhs);
+
+        let rhs = self.compile_expr(right)?;
+        self.emit_truthy_to_bool(dst, rhs)?;
+        let end = self.emit_jump();
+
+        self.patch_jump(false_branch, self.current_offset())?;
+        self.emit_bool_constant_to(dst, false);
+        self.patch_jump(end, self.current_offset())?;
+
+        Ok(dst)
+    }
+
+    fn compile_logical_or(&mut self, left: &Expr, right: &Expr) -> CompileResult<Register> {
+        let lhs = self.compile_expr(left)?;
+        let dst = self.alloc_register()?;
+        let rhs_branch = self.emit_jump_if_false(lhs);
+
+        self.emit_bool_constant_to(dst, true);
+        let end = self.emit_jump();
+
+        self.patch_jump(rhs_branch, self.current_offset())?;
+        let rhs = self.compile_expr(right)?;
+        self.emit_truthy_to_bool(dst, rhs)?;
+        self.patch_jump(end, self.current_offset())?;
+
+        Ok(dst)
+    }
+
+    fn emit_truthy_to_bool(&mut self, dst: Register, src: Register) -> CompileResult<()> {
+        let inverted = self.alloc_register()?;
+        self.emit(InstructionKind::Not { dst: inverted, src });
+        self.emit(InstructionKind::Not { dst, src: inverted });
+        Ok(())
     }
 
     fn compile_unary(&mut self, op: UnaryOp, expr: &Expr) -> CompileResult<Register> {
@@ -1073,6 +1114,11 @@ impl<'ast> Compiler<'ast> {
         let constant = self.code.push_constant(constant);
         self.emit(InstructionKind::LoadConst { dst, constant });
         Ok(dst)
+    }
+
+    fn emit_bool_constant_to(&mut self, dst: Register, value: bool) {
+        let constant = self.code.push_constant(Constant::Bool(value));
+        self.emit(InstructionKind::LoadConst { dst, constant });
     }
 
     fn alloc_register(&mut self) -> CompileResult<Register> {
@@ -1920,24 +1966,6 @@ fn main() {
 "#,
             "main",
         )
-        .expect_err("logical operators are still unsupported");
-
-        let CompileErrorKind::UnsupportedSyntax("binary operator") = code.kind else {
-            panic!("expected logical operator to remain unsupported");
-        };
-
-        let code = compile_function_source(
-            SourceId::new(2),
-            r#"
-fn main() {
-    if !false {
-        return -5;
-    }
-    return 0;
-}
-"#,
-            "main",
-        )
         .expect("unary operators should compile");
 
         assert!(
@@ -1950,6 +1978,35 @@ fn main() {
                 .iter()
                 .any(|instruction| { matches!(instruction.kind, InstructionKind::Negate { .. }) })
         );
+    }
+
+    #[test]
+    fn compiler_lowers_logical_short_circuit_operators() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return false && fail() || true;
+}
+"#,
+            "main",
+        )
+        .expect("logical operators should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::JumpIfFalse { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| { matches!(instruction.kind, InstructionKind::Jump { .. }) })
+        );
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallNative { ref name, .. } if name == "fail"
+        )));
     }
 
     #[test]
