@@ -892,3 +892,27 @@ Consequences:
 - Undeclared prototype record literals remain supported and keep their
   source-spelled type names until script type validation is tightened in M10.
 - Variant validation and slot-based script type layouts remain later M10 work.
+
+## 2026-05-24: Match Pattern Tags Use Resolved Type Symbols
+
+Status: Accepted
+
+Context:
+Imported enum constructors now emit declaration-qualified type metadata, but
+match pattern lowering still used the source-spelled enum root. An alias such
+as `Hit.Physical` could therefore construct `game.damage.Damage` and then
+compare the tag against `Hit`.
+
+Decision:
+Record HIR declaration resolutions for enum-like match pattern paths in the
+function binding map. Until pattern HIR has dedicated node IDs and spans, these
+resolutions are keyed by pattern path. Bytecode match tag checks use the
+resolved declaration's type symbol when available.
+
+Consequences:
+- Imported enum aliases now construct and match against the same declared type
+  metadata across modules.
+- Pattern path resolution remains focused on known declarations; wildcard and
+  binding patterns are unchanged.
+- Richer pattern metadata, variant validation, and pattern-specific node IDs
+  remain future HIR/M10 work.

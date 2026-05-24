@@ -343,6 +343,13 @@ that introduce loops and closures.
   their source-spelled names.
 - Added HIR, compiler, and VM coverage proving imported constructor aliases
   compile and execute with qualified type metadata.
+- HIR binding maps now record enum match pattern root resolutions separately
+  from expression resolutions, keyed by the pattern path until pattern HIR has
+  dedicated node IDs.
+- Bytecode match tag checks now use HIR-resolved enum type symbols for
+  imported aliases, keeping constructor and match metadata consistent.
+- Added HIR, compiler, and VM coverage proving imported enum aliases match
+  qualified constructed values across modules.
 
 ## Next
 

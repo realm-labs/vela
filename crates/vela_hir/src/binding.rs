@@ -52,6 +52,7 @@ pub struct BindingMap {
     locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
     expressions: BTreeMap<HirExprId, ExprInfo>,
     resolutions: BTreeMap<HirExprId, BindingResolution>,
+    pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
 }
 
 impl BindingMap {
@@ -115,8 +116,26 @@ impl BindingMap {
         self.resolution(expression)
     }
 
+    #[must_use]
+    pub fn pattern_resolution(&self, path: &[String]) -> Option<&BindingResolution> {
+        self.pattern_resolutions.get(path)
+    }
+
+    pub fn pattern_resolutions(&self) -> impl Iterator<Item = (&[String], &BindingResolution)> {
+        self.pattern_resolutions
+            .iter()
+            .map(|(path, resolution)| (path.as_slice(), resolution))
+    }
+
     pub(crate) fn resolve_import_declarations(&mut self, imports: &BTreeMap<String, HirDeclId>) {
         for resolution in self.resolutions.values_mut() {
+            if let BindingResolution::Import(name) = resolution
+                && let Some(declaration) = imports.get(name).copied()
+            {
+                *resolution = BindingResolution::Declaration(declaration);
+            }
+        }
+        for resolution in self.pattern_resolutions.values_mut() {
             if let BindingResolution::Import(name) = resolution
                 && let Some(declaration) = imports.get(name).copied()
             {
@@ -151,6 +170,7 @@ struct BindingLowerer<'a> {
     locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
     expressions: BTreeMap<HirExprId, ExprInfo>,
     resolutions: BTreeMap<HirExprId, BindingResolution>,
+    pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -175,6 +195,7 @@ impl<'a> BindingLowerer<'a> {
             locals_by_name: BTreeMap::new(),
             expressions: BTreeMap::new(),
             resolutions: BTreeMap::new(),
+            pattern_resolutions: BTreeMap::new(),
             diagnostics: Vec::new(),
         };
 
@@ -198,6 +219,7 @@ impl<'a> BindingLowerer<'a> {
                 locals_by_name: self.locals_by_name,
                 expressions: self.expressions,
                 resolutions: self.resolutions,
+                pattern_resolutions: self.pattern_resolutions,
             },
             self.diagnostics,
         )
@@ -392,17 +414,22 @@ impl<'a> BindingLowerer<'a> {
             Pattern::Binding(name) => {
                 self.declare_local(name.clone(), LocalBindingKind::Pattern, None, span);
             }
-            Pattern::TupleVariant { fields, .. } => {
+            Pattern::TupleVariant { path, fields } => {
+                self.bind_pattern_path(path);
                 for field in fields {
                     self.bind_pattern(field, span);
                 }
             }
-            Pattern::RecordVariant { fields, .. } => {
+            Pattern::RecordVariant { path, fields } => {
+                self.bind_pattern_path(path);
                 for field in fields {
                     self.bind_record_pattern_field(field, span);
                 }
             }
-            Pattern::Wildcard | Pattern::Literal(_) | Pattern::Path(_) => {}
+            Pattern::Path(path) => {
+                self.bind_pattern_path(path);
+            }
+            Pattern::Wildcard | Pattern::Literal(_) => {}
         }
     }
 
@@ -446,6 +473,15 @@ impl<'a> BindingLowerer<'a> {
         };
         if let Some(resolution) = self.resolve_declaration_name(name) {
             self.resolutions.insert(id, resolution);
+        }
+    }
+
+    fn bind_pattern_path(&mut self, path: &[String]) {
+        let Some(name) = path.first() else {
+            return;
+        };
+        if let Some(resolution) = self.resolve_declaration_name(name) {
+            self.pattern_resolutions.insert(path.to_vec(), resolution);
         }
     }
 

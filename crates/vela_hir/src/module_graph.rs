@@ -1038,6 +1038,48 @@ pub struct Reward { count: int }
     }
 
     #[test]
+    fn function_bindings_resolve_match_pattern_import_aliases() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.main",
+            r#"
+use game.damage.Damage as Hit
+
+fn main(damage) {
+    match damage {
+        Hit.Physical { amount } => { return amount; },
+        _ => { return 0; },
+    }
+}
+"#,
+        ));
+        let damage = graph.add_source(source(
+            2,
+            "game.damage",
+            r#"
+pub enum Damage { Physical }
+"#,
+        ));
+        graph.resolve_imports();
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+        let damage = graph
+            .module(damage)
+            .and_then(|module| module.get("Damage"))
+            .expect("damage declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        assert!(bindings.pattern_resolutions().any(|(path, resolution)| {
+            path == ["Hit".to_owned(), "Physical".to_owned()]
+                && resolution == &BindingResolution::Declaration(damage)
+        }));
+    }
+
+    #[test]
     fn resolved_imports_refresh_existing_binding_maps() {
         let mut graph = ModuleGraph::new();
         let module = graph.add_source(source(

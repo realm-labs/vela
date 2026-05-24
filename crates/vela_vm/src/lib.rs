@@ -2156,6 +2156,41 @@ pub enum Damage { Physical }
     }
 
     #[test]
+    fn runs_compiled_cross_module_imported_match_patterns() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.damage.Damage as Hit
+
+fn main() {
+    let damage = Hit.Physical { amount: 7 };
+    match damage {
+        Hit.Magical { amount } => { return amount + 100; },
+        Hit.Physical { amount } => { return amount; },
+        _ => { return 0; },
+    }
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.damage"),
+                r#"
+pub enum Damage { Physical, Magical }
+"#,
+            ),
+        ])
+        .expect("compile imported cross-module match pattern");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "game.main.main", &[]),
+            Ok(Value::Int(7))
+        );
+    }
+
+    #[test]
     fn heap_safe_point_gc_preserves_caller_roots_during_nested_calls() {
         let program = compile_program_source(
             SourceId::new(1),

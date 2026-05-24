@@ -744,6 +744,15 @@ impl<'ast> Compiler<'ast> {
         self.facts.type_symbols.get(declaration).cloned()
     }
 
+    fn type_symbol_for_pattern(&self, path: &[String]) -> Option<String> {
+        let Some(BindingResolution::Declaration(declaration)) =
+            self.bindings.pattern_resolution(path)
+        else {
+            return None;
+        };
+        self.facts.type_symbols.get(declaration).cloned()
+    }
+
     fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<()> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -963,6 +972,7 @@ impl<'ast> Compiler<'ast> {
                         "match pattern",
                     )));
                 };
+                let enum_name = self.type_symbol_for_pattern(path).unwrap_or(enum_name);
                 let condition = self.alloc_register()?;
                 self.emit(InstructionKind::EnumTagEqual {
                     dst: condition,
@@ -1755,6 +1765,44 @@ pub enum Damage { Physical }
         assert!(damage.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
             InstructionKind::MakeEnum { enum_name, variant, .. }
+                if enum_name == "game.damage.Damage" && variant == "Physical"
+        )));
+    }
+
+    #[test]
+    fn compiler_uses_hir_type_symbols_for_imported_match_patterns() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.damage.Damage as Hit
+
+fn main() {
+    let damage = Hit.Physical { amount: 7 };
+    match damage {
+        Hit.Physical { amount } => { return amount; },
+        _ => { return 0; },
+    }
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.damage"),
+                r#"
+pub enum Damage { Physical }
+"#,
+            ),
+        ])
+        .expect("imported match patterns should compile through HIR type symbols");
+        let main = program
+            .function("game.main.main")
+            .expect("qualified main function");
+
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::EnumTagEqual { enum_name, variant, .. }
                 if enum_name == "game.damage.Damage" && variant == "Physical"
         )));
     }
