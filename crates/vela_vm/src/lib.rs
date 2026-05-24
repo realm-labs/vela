@@ -23,6 +23,11 @@ pub enum Value {
         type_name: String,
         fields: BTreeMap<String, Value>,
     },
+    Enum {
+        enum_name: String,
+        variant: String,
+        fields: BTreeMap<String, Value>,
+    },
     HostRef(HostRef),
 }
 
@@ -87,6 +92,11 @@ pub enum VmErrorKind {
     Reflect(ReflectErrorKind),
     UnknownRecordField {
         type_name: String,
+        field: String,
+    },
+    UnknownEnumField {
+        enum_name: String,
+        variant: String,
         field: String,
     },
     MissingReturn,
@@ -465,6 +475,25 @@ impl Vm {
                         },
                     )?;
                 }
+                InstructionKind::MakeEnum {
+                    dst,
+                    enum_name,
+                    variant,
+                    fields,
+                } => {
+                    let mut values = BTreeMap::new();
+                    for (name, register) in fields {
+                        values.insert(name.clone(), frame.read(*register)?.clone());
+                    }
+                    frame.write(
+                        *dst,
+                        Value::Enum {
+                            enum_name: enum_name.clone(),
+                            variant: variant.clone(),
+                            fields: values,
+                        },
+                    )?;
+                }
                 InstructionKind::GetRecordField { dst, record, field } => {
                     let Value::Record { type_name, fields } = frame.read(*record)? else {
                         return Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -478,6 +507,42 @@ impl Vm {
                         })
                     })?;
                     frame.write(*dst, value)?;
+                }
+                InstructionKind::GetEnumField { dst, value, field } => {
+                    let Value::Enum {
+                        enum_name,
+                        variant,
+                        fields,
+                    } = frame.read(*value)?
+                    else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "enum field",
+                        }));
+                    };
+                    let value = fields.get(field).cloned().ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownEnumField {
+                            enum_name: enum_name.clone(),
+                            variant: variant.clone(),
+                            field: field.clone(),
+                        })
+                    })?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::EnumTagEqual {
+                    dst,
+                    value,
+                    enum_name,
+                    variant,
+                } => {
+                    let matches = matches!(
+                        frame.read(*value)?,
+                        Value::Enum {
+                            enum_name: value_enum,
+                            variant: value_variant,
+                            ..
+                        } if value_enum == enum_name && value_variant == variant
+                    );
+                    frame.write(*dst, Value::Bool(matches))?;
                 }
                 InstructionKind::GetHostField { dst, root, field } => {
                     let root = expect_host_ref(frame.read(*root)?, "get_host_field")?;
@@ -647,9 +712,11 @@ fn value_to_host(value: &Value, operation: &'static str) -> VmResult<HostValue> 
         Value::Int(value) => Ok(HostValue::Int(*value)),
         Value::Float(value) => Ok(HostValue::Float(*value)),
         Value::String(value) => Ok(HostValue::String(value.clone())),
-        Value::Array(_) | Value::Map(_) | Value::Record { .. } | Value::HostRef(_) => {
-            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
-        }
+        Value::Array(_)
+        | Value::Map(_)
+        | Value::Record { .. }
+        | Value::Enum { .. }
+        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 
@@ -663,7 +730,9 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::ReflectValue::Record(values))
         }
-        Value::Array(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        Value::Array(_) | Value::Enum { .. } => {
+            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+        }
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
             reflect::ReflectValue::Host(value_to_host(value, operation)?),
         ),
@@ -694,6 +763,7 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Array(_)
         | Value::Map(_)
         | Value::Record { .. }
+        | Value::Enum { .. }
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -988,6 +1058,52 @@ fn main() {
                 fields,
             })
         );
+    }
+
+    #[test]
+    fn returns_first_class_enum_values() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return Damage.Physical { amount: 7 };
+}
+"#,
+            "main",
+        )
+        .expect("compile enum source");
+        let mut fields = BTreeMap::new();
+        fields.insert("amount".into(), Value::Int(7));
+
+        assert_eq!(
+            Vm::new().run(&code),
+            Ok(Value::Enum {
+                enum_name: "Damage".into(),
+                variant: "Physical".into(),
+                fields,
+            })
+        );
+    }
+
+    #[test]
+    fn matches_enum_tag_and_binds_variant_fields() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let damage = Damage.Physical { amount: 7 };
+    match damage {
+        Damage.Magical { amount } => { return amount + 100; },
+        Damage.Physical { amount } => { return amount + 1; },
+        _ => { return 0; },
+    }
+}
+"#,
+            "main",
+        )
+        .expect("compile enum match source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
     }
 
     #[test]

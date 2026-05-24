@@ -6,7 +6,7 @@ use std::num::{ParseFloatError, ParseIntError};
 use vela_common::{Diagnostic, FieldId, SourceId};
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
-    MapEntry, SourceFile, Stmt, StmtKind, parse_source,
+    MapEntry, MatchExpr, Pattern, RecordPatternField, SourceFile, Stmt, StmtKind, parse_source,
 };
 
 use crate::{
@@ -209,6 +209,9 @@ impl<'ast> Compiler<'ast> {
                 if let ExprKind::If(if_expr) = &expr.kind {
                     return self.compile_if(if_expr);
                 }
+                if let ExprKind::Match(match_expr) = &expr.kind {
+                    return self.compile_match(match_expr);
+                }
                 if let ExprKind::Assign { .. } = &expr.kind {
                     self.compile_assignment(expr)?;
                     return Ok(false);
@@ -298,17 +301,25 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::Record { path, fields } => {
-                let type_name = path.join(".");
                 let fields = fields
                     .iter()
                     .map(|field| self.compile_record_field(field))
                     .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::MakeRecord {
-                    dst,
-                    type_name,
-                    fields,
-                });
+                if let Some((enum_name, variant)) = enum_variant_path(path) {
+                    self.emit(InstructionKind::MakeEnum {
+                        dst,
+                        enum_name,
+                        variant,
+                        fields,
+                    });
+                } else {
+                    self.emit(InstructionKind::MakeRecord {
+                        dst,
+                        type_name: path.join("."),
+                        fields,
+                    });
+                }
                 Ok(dst)
             }
             ExprKind::If(if_expr) => {
@@ -329,9 +340,11 @@ impl<'ast> Compiler<'ast> {
             | ExprKind::Index { .. }
             | ExprKind::Try(_)
             | ExprKind::Lambda { .. }
-            | ExprKind::Match(_)
             | ExprKind::Error => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "expression",
+            ))),
+            ExprKind::Match(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "match expression",
             ))),
         }
     }
@@ -482,6 +495,91 @@ impl<'ast> Compiler<'ast> {
         Ok(then_returned && else_returned)
     }
 
+    fn compile_match(&mut self, match_expr: &MatchExpr) -> CompileResult<bool> {
+        let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
+        let mut end_jumps = Vec::new();
+        let mut all_arms_return = !match_expr.arms.is_empty();
+
+        for arm in &match_expr.arms {
+            if arm.guard.is_some() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "match guard",
+                )));
+            }
+            let next_arm_jump = self.compile_match_pattern(scrutinee, &arm.pattern)?;
+            let previous_locals = self.locals.clone();
+            self.bind_match_fields(scrutinee, &arm.pattern)?;
+            let arm_returned = match &arm.body.kind {
+                ExprKind::Block(block) => self.compile_statements(&block.statements)?,
+                _ => {
+                    self.compile_expr(&arm.body)?;
+                    false
+                }
+            };
+            self.locals = previous_locals;
+            all_arms_return &= arm_returned;
+            if !arm_returned {
+                end_jumps.push(self.emit_jump());
+            }
+            if let Some(next_arm_jump) = next_arm_jump {
+                self.patch_jump(next_arm_jump, self.current_offset())?;
+            } else {
+                break;
+            }
+        }
+
+        for jump in end_jumps {
+            self.patch_jump(jump, self.current_offset())?;
+        }
+
+        Ok(all_arms_return)
+    }
+
+    fn compile_match_pattern(
+        &mut self,
+        scrutinee: Register,
+        pattern: &Pattern,
+    ) -> CompileResult<Option<usize>> {
+        match pattern {
+            Pattern::Wildcard => Ok(None),
+            Pattern::Path(path) | Pattern::RecordVariant { path, .. } => {
+                let Some((enum_name, variant)) = enum_variant_path(path) else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "match pattern",
+                    )));
+                };
+                let condition = self.alloc_register()?;
+                self.emit(InstructionKind::EnumTagEqual {
+                    dst: condition,
+                    value: scrutinee,
+                    enum_name,
+                    variant,
+                });
+                Ok(Some(self.emit_jump_if_false(condition)))
+            }
+            Pattern::Literal(_) | Pattern::Binding(_) | Pattern::TupleVariant { .. } => Err(
+                CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern")),
+            ),
+        }
+    }
+
+    fn bind_match_fields(&mut self, scrutinee: Register, pattern: &Pattern) -> CompileResult<()> {
+        let Pattern::RecordVariant { fields, .. } = pattern else {
+            return Ok(());
+        };
+        for field in fields {
+            let binding = record_pattern_binding(field)?;
+            let dst = self.alloc_register()?;
+            self.emit(InstructionKind::GetEnumField {
+                dst,
+                value: scrutinee,
+                field: field.name.clone(),
+            });
+            self.locals.insert(binding, dst);
+        }
+        Ok(())
+    }
+
     fn compile_map_entry(&mut self, entry: &MapEntry) -> CompileResult<(String, Register)> {
         let key = map_key_name(&entry.key)?;
         let value = self.compile_expr(&entry.value)?;
@@ -579,6 +677,24 @@ fn callable_name(callee: &Expr) -> CompileResult<String> {
         ExprKind::Path(path) => Ok(path.join(".")),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "callable expression",
+        ))),
+    }
+}
+
+fn enum_variant_path(path: &[String]) -> Option<(String, String)> {
+    let (variant, enum_path) = path.split_last()?;
+    if enum_path.is_empty() {
+        return None;
+    }
+    Some((enum_path.join("."), variant.clone()))
+}
+
+fn record_pattern_binding(field: &RecordPatternField) -> CompileResult<String> {
+    match &field.pattern {
+        None => Ok(field.name.clone()),
+        Some(Pattern::Binding(name)) => Ok(name.clone()),
+        Some(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "record pattern",
         ))),
     }
 }

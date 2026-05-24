@@ -128,7 +128,16 @@ M5: Struct, Enum, And Match.
   otherwise to record-field access.
 - Added compiled-source tests for returning record values and reading record
   fields in arithmetic.
+- Added first-class VM enum values with enum name, variant name, and named
+  variant fields.
+- Added `MakeEnum`, `GetEnumField`, and `EnumTagEqual` bytecode operations.
+- Lowered multi-part record literals such as `Damage.Physical { amount: 7 }`
+  into enum constructors.
+- Added minimal match-tag lowering for enum path and record-variant patterns,
+  including simple variant field bindings.
+- Added compiled-source tests for returning enum values and matching enum tags
+  with field destructuring.
 
 ## Next
 
-- Add enum constructor values and minimal match-tag execution.
+- Add broader match pattern coverage or proceed to M6 hot reload scaffolding.

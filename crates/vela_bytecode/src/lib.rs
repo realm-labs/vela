@@ -197,10 +197,27 @@ pub enum InstructionKind {
         type_name: String,
         fields: Vec<(String, Register)>,
     },
+    MakeEnum {
+        dst: Register,
+        enum_name: String,
+        variant: String,
+        fields: Vec<(String, Register)>,
+    },
     GetRecordField {
         dst: Register,
         record: Register,
         field: String,
+    },
+    GetEnumField {
+        dst: Register,
+        value: Register,
+        field: String,
+    },
+    EnumTagEqual {
+        dst: Register,
+        value: Register,
+        enum_name: String,
+        variant: String,
     },
     GetHostField {
         dst: Register,

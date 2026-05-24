@@ -169,3 +169,24 @@ Consequences:
   a host-field binding.
 - Later shape-slot work can replace the internal representation without changing
   the source-level record constructor behavior.
+
+## 2026-05-24: MVP Enum Constructors Reuse Variant Record Syntax
+
+Status: Accepted
+
+Context:
+The parser already represents `Enum.Variant { field: value }` as a record
+literal with a multi-part path. M5 needs enum constructors and match-tag
+execution before a full semantic type resolver exists.
+
+Decision:
+Treat record literals with a multi-part path as enum variant constructors in the
+bytecode compiler. The final path segment becomes the variant name, and the
+preceding path becomes the enum name. Match lowering supports enum path and
+record-variant patterns by comparing tags and binding simple named fields.
+
+Consequences:
+- The runnable enum constructor and match loop works without a full resolver.
+- Single-name record literals remain script records.
+- A later resolver can replace this syntactic heuristic with explicit type
+  metadata while preserving source behavior.
