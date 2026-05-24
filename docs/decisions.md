@@ -124,3 +124,26 @@ Consequences:
 - `reflect.set` can create host patches without exposing Rust `&mut`.
 - Read-only fields and unknown fields are reported at the reflection boundary.
 - Future hot reload ABI checks can reuse the same stable descriptor surface.
+
+## 2026-05-24: Reflection Natives Use Host-Aware VM Calls
+
+Status: Accepted
+
+Context:
+Script-visible reflection needs access to `TypeRegistry`, `PatchTx`, and host
+adapter reads. The existing native function path only accepted script values,
+which is sufficient for pure functions but not for controlled reflective host
+reads, writes, and calls.
+
+Decision:
+Add a separate host-native registration path to `vela_vm`. Host natives receive
+the current `HostExecution` and may be registered under normal native names
+such as `reflect.get` and `reflect.set`. The reflection natives convert VM
+values into reflection values, resolve metadata through `TypeRegistry`, and
+route host mutation through `PatchTx`.
+
+Consequences:
+- Pure native functions remain available without host access.
+- Reflection is script-visible without exposing real Rust `&mut` references.
+- Reflective writes and calls continue to be deferred until host safe-point
+  patch application.

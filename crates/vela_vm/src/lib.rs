@@ -8,6 +8,7 @@ use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
 };
+use vela_reflect::{self as reflect, ReflectError, ReflectErrorKind, TypeRegistry};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -79,6 +80,7 @@ pub enum VmErrorKind {
         actual: usize,
     },
     Host(HostErrorKind),
+    Reflect(ReflectErrorKind),
     MissingReturn,
 }
 
@@ -90,11 +92,24 @@ impl From<HostError> for VmError {
     }
 }
 
+impl From<ReflectError> for VmError {
+    fn from(value: ReflectError) -> Self {
+        Self::new(VmErrorKind::Reflect(value.kind))
+    }
+}
+
 pub type NativeFunction = Arc<dyn Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static>;
+pub type HostNativeFunction = Arc<
+    dyn for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+>;
 
 #[derive(Clone, Default)]
 pub struct Vm {
     natives: HashMap<String, NativeFunction>,
+    host_natives: HashMap<String, HostNativeFunction>,
 }
 
 pub struct HostExecution<'host> {
@@ -114,6 +129,107 @@ impl Vm {
         function: impl Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static,
     ) {
         self.natives.insert(name.into(), Arc::new(function));
+    }
+
+    pub fn register_host_native(
+        &mut self,
+        name: impl Into<String>,
+        function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.host_natives.insert(name.into(), Arc::new(function));
+    }
+
+    pub fn register_reflection_natives(&mut self, registry: Arc<TypeRegistry>) {
+        let type_of_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.type_of", move |args, _host| {
+            expect_arity("reflect.type_of", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.type_of")?;
+            Ok(reflect::type_of(&type_of_registry, &target)
+                .map_or(Value::Null, |desc| Value::String(desc.key.name.clone())))
+        });
+
+        let fields_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.fields", move |args, _host| {
+            expect_arity("reflect.fields", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.fields")?;
+            let Some(desc) = reflect::type_of(&fields_registry, &target) else {
+                return Ok(Value::Null);
+            };
+            let fields = reflect::fields(&fields_registry, &desc.key)
+                .unwrap_or(&[])
+                .iter()
+                .map(|field| Value::String(field.name.clone()))
+                .collect();
+            Ok(Value::Array(fields))
+        });
+
+        let get_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.get", move |args, host| {
+            expect_arity("reflect.get", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.get")?;
+            let field = expect_string(&args[1], "reflect.get")?;
+            let adapter: &dyn ScriptStateAdapter = &*host.adapter;
+            let mut ctx = reflect::ReflectContext {
+                registry: &get_registry,
+                adapter,
+                tx: &mut *host.tx,
+            };
+            let value = reflect::get(&mut ctx, &target, field)?;
+            value_from_reflect(value)
+        });
+
+        let set_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.set", move |args, host| {
+            expect_arity("reflect.set", args, 3)?;
+            let target = value_to_reflect(&args[0], "reflect.set")?;
+            let field = expect_string(&args[1], "reflect.set")?;
+            let value = value_to_reflect(&args[2], "reflect.set")?;
+            let adapter: &dyn ScriptStateAdapter = &*host.adapter;
+            let mut ctx = reflect::ReflectContext {
+                registry: &set_registry,
+                adapter,
+                tx: &mut *host.tx,
+            };
+            reflect::set(&mut ctx, &target, field, value)?;
+            Ok(Value::Null)
+        });
+
+        let call_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.call", move |args, host| {
+            if args.len() < 2 {
+                return Err(VmError::new(VmErrorKind::ArityMismatch {
+                    name: "reflect.call".to_owned(),
+                    expected: 2,
+                    actual: args.len(),
+                }));
+            }
+            let target = value_to_reflect(&args[0], "reflect.call")?;
+            let method = expect_string(&args[1], "reflect.call")?;
+            let call_args = args[2..]
+                .iter()
+                .map(|arg| value_to_reflect(arg, "reflect.call"))
+                .collect::<VmResult<Vec<_>>>()?;
+            let adapter: &dyn ScriptStateAdapter = &*host.adapter;
+            let mut ctx = reflect::ReflectContext {
+                registry: &call_registry,
+                adapter,
+                tx: &mut *host.tx,
+            };
+            let value = reflect::call(&mut ctx, &target, method, call_args)?;
+            value_from_reflect(value)
+        });
+
+        self.register_host_native("reflect.implements", move |args, _host| {
+            expect_arity("reflect.implements", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.implements")?;
+            let trait_name = expect_string(&args[1], "reflect.implements")?;
+            Ok(Value::Bool(reflect::implements(
+                &registry, &target, trait_name,
+            )?))
+        });
     }
 
     pub fn run(&self, code: &CodeObject) -> VmResult<Value> {
@@ -273,14 +389,24 @@ impl Vm {
                     ip = target.0;
                 }
                 InstructionKind::CallNative { dst, name, args } => {
-                    let native = self.natives.get(name).ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownNative { name: name.clone() })
-                    })?;
                     let values = args
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
-                    let result = native(&values)?;
+                    let result = if let Some(native) = self.natives.get(name) {
+                        native(&values)?
+                    } else if let Some(native) = self.host_natives.get(name) {
+                        let host = host.as_deref_mut().ok_or_else(|| {
+                            VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "host context",
+                            })
+                        })?;
+                        native(&values, host)?
+                    } else {
+                        return Err(VmError::new(VmErrorKind::UnknownNative {
+                            name: name.clone(),
+                        }));
+                    };
                     if let Some(dst) = dst {
                         frame.write(*dst, result)?;
                     }
@@ -488,6 +614,62 @@ fn value_to_host(value: &Value, operation: &'static str) -> VmResult<HostValue> 
     }
 }
 
+fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect::ReflectValue> {
+    match value {
+        Value::HostRef(host_ref) => Ok(reflect::ReflectValue::HostRef(*host_ref)),
+        Value::Map(values) => {
+            let values = values
+                .iter()
+                .map(|(key, value)| Ok((key.clone(), value_to_reflect(value, operation)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            Ok(reflect::ReflectValue::Record(values))
+        }
+        Value::Array(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
+            reflect::ReflectValue::Host(value_to_host(value, operation)?),
+        ),
+    }
+}
+
+fn value_from_reflect(value: reflect::ReflectValue) -> VmResult<Value> {
+    match value {
+        reflect::ReflectValue::Host(value) => Ok(value_from_host(value)),
+        reflect::ReflectValue::HostRef(host_ref) => Ok(Value::HostRef(host_ref)),
+        reflect::ReflectValue::Record(values) => {
+            let values = values
+                .into_iter()
+                .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            Ok(Value::Map(values))
+        }
+    }
+}
+
+fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a str> {
+    match value {
+        Value::String(value) => Ok(value),
+        Value::Null
+        | Value::Bool(_)
+        | Value::Int(_)
+        | Value::Float(_)
+        | Value::Array(_)
+        | Value::Map(_)
+        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    }
+}
+
+fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
+    if args.len() == expected {
+        Ok(())
+    } else {
+        Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: name.to_owned(),
+            expected,
+            actual: args.len(),
+        }))
+    }
+}
+
 fn compare_numeric(
     lhs: &Value,
     rhs: &Value,
@@ -517,13 +699,15 @@ fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
+    use std::sync::Arc;
     use vela_bytecode::compiler::{
         CompilerOptions, compile_function_source, compile_program_source,
         compile_program_source_with_options,
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
-    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId};
+    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
     use vela_host::{HostValue, MockStateAdapter, PatchOp};
+    use vela_reflect::{FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey};
 
     #[test]
     fn runs_basic_arithmetic() {
@@ -984,6 +1168,129 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_uses_reflection_natives_for_host_state() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    if reflect.type_of(player) == "Player" {
+        if reflect.implements(player, "Damageable") {
+            reflect.set(player, "level", 10);
+            return reflect.get(player, "level");
+        }
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile reflection source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        };
+
+        assert_eq!(result, Ok(Value::Int(10)));
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(9))
+        );
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
+        tx.apply(&mut adapter).expect("apply reflection patch");
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(10))
+        );
+    }
+
+    #[test]
+    fn compiled_source_reflection_fields_returns_metadata() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return reflect.fields(player);
+}
+"#,
+        )
+        .expect("compile reflection fields source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let result =
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host);
+
+        assert_eq!(
+            result,
+            Ok(Value::Array(vec![
+                Value::String("id".into()),
+                Value::String("level".into())
+            ]))
+        );
+    }
+
+    #[test]
+    fn compiled_source_reflect_call_records_host_method_patch() {
+        let host_ref = player_ref(3);
+        let method = HostMethodId::new(5);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    reflect.call(player, "grant_exp", 20);
+    return 1;
+}
+"#,
+        )
+        .expect("compile reflection call source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.insert_method_return(method, HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        };
+
+        assert_eq!(result, Ok(Value::Int(1)));
+        assert!(adapter.method_calls().is_empty());
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method,
+                args: vec![HostValue::Int(20)]
+            }
+        );
+        tx.apply(&mut adapter).expect("apply reflection call");
+        assert_eq!(
+            adapter.method_calls(),
+            &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]
+        );
+    }
+
+    #[test]
     fn call_host_method_records_patch_and_applies_later() {
         let host_ref = player_ref(3);
         let method = HostMethodId::new(8);
@@ -1062,6 +1369,19 @@ fn main(player) {
         let mut adapter = MockStateAdapter::new();
         adapter.insert_value(level_path(host_ref), value);
         adapter
+    }
+
+    fn reflection_registry() -> TypeRegistry {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(FieldId::new(1), "id"))
+                .field(FieldDesc::new(level_field(), "level").writable(true))
+                .method(MethodDesc::new(HostMethodId::new(5), "grant_exp"))
+                .trait_impl(TraitDesc::new("Damageable")),
+        );
+        registry
     }
 
     fn player_ref(generation: u32) -> HostRef {

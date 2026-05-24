@@ -111,8 +111,14 @@ M4: Reflection System.
 - Added tests for reflective host method patch recording, deferred apply,
   invalid reflective call arguments, unknown-method candidate hints, and trait
   implementation checks.
+- Added VM host-native registration and script-visible `reflect.type_of`,
+  `reflect.fields`, `reflect.get`, `reflect.set`, `reflect.call`, and
+  `reflect.implements` native functions backed by `TypeRegistry`.
+- Added compiled-source tests proving script reflection reads overlay host
+  values, writes through `PatchTx`, returns field metadata, checks trait
+  metadata, and records reflective host method calls for deferred apply.
 
 ## Next
 
-- Integrate reflection APIs with script-visible native calls or VM/runtime
-  plumbing as the next M4 vertical slice.
+- Begin M5 by adding first-class record and enum runtime values, constructors,
+  and match-tag execution.
