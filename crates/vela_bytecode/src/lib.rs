@@ -2,11 +2,35 @@
 
 pub mod compiler;
 
+use std::collections::BTreeMap;
+
 use vela_common::Span;
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Program {
+    pub functions: BTreeMap<String, CodeObject>,
+}
+
+impl Program {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn insert_function(&mut self, function: CodeObject) {
+        self.functions.insert(function.name.clone(), function);
+    }
+
+    #[must_use]
+    pub fn function(&self, name: &str) -> Option<&CodeObject> {
+        self.functions.get(name)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CodeObject {
     pub name: String,
+    pub params: Vec<String>,
     pub register_count: u16,
     pub constants: Vec<Constant>,
     pub instructions: Vec<Instruction>,
@@ -17,10 +41,17 @@ impl CodeObject {
     pub fn new(name: impl Into<String>, register_count: u16) -> Self {
         Self {
             name: name.into(),
+            params: Vec::new(),
             register_count,
             constants: Vec::new(),
             instructions: Vec::new(),
         }
+    }
+
+    #[must_use]
+    pub fn with_params(mut self, params: Vec<String>) -> Self {
+        self.params = params;
+        self
     }
 
     pub fn push_constant(&mut self, constant: Constant) -> ConstantId {
@@ -123,6 +154,11 @@ pub enum InstructionKind {
         name: String,
         args: Vec<Register>,
     },
+    CallFunction {
+        dst: Register,
+        name: String,
+        args: Vec<Register>,
+    },
     Return {
         src: Register,
     },
@@ -145,8 +181,18 @@ mod tests {
         }));
 
         assert_eq!(code.name, "answer");
+        assert!(code.params.is_empty());
         assert_eq!(code.register_count, 2);
         assert_eq!(code.constants, [Constant::Int(42)]);
         assert_eq!(code.instructions.len(), 2);
+    }
+
+    #[test]
+    fn program_indexes_functions_by_name() {
+        let mut program = Program::new();
+        program.insert_function(CodeObject::new("main", 0));
+
+        assert!(program.function("main").is_some());
+        assert!(program.function("missing").is_none());
     }
 }

@@ -48,9 +48,13 @@ M2: Minimal Bytecode VM Loop.
   and native calls.
 - Added VM integration tests that execute compiled source strings through the
   parser, compiler, bytecode, and VM loop.
+- Added `Program` function storage, `CallFunction` bytecode, parameter register
+  initialization, entrypoint argument passing, and VM dispatch for script
+  function calls.
+- Added compiled-source tests for calling one script function from another and
+  passing arguments into a program entrypoint.
 
 ## Next
 
-- Add script-function call support.
 - Extend the compiler and VM value model with arrays/maps as executable
   bytecode operations.

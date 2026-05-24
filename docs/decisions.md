@@ -39,3 +39,24 @@ Consequences:
 - Parser tests can assert concrete statement and expression shapes.
 - Control-flow headers parse expressions without treating the following `{` as
   a record literal, so `if`, `for`, and `match` bodies remain unambiguous.
+
+## 2026-05-24: Store Script Functions In A Named Bytecode Program
+
+Status: Accepted
+
+Context:
+M2 needs script functions to call other script functions before hot reload and
+ABI indirection exist. The VM also needs a simple entrypoint API that can pass
+arguments into parameter registers.
+
+Decision:
+Introduce a `Program` that maps function names to `CodeObject` values. A
+`CodeObject` stores parameter names, and the VM initializes the first registers
+from entrypoint or call arguments. Calls to known script functions compile to
+`CallFunction`; other path calls remain `CallNative`.
+
+Consequences:
+- The current VM can execute multi-function source programs.
+- Function-level hot reload can later replace entries behind this named program
+  boundary with stable function identifiers and ABI checks.
+- Native calls stay explicit and separate from script calls.

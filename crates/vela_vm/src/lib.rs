@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
 
-use vela_bytecode::{CodeObject, Constant, InstructionKind, Register};
+use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -50,12 +50,30 @@ impl std::error::Error for VmError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum VmErrorKind {
-    RegisterOutOfBounds { register: Register },
-    ConstantOutOfBounds { constant: usize },
-    InstructionOutOfBounds { offset: usize },
-    TypeMismatch { operation: &'static str },
+    RegisterOutOfBounds {
+        register: Register,
+    },
+    ConstantOutOfBounds {
+        constant: usize,
+    },
+    InstructionOutOfBounds {
+        offset: usize,
+    },
+    TypeMismatch {
+        operation: &'static str,
+    },
     DivisionByZero,
-    UnknownNative { name: String },
+    UnknownNative {
+        name: String,
+    },
+    UnknownFunction {
+        name: String,
+    },
+    ArityMismatch {
+        name: String,
+        expected: usize,
+        actual: usize,
+    },
     MissingReturn,
 }
 
@@ -83,7 +101,43 @@ impl Vm {
     }
 
     pub fn run(&self, code: &CodeObject) -> VmResult<Value> {
+        self.execute(code, None, &[])
+    }
+
+    pub fn run_program(&self, program: &Program, entry: &str, args: &[Value]) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute(code, Some(program), args)
+    }
+
+    fn execute(
+        &self,
+        code: &CodeObject,
+        program: Option<&Program>,
+        args: &[Value],
+    ) -> VmResult<Value> {
+        if code.params.len() != args.len() {
+            return Err(VmError::new(VmErrorKind::ArityMismatch {
+                name: code.name.clone(),
+                expected: code.params.len(),
+                actual: args.len(),
+            }));
+        }
+
         let mut frame = CallFrame::new(code.register_count);
+        for (index, arg) in args.iter().enumerate() {
+            frame.write(
+                Register(u16::try_from(index).map_err(|_| {
+                    VmError::new(VmErrorKind::RegisterOutOfBounds {
+                        register: Register(u16::MAX),
+                    })
+                })?),
+                arg.clone(),
+            )?;
+        }
         let mut ip = 0_usize;
 
         while ip < code.instructions.len() {
@@ -152,6 +206,20 @@ impl Vm {
                     if let Some(dst) = dst {
                         frame.write(*dst, result)?;
                     }
+                }
+                InstructionKind::CallFunction { dst, name, args } => {
+                    let program = program.ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownFunction { name: name.clone() })
+                    })?;
+                    let function = program.function(name).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownFunction { name: name.clone() })
+                    })?;
+                    let values = args
+                        .iter()
+                        .map(|register| frame.read(*register).cloned())
+                        .collect::<VmResult<Vec<_>>>()?;
+                    let result = self.execute(function, Some(program), &values)?;
+                    frame.write(*dst, result)?;
                 }
                 InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
             }
@@ -250,7 +318,7 @@ fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_bytecode::compiler::compile_function_source;
+    use vela_bytecode::compiler::{compile_function_source, compile_program_source};
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::SourceId;
 
@@ -375,5 +443,46 @@ mod tests {
         .expect("compile native call source");
 
         assert_eq!(vm.run(&code), Ok(Value::Int(7)));
+    }
+
+    #[test]
+    fn runs_compiled_script_function_calls() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn add_bonus(value) {
+    return value + 5;
+}
+
+fn main() {
+    let base = 10;
+    return add_bonus(base) * 2;
+}
+"#,
+        )
+        .expect("compile program source");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(30))
+        );
+    }
+
+    #[test]
+    fn passes_arguments_to_program_entry() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn double(value) {
+    return value * 2;
+}
+"#,
+        )
+        .expect("compile program source");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "double", &[Value::Int(9)]),
+            Ok(Value::Int(18))
+        );
     }
 }

@@ -1,14 +1,15 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, SourceId};
 use vela_syntax::{
-    BinaryOp, Block, Expr, ExprKind, ItemKind, Literal, Stmt, StmtKind, parse_source,
+    BinaryOp, Block, Expr, ExprKind, FunctionItem, ItemKind, Literal, SourceFile, Stmt, StmtKind,
+    parse_source,
 };
 
-use crate::{CodeObject, Constant, Instruction, InstructionKind, Register};
+use crate::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompileError {
@@ -39,12 +40,8 @@ pub fn compile_function_source(
     text: &str,
     function_name: &str,
 ) -> CompileResult<CodeObject> {
-    let parsed = parse_source(source, text);
-    if !parsed.diagnostics.is_empty() {
-        return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
-            parsed.diagnostics,
-        )));
-    }
+    let parsed = parse_checked_source(source, text)?;
+    let script_functions = script_function_names(&parsed);
 
     let function = parsed
         .items
@@ -57,26 +54,78 @@ pub fn compile_function_source(
             CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
         })?;
 
-    Compiler::new(function.name.clone()).compile_block(&function.body)
+    Compiler::new(function, script_functions)?.compile()
 }
 
-struct Compiler {
-    code: CodeObject,
-    locals: HashMap<String, Register>,
-    next_register: u16,
-}
+pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Program> {
+    let parsed = parse_checked_source(source, text)?;
+    let script_functions = script_function_names(&parsed);
+    let mut program = Program::new();
 
-impl Compiler {
-    fn new(name: String) -> Self {
-        Self {
-            code: CodeObject::new(name, 0),
-            locals: HashMap::new(),
-            next_register: 0,
+    for item in &parsed.items {
+        if let ItemKind::Function(function) = &item.kind {
+            program.insert_function(Compiler::new(function, script_functions.clone())?.compile()?);
         }
     }
 
-    fn compile_block(mut self, block: &Block) -> CompileResult<CodeObject> {
-        let returned = self.compile_statements(&block.statements)?;
+    Ok(program)
+}
+
+fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
+    let parsed = parse_source(source, text);
+    if parsed.diagnostics.is_empty() {
+        Ok(parsed)
+    } else {
+        Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
+            parsed.diagnostics,
+        )))
+    }
+}
+
+fn script_function_names(parsed: &SourceFile) -> BTreeSet<String> {
+    parsed
+        .items
+        .iter()
+        .filter_map(|item| match &item.kind {
+            ItemKind::Function(function) => Some(function.name.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+struct Compiler<'ast> {
+    code: CodeObject,
+    locals: HashMap<String, Register>,
+    next_register: u16,
+    body: &'ast Block,
+    script_functions: BTreeSet<String>,
+}
+
+impl<'ast> Compiler<'ast> {
+    fn new(
+        function: &'ast FunctionItem,
+        script_functions: BTreeSet<String>,
+    ) -> CompileResult<Self> {
+        let param_count = u16::try_from(function.params.len())
+            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
+        let mut locals = HashMap::new();
+        for (index, param) in function.params.iter().enumerate() {
+            let register = u16::try_from(index)
+                .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
+            locals.insert(param.clone(), Register(register));
+        }
+
+        Ok(Self {
+            code: CodeObject::new(function.name.clone(), 0).with_params(function.params.clone()),
+            locals,
+            next_register: param_count,
+            body: &function.body,
+            script_functions,
+        })
+    }
+
+    fn compile(mut self) -> CompileResult<CodeObject> {
+        let returned = self.compile_statements(&self.body.statements)?;
         if !returned {
             let null = self.emit_constant(Constant::Null)?;
             self.emit(InstructionKind::Return { src: null });
@@ -135,17 +184,25 @@ impl Compiler {
             }
             ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
             ExprKind::Call { callee, args } => {
-                let name = native_name(callee)?;
+                let name = callable_name(callee)?;
                 let arg_registers = args
                     .iter()
                     .map(|arg| self.compile_expr(&arg.value))
                     .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
-                self.emit(InstructionKind::CallNative {
-                    dst: Some(dst),
-                    name,
-                    args: arg_registers,
-                });
+                if self.script_functions.contains(&name) {
+                    self.emit(InstructionKind::CallFunction {
+                        dst,
+                        name,
+                        args: arg_registers,
+                    });
+                } else {
+                    self.emit(InstructionKind::CallNative {
+                        dst: Some(dst),
+                        name,
+                        args: arg_registers,
+                    });
+                }
                 Ok(dst)
             }
             ExprKind::Block(block) => {
@@ -247,11 +304,11 @@ impl Compiler {
     }
 }
 
-fn native_name(callee: &Expr) -> CompileResult<String> {
+fn callable_name(callee: &Expr) -> CompileResult<String> {
     match &callee.kind {
         ExprKind::Path(path) => Ok(path.join(".")),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "native callee",
+            "callable expression",
         ))),
     }
 }
