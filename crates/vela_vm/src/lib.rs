@@ -2614,6 +2614,49 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_returning_if_and_match_initializers() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn if_case(flag) {
+    let ignored = if flag {
+        return 7;
+    } else {
+        return 8;
+    };
+    return 0;
+}
+
+fn match_case(value) {
+    let ignored = match value {
+        1 => { return 10; },
+        _ => { return 11; },
+    };
+    return 0;
+}
+"#,
+        )
+        .expect("compile returning if and match initializers");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "if_case", &[Value::Bool(true)]),
+            Ok(Value::Int(7))
+        );
+        assert_eq!(
+            Vm::new().run_program(&program, "if_case", &[Value::Bool(false)]),
+            Ok(Value::Int(8))
+        );
+        assert_eq!(
+            Vm::new().run_program(&program, "match_case", &[Value::Int(1)]),
+            Ok(Value::Int(10))
+        );
+        assert_eq!(
+            Vm::new().run_program(&program, "match_case", &[Value::Int(2)]),
+            Ok(Value::Int(11))
+        );
+    }
+
+    #[test]
     fn runs_compiled_match_expression_values() {
         let code = compile_function_source(
             SourceId::new(1),

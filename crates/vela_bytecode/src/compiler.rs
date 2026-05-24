@@ -766,12 +766,24 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_let_initializer(&mut self, value: &Expr) -> CompileResult<(Register, bool)> {
-        if let ExprKind::Block(block) = &value.kind {
-            let dst = self.alloc_register()?;
-            let returned = self.compile_block_value_to(block, dst)?;
-            return Ok((dst, returned));
+        match &value.kind {
+            ExprKind::Block(block) => {
+                let dst = self.alloc_register()?;
+                let returned = self.compile_block_value_to(block, dst)?;
+                Ok((dst, returned))
+            }
+            ExprKind::If(if_expr) => {
+                let dst = self.alloc_register()?;
+                let returned = self.compile_if_value_to(if_expr, dst)?;
+                Ok((dst, returned))
+            }
+            ExprKind::Match(match_expr) => {
+                let dst = self.alloc_register()?;
+                let returned = self.compile_match_value_to(match_expr, dst)?;
+                Ok((dst, returned))
+            }
+            _ => self.compile_expr(value).map(|register| (register, false)),
         }
-        self.compile_expr(value).map(|register| (register, false))
     }
 
     fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
@@ -3134,6 +3146,40 @@ fn main() {
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::Return { .. }))
         );
+    }
+
+    #[test]
+    fn compiler_lowers_returning_if_and_match_initializers() {
+        compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main(flag) {
+    let ignored = if flag {
+        return 7;
+    } else {
+        return 8;
+    };
+    return 0;
+}
+"#,
+            "main",
+        )
+        .expect("returning if initializer should compile");
+
+        compile_function_source(
+            SourceId::new(2),
+            r#"
+fn main(value) {
+    let ignored = match value {
+        1 => { return 10; },
+        _ => { return 11; },
+    };
+    return 0;
+}
+"#,
+            "main",
+        )
+        .expect("returning match initializer should compile");
     }
 
     #[test]

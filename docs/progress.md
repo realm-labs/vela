@@ -410,6 +410,8 @@ method-dispatch coverage before moving into stable type metadata.
   statement-only blocks.
 - Added return propagation for `return` statements inside block-expression
   `let` initializers.
+- Extended `let` initializer return propagation to all-return `if` and
+  `match` expression values.
 - Added compiler lowering for `if` expression values by merging branch results
   into a stable destination register, with explicit diagnostics when an
   expression-valued `if` omits `else`.
