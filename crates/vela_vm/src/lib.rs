@@ -1081,6 +1081,11 @@ impl Vm {
                         .collect::<VmResult<Vec<_>>>()?;
                     let result =
                         call_method(frame.read(*receiver)?, method, &values, heap.as_deref())?;
+                    let result = store_value_in_heap_if_needed(
+                        result,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::TryPropagate { dst, src } => {
@@ -2477,7 +2482,8 @@ fn main() {
     let values = [1, 2, 3];
     let rewards = {"gold": 4, "xp": 6};
     let empty = [];
-    if empty.is_empty() && values.len() == 3 && rewards.len() == 2 && ("gold").len() == 4 {
+    if empty.is_empty() && values.len() == 3 && rewards.len() == 2 && ("gold").len() == 4
+        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", 10) == 10 {
         return (1..=3).len();
     }
     return 0;
@@ -2827,7 +2833,8 @@ fn main() {
 fn main() {
     let names = ["gold", "xp"];
     let rewards = {"gold": 4, "xp": 6};
-    if names.len() == 2 && rewards.is_empty() == false && ("quest").len() == 5 {
+    if names.len() == 2 && rewards.is_empty() == false && ("quest").len() == 5
+        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", "fallback") == "fallback" {
         return names[0].len();
     }
     return 0;

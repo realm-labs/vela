@@ -1412,3 +1412,27 @@ Consequences:
   and richer stdlib APIs.
 - Unknown script methods report a VM method error instead of being miscompiled as
   record field calls.
+
+## 2026-05-24: Map Methods Stay Read-Only Until Receiver Mutation Lands
+
+Status: Accepted
+
+Context:
+M9 needs script-value method dispatch coverage, and M13 calls for richer map
+APIs. Mutating collection methods need explicit receiver write-back/value
+category semantics so local mutation, heap-backed mutation, and future host-path
+mutation do not blur together.
+
+Decision:
+Implement the first map method slice as side-effect-free `has`, `get`, and
+`get_or` dispatch in the VM `script_methods` module. Missing `get` returns
+`null`; `get_or` returns the supplied fallback. Heap-backed maps are read
+through stable heap slots, and method returns pass through the VM heap storage
+boundary before being written to registers.
+
+Consequences:
+- Map lookup syntax is available without introducing host mutation bypasses.
+- `get_or` can return dynamic fallback values in managed-heap execution.
+- Mutating methods such as `set`, `remove`, and collection transforms remain a
+  later stdlib/runtime slice that can define receiver mutation semantics
+  explicitly.
