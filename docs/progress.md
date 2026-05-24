@@ -71,9 +71,12 @@ M3: HostRef And PatchTx.
   `Add` patches without exposing Rust `&mut` references.
 - Added host tests for set patch recording, add patch overlay behavior,
   read-after-write overlay semantics, and stale generation errors.
+- Added `ScriptStateAdapter` and `MockStateAdapter` for host snapshot reads,
+  patch validation, and safe-point patch application.
+- Added tests that transaction reads prefer overlay values, adapter snapshots
+  remain unchanged before apply, `Set`/`Add` patches commit at apply time, and
+  stale generations are rejected on read/apply.
 
 ## Next
 
-- Add a mock `ScriptStateAdapter` that reads host snapshot values, validates
-  paths/generations, and applies collected patches at a safe point.
 - Connect VM-level host field bytecode to `PatchTx`.

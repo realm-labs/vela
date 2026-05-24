@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use vela_common::{FieldId, HostObjectId, HostTypeId, MethodId, Span, Symbol};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, Span, Symbol};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostRef {
@@ -80,7 +80,7 @@ pub enum PatchOp {
     Remove,
     Push(HostValue),
     CallHostMethod {
-        method: MethodId,
+        method: HostMethodId,
         args: Vec<HostValue>,
     },
 }
@@ -99,6 +99,21 @@ pub struct HostObjectSnapshot {
     pub type_id: HostTypeId,
     pub object_id: HostObjectId,
     pub generation: u32,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+struct HostObjectKey {
+    type_id: HostTypeId,
+    object_id: HostObjectId,
+}
+
+impl HostObjectKey {
+    fn from_ref(host_ref: HostRef) -> Self {
+        Self {
+            type_id: host_ref.type_id,
+            object_id: host_ref.object_id,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -137,12 +152,38 @@ pub enum HostErrorKind {
     MissingOverlay {
         path: HostPath,
     },
+    MissingPath {
+        path: HostPath,
+    },
     InvalidAdd {
         path: HostPath,
+    },
+    UnsupportedPatch {
+        op: &'static str,
+    },
+    UnsupportedMethod {
+        method: HostMethodId,
     },
 }
 
 pub type HostResult<T> = Result<T, HostError>;
+
+pub trait ScriptStateAdapter {
+    fn read_path(&self, path: &HostPath) -> HostResult<HostValue>;
+
+    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()>;
+
+    fn call_method(
+        &mut self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue>;
+
+    fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
+
+    fn apply_patch(&mut self, patch: Patch) -> HostResult<()>;
+}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PatchTx {
@@ -164,6 +205,17 @@ impl PatchTx {
     #[must_use]
     pub fn read_overlay(&self, path: &HostPath) -> Option<&HostValue> {
         self.overlay.get(path)
+    }
+
+    pub fn read_path(
+        &self,
+        adapter: &impl ScriptStateAdapter,
+        path: &HostPath,
+    ) -> HostResult<HostValue> {
+        self.overlay
+            .get(path)
+            .cloned()
+            .map_or_else(|| adapter.read_path(path), Ok)
     }
 
     pub fn set_path(
@@ -216,6 +268,16 @@ impl PatchTx {
         Ok(())
     }
 
+    pub fn apply(self, adapter: &mut impl ScriptStateAdapter) -> HostResult<()> {
+        for patch in &self.patches {
+            adapter.validate_patch(patch)?;
+        }
+        for patch in self.patches {
+            adapter.apply_patch(patch)?;
+        }
+        Ok(())
+    }
+
     fn push_patch(
         &mut self,
         path: HostPath,
@@ -231,6 +293,116 @@ impl PatchTx {
             source_span,
         });
         Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct MockStateAdapter {
+    objects: BTreeMap<HostObjectKey, u32>,
+    values: BTreeMap<HostPath, HostValue>,
+}
+
+impl MockStateAdapter {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn insert_value(&mut self, path: HostPath, value: HostValue) {
+        self.objects
+            .insert(HostObjectKey::from_ref(path.root), path.root.generation);
+        self.values.insert(path, value);
+    }
+}
+
+impl ScriptStateAdapter for MockStateAdapter {
+    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        self.validate_path(path)?;
+        self.values
+            .get(path)
+            .cloned()
+            .ok_or_else(|| HostError::new(HostErrorKind::MissingPath { path: path.clone() }))
+    }
+
+    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        self.validate_path(path)?;
+        self.values.insert(path.clone(), value);
+        Ok(())
+    }
+
+    fn call_method(
+        &mut self,
+        _path: &HostPath,
+        method: HostMethodId,
+        _args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        Err(HostError::new(HostErrorKind::UnsupportedMethod { method }))
+    }
+
+    fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
+        self.validate_path(&patch.path)?;
+        match &patch.op {
+            PatchOp::Set(_) | PatchOp::Add(_) => Ok(()),
+            PatchOp::Sub(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
+                op: "sub",
+            })),
+            PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
+                op: "remove",
+            })),
+            PatchOp::Push(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
+                op: "push",
+            })),
+            PatchOp::CallHostMethod { method, .. } => {
+                Err(HostError::new(HostErrorKind::UnsupportedMethod {
+                    method: *method,
+                }))
+            }
+        }
+    }
+
+    fn apply_patch(&mut self, patch: Patch) -> HostResult<()> {
+        self.validate_patch(&patch)?;
+        match patch.op {
+            PatchOp::Set(value) => self.write_path(&patch.path, value),
+            PatchOp::Add(value) => {
+                let current = self.read_path(&patch.path)?;
+                let next = add_values(&current, &value).ok_or_else(|| {
+                    HostError::new(HostErrorKind::InvalidAdd {
+                        path: patch.path.clone(),
+                    })
+                })?;
+                self.write_path(&patch.path, next)
+            }
+            PatchOp::Sub(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
+                op: "sub",
+            })),
+            PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
+                op: "remove",
+            })),
+            PatchOp::Push(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
+                op: "push",
+            })),
+            PatchOp::CallHostMethod { method, .. } => {
+                Err(HostError::new(HostErrorKind::UnsupportedMethod { method }))
+            }
+        }
+    }
+}
+
+impl MockStateAdapter {
+    fn validate_path(&self, path: &HostPath) -> HostResult<()> {
+        let key = HostObjectKey::from_ref(path.root);
+        let Some(generation) = self.objects.get(&key).copied() else {
+            return Err(HostError::new(HostErrorKind::MissingPath {
+                path: path.clone(),
+            }));
+        };
+        let snapshot = HostObjectSnapshot {
+            type_id: path.root.type_id,
+            object_id: path.root.object_id,
+            generation,
+        };
+        PatchTx::require_fresh_ref(path.root, &snapshot)
     }
 }
 
@@ -309,6 +481,71 @@ mod tests {
             HostErrorKind::StaleGeneration {
                 expected: 3,
                 actual: 4
+            }
+        );
+    }
+
+    #[test]
+    fn transaction_read_prefers_overlay_before_adapter_snapshot() {
+        let mut adapter = MockStateAdapter::new();
+        let path = level_path();
+        adapter.insert_value(path.clone(), HostValue::Int(9));
+        let mut tx = PatchTx::new();
+
+        assert_eq!(tx.read_path(&adapter, &path), Ok(HostValue::Int(9)));
+
+        tx.set_path(path.clone(), HostValue::Int(10), None)
+            .expect("set path");
+
+        assert_eq!(tx.read_path(&adapter, &path), Ok(HostValue::Int(10)));
+        assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(9)));
+    }
+
+    #[test]
+    fn apply_commits_set_and_add_at_safe_point() {
+        let mut adapter = MockStateAdapter::new();
+        let path = level_path();
+        adapter.insert_value(path.clone(), HostValue::Int(9));
+        let mut tx = PatchTx::new();
+
+        tx.set_path(path.clone(), HostValue::Int(10), None)
+            .expect("set path");
+        tx.add_path(path.clone(), HostValue::Int(2), HostValue::Int(0), None)
+            .expect("add path");
+        assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(9)));
+
+        tx.apply(&mut adapter).expect("apply transaction");
+
+        assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(12)));
+    }
+
+    #[test]
+    fn adapter_rejects_stale_generation_on_read_and_apply() {
+        let mut adapter = MockStateAdapter::new();
+        let fresh_path = level_path();
+        adapter.insert_value(fresh_path, HostValue::Int(9));
+        let stale_path = HostPath::new(player_ref(2)).field(FieldId::new(2));
+        let mut tx = PatchTx::new();
+
+        let read_error = adapter
+            .read_path(&stale_path)
+            .expect_err("stale read should fail");
+        assert_eq!(
+            read_error.kind,
+            HostErrorKind::StaleGeneration {
+                expected: 2,
+                actual: 3
+            }
+        );
+
+        tx.set_path(stale_path, HostValue::Int(10), None)
+            .expect("patch recording does not touch adapter");
+        let apply_error = tx.apply(&mut adapter).expect_err("stale apply should fail");
+        assert_eq!(
+            apply_error.kind,
+            HostErrorKind::StaleGeneration {
+                expected: 2,
+                actual: 3
             }
         );
     }
