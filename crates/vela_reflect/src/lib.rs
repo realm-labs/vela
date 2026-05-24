@@ -1197,6 +1197,103 @@ mod tests {
     }
 
     #[test]
+    fn reflect_call_with_policy_denies_private_methods_without_permission() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(5), "admin_grant").access(
+                        MethodAccess::new()
+                            .public(false)
+                            .reflect_callable(true)
+                            .require_permission("player.admin"),
+                    ),
+                ),
+        );
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+        let policy = ReflectPolicy::new(
+            ReflectPermissionSet::new()
+                .with(ReflectPermission::CallMethods)
+                .with(ReflectPermission::InspectHostPath),
+        )
+        .with_method_permission("player.admin");
+
+        let error = call_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "admin_grant",
+            vec![ReflectValue::Host(HostValue::Int(20))],
+            &policy,
+        )
+        .expect_err("private method should require AccessPrivate");
+
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::PermissionDenied {
+                permission: ReflectPermission::AccessPrivate
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflect_call_with_policy_allows_private_methods_with_permission() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(5), "admin_grant").access(
+                        MethodAccess::new()
+                            .public(false)
+                            .reflect_callable(true)
+                            .require_permission("player.admin"),
+                    ),
+                ),
+        );
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+        let policy = ReflectPolicy::new(
+            ReflectPermissionSet::new()
+                .with(ReflectPermission::CallMethods)
+                .with(ReflectPermission::AccessPrivate)
+                .with(ReflectPermission::InspectHostPath),
+        )
+        .with_method_permission("player.admin");
+
+        let value = call_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "admin_grant",
+            vec![ReflectValue::Host(HostValue::Int(20))],
+            &policy,
+        )
+        .expect("private method call");
+
+        assert_eq!(value, ReflectValue::Host(HostValue::Null));
+        assert_eq!(ctx.tx.patches().len(), 1);
+        assert_eq!(
+            ctx.tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method: HostMethodId::new(5),
+                args: vec![HostValue::Int(20)]
+            }
+        );
+    }
+
+    #[test]
     fn unknown_methods_include_candidate_hints() {
         let registry = registry();
         let adapter = adapter_with_level(HostValue::Int(9));

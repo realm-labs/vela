@@ -3301,3 +3301,26 @@ Consequences:
 - Dynamic host value reads, writes, and calls remain controlled by their
   existing field and method permissions and still route mutations through
   `PatchTx`.
+
+## 2026-05-25: Private Reflective Methods Require AccessPrivate
+
+Status: Accepted
+
+Context:
+Reflection method metadata already records `MethodAccess::public`, but the
+reflective call boundary only enforced `reflect_callable` and method-specific
+permissions. That allowed a host to mark a method non-public while still making
+it callable whenever the method-specific permission was present.
+
+Decision:
+Add `ReflectPermission::AccessPrivate` and enforce it in
+`ReflectPolicy::require_method_access` whenever a method is not public. Private
+method calls still require `reflect_callable`, the global `CallMethods`
+permission at the VM native boundary, and all method-specific permissions.
+
+Consequences:
+- Gameplay policies can call approved public reflective methods without gaining
+  access to private/admin methods.
+- Admin/debug policies can opt into private reflective calls explicitly.
+- The call still records only a `PatchTx` host-method patch; no real mutable
+  Rust reference is exposed to scripts.

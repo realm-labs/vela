@@ -814,8 +814,14 @@ permissions.
   available with `ReadTypeInfo` alone, preserving read-only tooling for
   non-host values while keeping host path inspection behind the admin/debug
   permission bit.
+- Added `ReflectPermission::AccessPrivate` and enforced
+  `MethodAccess::public` during reflective host method calls. Private methods
+  can still be exposed to admin/debug policies, but they now require both the
+  private-access bit and any method-specific permission before a `PatchTx`
+  method-call patch is recorded.
 
 ## Next
 
-- Continue M12 with broader reflection permission coverage, effect/access
-  reporting polish, and remaining hot-reload report diagnostics.
+- Continue M12 with broader reflection permission coverage for field/function
+  metadata, effect/access reporting polish, and remaining hot-reload report
+  diagnostics.

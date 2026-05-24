@@ -9,6 +9,7 @@ pub enum ReflectPermission {
     ReadValueFields,
     WriteValueFields,
     CallMethods,
+    AccessPrivate,
     InspectHostPath,
 }
 
@@ -20,6 +21,7 @@ impl ReflectPermission {
             Self::ReadValueFields => "reflect.read_value_fields",
             Self::WriteValueFields => "reflect.write_value_fields",
             Self::CallMethods => "reflect.call_methods",
+            Self::AccessPrivate => "reflect.access_private",
             Self::InspectHostPath => "reflect.inspect_host_path",
         }
     }
@@ -45,6 +47,7 @@ impl ReflectPermissionSet {
             .with(ReflectPermission::ReadValueFields)
             .with(ReflectPermission::WriteValueFields)
             .with(ReflectPermission::CallMethods)
+            .with(ReflectPermission::AccessPrivate)
             .with(ReflectPermission::InspectHostPath)
     }
 
@@ -164,6 +167,9 @@ impl ReflectPolicy {
                     method: method.name.clone(),
                 },
             ));
+        }
+        if !method.access.public {
+            self.require(ReflectPermission::AccessPrivate)?;
         }
         if let Some(permission) = method
             .access
