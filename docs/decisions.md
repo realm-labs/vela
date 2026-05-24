@@ -3693,3 +3693,26 @@ Consequences:
   new effect permissions.
 - Host mutation still enters only through `PatchTx`; effect enforcement happens
   before patch creation.
+
+## 2026-05-25: Reflection Registry Metadata Lives Outside The Crate Root
+
+Status: Accepted
+
+Context:
+M12 reflection work has expanded the `vela_reflect` crate root with type
+descriptors, registry storage, reflection errors, value access helpers, and
+tests. Keeping all of that logic in one file makes future permission and
+metadata work harder to review and conflicts with the repository's modularity
+constraint.
+
+Decision:
+Move reflection error definitions into `error.rs` and registry/descriptor
+metadata into `registry.rs`. Keep the root `lib.rs` as the public re-export
+surface plus the value access and reflective get/set/call API for now.
+
+Consequences:
+- Existing callers keep using `vela_reflect::{TypeRegistry, TypeDesc,
+  ReflectError, ...}` through stable root re-exports.
+- Future registry metadata changes have a focused module boundary.
+- Runtime schema mutation remains unavailable; this is a structural refactor,
+  not a behavior change.

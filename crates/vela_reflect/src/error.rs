@@ -1,0 +1,103 @@
+use std::fmt;
+
+use crate::ReflectPermission;
+use vela_common::HostTypeId;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReflectError {
+    pub kind: ReflectErrorKind,
+}
+
+impl ReflectError {
+    pub(crate) fn new(kind: ReflectErrorKind) -> Self {
+        Self { kind }
+    }
+}
+
+impl fmt::Display for ReflectError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.kind)
+    }
+}
+
+impl std::error::Error for ReflectError {}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ReflectErrorKind {
+    UnknownType {
+        host_type_id: HostTypeId,
+    },
+    UnknownTypeName {
+        type_name: String,
+        candidates: Vec<String>,
+    },
+    UnknownField {
+        type_name: String,
+        field: String,
+        candidates: Vec<String>,
+    },
+    UnknownMethod {
+        type_name: String,
+        method: String,
+        candidates: Vec<String>,
+    },
+    UnknownVariant {
+        type_name: String,
+        variant: String,
+        candidates: Vec<String>,
+    },
+    UnknownTrait {
+        trait_name: String,
+        candidates: Vec<String>,
+    },
+    UnknownModule {
+        module: String,
+        candidates: Vec<String>,
+    },
+    UnknownFunction {
+        function: String,
+        candidates: Vec<String>,
+    },
+    PermissionDenied {
+        permission: ReflectPermission,
+    },
+    MethodNotReflectCallable {
+        type_name: String,
+        method: String,
+    },
+    FunctionNotReflectVisible {
+        function: String,
+    },
+    MethodPermissionDenied {
+        method: String,
+        permission: String,
+    },
+    MethodEffectPermissionDenied {
+        method: String,
+        permission: ReflectPermission,
+    },
+    FunctionPermissionDenied {
+        function: String,
+        permission: String,
+    },
+    LookupBudgetExceeded {
+        limit: u64,
+    },
+    FieldNotWritable {
+        type_name: String,
+        field: String,
+    },
+    FieldNotReflectReadable {
+        type_name: String,
+        field: String,
+    },
+    FieldNotReflectWritable {
+        type_name: String,
+        field: String,
+    },
+    InvalidTarget,
+    InvalidValue,
+    Host(String),
+}
+
+pub type ReflectResult<T> = Result<T, ReflectError>;

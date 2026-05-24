@@ -890,6 +890,10 @@ permissions.
   `MethodEffectSet` before `PatchTx` method-call patches are recorded, and the
   VM `reflect.call` native reports a structured effect-permission denial when a
   policy approves method calls but not the method's declared side effects.
+- Split reflection error definitions and registry/descriptor metadata out of
+  the `vela_reflect` crate root into focused modules, keeping the public
+  re-export surface stable while making future M12 reflection work less
+  monolithic.
 
 ## Next
 
