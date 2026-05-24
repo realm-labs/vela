@@ -904,6 +904,10 @@ permissions.
   reflection records now include `source_span` data when available, giving
   admin/debug tooling declaration locations without exposing mutable schema
   handles.
+- Added structured related-candidate metadata for unknown reflected type,
+  trait, module, and function lookups. Reflection errors now keep the existing
+  ranked candidate names and also include optional source spans for candidates
+  whose descriptors have declaration locations.
 
 ## Next
 

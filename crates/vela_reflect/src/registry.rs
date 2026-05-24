@@ -523,6 +523,21 @@ impl TypeRegistry {
         names.into_iter().collect()
     }
 
+    pub(crate) fn known_trait_candidates(&self) -> Vec<(String, Option<Span>)> {
+        let mut candidates = BTreeMap::new();
+        for trait_desc in self.traits_by_name.values() {
+            candidates.insert(trait_desc.name.clone(), trait_desc.source_span);
+        }
+        for type_desc in self.types() {
+            for trait_desc in &type_desc.traits {
+                candidates
+                    .entry(trait_desc.name.clone())
+                    .or_insert(trait_desc.source_span);
+            }
+        }
+        candidates.into_iter().collect()
+    }
+
     pub(crate) fn type_by_name_mut(&mut self, name: &str) -> Option<&mut TypeDesc> {
         let key = self
             .types_by_key

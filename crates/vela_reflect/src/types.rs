@@ -4,8 +4,8 @@ use vela_host::HostValue;
 
 use crate::{
     ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeKind, TypeRegistry,
+    candidates::{candidate_names, ranked_candidates},
     metadata::{attrs_value, docs_value, span_value},
-    name_candidates,
 };
 
 pub fn type_names(registry: &TypeRegistry) -> ReflectValue {
@@ -19,9 +19,16 @@ pub fn type_names(registry: &TypeRegistry) -> ReflectValue {
 
 pub fn type_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.type_by_name(name).ok_or_else(|| {
+        let related = ranked_candidates(
+            name,
+            registry
+                .types()
+                .map(|desc| (desc.key.name.as_str(), desc.source_span)),
+        );
         ReflectError::new(ReflectErrorKind::UnknownTypeName {
             type_name: name.to_owned(),
-            candidates: name_candidates(name, registry.types().map(|desc| desc.key.name.as_str())),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     Ok(ReflectValue::Host(type_record(desc)))
@@ -144,7 +151,14 @@ mod tests {
             error.kind,
             ReflectErrorKind::UnknownTypeName {
                 type_name: "Plyer".to_owned(),
-                candidates: vec!["Player".to_owned(), "QuestProgress".to_owned()]
+                candidates: vec!["Player".to_owned(), "QuestProgress".to_owned()],
+                related: vec![
+                    crate::ReflectCandidate::new(
+                        "Player",
+                        Some(Span::new(SourceId::new(7), 10, 20))
+                    ),
+                    crate::ReflectCandidate::new("QuestProgress", None),
+                ],
             }
         );
     }

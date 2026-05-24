@@ -2488,8 +2488,8 @@ mod tests {
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
         FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc,
-        MethodEffectSet, ModuleDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind,
-        VariantDesc,
+        MethodEffectSet, ModuleDesc, ReflectCandidate, TraitDesc, TraitMethodDesc, TypeDesc,
+        TypeKey, TypeKind, VariantDesc,
     };
 
     #[test]
@@ -7234,7 +7234,8 @@ fn main() {
             vm.run_program_with_host(&program, "main", &[], &mut host),
             Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTypeName {
                 type_name: "Plyer".to_owned(),
-                candidates: vec!["Player".to_owned()]
+                candidates: vec!["Player".to_owned()],
+                related: vec![ReflectCandidate::new("Player", None)],
             })
         ));
     }
@@ -7263,7 +7264,8 @@ fn main() {
             vm.run_program_with_host(&program, "main", &[], &mut host),
             Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
                 trait_name: "Damagable".to_owned(),
-                candidates: vec!["Damageable".to_owned()]
+                candidates: vec!["Damageable".to_owned()],
+                related: vec![ReflectCandidate::new("Damageable", None)],
             })
         ));
     }
@@ -7398,7 +7400,8 @@ fn main(player) {
             vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
             Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
                 trait_name: "Damagable".to_owned(),
-                candidates: vec!["Damageable".to_owned()]
+                candidates: vec!["Damageable".to_owned()],
+                related: vec![ReflectCandidate::new("Damageable", None)],
             })
         ));
         assert!(tx.patches().is_empty());

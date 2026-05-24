@@ -3769,3 +3769,29 @@ Consequences:
   setting it explicitly through builder methods.
 - This remains read-only copied metadata and does not allow runtime schema
   mutation.
+
+## 2026-05-25: Reflection Unknown Lookups Carry Related Candidates
+
+Status: Accepted
+
+Context:
+M12 requires unknown-name diagnostics to include ranked candidates and related
+schema spans. Reflection errors already carried ranked candidate names, and
+top-level reflected descriptors now carry optional source spans, but the error
+payload did not connect those two pieces for host tooling.
+
+Decision:
+Add a focused reflection candidate helper module and expose
+`ReflectCandidate { name, source_span }` as copied diagnostic metadata. Unknown
+type, trait, module, and function reflection errors keep their existing
+`candidates: Vec<String>` compatibility field and add `related:
+Vec<ReflectCandidate>` with matching ranking and optional descriptor source
+spans.
+
+Consequences:
+- Existing candidate-name consumers can continue reading `candidates`.
+- Admin/debug tooling can navigate top-level unknown lookups to nearby schema
+  declarations when spans are known.
+- Member-level candidate spans remain a separate follow-up because script
+  field, method, and variant declarations need AST/HIR member source spans
+  before reflection can report them accurately.

@@ -1,6 +1,7 @@
 //! Controlled reflection metadata and value access.
 
 mod access;
+mod candidates;
 mod error;
 mod members;
 mod metadata;
@@ -14,6 +15,8 @@ mod types;
 use std::collections::BTreeMap;
 
 pub use access::{FieldAccess, FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
+pub use candidates::ReflectCandidate;
+use candidates::name_candidates;
 pub use error::{ReflectError, ReflectErrorKind, ReflectResult};
 pub use members::{
     attrs as attrs_metadata, docs as docs_metadata, field as field_metadata,
@@ -205,9 +208,17 @@ pub fn implements(
 ) -> ReflectResult<bool> {
     let known_traits = registry.known_trait_names();
     if !known_traits.iter().any(|candidate| candidate == trait_name) {
+        let candidates = registry.known_trait_candidates();
+        let related = candidates::ranked_candidates(
+            trait_name,
+            candidates
+                .iter()
+                .map(|(candidate, span)| (candidate.as_str(), *span)),
+        );
         return Err(ReflectError::new(ReflectErrorKind::UnknownTrait {
             trait_name: trait_name.to_owned(),
-            candidates: name_candidates(trait_name, known_traits.iter().map(String::as_str)),
+            candidates: candidates::candidate_names(&related),
+            related,
         }));
     }
 
@@ -265,41 +276,6 @@ fn record_unknown_field(field: &str, record: &BTreeMap<String, ReflectValue>) ->
         field: field.to_owned(),
         candidates: name_candidates(field, record.keys().map(String::as_str)),
     }
-}
-
-pub(crate) fn name_candidates<'a>(
-    name: &str,
-    candidates: impl Iterator<Item = &'a str>,
-) -> Vec<String> {
-    let mut candidates = candidates
-        .map(|candidate| (edit_distance(name, candidate), candidate.to_owned()))
-        .collect::<Vec<_>>();
-    candidates.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
-    candidates
-        .into_iter()
-        .take(3)
-        .map(|(_, candidate)| candidate)
-        .collect()
-}
-
-fn edit_distance(left: &str, right: &str) -> usize {
-    let left = left.chars().collect::<Vec<_>>();
-    let right = right.chars().collect::<Vec<_>>();
-    let mut previous = (0..=right.len()).collect::<Vec<_>>();
-    let mut current = vec![0; right.len() + 1];
-
-    for (left_index, left_ch) in left.iter().enumerate() {
-        current[0] = left_index + 1;
-        for (right_index, right_ch) in right.iter().enumerate() {
-            let substitution = usize::from(left_ch != right_ch);
-            current[right_index + 1] = (previous[right_index + 1] + 1)
-                .min(current[right_index] + 1)
-                .min(previous[right_index] + substitution);
-        }
-        std::mem::swap(&mut previous, &mut current);
-    }
-
-    previous[right.len()]
 }
 
 #[cfg(test)]
@@ -907,7 +883,11 @@ mod tests {
             error.kind,
             ReflectErrorKind::UnknownTrait {
                 trait_name: "Damagable".to_owned(),
-                candidates: vec!["Damageable".to_owned(), "Trackable".to_owned()]
+                candidates: vec!["Damageable".to_owned(), "Trackable".to_owned()],
+                related: vec![
+                    ReflectCandidate::new("Damageable", None),
+                    ReflectCandidate::new("Trackable", None),
+                ],
             }
         );
     }

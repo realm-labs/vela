@@ -1740,6 +1740,10 @@ FieldNotFound:
 Copied reflection records for script-defined modules, functions, types, and
 traits include `source_span: { source, start, end }` when the registry knows the
 declaration location. Host-provided descriptors may leave this field as `null`.
+Unknown top-level reflection lookups for types, traits, modules, and functions
+also carry ranked related candidates with the same optional source spans so
+admin/debug tooling can jump from a misspelled lookup to nearby schema
+declarations without parsing human-readable messages.
 
 ```text
 FieldNotWritable:

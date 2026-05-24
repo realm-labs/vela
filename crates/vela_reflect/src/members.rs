@@ -5,6 +5,7 @@ use vela_host::HostValue;
 use crate::{
     FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult,
     ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
+    candidates::{candidate_names, ranked_candidates},
     metadata::{attrs_value, docs_value, span_value},
     name_candidates, type_of,
 };
@@ -154,12 +155,17 @@ pub fn traits(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<R
 
 pub fn trait_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.trait_metadata_by_name(name).ok_or_else(|| {
+        let candidates = registry.known_trait_candidates();
+        let related = ranked_candidates(
+            name,
+            candidates
+                .iter()
+                .map(|(candidate, span)| (candidate.as_str(), *span)),
+        );
         ReflectError::new(ReflectErrorKind::UnknownTrait {
             trait_name: name.to_owned(),
-            candidates: name_candidates(
-                name,
-                registry.known_trait_names().iter().map(String::as_str),
-            ),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     Ok(ReflectValue::Host(trait_record(desc)))
@@ -430,7 +436,8 @@ fn field_access_record(field: &FieldDesc) -> HostValue {
 mod tests {
     use super::*;
     use vela_common::{
-        FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, TypeId, VariantId,
+        FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Span, TypeId,
+        VariantId,
     };
     use vela_host::HostRef;
 
@@ -467,6 +474,7 @@ mod tests {
                 )
                 .trait_impl(
                     TraitDesc::new("Damageable")
+                        .source_span(Span::new(SourceId::new(8), 20, 40))
                         .docs("Can take damage.")
                         .attr("combat", "true")
                         .method(
@@ -664,6 +672,10 @@ mod tests {
             fields.get("name"),
             Some(&HostValue::String("Damageable".to_owned()))
         );
+        assert_eq!(
+            fields.get("source_span"),
+            Some(&span_value(Some(Span::new(SourceId::new(8), 20, 40))))
+        );
         assert!(matches!(
             fields.get("methods"),
             Some(HostValue::Array(methods)) if methods.len() == 1
@@ -674,7 +686,11 @@ mod tests {
             error.kind,
             ReflectErrorKind::UnknownTrait {
                 trait_name: "Damagable".to_owned(),
-                candidates: vec!["Damageable".to_owned()]
+                candidates: vec!["Damageable".to_owned()],
+                related: vec![crate::ReflectCandidate::new(
+                    "Damageable",
+                    Some(Span::new(SourceId::new(8), 20, 40))
+                )],
             }
         );
     }

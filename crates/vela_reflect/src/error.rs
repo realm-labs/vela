@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::ReflectPermission;
+use crate::{ReflectCandidate, ReflectPermission};
 use vela_common::HostTypeId;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,6 +30,7 @@ pub enum ReflectErrorKind {
     UnknownTypeName {
         type_name: String,
         candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
     },
     UnknownField {
         type_name: String,
@@ -49,14 +50,17 @@ pub enum ReflectErrorKind {
     UnknownTrait {
         trait_name: String,
         candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
     },
     UnknownModule {
         module: String,
         candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
     },
     UnknownFunction {
         function: String,
         candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
     },
     UnknownPermission {
         permission: String,

@@ -8,8 +8,8 @@ use vela_syntax::Visibility;
 use crate::{
     AttrMap, FunctionAccess, FunctionEffectSet, ReflectError, ReflectErrorKind, ReflectPolicy,
     ReflectResult, ReflectValue, TypeRegistry,
+    candidates::{candidate_names, ranked_candidates},
     metadata::{attrs_value, docs_value, span_value},
-    name_candidates,
     script_attrs::ReflectedScriptAttrs,
 };
 
@@ -260,12 +260,11 @@ impl TypeRegistry {
 
 pub fn module(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.module_by_name(name).ok_or_else(|| {
+        let related = module_candidates(registry, name);
         ReflectError::new(ReflectErrorKind::UnknownModule {
             module: name.to_owned(),
-            candidates: name_candidates(
-                name,
-                registry.modules().map(|module| module.name.as_str()),
-            ),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     Ok(module_record(desc))
@@ -277,12 +276,11 @@ pub fn module_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = registry.module_by_name(name).ok_or_else(|| {
+        let related = module_candidates(registry, name);
         ReflectError::new(ReflectErrorKind::UnknownModule {
             module: name.to_owned(),
-            candidates: name_candidates(
-                name,
-                registry.modules().map(|module| module.name.as_str()),
-            ),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     Ok(module_record_with_exports(
@@ -293,12 +291,11 @@ pub fn module_with_policy(
 
 pub fn exports(registry: &TypeRegistry, module_name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.module_by_name(module_name).ok_or_else(|| {
+        let related = module_candidates(registry, module_name);
         ReflectError::new(ReflectErrorKind::UnknownModule {
             module: module_name.to_owned(),
-            candidates: name_candidates(
-                module_name,
-                registry.modules().map(|module| module.name.as_str()),
-            ),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     Ok(ReflectValue::Host(HostValue::Array(
@@ -315,12 +312,11 @@ pub fn exports_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = registry.module_by_name(module_name).ok_or_else(|| {
+        let related = module_candidates(registry, module_name);
         ReflectError::new(ReflectErrorKind::UnknownModule {
             module: module_name.to_owned(),
-            candidates: name_candidates(
-                module_name,
-                registry.modules().map(|module| module.name.as_str()),
-            ),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     Ok(ReflectValue::Host(HostValue::Array(
@@ -333,12 +329,11 @@ pub fn exports_with_policy(
 
 pub fn function(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.function_by_name(name).ok_or_else(|| {
+        let related = function_candidates(registry, name);
         ReflectError::new(ReflectErrorKind::UnknownFunction {
             function: name.to_owned(),
-            candidates: name_candidates(
-                name,
-                registry.functions().map(|function| function.name.as_str()),
-            ),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     Ok(function_record(desc))
@@ -350,16 +345,33 @@ pub fn function_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = registry.function_by_name(name).ok_or_else(|| {
+        let related = function_candidates(registry, name);
         ReflectError::new(ReflectErrorKind::UnknownFunction {
             function: name.to_owned(),
-            candidates: name_candidates(
-                name,
-                registry.functions().map(|function| function.name.as_str()),
-            ),
+            candidates: candidate_names(&related),
+            related,
         })
     })?;
     policy.require_function_access(desc)?;
     Ok(function_record(desc))
+}
+
+fn module_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::ReflectCandidate> {
+    ranked_candidates(
+        name,
+        registry
+            .modules()
+            .map(|module| (module.name.as_str(), module.source_span)),
+    )
+}
+
+fn function_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::ReflectCandidate> {
+    ranked_candidates(
+        name,
+        registry
+            .functions()
+            .map(|function| (function.name.as_str(), function.source_span)),
+    )
 }
 
 fn module_record(desc: &ModuleDesc) -> ReflectValue {
@@ -586,7 +598,7 @@ fn stable_function_id(module: &str, name: &str) -> FunctionId {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::SourceId;
+    use vela_common::{SourceId, Span};
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
 
     use super::*;
@@ -653,7 +665,13 @@ fn helper() {
     fn module_function_queries_return_records_and_candidates() {
         let mut registry = TypeRegistry::new();
         let function_id = FunctionId::new(7);
-        registry.register_module(ModuleDesc::new("game.reward").attr("domain", "gameplay"));
+        let module_span = Span::new(SourceId::new(7), 10, 20);
+        let function_span = Span::new(SourceId::new(7), 30, 50);
+        registry.register_module(
+            ModuleDesc::new("game.reward")
+                .attr("domain", "gameplay")
+                .source_span(module_span),
+        );
         registry.register_function(
             FunctionDesc::new(function_id, "game.reward.grant")
                 .module("game.reward")
@@ -667,7 +685,8 @@ fn helper() {
                 .access(FunctionAccess::new().require_permission("reward.grant"))
                 .origin(DeclOrigin::Script)
                 .docs("Grant reward.")
-                .attr("event", "reward"),
+                .attr("event", "reward")
+                .source_span(function_span),
         );
 
         let ReflectValue::Record(module_metadata) =
@@ -688,7 +707,7 @@ fn helper() {
         );
         assert_eq!(
             module_metadata.get("source_span"),
-            Some(&ReflectValue::Host(HostValue::Null))
+            Some(&ReflectValue::Host(span_value(Some(module_span))))
         );
         assert_eq!(
             exports(&registry, "game.reward").expect("exports"),
@@ -697,25 +716,25 @@ fn helper() {
             )]))
         );
 
-        let ReflectValue::Record(function) =
+        let ReflectValue::Record(function_metadata) =
             function(&registry, "game.reward.grant").expect("function")
         else {
             panic!("function metadata should be a record");
         };
         assert_eq!(
-            function.get("return"),
+            function_metadata.get("return"),
             Some(&ReflectValue::Host(HostValue::String("bool".into())))
         );
         assert_eq!(
-            function.get("origin"),
+            function_metadata.get("origin"),
             Some(&ReflectValue::Host(HostValue::String("script".into())))
         );
         assert_eq!(
-            function.get("source_span"),
-            Some(&ReflectValue::Host(HostValue::Null))
+            function_metadata.get("source_span"),
+            Some(&ReflectValue::Host(span_value(Some(function_span))))
         );
         assert_eq!(
-            function.get("effects"),
+            function_metadata.get("effects"),
             Some(&ReflectValue::Host(HostValue::Record {
                 type_name: "ReflectEffectSet".to_owned(),
                 fields: BTreeMap::from([
@@ -726,7 +745,7 @@ fn helper() {
             }))
         );
         assert_eq!(
-            function.get("access"),
+            function_metadata.get("access"),
             Some(&ReflectValue::Host(HostValue::Record {
                 type_name: "ReflectFunctionAccess".to_owned(),
                 fields: BTreeMap::from([
@@ -740,13 +759,13 @@ fn helper() {
             }))
         );
         assert_eq!(
-            function.get("docs"),
+            function_metadata.get("docs"),
             Some(&ReflectValue::Host(HostValue::String(
                 "Grant reward.".into()
             )))
         );
         assert_eq!(
-            function.get("attrs"),
+            function_metadata.get("attrs"),
             Some(&ReflectValue::Host(HostValue::Map(BTreeMap::from([(
                 "event".to_owned(),
                 HostValue::String("reward".to_owned())
@@ -758,7 +777,24 @@ fn helper() {
             error.kind,
             ReflectErrorKind::UnknownModule {
                 module: "game.rewards".to_owned(),
-                candidates: vec!["game.reward".to_owned()]
+                candidates: vec!["game.reward".to_owned()],
+                related: vec![crate::ReflectCandidate::new(
+                    "game.reward",
+                    Some(module_span)
+                )],
+            }
+        );
+
+        let error = function(&registry, "game.reward.grnat").expect_err("unknown function");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownFunction {
+                function: "game.reward.grnat".to_owned(),
+                candidates: vec!["game.reward.grant".to_owned()],
+                related: vec![crate::ReflectCandidate::new(
+                    "game.reward.grant",
+                    Some(function_span)
+                )],
             }
         );
     }
