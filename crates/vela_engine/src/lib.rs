@@ -3,12 +3,14 @@
 mod builder;
 mod engine;
 mod error;
+mod method;
 mod native;
 mod permission;
 
 pub use builder::EngineBuilder;
 pub use engine::Engine;
 pub use error::{EngineError, EngineErrorKind, EngineResult};
+pub use method::{NativeMethodDesc, NativeMethodEntry, NativeMethodParamDesc};
 pub use native::{
     EffectSet, FunctionAccess, HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
     NativeFunctionId, NativeParamDesc, TypeHint,

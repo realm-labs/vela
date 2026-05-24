@@ -2,18 +2,20 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::compiler::CompilerOptions;
-use vela_common::FunctionId;
+use vela_common::{FunctionId, HostMethodId};
+use vela_host::HostPath;
 use vela_reflect::TypeRegistry;
-use vela_vm::{Vm, VmError, VmErrorKind, VmResult};
+use vela_vm::{HostExecution, Value, Vm, VmError, VmErrorKind, VmResult};
 
 use crate::{EngineBuilder, HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry};
-use crate::{FunctionAccess, PermissionSet};
+use crate::{FunctionAccess, NativeMethodDesc, NativeMethodEntry, PermissionSet};
 
 #[derive(Clone)]
 pub struct Engine {
     registry: Arc<TypeRegistry>,
     native_functions: BTreeMap<FunctionId, NativeFunctionEntry>,
     host_native_functions: BTreeMap<FunctionId, HostNativeFunctionEntry>,
+    native_methods: BTreeMap<HostMethodId, NativeMethodEntry>,
     native_function_names: BTreeMap<String, FunctionId>,
     permissions: PermissionSet,
 }
@@ -29,6 +31,7 @@ impl Engine {
         registry: TypeRegistry,
         native_functions: Vec<NativeFunctionEntry>,
         host_native_functions: Vec<HostNativeFunctionEntry>,
+        native_methods: Vec<NativeMethodEntry>,
         permissions: PermissionSet,
     ) -> Self {
         let native_functions = native_functions
@@ -36,6 +39,10 @@ impl Engine {
             .map(|entry| (entry.desc.id, entry))
             .collect::<BTreeMap<_, _>>();
         let host_native_functions = host_native_functions
+            .into_iter()
+            .map(|entry| (entry.desc.id, entry))
+            .collect::<BTreeMap<_, _>>();
+        let native_methods = native_methods
             .into_iter()
             .map(|entry| (entry.desc.id, entry))
             .collect::<BTreeMap<_, _>>();
@@ -50,6 +57,7 @@ impl Engine {
             registry: Arc::new(registry),
             native_functions,
             host_native_functions,
+            native_methods,
             native_function_names,
             permissions,
         }
@@ -103,6 +111,32 @@ impl Engine {
     pub fn host_native_function_by_name(&self, name: &str) -> Option<&HostNativeFunctionEntry> {
         let id = self.native_function_names.get(name)?;
         self.host_native_function(*id)
+    }
+
+    #[must_use]
+    pub fn native_method(&self, id: HostMethodId) -> Option<&NativeMethodEntry> {
+        self.native_methods.get(&id)
+    }
+
+    #[must_use]
+    pub fn native_method_desc(&self, id: HostMethodId) -> Option<&NativeMethodDesc> {
+        self.native_method(id).map(|entry| &entry.desc)
+    }
+
+    pub fn call_native_method(
+        &self,
+        id: HostMethodId,
+        receiver: &HostPath,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+    ) -> VmResult<Value> {
+        let entry = self.native_method(id).ok_or_else(|| VmError {
+            kind: VmErrorKind::UnknownMethod {
+                method: format!("host method {}", id.get()),
+            },
+        })?;
+        check_permissions(&entry.desc.name, &entry.desc.access, &self.permissions)?;
+        (entry.function)(receiver, args, host)
     }
 
     pub fn install(&self, vm: &mut Vm) {

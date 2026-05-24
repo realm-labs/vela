@@ -642,10 +642,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   `TypeDesc::methods`, allowing host schemas to drive `CallHostMethod`
   lowering; duplicate host method names and IDs are rejected while the compiler
   method map remains name-based.
+- Added Engine native method descriptors and callables keyed by `HostMethodId`.
+  Native method registration injects method metadata into the owner host type,
+  exposes callable lookup/dispatch through `Engine::call_native_method`, and
+  still takes a `HostPath` plus `HostExecution` instead of a Rust `&mut`.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and fuller Engine native method callable APIs.
+  receiver facts and type-aware host method disambiguation.
 
 ## Next
 
-- Continue M10 with broader non-literal receiver facts or fuller Engine
-  native method callable APIs.
+- Continue M10 with broader non-literal receiver facts or type-aware host
+  method disambiguation.

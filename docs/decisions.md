@@ -2344,3 +2344,30 @@ Consequences:
   not expose mutable Rust references to scripts.
 - Type-aware host method disambiguation and callable native method dispatch
   remain future work.
+
+## 2026-05-25: Native Method Callables Use HostPath Receivers
+
+Status: Accepted
+
+Context:
+Engine schemas can now drive host method lowering, but there was still no
+Engine-owned callable table keyed by `HostMethodId`. The architecture requires
+native methods to be registered separately from reflectable descriptors while
+preserving the rule that scripts never receive real mutable Rust references.
+
+Decision:
+Add `NativeMethodDesc` and `NativeMethodEntry` in a focused Engine method
+module. `EngineBuilder::register_native_method_fn` accepts an owner `TypeKey`,
+injects `MethodDesc` metadata into that host type before building the immutable
+registry, and stores a callable keyed by `HostMethodId`. `Engine::call_native_method`
+invokes the callable with a `HostPath`, script `Value` args, and
+`HostExecution`, enforcing descriptor permissions before dispatch.
+
+Consequences:
+- Host method callables are registered through Engine with stable method IDs
+  and can be invoked by host-side integration code without exposing `&mut`
+  Rust objects.
+- Script-compiled method syntax still lowers to `CallHostMethod` and records
+  `PatchTx` operations; VM direct native-method dispatch remains future work.
+- Native method owners must be registered host schemas, and duplicate method
+  IDs/names remain rejected while host method lowering is name-based.

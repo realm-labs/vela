@@ -21,6 +21,7 @@ pub enum EngineErrorKind {
     DuplicateHostTypeId { id: u32 },
     DuplicateHostMethodId { id: u32 },
     DuplicateHostMethodName { name: String },
+    UnknownNativeMethodOwner { name: String },
 }
 
 pub type EngineResult<T> = Result<T, EngineError>;
@@ -46,6 +47,9 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DuplicateHostMethodName { name } => {
                 write!(formatter, "duplicate host method name {name}")
+            }
+            EngineErrorKind::UnknownNativeMethodOwner { name } => {
+                write!(formatter, "unknown native method owner type {name}")
             }
         }
     }

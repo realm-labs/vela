@@ -6,7 +6,7 @@ use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
     EffectSet, Engine, EngineErrorKind, FunctionAccess, NativeFunctionDesc, NativeFunctionId,
-    TypeHint,
+    NativeMethodDesc, TypeHint,
 };
 
 #[test]
@@ -242,6 +242,111 @@ fn main(player) {
             args: vec![HostValue::Int(10)],
         }
     );
+}
+
+#[test]
+fn engine_registers_callable_native_methods_for_host_paths() {
+    let method = HostMethodId::new(6);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .grant_permission("player.grant_exp")
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_native_method_fn(
+            NativeMethodDesc::new(owner, method, "grant_exp")
+                .param("amount", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+            move |receiver, args, host| {
+                let [Value::Int(amount)] = args else {
+                    return Ok(Value::Null);
+                };
+                host.tx.call_method(
+                    receiver.clone(),
+                    method,
+                    vec![HostValue::Int(*amount)],
+                    None,
+                )?;
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    player.grant_exp(10);
+    return 1;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            method,
+            &HostPath::new(host_ref),
+            &[Value::Int(10)],
+            &mut host,
+        ),
+        Ok(Value::Null)
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(10)],
+        }
+    );
+
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].path, HostPath::new(host_ref));
+}
+
+#[test]
+fn engine_rejects_native_methods_for_unknown_owner_types() {
+    let result = Engine::builder()
+        .register_native_method_fn(
+            NativeMethodDesc::new(
+                TypeKey::new(TypeId::new(99), "Missing"),
+                HostMethodId::new(1),
+                "grant_exp",
+            ),
+            |_, _, _| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::UnknownNativeMethodOwner {
+            name: "Missing".to_owned()
+        }
+    ));
 }
 
 #[test]
