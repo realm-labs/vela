@@ -941,3 +941,25 @@ Consequences:
   back to native dispatch.
 - Qualified constructor and variant validation remain intentionally limited
   until script type metadata and pattern HIR become richer in later milestones.
+
+## 2026-05-24: Cross-Module Resolution Respects Visibility
+
+Status: Accepted
+
+Context:
+HIR preserved declaration visibility, but import and qualified path resolution
+treated private declarations as cross-module targets. That made `pub`
+metadata observable in syntax but not in semantic access control.
+
+Decision:
+Only expose declarations across module boundaries when their visibility is
+`pub`. Same-module binding still sees private declarations. Private imports
+produce `hir::private_import` diagnostics before bytecode generation, and
+qualified-path refresh maps are filtered to visible declarations.
+
+Consequences:
+- Module APIs now have an enforceable public/private boundary in HIR.
+- Private imports fail during semantic validation instead of compiling to
+  declaration-backed bytecode.
+- Unresolved or non-script namespace calls can still fall back to native
+  dispatch when they do not name a visible script declaration.

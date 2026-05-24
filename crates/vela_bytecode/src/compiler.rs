@@ -1360,6 +1360,42 @@ fn main(player) {
     }
 
     #[test]
+    fn compiler_rejects_private_imports_before_codegen() {
+        let error = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.secret
+
+fn main() {
+    return secret();
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+fn secret() {
+    return 1;
+}
+"#,
+            ),
+        ])
+        .expect_err("private import should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::private_import"))
+        );
+    }
+
+    #[test]
     fn compiler_keeps_valid_program_bytecode_equivalent_after_hir_gate() {
         let program = compile_program_source(
             SourceId::new(1),

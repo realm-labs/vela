@@ -321,11 +321,12 @@ impl ModuleGraph {
         for module_index in 0..self.modules.len() {
             let import_count = self.modules[module_index].imports.len();
             for import_index in 0..import_count {
+                let importing_module = self.modules[module_index].id;
                 let import_path = self.modules[module_index].imports[import_index]
                     .path
                     .clone();
                 let span = self.modules[module_index].imports[import_index].span;
-                let resolution = self.resolve_import_path(&import_path, span);
+                let resolution = self.resolve_import_path(importing_module, &import_path, span);
                 self.modules[module_index].imports[import_index].resolution = resolution;
             }
         }
@@ -504,7 +505,7 @@ impl ModuleGraph {
                 let name = import_binding_name(import)?;
                 let declaration = match import.resolution {
                     Some(ImportResolution::Declaration(declaration)) => Some(declaration),
-                    None => self.lookup_import_declaration(&import.path),
+                    None => self.lookup_import_declaration(import.module, &import.path),
                 };
                 Some(ImportBinding { name, declaration })
             })
@@ -512,16 +513,37 @@ impl ModuleGraph {
     }
 
     fn qualified_declarations_with(&self, current: &HirModule) -> Vec<(Vec<String>, HirDeclId)> {
+        let mut declarations = self.qualified_declarations_for(current.id);
+        declarations.extend(self.qualified_declarations_in(current, current.id));
+        declarations.into_iter().collect()
+    }
+
+    fn qualified_declarations_for(
+        &self,
+        requesting_module: ModuleId,
+    ) -> BTreeMap<Vec<String>, HirDeclId> {
         self.modules
             .iter()
-            .chain(std::iter::once(current))
-            .flat_map(|module| {
-                module.declarations.names().filter_map(move |name| {
-                    let declaration = module.declarations.get(name)?;
-                    let mut path = module.path.segments().to_vec();
-                    path.push(name.to_owned());
-                    Some((path, declaration))
-                })
+            .flat_map(|module| self.qualified_declarations_in(module, requesting_module))
+            .collect()
+    }
+
+    fn qualified_declarations_in(
+        &self,
+        module: &HirModule,
+        requesting_module: ModuleId,
+    ) -> Vec<(Vec<String>, HirDeclId)> {
+        module
+            .declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = module.declarations.get(name)?;
+                if !self.declaration_visible_from(declaration, requesting_module) {
+                    return None;
+                }
+                let mut path = module.path.segments().to_vec();
+                path.push(name.to_owned());
+                Some((path, declaration))
             })
             .collect()
     }
@@ -578,36 +600,58 @@ impl ModuleGraph {
     }
 
     fn refresh_qualified_binding_resolutions(&mut self) {
-        let declarations = self
-            .modules
-            .iter()
-            .flat_map(|module| {
-                module.declarations.names().filter_map(move |name| {
-                    let declaration = module.declarations.get(name)?;
-                    let mut path = module.path.segments().to_vec();
-                    path.push(name.to_owned());
-                    Some((path, declaration))
-                })
+        let function_bindings = self
+            .bindings
+            .keys()
+            .filter_map(|declaration| {
+                let module = self.declarations.get(declaration)?.module;
+                let declarations = self.qualified_declarations_for(module);
+                Some((*declaration, declarations))
             })
-            .collect::<BTreeMap<_, _>>();
-
-        for bindings in self.bindings.values_mut() {
-            bindings.resolve_qualified_declarations(&declarations);
+            .collect::<Vec<_>>();
+        for (declaration, declarations) in function_bindings {
+            if let Some(bindings) = self.bindings.get_mut(&declaration) {
+                bindings.resolve_qualified_declarations(&declarations);
+            }
         }
-        for bindings in self.impl_method_bindings.values_mut() {
-            bindings.resolve_qualified_declarations(&declarations);
+
+        let impl_method_bindings = self
+            .impl_method_bindings
+            .iter()
+            .filter_map(|(method, bindings)| {
+                let module = self.declarations.get(&bindings.declaration)?.module;
+                let declarations = self.qualified_declarations_for(module);
+                Some((*method, declarations))
+            })
+            .collect::<Vec<_>>();
+        for (method, declarations) in impl_method_bindings {
+            if let Some(bindings) = self.impl_method_bindings.get_mut(&method) {
+                bindings.resolve_qualified_declarations(&declarations);
+            }
         }
     }
 
-    fn lookup_import_declaration(&self, path: &[String]) -> Option<HirDeclId> {
+    fn lookup_import_declaration(
+        &self,
+        requesting_module: ModuleId,
+        path: &[String],
+    ) -> Option<HirDeclId> {
         let (name, module_segments) = path.split_last()?;
         let module_path = ModulePath::new(module_segments.iter().cloned());
         let module_id = self.module_by_path.get(&module_path).copied()?;
-        self.module(module_id)
-            .and_then(|declarations| declarations.get(name))
+        let declaration = self
+            .module(module_id)
+            .and_then(|declarations| declarations.get(name))?;
+        self.declaration_visible_from(declaration, requesting_module)
+            .then_some(declaration)
     }
 
-    fn resolve_import_path(&mut self, path: &[String], span: Span) -> Option<ImportResolution> {
+    fn resolve_import_path(
+        &mut self,
+        requesting_module: ModuleId,
+        path: &[String],
+        span: Span,
+    ) -> Option<ImportResolution> {
         let Some((name, module_segments)) = path.split_last() else {
             self.diagnostics.push(
                 Diagnostic::error("empty import path")
@@ -631,7 +675,27 @@ impl ModuleGraph {
             .module(module_id)
             .and_then(|declarations| declarations.get(name));
         match declaration {
-            Some(declaration) => Some(ImportResolution::Declaration(declaration)),
+            Some(declaration) if self.declaration_visible_from(declaration, requesting_module) => {
+                Some(ImportResolution::Declaration(declaration))
+            }
+            Some(declaration) => {
+                let metadata = self.declaration(declaration)?;
+                self.diagnostics.push(
+                    Diagnostic::error(format!(
+                        "declaration `{}` in module `{}` is private",
+                        metadata.name,
+                        module_path.join()
+                    ))
+                    .with_code("hir::private_import")
+                    .with_span(span)
+                    .with_label(
+                        span,
+                        "private declaration cannot be imported from another module",
+                    )
+                    .with_label(metadata.span, "declaration is private"),
+                );
+                None
+            }
             None => {
                 self.diagnostics.push(
                     Diagnostic::error(format!(
@@ -646,6 +710,16 @@ impl ModuleGraph {
                 None
             }
         }
+    }
+
+    fn declaration_visible_from(
+        &self,
+        declaration: HirDeclId,
+        requesting_module: ModuleId,
+    ) -> bool {
+        self.declaration(declaration).is_some_and(|declaration| {
+            declaration.module == requesting_module || declaration.visibility == Visibility::Public
+        })
     }
 
     fn declaration_candidate_label(&self, module: ModuleId, name: &str) -> String {
@@ -870,6 +944,33 @@ struct level { value }
 
         assert_eq!(unresolved.labels.len(), 1);
         assert!(unresolved.labels[0].message.contains("grant"));
+    }
+
+    #[test]
+    fn private_imports_are_rejected_across_modules() {
+        let mut graph = ModuleGraph::new();
+        let reward = graph.add_source(source(1, "game.reward", "fn secret() { return 1; }"));
+        let main = graph.add_source(source(2, "game.main", "use game.reward.secret"));
+
+        graph.resolve_imports();
+
+        let private = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::private_import"))
+            .expect("private import diagnostic");
+        let imports = graph.imports(main).expect("main imports");
+        let secret = graph
+            .module(reward)
+            .and_then(|module| module.get("secret"))
+            .expect("secret declaration");
+
+        assert_eq!(imports[0].resolution, None);
+        assert_eq!(private.labels.len(), 2);
+        assert_eq!(
+            graph.declaration(secret).map(|decl| &decl.visibility),
+            Some(&Visibility::Private)
+        );
     }
 
     #[test]
@@ -1242,6 +1343,44 @@ pub const BONUS: int = 5;
                 .resolutions()
                 .any(|(_, resolution)| resolution == &BindingResolution::Declaration(bonus))
         );
+    }
+
+    #[test]
+    fn qualified_private_paths_do_not_resolve_across_modules() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.main",
+            r#"
+fn main() {
+    return game.reward.secret();
+}
+"#,
+        ));
+        graph.add_source(source(
+            2,
+            "game.reward",
+            r#"
+fn secret() { return 1; }
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+
+        graph.resolve_imports();
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        assert!(bindings.resolutions().any(|(_, resolution)| {
+            resolution
+                == &BindingResolution::QualifiedPath(vec![
+                    "game".to_owned(),
+                    "reward".to_owned(),
+                    "secret".to_owned(),
+                ])
+        }));
     }
 
     #[test]

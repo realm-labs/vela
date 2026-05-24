@@ -358,6 +358,12 @@ that introduce loops and closures.
 - Added HIR, compiler, and VM coverage proving direct paths such as
   `game.reward.grant()` and `game.config.BONUS` compile and execute across
   modules even when the target module is parsed later.
+- HIR import and qualified-path resolution now respect declaration visibility:
+  cross-module resolution only exposes `pub` declarations while same-module
+  references can still see private declarations.
+- Added HIR and compiler coverage proving private imports are rejected before
+  bytecode generation and private qualified paths do not resolve to
+  cross-module declaration IDs.
 
 ## Next
 
