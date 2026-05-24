@@ -1,0 +1,5 @@
+fn main(ctx, player) {
+    let stamp = ctx.now + ctx.tick;
+    ctx.emit("player.level_checked", player.level, stamp);
+    return stamp;
+}

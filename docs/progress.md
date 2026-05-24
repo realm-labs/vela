@@ -516,6 +516,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added canonical Option/Result standard constructors `option.some`,
   `option.none`, `result.ok`, and `result.err`, with source-level `?`
   propagation coverage in inline and managed-heap execution.
+- Added runnable context/event demo coverage for `ctx.now`, `ctx.tick`, and
+  `ctx.emit(...)` through the existing HostRef/PatchTx bridge, with VM
+  source-level managed-heap coverage and a structured CLI demo module.
 
 ## Next
 

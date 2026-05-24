@@ -4535,6 +4535,78 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_context_time_and_emit_records_patch_tx() {
+        let ctx_ref = HostRef::new(HostTypeId::new(9), HostObjectId::new(11), 1);
+        let now_field = FieldId::new(6);
+        let tick_field = FieldId::new(7);
+        let emit_method = HostMethodId::new(8);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(ctx) {
+    let stamp = ctx.now + ctx.tick;
+    ctx.emit("player.level_checked", stamp);
+    return stamp;
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("now", now_field)
+                .with_host_field("tick", tick_field)
+                .with_host_method("emit", emit_method),
+        )
+        .expect("compile context source");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(
+            HostPath::new(ctx_ref).field(now_field),
+            HostValue::Int(1000),
+        );
+        adapter.insert_value(HostPath::new(ctx_ref).field(tick_field), HostValue::Int(42));
+        adapter.insert_method_return(emit_method, HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host_managed_heap_and_budget(
+                &program,
+                "main",
+                &[Value::HostRef(ctx_ref)],
+                &mut host,
+                &mut budget,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(1042)));
+        assert!(adapter.method_calls().is_empty());
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method: emit_method,
+                args: vec![
+                    HostValue::String("player.level_checked".into()),
+                    HostValue::Int(1042)
+                ]
+            }
+        );
+        tx.apply(&mut adapter).expect("apply context emit patch");
+        assert_eq!(
+            adapter.method_calls(),
+            &[(
+                HostPath::new(ctx_ref),
+                emit_method,
+                vec![
+                    HostValue::String("player.level_checked".into()),
+                    HostValue::Int(1042)
+                ]
+            )]
+        );
+    }
+
+    #[test]
     fn compiled_source_uses_reflection_natives_for_host_state() {
         let host_ref = player_ref(3);
         let program = compile_program_source(

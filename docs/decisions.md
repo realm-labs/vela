@@ -1648,3 +1648,27 @@ Consequences:
   they use the normal enum value and heap conversion paths.
 - The design stays non-generic and leaves future TypeRegistry stdlib schemas as
   metadata rather than a separate runtime representation.
+
+## 2026-05-24: Context Time And Emit Use The Host Bridge
+
+Status: Accepted
+
+Context:
+M13 calls for context/time helpers and event emit workflows. The architecture
+requires host mutation and side effects to stay behind HostRef, HostPath, and
+PatchTx rather than direct VM access to server state or wall-clock time.
+
+Decision:
+Model `ctx.now` and `ctx.tick` as configured host field reads, and model
+`ctx.emit(...)` as a configured host method call that records a
+`CallHostMethod` patch. The CLI demo runner provides `ctx` and `player` host
+refs by matching `main` parameter names, while the VM/compiler continue to use
+the existing host field and host method bytecode path.
+
+Consequences:
+- Context time remains supplied by the embedding host instead of direct system
+  time inside scripts.
+- Event emission is deferred until PatchTx safe-point apply, matching other
+  host effects.
+- The demo runner can prove context and player workflows without adding a
+  separate event bus abstraction before the Engine API stabilizes.
