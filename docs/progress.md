@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-M1: Syntax Frontend.
+M2: Minimal Bytecode VM Loop.
 
 ## Completed
 
@@ -32,10 +32,11 @@ M1: Syntax Frontend.
   record literals, lambdas, assignments, and binary/unary expressions.
 - Added parser tests for body statements, host-style assignment expressions,
   match arms, record/map literals, lambdas, and literal returns.
+- Added compact parser snapshot coverage for core M1 syntax and recovery tests
+  that assert malformed function-body diagnostics keep source spans.
 
 ## Next
 
-- Finish M1 hardening with parser snapshot fixtures and broader recovery tests
-  for malformed statement and expression input.
-- Start M2 with a `vela_bytecode` crate and a minimal register bytecode
-  `CodeObject` once the syntax snapshots are stable.
+- Start M2 with `vela_bytecode` and `vela_vm` crates.
+- Implement a minimal register `CodeObject`, constants, arithmetic/comparison
+  instructions, function calls, and native print/log call support.
