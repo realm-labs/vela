@@ -842,6 +842,42 @@ impl<'ast> Compiler<'ast> {
                     return Ok(dst);
                 }
 
+                if let ExprKind::Field { base, name } = &callee.kind {
+                    reject_named_args(args, "script method call")?;
+                    let receiver = self.compile_expr(base)?;
+                    let arg_registers = args
+                        .iter()
+                        .map(|arg| self.compile_expr(&arg.value))
+                        .collect::<CompileResult<Vec<_>>>()?;
+                    let dst = self.alloc_register()?;
+                    self.emit(InstructionKind::CallMethod {
+                        dst,
+                        receiver,
+                        method: name.clone(),
+                        args: arg_registers,
+                    });
+                    return Ok(dst);
+                }
+                if let ExprKind::Path(path) = &callee.kind
+                    && let [receiver_name, method] = path.as_slice()
+                    && self.locals.contains_key(receiver_name)
+                {
+                    reject_named_args(args, "script method call")?;
+                    let receiver = self.local_register_at_span(callee.span, receiver_name)?;
+                    let arg_registers = args
+                        .iter()
+                        .map(|arg| self.compile_expr(&arg.value))
+                        .collect::<CompileResult<Vec<_>>>()?;
+                    let dst = self.alloc_register()?;
+                    self.emit(InstructionKind::CallMethod {
+                        dst,
+                        receiver,
+                        method: method.clone(),
+                        args: arg_registers,
+                    });
+                    return Ok(dst);
+                }
+
                 let dst = self.alloc_register()?;
                 if let Some((declaration, name)) = self.script_function_call(callee) {
                     let args = self.compile_script_call_args(declaration, args)?;
@@ -2280,6 +2316,26 @@ fn main(player) {
                 method: lowered_method,
                 ..
             } if lowered_method == method
+        )));
+    }
+
+    #[test]
+    fn compiler_lowers_script_value_method_calls() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let values = [1, 2, 3];
+    return values.len();
+}
+"#,
+            "main",
+        )
+        .expect("script value method call should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallMethod { method, .. } if method == "len"
         )));
     }
 

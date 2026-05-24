@@ -4,6 +4,7 @@ pub mod heap;
 mod indexing;
 mod iteration;
 mod ranges;
+mod script_methods;
 mod try_propagation;
 
 use std::collections::{BTreeMap, HashMap};
@@ -13,6 +14,7 @@ use std::sync::Arc;
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 pub use iteration::IteratorState;
 pub use ranges::RangeValue;
+use script_methods::call_method;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
@@ -140,6 +142,9 @@ pub enum VmErrorKind {
     },
     UnknownFunction {
         name: String,
+    },
+    UnknownMethod {
+        method: String,
     },
     ArityMismatch {
         name: String,
@@ -1062,6 +1067,20 @@ impl Vm {
                         heap.truncate_protected_roots(protected_root_len);
                     }
                     let result = result?;
+                    frame.write(*dst, result)?;
+                }
+                InstructionKind::CallMethod {
+                    dst,
+                    receiver,
+                    method,
+                    args,
+                } => {
+                    let values = args
+                        .iter()
+                        .map(|register| frame.read(*register).cloned())
+                        .collect::<VmResult<Vec<_>>>()?;
+                    let result =
+                        call_method(frame.read(*receiver)?, method, &values, heap.as_deref())?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::TryPropagate { dst, src } => {
@@ -2450,6 +2469,30 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_script_value_methods() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let values = [1, 2, 3];
+    let rewards = {"gold": 4, "xp": 6};
+    let empty = [];
+    if empty.is_empty() && values.len() == 3 && rewards.len() == 2 && ("gold").len() == 4 {
+        return (1..=3).len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile script value methods");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(3))
+        );
+    }
+
+    #[test]
     fn runs_compiled_break_continue_source() {
         let code = compile_function_source(
             SourceId::new(1),
@@ -2772,6 +2815,31 @@ fn main() {
         assert_eq!(
             Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
             Ok(Value::Int(9))
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_script_value_methods() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let names = ["gold", "xp"];
+    let rewards = {"gold": 4, "xp": 6};
+    if names.len() == 2 && rewards.is_empty() == false && ("quest").len() == 5 {
+        return names[0].len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile heap script value methods");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            Ok(Value::Int(4))
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }

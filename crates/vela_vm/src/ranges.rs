@@ -22,6 +22,27 @@ impl RangeValue {
             done: false,
         }
     }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        if self.inclusive {
+            self.start > self.end
+        } else {
+            self.start >= self.end
+        }
+    }
+
+    pub(crate) fn len(&self) -> Option<i64> {
+        if self.is_empty() {
+            return Some(0);
+        }
+        let distance = i128::from(self.end) - i128::from(self.start);
+        let len = if self.inclusive {
+            distance.checked_add(1)?
+        } else {
+            distance
+        };
+        i64::try_from(len).ok()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

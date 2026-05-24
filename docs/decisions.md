@@ -1384,3 +1384,31 @@ Consequences:
 - Non-integer range bounds are VM type errors.
 - Range values stay outside host conversion and reflection until the standard
   library defines a public range API.
+
+## 2026-05-24: Script Value Methods Use Explicit VM Dispatch
+
+Status: Accepted
+
+Context:
+M9 requires method calls on script values and stdlib-style values, while host
+mutation must remain routed through `CallHostMethod`/`PatchTx`. Existing
+lowering treated unconfigured receiver calls as record-field reads or native
+namespace calls, so ordinary collection syntax such as `values.len()` did not
+execute.
+
+Decision:
+Add `CallMethod` bytecode for script value methods. Configured host methods keep
+priority and still lower to `CallHostMethod`; otherwise receiver method calls on
+locals or field expressions lower to `CallMethod`. The VM dispatches first-phase
+script methods through a focused `script_methods` module. This slice implements
+side-effect-free `len()` and `is_empty()` for strings, arrays, maps,
+records/enums, ranges, and heap-backed collection values.
+
+Consequences:
+- Common collection and string method syntax now executes without native
+  namespace glue.
+- Script value methods cannot mutate host state or bypass `PatchTx`.
+- Method coverage can grow in `script_methods` while M10/M13 add stable metadata
+  and richer stdlib APIs.
+- Unknown script methods report a VM method error instead of being miscompiled as
+  record field calls.

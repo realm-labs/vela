@@ -223,6 +223,12 @@ pub enum InstructionKind {
         callee: Register,
         args: Vec<Register>,
     },
+    CallMethod {
+        dst: Register,
+        receiver: Register,
+        method: String,
+        args: Vec<Register>,
+    },
     TryPropagate {
         dst: Register,
         src: Register,

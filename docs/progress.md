@@ -450,6 +450,12 @@ method-dispatch coverage before moving into stable type metadata.
 - Added bytecode and VM execution for integer range values as lazy iterables,
   with compiler and VM coverage for range-based `for-in` loops in inline and
   managed-heap execution.
+- Added script-value method lowering and VM dispatch for `len()` and
+  `is_empty()` on strings, arrays, maps, records/enums, ranges, and heap-backed
+  collection values.
+- Added compiler and VM coverage proving value methods execute in inline and
+  managed-heap execution while configured host methods still lower through
+  `CallHostMethod`.
 
 ## Next
 
