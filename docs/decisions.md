@@ -706,3 +706,26 @@ Consequences:
   diagnostics from body binding.
 - Unresolved imports are still reported by module import diagnostics rather
   than by ad hoc function-body name lookup.
+
+## 2026-05-24: Match Pattern Registers Track HIR Locals
+
+Status: Accepted
+
+Context:
+HIR already models match pattern bindings as locals, but bytecode lowering only
+inserted record-pattern field bindings into the legacy string register map.
+Nested arm-body shadowing could therefore make a later read of the pattern
+binding fall back to the wrong same-name register.
+
+Decision:
+When lowering a match arm, record pattern field registers in both the legacy
+name map and the HIR local map using the pattern binding facts from the arm
+body span. Snapshot and restore both maps around each arm.
+
+Consequences:
+- Match pattern bindings follow the same HIR local-resolution path as
+  parameters, `let` bindings, and record shorthand fields.
+- Nested shadowing inside match arm bodies no longer changes the selected
+  pattern binding register.
+- More pattern forms can reuse this HIR-local register path as M9 expands
+  executable match support.

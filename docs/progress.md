@@ -304,6 +304,10 @@ that introduce loops and closures.
   `resolve_imports()` handles forward module imports.
 - Added HIR coverage proving imported value reads resolve to declaration facts
   instead of string-only import placeholders.
+- Bytecode match lowering now records record-pattern field bindings by HIR
+  local ID and restores HIR local maps after each match arm.
+- Added compiler regression coverage proving match pattern field bindings still
+  resolve correctly after nested arm-body shadowing.
 
 ## Next
 

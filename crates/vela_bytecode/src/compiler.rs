@@ -630,7 +630,8 @@ impl<'ast> Compiler<'ast> {
             }
             let next_arm_jump = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
-            self.bind_match_fields(scrutinee, &arm.pattern)?;
+            let previous_hir_locals = self.hir_locals.clone();
+            self.bind_match_fields(scrutinee, &arm.pattern, arm.body.span)?;
             let arm_returned = match &arm.body.kind {
                 ExprKind::Block(block) => self.compile_statements(&block.statements)?,
                 _ => {
@@ -639,6 +640,7 @@ impl<'ast> Compiler<'ast> {
                 }
             };
             self.locals = previous_locals;
+            self.hir_locals = previous_hir_locals;
             all_arms_return &= arm_returned;
             if !arm_returned {
                 end_jumps.push(self.emit_jump());
@@ -685,7 +687,12 @@ impl<'ast> Compiler<'ast> {
         }
     }
 
-    fn bind_match_fields(&mut self, scrutinee: Register, pattern: &Pattern) -> CompileResult<()> {
+    fn bind_match_fields(
+        &mut self,
+        scrutinee: Register,
+        pattern: &Pattern,
+        body_span: Span,
+    ) -> CompileResult<()> {
         let Pattern::RecordVariant { fields, .. } = pattern else {
             return Ok(());
         };
@@ -697,7 +704,13 @@ impl<'ast> Compiler<'ast> {
                 value: scrutinee,
                 field: field.name.clone(),
             });
-            self.locals.insert(binding, dst);
+            self.locals.insert(binding.clone(), dst);
+            if let Some(local) =
+                self.bindings
+                    .local_named_at(&binding, LocalBindingKind::Pattern, body_span)
+            {
+                self.hir_locals.insert(local, dst);
+            }
         }
         Ok(())
     }
@@ -1016,6 +1029,47 @@ fn main() {
             .expect("record shorthand field register");
 
         assert_eq!(value_register, Register(0));
+    }
+
+    #[test]
+    fn compiler_uses_hir_bindings_for_match_pattern_fields() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main(reward) {
+    let amount = 100;
+    match reward {
+        Reward.Granted { amount } => {
+            {
+                let amount = 2;
+            }
+            return amount;
+        }
+        _ => {
+            return 0;
+        }
+    }
+}
+"#,
+            "main",
+        )
+        .expect("match pattern bindings should compile through HIR bindings");
+
+        let pattern_register = code
+            .instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::GetEnumField { dst, ref field, .. } if field == "amount" => {
+                    Some(dst)
+                }
+                _ => None,
+            })
+            .expect("pattern field register");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::Return { src } if src == pattern_register
+        )));
     }
 
     #[test]
