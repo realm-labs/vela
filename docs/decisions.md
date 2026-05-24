@@ -729,3 +729,26 @@ Consequences:
   pattern binding register.
 - More pattern forms can reuse this HIR-local register path as M9 expands
   executable match support.
+
+## 2026-05-24: Literal Const Reads Compile From HIR Declarations
+
+Status: Accepted
+
+Context:
+HIR indexes const declarations and rejects side-effecting const initializers,
+but bytecode local path lowering still treated a reference such as `BONUS` as a
+missing local even when HIR resolved it to a top-level const declaration.
+
+Decision:
+Carry literal const initializer values from the semantic source into the
+bytecode compiler. When a path expression resolves to a const declaration with
+a literal initializer, emit a normal `LoadConst` instruction instead of falling
+back to legacy local lookup.
+
+Consequences:
+- Simple configuration constants are executable through the same HIR
+  declaration facts used by functions and imports.
+- Top-level consts remain side-effect free; no module-load execution path is
+  introduced.
+- Non-literal const evaluation remains a separate compiler feature rather than
+  being inferred during general expression lowering.

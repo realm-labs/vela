@@ -1,6 +1,6 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, FieldId, SourceId, Span};
@@ -76,6 +76,7 @@ pub fn compile_function_source_with_options(
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
     let script_function_declarations = semantic.script_function_declarations();
+    let const_values = semantic.literal_const_values()?;
     let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
     })?;
@@ -85,6 +86,7 @@ pub fn compile_function_source_with_options(
         signature,
         bindings,
         script_function_declarations,
+        const_values,
         options.clone(),
     )?
     .compile()
@@ -102,6 +104,7 @@ pub fn compile_program_source_with_options(
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
     let script_function_declarations = semantic.script_function_declarations();
+    let const_values = semantic.literal_const_values()?;
     let mut program = Program::new();
 
     for name in &script_functions {
@@ -114,6 +117,7 @@ pub fn compile_program_source_with_options(
                 signature,
                 bindings,
                 script_function_declarations.clone(),
+                const_values.clone(),
                 options.clone(),
             )?
             .compile()?,
@@ -180,6 +184,26 @@ impl SemanticSource {
             .collect()
     }
 
+    fn literal_const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
+        self.parsed
+            .items
+            .iter()
+            .filter_map(|item| {
+                let ItemKind::Const(item) = &item.kind else {
+                    return None;
+                };
+                let declaration = self.graph.module(self.module)?.get(&item.name)?;
+                Some((declaration, &item.value.kind))
+            })
+            .filter_map(|(declaration, value)| match value {
+                ExprKind::Literal(literal) => {
+                    Some(compile_literal_constant(literal).map(|value| (declaration, value)))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
         let declaration = self.graph.module(self.module)?.get(name)?;
         let metadata = self.graph.declaration(declaration)?;
@@ -213,6 +237,7 @@ struct Compiler<'ast> {
     next_register: u16,
     body: &'ast Block,
     script_function_declarations: BTreeSet<HirDeclId>,
+    const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
 }
 
@@ -222,6 +247,7 @@ impl<'ast> Compiler<'ast> {
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
         script_function_declarations: BTreeSet<HirDeclId>,
+        const_values: BTreeMap<HirDeclId, Constant>,
         options: CompilerOptions,
     ) -> CompileResult<Self> {
         let param_count = u16::try_from(signature.params.len())
@@ -255,6 +281,7 @@ impl<'ast> Compiler<'ast> {
             next_register: param_count,
             body: &function.body,
             script_function_declarations,
+            const_values,
             options,
         })
     }
@@ -476,7 +503,7 @@ impl<'ast> Compiler<'ast> {
         Ok(())
     }
 
-    fn compile_local_path(&self, span: Span, path: &[String]) -> CompileResult<Register> {
+    fn compile_local_path(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
         let [name] = path else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "path expression",
@@ -485,11 +512,17 @@ impl<'ast> Compiler<'ast> {
         self.local_register_at_span(span, name)
     }
 
-    fn local_register_at_span(&self, span: Span, name: &str) -> CompileResult<Register> {
+    fn local_register_at_span(&mut self, span: Span, name: &str) -> CompileResult<Register> {
         if let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(span)
             && let Some(register) = self.hir_locals.get(local).copied()
         {
             return Ok(register);
+        }
+        if let Some(BindingResolution::Declaration(declaration)) =
+            self.bindings.resolution_at_span(span)
+            && let Some(value) = self.const_values.get(declaration).cloned()
+        {
+            return self.emit_constant(value);
         }
         self.locals
             .get(name)
@@ -550,14 +583,7 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_literal(&mut self, literal: &Literal) -> CompileResult<Register> {
-        let constant = match literal {
-            Literal::Null => Constant::Null,
-            Literal::Bool(value) => Constant::Bool(*value),
-            Literal::Int(value) => Constant::Int(parse_int(value)?),
-            Literal::Float(value) => Constant::Float(parse_float(value)?),
-            Literal::String(value) => Constant::String(value.clone()),
-        };
-        self.emit_constant(constant)
+        self.emit_constant(compile_literal_constant(literal)?)
     }
 
     fn compile_binary(
@@ -844,6 +870,16 @@ fn map_key_name(key: &Expr) -> CompileResult<String> {
     }
 }
 
+fn compile_literal_constant(literal: &Literal) -> CompileResult<Constant> {
+    Ok(match literal {
+        Literal::Null => Constant::Null,
+        Literal::Bool(value) => Constant::Bool(*value),
+        Literal::Int(value) => Constant::Int(parse_int(value)?),
+        Literal::Float(value) => Constant::Float(parse_float(value)?),
+        Literal::String(value) => Constant::String(value.clone()),
+    })
+}
+
 fn parse_int(value: &str) -> CompileResult<i64> {
     value
         .replace('_', "")
@@ -969,6 +1005,42 @@ fn main(player: game.Player, amount: int) -> int {
         .expect("typed params should compile through HIR signature metadata");
 
         assert_eq!(code.params, ["player", "amount"]);
+    }
+
+    #[test]
+    fn compiler_uses_hir_declarations_for_literal_const_reads() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+const BONUS: int = 5;
+
+fn main() {
+    return BONUS;
+}
+"#,
+            "main",
+        )
+        .expect("literal const reads should compile through HIR declaration facts");
+
+        let returned = code
+            .instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::Return { src } => Some(src),
+                _ => None,
+            })
+            .expect("return instruction");
+        let constant = code.instructions.iter().find_map(|instruction| {
+            let InstructionKind::LoadConst { dst, constant } = instruction.kind else {
+                return None;
+            };
+            (dst == returned).then_some(constant)
+        });
+
+        assert_eq!(
+            constant.map(|constant| &code.constants[constant.0]),
+            Some(&Constant::Int(5))
+        );
     }
 
     #[test]

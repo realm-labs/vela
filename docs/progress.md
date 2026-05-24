@@ -308,6 +308,11 @@ that introduce loops and closures.
   local ID and restores HIR local maps after each match arm.
 - Added compiler regression coverage proving match pattern field bindings still
   resolve correctly after nested arm-body shadowing.
+- Bytecode local path lowering now recognizes HIR const declaration
+  resolutions and compiles literal const initializers into loadable bytecode
+  constants.
+- Added compiler regression coverage proving literal top-level const reads no
+  longer fall through to legacy unknown-local lookup.
 
 ## Next
 
