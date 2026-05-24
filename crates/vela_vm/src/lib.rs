@@ -479,6 +479,14 @@ impl Vm {
         self.execute(code, None, &[], None, Some(heap), Some(budget))
     }
 
+    pub fn run_with_managed_heap_and_budget(
+        &self,
+        code: &CodeObject,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        self.execute_with_managed_heap_and_budget(code, None, &[], None, budget)
+    }
+
     pub fn run_program(&self, program: &Program, entry: &str, args: &[Value]) -> VmResult<Value> {
         let code = program.function(entry).ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownFunction {
@@ -519,6 +527,21 @@ impl Vm {
         self.execute(code, Some(program), args, None, Some(heap), Some(budget))
     }
 
+    pub fn run_program_with_managed_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute_with_managed_heap_and_budget(code, Some(program), args, None, budget)
+    }
+
     pub fn run_with_host(
         &self,
         code: &CodeObject,
@@ -544,6 +567,15 @@ impl Vm {
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
         self.execute(code, None, &[], Some(host), Some(heap), Some(budget))
+    }
+
+    pub fn run_with_host_managed_heap_and_budget(
+        &self,
+        code: &CodeObject,
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        self.execute_with_managed_heap_and_budget(code, None, &[], Some(host), budget)
     }
 
     pub fn run_program_with_host(
@@ -599,6 +631,43 @@ impl Vm {
             Some(heap),
             Some(budget),
         )
+    }
+
+    pub fn run_program_with_host_managed_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute_with_managed_heap_and_budget(code, Some(program), args, Some(host), budget)
+    }
+
+    fn execute_with_managed_heap_and_budget(
+        &self,
+        code: &CodeObject,
+        program: Option<&Program>,
+        args: &[Value],
+        host: Option<&mut HostExecution<'_>>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let result = self.execute(
+            code,
+            program,
+            args,
+            host,
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        finish_managed_heap_result(result, &mut heap_execution, budget)
     }
 
     fn execute(
@@ -1322,6 +1391,16 @@ fn store_value_in_heap_if_needed(
     }
 }
 
+fn finish_managed_heap_result(
+    result: VmResult<Value>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<Value> {
+    let result = result.and_then(|value| materialize_value(&value, Some(heap)));
+    heap.heap.collect_full_with_budget(&[], Some(budget));
+    result
+}
+
 fn get_record_field_value(
     value: &Value,
     field: &str,
@@ -1953,6 +2032,115 @@ fn main() {
             budget.memory_bytes_allocated(),
             heap_execution.heap.allocated_bytes()
         );
+    }
+
+    #[test]
+    fn managed_heap_execution_materializes_return_and_releases_budget() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return Reward { item_id: "gold", count: 2 };
+}
+"#,
+        )
+        .expect("compile record return source");
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+        let mut fields = BTreeMap::new();
+        fields.insert("count".into(), Value::Int(2));
+        fields.insert("item_id".into(), Value::String("gold".into()));
+
+        let result = Vm::new()
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("run managed heap source");
+
+        assert_eq!(
+            result,
+            Value::Record {
+                type_name: "Reward".into(),
+                fields,
+            }
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_execution_releases_budget_after_errors() {
+        let mut code = CodeObject::new("main", 2);
+        let label = code.push_constant(Constant::String("allocated-before-error".into()));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: label,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::CallNative {
+            dst: Some(Register(1)),
+            name: "missing".into(),
+            args: Vec::new(),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(0),
+        }));
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let error = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect_err("missing native should fail");
+
+        assert_eq!(
+            error.kind,
+            VmErrorKind::UnknownNative {
+                name: "missing".into()
+            }
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_host_execution_materializes_return_and_records_patch() {
+        let host_ref = player_ref(3);
+        let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+        let gold = code.push_constant(Constant::String("gold".into()));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+            root: Register(0),
+            field: level_field(),
+            src: Register(1),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(1),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
+        let mut tx = PatchTx::new();
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new()
+                .run_program_with_host_managed_heap_and_budget(
+                    &program,
+                    "main",
+                    &[Value::HostRef(host_ref)],
+                    &mut host,
+                    &mut budget,
+                )
+                .expect("run managed host heap source")
+        };
+
+        assert_eq!(result, Value::String("gold".into()));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::Set(HostValue::String("gold".into()))
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
     #[test]

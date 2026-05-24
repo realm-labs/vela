@@ -415,3 +415,30 @@ Consequences:
   accounting aligned with the heap.
 - Heap-backed execution now has a constructor-controlled runtime context,
   leaving inline compatibility entrypoints unchanged during migration.
+
+## 2026-05-24: Managed Heap Entrypoints Materialize Results
+
+Status: Accepted
+
+Context:
+Explicit heap-backed entrypoints are useful for tests and embedders that want
+to own `ScriptHeap`, but the default embedding path should not require callers
+to manage temporary heap lifetime just to execute a script. Returning raw
+`HeapRef` values from a VM-owned temporary heap would be invalid after the heap
+is dropped.
+
+Decision:
+Add managed heap entrypoints that create a temporary `ScriptHeap`, run the
+heap-backed VM path with `ExecutionBudget`, materialize the returned value into
+ordinary `Value` shapes, then collect the temporary heap with no roots to
+release live memory accounting. The cleanup runs for both successful returns
+and VM errors. The CLI demo now uses this managed heap path with explicit
+runtime budgets.
+
+Consequences:
+- Embedding-facing execution can use heap-backed bytecode without exposing
+  invalid temporary `GcRef` handles to callers.
+- `ExecutionBudget::memory_bytes_allocated` returns to zero after managed
+  execution completes or fails.
+- Explicit heap entrypoints remain available for long-lived hosts that own a
+  script heap across ticks.

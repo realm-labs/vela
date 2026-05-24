@@ -5,7 +5,7 @@ use std::fs;
 use vela_bytecode::compiler::{CompilerOptions, compile_program_source_with_options};
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchTx, ScriptStateAdapter};
-use vela_vm::{HostExecution, Value, Vm};
+use vela_vm::{ExecutionBudget, HostExecution, Value, Vm};
 
 fn main() {
     if let Err(error) = run() {
@@ -30,13 +30,20 @@ fn run() -> Result<(), Box<dyn Error>> {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path.clone(), HostValue::Int(9));
     let mut tx = PatchTx::new();
+    let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_with_host(&program, "main", &[Value::HostRef(player)], &mut host)
+            .run_program_with_host_managed_heap_and_budget(
+                &program,
+                "main",
+                &[Value::HostRef(player)],
+                &mut host,
+                &mut budget,
+            )
             .map_err(|error| format!("{error:?}"))?
     };
     let patch_count = tx.patches().len();

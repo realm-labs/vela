@@ -218,8 +218,13 @@ script heap are implemented; VM value migration and GC pacing remain.
   calls.
 - Added a VM test proving safe-point GC can sweep unreachable objects created
   by a nested call without collecting heap refs still held by the caller frame.
+- Added managed heap VM entrypoints that own a temporary `ScriptHeap`, execute
+  the heap-backed path, materialize returned heap refs, and release temporary
+  heap memory from `ExecutionBudget` after success or failure.
+- Moved the `vela_cli` demo runner onto managed heap execution with explicit
+  instruction, memory, call-depth, and patch budgets.
 
 ## Next
 
-- Continue moving heap-backed execution toward the default VM path while
-  preserving inline compatibility entrypoints during migration.
+- Audit remaining M7 acceptance coverage, then begin M8 resolver/HIR work once
+  runtime safety and GC migration are sufficiently verified.
