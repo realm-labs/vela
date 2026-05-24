@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum HostValue {
     Null,
@@ -6,6 +8,7 @@ pub enum HostValue {
     Float(f64),
     String(String),
     Array(Vec<HostValue>),
+    Map(BTreeMap<String, HostValue>),
 }
 
 pub(crate) fn add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {

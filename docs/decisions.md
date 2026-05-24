@@ -2581,3 +2581,29 @@ Consequences:
 - A later `set` in the same transaction replaces the tombstone with a value.
 - Rollback-safe multi-patch apply and conflict reporting remain future M11
   work.
+
+## 2026-05-25: Host Values Support String-Keyed Maps
+
+Status: Accepted
+
+Context:
+M11 requires host value conversion for common script containers. Arrays and
+scalars could already cross the host boundary, but script maps could not be
+written to host paths or returned from exact-path host reads without failing
+conversion.
+
+Decision:
+Add `HostValue::Map(BTreeMap<String, HostValue>)` and convert script
+`Value::Map` plus heap-backed `HeapValue::Map` into that host representation.
+Host map values read back from an exact host path become script `Value::Map`
+values, preserving the existing string-keyed script map model.
+
+Consequences:
+- Managed-heap script maps can be recorded in `PatchTx::Set` patches.
+- Reads of exact map-valued host paths can use existing script map methods such
+  as `len`.
+- Nested key reads after setting an entire map still require a future
+  overlay-descendant lookup model; this change does not reinterpret a
+  `HostPath::key` as indexing into an overlaid parent map.
+- Record, enum, host-ref, and richer nullable conversions remain future M11
+  work.

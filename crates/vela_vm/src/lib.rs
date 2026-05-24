@@ -2386,6 +2386,12 @@ fn value_from_host(value: HostValue) -> Value {
         HostValue::Float(value) => Value::Float(value),
         HostValue::String(value) => Value::String(value),
         HostValue::Array(values) => Value::Array(values.into_iter().map(value_from_host).collect()),
+        HostValue::Map(values) => Value::Map(
+            values
+                .into_iter()
+                .map(|(key, value)| (key, value_from_host(value)))
+                .collect(),
+        ),
     }
 }
 
@@ -2405,6 +2411,11 @@ fn value_to_host(
             .map(|value| value_to_host(value, operation, heap))
             .collect::<VmResult<Vec<_>>>()
             .map(HostValue::Array),
+        Value::Map(values) => values
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), value_to_host(value, operation, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(HostValue::Map),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
             Some(HeapValue::Array(values)) => values
@@ -2413,10 +2424,17 @@ fn value_to_host(
                 .map(|value| value_to_host(&value, operation, heap))
                 .collect::<VmResult<Vec<_>>>()
                 .map(HostValue::Array),
+            Some(HeapValue::Map(values)) => values
+                .iter()
+                .map(|(key, value)| {
+                    let value = value_from_heap_slot(value);
+                    Ok((key.clone(), value_to_host(&value, operation, heap)?))
+                })
+                .collect::<VmResult<BTreeMap<_, _>>>()
+                .map(HostValue::Map),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
         Value::Set(_)
-        | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::Range(_)
@@ -4927,6 +4945,53 @@ fn main() {
         assert_eq!(
             tx.patches()[0].op,
             PatchOp::Set(HostValue::String("gold".into()))
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn managed_heap_host_execution_converts_map_for_host_write_and_overlay_read() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.level = {"class": "mage", score: 3};
+    return player.level.len();
+}
+"#,
+            &CompilerOptions::new().with_host_field("level", level_field()),
+        )
+        .expect("compile host map write source");
+        let mut adapter = host_adapter(host_ref, HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new()
+                .run_program_with_host_managed_heap_and_budget(
+                    &program,
+                    "main",
+                    &[Value::HostRef(host_ref)],
+                    &mut host,
+                    &mut budget,
+                )
+                .expect("run managed host map source")
+        };
+
+        let mut expected = BTreeMap::new();
+        expected.insert("class".into(), HostValue::String("mage".into()));
+        expected.insert("score".into(), HostValue::Int(3));
+        assert_eq!(result, Value::Int(2));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Map(expected)));
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Null)
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
