@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use vela_bytecode::Program;
 
 use crate::heap::{GcRef, HeapValue};
@@ -155,6 +157,39 @@ pub(crate) fn sum(
     Ok(total.into_value())
 }
 
+pub(crate) fn group_by(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("group_by", args, 1)?;
+    let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
+    let mut groups = BTreeMap::<String, Value>::new();
+    for value in values {
+        let protected = groups.values().cloned().collect::<Vec<_>>();
+        let key_value = call_unary_callback(
+            &mut runtime,
+            "method group_by",
+            &args[0],
+            value.clone(),
+            &protected,
+        )?;
+        let key = group_key(&key_value, runtime.heap.as_deref())?;
+        match groups.entry(key) {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(Value::Array(vec![value]));
+            }
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                let Value::Array(values) = entry.get_mut() else {
+                    unreachable!("group_by only stores array group values");
+                };
+                values.push(value);
+            }
+        }
+    }
+    Ok(Value::Map(groups))
+}
+
 enum NumericTotal {
     Int(i64),
     Float(f64),
@@ -193,6 +228,17 @@ impl NumericTotal {
             NumericTotal::Int(value) => Value::Int(value),
             NumericTotal::Float(value) => Value::Float(value),
         }
+    }
+}
+
+fn group_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
+    match value {
+        Value::String(value) => Ok(value.clone()),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(value.clone()),
+            _ => type_error("method group_by"),
+        },
+        _ => type_error("method group_by"),
     }
 }
 
@@ -394,6 +440,78 @@ fn main() {
             error.kind,
             VmErrorKind::TypeMismatch {
                 operation: "method sum"
+            }
+        );
+    }
+
+    #[test]
+    fn runs_compiled_array_group_by_method() {
+        let source = r#"
+fn main() {
+    let values = [1, 2, 3, 4, 5];
+    let groups = values.group_by(|value| if value % 2 == 0 { "even" } else { "odd" });
+    if groups.len() == 2
+        && groups["odd"].len() == 3
+        && groups["odd"][1] == 3
+        && groups["even"].sum() == 6
+    {
+        return groups["odd"][2];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array group_by method should compile");
+
+        let result = Vm::new()
+            .run(&code)
+            .expect("array group_by method should run");
+        assert_eq!(result, Value::Int(5));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_group_by_method() {
+        let source = r#"
+fn main() {
+    let names = ["boar", "bat", "wolf", "wyrm"];
+    let groups = names.group_by(|name| if name.starts_with("w") { "w" } else { "b" });
+    if groups.len() == 2
+        && groups["b"].len() == 2
+        && groups["w"][0] == "wolf"
+        && groups["w"][1] == "wyrm"
+    {
+        return groups["b"][1];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array group_by method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array group_by method should run");
+        assert_eq!(result, Value::String("bat".to_owned()));
+    }
+
+    #[test]
+    fn array_group_by_rejects_non_string_keys() {
+        let source = r#"
+fn main() {
+    return [1].group_by(|value| value);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array group_by type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array group_by should reject non-string keys");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method group_by"
             }
         );
     }

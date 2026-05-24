@@ -215,6 +215,18 @@ pub(crate) fn call_method(
                 caller_roots: &caller_roots,
             },
         ),
+        "group_by" => array_methods::group_by(
+            receiver,
+            args,
+            MethodRuntime {
+                vm,
+                program,
+                host,
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots: &caller_roots,
+            },
+        ),
         "map_values" => map_methods::map_values(
             receiver,
             args,

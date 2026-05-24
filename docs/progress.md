@@ -504,6 +504,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added `array.sum` for direct numeric totals and callback-transformed numeric
   totals, preserving integer results until a float participates and returning
   `0` for empty arrays.
+- Added `array.group_by` for lambda-derived string keys, returning deterministic
+  maps of grouped arrays while preserving input order within each group in
+  inline and managed-heap execution.
 
 ## Next
 

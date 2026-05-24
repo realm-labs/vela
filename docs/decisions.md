@@ -1555,3 +1555,25 @@ Consequences:
 - Callback-transformed sums share the same execution-budget and heap-root
   behavior as other array higher-order methods.
 - Numeric aggregation semantics remain isolated from general VM dispatch.
+
+## 2026-05-24: Array Grouping Uses String Map Keys
+
+Status: Accepted
+
+Context:
+M13 requires `array.group_by(|x| ...)`, while the current dynamic map runtime
+uses deterministic string keys. Grouping must preserve dynamic array elements
+and managed-heap roots during callback execution.
+
+Decision:
+Implement `array.group_by` in the focused `array_methods` VM module. The
+callback result must be a string key; each key maps to an array of original
+values in input order. The returned groups use the existing map representation
+and the same callback execution path as other array higher-order methods.
+
+Consequences:
+- Grouped results are deterministic because map keys remain ordered strings.
+- Scripts can group dynamic values without script generics or host-specific
+  adapters.
+- Non-string grouping keys fail with a VM type error instead of silently
+  stringifying values.
