@@ -1,6 +1,6 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
-use vela_host::{HostRef, MockStateAdapter, PatchTx};
+use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_reflect::{FieldDesc, TypeDesc, TypeKey};
 use vela_vm::{HostExecution, Value};
 
@@ -46,6 +46,68 @@ fn main() {
 }
 
 #[test]
+fn engine_installs_registered_host_native_functions_into_vm() {
+    let engine = Engine::builder()
+        .register_host_native_fn(
+            NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(2))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            |args, host| {
+                let [Value::HostRef(player), Value::Int(level)] = args else {
+                    return Ok(Value::Null);
+                };
+                host.tx.set_path(
+                    HostPath::new(*player).field(FieldId::new(1)),
+                    HostValue::Int(*level),
+                    None,
+                )?;
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    game.set_level(player, 9);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].path,
+        HostPath::new(host_ref).field(FieldId::new(1))
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
+}
+
+#[test]
 fn engine_rejects_duplicate_native_function_ids() {
     let result = Engine::builder()
         .register_native_fn(
@@ -61,6 +123,27 @@ fn engine_rejects_duplicate_native_function_ids() {
     assert!(matches!(
         result.map(|_| ()),
         Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionId { id: 10 }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_names_across_host_and_pure_natives() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.same", NativeFunctionId::new(10)),
+            |_| Ok(Value::Null),
+        )
+        .register_host_native_fn(
+            NativeFunctionDesc::new("game.same", NativeFunctionId::new(11)),
+            |_, _| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result.map(|_| ()),
+        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionName {
+            name: "game.same".to_owned()
+        }
     ));
 }
 

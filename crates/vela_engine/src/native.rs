@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use vela_common::FunctionId;
 use vela_reflect::TypeKey;
-use vela_vm::{Value, VmResult};
+use vela_vm::{HostExecution, Value, VmResult};
 
 pub type NativeFunctionId = FunctionId;
 
@@ -171,6 +171,12 @@ pub enum TypeHint {
 }
 
 pub type NativeFunction = Arc<dyn Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static>;
+pub type HostNativeFunction = Arc<
+    dyn for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+>;
 
 #[derive(Clone)]
 pub struct NativeFunctionEntry {
@@ -183,6 +189,28 @@ impl NativeFunctionEntry {
     pub fn new(
         desc: NativeFunctionDesc,
         function: impl Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            desc,
+            function: Arc::new(function),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct HostNativeFunctionEntry {
+    pub desc: NativeFunctionDesc,
+    pub function: HostNativeFunction,
+}
+
+impl HostNativeFunctionEntry {
+    #[must_use]
+    pub fn new(
+        desc: NativeFunctionDesc,
+        function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
     ) -> Self {
         Self {
             desc,

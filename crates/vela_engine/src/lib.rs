@@ -9,8 +9,8 @@ pub use builder::EngineBuilder;
 pub use engine::Engine;
 pub use error::{EngineError, EngineErrorKind, EngineResult};
 pub use native::{
-    EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId,
-    NativeParamDesc, TypeHint,
+    EffectSet, FunctionAccess, HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
+    NativeFunctionId, NativeParamDesc, TypeHint,
 };
 
 #[cfg(test)]

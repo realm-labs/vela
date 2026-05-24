@@ -2270,3 +2270,28 @@ Consequences:
   validation and installation.
 - Native methods, host-call context, permission enforcement, descriptor
   serialization, and derive macro output remain future Engine work.
+
+## 2026-05-25: Host-Aware Natives Enter Through HostExecution
+
+Status: Accepted
+
+Context:
+The engine API must support host services that can read host context or record
+host mutations, but scripts must still never receive Rust references or mutate
+host state outside `PatchTx`. Pure native functions that only receive script
+values are not enough for gameplay helpers such as context emitters or
+controlled host writes.
+
+Decision:
+Add `EngineBuilder::register_host_native_fn` for native descriptors whose
+callable receives `HostExecution`. Engine installation registers these through
+`Vm::register_host_native`, while pure natives continue to use
+`Vm::register_native`. Engine build validation treats pure and host-aware
+natives as one ABI namespace for stable IDs and names.
+
+Consequences:
+- Host-aware native functions can record mutations through `PatchTx` without
+  exposing `&mut` host objects to scripts.
+- Duplicate native ABI IDs and names are rejected across both native kinds.
+- Permission enforcement and native method registration remain separate Engine
+  work.

@@ -631,11 +631,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Added a focused `vela_engine` crate with an initial `Engine`/`EngineBuilder`
   API for explicit host type/schema registration, native function descriptors
   with stable IDs, duplicate validation, and installation into `Vm`.
+- Engine registration now supports host-aware native functions that receive
+  `HostExecution` and can record host mutations through `PatchTx`; duplicate
+  native IDs and names are checked across pure and host-aware native entries.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and fuller Engine builder/native method, permission, and host
-  context registration APIs.
+  receiver facts and fuller Engine builder/native method and permission
+  enforcement APIs.
 
 ## Next
 
 - Continue M10 with broader non-literal receiver facts or fuller Engine
-  builder/native method, permission, and host context registration APIs.
+  builder/native method and permission enforcement APIs.

@@ -1,16 +1,18 @@
 use std::collections::BTreeSet;
 
 use vela_reflect::{TypeDesc, TypeRegistry};
-use vela_vm::{Value, VmResult};
+use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
-    Engine, EngineError, EngineErrorKind, EngineResult, NativeFunctionDesc, NativeFunctionEntry,
+    Engine, EngineError, EngineErrorKind, EngineResult, HostNativeFunctionEntry,
+    NativeFunctionDesc, NativeFunctionEntry,
 };
 
 #[derive(Clone, Default)]
 pub struct EngineBuilder {
     types: Vec<TypeDesc>,
     native_functions: Vec<NativeFunctionEntry>,
+    host_native_functions: Vec<HostNativeFunctionEntry>,
 }
 
 impl EngineBuilder {
@@ -36,16 +38,34 @@ impl EngineBuilder {
         self
     }
 
+    #[must_use]
+    pub fn register_host_native_fn(
+        mut self,
+        desc: NativeFunctionDesc,
+        function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.host_native_functions
+            .push(HostNativeFunctionEntry::new(desc, function));
+        self
+    }
+
     pub fn build(self) -> EngineResult<Engine> {
         validate_types(&self.types)?;
-        validate_native_functions(&self.native_functions)?;
+        validate_native_functions(&self.native_functions, &self.host_native_functions)?;
 
         let mut registry = TypeRegistry::new();
         for desc in self.types {
             registry.register(desc);
         }
 
-        Ok(Engine::new(registry, self.native_functions))
+        Ok(Engine::new(
+            registry,
+            self.native_functions,
+            self.host_native_functions,
+        ))
     }
 }
 
@@ -77,22 +97,27 @@ fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
     Ok(())
 }
 
-fn validate_native_functions(functions: &[NativeFunctionEntry]) -> EngineResult<()> {
+fn validate_native_functions(
+    functions: &[NativeFunctionEntry],
+    host_functions: &[HostNativeFunctionEntry],
+) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
 
-    for entry in functions {
-        if !ids.insert(entry.desc.id) {
+    for desc in functions
+        .iter()
+        .map(|entry| &entry.desc)
+        .chain(host_functions.iter().map(|entry| &entry.desc))
+    {
+        if !ids.insert(desc.id) {
             return Err(EngineError::new(
-                EngineErrorKind::DuplicateNativeFunctionId {
-                    id: entry.desc.id.get(),
-                },
+                EngineErrorKind::DuplicateNativeFunctionId { id: desc.id.get() },
             ));
         }
-        if !names.insert(entry.desc.name.as_str()) {
+        if !names.insert(desc.name.as_str()) {
             return Err(EngineError::new(
                 EngineErrorKind::DuplicateNativeFunctionName {
-                    name: entry.desc.name.clone(),
+                    name: desc.name.clone(),
                 },
             ));
         }
