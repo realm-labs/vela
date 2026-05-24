@@ -875,6 +875,11 @@ permissions.
   `FieldAccess::reflect_readable`, so hidden enum payload fields are not
   exposed to gameplay policies while raw registry variant queries remain
   available for trusted host inspection.
+- Added registered trait metadata lookup. Rust callers can query
+  `trait_metadata_by_name`, and scripts can call `reflect.trait_info(name)` to
+  inspect copied `ReflectTrait` records by name with ranked unknown-trait
+  candidates, while `reflect.traits(value)` continues to report traits
+  implemented by a target value.
 
 ## Next
 

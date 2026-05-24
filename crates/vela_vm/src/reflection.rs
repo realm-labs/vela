@@ -277,6 +277,23 @@ impl Vm {
             value_from_reflect(reflect::trait_metadata(&traits_registry, &target)?)
         });
 
+        let trait_registry = Arc::clone(&registry);
+        let trait_policy = policy.clone();
+        let trait_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.trait_info", move |args, _host| {
+            check_reflect_policy(
+                &trait_policy,
+                &trait_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.trait_info", args, 1)?;
+            let trait_name = expect_string(&args[0], "reflect.trait_info")?;
+            value_from_reflect(reflect::trait_metadata_by_name(
+                &trait_registry,
+                trait_name,
+            )?)
+        });
+
         let variants_registry = Arc::clone(&registry);
         let variants_policy = policy.clone();
         let variants_budget = Arc::clone(&lookup_budget);

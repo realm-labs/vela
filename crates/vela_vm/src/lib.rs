@@ -2481,14 +2481,14 @@ mod tests {
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::{
-        FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol, TypeId,
-        VariantId,
+        FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Symbol,
+        TypeId, VariantId,
     };
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
         FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc, ModuleDesc,
-        TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
+        TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
     };
 
     #[test]
@@ -6941,6 +6941,65 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_reflects_registered_trait_metadata() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let trait_info = reflect.trait_info("Damageable");
+    if trait_info.name == "Damageable" && trait_info.methods[0].name == "damage" {
+        return trait_info.methods.len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile trait metadata reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::Int(1))
+        );
+    }
+
+    #[test]
+    fn compiled_source_reflect_trait_reports_unknown_trait_candidates() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return reflect.trait_info("Damagable");
+}
+"#,
+        )
+        .expect("compile unknown trait metadata source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
+                trait_name: "Damagable".to_owned(),
+                candidates: vec!["Damageable".to_owned()]
+            })
+        ));
+    }
+
+    #[test]
     fn compiled_source_reflect_variants_respect_field_access() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -7476,6 +7535,10 @@ fn main(player) {
 
     fn reflection_registry() -> TypeRegistry {
         let mut registry = TypeRegistry::new();
+        registry.register_trait(
+            TraitDesc::new("Damageable")
+                .method(TraitMethodDesc::new(MethodId::new(1), "damage").defaulted(true)),
+        );
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
                 .host_type(HostTypeId::new(1))

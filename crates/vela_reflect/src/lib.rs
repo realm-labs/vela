@@ -16,8 +16,9 @@ pub use members::{
     attrs as attrs_metadata, docs as docs_metadata, field as field_metadata,
     field_names_with_policy, field_with_policy as field_metadata_with_policy, has_field,
     has_field_with_policy, has_method, has_method_with_policy, kind as kind_metadata, methods,
-    methods_with_policy, name as name_metadata, traits as trait_metadata, variant, variant_is,
-    variants as variant_metadata, variants_with_policy as variant_metadata_with_policy,
+    methods_with_policy, name as name_metadata, trait_by_name as trait_metadata_by_name,
+    traits as trait_metadata, variant, variant_is, variants as variant_metadata,
+    variants_with_policy as variant_metadata_with_policy,
 };
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
@@ -510,7 +511,15 @@ impl TypeRegistry {
         self.traits_by_name.get(name)
     }
 
-    fn known_trait_names(&self) -> Vec<String> {
+    pub(crate) fn trait_metadata_by_name(&self, name: &str) -> Option<&TraitDesc> {
+        self.traits_by_name.get(name).or_else(|| {
+            self.types()
+                .flat_map(|type_desc| type_desc.traits.iter())
+                .find(|trait_desc| trait_desc.name == name)
+        })
+    }
+
+    pub(crate) fn known_trait_names(&self) -> Vec<String> {
         let mut names = BTreeSet::new();
         names.extend(self.traits_by_name.keys().cloned());
         for type_desc in self.types() {

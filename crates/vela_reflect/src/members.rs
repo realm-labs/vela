@@ -152,6 +152,19 @@ pub fn traits(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<R
     )))
 }
 
+pub fn trait_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
+    let desc = registry.trait_metadata_by_name(name).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownTrait {
+            trait_name: name.to_owned(),
+            candidates: name_candidates(
+                name,
+                registry.known_trait_names().iter().map(String::as_str),
+            ),
+        })
+    })?;
+    Ok(ReflectValue::Host(trait_record(desc)))
+}
+
 pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(HostValue::Array(
@@ -633,6 +646,34 @@ mod tests {
                 type_name: "QuestProgress".to_owned(),
                 variant: "Actve".to_owned(),
                 candidates: vec!["Active".to_owned(), "Finished".to_owned()]
+            }
+        );
+    }
+
+    #[test]
+    fn trait_query_returns_metadata_and_unknown_trait_candidates() {
+        let registry = registry();
+
+        let ReflectValue::Host(HostValue::Record { fields, .. }) =
+            trait_by_name(&registry, "Damageable").expect("trait metadata")
+        else {
+            panic!("trait metadata should be a record");
+        };
+        assert_eq!(
+            fields.get("name"),
+            Some(&HostValue::String("Damageable".to_owned()))
+        );
+        assert!(matches!(
+            fields.get("methods"),
+            Some(HostValue::Array(methods)) if methods.len() == 1
+        ));
+
+        let error = trait_by_name(&registry, "Damagable").expect_err("unknown trait");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownTrait {
+                trait_name: "Damagable".to_owned(),
+                candidates: vec!["Damageable".to_owned()]
             }
         );
     }

@@ -3614,3 +3614,29 @@ Consequences:
   inspection.
 - Reflection remains schema-safe because the policy filters copied metadata and
   does not mutate registered variant descriptors.
+
+## 2026-05-25: Trait Definitions Are Queryable By Name
+
+Status: Accepted
+
+Context:
+`TypeRegistry` could register trait descriptors and `reflect.traits(value)`
+could report traits implemented by a target, but scripts had no direct way to
+inspect a registered trait definition by name. A native named `reflect.trait`
+would be natural but is not script-callable because `trait` is a reserved
+keyword path segment.
+
+Decision:
+Add a Rust reflection helper exported as `trait_metadata_by_name` and a
+script-visible native named `reflect.trait_info(name)`. The lookup returns a
+copied `ReflectTrait` record and reuses `UnknownTrait` ranked candidate
+diagnostics for misspelled names. It can find explicitly registered trait
+definitions and trait descriptors embedded on registered types.
+
+Consequences:
+- Admin/debug scripts can inspect trait methods, docs, and attributes without a
+  target value.
+- `reflect.traits(value)` remains the target-capability query, while
+  `reflect.trait_info(name)` is the descriptor lookup.
+- The API remains schema-safe because it only copies registered metadata and
+  does not permit runtime trait mutation.
