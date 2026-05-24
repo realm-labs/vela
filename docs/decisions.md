@@ -1741,3 +1741,28 @@ Consequences:
 - The demo does not introduce runtime schema mutation or monkey patching.
 - The static registry can later be replaced by Engine/derive-macro registration
   without changing script reflection semantics.
+
+## 2026-05-24: Hot Reload Demo Uses ProgramVersion Handles
+
+Status: Accepted
+
+Context:
+The final game-server demo suite needs a hot-reload workflow that proves old
+frames or handles continue on old code while new calls enter the updated code.
+The current hot reload crate already models function-level replacement through
+`ProgramVersion` handles.
+
+Decision:
+Add a CLI `--hot-reload <initial> <updated>` demo command that compiles an
+initial script through `compile_initial`, keeps the old `ProgramVersion`
+handle, applies `compile_update`, and runs `main` from both the old and new
+versions. The demo scripts return different kill-exp values so the output shows
+old-before, old-after, and new-after behavior.
+
+Consequences:
+- The runnable demo exercises the real `vela_hot_reload` runtime rather than a
+  CLI-specific replacement mechanism.
+- The demo remains function-level and does not claim schema/effect ABI checks
+  that belong to later milestones.
+- Future Engine/Runtime APIs can reuse the same version-handle semantics at
+  event or tick safe points.

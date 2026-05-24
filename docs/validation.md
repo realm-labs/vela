@@ -17,6 +17,7 @@ cargo run -p vela_cli -- examples/game_server_demo/scripts/context_event.lang
 cargo run -p vela_cli -- examples/game_server_demo/scripts/monster_kill_reward.lang
 cargo run -p vela_cli -- examples/game_server_demo/scripts/quest_progress.lang
 cargo run -p vela_cli -- examples/game_server_demo/scripts/reflect_debug.lang
+cargo run -p vela_cli -- --hot-reload examples/game_server_demo/scripts/hot_reload_function_swap_v1.lang examples/game_server_demo/scripts/hot_reload_function_swap_v2.lang
 ```
 
 Benchmark and fuzz targets are optional until the related crates exist:

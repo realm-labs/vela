@@ -17,6 +17,24 @@ fn run_demo(script: &str) -> String {
     String::from_utf8(output.stdout).expect("demo stdout should be utf8")
 }
 
+fn run_hot_reload_demo(initial: &str, updated: &str) -> String {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg("--hot-reload")
+        .arg(script_path(initial))
+        .arg(script_path(updated))
+        .output()
+        .expect("run vela_cli hot reload demo");
+
+    assert!(
+        output.status.success(),
+        "hot reload demo failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
+    String::from_utf8(output.stdout).expect("hot reload stdout should be utf8")
+}
+
 fn script_path(script: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../examples/game_server_demo/scripts")
@@ -64,5 +82,17 @@ fn reflect_debug_demo_runs_through_cli() {
         run_demo("reflect_debug.lang"),
         "result=Int(18) level=Int(12) ctx_now=Int(1700000000) \
          ctx_tick=Int(42) emits=1 patches=2\n"
+    );
+}
+
+#[test]
+fn hot_reload_function_swap_demo_runs_through_cli() {
+    assert_eq!(
+        run_hot_reload_demo(
+            "hot_reload_function_swap_v1.lang",
+            "hot_reload_function_swap_v2.lang",
+        ),
+        "old_version=0 new_version=1 old_before=Int(20) old_after=Int(20) \
+         new_after=Int(30)\n"
     );
 }

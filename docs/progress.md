@@ -529,12 +529,18 @@ method-dispatch coverage before moving into stable type metadata.
   demo proving script reflection can inspect allowed host fields, check trait
   metadata, perform controlled host writes, and call host methods through
   `PatchTx`.
+- Added `examples/game_server_demo/scripts/hot_reload_function_swap_v1.lang`
+  and `hot_reload_function_swap_v2.lang` plus a `vela_cli --hot-reload`
+  command proving old program versions keep old code while new calls enter the
+  updated version.
 - Added CLI integration tests that execute the runnable game server demo
   scripts through the built `vela_cli` binary.
 - Split the CLI demo runner into focused ID and host-state modules so the demo
   harness can keep growing without accumulating all logic in one file.
 - Added a focused CLI demo TypeRegistry module for Player, Context, and Monster
   reflection metadata used by the runnable demo scripts.
+- Added a focused CLI hot-reload demo module so function-swap workflows use the
+  `vela_hot_reload` runtime instead of custom CLI-only code swapping.
 
 ## Next
 

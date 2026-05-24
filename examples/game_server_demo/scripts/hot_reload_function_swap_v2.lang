@@ -1,0 +1,7 @@
+fn kill_exp() {
+    return 30;
+}
+
+fn main() {
+    return kill_exp();
+}

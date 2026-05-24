@@ -1,6 +1,7 @@
 use std::env;
 
 mod demo;
+mod hot_reload_demo;
 
 fn main() {
     if let Err(error) = run() {
@@ -10,6 +11,14 @@ fn main() {
 }
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let path = env::args().nth(1).ok_or("usage: vela_cli <script-path>")?;
-    demo::run_script(&path)
+    let args = env::args().skip(1).collect::<Vec<_>>();
+    match args.as_slice() {
+        [flag, initial, updated] if flag == "--hot-reload" => {
+            hot_reload_demo::run(initial, updated)
+        }
+        [path] => demo::run_script(path),
+        _ => {
+            Err("usage: vela_cli <script-path> | vela_cli --hot-reload <initial> <updated>".into())
+        }
+    }
 }
