@@ -1981,6 +1981,29 @@ fn truthy_case() {
     }
 
     #[test]
+    fn runs_compiled_local_assignment_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 1;
+    value += 4;
+    value *= 3;
+    value -= 5;
+    value /= 2;
+    value %= 5;
+    let copy = (value = value + 10);
+    return value + copy;
+}
+"#,
+            "main",
+        )
+        .expect("compile local assignment source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    }
+
+    #[test]
     fn runs_compiled_const_expression_source() {
         let code = compile_function_source(
             SourceId::new(1),

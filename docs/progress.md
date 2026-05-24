@@ -378,6 +378,10 @@ to the later language constructs that introduce loops and closures.
   truthiness, branch, constant, and unary-not bytecode.
 - Added VM coverage proving short-circuited logical RHS calls are not executed
   and logical expressions produce boolean results.
+- Added local assignment lowering for `=`, `+=`, `-=`, `*=`, `/=`, and `%=`
+  by rebinding HIR local IDs to newly computed registers.
+- Added compiler and VM coverage proving local assignment statements and
+  assignment expressions compile and execute from source.
 
 ## Next
 

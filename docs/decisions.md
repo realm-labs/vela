@@ -1007,3 +1007,28 @@ Consequences:
   value categories.
 - If operand-returning logic is ever desired, it will be an explicit language
   change instead of accidental VM behavior.
+
+## 2026-05-24: Local Assignment Rebinds Registers
+
+Status: Accepted
+
+Context:
+M9 needs local assignment and compound assignment before loop and closure
+execution can be completed. The current bytecode uses registers and HIR local
+IDs rather than mutable stack slots, while host-field assignment already routes
+through PatchTx-specific instructions.
+
+Decision:
+Compile assignment to a single-name local by computing the assigned value into
+a register and rebinding the HIR local ID to that register for subsequent
+reads. Compound assignment reads the previous register, emits the matching
+numeric operation, then rebinds the local. Assignment expressions evaluate to
+the assigned value. Host-field assignment remains on the existing host patch
+bytecode path.
+
+Consequences:
+- Local reassignment works without introducing mutable script references or
+  changing the VM register model.
+- HIR-resolved shadowing remains authoritative for which local is rebound.
+- Future closure/upvalue work must promote captured locals from simple
+  register rebinding into explicit upvalue cells.

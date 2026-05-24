@@ -1,5 +1,7 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
+mod operators;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
@@ -17,6 +19,7 @@ use vela_syntax::{
 use crate::{
     CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
 };
+use operators::{compound_assignment_instruction, non_logical_binary_instruction};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompileError {
@@ -709,9 +712,7 @@ impl<'ast> Compiler<'ast> {
                     self.emit_constant(Constant::Null)
                 }
             }
-            ExprKind::Assign { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "assignment expression",
-            ))),
+            ExprKind::Assign { .. } => self.compile_assignment(expr),
             ExprKind::SelfValue
             | ExprKind::Index { .. }
             | ExprKind::Try(_)
@@ -752,12 +753,16 @@ impl<'ast> Compiler<'ast> {
         self.facts.type_symbols.get(declaration).cloned()
     }
 
-    fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<()> {
+    fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment statement",
             )));
         };
+        if let Some((name, local)) = self.local_assignment_target(target) {
+            let assigned = self.compile_local_assignment(*op, target.span, name, local, value)?;
+            return Ok(assigned);
+        }
         let (root, field) = self.compile_host_assignment_target(target)?;
         let src = self.compile_expr(value)?;
         match op {
@@ -773,7 +778,53 @@ impl<'ast> Compiler<'ast> {
                 )));
             }
         }
-        Ok(())
+        Ok(src)
+    }
+
+    fn local_assignment_target(&self, target: &Expr) -> Option<(String, Option<HirLocalId>)> {
+        let ExprKind::Path(path) = &target.kind else {
+            return None;
+        };
+        let [name] = path.as_slice() else {
+            return None;
+        };
+        let local = match self.bindings.resolution_at_span(target.span) {
+            Some(BindingResolution::Local(local)) => Some(*local),
+            _ if self.locals.contains_key(name) => None,
+            _ => return None,
+        };
+        Some((name.clone(), local))
+    }
+
+    fn compile_local_assignment(
+        &mut self,
+        op: AssignOp,
+        target_span: Span,
+        name: String,
+        local: Option<HirLocalId>,
+        value: &Expr,
+    ) -> CompileResult<Register> {
+        let assigned = match op {
+            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let lhs = self.local_register_at_span(target_span, &name)?;
+                let rhs = self.compile_expr(value)?;
+                let dst = self.alloc_register()?;
+                self.emit(
+                    compound_assignment_instruction(op, dst, lhs, rhs).ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "compound assignment operator",
+                        ))
+                    })?,
+                );
+                dst
+            }
+        };
+        self.locals.insert(name, assigned);
+        if let Some(local) = local {
+            self.hir_locals.insert(local, assigned);
+        }
+        Ok(assigned)
     }
 
     fn compile_local_path(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
@@ -889,20 +940,8 @@ impl<'ast> Compiler<'ast> {
         let lhs = self.compile_expr(left)?;
         let rhs = self.compile_expr(right)?;
         let dst = self.alloc_register()?;
-        let instruction = match op {
-            BinaryOp::Add => InstructionKind::Add { dst, lhs, rhs },
-            BinaryOp::Sub => InstructionKind::Sub { dst, lhs, rhs },
-            BinaryOp::Mul => InstructionKind::Mul { dst, lhs, rhs },
-            BinaryOp::Div => InstructionKind::Div { dst, lhs, rhs },
-            BinaryOp::Rem => InstructionKind::Rem { dst, lhs, rhs },
-            BinaryOp::Equal => InstructionKind::Equal { dst, lhs, rhs },
-            BinaryOp::NotEqual => InstructionKind::NotEqual { dst, lhs, rhs },
-            BinaryOp::Less => InstructionKind::Less { dst, lhs, rhs },
-            BinaryOp::LessEqual => InstructionKind::LessEqual { dst, lhs, rhs },
-            BinaryOp::Greater => InstructionKind::Greater { dst, lhs, rhs },
-            BinaryOp::GreaterEqual => InstructionKind::GreaterEqual { dst, lhs, rhs },
-            BinaryOp::Or | BinaryOp::And => unreachable!("logical operators handled above"),
-        };
+        let instruction = non_logical_binary_instruction(op, dst, lhs, rhs)
+            .expect("logical operators handled above");
         self.emit(instruction);
         Ok(dst)
     }
@@ -2007,6 +2046,53 @@ fn main() {
             instruction.kind,
             InstructionKind::CallNative { ref name, .. } if name == "fail"
         )));
+    }
+
+    #[test]
+    fn compiler_lowers_local_assignment_operators() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 1;
+    value += 4;
+    value *= 3;
+    value -= 5;
+    value /= 2;
+    value %= 5;
+    let copy = (value = value + 10);
+    return value + copy;
+}
+"#,
+            "main",
+        )
+        .expect("local assignments should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Add { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Sub { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Mul { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Div { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Rem { .. }))
+        );
     }
 
     #[test]
