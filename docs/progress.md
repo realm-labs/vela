@@ -431,6 +431,8 @@ method-dispatch coverage before moving into stable type metadata.
   and managed-heap execution.
 - Added executable grammar coverage for hexadecimal integer literals, binary
   integer literals, and decimal float literals with exponents.
+- Added lexer, compiler, and VM coverage for leading shebang lines as source
+  file layout before module items.
 - Added HIR resolution and compiler lowering for declared tuple-style enum
   constructor calls such as `Damage.Physical(7, 2)`.
 - Added tuple variant pattern destructuring with positional enum fields and VM

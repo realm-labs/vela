@@ -33,6 +33,8 @@ impl<'src> Lexer<'src> {
     }
 
     fn lex(mut self) -> Lexed {
+        self.skip_shebang();
+
         while let Some(ch) = self.peek_char() {
             match ch {
                 ' ' | '\t' | '\r' | '\n' => {
@@ -51,6 +53,19 @@ impl<'src> Lexer<'src> {
         Lexed {
             tokens: self.tokens,
             diagnostics: self.diagnostics,
+        }
+    }
+
+    fn skip_shebang(&mut self) {
+        if self.offset != 0
+            || !(self.peek_char() == Some('#') && self.peek_next_char() == Some('!'))
+        {
+            return;
+        }
+        while let Some(ch) = self.bump_char() {
+            if ch == '\n' {
+                break;
+            }
         }
     }
 

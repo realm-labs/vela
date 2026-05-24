@@ -2369,6 +2369,18 @@ fn main() {
     }
 
     #[test]
+    fn compiler_accepts_leading_shebang() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            "#!/usr/bin/env vela\nfn main() { return 7; }\n",
+            "main",
+        )
+        .expect("shebang source should compile");
+
+        assert!(code.constants.contains(&Constant::Int(7)));
+    }
+
+    #[test]
     fn compiler_lowers_script_value_method_calls() {
         let code = compile_function_source(
             SourceId::new(1),

@@ -2260,6 +2260,18 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_shebang_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            "#!/usr/bin/env vela\nfn main() { return 7; }\n",
+            "main",
+        )
+        .expect("compile shebang source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    }
+
+    #[test]
     fn runs_compiled_unary_operator_source() {
         let code = compile_function_source(
             SourceId::new(1),

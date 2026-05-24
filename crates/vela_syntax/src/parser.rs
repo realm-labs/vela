@@ -1432,6 +1432,18 @@ mod tests {
     }
 
     #[test]
+    fn lexes_leading_shebang_as_layout() {
+        let lexed = lex(source_id(), "#!/usr/bin/env vela\nfn main() { return 1; }");
+
+        assert!(lexed.diagnostics.is_empty());
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Keyword(Keyword::Fn));
+        assert_eq!(
+            lexed.tokens[0].span,
+            Span::new(source_id(), "#!/usr/bin/env vela\n".len() as u32, 22)
+        );
+    }
+
+    #[test]
     fn parses_core_module_items() {
         let parsed = parse_source(
             source_id(),
