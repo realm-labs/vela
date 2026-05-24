@@ -299,6 +299,11 @@ that introduce loops and closures.
   reads, and compile from HIR local resolutions instead of legacy name lookup.
 - Added HIR and compiler regression coverage proving record shorthand fields
   resolve the semantic binding even after nested block shadowing.
+- HIR binding maps now resolve imported names to stable declaration IDs when
+  imports are available, and refresh existing binding maps after
+  `resolve_imports()` handles forward module imports.
+- Added HIR coverage proving imported value reads resolve to declaration facts
+  instead of string-only import placeholders.
 
 ## Next
 

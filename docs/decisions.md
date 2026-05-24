@@ -681,3 +681,28 @@ Consequences:
   expressions.
 - Unresolved shorthand fields are diagnosed during semantic validation.
 - The syntax AST carries one more span needed by HIR and future tooling.
+
+## 2026-05-24: Resolved Imports Become Declaration Bindings
+
+Status: Accepted
+
+Context:
+HIR binding maps represented imported names as strings even after module import
+resolution succeeded. That preserved enough information for diagnostics, but
+downstream compiler, hot reload, and tooling work needs imported references to
+carry the same stable declaration IDs as same-module references.
+
+Decision:
+Function and impl-method binding maps may keep unresolved imports as import
+placeholders during initial lowering, but resolved imports are converted to
+`BindingResolution::Declaration` values. `ModuleGraph::resolve_imports()` also
+refreshes existing binding maps so forward imports gain declaration facts after
+the target module is added.
+
+Consequences:
+- Imported value reads now expose stable declaration IDs to later compiler and
+  ABI stages.
+- Forward imports remain possible without producing duplicate unresolved-name
+  diagnostics from body binding.
+- Unresolved imports are still reported by module import diagnostics rather
+  than by ad hoc function-body name lookup.

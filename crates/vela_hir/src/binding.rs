@@ -40,6 +40,12 @@ pub enum BindingResolution {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ImportBinding {
+    pub name: String,
+    pub declaration: Option<HirDeclId>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BindingMap {
     pub declaration: HirDeclId,
     locals: BTreeMap<HirLocalId, LocalBinding>,
@@ -108,6 +114,16 @@ impl BindingMap {
             .find_map(|(id, expression)| (expression.span == span).then_some(*id))?;
         self.resolution(expression)
     }
+
+    pub(crate) fn resolve_import_declarations(&mut self, imports: &BTreeMap<String, HirDeclId>) {
+        for resolution in self.resolutions.values_mut() {
+            if let BindingResolution::Import(name) = resolution
+                && let Some(declaration) = imports.get(name).copied()
+            {
+                *resolution = BindingResolution::Declaration(declaration);
+            }
+        }
+    }
 }
 
 pub(crate) struct FunctionBindingInput<'a> {
@@ -115,7 +131,7 @@ pub(crate) struct FunctionBindingInput<'a> {
     pub params: &'a [Param],
     pub body: &'a Block,
     pub module_declarations: Vec<(String, HirDeclId)>,
-    pub imports: Vec<String>,
+    pub imports: Vec<ImportBinding>,
     pub next_expr_id: &'a mut u32,
     pub next_local_id: &'a mut u32,
 }
@@ -127,7 +143,7 @@ pub(crate) fn bind_function(input: FunctionBindingInput<'_>) -> (BindingMap, Vec
 struct BindingLowerer<'a> {
     declaration: HirDeclId,
     module_declarations: Vec<(String, HirDeclId)>,
-    imports: Vec<String>,
+    imports: Vec<ImportBinding>,
     next_expr_id: &'a mut u32,
     next_local_id: &'a mut u32,
     scopes: Vec<BTreeMap<String, HirLocalId>>,
@@ -436,11 +452,15 @@ impl<'a> BindingLowerer<'a> {
         {
             return Some(BindingResolution::Declaration(*declaration));
         }
-        self.imports
-            .iter()
-            .find(|import| import.as_str() == name)
-            .cloned()
-            .map(BindingResolution::Import)
+        self.imports.iter().find_map(|import| {
+            if import.name != name {
+                return None;
+            }
+            Some(match import.declaration {
+                Some(declaration) => BindingResolution::Declaration(declaration),
+                None => BindingResolution::Import(import.name.clone()),
+            })
+        })
     }
 
     fn name_candidate_label(&self, name: &str) -> String {
@@ -453,7 +473,7 @@ impl<'a> BindingLowerer<'a> {
                     .iter()
                     .map(|(name, _)| name.as_str()),
             )
-            .chain(self.imports.iter().map(String::as_str))
+            .chain(self.imports.iter().map(|import| import.name.as_str()))
             .collect::<Vec<_>>();
         candidates.sort_unstable();
         candidates.dedup();

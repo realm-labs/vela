@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::{FunctionItem, ItemKind, SourceFile, Visibility, parse_source};
 
-use crate::binding::{BindingMap, FunctionBindingInput, bind_function};
+use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
 use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
     ConstMetadata, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint, StructFieldHint,
@@ -327,6 +327,7 @@ impl ModuleGraph {
                 self.modules[module_index].imports[import_index].resolution = resolution;
             }
         }
+        self.refresh_import_binding_resolutions();
     }
 
     #[must_use]
@@ -442,11 +443,7 @@ impl ModuleGraph {
                     .map(|declaration| (name.to_owned(), declaration))
             })
             .collect::<Vec<_>>();
-        let imports = module
-            .imports
-            .iter()
-            .filter_map(|import| import.path.last().cloned())
-            .collect::<Vec<_>>();
+        let imports = self.import_bindings(module);
 
         let (bindings, diagnostics) = bind_function(FunctionBindingInput {
             declaration,
@@ -478,11 +475,7 @@ impl ModuleGraph {
                     .map(|declaration| (name.to_owned(), declaration))
             })
             .collect::<Vec<_>>();
-        let imports = module
-            .imports
-            .iter()
-            .filter_map(|import| import.path.last().cloned())
-            .collect::<Vec<_>>();
+        let imports = self.import_bindings(module);
 
         let (bindings, diagnostics) = bind_function(FunctionBindingInput {
             declaration,
@@ -495,6 +488,78 @@ impl ModuleGraph {
         });
         self.impl_method_bindings.insert(method, bindings);
         self.diagnostics.extend(diagnostics);
+    }
+
+    fn import_bindings(&self, module: &HirModule) -> Vec<ImportBinding> {
+        module
+            .imports
+            .iter()
+            .filter_map(|import| {
+                let name = import.path.last()?.clone();
+                let declaration = match import.resolution {
+                    Some(ImportResolution::Declaration(declaration)) => Some(declaration),
+                    None => self.lookup_import_declaration(&import.path),
+                };
+                Some(ImportBinding { name, declaration })
+            })
+            .collect()
+    }
+
+    fn refresh_import_binding_resolutions(&mut self) {
+        let imports_by_module = self
+            .modules
+            .iter()
+            .map(|module| {
+                let imports = module
+                    .imports
+                    .iter()
+                    .filter_map(|import| {
+                        let name = import.path.last()?.clone();
+                        let ImportResolution::Declaration(declaration) = import.resolution?;
+                        Some((name, declaration))
+                    })
+                    .collect::<BTreeMap<_, _>>();
+                (module.id, imports)
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        let function_bindings = self
+            .bindings
+            .keys()
+            .filter_map(|declaration| {
+                let module = self.declarations.get(declaration)?.module;
+                let imports = imports_by_module.get(&module)?.clone();
+                Some((*declaration, imports))
+            })
+            .collect::<Vec<_>>();
+        for (declaration, imports) in function_bindings {
+            if let Some(bindings) = self.bindings.get_mut(&declaration) {
+                bindings.resolve_import_declarations(&imports);
+            }
+        }
+
+        let impl_method_bindings = self
+            .impl_method_bindings
+            .iter()
+            .filter_map(|(method, bindings)| {
+                let module = self.declarations.get(&bindings.declaration)?.module;
+                let imports = imports_by_module.get(&module)?.clone();
+                Some((*method, imports))
+            })
+            .collect::<Vec<_>>();
+        for (method, imports) in impl_method_bindings {
+            if let Some(bindings) = self.impl_method_bindings.get_mut(&method) {
+                bindings.resolve_import_declarations(&imports);
+            }
+        }
+    }
+
+    fn lookup_import_declaration(&self, path: &[String]) -> Option<HirDeclId> {
+        let (name, module_segments) = path.split_last()?;
+        let module_path = ModulePath::new(module_segments.iter().cloned());
+        let module_id = self.module_by_path.get(&module_path).copied()?;
+        self.module(module_id)
+            .and_then(|declarations| declarations.get(name))
     }
 
     fn resolve_import_path(&mut self, path: &[String], span: Span) -> Option<ImportResolution> {
@@ -867,7 +932,7 @@ fn main(rewards) {
     #[test]
     fn function_bindings_resolve_imported_names() {
         let mut graph = ModuleGraph::new();
-        graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+        let reward = graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
         let module = graph.add_source(source(
             2,
             "game.main",
@@ -880,12 +945,70 @@ fn main() { return grant; }
             .module(module)
             .and_then(|module| module.get("main"))
             .expect("main declaration");
+        let grant = graph
+            .module(reward)
+            .and_then(|module| module.get("grant"))
+            .expect("grant declaration");
 
         assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
         let bindings = graph.bindings(main).expect("main bindings");
-        assert!(bindings.resolutions().any(|(_, resolution)| {
-            resolution == &BindingResolution::Import("grant".to_owned())
-        }));
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| { resolution == &BindingResolution::Declaration(grant) })
+        );
+    }
+
+    #[test]
+    fn resolved_imports_refresh_existing_binding_maps() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.main",
+            r#"
+use game.reward.grant
+fn main() { return grant; }
+"#,
+        ));
+        let reward = graph.add_source(source(2, "game.reward", "pub fn grant() { return 1; }"));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+        let grant = graph
+            .module(reward)
+            .and_then(|module| module.get("grant"))
+            .expect("grant declaration");
+
+        assert!(
+            graph
+                .bindings(main)
+                .expect("main bindings")
+                .resolutions()
+                .any(|(_, resolution)| {
+                    resolution == &BindingResolution::Import("grant".to_owned())
+                })
+        );
+
+        graph.resolve_imports();
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        assert!(
+            graph
+                .bindings(main)
+                .expect("main bindings")
+                .resolutions()
+                .any(|(_, resolution)| { resolution == &BindingResolution::Declaration(grant) })
+        );
+        assert!(
+            !graph
+                .bindings(main)
+                .expect("main bindings")
+                .resolutions()
+                .any(|(_, resolution)| {
+                    resolution == &BindingResolution::Import("grant".to_owned())
+                })
+        );
     }
 
     #[test]
