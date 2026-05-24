@@ -1626,3 +1626,25 @@ Consequences:
   and budgeted heap conversion path.
 - Element semantics stay deterministic and conservative until TypeFacts and
   script type metadata can describe richer set values.
+
+## 2026-05-24: Option And Result Constructors Live In Stdlib Natives
+
+Status: Accepted
+
+Context:
+The VM already implements `?` over dynamic `Option` and `Result` enum values,
+but scripts had to declare those enum shapes manually to create canonical
+values. M13 requires Option/Result-style conveniences without script generics.
+
+Decision:
+Register `option.some`, `option.none`, `result.ok`, and `result.err` as
+standard natives. These constructors create ordinary dynamic enum values named
+`Option` and `Result`, with tuple payloads stored in field `"0"` where needed.
+The existing `TryPropagate` bytecode remains the only propagation mechanism.
+
+Consequences:
+- Scripts can use Option/Result propagation without local enum boilerplate.
+- Constructor values work in both inline and managed-heap execution because
+  they use the normal enum value and heap conversion paths.
+- The design stays non-generic and leaves future TypeRegistry stdlib schemas as
+  metadata rather than a separate runtime representation.

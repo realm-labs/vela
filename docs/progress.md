@@ -513,6 +513,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added first script-visible set APIs through `set.from_array`, `set.has`,
   `set.add`, `set.remove`, `set.values`, `len`, `is_empty`, and `for-in`
   iteration, backed by `Value::Set` and managed-heap `HeapValue::Set`.
+- Added canonical Option/Result standard constructors `option.some`,
+  `option.none`, `result.ok`, and `result.err`, with source-level `?`
+  propagation coverage in inline and managed-heap execution.
 
 ## Next
 

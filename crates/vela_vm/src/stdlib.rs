@@ -1,6 +1,12 @@
+use std::collections::BTreeMap;
+
 use crate::{Value, Vm, VmError, VmErrorKind, VmResult, expect_arity};
 
 pub(crate) fn register(vm: &mut Vm) {
+    vm.register_native("option.some", option_some);
+    vm.register_native("option.none", option_none);
+    vm.register_native("result.ok", result_ok);
+    vm.register_native("result.err", result_err);
     vm.register_native("math.max", math_max);
     vm.register_native("math.min", math_min);
     vm.register_native("math.clamp", math_clamp);
@@ -8,6 +14,38 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.ceil", math_ceil);
     vm.register_native("math.abs", math_abs);
     vm.register_native("set.from_array", crate::set_methods::from_array);
+}
+
+fn option_some(args: &[Value]) -> VmResult<Value> {
+    expect_arity("option.some", args, 1)?;
+    Ok(enum_value("Option", "Some", Some(args[0].clone())))
+}
+
+fn option_none(args: &[Value]) -> VmResult<Value> {
+    expect_arity("option.none", args, 0)?;
+    Ok(enum_value("Option", "None", None))
+}
+
+fn result_ok(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.ok", args, 1)?;
+    Ok(enum_value("Result", "Ok", Some(args[0].clone())))
+}
+
+fn result_err(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.err", args, 1)?;
+    Ok(enum_value("Result", "Err", Some(args[0].clone())))
+}
+
+fn enum_value(enum_name: &str, variant: &str, payload: Option<Value>) -> Value {
+    let mut fields = BTreeMap::new();
+    if let Some(payload) = payload {
+        fields.insert("0".to_owned(), payload);
+    }
+    Value::Enum {
+        enum_name: enum_name.to_owned(),
+        variant: variant.to_owned(),
+        fields,
+    }
 }
 
 fn math_max(args: &[Value]) -> VmResult<Value> {
@@ -109,7 +147,7 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source;
+    use vela_bytecode::compiler::{compile_function_source, compile_program_source};
     use vela_common::SourceId;
 
     use crate::{ExecutionBudget, Vm, VmErrorKind};
@@ -154,6 +192,75 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math stdlib source should run");
         assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
+    fn runs_compiled_option_result_standard_natives_with_try() {
+        let source = r#"
+fn checked(value) {
+    if value > 0 {
+        return option.some(value);
+    }
+    return option.none();
+}
+
+fn main() {
+    let value = checked(4)?;
+    return result.ok(value + 6);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option/result stdlib source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option/result stdlib source should run");
+        assert_eq!(
+            result,
+            crate::Value::Enum {
+                enum_name: "Result".to_owned(),
+                variant: "Ok".to_owned(),
+                fields: [("0".to_owned(), crate::Value::Int(10))].into()
+            }
+        );
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_result_standard_natives_with_try() {
+        let source = r#"
+fn checked(value) {
+    if value > 0 {
+        return result.ok("good");
+    }
+    return result.err("bad");
+}
+
+fn main() {
+    let value = checked(0)?;
+    return result.ok(value);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap result stdlib source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap result stdlib source should run");
+        assert_eq!(
+            result,
+            crate::Value::Enum {
+                enum_name: "Result".to_owned(),
+                variant: "Err".to_owned(),
+                fields: [("0".to_owned(), crate::Value::String("bad".to_owned()))].into()
+            }
+        );
     }
 
     #[test]
