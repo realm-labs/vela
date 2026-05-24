@@ -2,10 +2,10 @@
 
 ## Current Milestone
 
-M0-M7 runnable prototype loop complete enough to begin semantic lowering.
-Current milestone: M8 resolver, HIR, and module graph. Loop-specific and
-closure/upvalue GC acceptance remains tied to the later language constructs
-that introduce loops and closures.
+M0-M8 runnable prototype and semantic lowering complete enough to expand the
+executable language surface. Current milestone: M9 complete executable
+language surface. Loop-specific and closure/upvalue GC acceptance remains tied
+to the later language constructs that introduce loops and closures.
 
 ## Completed
 
@@ -365,7 +365,17 @@ that introduce loops and closures.
   bytecode generation and private qualified paths do not resolve to
   cross-module declaration IDs.
 
+### M9: Complete Executable Language Surface
+
+- Added bytecode instructions for unary logical-not and numeric negation.
+- Lowered parsed unary `!` and unary `-` expressions through the bytecode
+  compiler instead of rejecting them as unsupported syntax.
+- Added VM execution for truthiness-based `!` and numeric-only unary `-`,
+  including overflow/type errors through the VM error path.
+- Added compiler and VM coverage proving unary operators compile and execute
+  from source.
+
 ## Next
 
-- Continue M8 compiler migration by replacing remaining syntax-only lowering
-  decisions with HIR expression and declaration facts.
+- Continue M9 language-surface execution by lowering and running the remaining
+  planned expression and statement forms from `docs/grammar.ebnf`.

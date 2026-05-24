@@ -608,6 +608,7 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Literal(literal) => self.compile_literal(literal),
             ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
             ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
+            ExprKind::Unary { op, expr } => self.compile_unary(*op, expr),
             ExprKind::Field { base, name } => {
                 let root = self.compile_expr(base)?;
                 let dst = self.alloc_register()?;
@@ -712,7 +713,6 @@ impl<'ast> Compiler<'ast> {
                 "assignment expression",
             ))),
             ExprKind::SelfValue
-            | ExprKind::Unary { .. }
             | ExprKind::Index { .. }
             | ExprKind::Try(_)
             | ExprKind::Lambda { .. }
@@ -900,6 +900,17 @@ impl<'ast> Compiler<'ast> {
                     "binary operator",
                 )));
             }
+        };
+        self.emit(instruction);
+        Ok(dst)
+    }
+
+    fn compile_unary(&mut self, op: UnaryOp, expr: &Expr) -> CompileResult<Register> {
+        let src = self.compile_expr(expr)?;
+        let dst = self.alloc_register()?;
+        let instruction = match op {
+            UnaryOp::Not => InstructionKind::Not { dst, src },
+            UnaryOp::Negate => InstructionKind::Negate { dst, src },
         };
         self.emit(instruction);
         Ok(dst)
@@ -1896,6 +1907,49 @@ pub const BONUS: int = 5;
             InstructionKind::CallFunction { name, .. } if name == "game.reward.grant"
         )));
         assert!(main.constants.contains(&Constant::Int(5)));
+    }
+
+    #[test]
+    fn compiler_lowers_unary_operators() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return !false == true && -5 < 0;
+}
+"#,
+            "main",
+        )
+        .expect_err("logical operators are still unsupported");
+
+        let CompileErrorKind::UnsupportedSyntax("binary operator") = code.kind else {
+            panic!("expected logical operator to remain unsupported");
+        };
+
+        let code = compile_function_source(
+            SourceId::new(2),
+            r#"
+fn main() {
+    if !false {
+        return -5;
+    }
+    return 0;
+}
+"#,
+            "main",
+        )
+        .expect("unary operators should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| { matches!(instruction.kind, InstructionKind::Not { .. }) })
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| { matches!(instruction.kind, InstructionKind::Negate { .. }) })
+        );
     }
 
     #[test]

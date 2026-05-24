@@ -112,6 +112,14 @@ pub enum InstructionKind {
         dst: Register,
         src: Register,
     },
+    Not {
+        dst: Register,
+        src: Register,
+    },
+    Negate {
+        dst: Register,
+        src: Register,
+    },
     Add {
         dst: Register,
         lhs: Register,

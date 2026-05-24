@@ -744,6 +744,14 @@ impl Vm {
                     let value = frame.read(*src)?.clone();
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::Not { dst, src } => {
+                    let value = Value::Bool(!is_truthy(frame.read(*src)?));
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::Negate { dst, src } => {
+                    let value = negate_numeric(frame.read(*src)?)?;
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::Add { dst, lhs, rhs } => {
                     let value =
                         binary_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "add", |a, b| a + b)?;
@@ -1515,6 +1523,20 @@ fn binary_numeric(
     }
 }
 
+fn negate_numeric(value: &Value) -> VmResult<Value> {
+    match value {
+        Value::Int(value) => value.checked_neg().map(Value::Int).ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "negate",
+            })
+        }),
+        Value::Float(value) => Ok(Value::Float(-value)),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "negate",
+        })),
+    }
+}
+
 fn int_op_float(lhs: f64, rhs: f64, operation: &'static str) -> VmResult<f64> {
     match operation {
         "add" => Ok(lhs + rhs),
@@ -1903,6 +1925,25 @@ fn main() {
         .expect("compile arithmetic source");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(14)));
+    }
+
+    #[test]
+    fn runs_compiled_unary_operator_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    if !false {
+        return -5;
+    }
+    return 0;
+}
+"#,
+            "main",
+        )
+        .expect("compile unary operator source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(-5)));
     }
 
     #[test]

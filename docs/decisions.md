@@ -963,3 +963,26 @@ Consequences:
   declaration-backed bytecode.
 - Unresolved or non-script namespace calls can still fall back to native
   dispatch when they do not name a visible script declaration.
+
+## 2026-05-24: Unary Not Uses Existing Truthiness
+
+Status: Accepted
+
+Context:
+M9 starts expanding the executable language surface from parsed syntax into
+bytecode and VM behavior. Unary `!` and unary `-` are already part of the
+parsed AST, but bytecode generation previously rejected them.
+
+Decision:
+Compile `!expr` to a dedicated `Not` instruction that inverts the VM's
+existing truthiness rules. Compile `-expr` to a dedicated `Negate` instruction
+that accepts integers and floats, reports a VM type mismatch for non-numeric
+values, and treats integer minimum overflow as a VM error.
+
+Consequences:
+- Conditional truthiness and explicit logical-not now share one semantic
+  definition.
+- Numeric negation is executable without widening the language's implicit
+  conversion rules.
+- Logical binary operators and richer expression forms remain separate M9
+  slices.
