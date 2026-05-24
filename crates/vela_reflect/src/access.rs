@@ -1,3 +1,53 @@
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldAccess {
+    pub readable: bool,
+    pub writable: bool,
+    pub reflect_readable: bool,
+    pub reflect_writable: bool,
+}
+
+impl FieldAccess {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn readable(mut self, readable: bool) -> Self {
+        self.readable = readable;
+        self
+    }
+
+    #[must_use]
+    pub fn writable(mut self, writable: bool) -> Self {
+        self.writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub fn reflect_readable(mut self, reflect_readable: bool) -> Self {
+        self.reflect_readable = reflect_readable;
+        self
+    }
+
+    #[must_use]
+    pub fn reflect_writable(mut self, reflect_writable: bool) -> Self {
+        self.reflect_writable = reflect_writable;
+        self
+    }
+}
+
+impl Default for FieldAccess {
+    fn default() -> Self {
+        Self {
+            readable: true,
+            writable: false,
+            reflect_readable: true,
+            reflect_writable: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FunctionEffectSet {
     pub reads_host: bool,

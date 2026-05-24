@@ -823,8 +823,13 @@ permissions.
   marked non-reflect-visible are denied, private functions require
   `AccessPrivate`, and function-specific permissions must be granted on the
   `ReflectPolicy` before metadata is returned to scripts.
+- Added `FieldAccess` metadata to reflected fields and exposed copied
+  `ReflectFieldAccess` records through `reflect.field`/`reflect.fields`.
+  Reflective host field reads now require `reflect_readable`, and reflective
+  host field writes require both host writability and `reflect_writable` before
+  any `PatchTx` patch is recorded.
 
 ## Next
 
-- Continue M12 with broader reflection permission coverage for field metadata,
-  effect/access reporting polish, and remaining hot-reload report diagnostics.
+- Continue M12 with remaining reflection access reporting polish and
+  hot-reload report diagnostics.

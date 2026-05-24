@@ -11,7 +11,7 @@ mod script_types;
 use std::collections::BTreeMap;
 use std::fmt;
 
-pub use access::{FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
+pub use access::{FieldAccess, FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
 pub use members::{
     attrs as attrs_metadata, docs as docs_metadata, field as field_metadata, has_field, has_method,
     kind as kind_metadata, methods, name as name_metadata, traits as trait_metadata, variant,
@@ -198,6 +198,7 @@ pub struct FieldDesc {
     pub id: FieldId,
     pub name: String,
     pub writable: bool,
+    pub access: FieldAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
 }
@@ -209,6 +210,7 @@ impl FieldDesc {
             id,
             name: name.into(),
             writable: false,
+            access: FieldAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
         }
@@ -217,6 +219,15 @@ impl FieldDesc {
     #[must_use]
     pub fn writable(mut self, writable: bool) -> Self {
         self.writable = writable;
+        self.access.writable = writable;
+        self.access.reflect_writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub fn access(mut self, access: FieldAccess) -> Self {
+        self.writable = access.writable;
+        self.access = access;
         self
     }
 
@@ -626,6 +637,14 @@ pub enum ReflectErrorKind {
         type_name: String,
         field: String,
     },
+    FieldNotReflectReadable {
+        type_name: String,
+        field: String,
+    },
+    FieldNotReflectWritable {
+        type_name: String,
+        field: String,
+    },
     InvalidTarget,
     InvalidValue,
     Host(String),
@@ -660,6 +679,18 @@ pub fn get(
     match target {
         ReflectValue::HostRef(host_ref) => {
             let field_desc = ctx.registry.host_field(*host_ref, field)?;
+            let type_name = ctx
+                .registry
+                .type_of_host(*host_ref)
+                .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
+            if !field_desc.access.reflect_readable {
+                return Err(ReflectError::new(
+                    ReflectErrorKind::FieldNotReflectReadable {
+                        type_name,
+                        field: field.to_owned(),
+                    },
+                ));
+            }
             let value = ctx
                 .tx
                 .read_path(ctx.adapter, &HostPath::new(*host_ref).field(field_desc.id))
@@ -683,15 +714,23 @@ pub fn set(
     match target {
         ReflectValue::HostRef(host_ref) => {
             let field_desc = ctx.registry.host_field(*host_ref, field)?;
+            let type_name = ctx
+                .registry
+                .type_of_host(*host_ref)
+                .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
             if !field_desc.writable {
-                let type_name = ctx
-                    .registry
-                    .type_of_host(*host_ref)
-                    .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
                 return Err(ReflectError::new(ReflectErrorKind::FieldNotWritable {
                     type_name,
                     field: field.to_owned(),
                 }));
+            }
+            if !field_desc.access.reflect_writable {
+                return Err(ReflectError::new(
+                    ReflectErrorKind::FieldNotReflectWritable {
+                        type_name,
+                        field: field.to_owned(),
+                    },
+                ));
             }
             let ReflectValue::Host(value) = value else {
                 return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
@@ -1000,6 +1039,78 @@ mod tests {
             ReflectErrorKind::FieldNotWritable {
                 type_name: "Player".to_owned(),
                 field: "id".to_owned()
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflect_get_denies_non_reflect_readable_host_fields() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "secret")
+                        .access(FieldAccess::new().reflect_readable(false)),
+                ),
+        );
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(
+            HostPath::new(player_ref()).field(FieldId::new(2)),
+            HostValue::Int(9),
+        );
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error =
+            get(&mut ctx, &ReflectValue::HostRef(player_ref()), "secret").expect_err("read");
+
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldNotReflectReadable {
+                type_name: "Player".to_owned(),
+                field: "secret".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn reflect_set_denies_non_reflect_writable_host_fields() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "level")
+                        .access(FieldAccess::new().writable(true).reflect_writable(false)),
+                ),
+        );
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error = set(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "level",
+            ReflectValue::Host(HostValue::Int(10)),
+        )
+        .expect_err("write");
+
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldNotReflectWritable {
+                type_name: "Player".to_owned(),
+                field: "level".to_owned()
             }
         );
         assert!(ctx.tx.patches().is_empty());

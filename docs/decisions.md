@@ -3348,3 +3348,27 @@ Consequences:
   their reflection boundaries.
 - The raw registry helper remains available for trusted host-side inspection
   and tests that do not model script permissions.
+
+## 2026-05-25: Reflect Host Field Access Uses FieldAccess
+
+Status: Accepted
+
+Context:
+Field descriptors only carried a `writable` boolean, while the architecture
+requires field access metadata that separates host readability/writability from
+reflective readability/writability. That made it impossible for hosts to expose
+a field to normal host operations while hiding it from script reflection.
+
+Decision:
+Add `FieldAccess` to `FieldDesc` while preserving the existing `writable`
+facade for compatibility. `reflect.field` and `reflect.fields` return copied
+`ReflectFieldAccess` metadata. `reflect.get` rejects host fields that are not
+`reflect_readable`, and `reflect.set` requires both host writability and
+`reflect_writable` before recording a `PatchTx` write.
+
+Consequences:
+- Host schemas can hide sensitive fields from reflective reads without removing
+  the field from the registered type.
+- Reflective writes can be disabled independently from host writability.
+- Existing `.writable(true)` schema builders continue to opt fields into both
+  host writability and reflective writability.

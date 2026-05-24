@@ -2487,8 +2487,8 @@ mod tests {
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
-        FieldDesc, FunctionAccess, FunctionDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey,
-        TypeKind, VariantDesc,
+        FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodDesc, TraitDesc, TypeDesc,
+        TypeKey, TypeKind, VariantDesc,
     };
 
     #[test]
@@ -6586,6 +6586,54 @@ fn main() {
             VmErrorKind::Reflect(ReflectErrorKind::FunctionPermissionDenied {
                 function: "game.admin".to_owned(),
                 permission: "game.admin".to_owned(),
+            })
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflection_field_access_denies_hidden_host_field_reads() {
+        let host_ref = player_ref(3);
+        let secret_field = FieldId::new(77);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return reflect.get(player, "secret");
+}
+"#,
+        )
+        .expect("compile hidden field reflection source");
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(secret_field, "secret")
+                        .access(FieldAccess::new().reflect_readable(false)),
+                ),
+        );
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(
+            HostPath::new(host_ref).field(secret_field),
+            HostValue::Int(99),
+        );
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(registry));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let error = vm
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .expect_err("hidden field read should be denied");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
+                type_name: "Player".to_owned(),
+                field: "secret".to_owned(),
             })
         );
         assert!(tx.patches().is_empty());

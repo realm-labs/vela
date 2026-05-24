@@ -255,11 +255,36 @@ fn field_record(field: &FieldDesc) -> HostValue {
     fields.insert("id".to_owned(), HostValue::Int(i64::from(field.id.get())));
     fields.insert("name".to_owned(), HostValue::String(field.name.clone()));
     fields.insert("writable".to_owned(), HostValue::Bool(field.writable));
+    fields.insert("access".to_owned(), field_access_record(field));
     fields.insert("docs".to_owned(), docs_value(field.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&field.attrs));
     HostValue::Record {
         type_name: "ReflectField".to_owned(),
         fields,
+    }
+}
+
+fn field_access_record(field: &FieldDesc) -> HostValue {
+    HostValue::Record {
+        type_name: "ReflectFieldAccess".to_owned(),
+        fields: BTreeMap::from([
+            (
+                "readable".to_owned(),
+                HostValue::Bool(field.access.readable),
+            ),
+            (
+                "writable".to_owned(),
+                HostValue::Bool(field.access.writable),
+            ),
+            (
+                "reflect_readable".to_owned(),
+                HostValue::Bool(field.access.reflect_readable),
+            ),
+            (
+                "reflect_writable".to_owned(),
+                HostValue::Bool(field.access.reflect_writable),
+            ),
+        ]),
     }
 }
 
@@ -360,6 +385,18 @@ mod tests {
             panic!("field metadata should be a record");
         };
         assert_eq!(fields.get("writable"), Some(&HostValue::Bool(true)));
+        assert_eq!(
+            fields.get("access"),
+            Some(&HostValue::Record {
+                type_name: "ReflectFieldAccess".to_owned(),
+                fields: BTreeMap::from([
+                    ("readable".to_owned(), HostValue::Bool(true)),
+                    ("writable".to_owned(), HostValue::Bool(true)),
+                    ("reflect_readable".to_owned(), HostValue::Bool(true)),
+                    ("reflect_writable".to_owned(), HostValue::Bool(true)),
+                ]),
+            })
+        );
         assert_eq!(
             fields.get("docs"),
             Some(&HostValue::String("Current level.".to_owned()))
