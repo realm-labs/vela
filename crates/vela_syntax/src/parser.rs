@@ -1,10 +1,10 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::ast::{
-    Argument, AssignOp, Attribute, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem,
-    IfExpr, Item, ItemKind, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField,
-    RecordPatternField, SourceFile, Stmt, StmtKind, StructField, StructItem, TraitItem,
-    TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
+    Argument, AssignOp, Attribute, BinaryOp, Block, ConstItem, ElseBranch, Expr, ExprKind,
+    FunctionItem, IfExpr, Item, ItemKind, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern,
+    RecordField, RecordPatternField, SourceFile, Stmt, StmtKind, StructField, StructItem,
+    TraitItem, TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
 };
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, Token, TokenKind};
@@ -61,6 +61,8 @@ impl Parser {
 
         let kind = if self.eat_keyword(Keyword::Use).is_some() {
             self.parse_use_item().map(ItemKind::Use)
+        } else if self.eat_keyword(Keyword::Const).is_some() {
+            self.parse_const_item().map(ItemKind::Const)
         } else if self.eat_keyword(Keyword::Fn).is_some() {
             self.parse_function_item().map(ItemKind::Function)
         } else if self.eat_keyword(Keyword::Struct).is_some() {
@@ -107,6 +109,21 @@ impl Parser {
         }
         self.eat_symbol(Symbol::Semicolon);
         Some(UseItem { path })
+    }
+
+    fn parse_const_item(&mut self) -> Option<ConstItem> {
+        let name = self.expect_ident("expected const name")?;
+        let type_hint = self.parse_type_annotation();
+        if self.eat_symbol(Symbol::Equal).is_none() {
+            self.error_here("expected `=` in const declaration");
+        }
+        let value = self.parse_expression();
+        self.eat_symbol(Symbol::Semicolon);
+        Some(ConstItem {
+            name,
+            type_hint,
+            value,
+        })
     }
 
     fn parse_function_item(&mut self) -> Option<FunctionItem> {
@@ -1313,6 +1330,8 @@ mod tests {
             r#"
 use game.player.Player;
 
+pub const START_LEVEL: int = 1 + 2;
+
 #[event("monster.kill")]
 pub fn on_kill(ctx, player, monster) {
     player.exp += monster.exp
@@ -1335,29 +1354,39 @@ trait Damageable {
         );
 
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-        assert_eq!(parsed.items.len(), 5);
+        assert_eq!(parsed.items.len(), 6);
         assert!(matches!(parsed.items[0].kind, ItemKind::Use(_)));
 
-        let ItemKind::Function(function) = &parsed.items[1].kind else {
-            panic!("expected function item");
+        let ItemKind::Const(constant) = &parsed.items[1].kind else {
+            panic!("expected const item");
         };
         assert_eq!(parsed.items[1].visibility, Visibility::Public);
+        assert_eq!(constant.name, "START_LEVEL");
+        assert_eq!(
+            constant.type_hint.as_ref().expect("const type hint").path,
+            ["int"]
+        );
+
+        let ItemKind::Function(function) = &parsed.items[2].kind else {
+            panic!("expected function item");
+        };
+        assert_eq!(parsed.items[2].visibility, Visibility::Public);
         assert_eq!(function.name, "on_kill");
         assert_eq!(param_names(&function.params), ["ctx", "player", "monster"]);
         assert_eq!(function.body.statements.len(), 1);
-        assert_eq!(parsed.items[1].attrs[0].path, ["event"]);
+        assert_eq!(parsed.items[2].attrs[0].path, ["event"]);
 
-        let ItemKind::Struct(record) = &parsed.items[2].kind else {
+        let ItemKind::Struct(record) = &parsed.items[3].kind else {
             panic!("expected struct item");
         };
         assert_eq!(struct_field_names(&record.fields), ["item_id", "count"]);
 
-        let ItemKind::Enum(enumeration) = &parsed.items[3].kind else {
+        let ItemKind::Enum(enumeration) = &parsed.items[4].kind else {
             panic!("expected enum item");
         };
         assert_eq!(enumeration.variants, ["None", "Active"]);
 
-        let ItemKind::Trait(trait_item) = &parsed.items[4].kind else {
+        let ItemKind::Trait(trait_item) = &parsed.items[5].kind else {
             panic!("expected trait item");
         };
         assert_eq!(trait_method_names(&trait_item.methods), ["damage"]);
@@ -1610,6 +1639,8 @@ struct Reward {
             r#"
 use game.player.Player;
 
+const START_LEVEL = 1 + 2;
+
 #[event("monster.kill")]
 pub fn on_kill(ctx, player, monster) {
     let rewards = ctx.config.kill_rewards.filter(|r| r.monster_id == monster.id);
@@ -1638,6 +1669,7 @@ trait Damageable { fn damage(self, amount); }
         assert_eq!(
             snapshot_file(&parsed),
             r#"use game.player.Player
+const START_LEVEL = binary
 pub fn on_kill(ctx, player, monster)
   let rewards = call
   expr assign
@@ -1688,6 +1720,15 @@ fn next() {}
                 ItemKind::Use(use_item) => {
                     writeln!(out, "use {}", use_item.path.join("."))
                         .expect("write syntax snapshot");
+                }
+                ItemKind::Const(constant) => {
+                    writeln!(
+                        out,
+                        "const {} = {}",
+                        constant.name,
+                        expr_kind_name(&constant.value)
+                    )
+                    .expect("write syntax snapshot");
                 }
                 ItemKind::Function(function) => {
                     let visibility = if item.visibility == Visibility::Public {

@@ -811,6 +811,8 @@ fn main(player) {
         let program = compile_program_source(
             SourceId::new(1),
             r#"
+const BONUS: int = 5;
+
 fn add_bonus(value) {
     return value + 5;
 }
@@ -853,6 +855,25 @@ fn main(player) { return player.level; }
                 .iter()
                 .any(|diagnostic| diagnostic.message.contains("expected item"))
         );
+    }
+
+    #[test]
+    fn compiler_rejects_top_level_const_side_effects_from_hir() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+const BAD = register_event("monster.kill");
+fn main() { return 1; }
+"#,
+        )
+        .expect_err("side-effecting const initializer should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("hir::top_level_side_effect")
+        }));
     }
 
     #[test]

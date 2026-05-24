@@ -4,7 +4,10 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::{FunctionItem, ItemKind, SourceFile, Visibility, parse_source};
 
 use crate::binding::{BindingMap, FunctionBindingInput, bind_function};
-use crate::type_hint::{FunctionSignature, HirTypeHint, ParamHint, StructFieldHint, StructShape};
+use crate::top_level::validate_const_initializer;
+use crate::type_hint::{
+    ConstMetadata, FunctionSignature, HirTypeHint, ParamHint, StructFieldHint, StructShape,
+};
 use crate::{HirDeclId, HirNodeId, ModuleId};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -63,6 +66,7 @@ pub struct Declaration {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DeclarationKind {
+    Const,
     Function,
     Struct,
     Enum,
@@ -128,6 +132,7 @@ pub struct ModuleGraph {
     modules: Vec<HirModule>,
     module_by_path: BTreeMap<ModulePath, ModuleId>,
     declarations: BTreeMap<HirDeclId, Declaration>,
+    const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
@@ -192,6 +197,19 @@ impl ModuleGraph {
                         span: item.span,
                         resolution: None,
                     });
+                }
+                ItemKind::Const(const_item) => {
+                    let declaration = self.insert_declaration(
+                        &mut hir_module,
+                        const_item.name.clone(),
+                        DeclarationKind::Const,
+                        item.visibility.clone(),
+                        item.span,
+                    );
+                    self.const_metadata
+                        .insert(declaration, ConstMetadata::from_syntax(const_item));
+                    self.diagnostics
+                        .extend(validate_const_initializer(const_item));
                 }
                 ItemKind::Function(function) => {
                     let declaration = self.insert_declaration(
@@ -292,6 +310,11 @@ impl ModuleGraph {
     #[must_use]
     pub fn declaration(&self, declaration: HirDeclId) -> Option<&Declaration> {
         self.declarations.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn const_metadata(&self, declaration: HirDeclId) -> Option<&ConstMetadata> {
+        self.const_metadata.get(&declaration)
     }
 
     #[must_use]
@@ -535,6 +558,7 @@ mod tests {
             "game.reward",
             r#"
 pub fn grant(player) { return player; }
+pub const START_LEVEL: int = 1 + 2;
 struct Reward { item_id, count }
 enum QuestProgress { None, Active }
 trait Damageable { fn damage(self, amount); }
@@ -544,14 +568,28 @@ trait Damageable { fn damage(self, amount); }
         assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
         let declarations = graph.module(module).expect("module declarations");
         let grant = declarations.get("grant").expect("grant declaration");
+        let start_level = declarations.get("START_LEVEL").expect("const declaration");
         let reward = declarations.get("Reward").expect("Reward declaration");
 
         assert_ne!(grant, reward);
         assert_eq!(grant.get(), 0);
-        assert_eq!(reward.get(), 1);
+        assert_eq!(start_level.get(), 1);
+        assert_eq!(reward.get(), 2);
         assert_eq!(
             graph.declaration(grant).map(|decl| decl.kind),
             Some(DeclarationKind::Function)
+        );
+        assert_eq!(
+            graph.declaration(start_level).map(|decl| decl.kind),
+            Some(DeclarationKind::Const)
+        );
+        assert_eq!(
+            graph
+                .const_metadata(start_level)
+                .and_then(|metadata| metadata.type_hint.as_ref())
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("int")
         );
         assert_eq!(
             graph.declaration(reward).map(|decl| decl.kind),
@@ -849,6 +887,39 @@ struct Reward {
                 .map(HirTypeHint::display)
                 .as_deref(),
             Some("Reward")
+        );
+    }
+
+    #[test]
+    fn rejects_side_effecting_const_initializers() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.config",
+            r#"
+const SAFE_LIMIT: int = 10 + 5;
+const BAD_CALL = register_event("monster.kill");
+const BAD_ASSIGN = { global_counter += 1; 0 };
+fn main() { return SAFE_LIMIT; }
+"#,
+        ));
+
+        let diagnostics = graph
+            .diagnostics()
+            .iter()
+            .filter(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
+            .collect::<Vec<_>>();
+
+        assert_eq!(diagnostics.len(), 2, "{:?}", graph.diagnostics());
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("BAD_CALL"))
+        );
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("BAD_ASSIGN"))
         );
     }
 }

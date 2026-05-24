@@ -23,6 +23,7 @@ pub enum Visibility {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ItemKind {
     Use(UseItem),
+    Const(ConstItem),
     Function(FunctionItem),
     Struct(StructItem),
     Enum(EnumItem),
@@ -32,6 +33,13 @@ pub enum ItemKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UseItem {
     pub path: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstItem {
+    pub name: String,
+    pub type_hint: Option<TypeHint>,
+    pub value: Expr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

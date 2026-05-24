@@ -262,8 +262,16 @@ that introduce loops and closures.
   parameters.
 - Added syntax, HIR, and compiler tests proving type hints are preserved as
   metadata and generic type hints are rejected before bytecode generation.
+- Added parser and HIR support for module-level `const` declarations with
+  optional type hints and expression initializers.
+- HIR now indexes const declarations, preserves const initializer spans and
+  type-hint metadata, and rejects side-effecting const initializers such as
+  calls and assignments with `hir::top_level_side_effect`.
+- Added compiler tests proving pure const declarations can coexist with
+  functions while side-effecting const initializers stop before bytecode
+  generation.
 
 ## Next
 
-- Expand M8 lowering with top-level side-effect checks and deeper compiler
+- Expand M8 declaration lowering for impl metadata and deepen compiler
   consumption of HIR binding facts.

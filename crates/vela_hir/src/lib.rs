@@ -3,6 +3,7 @@
 mod binding;
 mod ids;
 mod module_graph;
+mod top_level;
 mod type_hint;
 
 pub use binding::{BindingMap, BindingResolution, ExprInfo, LocalBinding, LocalBindingKind};
@@ -11,4 +12,6 @@ pub use module_graph::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleGraph,
     ModulePath, ModuleSource, ResolvedImport,
 };
-pub use type_hint::{FunctionSignature, HirTypeHint, ParamHint, StructFieldHint, StructShape};
+pub use type_hint::{
+    ConstMetadata, FunctionSignature, HirTypeHint, ParamHint, StructFieldHint, StructShape,
+};

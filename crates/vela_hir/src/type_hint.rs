@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_syntax::{Param, StructField, TypeHint};
+use vela_syntax::{ConstItem, Param, StructField, TypeHint};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
@@ -42,6 +42,22 @@ impl ParamHint {
 pub struct FunctionSignature {
     pub params: Vec<ParamHint>,
     pub return_type: Option<HirTypeHint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstMetadata {
+    pub type_hint: Option<HirTypeHint>,
+    pub value_span: Span,
+}
+
+impl ConstMetadata {
+    #[must_use]
+    pub fn from_syntax(item: &ConstItem) -> Self {
+        Self {
+            type_hint: item.type_hint.as_ref().map(HirTypeHint::from_syntax),
+            value_span: item.value.span,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

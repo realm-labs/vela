@@ -543,3 +543,27 @@ Consequences:
   monomorphization pressure.
 - The bytecode compiler can continue executing valid hinted programs while
   deeper HIR consumption is implemented incrementally.
+
+## 2026-05-24: Const Initializers Are HIR-Checked For Top-Level Effects
+
+Status: Accepted
+
+Context:
+M8 needs module-level declarations from the grammar to lower into semantic
+metadata, and hot reload should not rely on arbitrary top-level script
+execution for registration or mutation.
+
+Decision:
+Parse `const` as a module item with optional type-hint metadata and an
+expression initializer. HIR indexes const declarations and validates their
+initializers for top-level side effects. Calls, assignments, and loops in const
+initializers produce `hir::top_level_side_effect` diagnostics before bytecode
+generation.
+
+Consequences:
+- Pure configuration constants can appear at module scope without becoming
+  executable top-level script code.
+- Event registration and host mutation remain routed through attributes,
+  reflection scanning, and function execution rather than module-load effects.
+- More precise const value evaluation and binding analysis can be added later
+  without weakening the no-arbitrary-top-level-effects rule.
