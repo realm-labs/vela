@@ -38,7 +38,10 @@ use patterns::{
     enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
     record_pattern_field_match, tuple_variant_field_name,
 };
-use script_types::{ScriptTypeFlow, expression_script_type, type_hint_script_type};
+use script_types::{
+    ScriptTypeFact, ScriptTypeFlow, expression_script_fact, expression_script_type,
+    type_hint_script_type,
+};
 use value_flow::{BlockValue, block_value};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -280,6 +283,22 @@ fn script_method_ids(
             )
         })
         .collect()
+}
+
+fn merge_type_hint_and_value_fact(
+    hinted: Option<ScriptTypeFact>,
+    value: Option<ScriptTypeFact>,
+) -> Option<ScriptTypeFact> {
+    match (hinted, value) {
+        (Some(hinted), Some(value)) if hinted.type_name == value.type_name => {
+            Some(ScriptTypeFact {
+                type_name: hinted.type_name,
+                enum_variant: value.enum_variant,
+            })
+        }
+        (Some(hinted), _) => Some(hinted),
+        (None, value) => value,
+    }
 }
 
 fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
@@ -859,17 +878,18 @@ impl<'ast> Compiler<'ast> {
                 type_hint,
                 value,
             } => {
-                let hinted_script_type = type_hint.as_ref().and_then(|hint| {
+                let hinted_script_fact = type_hint.as_ref().and_then(|hint| {
                     type_hint_script_type(
                         &HirTypeHint::from_syntax(hint),
                         self.facts.type_symbols.values(),
                     )
+                    .map(ScriptTypeFact::new)
                 });
-                let script_type = hinted_script_type.or_else(|| {
-                    value
-                        .as_ref()
-                        .and_then(|value| self.script_type_for_expr(value))
-                });
+                let value_script_fact = value
+                    .as_ref()
+                    .and_then(|value| self.script_fact_for_expr(value));
+                let script_fact =
+                    merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
                 let (register, returned) = if let Some(value) = value {
                     self.compile_let_initializer(value)?
                 } else {
@@ -881,9 +901,9 @@ impl<'ast> Compiler<'ast> {
                         .local_named_at(name, LocalBindingKind::Let, stmt.span)
                 {
                     self.hir_locals.insert(local, register);
-                    self.script_types.set_local(local, name, script_type);
+                    self.script_types.set_local_fact(local, name, script_fact);
                 } else {
-                    self.script_types.set_name(name, script_type);
+                    self.script_types.set_name_fact(name, script_fact);
                 }
                 Ok(returned)
             }
@@ -950,6 +970,7 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Unary { op, expr } => self.compile_unary(*op, expr),
             ExprKind::Field { base, name } => {
                 let typed_record_slot = self.script_record_field_slot_for_receiver(base, name);
+                let typed_enum_slot = self.script_enum_field_slot_for_receiver(base, name);
                 let root = self.compile_expr(base)?;
                 let dst = self.alloc_register()?;
                 if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
@@ -971,6 +992,13 @@ impl<'ast> Compiler<'ast> {
                     self.emit(InstructionKind::GetRecordSlot {
                         dst,
                         record: root,
+                        field: name.clone(),
+                        slot,
+                    });
+                } else if let Some(slot) = typed_enum_slot {
+                    self.emit(InstructionKind::GetEnumSlot {
+                        dst,
+                        value: root,
                         field: name.clone(),
                         slot,
                     });
@@ -1311,11 +1339,11 @@ impl<'ast> Compiler<'ast> {
             self.facts.clone(),
         )?;
         for capture in &captures {
-            if let Some(script_type) = self.script_types.local(capture.local) {
-                lambda_compiler.script_types.set_local(
+            if let Some(script_fact) = self.script_types.local_fact(capture.local) {
+                lambda_compiler.script_types.set_local_fact(
                     capture.local,
                     &capture.name,
-                    Some(script_type),
+                    Some(script_fact),
                 );
             }
         }
@@ -1406,8 +1434,16 @@ impl<'ast> Compiler<'ast> {
         self.script_record_field_slot_for_type(&type_name, field)
     }
 
+    fn script_enum_field_slot_for_receiver(&self, receiver: &Expr, field: &str) -> Option<usize> {
+        let fact = self.script_fact_for_expr(receiver)?;
+        let variant = fact.enum_variant.as_deref()?;
+        self.facts
+            .script_field_slots
+            .enum_variant(&fact.type_name, variant, field)
+    }
+
     fn script_record_field_slot_for_type(&self, type_name: &str, field: &str) -> Option<usize> {
-        self.facts.script_field_slots.get(type_name, field)
+        self.facts.script_field_slots.record(type_name, field)
     }
 
     fn script_method_id_for_receiver_path(
@@ -1438,6 +1474,15 @@ impl<'ast> Compiler<'ast> {
         )
     }
 
+    fn script_fact_for_expr(&self, expr: &Expr) -> Option<ScriptTypeFact> {
+        expression_script_fact(
+            expr,
+            |span| self.type_symbol_at_span(span),
+            |span| self.script_types.local_fact_at_span(self.bindings, span),
+            |name| self.script_types.name_fact(name),
+        )
+    }
+
     fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -1445,11 +1490,11 @@ impl<'ast> Compiler<'ast> {
             )));
         };
         if let Some((name, local)) = self.local_assignment_target(target) {
-            let script_type = (*op == AssignOp::Set)
-                .then(|| self.script_type_for_expr(value))
+            let script_fact = (*op == AssignOp::Set)
+                .then(|| self.script_fact_for_expr(value))
                 .flatten();
             let assigned =
-                self.compile_local_assignment(*op, target.span, name, local, value, script_type)?;
+                self.compile_local_assignment(*op, target.span, name, local, value, script_fact)?;
             return Ok(assigned);
         }
         if let ExprKind::Index { base, index } = &target.kind {
@@ -1498,15 +1543,15 @@ impl<'ast> Compiler<'ast> {
         name: String,
         local: Option<HirLocalId>,
         value: &Expr,
-        script_type: Option<String>,
+        script_fact: Option<ScriptTypeFact>,
     ) -> CompileResult<Register> {
         let target = self.local_register_at_span(target_span, &name)?;
         if let Some(local) = local {
             self.hir_locals.insert(local, target);
             self.script_types
-                .set_local(local, name.clone(), script_type);
+                .set_local_fact(local, name.clone(), script_fact);
         } else {
-            self.script_types.set_name(name.clone(), script_type);
+            self.script_types.set_name_fact(name.clone(), script_fact);
         }
         let assigned = match op {
             AssignOp::Set => {
@@ -1817,6 +1862,16 @@ impl<'ast> Compiler<'ast> {
                     slot,
                 });
             } else if index == 1
+                && let Some(slot) =
+                    self.script_enum_field_slot_for_path_root(span, &path[0], segment)
+            {
+                self.emit(InstructionKind::GetEnumSlot {
+                    dst,
+                    value: current,
+                    field: segment.clone(),
+                    slot,
+                });
+            } else if index == 1
                 && let Some(field) = self.facts.options.host_fields.get(segment).copied()
             {
                 self.emit(InstructionKind::GetHostField {
@@ -1847,6 +1902,22 @@ impl<'ast> Compiler<'ast> {
             _ => self.script_types.name(root),
         }?;
         self.script_record_field_slot_for_type(&type_name, field)
+    }
+
+    fn script_enum_field_slot_for_path_root(
+        &self,
+        span: Span,
+        root: &str,
+        field: &str,
+    ) -> Option<usize> {
+        let fact = match self.bindings.resolution_at_span(span) {
+            Some(BindingResolution::Local(local)) => self.script_types.local_fact(*local),
+            _ => self.script_types.name_fact(root),
+        }?;
+        let variant = fact.enum_variant.as_deref()?;
+        self.facts
+            .script_field_slots
+            .enum_variant(&fact.type_name, variant, field)
     }
 
     fn compile_host_assignment_target(
@@ -4394,6 +4465,43 @@ fn main() {
                 } if field == "amount"
             )
         }));
+    }
+
+    #[test]
+    fn compiler_lowers_typed_enum_variant_field_reads_to_slots() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Damage {
+    Physical { amount: int, element: string },
+    Magical { amount: int },
+}
+
+fn main() {
+    let damage = Damage.Physical { amount: 7, element: "slash" };
+    return damage.amount;
+}
+"#,
+        )
+        .expect("typed enum variant field read should compile to slot bytecode");
+        let main = program.function("main").expect("main function");
+
+        assert!(main.instructions.iter().any(|instruction| {
+            matches!(
+                instruction.kind,
+                InstructionKind::GetEnumSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "amount"
+            )
+        }));
+        assert!(
+            !main.instructions.iter().any(|instruction| matches!(
+                instruction.kind,
+                InstructionKind::GetEnumField { .. }
+            ))
+        );
     }
 
     #[test]

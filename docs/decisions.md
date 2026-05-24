@@ -2145,3 +2145,31 @@ Consequences:
 - The slot facts come from declared script metadata and do not alter dynamic
   runtime values or host mutation boundaries.
 - Slot lowering for enum variant payloads remains separate M10 work.
+
+## 2026-05-25: Enum Variant Payloads Are HIR Shape Metadata
+
+Status: Accepted
+
+Context:
+The grammar allows enum variants to declare tuple or record payload fields, but
+the syntax and HIR layers previously kept only variant names. The compiler could
+specialize immediate enum literals by inspecting constructor syntax, but
+typed locals initialized from enum variants still fell back to dynamic enum
+field lookup.
+
+Decision:
+Represent enum variant payload fields in the syntax AST, HIR `EnumShape`, and
+TypeRegistry variant metadata. Derive enum variant field slot facts from HIR
+shape metadata, preserve compiler-local variant facts for enum constructor
+values, and lower field reads on values known to be a specific declared variant
+to `GetEnumSlot`.
+
+Consequences:
+- Declared record and tuple variant payloads now participate in stable script
+  enum metadata and schema hashes.
+- Reflection exposes declared payload fields on `VariantDesc`.
+- Typed locals initialized from enum constructors can use slot bytecode for
+  declared variant field reads without changing runtime enum layout or host
+  mutation boundaries.
+- Destructured match pattern field facts and host type impl dispatch remain
+  later M10 work.

@@ -616,11 +616,13 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   metadata and lowers field reads and writes on typed struct receivers to
   `GetRecordSlot`/`SetRecordSlot`, extending slot bytecode beyond immediate
   record literals.
-- Remaining M10 work includes broader slot lowering for enum variants, host
-  type impl dispatch, and broader MethodId use for destructured variant fields
-  and other non-literal receiver facts.
+- Syntax, HIR, reflection, and compiler metadata now preserve declared enum
+  tuple/record variant payload fields; typed locals initialized from declared
+  enum constructors can lower variant field reads to `GetEnumSlot`.
+- Remaining M10 work includes host type impl dispatch and broader MethodId use
+  for destructured variant fields and other non-literal receiver facts.
 
 ## Next
 
-- Continue M10 by extending slot lowering into enum variants, then host type
-  impl dispatch.
+- Continue M10 with destructured variant field facts or host type impl
+  dispatch.

@@ -232,6 +232,7 @@ impl TraitMethodDesc {
 pub struct VariantDesc {
     pub id: VariantId,
     pub name: String,
+    pub fields: Vec<FieldDesc>,
     pub attrs: AttrMap,
 }
 
@@ -241,8 +242,15 @@ impl VariantDesc {
         Self {
             id,
             name: name.into(),
+            fields: Vec::new(),
             attrs: AttrMap::new(),
         }
+    }
+
+    #[must_use]
+    pub fn field(mut self, field: FieldDesc) -> Self {
+        self.fields.push(field);
+        self
     }
 }
 

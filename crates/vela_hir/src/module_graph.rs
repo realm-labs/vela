@@ -1712,8 +1712,8 @@ fn main() { return SAFE_LIMIT; }
             r#"
 enum QuestProgress {
     None,
-    Active,
-    Finished,
+    Active { quest_id: string, count: int },
+    Finished(quest_id: string),
 }
 "#,
         ));
@@ -1730,6 +1730,36 @@ enum QuestProgress {
             .map(|variant| variant.name.as_str())
             .collect::<Vec<_>>();
         assert_eq!(variants, ["None", "Active", "Finished"]);
+        let active = shape
+            .variants
+            .iter()
+            .find(|variant| variant.name == "Active")
+            .expect("Active variant");
+        let crate::EnumVariantFieldsHint::Record(fields) = &active.fields else {
+            panic!("expected record fields");
+        };
+        assert_eq!(
+            fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .collect::<Vec<_>>(),
+            ["quest_id", "count"]
+        );
+        let finished = shape
+            .variants
+            .iter()
+            .find(|variant| variant.name == "Finished")
+            .expect("Finished variant");
+        let crate::EnumVariantFieldsHint::Tuple(fields) = &finished.fields else {
+            panic!("expected tuple fields");
+        };
+        assert_eq!(
+            fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .collect::<Vec<_>>(),
+            ["quest_id"]
+        );
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use vela_common::{FieldId, MethodId, TypeId, VariantId};
-use vela_hir::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::{Declaration, DeclarationKind, EnumVariantFieldsHint, ModuleGraph};
 
 use crate::{
     FieldDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry,
@@ -38,10 +38,21 @@ impl TypeRegistry {
                             .kind(TypeKind::ScriptEnum)
                             .schema_hash(enum_schema_hash(&type_name, shape)),
                         |desc, variant| {
-                            desc.variant(VariantDesc::new(
-                                stable_variant_id(&type_name, &variant.name),
-                                variant.name.clone(),
-                            ))
+                            let variant_owner = enum_variant_owner(&type_name, &variant.name);
+                            let variant_desc =
+                                enum_variant_fields(&variant.fields).into_iter().fold(
+                                    VariantDesc::new(
+                                        stable_variant_id(&type_name, &variant.name),
+                                        variant.name.clone(),
+                                    ),
+                                    |desc, (field_name, _)| {
+                                        desc.field(FieldDesc::new(
+                                            stable_field_id(&variant_owner, &field_name),
+                                            field_name,
+                                        ))
+                                    },
+                                );
+                            desc.variant(variant_desc)
                         },
                     );
                     self.register(desc);
@@ -140,11 +151,66 @@ fn enum_schema_hash(type_name: &str, shape: &vela_hir::EnumShape) -> SchemaHash 
             (
                 stable_variant_id(type_name, &variant.name).get(),
                 variant.name.clone(),
-                String::new(),
+                enum_variant_signature(type_name, variant),
             )
         })
         .collect::<Vec<_>>();
     schema_hash("enum", type_name, members)
+}
+
+fn enum_variant_signature(type_name: &str, variant: &vela_hir::EnumVariantHint) -> String {
+    let variant_owner = enum_variant_owner(type_name, &variant.name);
+    let mut fields = enum_variant_fields(&variant.fields)
+        .into_iter()
+        .map(|(field_name, type_hint)| {
+            (
+                stable_field_id(&variant_owner, &field_name).get(),
+                field_name,
+                type_hint,
+            )
+        })
+        .collect::<Vec<_>>();
+    fields.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    fields
+        .into_iter()
+        .map(|(_, field_name, type_hint)| format!("{field_name}:{type_hint}"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn enum_variant_fields(fields: &EnumVariantFieldsHint) -> Vec<(String, String)> {
+    match fields {
+        EnumVariantFieldsHint::Unit => Vec::new(),
+        EnumVariantFieldsHint::Tuple(fields) => fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                (
+                    index.to_string(),
+                    field
+                        .type_hint
+                        .as_ref()
+                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                )
+            })
+            .collect(),
+        EnumVariantFieldsHint::Record(fields) => fields
+            .iter()
+            .map(|field| {
+                (
+                    field.name.clone(),
+                    field
+                        .type_hint
+                        .as_ref()
+                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                )
+            })
+            .collect(),
+    }
+}
+
+fn enum_variant_owner(type_name: &str, variant: &str) -> String {
+    format!("{type_name}.{variant}")
 }
 
 fn schema_hash(kind: &str, type_name: &str, mut members: Vec<(u32, String, String)>) -> SchemaHash {
@@ -223,8 +289,8 @@ struct Reward {
 
 enum QuestProgress {
     None,
-    Active,
-    Finished,
+    Active { quest_id: string, count: int },
+    Finished(quest_id: string),
 }
 "#,
         ));
@@ -257,6 +323,19 @@ enum QuestProgress {
                 .map(|variant| variant.name.as_str())
                 .collect::<Vec<_>>(),
             ["None", "Active", "Finished"]
+        );
+        let active = progress
+            .variants
+            .iter()
+            .find(|variant| variant.name == "Active")
+            .expect("Active variant");
+        assert_eq!(
+            active
+                .fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .collect::<Vec<_>>(),
+            ["quest_id", "count"]
         );
         assert_eq!(
             reward

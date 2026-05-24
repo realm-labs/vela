@@ -1,5 +1,7 @@
 use vela_common::Span;
-use vela_syntax::{ConstItem, EnumItem, ImplItem, Param, StructField, TraitItem, TypeHint};
+use vela_syntax::{
+    ConstItem, EnumItem, EnumVariantFields, ImplItem, Param, StructField, TraitItem, TypeHint,
+};
 
 use crate::HirNodeId;
 
@@ -97,7 +99,7 @@ impl EnumShape {
             variants: item
                 .variants
                 .iter()
-                .map(|name| EnumVariantHint { name: name.clone() })
+                .map(EnumVariantHint::from_syntax)
                 .collect(),
         }
     }
@@ -106,6 +108,33 @@ impl EnumShape {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnumVariantHint {
     pub name: String,
+    pub fields: EnumVariantFieldsHint,
+}
+
+impl EnumVariantHint {
+    #[must_use]
+    pub fn from_syntax(variant: &vela_syntax::EnumVariant) -> Self {
+        let fields = match &variant.fields {
+            EnumVariantFields::Unit => EnumVariantFieldsHint::Unit,
+            EnumVariantFields::Tuple(params) => {
+                EnumVariantFieldsHint::Tuple(params.iter().map(ParamHint::from_syntax).collect())
+            }
+            EnumVariantFields::Record(fields) => EnumVariantFieldsHint::Record(
+                fields.iter().map(StructFieldHint::from_syntax).collect(),
+            ),
+        };
+        Self {
+            name: variant.name.clone(),
+            fields,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum EnumVariantFieldsHint {
+    Unit,
+    Tuple(Vec<ParamHint>),
+    Record(Vec<StructFieldHint>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

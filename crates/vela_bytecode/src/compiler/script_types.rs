@@ -8,30 +8,73 @@ use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ScriptTypeFlow {
-    locals: HashMap<HirLocalId, String>,
-    names: HashMap<String, String>,
+    locals: HashMap<HirLocalId, ScriptTypeFact>,
+    names: HashMap<String, ScriptTypeFact>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ScriptTypeFact {
+    pub(super) type_name: String,
+    pub(super) enum_variant: Option<String>,
+}
+
+impl ScriptTypeFact {
+    pub(super) fn new(type_name: impl Into<String>) -> Self {
+        Self {
+            type_name: type_name.into(),
+            enum_variant: None,
+        }
+    }
+
+    pub(super) fn enum_variant(type_name: impl Into<String>, variant: impl Into<String>) -> Self {
+        Self {
+            type_name: type_name.into(),
+            enum_variant: Some(variant.into()),
+        }
+    }
 }
 
 impl ScriptTypeFlow {
     pub(super) fn local_at_span(&self, bindings: &BindingMap, span: Span) -> Option<String> {
+        self.local_fact_at_span(bindings, span)
+            .map(|fact| fact.type_name)
+    }
+
+    pub(super) fn local_fact_at_span(
+        &self,
+        bindings: &BindingMap,
+        span: Span,
+    ) -> Option<ScriptTypeFact> {
         let BindingResolution::Local(local) = bindings.resolution_at_span(span)? else {
             return None;
         };
-        self.local(*local)
+        self.local_fact(*local)
     }
 
     pub(super) fn local(&self, local: HirLocalId) -> Option<String> {
+        self.local_fact(local).map(|fact| fact.type_name)
+    }
+
+    pub(super) fn local_fact(&self, local: HirLocalId) -> Option<ScriptTypeFact> {
         self.locals.get(&local).cloned()
     }
 
     pub(super) fn name(&self, name: &str) -> Option<String> {
+        self.name_fact(name).map(|fact| fact.type_name)
+    }
+
+    pub(super) fn name_fact(&self, name: &str) -> Option<ScriptTypeFact> {
         self.names.get(name).cloned()
     }
 
     pub(super) fn set_name(&mut self, name: impl Into<String>, type_name: Option<String>) {
-        match type_name {
-            Some(type_name) => {
-                self.names.insert(name.into(), type_name);
+        self.set_name_fact(name, type_name.map(ScriptTypeFact::new));
+    }
+
+    pub(super) fn set_name_fact(&mut self, name: impl Into<String>, fact: Option<ScriptTypeFact>) {
+        match fact {
+            Some(fact) => {
+                self.names.insert(name.into(), fact);
             }
             None => {
                 self.names.remove(&name.into());
@@ -45,11 +88,20 @@ impl ScriptTypeFlow {
         name: impl Into<String>,
         type_name: Option<String>,
     ) {
+        self.set_local_fact(local, name, type_name.map(ScriptTypeFact::new));
+    }
+
+    pub(super) fn set_local_fact(
+        &mut self,
+        local: HirLocalId,
+        name: impl Into<String>,
+        fact: Option<ScriptTypeFact>,
+    ) {
         let name = name.into();
-        match type_name {
-            Some(type_name) => {
-                self.locals.insert(local, type_name.clone());
-                self.names.insert(name, type_name);
+        match fact {
+            Some(fact) => {
+                self.locals.insert(local, fact.clone());
+                self.names.insert(name, fact);
             }
             None => {
                 self.locals.remove(&local);
@@ -64,30 +116,52 @@ impl ScriptTypeFlow {
     }
 }
 
+pub(super) fn expression_script_fact(
+    expr: &Expr,
+    type_symbol_at_span: impl Fn(Span) -> Option<String>,
+    local_fact_at_span: impl Fn(Span) -> Option<ScriptTypeFact>,
+    local_fact_named: impl Fn(&str) -> Option<ScriptTypeFact>,
+) -> Option<ScriptTypeFact> {
+    match &expr.kind {
+        ExprKind::Record { path, .. } => {
+            if let Some((enum_path, variant)) = enum_variant_path(path) {
+                let type_name = type_symbol_at_span(expr.span).unwrap_or(enum_path);
+                return Some(ScriptTypeFact::enum_variant(type_name, variant));
+            }
+            let type_name = type_symbol_at_span(expr.span).unwrap_or_else(|| path.join("."));
+            Some(ScriptTypeFact::new(type_name))
+        }
+        ExprKind::Call { callee, .. } => {
+            let ExprKind::Path(path) = &callee.kind else {
+                return None;
+            };
+            let (_, variant) = enum_variant_path(path)?;
+            let type_name = type_symbol_at_span(callee.span)?;
+            Some(ScriptTypeFact::enum_variant(type_name, variant))
+        }
+        ExprKind::Path(path) => local_fact_at_span(expr.span).or_else(|| {
+            path.as_slice()
+                .first()
+                .and_then(|name| (path.len() == 1).then(|| local_fact_named(name)).flatten())
+        }),
+        ExprKind::SelfValue => local_fact_at_span(expr.span).or_else(|| local_fact_named("self")),
+        _ => None,
+    }
+}
+
 pub(super) fn expression_script_type(
     expr: &Expr,
     type_symbol_at_span: impl Fn(Span) -> Option<String>,
     local_type_at_span: impl Fn(Span) -> Option<String>,
     local_type_named: impl Fn(&str) -> Option<String>,
 ) -> Option<String> {
-    match &expr.kind {
-        ExprKind::Record { path, .. } => {
-            if let Some(type_name) = type_symbol_at_span(expr.span) {
-                return Some(type_name);
-            }
-            if let Some((enum_path, _)) = enum_variant_path(path) {
-                return Some(enum_path);
-            }
-            Some(path.join("."))
-        }
-        ExprKind::Path(path) => local_type_at_span(expr.span).or_else(|| {
-            path.as_slice()
-                .first()
-                .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
-        }),
-        ExprKind::SelfValue => local_type_at_span(expr.span).or_else(|| local_type_named("self")),
-        _ => None,
-    }
+    expression_script_fact(
+        expr,
+        type_symbol_at_span,
+        |span| local_type_at_span(span).map(ScriptTypeFact::new),
+        |name| local_type_named(name).map(ScriptTypeFact::new),
+    )
+    .map(|fact| fact.type_name)
 }
 
 pub(super) fn type_hint_script_type<'a>(

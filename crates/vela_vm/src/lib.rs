@@ -4822,6 +4822,30 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_typed_enum_variant_slot_field_reads() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Damage {
+    Physical { amount: int, element: string },
+    Magical { amount: int },
+}
+
+fn main() {
+    let damage = Damage.Physical { amount: 7, element: "slash" };
+    return damage.amount + damage.element.len();
+}
+"#,
+        )
+        .expect("compile typed enum variant slot field read");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(12))
+        );
+    }
+
+    #[test]
     fn returns_first_class_enum_values() {
         let code = compile_function_source(
             SourceId::new(1),

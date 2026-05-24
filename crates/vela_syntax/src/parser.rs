@@ -1,10 +1,11 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::ast::{
-    Argument, AssignOp, Attribute, BinaryOp, Block, ConstItem, ElseBranch, Expr, ExprKind,
-    FunctionItem, IfExpr, ImplItem, ImplMethod, Item, ItemKind, Literal, MapEntry, MatchArm,
-    MatchExpr, Param, Pattern, RecordField, RecordPatternField, SourceFile, Stmt, StmtKind,
-    StructField, StructItem, TraitItem, TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
+    Argument, AssignOp, Attribute, BinaryOp, Block, ConstItem, ElseBranch, EnumVariant,
+    EnumVariantFields, Expr, ExprKind, FunctionItem, IfExpr, ImplItem, ImplMethod, Item, ItemKind,
+    Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField, RecordPatternField,
+    SourceFile, Stmt, StmtKind, StructField, StructItem, TraitItem, TraitMethod, TypeHint, UnaryOp,
+    UseItem, Visibility,
 };
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, Token, TokenKind};
@@ -154,7 +155,7 @@ impl Parser {
 
     fn parse_enum_item(&mut self) -> Option<crate::ast::EnumItem> {
         let name = self.expect_ident("expected enum name")?;
-        let variants = self.parse_named_members_in_braces();
+        let variants = self.parse_enum_variants_in_braces();
         Some(crate::ast::EnumItem { name, variants })
     }
 
@@ -997,12 +998,15 @@ impl Parser {
     }
 
     fn parse_struct_fields_in_braces(&mut self) -> Vec<StructField> {
-        let mut fields = Vec::new();
         if self.eat_symbol(Symbol::LBrace).is_none() {
             self.error_here("expected `{`");
-            return fields;
+            return Vec::new();
         }
+        self.parse_struct_fields_until_rbrace()
+    }
 
+    fn parse_struct_fields_until_rbrace(&mut self) -> Vec<StructField> {
+        let mut fields = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
             self.parse_attributes();
             if let Some(name) = self.eat_ident() {
@@ -1020,17 +1024,24 @@ impl Parser {
         fields
     }
 
-    fn parse_named_members_in_braces(&mut self) -> Vec<String> {
-        let mut names = Vec::new();
+    fn parse_enum_variants_in_braces(&mut self) -> Vec<EnumVariant> {
+        let mut variants = Vec::new();
         if self.eat_symbol(Symbol::LBrace).is_none() {
             self.error_here("expected `{`");
-            return names;
+            return variants;
         }
 
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
             self.parse_attributes();
             if let Some(name) = self.eat_ident() {
-                names.push(name);
+                let fields = if self.check_symbol(Symbol::LParen) {
+                    EnumVariantFields::Tuple(self.parse_parameter_list())
+                } else if self.eat_symbol(Symbol::LBrace).is_some() {
+                    EnumVariantFields::Record(self.parse_struct_fields_until_rbrace())
+                } else {
+                    EnumVariantFields::Unit
+                };
+                variants.push(EnumVariant { name, fields });
                 self.skip_member_tail();
             } else {
                 self.advance();
@@ -1040,7 +1051,7 @@ impl Parser {
         }
 
         self.eat_symbol(Symbol::RBrace);
-        names
+        variants
     }
 
     fn parse_path(&mut self) -> Vec<String> {
@@ -1392,6 +1403,13 @@ mod tests {
         fields.iter().map(|field| field.name.clone()).collect()
     }
 
+    fn enum_variant_names(variants: &[EnumVariant]) -> Vec<String> {
+        variants
+            .iter()
+            .map(|variant| variant.name.clone())
+            .collect()
+    }
+
     fn trait_method_names(methods: &[TraitMethod]) -> Vec<String> {
         methods.iter().map(|method| method.name.clone()).collect()
     }
@@ -1531,7 +1549,10 @@ impl Damageable for Player {
         let ItemKind::Enum(enumeration) = &parsed.items[4].kind else {
             panic!("expected enum item");
         };
-        assert_eq!(enumeration.variants, ["None", "Active"]);
+        assert_eq!(
+            enum_variant_names(&enumeration.variants),
+            ["None", "Active"]
+        );
 
         let ItemKind::Trait(trait_item) = &parsed.items[5].kind else {
             panic!("expected trait item");
@@ -1851,6 +1872,37 @@ struct Reward {
     }
 
     #[test]
+    fn parses_enum_variant_payload_metadata() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+enum QuestProgress {
+    None,
+    Active { quest_id: string, count: int },
+    Finished(quest_id: string),
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Enum(enumeration) = &parsed.items[0].kind else {
+            panic!("expected enum item");
+        };
+        assert_eq!(
+            enum_variant_names(&enumeration.variants),
+            ["None", "Active", "Finished"]
+        );
+        let EnumVariantFields::Record(fields) = &enumeration.variants[1].fields else {
+            panic!("expected record variant fields");
+        };
+        assert_eq!(struct_field_names(fields), ["quest_id", "count"]);
+        let EnumVariantFields::Tuple(fields) = &enumeration.variants[2].fields else {
+            panic!("expected tuple variant fields");
+        };
+        assert_eq!(param_names(fields), ["quest_id"]);
+    }
+
+    #[test]
     fn parses_parameter_defaults_and_named_arguments() {
         let parsed = parse_source(
             source_id(),
@@ -2020,7 +2072,7 @@ fn next() {}
                         out,
                         "enum {}({})",
                         enumeration.name,
-                        enumeration.variants.join(", ")
+                        enum_variant_names(&enumeration.variants).join(", ")
                     )
                     .expect("write syntax snapshot");
                 }
