@@ -2605,7 +2605,7 @@ Consequences:
 - Nested key reads after setting an entire map still require a future
   overlay-descendant lookup model; this change does not reinterpret a
   `HostPath::key` as indexing into an overlaid parent map.
-- Enum, host-ref, and richer nullable conversions remain future M11 work.
+- Host-ref and richer nullable conversions remain future M11 work.
 
 ## 2026-05-25: Host Values Support Script Records
 
@@ -2630,5 +2630,31 @@ Consequences:
 - Exact overlay reads preserve the record type name and script field values.
 - The host still receives copied data only; scripts do not receive Rust
   references or mutate host-owned record structure.
-- Enum, host-ref, nullable, and descendant overlay conversions remain future
-  M11 work.
+- Host-ref, nullable, and descendant overlay conversions remain future M11
+  work.
+
+## 2026-05-25: Host Values Support Script Enums
+
+Status: Accepted
+
+Context:
+M11 requires host value conversion for script enums as copied data. Records
+could already cross the host boundary, but `Value::Enum` and heap-backed
+`HeapValue::Enum` still failed conversion. Script enums carry both the enum
+name and variant name, and variant field shapes are owned by the
+`enum.variant` pair.
+
+Decision:
+Add `HostValue::Enum { enum_name, variant, fields }` with copied names and
+string-keyed `BTreeMap<String, HostValue>` fields. Convert both immediate and
+heap-backed script enum values in the VM `host_values` module, and convert
+exact host path reads back into script `Value::Enum` using the same
+`enum.variant` field owner convention as the runtime.
+
+Consequences:
+- Managed-heap script enums can be recorded in `PatchTx::Set` patches.
+- Exact overlay reads preserve enum name, variant name, and field values.
+- The host receives copied enum data only; scripts do not mutate host-owned
+  enum structure.
+- Host-ref, nullable, and descendant overlay conversions remain future M11
+  work.

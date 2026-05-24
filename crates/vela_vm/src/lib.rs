@@ -4997,6 +4997,68 @@ fn main(player) {
     }
 
     #[test]
+    fn managed_heap_host_execution_converts_enum_for_host_write_and_overlay_read() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.level = Damage.Physical { amount: 7 };
+    return player.level;
+}
+"#,
+            &CompilerOptions::new().with_host_field("level", level_field()),
+        )
+        .expect("compile host enum write source");
+        let mut adapter = host_adapter(host_ref, HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new()
+                .run_program_with_host_managed_heap_and_budget(
+                    &program,
+                    "main",
+                    &[Value::HostRef(host_ref)],
+                    &mut host,
+                    &mut budget,
+                )
+                .expect("run managed host enum source")
+        };
+
+        let mut expected_script_fields = BTreeMap::new();
+        expected_script_fields.insert("amount".into(), Value::Int(7));
+        let mut expected_host_fields = BTreeMap::new();
+        expected_host_fields.insert("amount".into(), HostValue::Int(7));
+        assert_eq!(
+            result,
+            Value::Enum {
+                enum_name: "Damage".into(),
+                variant: "Physical".into(),
+                fields: ScriptFields::from_pairs("Damage.Physical", expected_script_fields),
+            }
+        );
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::Set(HostValue::Enum {
+                enum_name: "Damage".into(),
+                variant: "Physical".into(),
+                fields: expected_host_fields,
+            })
+        );
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Null)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
     fn passes_arguments_to_program_entry() {
         let program = compile_program_source(
             SourceId::new(1),

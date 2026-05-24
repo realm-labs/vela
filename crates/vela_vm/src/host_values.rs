@@ -29,6 +29,21 @@ pub(crate) fn value_from_host(value: HostValue) -> Value {
                 type_name,
             }
         }
+        HostValue::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => {
+            let owner = enum_variant_owner(&enum_name, &variant);
+            let fields = fields
+                .into_iter()
+                .map(|(key, value)| (key, value_from_host(value)));
+            Value::Enum {
+                fields: ScriptFields::from_pairs(&owner, fields),
+                enum_name,
+                variant,
+            }
+        }
     }
 }
 
@@ -61,6 +76,19 @@ pub(crate) fn value_to_host(
                 type_name: type_name.clone(),
                 fields,
             }),
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.to_owned(), value_to_host(value, operation, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|fields| HostValue::Enum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields,
+            }),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
             Some(HeapValue::Array(values)) => values
@@ -88,14 +116,33 @@ pub(crate) fn value_to_host(
                     type_name: type_name.clone(),
                     fields,
                 }),
+            Some(HeapValue::Enum {
+                enum_name,
+                variant,
+                fields,
+            }) => fields
+                .iter()
+                .map(|(key, value)| {
+                    let value = value_from_heap_slot(value);
+                    Ok((key.to_owned(), value_to_host(&value, operation, heap)?))
+                })
+                .collect::<VmResult<BTreeMap<_, _>>>()
+                .map(|fields| HostValue::Enum {
+                    enum_name: enum_name.clone(),
+                    variant: variant.clone(),
+                    fields,
+                }),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
         Value::Set(_)
-        | Value::Enum { .. }
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
         | Value::Missing
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
+}
+
+fn enum_variant_owner(enum_name: &str, variant: &str) -> String {
+    format!("{enum_name}.{variant}")
 }

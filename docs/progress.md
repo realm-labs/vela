@@ -680,6 +680,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   with copied type names and fields. VM host conversions live in a focused
   `host_values` module, and managed-heap script records can be written through
   `PatchTx` and read back from exact-path overlays as script records.
+- Host boundary value conversion now supports enum-valued host paths with
+  copied enum names, variant names, and fields. Managed-heap script enums can
+  be written through `PatchTx` and read back from exact-path overlays as
+  script enum values.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

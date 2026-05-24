@@ -13,6 +13,11 @@ pub enum HostValue {
         type_name: String,
         fields: BTreeMap<String, HostValue>,
     },
+    Enum {
+        enum_name: String,
+        variant: String,
+        fields: BTreeMap<String, HostValue>,
+    },
 }
 
 pub(crate) fn add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
