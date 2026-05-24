@@ -6,7 +6,8 @@ use vela_host::HostValue;
 use vela_syntax::Visibility;
 
 use crate::{
-    AttrMap, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry,
+    AttrMap, FunctionAccess, FunctionEffectSet, ReflectError, ReflectErrorKind, ReflectResult,
+    ReflectValue, TypeRegistry,
     metadata::{attrs_value, docs_value},
     name_candidates,
     script_attrs::ReflectedScriptAttrs,
@@ -56,6 +57,8 @@ pub struct FunctionDesc {
     pub params: Vec<FunctionParamDesc>,
     pub return_type: Option<String>,
     pub public: bool,
+    pub effects: FunctionEffectSet,
+    pub access: FunctionAccess,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -71,6 +74,8 @@ impl FunctionDesc {
             params: Vec::new(),
             return_type: None,
             public: true,
+            effects: FunctionEffectSet::default(),
+            access: FunctionAccess::default(),
             origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
@@ -98,6 +103,20 @@ impl FunctionDesc {
     #[must_use]
     pub fn public(mut self, public: bool) -> Self {
         self.public = public;
+        self.access.public = public;
+        self
+    }
+
+    #[must_use]
+    pub fn effects(mut self, effects: FunctionEffectSet) -> Self {
+        self.effects = effects;
+        self
+    }
+
+    #[must_use]
+    pub fn access(mut self, access: FunctionAccess) -> Self {
+        self.public = access.public;
+        self.access = access;
         self
     }
 
@@ -307,6 +326,14 @@ fn function_record(desc: &FunctionDesc) -> ReflectValue {
         ReflectValue::Host(HostValue::Bool(desc.public)),
     );
     fields.insert(
+        "effects".to_owned(),
+        ReflectValue::Host(function_effects_record(desc)),
+    );
+    fields.insert(
+        "access".to_owned(),
+        ReflectValue::Host(function_access_record(desc)),
+    );
+    fields.insert(
         "origin".to_owned(),
         ReflectValue::Host(HostValue::String(
             match desc.origin {
@@ -341,6 +368,49 @@ fn function_record(desc: &FunctionDesc) -> ReflectValue {
         ReflectValue::Host(attrs_value(&desc.attrs)),
     );
     ReflectValue::Record(fields)
+}
+
+fn function_effects_record(desc: &FunctionDesc) -> HostValue {
+    HostValue::Record {
+        type_name: "ReflectEffectSet".to_owned(),
+        fields: BTreeMap::from([
+            (
+                "reads_host".to_owned(),
+                HostValue::Bool(desc.effects.reads_host),
+            ),
+            (
+                "writes_host".to_owned(),
+                HostValue::Bool(desc.effects.writes_host),
+            ),
+            (
+                "emits_events".to_owned(),
+                HostValue::Bool(desc.effects.emits_events),
+            ),
+        ]),
+    }
+}
+
+fn function_access_record(desc: &FunctionDesc) -> HostValue {
+    HostValue::Record {
+        type_name: "ReflectFunctionAccess".to_owned(),
+        fields: BTreeMap::from([
+            ("public".to_owned(), HostValue::Bool(desc.access.public)),
+            (
+                "reflect_visible".to_owned(),
+                HostValue::Bool(desc.access.reflect_visible),
+            ),
+            (
+                "required_permissions".to_owned(),
+                HostValue::Array(
+                    desc.access
+                        .required_permissions()
+                        .iter()
+                        .map(|permission| HostValue::String(permission.clone()))
+                        .collect(),
+                ),
+            ),
+        ]),
+    }
 }
 
 fn param_record(param: &FunctionParamDesc) -> HostValue {
@@ -477,6 +547,8 @@ fn helper() {
                         .defaulted(true),
                 )
                 .return_type("bool")
+                .effects(FunctionEffectSet::host_write())
+                .access(FunctionAccess::new().require_permission("reward.grant"))
                 .origin(DeclOrigin::Script)
                 .docs("Grant reward.")
                 .attr("event", "reward"),
@@ -517,6 +589,31 @@ fn helper() {
         assert_eq!(
             function.get("origin"),
             Some(&ReflectValue::Host(HostValue::String("script".into())))
+        );
+        assert_eq!(
+            function.get("effects"),
+            Some(&ReflectValue::Host(HostValue::Record {
+                type_name: "ReflectEffectSet".to_owned(),
+                fields: BTreeMap::from([
+                    ("reads_host".to_owned(), HostValue::Bool(true)),
+                    ("writes_host".to_owned(), HostValue::Bool(true)),
+                    ("emits_events".to_owned(), HostValue::Bool(false)),
+                ]),
+            }))
+        );
+        assert_eq!(
+            function.get("access"),
+            Some(&ReflectValue::Host(HostValue::Record {
+                type_name: "ReflectFunctionAccess".to_owned(),
+                fields: BTreeMap::from([
+                    ("public".to_owned(), HostValue::Bool(true)),
+                    ("reflect_visible".to_owned(), HostValue::Bool(true)),
+                    (
+                        "required_permissions".to_owned(),
+                        HostValue::Array(vec![HostValue::String("reward.grant".to_owned())])
+                    ),
+                ]),
+            }))
         );
         assert_eq!(
             function.get("docs"),

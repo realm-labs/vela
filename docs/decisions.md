@@ -3036,3 +3036,27 @@ Consequences:
   for debug/admin tooling.
 - The host boundary remains patch-only; denied reflective calls do not record
   host patches or invoke native method callbacks.
+
+## 2026-05-25: Native Function Metadata Is Reflected Through TypeRegistry
+
+Status: Accepted
+
+Context:
+M12 requires reflection over modules and functions, including effects and
+permissions. Engine native functions already had parameter hints, return hints,
+effect bits, access policy, and docs, but that metadata only lived in the
+embedding layer and was not visible through `reflect.function`.
+
+Decision:
+Move reflection access/effect descriptor types into a focused `access` module
+and add function-specific access/effect metadata to `FunctionDesc`.
+`EngineBuilder` copies registered native and host-native function descriptors
+into `TypeRegistry`, creating module export metadata for dotted native names.
+
+Consequences:
+- Admin/debug scripts can inspect host-native function signatures, docs,
+  effects, reflect visibility, and required permissions through copied
+  reflection records.
+- Reflection still cannot mutate module or function structure at runtime.
+- Function metadata now has enough shape for later hot-reload effect and access
+  ABI compatibility checks.

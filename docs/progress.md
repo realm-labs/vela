@@ -758,8 +758,14 @@ permissions.
   that metadata through `ReflectPolicy` before recording a `PatchTx` method
   call, so unapproved or unpermissioned reflective calls fail without host
   patches.
+- Added focused reflection access/effect metadata types outside the crate root
+  and extended `FunctionDesc` with copied function effect and access records.
+  Engine-registered native and host-native functions now enter
+  `TypeRegistry` as reflected host functions with parameter hints, return
+  hints, module exports, docs, effect bits, reflect visibility, and required
+  permissions for `reflect.function` tooling.
 
 ## Next
 
-- Continue M12 with richer function effect/access reflection and remaining
-  ranked related-span diagnostics for unknown schema names.
+- Continue M12 with remaining ranked related-span diagnostics for unknown
+  schema names and deeper permission/effect ABI checks for hot reload.

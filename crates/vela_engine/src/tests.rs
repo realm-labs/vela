@@ -48,6 +48,55 @@ fn main() {
 }
 
 #[test]
+fn engine_registers_native_function_reflection_metadata() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.add", NativeFunctionId::new(21))
+                .param("lhs", TypeHint::Int)
+                .param("rhs", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_read())
+                .access(
+                    FunctionAccess::public()
+                        .reflect_callable(true)
+                        .require_permission("game.add"),
+                )
+                .docs("Adds two integers."),
+            |_| Ok(Value::Int(0)),
+        )
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.registry();
+    let module = registry
+        .module_by_name("game")
+        .expect("native module metadata");
+    assert_eq!(module.exports.len(), 1);
+    assert_eq!(module.exports[0].name, "game.add");
+
+    let function = registry
+        .function_by_name("game.add")
+        .expect("native function metadata");
+    assert_eq!(function.name, "game.add");
+    assert_eq!(function.module.as_deref(), Some("game"));
+    assert!(function.public);
+    assert_eq!(function.params.len(), 2);
+    assert_eq!(function.params[0].name, "lhs");
+    assert_eq!(function.params[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(function.params[1].name, "rhs");
+    assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
+    assert_eq!(function.return_type.as_deref(), Some("int"));
+    assert!(function.effects.reads_host);
+    assert!(!function.effects.writes_host);
+    assert!(function.access.reflect_visible);
+    assert_eq!(
+        function.access.required_permissions(),
+        &["game.add".to_owned()]
+    );
+    assert_eq!(function.docs.as_deref(), Some("Adds two integers."));
+}
+
+#[test]
 fn engine_installs_registered_host_native_functions_into_vm() {
     let engine = Engine::builder()
         .grant_permission("player.write")

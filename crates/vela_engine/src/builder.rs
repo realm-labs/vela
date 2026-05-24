@@ -1,14 +1,16 @@
 use std::collections::BTreeSet;
 
 use vela_reflect::{
-    MethodAccess, MethodDesc, MethodEffectSet, ReflectPermissionSet, ReflectPolicy, TypeDesc,
-    TypeKey, TypeRegistry,
+    DeclOrigin, FunctionAccess as ReflectFunctionAccess, FunctionDesc, FunctionEffectSet,
+    FunctionParamDesc, MethodAccess, MethodDesc, MethodEffectSet, ModuleDesc, ReflectPermissionSet,
+    ReflectPolicy, TypeDesc, TypeKey, TypeRegistry,
 };
 use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
     Engine, EngineError, EngineErrorKind, EngineResult, HostNativeFunctionEntry,
     NativeFunctionDesc, NativeFunctionEntry, NativeMethodDesc, NativeMethodEntry, PermissionSet,
+    TypeHint,
 };
 
 #[derive(Clone, Default)]
@@ -126,6 +128,11 @@ impl EngineBuilder {
         for desc in types {
             registry.register(desc);
         }
+        inject_native_function_metadata(
+            &mut registry,
+            &self.native_functions,
+            &self.host_native_functions,
+        );
 
         Ok(Engine::new(
             registry,
@@ -159,6 +166,51 @@ fn inject_native_method_metadata(
     Ok(())
 }
 
+fn inject_native_function_metadata(
+    registry: &mut TypeRegistry,
+    native_functions: &[NativeFunctionEntry],
+    host_native_functions: &[HostNativeFunctionEntry],
+) {
+    for desc in native_functions
+        .iter()
+        .map(|entry| &entry.desc)
+        .chain(host_native_functions.iter().map(|entry| &entry.desc))
+    {
+        if let Some(module_name) = native_function_module(&desc.name)
+            && registry.module_by_name(&module_name).is_none()
+        {
+            registry.register_module(ModuleDesc::new(module_name));
+        }
+        registry.register_function(reflect_function(desc));
+    }
+}
+
+fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
+    let mut reflected = FunctionDesc::new(desc.id, desc.name.clone())
+        .origin(DeclOrigin::Host)
+        .return_type(type_hint_display(&desc.returns))
+        .effects(reflect_function_effects(&desc.effects))
+        .access(reflect_function_access(&desc.access));
+    if let Some(module_name) = native_function_module(&desc.name) {
+        reflected = reflected.module(module_name);
+    }
+    for param in &desc.params {
+        reflected = reflected.param(
+            FunctionParamDesc::new(param.name.clone()).type_hint(type_hint_display(&param.hint)),
+        );
+    }
+    if let Some(docs) = &desc.docs {
+        reflected = reflected.docs(docs.clone());
+    }
+    reflected
+}
+
+fn native_function_module(name: &str) -> Option<String> {
+    name.rsplit_once('.')
+        .map(|(module, _)| module.to_owned())
+        .filter(|module| !module.is_empty())
+}
+
 fn reflect_effects(effects: &crate::EffectSet) -> MethodEffectSet {
     MethodEffectSet {
         reads_host: effects.reads_host,
@@ -174,6 +226,40 @@ fn reflect_access(access: &crate::FunctionAccess) -> MethodAccess {
             .reflect_callable(access.reflect_callable),
         |access, permission| access.require_permission(permission),
     )
+}
+
+fn reflect_function_effects(effects: &crate::EffectSet) -> FunctionEffectSet {
+    FunctionEffectSet {
+        reads_host: effects.reads_host,
+        writes_host: effects.writes_host,
+        emits_events: effects.emits_events,
+    }
+}
+
+fn reflect_function_access(access: &crate::FunctionAccess) -> ReflectFunctionAccess {
+    access.required_permissions.iter().fold(
+        ReflectFunctionAccess::new()
+            .public(access.public)
+            .reflect_visible(access.reflect_callable),
+        |access, permission| access.require_permission(permission),
+    )
+}
+
+fn type_hint_display(hint: &TypeHint) -> String {
+    match hint {
+        TypeHint::Any => "any".to_owned(),
+        TypeHint::Null => "null".to_owned(),
+        TypeHint::Bool => "bool".to_owned(),
+        TypeHint::Int => "int".to_owned(),
+        TypeHint::Float => "float".to_owned(),
+        TypeHint::String => "string".to_owned(),
+        TypeHint::Array => "array".to_owned(),
+        TypeHint::Map => "map".to_owned(),
+        TypeHint::Set => "set".to_owned(),
+        TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
+        TypeHint::Trait(name) => name.clone(),
+        TypeHint::Function => "function".to_owned(),
+    }
 }
 
 fn find_type_mut<'a>(types: &'a mut [TypeDesc], key: &TypeKey) -> Option<&'a mut TypeDesc> {
