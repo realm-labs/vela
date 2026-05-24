@@ -103,3 +103,24 @@ Consequences:
 - Script bytecode can read overlay writes in the same transaction.
 - Adapter state is mutated only when the host applies the collected patches at
   a safe point.
+
+## 2026-05-24: Reflection Metadata Is Read-Only Runtime Data
+
+Status: Accepted
+
+Context:
+M4 needs controlled reflection without becoming a monkey-patching system.
+Reflection must be able to query host type metadata and perform approved reads
+and writes, while type structure changes remain outside runtime script control.
+
+Decision:
+Introduce `vela_reflect` with a `TypeRegistry` of immutable descriptors.
+Reflective field reads and writes resolve descriptor metadata to stable
+`FieldId` values, then use `PatchTx` and `ScriptStateAdapter` for host access.
+Record-like values can be read reflectively, but host schema structure is not
+mutated by reflection APIs.
+
+Consequences:
+- `reflect.set` can create host patches without exposing Rust `&mut`.
+- Read-only fields and unknown fields are reported at the reflection boundary.
+- Future hot reload ABI checks can reuse the same stable descriptor surface.

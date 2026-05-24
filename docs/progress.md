@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-M3: HostRef And PatchTx.
+M4: Reflection System.
 
 ## Completed
 
@@ -92,8 +92,20 @@ M3: HostRef And PatchTx.
 - Added host/VM tests showing host method calls are recorded as patches and
   applied later through the adapter.
 
+### M4: Reflection System
+
+- Added the `vela_reflect` crate with `TypeRegistry`, `TypeKey`, `TypeDesc`,
+  `FieldDesc`, `MethodDesc`, `TraitDesc`, `VariantDesc`, and `AttrMap`.
+- Added controlled `type_of`, `fields`, `reflect.get`, and `reflect.set`
+  helpers for host refs and record-like reflection values.
+- Routed `reflect.get(host_ref, "field")` through `PatchTx` overlay reads and
+  `ScriptStateAdapter`, and routed `reflect.set(host_ref, "field", value)` to
+  `PatchTx::set_path`.
+- Added tests for host-ref patch creation, overlay reads, record field reads,
+  read-only field errors, unknown-field candidate hints, type field queries,
+  and propagation of host generation errors.
+
 ## Next
 
-- Start M4 with a `vela_reflect` crate for `TypeRegistry`, type/field/method
-  descriptors, and controlled `reflect.get`/`reflect.set` over host refs and
-  record-like values.
+- Add controlled `reflect.call` for host methods and `reflect.implements`
+  checks using registry metadata.
