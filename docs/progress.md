@@ -192,10 +192,18 @@ script heap are implemented; VM value migration and GC pacing remain.
   roots across incremental steps, releases execution memory budget for swept
   objects, restarts cleanly when a full collection interrupts a step, and
   updates collection thresholds from heap growth config.
+- Added explicit heap-backed VM execution entrypoints with `HeapExecution`.
+- In heap execution mode, string constants plus array, map, record, and enum
+  bytecode constructors allocate into `ScriptHeap` and charge the memory budget.
+- Added heap-backed record field reads, enum field reads, and enum tag checks
+  while preserving the existing inline execution APIs and return shapes.
+- Added VM tests proving heap execution allocates compiled array/string values,
+  reads heap-backed record fields, matches heap-backed enum variants, and
+  rejects bytecode allocations that exceed the memory budget.
 
 ## Next
 
-- Migrate VM-owned string, array, map, record, and enum values onto `GcRef`
-  handles while preserving current source behavior.
-- Wire safe-point GC execution to the call-frame root collector once heap-backed
-  values are produced by normal bytecode execution.
+- Move reflection/native/host conversion paths toward heap-aware value
+  resolution.
+- Wire safe-point GC execution to heap-backed bytecode execution using active
+  call-frame roots.

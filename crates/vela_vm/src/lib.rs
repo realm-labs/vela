@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
 
-use heap::GcRef;
+use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
 use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
@@ -282,6 +282,10 @@ pub struct HostExecution<'host> {
     pub tx: &'host mut PatchTx,
 }
 
+pub struct HeapExecution<'heap> {
+    pub heap: &'heap mut ScriptHeap,
+}
+
 impl Vm {
     #[must_use]
     pub fn new() -> Self {
@@ -398,7 +402,7 @@ impl Vm {
     }
 
     pub fn run(&self, code: &CodeObject) -> VmResult<Value> {
-        self.execute(code, None, &[], None, None)
+        self.execute(code, None, &[], None, None, None)
     }
 
     pub fn run_with_budget(
@@ -406,7 +410,16 @@ impl Vm {
         code: &CodeObject,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
-        self.execute(code, None, &[], None, Some(budget))
+        self.execute(code, None, &[], None, None, Some(budget))
+    }
+
+    pub fn run_with_heap_and_budget(
+        &self,
+        code: &CodeObject,
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        self.execute(code, None, &[], None, Some(heap), Some(budget))
     }
 
     pub fn run_program(&self, program: &Program, entry: &str, args: &[Value]) -> VmResult<Value> {
@@ -415,7 +428,7 @@ impl Vm {
                 name: entry.to_owned(),
             })
         })?;
-        self.execute(code, Some(program), args, None, None)
+        self.execute(code, Some(program), args, None, None, None)
     }
 
     pub fn run_program_with_budget(
@@ -430,7 +443,23 @@ impl Vm {
                 name: entry.to_owned(),
             })
         })?;
-        self.execute(code, Some(program), args, None, Some(budget))
+        self.execute(code, Some(program), args, None, None, Some(budget))
+    }
+
+    pub fn run_program_with_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute(code, Some(program), args, None, Some(heap), Some(budget))
     }
 
     pub fn run_with_host(
@@ -438,7 +467,7 @@ impl Vm {
         code: &CodeObject,
         host: &mut HostExecution<'_>,
     ) -> VmResult<Value> {
-        self.execute(code, None, &[], Some(host), None)
+        self.execute(code, None, &[], Some(host), None, None)
     }
 
     pub fn run_with_host_and_budget(
@@ -447,7 +476,7 @@ impl Vm {
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
-        self.execute(code, None, &[], Some(host), Some(budget))
+        self.execute(code, None, &[], Some(host), None, Some(budget))
     }
 
     pub fn run_program_with_host(
@@ -462,7 +491,7 @@ impl Vm {
                 name: entry.to_owned(),
             })
         })?;
-        self.execute(code, Some(program), args, Some(host), None)
+        self.execute(code, Some(program), args, Some(host), None, None)
     }
 
     pub fn run_program_with_host_and_budget(
@@ -478,7 +507,7 @@ impl Vm {
                 name: entry.to_owned(),
             })
         })?;
-        self.execute(code, Some(program), args, Some(host), Some(budget))
+        self.execute(code, Some(program), args, Some(host), None, Some(budget))
     }
 
     fn execute(
@@ -487,12 +516,13 @@ impl Vm {
         program: Option<&Program>,
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
+        heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         if let Some(budget) = &mut budget {
             budget.enter_call()?;
         }
-        let result = self.execute_body(code, program, args, host, budget.as_deref_mut());
+        let result = self.execute_body(code, program, args, host, heap, budget.as_deref_mut());
         if let Some(budget) = budget {
             budget.exit_call();
         }
@@ -505,6 +535,7 @@ impl Vm {
         program: Option<&Program>,
         args: &[Value],
         mut host: Option<&mut HostExecution<'_>>,
+        mut heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         if code.params.len() != args.len() {
@@ -542,7 +573,12 @@ impl Vm {
                             constant: constant.0,
                         },
                     })?;
-                    frame.write(*dst, Value::from(constant_value))?;
+                    let value = value_from_constant(
+                        constant_value,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::Move { dst, src } => {
                     let value = frame.read(*src)?.clone();
@@ -665,6 +701,7 @@ impl Vm {
                         Some(program),
                         &values,
                         host.as_deref_mut(),
+                        heap.as_deref_mut(),
                         budget.as_deref_mut(),
                     )?;
                     frame.write(*dst, result)?;
@@ -674,14 +711,26 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
-                    frame.write(*dst, Value::Array(values))?;
+                    let value = if let Some(heap) = heap.as_deref_mut() {
+                        let slots = values_to_heap_slots(&values, heap, budget.as_deref_mut())?;
+                        allocate_heap_value(HeapValue::Array(slots), heap, budget.as_deref_mut())?
+                    } else {
+                        Value::Array(values)
+                    };
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeMap { dst, entries } => {
                     let mut values = BTreeMap::new();
                     for (key, register) in entries {
                         values.insert(key.clone(), frame.read(*register)?.clone());
                     }
-                    frame.write(*dst, Value::Map(values))?;
+                    let value = if let Some(heap) = heap.as_deref_mut() {
+                        let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
+                        allocate_heap_value(HeapValue::Map(slots), heap, budget.as_deref_mut())?
+                    } else {
+                        Value::Map(values)
+                    };
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeRecord {
                     dst,
@@ -692,13 +741,23 @@ impl Vm {
                     for (name, register) in fields {
                         values.insert(name.clone(), frame.read(*register)?.clone());
                     }
-                    frame.write(
-                        *dst,
+                    let value = if let Some(heap) = heap.as_deref_mut() {
+                        let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
+                        allocate_heap_value(
+                            HeapValue::Record {
+                                type_name: type_name.clone(),
+                                fields: slots,
+                            },
+                            heap,
+                            budget.as_deref_mut(),
+                        )?
+                    } else {
                         Value::Record {
                             type_name: type_name.clone(),
                             fields: values,
-                        },
-                    )?;
+                        }
+                    };
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeEnum {
                     dst,
@@ -710,47 +769,33 @@ impl Vm {
                     for (name, register) in fields {
                         values.insert(name.clone(), frame.read(*register)?.clone());
                     }
-                    frame.write(
-                        *dst,
+                    let value = if let Some(heap) = heap.as_deref_mut() {
+                        let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
+                        allocate_heap_value(
+                            HeapValue::Enum {
+                                enum_name: enum_name.clone(),
+                                variant: variant.clone(),
+                                fields: slots,
+                            },
+                            heap,
+                            budget.as_deref_mut(),
+                        )?
+                    } else {
                         Value::Enum {
                             enum_name: enum_name.clone(),
                             variant: variant.clone(),
                             fields: values,
-                        },
-                    )?;
+                        }
+                    };
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::GetRecordField { dst, record, field } => {
-                    let Value::Record { type_name, fields } = frame.read(*record)? else {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "record field",
-                        }));
-                    };
-                    let value = fields.get(field).cloned().ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownRecordField {
-                            type_name: type_name.clone(),
-                            field: field.clone(),
-                        })
-                    })?;
+                    let value =
+                        get_record_field_value(frame.read(*record)?, field, heap.as_deref())?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::GetEnumField { dst, value, field } => {
-                    let Value::Enum {
-                        enum_name,
-                        variant,
-                        fields,
-                    } = frame.read(*value)?
-                    else {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "enum field",
-                        }));
-                    };
-                    let value = fields.get(field).cloned().ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownEnumField {
-                            enum_name: enum_name.clone(),
-                            variant: variant.clone(),
-                            field: field.clone(),
-                        })
-                    })?;
+                    let value = get_enum_field_value(frame.read(*value)?, field, heap.as_deref())?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::EnumTagEqual {
@@ -759,14 +804,8 @@ impl Vm {
                     enum_name,
                     variant,
                 } => {
-                    let matches = matches!(
-                        frame.read(*value)?,
-                        Value::Enum {
-                            enum_name: value_enum,
-                            variant: value_variant,
-                            ..
-                        } if value_enum == enum_name && value_variant == variant
-                    );
+                    let matches =
+                        enum_tag_equal(frame.read(*value)?, enum_name, variant, heap.as_deref());
                     frame.write(*dst, Value::Bool(matches))?;
                 }
                 InstructionKind::GetHostField { dst, root, field } => {
@@ -880,6 +919,245 @@ impl CallFrame {
             .iter()
             .for_each(|value| value.trace_heap_refs(&mut roots));
         roots
+    }
+}
+
+fn value_from_constant(
+    constant: &Constant,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    match (constant, heap) {
+        (Constant::String(value), Some(heap)) => {
+            allocate_heap_value(HeapValue::String(value.clone()), heap, budget)
+        }
+        _ => Ok(Value::from(constant)),
+    }
+}
+
+fn allocate_heap_value(
+    value: HeapValue,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let reference = if let Some(budget) = budget {
+        heap.heap.allocate_with_budget(value, budget)?
+    } else {
+        heap.heap.allocate(value)
+    };
+    Ok(Value::HeapRef(reference))
+}
+
+fn values_to_heap_slots(
+    values: &[Value],
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Vec<HeapSlot>> {
+    values
+        .iter()
+        .map(|value| value_to_heap_slot(value, heap, budget.as_deref_mut()))
+        .collect()
+}
+
+fn values_to_heap_map(
+    values: &BTreeMap<String, Value>,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<BTreeMap<String, HeapSlot>> {
+    values
+        .iter()
+        .map(|(key, value)| {
+            Ok((
+                key.clone(),
+                value_to_heap_slot(value, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect()
+}
+
+fn value_to_heap_slot(
+    value: &Value,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<HeapSlot> {
+    match value {
+        Value::Null => Ok(HeapSlot::Null),
+        Value::Bool(value) => Ok(HeapSlot::Bool(*value)),
+        Value::Int(value) => Ok(HeapSlot::Int(*value)),
+        Value::Float(value) => Ok(HeapSlot::Float(*value)),
+        Value::HeapRef(reference) => Ok(HeapSlot::Ref(*reference)),
+        Value::HostRef(reference) => Ok(HeapSlot::HostRef(*reference)),
+        Value::String(value) => {
+            let Value::HeapRef(reference) =
+                allocate_heap_value(HeapValue::String(value.clone()), heap, budget)?
+            else {
+                unreachable!("heap allocation always returns a heap ref");
+            };
+            Ok(HeapSlot::Ref(reference))
+        }
+        Value::Array(values) => {
+            let slots = values_to_heap_slots(values, heap, budget.as_deref_mut())?;
+            let Value::HeapRef(reference) =
+                allocate_heap_value(HeapValue::Array(slots), heap, budget)?
+            else {
+                unreachable!("heap allocation always returns a heap ref");
+            };
+            Ok(HeapSlot::Ref(reference))
+        }
+        Value::Map(values) => {
+            let slots = values_to_heap_map(values, heap, budget.as_deref_mut())?;
+            let Value::HeapRef(reference) =
+                allocate_heap_value(HeapValue::Map(slots), heap, budget)?
+            else {
+                unreachable!("heap allocation always returns a heap ref");
+            };
+            Ok(HeapSlot::Ref(reference))
+        }
+        Value::Record { type_name, fields } => {
+            let slots = values_to_heap_map(fields, heap, budget.as_deref_mut())?;
+            let Value::HeapRef(reference) = allocate_heap_value(
+                HeapValue::Record {
+                    type_name: type_name.clone(),
+                    fields: slots,
+                },
+                heap,
+                budget,
+            )?
+            else {
+                unreachable!("heap allocation always returns a heap ref");
+            };
+            Ok(HeapSlot::Ref(reference))
+        }
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => {
+            let slots = values_to_heap_map(fields, heap, budget.as_deref_mut())?;
+            let Value::HeapRef(reference) = allocate_heap_value(
+                HeapValue::Enum {
+                    enum_name: enum_name.clone(),
+                    variant: variant.clone(),
+                    fields: slots,
+                },
+                heap,
+                budget,
+            )?
+            else {
+                unreachable!("heap allocation always returns a heap ref");
+            };
+            Ok(HeapSlot::Ref(reference))
+        }
+    }
+}
+
+fn value_from_heap_slot(slot: &HeapSlot) -> Value {
+    match slot {
+        HeapSlot::Null => Value::Null,
+        HeapSlot::Bool(value) => Value::Bool(*value),
+        HeapSlot::Int(value) => Value::Int(*value),
+        HeapSlot::Float(value) => Value::Float(*value),
+        HeapSlot::Ref(reference) => Value::HeapRef(*reference),
+        HeapSlot::HostRef(reference) => Value::HostRef(*reference),
+    }
+}
+
+fn get_record_field_value(
+    value: &Value,
+    field: &str,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    match value {
+        Value::Record { type_name, fields } => fields.get(field).cloned().ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownRecordField {
+                type_name: type_name.clone(),
+                field: field.to_owned(),
+            })
+        }),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Record { type_name, fields }) =
+                heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "record field",
+                }));
+            };
+            fields.get(field).map(value_from_heap_slot).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownRecordField {
+                    type_name: type_name.clone(),
+                    field: field.to_owned(),
+                })
+            })
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "record field",
+        })),
+    }
+}
+
+fn get_enum_field_value(
+    value: &Value,
+    field: &str,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    match value {
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields.get(field).cloned().ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownEnumField {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                field: field.to_owned(),
+            })
+        }),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Enum {
+                enum_name,
+                variant,
+                fields,
+            }) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "enum field",
+                }));
+            };
+            fields.get(field).map(value_from_heap_slot).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownEnumField {
+                    enum_name: enum_name.clone(),
+                    variant: variant.clone(),
+                    field: field.to_owned(),
+                })
+            })
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "enum field",
+        })),
+    }
+}
+
+fn enum_tag_equal(
+    value: &Value,
+    enum_name: &str,
+    variant: &str,
+    heap: Option<&HeapExecution<'_>>,
+) -> bool {
+    match value {
+        Value::Enum {
+            enum_name: value_enum,
+            variant: value_variant,
+            ..
+        } => value_enum == enum_name && value_variant == variant,
+        Value::HeapRef(reference) => matches!(
+            heap.and_then(|heap| heap.heap.get(*reference)),
+            Some(HeapValue::Enum {
+                enum_name: value_enum,
+                variant: value_variant,
+                ..
+            }) if value_enum == enum_name && value_variant == variant
+        ),
+        _ => false,
     }
 }
 
@@ -1359,6 +1637,40 @@ fn double(value) {
     }
 
     #[test]
+    fn heap_execution_allocates_array_and_string_literals() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            "fn main() { return [1, 2 + 3, \"gold\"]; }",
+            "main",
+        )
+        .expect("compile array literal source");
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = Vm::new()
+            .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
+            .expect("run heap-backed array source");
+
+        let Value::HeapRef(array_ref) = result else {
+            panic!("expected heap array");
+        };
+        let Some(HeapValue::Array(values)) = heap.get(array_ref) else {
+            panic!("expected heap array object");
+        };
+        assert_eq!(values[0], HeapSlot::Int(1));
+        assert_eq!(values[1], HeapSlot::Int(5));
+        let HeapSlot::Ref(string_ref) = values[2] else {
+            panic!("expected heap string ref");
+        };
+        assert_eq!(
+            heap.get(string_ref),
+            Some(&HeapValue::String("gold".into()))
+        );
+        assert_eq!(budget.memory_bytes_allocated(), heap.allocated_bytes());
+    }
+
+    #[test]
     fn runs_compiled_map_literal_source() {
         let code = compile_function_source(
             SourceId::new(1),
@@ -1389,6 +1701,32 @@ fn main() {
         .expect("compile record source");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(10)));
+    }
+
+    #[test]
+    fn heap_execution_reads_record_fields_from_heap_records() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let level = 3;
+    let player = Player { level, exp: 7 };
+    return player.level + player.exp;
+}
+"#,
+            "main",
+        )
+        .expect("compile record source");
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = Vm::new()
+            .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
+            .expect("run heap-backed record source");
+
+        assert_eq!(result, Value::Int(10));
+        assert_eq!(heap.live_object_count(), 1);
     }
 
     #[test]
@@ -1460,6 +1798,62 @@ fn main() {
         .expect("compile enum match source");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
+    fn heap_execution_matches_enum_tags_and_reads_fields() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let damage = Damage.Physical { amount: 7 };
+    match damage {
+        Damage.Magical { amount } => { return amount + 100; },
+        Damage.Physical { amount } => { return amount + 1; },
+        _ => { return 0; },
+    }
+}
+"#,
+            "main",
+        )
+        .expect("compile enum match source");
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = Vm::new()
+            .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
+            .expect("run heap-backed enum source");
+
+        assert_eq!(result, Value::Int(8));
+        assert_eq!(heap.live_object_count(), 1);
+    }
+
+    #[test]
+    fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            "fn main() { return \"this string is too large\"; }",
+            "main",
+        )
+        .expect("compile string source");
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 8, usize::MAX, usize::MAX);
+
+        let error = Vm::new()
+            .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
+            .expect_err("string allocation should exceed memory budget");
+
+        assert_eq!(
+            error.kind,
+            VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::MemoryBytes,
+                limit: 8,
+            }
+        );
+        assert_eq!(heap.live_object_count(), 0);
+        assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
     #[test]

@@ -311,3 +311,30 @@ Consequences:
   clock timing.
 - Full collection explicitly aborts and restarts any in-progress step so marks
   do not leak across collection modes.
+
+## 2026-05-24: Heap-Backed Execution Is Explicit During Migration
+
+Status: Accepted
+
+Context:
+M7 needs VM-owned strings, arrays, maps, records, and enums to move onto the
+script heap, but existing M0-M6 tests and demo callers still assert inline
+`Value` return shapes. Replacing all value behavior at once would couple heap
+allocation, native calls, reflection, host conversion, and demo behavior in one
+large change.
+
+Decision:
+Add explicit heap-backed VM entrypoints that take a `HeapExecution` context.
+When heap execution is selected, string constants and aggregate bytecode
+constructors allocate `HeapValue` objects in `ScriptHeap`, return
+`Value::HeapRef`, and charge memory through `ExecutionBudget`. Record/enum
+field reads and enum tag checks resolve both inline values and heap refs.
+Existing non-heap entrypoints keep their current inline behavior during the
+migration.
+
+Consequences:
+- Heap-backed bytecode execution can be tested without breaking the runnable
+  prototype demo.
+- Memory-budget enforcement now covers VM-created script heap objects.
+- Native calls, reflection, and host conversion still need heap-aware value
+  resolution before heap execution can become the default path.
