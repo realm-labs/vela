@@ -506,6 +506,52 @@ impl Vm {
             )?)
         });
 
+        let methods_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.methods", move |args, _host| {
+            expect_arity("reflect.methods", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.methods")?;
+            value_from_reflect(reflect::methods(&methods_registry, &target)?)
+        });
+
+        let has_method_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.has_method", move |args, _host| {
+            expect_arity("reflect.has_method", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.has_method")?;
+            let method_name = expect_string(&args[1], "reflect.has_method")?;
+            Ok(Value::Bool(reflect::has_method(
+                &has_method_registry,
+                &target,
+                method_name,
+            )?))
+        });
+
+        let traits_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.traits", move |args, _host| {
+            expect_arity("reflect.traits", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.traits")?;
+            value_from_reflect(reflect::trait_metadata(&traits_registry, &target)?)
+        });
+
+        let variants_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.variants", move |args, _host| {
+            expect_arity("reflect.variants", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.variants")?;
+            value_from_reflect(reflect::variant_metadata(&variants_registry, &target)?)
+        });
+
+        self.register_host_native("reflect.variant", move |args, _host| {
+            expect_arity("reflect.variant", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.variant")?;
+            value_from_reflect(reflect::variant(&target)?)
+        });
+
+        self.register_host_native("reflect.variant_is", move |args, _host| {
+            expect_arity("reflect.variant_is", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.variant_is")?;
+            let variant_name = expect_string(&args[1], "reflect.variant_is")?;
+            Ok(Value::Bool(reflect::variant_is(&target, variant_name)?))
+        });
+
         let get_registry = Arc::clone(&registry);
         self.register_host_native("reflect.get", move |args, host| {
             expect_arity("reflect.get", args, 2)?;
@@ -2594,10 +2640,14 @@ mod tests {
         compile_program_source_with_options,
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
-    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol, TypeId};
+    use vela_common::{
+        FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol, TypeId, VariantId,
+    };
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
-    use vela_reflect::{FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
+    use vela_reflect::{
+        FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
+    };
 
     #[test]
     fn runs_basic_arithmetic() {
@@ -6632,6 +6682,49 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflects_methods_traits_and_variants() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let methods = reflect.methods(player);
+    let traits = reflect.traits(player);
+    let quest = QuestProgress.Active { count: 1 };
+    let variants = reflect.variants(quest);
+    if reflect.has_method(player, "grant_exp")
+        && methods.len() == 1
+        && traits.len() == 1
+        && variants.len() == 2
+        && reflect.variant(quest) == "Active"
+        && reflect.variant_is(quest, "Active") {
+        return variants[0].fields.len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile member reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(member_reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(player_ref(3))],
+                &mut host
+            ),
+            Ok(Value::Int(1))
+        );
+    }
+
+    #[test]
     fn compiled_source_reflects_script_record_implements() {
         let program = compile_program_source(
             SourceId::new(1),
@@ -7066,6 +7159,20 @@ pub fn grant(player: Player, amount: int = 1) -> bool {
         ));
         let mut registry = TypeRegistry::new();
         registry.register_script_modules(&graph);
+        registry
+    }
+
+    fn member_reflection_registry() -> TypeRegistry {
+        let mut registry = reflection_registry();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(300), "QuestProgress"))
+                .kind(TypeKind::ScriptEnum)
+                .variant(
+                    VariantDesc::new(VariantId::new(10), "Active")
+                        .field(FieldDesc::new(FieldId::new(11), "count")),
+                )
+                .variant(VariantDesc::new(VariantId::new(12), "Finished")),
+        );
         registry
     }
 

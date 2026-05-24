@@ -2862,3 +2862,27 @@ Consequences:
   surface.
 - Permission-bounded reflective calls and method/variant query coverage remain
   follow-up M12 work.
+
+## 2026-05-25: Reflection Member Queries Stay In A Focused Module
+
+Status: Accepted
+
+Context:
+M12 needs method, trait, and variant reflection in addition to type, field,
+module, and function queries. Adding all of that directly to the reflection
+crate facade would make `lib.rs` harder to review and blur descriptor ownership.
+
+Decision:
+Put read-only member query helpers in a dedicated `members` module. The VM
+registers script-visible `reflect.methods`, `reflect.has_method`,
+`reflect.traits`, `reflect.variants`, `reflect.variant`, and
+`reflect.variant_is` as thin native bindings over those helpers. Returned
+metadata is copied into records/arrays, and current enum variant inspection does
+not expose mutable registry descriptors.
+
+Consequences:
+- Reflection member behavior is tested independently of VM native dispatch.
+- `lib.rs` remains the crate facade instead of becoming the home for every
+  reflection query shape.
+- Runtime schema mutation remains unavailable; permission checks and field
+  detail queries remain follow-up M12 work.

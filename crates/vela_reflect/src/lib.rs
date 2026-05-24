@@ -1,11 +1,16 @@
 //! Controlled reflection metadata and value access.
 
+mod members;
 mod modules;
 mod script_types;
 
 use std::collections::BTreeMap;
 use std::fmt;
 
+pub use members::{
+    has_method, methods, traits as trait_metadata, variant, variant_is,
+    variants as variant_metadata,
+};
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
     exports as module_exports, function as function_metadata, module as module_metadata,

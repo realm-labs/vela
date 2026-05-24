@@ -722,8 +722,13 @@ permissions.
   `reflect.function` queries backed by registered module/function metadata.
   Results are copied records/arrays, and unknown module/function lookups include
   candidate hints without allowing runtime schema mutation.
+- Added a focused reflection member-query module plus script-visible
+  `reflect.methods`, `reflect.has_method`, `reflect.traits`,
+  `reflect.variants`, `reflect.variant`, and `reflect.variant_is` natives.
+  These return copied method, trait, and variant metadata records and preserve
+  current enum variant inspection without exposing mutable schema handles.
 
 ## Next
 
-- Continue M12 with script-visible reflection queries for methods, variants,
-  and permission-bounded calls.
+- Continue M12 with field detail queries, reflection permissions, lookup
+  budgets, and permission-bounded reflective calls.
