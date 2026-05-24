@@ -2071,3 +2071,29 @@ Consequences:
   generics, or change runtime value layout.
 - Captured `self` in closures and pattern-bound receiver facts remain later
   M10 type-flow work.
+
+## 2026-05-25: Captured Locals Preserve Script Receiver Facts
+
+Status: Accepted
+
+Context:
+Lambda bodies reuse HIR local IDs for captured outer locals, and the VM already
+passes captured values through closure registers. However, compiler-local
+script type-flow facts for captured receiver values were not copied into the
+nested lambda compiler, so captured script records fell back to dynamic method
+name lookup.
+
+Decision:
+When compiling a lambda, copy any known script receiver type facts for captured
+locals into the lambda compiler before lowering the nested body. This allows a
+captured local such as `player` in `|_| player.bonus(5)` to lower to
+`CallMethodId` when the outer compiler already proved `player` is a script
+record or enum type.
+
+Consequences:
+- Captured script receivers can participate in MethodId dispatch without
+  changing closure value layout or runtime capture semantics.
+- The copied facts remain advisory compile-time metadata; scripts still execute
+  dynamically and hold no Rust references.
+- Pattern-derived receiver facts and broader slot/type-flow propagation remain
+  later M10 work.

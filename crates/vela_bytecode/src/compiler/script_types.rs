@@ -17,7 +17,11 @@ impl ScriptTypeFlow {
         let BindingResolution::Local(local) = bindings.resolution_at_span(span)? else {
             return None;
         };
-        self.locals.get(local).cloned()
+        self.local(*local)
+    }
+
+    pub(super) fn local(&self, local: HirLocalId) -> Option<String> {
+        self.locals.get(&local).cloned()
     }
 
     pub(super) fn name(&self, name: &str) -> Option<String> {

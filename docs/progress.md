@@ -606,11 +606,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Hidden script impl/default method bodies now seed `self` as the impl target
   type, allowing `self.other_method()` calls to lower to `CallMethodId` when
   the target method metadata is known.
+- Lambda compilation now carries captured local script type-flow facts into
+  nested closure code objects, so captured script record/enum receivers can
+  lower method calls to `CallMethodId`.
 - Remaining M10 work includes broader type-flow slot lowering, host type impl
-  dispatch, and broader MethodId use for pattern bindings, captured values,
-  and other non-literal receiver facts.
+  dispatch, and broader MethodId use for pattern bindings and other
+  non-literal receiver facts.
 
 ## Next
 
-- Continue M10 by extending MethodId and slot lowering into pattern/capture
-  facts and host type impl dispatch.
+- Continue M10 by extending MethodId and slot lowering into pattern facts and
+  host type impl dispatch.

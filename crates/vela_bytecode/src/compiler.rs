@@ -1269,7 +1269,7 @@ impl<'ast> Compiler<'ast> {
             .iter()
             .map(|capture| capture.register)
             .collect::<Vec<_>>();
-        let code = Compiler::new_lambda(
+        let mut lambda_compiler = Compiler::new_lambda(
             format!("{}::<lambda@{}>", self.code.name, lambda.span.start),
             lambda.span,
             params,
@@ -1277,8 +1277,17 @@ impl<'ast> Compiler<'ast> {
             &captures,
             self.bindings,
             self.facts.clone(),
-        )?
-        .compile_lambda_body(body)?;
+        )?;
+        for capture in &captures {
+            if let Some(script_type) = self.script_types.local(capture.local) {
+                lambda_compiler.script_types.set_local(
+                    capture.local,
+                    &capture.name,
+                    Some(script_type),
+                );
+            }
+        }
+        let code = lambda_compiler.compile_lambda_body(body)?;
         let dst = self.alloc_register()?;
         self.emit(InstructionKind::MakeClosure {
             dst,
@@ -2798,6 +2807,48 @@ fn main() {
                 method_id: lowered,
                 ..
             } if lowered == label_id
+        )));
+    }
+
+    #[test]
+    fn compiler_specializes_captured_receiver_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    let bonus = |ignored| player.bonus(5);
+    return bonus(null);
+}
+"#,
+        )
+        .expect("captured receiver method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        let closure = main
+            .instructions
+            .iter()
+            .find_map(|instruction| match &instruction.kind {
+                InstructionKind::MakeClosure { code, .. } => Some(code),
+                _ => None,
+            })
+            .expect("capturing closure code");
+        assert!(closure.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
         )));
     }
 
