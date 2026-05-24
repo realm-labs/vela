@@ -190,3 +190,26 @@ Consequences:
 - Single-name record literals remain script records.
 - A later resolver can replace this syntactic heuristic with explicit type
   metadata while preserving source behavior.
+
+## 2026-05-24: Hot Reload Versions Own CodeObject Indirection
+
+Status: Accepted
+
+Context:
+M6 needs function-level code replacement where old executions can continue using
+old code while new calls enter updated code. The VM currently runs immutable
+`Program` values, so the first hot-reload layer needs to preserve old code
+without forcing the VM to own global mutable state.
+
+Decision:
+Introduce `vela_hot_reload::ProgramVersion`, which maps stable
+`FunctionSymbolId` names to `Arc<CodeObject>` values. `HotReloadRuntime` swaps
+the current `Arc<ProgramVersion>` at update safe points, while callers that
+already hold an old version can still run that old code. ABI validation rejects
+updates that delete existing function parameters.
+
+Consequences:
+- Function-level updates are explicit and versioned.
+- Old version lifetime is represented by normal `Arc` ownership.
+- The VM can continue executing immutable `Program` snapshots while hot-reload
+  policy evolves around it.

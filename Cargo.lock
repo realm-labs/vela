@@ -22,6 +22,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vela_hot_reload"
+version = "0.1.0"
+dependencies = [
+ "vela_bytecode",
+ "vela_common",
+ "vela_vm",
+]
+
+[[package]]
 name = "vela_reflect"
 version = "0.1.0"
 dependencies = [

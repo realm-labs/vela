@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-M5: Struct, Enum, And Match.
+M6: Hot Reload First.
 
 ## Completed
 
@@ -138,6 +138,21 @@ M5: Struct, Enum, And Match.
 - Added compiled-source tests for returning enum values and matching enum tags
   with field destructuring.
 
+### M6: Hot Reload First
+
+- Added the `vela_hot_reload` crate with `ProgramVersion`,
+  `ProgramVersionId`, `FunctionSymbolId`, `HotReloadRuntime`, `compile_update`,
+  and `apply_hot_update`.
+- Stored function code objects behind per-version `Arc<CodeObject>` entries so
+  old `ProgramVersion` handles keep old code alive while the runtime points new
+  calls at the updated version.
+- Added ABI validation that rejects updates deleting existing function
+  parameters.
+- Added tests proving new calls enter new code, old version handles keep old
+  code runnable, deleted parameters are rejected, and newly added helper
+  functions are accepted.
+
 ## Next
 
-- Add broader match pattern coverage or proceed to M6 hot reload scaffolding.
+- Add an executable demo path under `examples/game_server_demo` and validate it
+  with a script run.
