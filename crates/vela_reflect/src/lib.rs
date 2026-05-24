@@ -275,6 +275,7 @@ fn record_unknown_field(field: &str, record: &BTreeMap<String, ReflectValue>) ->
         type_name: "record".to_owned(),
         field: field.to_owned(),
         candidates: name_candidates(field, record.keys().map(String::as_str)),
+        related: Vec::new(),
     }
 }
 
@@ -492,7 +493,11 @@ mod tests {
             ReflectErrorKind::UnknownField {
                 type_name: "Player".to_owned(),
                 field: "levle".to_owned(),
-                candidates: vec!["level".to_owned(), "id".to_owned()]
+                candidates: vec!["level".to_owned(), "id".to_owned()],
+                related: vec![
+                    ReflectCandidate::new("level", None),
+                    ReflectCandidate::new("id", None),
+                ],
             }
         );
     }
@@ -855,7 +860,8 @@ mod tests {
             ReflectErrorKind::UnknownMethod {
                 type_name: "Player".to_owned(),
                 method: "grant_xp".to_owned(),
-                candidates: vec!["grant_exp".to_owned()]
+                candidates: vec!["grant_exp".to_owned()],
+                related: vec![ReflectCandidate::new("grant_exp", None)],
             }
         );
     }

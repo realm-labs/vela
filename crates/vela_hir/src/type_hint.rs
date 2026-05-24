@@ -29,6 +29,7 @@ impl HirTypeHint {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParamHint {
     pub name: String,
+    pub span: Span,
     pub type_hint: Option<HirTypeHint>,
     pub default_value_span: Option<Span>,
 }
@@ -38,6 +39,7 @@ impl ParamHint {
     pub fn from_syntax(param: &Param) -> Self {
         Self {
             name: param.name.clone(),
+            span: param.span,
             type_hint: param.type_hint.as_ref().map(HirTypeHint::from_syntax),
             default_value_span: param.default_value.as_ref().map(|value| value.span),
         }
@@ -70,6 +72,7 @@ impl ConstMetadata {
 pub struct StructFieldHint {
     pub attrs: Vec<HirAttribute>,
     pub name: String,
+    pub span: Span,
     pub type_hint: Option<HirTypeHint>,
 }
 
@@ -79,6 +82,7 @@ impl StructFieldHint {
         Self {
             attrs: attrs_from_syntax(&field.attrs),
             name: field.name.clone(),
+            span: field.span,
             type_hint: field.type_hint.as_ref().map(HirTypeHint::from_syntax),
         }
     }
@@ -111,6 +115,7 @@ impl EnumShape {
 pub struct EnumVariantHint {
     pub attrs: Vec<HirAttribute>,
     pub name: String,
+    pub span: Span,
     pub fields: EnumVariantFieldsHint,
 }
 
@@ -129,6 +134,7 @@ impl EnumVariantHint {
         Self {
             attrs: attrs_from_syntax(&variant.attrs),
             name: variant.name.clone(),
+            span: variant.span,
             fields,
         }
     }
@@ -163,6 +169,7 @@ impl TraitShape {
                     TraitMethodMetadata {
                         attrs: attrs_from_syntax(&method.attrs),
                         name: method.name.clone(),
+                        span: method.span,
                         signature: FunctionSignature {
                             params: method.params.iter().map(ParamHint::from_syntax).collect(),
                             return_type: method.return_type.as_ref().map(HirTypeHint::from_syntax),
@@ -181,6 +188,7 @@ impl TraitShape {
 pub struct TraitMethodMetadata {
     pub attrs: Vec<HirAttribute>,
     pub name: String,
+    pub span: Span,
     pub signature: FunctionSignature,
     pub has_default: bool,
     pub default_body_node: Option<HirNodeId>,

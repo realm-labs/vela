@@ -187,8 +187,10 @@ impl Parser {
 
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
             let attrs = self.parse_attributes();
-            if self.eat_keyword(Keyword::Fn).is_some() {
-                if let Some(method) = self.expect_ident("expected trait method name") {
+            if let Some(fn_token) = self.eat_keyword(Keyword::Fn) {
+                if let Some((method, name_span)) =
+                    self.expect_ident_with_span("expected trait method name")
+                {
                     let params = self.parse_parameter_list();
                     let return_type = self.parse_optional_return_type();
                     let default_body = if self.check_symbol(Symbol::LBrace) {
@@ -197,9 +199,13 @@ impl Parser {
                         self.eat_symbol(Symbol::Semicolon);
                         None
                     };
+                    let span_start = attrs
+                        .first()
+                        .map_or(fn_token.span.start, |attr| attr.span.start);
                     methods.push(TraitMethod {
                         attrs,
                         name: method,
+                        span: Span::new(name_span.source, span_start, self.previous_span().end),
                         params,
                         return_type,
                         has_default: default_body.is_some(),
@@ -747,10 +753,14 @@ impl Parser {
         let start = self.eat_symbol(Symbol::Pipe).expect("checked").span;
         let mut params = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::Pipe) {
-            if let Some(param) = self.eat_parameter_name() {
+            if let Some((param, name_span)) = self.eat_parameter_name_with_span() {
                 let type_hint = self.parse_type_annotation();
+                let end = type_hint
+                    .as_ref()
+                    .map_or(name_span.end, |hint| hint.span.end);
                 params.push(Param {
                     name: param,
+                    span: Span::new(name_span.source, name_span.start, end),
                     type_hint,
                     default_value: None,
                 });
@@ -975,15 +985,24 @@ impl Parser {
         }
 
         while !self.at_eof() && !self.check_symbol(Symbol::RParen) {
-            if let Some(param) = self.eat_parameter_name() {
+            if let Some((param, name_span)) = self.eat_parameter_name_with_span() {
                 let type_hint = self.parse_type_annotation();
                 let default_value = if self.eat_symbol(Symbol::Equal).is_some() {
                     Some(self.parse_expression())
                 } else {
                     None
                 };
+                let end = default_value.as_ref().map_or_else(
+                    || {
+                        type_hint
+                            .as_ref()
+                            .map_or(name_span.end, |hint| hint.span.end)
+                    },
+                    |value| value.span.end,
+                );
                 params.push(Param {
                     name: param,
+                    span: Span::new(name_span.source, name_span.start, end),
                     type_hint,
                     default_value,
                 });
@@ -1002,15 +1021,15 @@ impl Parser {
         params
     }
 
-    fn eat_parameter_name(&mut self) -> Option<String> {
+    fn eat_parameter_name_with_span(&mut self) -> Option<(String, Span)> {
         match self.current().kind.clone() {
             TokenKind::Ident(name) => {
-                self.advance();
-                Some(name)
+                let span = self.advance().span;
+                Some((name, span))
             }
             TokenKind::Keyword(Keyword::SelfValue) => {
-                self.advance();
-                Some("self".to_owned())
+                let span = self.advance().span;
+                Some(("self".to_owned(), span))
             }
             _ => None,
         }
@@ -1028,11 +1047,18 @@ impl Parser {
         let mut fields = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
             let attrs = self.parse_attributes();
-            if let Some(name) = self.eat_ident() {
+            if let Some((name, name_span)) = self.eat_ident_with_span() {
                 let type_hint = self.parse_type_annotation();
+                let span_start = attrs
+                    .first()
+                    .map_or(name_span.start, |attr| attr.span.start);
+                let end = type_hint
+                    .as_ref()
+                    .map_or(name_span.end, |hint| hint.span.end);
                 fields.push(StructField {
                     attrs,
                     name,
+                    span: Span::new(name_span.source, span_start, end),
                     type_hint,
                 });
                 self.skip_member_tail();
@@ -1056,7 +1082,7 @@ impl Parser {
 
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
             let attrs = self.parse_attributes();
-            if let Some(name) = self.eat_ident() {
+            if let Some((name, name_span)) = self.eat_ident_with_span() {
                 let fields = if self.check_symbol(Symbol::LParen) {
                     EnumVariantFields::Tuple(self.parse_parameter_list())
                 } else if self.eat_symbol(Symbol::LBrace).is_some() {
@@ -1064,9 +1090,13 @@ impl Parser {
                 } else {
                     EnumVariantFields::Unit
                 };
+                let span_start = attrs
+                    .first()
+                    .map_or(name_span.start, |attr| attr.span.start);
                 variants.push(EnumVariant {
                     attrs,
                     name,
+                    span: Span::new(name_span.source, span_start, self.previous_span().end),
                     fields,
                 });
                 self.skip_member_tail();
@@ -1324,13 +1354,25 @@ impl Parser {
         ident
     }
 
+    fn expect_ident_with_span(&mut self, message: &str) -> Option<(String, Span)> {
+        let ident = self.eat_ident_with_span();
+        if ident.is_none() {
+            self.error_here(message);
+        }
+        ident
+    }
+
     fn eat_ident(&mut self) -> Option<String> {
+        self.eat_ident_with_span().map(|(ident, _)| ident)
+    }
+
+    fn eat_ident_with_span(&mut self) -> Option<(String, Span)> {
         let ident = match &self.current().kind {
             TokenKind::Ident(ident) => Some(ident.clone()),
             _ => None,
         }?;
-        self.advance();
-        Some(ident)
+        let span = self.advance().span;
+        Some((ident, span))
     }
 
     fn check_ident(&self) -> bool {

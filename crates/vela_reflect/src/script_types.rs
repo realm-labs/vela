@@ -1,4 +1,4 @@
-use vela_common::{FieldId, MethodId, TypeId, VariantId};
+use vela_common::{FieldId, MethodId, Span, TypeId, VariantId};
 use vela_hir::{Declaration, DeclarationKind, EnumVariantFieldsHint, ModuleGraph};
 
 use crate::{
@@ -25,7 +25,8 @@ impl TypeRegistry {
                                 FieldDesc::new(
                                     stable_field_id(&type_name, &field.name),
                                     field.name.clone(),
-                                ),
+                                )
+                                .source_span(field.span),
                                 &field.attrs,
                             ))
                         },
@@ -51,15 +52,17 @@ impl TypeRegistry {
                                         VariantDesc::new(
                                             stable_variant_id(&type_name, &variant.name),
                                             variant.name.clone(),
-                                        ),
+                                        )
+                                        .source_span(variant.span),
                                         &variant.attrs,
                                     ),
-                                    |desc, (field_name, field_attrs, _)| {
+                                    |desc, (field_name, field_attrs, field_span, _)| {
                                         desc.field(apply_field_attrs(
                                             FieldDesc::new(
                                                 stable_field_id(&variant_owner, &field_name),
                                                 field_name,
-                                            ),
+                                            )
+                                            .source_span(field_span),
                                             &field_attrs,
                                         ))
                                     },
@@ -83,7 +86,8 @@ impl TypeRegistry {
                                     stable_trait_method_id(&trait_name, &method.name),
                                     method.name.clone(),
                                 )
-                                .defaulted(method.has_default),
+                                .defaulted(method.has_default)
+                                .source_span(method.span),
                                 &method.attrs,
                             ))
                         },
@@ -153,7 +157,7 @@ fn apply_trait_method_attrs(
 
 fn enum_variant_fields(
     fields: &EnumVariantFieldsHint,
-) -> Vec<(String, Vec<vela_hir::HirAttribute>, String)> {
+) -> Vec<(String, Vec<vela_hir::HirAttribute>, Span, String)> {
     match fields {
         EnumVariantFieldsHint::Unit => Vec::new(),
         EnumVariantFieldsHint::Tuple(fields) => fields
@@ -163,6 +167,7 @@ fn enum_variant_fields(
                 (
                     index.to_string(),
                     Vec::new(),
+                    field.span,
                     field
                         .type_hint
                         .as_ref()
@@ -176,6 +181,7 @@ fn enum_variant_fields(
                 (
                     field.name.clone(),
                     field.attrs.clone(),
+                    field.span,
                     field
                         .type_hint
                         .as_ref()
@@ -248,7 +254,7 @@ fn enum_variant_signature(type_name: &str, variant: &vela_hir::EnumVariantHint) 
     let variant_owner = enum_variant_owner(type_name, &variant.name);
     let mut fields = enum_variant_fields(&variant.fields)
         .into_iter()
-        .map(|(field_name, _, type_hint)| {
+        .map(|(field_name, _, _, type_hint)| {
             (
                 stable_field_id(&variant_owner, &field_name).get(),
                 field_name,
@@ -391,6 +397,15 @@ enum QuestProgress {
                 .and_then(|field| field.docs.as_deref()),
             Some("Reward count.")
         );
+        let count_field = reward
+            .fields
+            .iter()
+            .find(|field| field.name == "count")
+            .expect("count field");
+        assert_eq!(
+            count_field.source_span.map(|span| span.source),
+            Some(SourceId::new(1))
+        );
         assert_eq!(
             progress
                 .variants
@@ -406,12 +421,25 @@ enum QuestProgress {
             .expect("Active variant");
         assert_eq!(active.attrs.get("active"), Some("true"));
         assert_eq!(
+            active.source_span.map(|span| span.source),
+            Some(SourceId::new(1))
+        );
+        assert_eq!(
             active
                 .fields
                 .iter()
                 .map(|field| field.name.as_str())
                 .collect::<Vec<_>>(),
             ["quest_id", "count"]
+        );
+        assert_eq!(
+            active
+                .fields
+                .iter()
+                .find(|field| field.name == "quest_id")
+                .and_then(|field| field.source_span)
+                .map(|span| span.source),
+            Some(SourceId::new(1))
         );
         assert_eq!(
             reward
@@ -576,6 +604,10 @@ impl Damageable for Player {
             [("damage", false), ("alive", true)]
         );
         assert_eq!(damageable.methods[0].docs.as_deref(), Some("Apply damage."));
+        assert_eq!(
+            damageable.methods[0].source_span.map(|span| span.source),
+            Some(SourceId::new(1))
+        );
         assert_eq!(
             player
                 .traits

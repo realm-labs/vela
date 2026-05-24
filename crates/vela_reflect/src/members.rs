@@ -7,7 +7,7 @@ use crate::{
     ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
     candidates::{candidate_names, ranked_candidates},
     metadata::{attrs_value, docs_value, span_value},
-    name_candidates, type_of,
+    type_of,
 };
 
 pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -218,13 +218,12 @@ pub fn variant_is(
     if desc.variants.iter().any(|variant| variant.name == name) {
         return Ok(actual == name);
     }
+    let related = variant_candidates(desc, name);
     Err(ReflectError::new(ReflectErrorKind::UnknownVariant {
         type_name: desc.key.name.clone(),
         variant: name.to_owned(),
-        candidates: name_candidates(
-            name,
-            desc.variants.iter().map(|variant| variant.name.as_str()),
-        ),
+        candidates: candidate_names(&related),
+        related,
     }))
 }
 
@@ -266,15 +265,32 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
         .iter()
         .find(|candidate| candidate.name == field)
         .ok_or_else(|| {
+            let related = field_candidates(desc, field);
             ReflectError::new(ReflectErrorKind::UnknownField {
                 type_name: desc.key.name.clone(),
                 field: field.to_owned(),
-                candidates: name_candidates(
-                    field,
-                    desc.fields.iter().map(|field| field.name.as_str()),
-                ),
+                candidates: candidate_names(&related),
+                related,
             })
         })
+}
+
+fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::ReflectCandidate> {
+    ranked_candidates(
+        field,
+        desc.fields
+            .iter()
+            .map(|field| (field.name.as_str(), field.source_span)),
+    )
+}
+
+fn variant_candidates(desc: &TypeDesc, variant: &str) -> Vec<crate::ReflectCandidate> {
+    ranked_candidates(
+        variant,
+        desc.variants
+            .iter()
+            .map(|variant| (variant.name.as_str(), variant.source_span)),
+    )
 }
 
 fn method_record(method: &MethodDesc) -> HostValue {
@@ -285,6 +301,7 @@ fn method_record(method: &MethodDesc) -> HostValue {
     fields.insert("access".to_owned(), method_access_record(method));
     fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&method.attrs));
+    fields.insert("source_span".to_owned(), span_value(method.source_span));
     HostValue::Record {
         type_name: "ReflectMethod".to_owned(),
         fields,
@@ -365,6 +382,7 @@ fn trait_method_record(method: &TraitMethodDesc) -> HostValue {
     fields.insert("defaulted".to_owned(), HostValue::Bool(method.has_default));
     fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&method.attrs));
+    fields.insert("source_span".to_owned(), span_value(method.source_span));
     HostValue::Record {
         type_name: "ReflectTraitMethod".to_owned(),
         fields,
@@ -388,6 +406,7 @@ fn variant_record_with_fields<'a>(
     );
     fields.insert("docs".to_owned(), docs_value(variant.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&variant.attrs));
+    fields.insert("source_span".to_owned(), span_value(variant.source_span));
     HostValue::Record {
         type_name: "ReflectVariant".to_owned(),
         fields,
@@ -402,6 +421,7 @@ fn field_record(field: &FieldDesc) -> HostValue {
     fields.insert("access".to_owned(), field_access_record(field));
     fields.insert("docs".to_owned(), docs_value(field.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&field.attrs));
+    fields.insert("source_span".to_owned(), span_value(field.source_span));
     HostValue::Record {
         type_name: "ReflectField".to_owned(),
         fields,
@@ -458,11 +478,13 @@ mod tests {
                 .field(
                     FieldDesc::new(FieldId::new(2), "level")
                         .writable(true)
+                        .source_span(Span::new(SourceId::new(8), 50, 55))
                         .docs("Current level.")
                         .attr("unit", "level"),
                 )
                 .method(
                     MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .source_span(Span::new(SourceId::new(8), 60, 80))
                         .effects(crate::MethodEffectSet::host_write())
                         .access(
                             crate::MethodAccess::new()
@@ -490,6 +512,7 @@ mod tests {
                 .kind(TypeKind::ScriptEnum)
                 .variant(
                     VariantDesc::new(VariantId::new(11), "Active")
+                        .source_span(Span::new(SourceId::new(8), 90, 100))
                         .docs("Quest is active.")
                         .attr("state", "open")
                         .field(FieldDesc::new(FieldId::new(12), "count")),
@@ -554,6 +577,10 @@ mod tests {
                 HostValue::String("level".to_owned())
             )])))
         );
+        assert_eq!(
+            fields.get("source_span"),
+            Some(&span_value(Some(Span::new(SourceId::new(8), 50, 55))))
+        );
 
         let error = field(&registry, &target, "levle").expect_err("unknown field");
         assert_eq!(
@@ -561,7 +588,14 @@ mod tests {
             ReflectErrorKind::UnknownField {
                 type_name: "Player".to_owned(),
                 field: "levle".to_owned(),
-                candidates: vec!["level".to_owned(), "id".to_owned()]
+                candidates: vec!["level".to_owned(), "id".to_owned()],
+                related: vec![
+                    crate::ReflectCandidate::new(
+                        "level",
+                        Some(Span::new(SourceId::new(8), 50, 55))
+                    ),
+                    crate::ReflectCandidate::new("id", None),
+                ],
             }
         );
     }
@@ -611,6 +645,10 @@ mod tests {
                 "player.grant_exp".to_owned()
             )]))
         );
+        assert_eq!(
+            fields.get("source_span"),
+            Some(&span_value(Some(Span::new(SourceId::new(8), 60, 80))))
+        );
 
         let ReflectValue::Host(HostValue::Array(traits)) =
             traits(&registry, &ReflectValue::HostRef(player_ref())).expect("traits")
@@ -635,6 +673,17 @@ mod tests {
             panic!("variants should be an array");
         };
         assert_eq!(variants.len(), 2);
+        let HostValue::Record {
+            fields: variant_fields,
+            ..
+        } = &variants[0]
+        else {
+            panic!("variant metadata should be a record");
+        };
+        assert_eq!(
+            variant_fields.get("source_span"),
+            Some(&span_value(Some(Span::new(SourceId::new(8), 90, 100))))
+        );
     }
 
     #[test]
@@ -654,7 +703,14 @@ mod tests {
             ReflectErrorKind::UnknownVariant {
                 type_name: "QuestProgress".to_owned(),
                 variant: "Actve".to_owned(),
-                candidates: vec!["Active".to_owned(), "Finished".to_owned()]
+                candidates: vec!["Active".to_owned(), "Finished".to_owned()],
+                related: vec![
+                    crate::ReflectCandidate::new(
+                        "Active",
+                        Some(Span::new(SourceId::new(8), 90, 100))
+                    ),
+                    crate::ReflectCandidate::new("Finished", None),
+                ],
             }
         );
     }

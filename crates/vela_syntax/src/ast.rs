@@ -53,6 +53,7 @@ pub struct TypeHint {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Param {
     pub name: String,
+    pub span: Span,
     pub type_hint: Option<TypeHint>,
     pub default_value: Option<Expr>,
 }
@@ -75,6 +76,7 @@ pub struct StructItem {
 pub struct StructField {
     pub attrs: Vec<Attribute>,
     pub name: String,
+    pub span: Span,
     pub type_hint: Option<TypeHint>,
 }
 
@@ -88,6 +90,7 @@ pub struct EnumItem {
 pub struct EnumVariant {
     pub attrs: Vec<Attribute>,
     pub name: String,
+    pub span: Span,
     pub fields: EnumVariantFields,
 }
 
@@ -108,6 +111,7 @@ pub struct TraitItem {
 pub struct TraitMethod {
     pub attrs: Vec<Attribute>,
     pub name: String,
+    pub span: Span,
     pub params: Vec<Param>,
     pub return_type: Option<TypeHint>,
     pub has_default: bool,

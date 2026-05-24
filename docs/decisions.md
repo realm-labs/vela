@@ -3792,6 +3792,31 @@ Consequences:
 - Existing candidate-name consumers can continue reading `candidates`.
 - Admin/debug tooling can navigate top-level unknown lookups to nearby schema
   declarations when spans are known.
-- Member-level candidate spans remain a separate follow-up because script
-  field, method, and variant declarations need AST/HIR member source spans
-  before reflection can report them accurately.
+- Member-level candidate spans need a separate syntax/HIR span propagation
+  decision before they can be reported accurately.
+
+## 2026-05-25: Reflection Member Metadata Carries Source Spans
+
+Status: Accepted
+
+Context:
+Top-level reflected descriptors carry source spans, but M12 diagnostics also
+expect unknown field, method, and variant lookups to report related schema
+locations. Struct fields, enum variants, tuple/record variant fields, and trait
+methods did not preserve their parsed spans through HIR, so reflection could
+not report accurate member locations.
+
+Decision:
+Store source spans on syntax and HIR member metadata, then copy those spans into
+`FieldDesc`, `MethodDesc`, `TraitMethodDesc`, and `VariantDesc`. Reflected
+member records expose `source_span`, and unknown reflected field, method, and
+variant errors add related candidate records with optional spans while keeping
+the existing candidate-name list.
+
+Consequences:
+- Script-defined member metadata can be used by admin/debug tools for
+  navigation and typo repair.
+- Host descriptors remain valid without source spans and can opt in through
+  builder methods.
+- Reflection still exposes copied metadata only; schema structure remains
+  immutable at runtime.

@@ -7369,7 +7369,11 @@ fn main() {
             Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
                 type_name: "QuestProgress".to_owned(),
                 variant: "Actve".to_owned(),
-                candidates: vec!["Active".to_owned(), "Finished".to_owned()]
+                candidates: vec!["Active".to_owned(), "Finished".to_owned()],
+                related: vec![
+                    ReflectCandidate::new("Active", None),
+                    ReflectCandidate::new("Finished", None),
+                ],
             })
         ));
         assert!(tx.patches().is_empty());

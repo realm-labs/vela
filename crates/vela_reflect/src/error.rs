@@ -36,16 +36,19 @@ pub enum ReflectErrorKind {
         type_name: String,
         field: String,
         candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
     },
     UnknownMethod {
         type_name: String,
         method: String,
         candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
     },
     UnknownVariant {
         type_name: String,
         variant: String,
         candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
     },
     UnknownTrait {
         trait_name: String,

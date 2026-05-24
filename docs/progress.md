@@ -908,6 +908,11 @@ permissions.
   trait, module, and function lookups. Reflection errors now keep the existing
   ranked candidate names and also include optional source spans for candidates
   whose descriptors have declaration locations.
+- Added syntax, HIR, and reflection source-span propagation for script member
+  descriptors, including struct fields, enum variants and payload fields, and
+  trait methods. Copied member records now expose `source_span`, and unknown
+  field, method, and variant reflection errors include related candidate
+  records with source spans when available.
 
 ## Next
 

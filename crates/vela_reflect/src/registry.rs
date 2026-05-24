@@ -2,7 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::modules::{FunctionDesc, ModuleDesc};
-use crate::{ReflectError, ReflectErrorKind, ReflectResult, name_candidates};
+use crate::{
+    ReflectError, ReflectErrorKind, ReflectResult,
+    candidates::{candidate_names, ranked_candidates},
+};
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, Span, TraitId, TypeId, VariantId,
 };
@@ -187,6 +190,7 @@ pub struct FieldDesc {
     pub access: FieldAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl FieldDesc {
@@ -199,6 +203,7 @@ impl FieldDesc {
             access: FieldAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -228,6 +233,12 @@ impl FieldDesc {
         self.attrs.insert(name, value);
         self
     }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -238,6 +249,7 @@ pub struct MethodDesc {
     pub access: MethodAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl MethodDesc {
@@ -250,6 +262,7 @@ impl MethodDesc {
             access: MethodAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -274,6 +287,12 @@ impl MethodDesc {
     #[must_use]
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
         self
     }
 }
@@ -334,6 +353,7 @@ pub struct TraitMethodDesc {
     pub has_default: bool,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl TraitMethodDesc {
@@ -345,6 +365,7 @@ impl TraitMethodDesc {
             has_default: false,
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -365,6 +386,12 @@ impl TraitMethodDesc {
         self.attrs.insert(name, value);
         self
     }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -374,6 +401,7 @@ pub struct VariantDesc {
     pub fields: Vec<FieldDesc>,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl VariantDesc {
@@ -385,6 +413,7 @@ impl VariantDesc {
             fields: Vec::new(),
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -403,6 +432,12 @@ impl VariantDesc {
     #[must_use]
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
         self
     }
 }
@@ -579,13 +614,17 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
         .iter()
         .find(|candidate| candidate.name == field)
         .ok_or_else(|| {
+            let related = ranked_candidates(
+                field,
+                desc.fields
+                    .iter()
+                    .map(|field| (field.name.as_str(), field.source_span)),
+            );
             ReflectError::new(ReflectErrorKind::UnknownField {
                 type_name: desc.key.name.clone(),
                 field: field.to_owned(),
-                candidates: name_candidates(
-                    field,
-                    desc.fields.iter().map(|field| field.name.as_str()),
-                ),
+                candidates: candidate_names(&related),
+                related,
             })
         })
 }
@@ -595,13 +634,17 @@ fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a Method
         .iter()
         .find(|candidate| candidate.name == method)
         .ok_or_else(|| {
+            let related = ranked_candidates(
+                method,
+                desc.methods
+                    .iter()
+                    .map(|method| (method.name.as_str(), method.source_span)),
+            );
             ReflectError::new(ReflectErrorKind::UnknownMethod {
                 type_name: desc.key.name.clone(),
                 method: method.to_owned(),
-                candidates: name_candidates(
-                    method,
-                    desc.methods.iter().map(|method| method.name.as_str()),
-                ),
+                candidates: candidate_names(&related),
+                related,
             })
         })
 }
