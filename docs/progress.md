@@ -70,6 +70,9 @@ method-dispatch coverage before moving into stable type metadata.
 
 - Added the `vela_host` crate with `HostRef`, `HostPath`, `PathSegment`,
   `Patch`, `PatchOp`, `HostValue`, `HostObjectSnapshot`, and `PatchTx`.
+- Split `vela_host` into focused modules for paths, values, patches, errors,
+  adapters, transactions, mock adapters, and tests while preserving the public
+  crate API.
 - Implemented transaction overlay updates for `Set` and read-modify-write
   `Add` patches without exposing Rust `&mut` references.
 - Added host tests for set patch recording, add patch overlay behavior,
