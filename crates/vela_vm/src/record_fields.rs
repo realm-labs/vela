@@ -45,14 +45,19 @@ pub(crate) fn set_record_field_value(
             let slot = crate::value_to_heap_slot(src, heap, budget)?;
             let HeapValue::Record { fields, .. } = heap.heap.get_mut(*reference).map_err(|_| {
                 VmError::new(VmErrorKind::UnknownRecordField {
-                    type_name,
+                    type_name: type_name.clone(),
                     field: field.to_owned(),
                 })
             })?
             else {
                 return type_error("record field assignment");
             };
-            fields.insert(field.to_owned(), slot);
+            fields.set_existing(field, slot).map_err(|_| {
+                VmError::new(VmErrorKind::UnknownRecordField {
+                    type_name,
+                    field: field.to_owned(),
+                })
+            })?;
             Ok(())
         }
         Value::Null

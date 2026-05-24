@@ -8,6 +8,7 @@ mod map_methods;
 mod ranges;
 mod record_fields;
 mod script_methods;
+mod script_object;
 mod set_methods;
 mod stdlib;
 mod try_propagation;
@@ -20,6 +21,7 @@ use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 pub use iteration::IteratorState;
 pub use ranges::RangeValue;
 use script_methods::call_method;
+use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
@@ -40,12 +42,12 @@ pub enum Value {
     Set(Vec<Value>),
     Record {
         type_name: String,
-        fields: BTreeMap<String, Value>,
+        fields: ScriptFields<Value>,
     },
     Enum {
         enum_name: String,
         variant: String,
-        fields: BTreeMap<String, Value>,
+        fields: ScriptFields<Value>,
     },
     Closure(ClosureValue),
     Range(RangeValue),
@@ -1185,12 +1187,18 @@ impl Vm {
                     type_name,
                     fields,
                 } => {
-                    let mut values = BTreeMap::new();
-                    for (name, register) in fields {
-                        values.insert(name.clone(), frame.read(*register)?.clone());
-                    }
+                    let values = ScriptFields::from_pairs(
+                        type_name,
+                        fields
+                            .iter()
+                            .map(|(name, register)| {
+                                Ok((name.clone(), frame.read(*register)?.clone()))
+                            })
+                            .collect::<VmResult<Vec<_>>>()?,
+                    );
                     let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
+                        let slots =
+                            values_to_heap_fields(type_name, &values, heap, budget.as_deref_mut())?;
                         allocate_heap_value(
                             HeapValue::Record {
                                 type_name: type_name.clone(),
@@ -1213,12 +1221,19 @@ impl Vm {
                     variant,
                     fields,
                 } => {
-                    let mut values = BTreeMap::new();
-                    for (name, register) in fields {
-                        values.insert(name.clone(), frame.read(*register)?.clone());
-                    }
+                    let owner = enum_variant_owner(enum_name, variant);
+                    let values = ScriptFields::from_pairs(
+                        &owner,
+                        fields
+                            .iter()
+                            .map(|(name, register)| {
+                                Ok((name.clone(), frame.read(*register)?.clone()))
+                            })
+                            .collect::<VmResult<Vec<_>>>()?,
+                    );
                     let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
+                        let slots =
+                            values_to_heap_fields(&owner, &values, heap, budget.as_deref_mut())?;
                         allocate_heap_value(
                             HeapValue::Enum {
                                 enum_name: enum_name.clone(),
@@ -1499,6 +1514,28 @@ fn values_to_heap_map(
         .collect()
 }
 
+fn values_to_heap_fields(
+    owner: &str,
+    values: &ScriptFields<Value>,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<ScriptFields<HeapSlot>> {
+    values
+        .iter()
+        .map(|(key, value)| {
+            Ok((
+                key.to_owned(),
+                value_to_heap_slot(value, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect::<VmResult<Vec<_>>>()
+        .map(|fields| ScriptFields::from_pairs(owner, fields))
+}
+
+fn enum_variant_owner(enum_name: &str, variant: &str) -> String {
+    format!("{enum_name}.{variant}")
+}
+
 pub(crate) fn value_to_heap_slot(
     value: &Value,
     heap: &mut HeapExecution<'_>,
@@ -1547,7 +1584,7 @@ pub(crate) fn value_to_heap_slot(
             Ok(HeapSlot::Ref(reference))
         }
         Value::Record { type_name, fields } => {
-            let slots = values_to_heap_map(fields, heap, budget.as_deref_mut())?;
+            let slots = values_to_heap_fields(type_name, fields, heap, budget.as_deref_mut())?;
             let Value::HeapRef(reference) = allocate_heap_value(
                 HeapValue::Record {
                     type_name: type_name.clone(),
@@ -1566,7 +1603,8 @@ pub(crate) fn value_to_heap_slot(
             variant,
             fields,
         } => {
-            let slots = values_to_heap_map(fields, heap, budget.as_deref_mut())?;
+            let owner = enum_variant_owner(enum_name, variant);
+            let slots = values_to_heap_fields(&owner, fields, heap, budget.as_deref_mut())?;
             let Value::HeapRef(reference) = allocate_heap_value(
                 HeapValue::Enum {
                     enum_name: enum_name.clone(),
@@ -1626,11 +1664,11 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
             .map(Value::Map),
         Value::Record { type_name, fields } => fields
             .iter()
-            .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
-            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|(key, value)| Ok((key.to_owned(), materialize_value(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
             .map(|fields| Value::Record {
                 type_name: type_name.clone(),
-                fields,
+                fields: ScriptFields::from_pairs(type_name, fields),
             }),
         Value::Enum {
             enum_name,
@@ -1638,12 +1676,12 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
             fields,
         } => fields
             .iter()
-            .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
-            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|(key, value)| Ok((key.to_owned(), materialize_value(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
             .map(|fields| Value::Enum {
                 enum_name: enum_name.clone(),
                 variant: variant.clone(),
-                fields,
+                fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
             }),
         Value::Closure(closure) => closure
             .captures
@@ -1684,11 +1722,11 @@ fn materialize_heap_value(value: &HeapValue, heap: Option<&HeapExecution<'_>>) -
             .map(Value::Map),
         HeapValue::Record { type_name, fields } => fields
             .iter()
-            .map(|(key, value)| Ok((key.clone(), materialize_heap_slot(value, heap)?)))
-            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|(key, value)| Ok((key.to_owned(), materialize_heap_slot(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
             .map(|fields| Value::Record {
                 type_name: type_name.clone(),
-                fields,
+                fields: ScriptFields::from_pairs(type_name, fields),
             }),
         HeapValue::Enum {
             enum_name,
@@ -1696,12 +1734,12 @@ fn materialize_heap_value(value: &HeapValue, heap: Option<&HeapExecution<'_>>) -
             fields,
         } => fields
             .iter()
-            .map(|(key, value)| Ok((key.clone(), materialize_heap_slot(value, heap)?)))
-            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|(key, value)| Ok((key.to_owned(), materialize_heap_slot(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
             .map(|fields| Value::Enum {
                 enum_name: enum_name.clone(),
                 variant: variant.clone(),
-                fields,
+                fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
             }),
         HeapValue::Set(values) => values
             .iter()
@@ -1983,10 +2021,17 @@ fn value_to_host(
 fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect::ReflectValue> {
     match value {
         Value::HostRef(host_ref) => Ok(reflect::ReflectValue::HostRef(*host_ref)),
-        Value::Map(values) | Value::Record { fields: values, .. } => {
+        Value::Map(values) => {
             let values = values
                 .iter()
                 .map(|(key, value)| Ok((key.clone(), value_to_reflect(value, operation)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            Ok(reflect::ReflectValue::Record(values))
+        }
+        Value::Record { fields: values, .. } => {
+            let values = values
+                .iter()
+                .map(|(key, value)| Ok((key.to_owned(), value_to_reflect(value, operation)?)))
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::ReflectValue::Record(values))
         }
@@ -2288,7 +2333,7 @@ fn main() {
                 Register(0),
                 Value::Record {
                     type_name: "Reward".into(),
-                    fields,
+                    fields: ScriptFields::from_pairs("Reward", fields),
                 },
             )
             .expect("write nested root");
@@ -3359,7 +3404,7 @@ fn missing() {
             Ok(Value::Enum {
                 enum_name: "Option".into(),
                 variant: "Some".into(),
-                fields: BTreeMap::from([("0".into(), Value::Int(5))]),
+                fields: ScriptFields::from_pairs("Option.Some", [("0".into(), Value::Int(5))]),
             })
         );
         assert_eq!(
@@ -3367,7 +3412,7 @@ fn missing() {
             Ok(Value::Enum {
                 enum_name: "Option".into(),
                 variant: "None".into(),
-                fields: BTreeMap::new(),
+                fields: ScriptFields::from_pairs("Option.None", BTreeMap::new()),
             })
         );
     }
@@ -3413,7 +3458,7 @@ fn err_case() {
             Ok(Value::Enum {
                 enum_name: "Result".into(),
                 variant: "Ok".into(),
-                fields: BTreeMap::from([("0".into(), Value::Int(10))]),
+                fields: ScriptFields::from_pairs("Result.Ok", [("0".into(), Value::Int(10))]),
             })
         );
 
@@ -3428,7 +3473,10 @@ fn err_case() {
             Ok(Value::Enum {
                 enum_name: "Result".into(),
                 variant: "Err".into(),
-                fields: BTreeMap::from([("0".into(), Value::String("bad".into()))]),
+                fields: ScriptFields::from_pairs(
+                    "Result.Err",
+                    [("0".into(), Value::String("bad".into()))],
+                ),
             })
         );
     }
@@ -3603,7 +3651,7 @@ pub enum Damage { Physical }
             Vm::new().run_program(&program, "game.main.make_reward", &[]),
             Ok(Value::Record {
                 type_name: "game.reward.Reward".into(),
-                fields: reward_fields,
+                fields: ScriptFields::from_pairs("game.reward.Reward", reward_fields),
             })
         );
         assert_eq!(
@@ -3611,7 +3659,7 @@ pub enum Damage { Physical }
             Ok(Value::Enum {
                 enum_name: "game.damage.Damage".into(),
                 variant: "Physical".into(),
-                fields: damage_fields,
+                fields: ScriptFields::from_pairs("game.damage.Damage.Physical", damage_fields),
             })
         );
     }
@@ -3771,7 +3819,7 @@ fn main() {
             result,
             Value::Record {
                 type_name: "Reward".into(),
-                fields,
+                fields: ScriptFields::from_pairs("Reward", fields),
             }
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -4006,8 +4054,56 @@ fn main() {
             Vm::new().run(&code),
             Ok(Value::Record {
                 type_name: "Reward".into(),
-                fields,
+                fields: ScriptFields::from_pairs("Reward", fields),
             })
+        );
+    }
+
+    #[test]
+    fn record_constructors_use_stable_slot_shapes() {
+        let first = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return Reward { count: 2, item_id: "gold" };
+}
+"#,
+            "main",
+        )
+        .expect("compile first record source");
+        let second = compile_function_source(
+            SourceId::new(2),
+            r#"
+fn main() {
+    return Reward { item_id: "gold", count: 2 };
+}
+"#,
+            "main",
+        )
+        .expect("compile second record source");
+
+        let Ok(Value::Record {
+            fields: first_fields,
+            ..
+        }) = Vm::new().run(&first)
+        else {
+            panic!("first record");
+        };
+        let Ok(Value::Record {
+            fields: second_fields,
+            ..
+        }) = Vm::new().run(&second)
+        else {
+            panic!("second record");
+        };
+
+        assert_eq!(first_fields.shape_id(), second_fields.shape_id());
+        assert_eq!(
+            first_fields
+                .iter()
+                .map(|(name, _)| name)
+                .collect::<Vec<_>>(),
+            ["count", "item_id"]
         );
     }
 
@@ -4031,7 +4127,7 @@ fn main() {
             Ok(Value::Enum {
                 enum_name: "Damage".into(),
                 variant: "Physical".into(),
-                fields,
+                fields: ScriptFields::from_pairs("Damage.Physical", fields),
             })
         );
     }

@@ -30,6 +30,7 @@ stable_id!(HostMethodId, u32);
 stable_id!(HostObjectId, u64);
 stable_id!(HostTypeId, u32);
 stable_id!(MethodId, u32);
+stable_id!(ShapeId, u32);
 stable_id!(SourceId, u32);
 stable_id!(TypeId, u32);
 stable_id!(VariantId, u32);

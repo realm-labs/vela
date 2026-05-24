@@ -1795,3 +1795,29 @@ Consequences:
   member reordering.
 - This does not yet implement slot-based object layout, trait method dispatch,
   or runtime type-structure mutation.
+
+## 2026-05-25: VM Script Objects Store Ordered Field Slots
+
+Status: Accepted
+
+Context:
+M10 requires script records and enums to move away from named-map object
+storage toward stable shape and slot metadata. The existing bytecode still
+names fields in instructions, and full compiler slot-index lowering belongs to
+a later M10 slice, but the runtime storage can stop depending on map layout now.
+
+Decision:
+Add `ShapeId` and a focused VM `ScriptFields<T>` container that stores fields
+as ordered slots with a deterministic shape ID derived from the object owner
+and sorted field names. Inline `Value::Record`/`Value::Enum` and heap
+`HeapValue::Record`/`HeapValue::Enum` now use `ScriptFields` instead of
+`BTreeMap` payloads. Field reads and writes still resolve by field name at the
+bytecode boundary, then operate on slots internally.
+
+Consequences:
+- Runtime script object payloads are slot-oriented and have stable shape IDs
+  across source field reordering.
+- Existing script behavior, reflection materialization, GC tracing, and demo
+  outputs remain compatible.
+- Bytecode field instructions still need a later slot-index specialization pass
+  before field access is fully metadata-driven.

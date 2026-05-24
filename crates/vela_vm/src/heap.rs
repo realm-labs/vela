@@ -6,6 +6,7 @@ use std::mem;
 
 use vela_host::HostRef;
 
+use crate::script_object::ScriptFields;
 use crate::{ExecutionBudget, VmResult};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -49,12 +50,12 @@ pub enum HeapValue {
     Set(Vec<HeapSlot>),
     Record {
         type_name: String,
-        fields: BTreeMap<String, HeapSlot>,
+        fields: ScriptFields<HeapSlot>,
     },
     Enum {
         enum_name: String,
         variant: String,
-        fields: BTreeMap<String, HeapSlot>,
+        fields: ScriptFields<HeapSlot>,
     },
 }
 
@@ -91,8 +92,8 @@ impl HeapValue {
                 mem::size_of::<Self>()
                     + type_name.len()
                     + fields
-                        .keys()
-                        .map(|key| key.len() + mem::size_of::<HeapSlot>())
+                        .iter()
+                        .map(|(key, _)| key.len() + mem::size_of::<HeapSlot>())
                         .sum::<usize>()
             }
             Self::Enum {
@@ -104,8 +105,8 @@ impl HeapValue {
                     + enum_name.len()
                     + variant.len()
                     + fields
-                        .keys()
-                        .map(|key| key.len() + mem::size_of::<HeapSlot>())
+                        .iter()
+                        .map(|(key, _)| key.len() + mem::size_of::<HeapSlot>())
                         .sum::<usize>()
             }
         }

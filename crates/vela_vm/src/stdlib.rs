@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-
+use crate::script_object::ScriptFields;
 use crate::{Value, Vm, VmError, VmErrorKind, VmResult, expect_arity};
 
 pub(crate) fn register(vm: &mut Vm) {
@@ -37,14 +36,13 @@ fn result_err(args: &[Value]) -> VmResult<Value> {
 }
 
 fn enum_value(enum_name: &str, variant: &str, payload: Option<Value>) -> Value {
-    let mut fields = BTreeMap::new();
-    if let Some(payload) = payload {
-        fields.insert("0".to_owned(), payload);
-    }
+    let fields = payload
+        .map(|payload| vec![("0".to_owned(), payload)])
+        .unwrap_or_default();
     Value::Enum {
         enum_name: enum_name.to_owned(),
         variant: variant.to_owned(),
-        fields,
+        fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
     }
 }
 

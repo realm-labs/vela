@@ -1,10 +1,9 @@
-use std::collections::BTreeMap;
-
 use vela_bytecode::Program;
 
 use crate::array_methods::{self, MethodRuntime};
 use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
+use crate::script_object::ScriptFields;
 use crate::set_methods;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
@@ -320,8 +319,8 @@ fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
                 HeapValue::Array(values) | HeapValue::Set(values) => {
                     usize_to_i64(values.len(), "method len")
                 }
-                HeapValue::Map(values)
-                | HeapValue::Record { fields: values, .. }
+                HeapValue::Map(values) => usize_to_i64(values.len(), "method len"),
+                HeapValue::Record { fields: values, .. }
                 | HeapValue::Enum { fields: values, .. } => {
                     usize_to_i64(values.len(), "method len")
                 }
@@ -348,8 +347,8 @@ fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool
             match value {
                 HeapValue::String(value) => Ok(value.is_empty()),
                 HeapValue::Array(values) | HeapValue::Set(values) => Ok(values.is_empty()),
-                HeapValue::Map(values)
-                | HeapValue::Record { fields: values, .. }
+                HeapValue::Map(values) => Ok(values.is_empty()),
+                HeapValue::Record { fields: values, .. }
                 | HeapValue::Enum { fields: values, .. } => Ok(values.is_empty()),
             }
         }
@@ -590,12 +589,15 @@ fn map_entries(
 }
 
 fn map_entry(key: &str, value: Value) -> Value {
-    let mut fields = BTreeMap::new();
-    fields.insert("key".to_owned(), Value::String(key.to_owned()));
-    fields.insert("value".to_owned(), value);
     Value::Record {
         type_name: "MapEntry".to_owned(),
-        fields,
+        fields: ScriptFields::from_pairs(
+            "MapEntry",
+            [
+                ("key".to_owned(), Value::String(key.to_owned())),
+                ("value".to_owned(), value),
+            ],
+        ),
     }
 }
 

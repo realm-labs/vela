@@ -558,11 +558,15 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   order-independent schema hashes for script structs and enums.
 - Added reflection tests proving schema hashes survive field/variant reordering
   and change when script type members or field hints change.
-- This is metadata-only M10 groundwork; runtime record slot layouts, trait
-  dispatch, and replacement of named-map record storage remain future M10 work.
+- Added `ShapeId` and a focused VM `ScriptFields` slot container for script
+  record and enum payloads, replacing named-map storage in inline and heap
+  script objects while preserving script-visible field behavior.
+- Added VM coverage proving compiled record constructors produce stable
+  slot-shape IDs across source field reordering.
+- Remaining M10 work includes slot-index bytecode lowering, trait dispatch,
+  impl method execution, and dynamic implements checks.
 
 ## Next
 
-- Continue M10 by adding schema hashes and slot-oriented script record/enum
-  layout while keeping script-level behavior compatible with the existing
-  runnable demos.
+- Continue M10 by lowering field accesses through resolved slot metadata and
+  adding trait/impl dispatch over script and host types.
