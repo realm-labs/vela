@@ -209,9 +209,10 @@ impl Vm {
             )?;
             expect_arity("reflect.function", args, 1)?;
             let function_name = expect_string(&args[0], "reflect.function")?;
-            value_from_reflect(reflect::function_metadata(
+            value_from_reflect(reflect::function_metadata_with_policy(
                 &function_registry,
                 function_name,
+                &function_policy,
             )?)
         });
 

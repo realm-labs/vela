@@ -2481,12 +2481,14 @@ mod tests {
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::{
-        FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol, TypeId, VariantId,
+        FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol, TypeId,
+        VariantId,
     };
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{
-        FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
+        FieldDesc, FunctionAccess, FunctionDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey,
+        TypeKind, VariantDesc,
     };
 
     #[test]
@@ -6541,6 +6543,50 @@ fn main() {
         assert_eq!(
             vm.run_program_with_host(&program, "main", &[], &mut host),
             Ok(Value::String("Player".into()))
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflection_permissions_deny_function_metadata_without_function_permission() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    reflect.function("game.admin");
+    return 1;
+}
+"#,
+        )
+        .expect("compile function metadata permission source");
+        let mut registry = TypeRegistry::new();
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(9), "game.admin")
+                .access(FunctionAccess::new().require_permission("game.admin")),
+        );
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_policy(
+            Arc::new(registry),
+            reflect::ReflectPolicy::new(
+                reflect::ReflectPermissionSet::new().with(reflect::ReflectPermission::ReadTypeInfo),
+            ),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let error = vm
+            .run_program_with_host(&program, "main", &[], &mut host)
+            .expect_err("function metadata permission should be denied");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::Reflect(ReflectErrorKind::FunctionPermissionDenied {
+                function: "game.admin".to_owned(),
+                permission: "game.admin".to_owned(),
+            })
         );
         assert!(tx.patches().is_empty());
     }

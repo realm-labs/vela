@@ -19,7 +19,8 @@ pub use members::{
 };
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
-    exports as module_exports, function as function_metadata, module as module_metadata,
+    exports as module_exports, function as function_metadata,
+    function_with_policy as function_metadata_with_policy, module as module_metadata,
 };
 pub use permissions::{
     ReflectLookupBudget, ReflectPermission, ReflectPermissionSet, ReflectPolicy,
@@ -607,8 +608,15 @@ pub enum ReflectErrorKind {
         type_name: String,
         method: String,
     },
+    FunctionNotReflectVisible {
+        function: String,
+    },
     MethodPermissionDenied {
         method: String,
+        permission: String,
+    },
+    FunctionPermissionDenied {
+        function: String,
         permission: String,
     },
     LookupBudgetExceeded {

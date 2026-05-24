@@ -6,8 +6,8 @@ use vela_host::HostValue;
 use vela_syntax::Visibility;
 
 use crate::{
-    AttrMap, FunctionAccess, FunctionEffectSet, ReflectError, ReflectErrorKind, ReflectResult,
-    ReflectValue, TypeRegistry,
+    AttrMap, FunctionAccess, FunctionEffectSet, ReflectError, ReflectErrorKind, ReflectPolicy,
+    ReflectResult, ReflectValue, TypeRegistry,
     metadata::{attrs_value, docs_value},
     name_candidates,
     script_attrs::ReflectedScriptAttrs,
@@ -282,6 +282,24 @@ pub fn function(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectVal
             ),
         })
     })?;
+    Ok(function_record(desc))
+}
+
+pub fn function_with_policy(
+    registry: &TypeRegistry,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = registry.function_by_name(name).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownFunction {
+            function: name.to_owned(),
+            candidates: name_candidates(
+                name,
+                registry.functions().map(|function| function.name.as_str()),
+            ),
+        })
+    })?;
+    policy.require_function_access(desc)?;
     Ok(function_record(desc))
 }
 
@@ -636,6 +654,83 @@ fn helper() {
                 module: "game.rewards".to_owned(),
                 candidates: vec!["game.reward".to_owned()]
             }
+        );
+    }
+
+    #[test]
+    fn function_policy_rejects_hidden_private_and_unapproved_functions() {
+        let mut registry = TypeRegistry::new();
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "game.hidden")
+                .access(FunctionAccess::new().reflect_visible(false)),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(2), "game.private")
+                .access(FunctionAccess::new().public(false).reflect_visible(true)),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(3), "game.admin")
+                .access(FunctionAccess::new().require_permission("game.admin")),
+        );
+        let private_policy = ReflectPolicy::new(
+            crate::ReflectPermissionSet::new().with(crate::ReflectPermission::AccessPrivate),
+        );
+
+        let error = function_with_policy(&registry, "game.hidden", &ReflectPolicy::all())
+            .expect_err("hidden function");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FunctionNotReflectVisible {
+                function: "game.hidden".to_owned()
+            }
+        );
+
+        let error = function_with_policy(&registry, "game.private", &ReflectPolicy::read_only())
+            .expect_err("private function");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::PermissionDenied {
+                permission: crate::ReflectPermission::AccessPrivate
+            }
+        );
+
+        let error = function_with_policy(&registry, "game.admin", &private_policy)
+            .expect_err("missing function permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FunctionPermissionDenied {
+                function: "game.admin".to_owned(),
+                permission: "game.admin".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn function_policy_allows_private_functions_with_permissions() {
+        let mut registry = TypeRegistry::new();
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "game.private_admin").access(
+                FunctionAccess::new()
+                    .public(false)
+                    .reflect_visible(true)
+                    .require_permission("game.admin"),
+            ),
+        );
+        let policy = ReflectPolicy::new(
+            crate::ReflectPermissionSet::new().with(crate::ReflectPermission::AccessPrivate),
+        )
+        .with_function_permission("game.admin");
+
+        let ReflectValue::Record(function) =
+            function_with_policy(&registry, "game.private_admin", &policy)
+                .expect("private function metadata")
+        else {
+            panic!("function metadata should be a record");
+        };
+
+        assert_eq!(
+            function.get("public"),
+            Some(&ReflectValue::Host(HostValue::Bool(false)))
         );
     }
 }

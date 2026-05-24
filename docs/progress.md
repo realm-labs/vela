@@ -819,9 +819,12 @@ permissions.
   can still be exposed to admin/debug policies, but they now require both the
   private-access bit and any method-specific permission before a `PatchTx`
   method-call patch is recorded.
+- Added policy-aware `reflect.function` metadata lookups. Function descriptors
+  marked non-reflect-visible are denied, private functions require
+  `AccessPrivate`, and function-specific permissions must be granted on the
+  `ReflectPolicy` before metadata is returned to scripts.
 
 ## Next
 
-- Continue M12 with broader reflection permission coverage for field/function
-  metadata, effect/access reporting polish, and remaining hot-reload report
-  diagnostics.
+- Continue M12 with broader reflection permission coverage for field metadata,
+  effect/access reporting polish, and remaining hot-reload report diagnostics.

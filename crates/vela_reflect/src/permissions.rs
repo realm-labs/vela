@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::{MethodDesc, ReflectError, ReflectErrorKind, ReflectResult};
+use crate::{FunctionDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ReflectPermission {
@@ -95,6 +95,7 @@ pub struct ReflectPolicy {
     permissions: ReflectPermissionSet,
     lookup_limit: Option<u64>,
     method_permissions: BTreeSet<String>,
+    function_permissions: BTreeSet<String>,
 }
 
 impl ReflectPolicy {
@@ -104,6 +105,7 @@ impl ReflectPolicy {
             permissions,
             lookup_limit: None,
             method_permissions: BTreeSet::new(),
+            function_permissions: BTreeSet::new(),
         }
     }
 
@@ -146,6 +148,22 @@ impl ReflectPolicy {
     }
 
     #[must_use]
+    pub fn with_function_permission(mut self, permission: impl Into<String>) -> Self {
+        self.function_permissions.insert(permission.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_function_permissions<'a>(
+        mut self,
+        permissions: impl IntoIterator<Item = &'a str>,
+    ) -> Self {
+        self.function_permissions
+            .extend(permissions.into_iter().map(str::to_owned));
+        self
+    }
+
+    #[must_use]
     pub fn permissions(&self) -> &ReflectPermissionSet {
         &self.permissions
     }
@@ -157,6 +175,33 @@ impl ReflectPolicy {
 
     pub fn require(&self, permission: ReflectPermission) -> ReflectResult<()> {
         self.permissions.require(permission)
+    }
+
+    pub fn require_function_access(&self, function: &FunctionDesc) -> ReflectResult<()> {
+        if !function.access.reflect_visible {
+            return Err(ReflectError::new(
+                ReflectErrorKind::FunctionNotReflectVisible {
+                    function: function.name.clone(),
+                },
+            ));
+        }
+        if !function.access.public {
+            self.require(ReflectPermission::AccessPrivate)?;
+        }
+        if let Some(permission) = function
+            .access
+            .required_permissions()
+            .iter()
+            .find(|permission| !self.function_permissions.contains(permission.as_str()))
+        {
+            return Err(ReflectError::new(
+                ReflectErrorKind::FunctionPermissionDenied {
+                    function: function.name.clone(),
+                    permission: permission.clone(),
+                },
+            ));
+        }
+        Ok(())
     }
 
     pub fn require_method_access(&self, type_name: &str, method: &MethodDesc) -> ReflectResult<()> {

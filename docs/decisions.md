@@ -3324,3 +3324,27 @@ Consequences:
 - Admin/debug policies can opt into private reflective calls explicitly.
 - The call still records only a `PatchTx` host-method patch; no real mutable
   Rust reference is exposed to scripts.
+
+## 2026-05-25: Reflect Function Metadata Respects FunctionAccess
+
+Status: Accepted
+
+Context:
+`FunctionDesc` already carries copied `FunctionAccess` metadata for public
+visibility, reflection visibility, and function-specific permissions. The
+script-visible `reflect.function` native only checked `ReadTypeInfo`, so it
+could expose metadata for hidden, private, or permissioned functions.
+
+Decision:
+Add `ReflectPolicy::require_function_access` and route `reflect.function`
+through a policy-aware metadata helper. Non-reflect-visible functions are
+rejected, private functions require `AccessPrivate`, and required function
+permissions must be present on the policy before metadata is returned.
+
+Consequences:
+- Hosts can register admin/debug-only function metadata without exposing it to
+  normal gameplay reflection policies.
+- `FunctionAccess` and `MethodAccess` now have matching policy enforcement at
+  their reflection boundaries.
+- The raw registry helper remains available for trusted host-side inspection
+  and tests that do not model script permissions.
