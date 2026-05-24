@@ -636,3 +636,25 @@ Consequences:
   examples.
 - Later HIR expression lowering can replace the span bridge without changing
   the register allocation model again.
+
+## 2026-05-24: Script Calls Require HIR Declaration Resolution
+
+Status: Accepted
+
+Context:
+Name matching made a local that shadows a function compile as a `CallFunction`
+because the compiler only checked whether the callee text matched any script
+function name.
+
+Decision:
+Bytecode call lowering emits `CallFunction` only when the callee expression
+resolves to a HIR declaration ID whose declaration kind is function. Other
+calls keep using the existing native/dynamic fallback until richer callable
+value semantics are implemented.
+
+Consequences:
+- Shadowing now follows semantic resolver facts instead of source spelling.
+- Future closure and local callable support can be added without reserving
+  top-level function names in local scopes.
+- Module-qualified and imported function call lowering remain explicit M8
+  follow-ups rather than being inferred from names alone.

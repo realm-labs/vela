@@ -290,6 +290,11 @@ that introduce loops and closures.
   lookup.
 - Added compiler regression coverage proving nested shadowed locals return the
   HIR-resolved outer binding instead of the most recent same-name register.
+- Bytecode call lowering now carries HIR function declaration IDs and emits
+  `CallFunction` only when the callee expression resolves to a HIR function
+  declaration.
+- Added compiler regression coverage proving a local that shadows a function
+  name no longer compiles as a script function call.
 
 ## Next
 

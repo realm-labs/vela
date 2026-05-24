@@ -75,7 +75,7 @@ pub fn compile_function_source_with_options(
     options: &CompilerOptions,
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
-    let script_functions = semantic.script_function_names();
+    let script_function_declarations = semantic.script_function_declarations();
     let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
     })?;
@@ -84,7 +84,7 @@ pub fn compile_function_source_with_options(
         function,
         signature,
         bindings,
-        script_functions,
+        script_function_declarations,
         options.clone(),
     )?
     .compile()
@@ -101,6 +101,7 @@ pub fn compile_program_source_with_options(
 ) -> CompileResult<Program> {
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
+    let script_function_declarations = semantic.script_function_declarations();
     let mut program = Program::new();
 
     for name in &script_functions {
@@ -112,7 +113,7 @@ pub fn compile_program_source_with_options(
                 function,
                 signature,
                 bindings,
-                script_functions.clone(),
+                script_function_declarations.clone(),
                 options.clone(),
             )?
             .compile()?,
@@ -165,6 +166,20 @@ impl SemanticSource {
             .collect()
     }
 
+    fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {
+        let Some(declarations) = self.graph.module(self.module) else {
+            return BTreeSet::new();
+        };
+        declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = declarations.get(name)?;
+                let metadata = self.graph.declaration(declaration)?;
+                (metadata.kind == DeclarationKind::Function).then_some(declaration)
+            })
+            .collect()
+    }
+
     fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
         let declaration = self.graph.module(self.module)?.get(name)?;
         let metadata = self.graph.declaration(declaration)?;
@@ -197,7 +212,7 @@ struct Compiler<'ast> {
     bindings: &'ast BindingMap,
     next_register: u16,
     body: &'ast Block,
-    script_functions: BTreeSet<String>,
+    script_function_declarations: BTreeSet<HirDeclId>,
     options: CompilerOptions,
 }
 
@@ -206,7 +221,7 @@ impl<'ast> Compiler<'ast> {
         function: &'ast FunctionItem,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
-        script_functions: BTreeSet<String>,
+        script_function_declarations: BTreeSet<HirDeclId>,
         options: CompilerOptions,
     ) -> CompileResult<Self> {
         let param_count = u16::try_from(signature.params.len())
@@ -239,7 +254,7 @@ impl<'ast> Compiler<'ast> {
             bindings,
             next_register: param_count,
             body: &function.body,
-            script_functions,
+            script_function_declarations,
             options,
         })
     }
@@ -337,7 +352,7 @@ impl<'ast> Compiler<'ast> {
                     .map(|arg| self.compile_expr(&arg.value))
                     .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
-                if self.script_functions.contains(&name) {
+                if self.is_script_function_call(callee) {
                     self.emit(InstructionKind::CallFunction {
                         dst,
                         name,
@@ -427,6 +442,14 @@ impl<'ast> Compiler<'ast> {
                 "match expression",
             ))),
         }
+    }
+
+    fn is_script_function_call(&self, callee: &Expr) -> bool {
+        matches!(
+            self.bindings.resolution_at_span(callee.span),
+            Some(BindingResolution::Declaration(declaration))
+                if self.script_function_declarations.contains(declaration)
+        )
     }
 
     fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<()> {
@@ -964,6 +987,34 @@ fn main() {
             .expect("return instruction");
 
         assert_eq!(returned, Register(0));
+    }
+
+    #[test]
+    fn compiler_uses_hir_callee_resolution_for_shadowed_function_names() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn helper() {
+    return 1;
+}
+
+fn main() {
+    let helper = 2;
+    return helper();
+}
+"#,
+            "main",
+        )
+        .expect("shadowed callee name should compile through HIR binding facts");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallNative { name, .. } if name == "helper"
+        )));
+        assert!(!code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallFunction { name, .. } if name == "helper"
+        )));
     }
 
     #[test]
