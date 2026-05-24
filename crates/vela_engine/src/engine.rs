@@ -139,6 +139,7 @@ impl Engine {
             kind: VmErrorKind::UnknownMethod {
                 method: format!("host method {}", id.get()),
             },
+            source_span: None,
         })?;
         check_permissions(&entry.desc.name, &entry.desc.access, &self.permissions)?;
         (entry.function)(receiver, args, host)
@@ -187,6 +188,7 @@ fn check_permissions(
                 native: native.to_owned(),
                 permission: permission.to_owned(),
             },
+            source_span: None,
         });
     }
     Ok(())

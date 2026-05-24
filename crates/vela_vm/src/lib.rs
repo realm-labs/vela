@@ -29,7 +29,7 @@ use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
     CallArgument, CodeObject, Constant, HostPathSegment, InstructionKind, Program, Register,
 };
-use vela_common::SymbolInterner;
+use vela_common::{Span, SymbolInterner};
 use vela_host::{HostError, HostErrorKind, HostPath, HostRef, PatchTx, ScriptStateAdapter};
 use vela_reflect::{self as reflect, ReflectError, ReflectErrorKind, TypeRegistry};
 
@@ -119,11 +119,15 @@ impl From<&Constant> for Value {
 #[derive(Clone, Debug, PartialEq)]
 pub struct VmError {
     pub kind: VmErrorKind,
+    pub source_span: Option<Span>,
 }
 
 impl VmError {
     fn new(kind: VmErrorKind) -> Self {
-        Self { kind }
+        Self {
+            kind,
+            source_span: None,
+        }
     }
 }
 
@@ -313,7 +317,10 @@ pub type VmResult<T> = Result<T, VmError>;
 
 impl From<HostError> for VmError {
     fn from(value: HostError) -> Self {
-        Self::new(VmErrorKind::Host(value.kind))
+        Self {
+            kind: VmErrorKind::Host(value.kind),
+            source_span: value.source_span,
+        }
     }
 }
 
@@ -928,6 +935,7 @@ impl Vm {
                         kind: VmErrorKind::ConstantOutOfBounds {
                             constant: constant.0,
                         },
+                        source_span: instruction.span,
                     })?;
                     let value = value_from_constant(
                         constant_value,
@@ -1442,7 +1450,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
-                    let value = host.tx.read_path(host.adapter, &path)?;
+                    let value = host
+                        .tx
+                        .read_path_at(host.adapter, &path, instruction.span)?;
                     frame.write(*dst, value_from_host(value))?;
                 }
                 InstructionKind::GetHostPath {
@@ -1464,7 +1474,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
-                    let value = host.tx.read_path(host.adapter, &path)?;
+                    let value = host
+                        .tx
+                        .read_path_at(host.adapter, &path, instruction.span)?;
                     frame.write(*dst, value_from_host(value))?;
                 }
                 InstructionKind::SetHostField { root, field, src } => {
@@ -1517,7 +1529,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
-                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    let base_value = host
+                        .tx
+                        .read_path_at(host.adapter, &path, instruction.span)?;
                     if let Some(budget) = budget.as_deref() {
                         budget.reserve_patch(host.tx.patches().len())?;
                     }
@@ -1534,7 +1548,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
-                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    let base_value = host
+                        .tx
+                        .read_path_at(host.adapter, &path, instruction.span)?;
                     if let Some(budget) = budget.as_deref() {
                         budget.reserve_patch(host.tx.patches().len())?;
                     }
@@ -1561,7 +1577,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
-                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    let base_value = host
+                        .tx
+                        .read_path_at(host.adapter, &path, instruction.span)?;
                     if let Some(budget) = budget.as_deref() {
                         budget.reserve_patch(host.tx.patches().len())?;
                     }
@@ -1588,7 +1606,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
-                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    let base_value = host
+                        .tx
+                        .read_path_at(host.adapter, &path, instruction.span)?;
                     if let Some(budget) = budget.as_deref() {
                         budget.reserve_patch(host.tx.patches().len())?;
                     }
@@ -1616,7 +1636,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
-                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    let base_value = host
+                        .tx
+                        .read_path_at(host.adapter, &path, instruction.span)?;
                     if let Some(budget) = budget.as_deref() {
                         budget.reserve_patch(host.tx.patches().len())?;
                     }
@@ -1719,6 +1741,7 @@ impl CallFrame {
             .get_mut(usize::from(register.0))
             .ok_or(VmError {
                 kind: VmErrorKind::RegisterOutOfBounds { register },
+                source_span: None,
             })?;
         *slot = value;
         Ok(())
@@ -5832,6 +5855,46 @@ fn main() {
             VmErrorKind::Host(vela_host::HostErrorKind::StaleGeneration {
                 expected: 2,
                 actual: 3
+            })
+        );
+    }
+
+    #[test]
+    fn host_field_read_error_keeps_instruction_source_span() {
+        let host_ref = player_ref(3);
+        let span = Span::new(SourceId::new(7), 20, 32);
+        let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+        code.push_instruction(
+            Instruction::new(InstructionKind::GetHostField {
+                dst: Register(1),
+                root: Register(0),
+                field: level_field(),
+            })
+            .with_span(span),
+        );
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(1),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.deny_read(level_path(host_ref));
+        let mut tx = PatchTx::new();
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let error = Vm::new()
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .expect_err("denied host read");
+
+        assert_eq!(error.source_span, Some(span));
+        assert_eq!(
+            error.kind,
+            VmErrorKind::Host(HostErrorKind::PermissionDenied {
+                path: level_path(host_ref),
+                action: "read"
             })
         );
     }

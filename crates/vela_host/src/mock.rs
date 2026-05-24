@@ -135,64 +135,72 @@ impl ScriptStateAdapter for MockStateAdapter {
     }
 
     fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
-        self.validate_path(&patch.path)?;
-        match &patch.op {
-            PatchOp::Set(_)
-            | PatchOp::Add(_)
-            | PatchOp::Sub(_)
-            | PatchOp::Push(_)
-            | PatchOp::Remove => self.validate_access(&patch.path, "write"),
-            PatchOp::CallHostMethod { method, .. } if self.method_returns.contains_key(method) => {
-                self.validate_access(&patch.path, "call")
-            }
-            PatchOp::CallHostMethod { method, .. } => {
-                Err(HostError::new(HostErrorKind::UnsupportedMethod {
-                    method: *method,
-                }))
-            }
-        }
+        let result = self
+            .validate_path(&patch.path)
+            .and_then(|()| match &patch.op {
+                PatchOp::Set(_)
+                | PatchOp::Add(_)
+                | PatchOp::Sub(_)
+                | PatchOp::Push(_)
+                | PatchOp::Remove => self.validate_access(&patch.path, "write"),
+                PatchOp::CallHostMethod { method, .. }
+                    if self.method_returns.contains_key(method) =>
+                {
+                    self.validate_access(&patch.path, "call")
+                }
+                PatchOp::CallHostMethod { method, .. } => {
+                    Err(HostError::new(HostErrorKind::UnsupportedMethod {
+                        method: *method,
+                    }))
+                }
+            });
+        result.map_err(|error| error.with_source_span_if_absent(patch.source_span))
     }
 
     fn apply_patch(&mut self, patch: Patch) -> HostResult<()> {
-        self.validate_patch(&patch)?;
-        match patch.op {
-            PatchOp::Set(value) => self.write_path(&patch.path, value),
-            PatchOp::Add(value) => {
-                let current = self.read_path(&patch.path)?;
-                let next = add_values(&current, &value).ok_or_else(|| {
-                    HostError::new(HostErrorKind::InvalidAdd {
-                        path: patch.path.clone(),
-                    })
-                })?;
-                self.write_path(&patch.path, next)
+        let source_span = patch.source_span;
+        let result = (|| {
+            self.validate_patch(&patch)?;
+            match patch.op {
+                PatchOp::Set(value) => self.write_path(&patch.path, value),
+                PatchOp::Add(value) => {
+                    let current = self.read_path(&patch.path)?;
+                    let next = add_values(&current, &value).ok_or_else(|| {
+                        HostError::new(HostErrorKind::InvalidAdd {
+                            path: patch.path.clone(),
+                        })
+                    })?;
+                    self.write_path(&patch.path, next)
+                }
+                PatchOp::Sub(value) => {
+                    let current = self.read_path(&patch.path)?;
+                    let next = sub_values(&current, &value).ok_or_else(|| {
+                        HostError::new(HostErrorKind::InvalidSub {
+                            path: patch.path.clone(),
+                        })
+                    })?;
+                    self.write_path(&patch.path, next)
+                }
+                PatchOp::Remove => {
+                    self.read_path(&patch.path)?;
+                    self.values.remove(&patch.path);
+                    Ok(())
+                }
+                PatchOp::Push(value) => {
+                    let current = self.read_path(&patch.path)?;
+                    let next = push_value(&current, value).ok_or_else(|| {
+                        HostError::new(HostErrorKind::InvalidPush {
+                            path: patch.path.clone(),
+                        })
+                    })?;
+                    self.write_path(&patch.path, next)
+                }
+                PatchOp::CallHostMethod { method, args } => {
+                    self.call_method(&patch.path, method, &args).map(|_| ())
+                }
             }
-            PatchOp::Sub(value) => {
-                let current = self.read_path(&patch.path)?;
-                let next = sub_values(&current, &value).ok_or_else(|| {
-                    HostError::new(HostErrorKind::InvalidSub {
-                        path: patch.path.clone(),
-                    })
-                })?;
-                self.write_path(&patch.path, next)
-            }
-            PatchOp::Remove => {
-                self.read_path(&patch.path)?;
-                self.values.remove(&patch.path);
-                Ok(())
-            }
-            PatchOp::Push(value) => {
-                let current = self.read_path(&patch.path)?;
-                let next = push_value(&current, value).ok_or_else(|| {
-                    HostError::new(HostErrorKind::InvalidPush {
-                        path: patch.path.clone(),
-                    })
-                })?;
-                self.write_path(&patch.path, next)
-            }
-            PatchOp::CallHostMethod { method, args } => {
-                self.call_method(&patch.path, method, &args).map(|_| ())
-            }
-        }
+        })();
+        result.map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
     fn apply_patches(&mut self, patches: Vec<Patch>) -> HostResult<()> {

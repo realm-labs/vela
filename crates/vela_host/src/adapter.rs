@@ -20,10 +20,13 @@ pub trait ScriptStateAdapter {
 
     fn apply_patches(&mut self, patches: Vec<Patch>) -> HostResult<()> {
         for patch in &patches {
-            self.validate_patch(patch)?;
+            self.validate_patch(patch)
+                .map_err(|error| error.with_source_span_if_absent(patch.source_span))?;
         }
         for patch in patches {
-            self.apply_patch(patch)?;
+            let source_span = patch.source_span;
+            self.apply_patch(patch)
+                .map_err(|error| error.with_source_span_if_absent(source_span))?;
         }
         Ok(())
     }

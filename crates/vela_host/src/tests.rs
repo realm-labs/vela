@@ -1,4 +1,4 @@
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
 
 use crate::{
     HostErrorKind, HostObjectSnapshot, HostPath, HostRef, HostValue, MockStateAdapter, PatchOp,
@@ -15,6 +15,10 @@ fn level_path() -> HostPath {
 
 fn rewards_path() -> HostPath {
     HostPath::new(player_ref(3)).field(FieldId::new(3))
+}
+
+fn test_span() -> Span {
+    Span::new(SourceId::new(9), 12, 18)
 }
 
 #[test]
@@ -149,6 +153,23 @@ fn remove_path_records_patch_and_tombstone_overlay() {
         }))
     );
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(9)));
+}
+
+#[test]
+fn transaction_read_error_keeps_source_span() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    let span = test_span();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    let mut tx = PatchTx::new();
+
+    tx.remove_path(path.clone(), None).expect("remove path");
+    let error = tx
+        .read_path_at(&adapter, &path, Some(span))
+        .expect_err("removed overlay should fail");
+
+    assert_eq!(error.source_span, Some(span));
+    assert_eq!(error.kind, HostErrorKind::MissingPath { path });
 }
 
 #[test]
@@ -354,6 +375,54 @@ fn write_denied_patch_fails_validation_before_mutation() {
     );
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(9)));
     assert_eq!(adapter.read_path(&rewards), Ok(HostValue::Int(1)));
+}
+
+#[test]
+fn denied_patch_validation_error_keeps_source_span() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    let span = test_span();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    adapter.deny_write(path.clone());
+    let mut tx = PatchTx::new();
+
+    tx.set_path(path.clone(), HostValue::Int(10), Some(span))
+        .expect("set path");
+    let error = tx
+        .apply(&mut adapter)
+        .expect_err("denied write should fail validation");
+
+    assert_eq!(error.source_span, Some(span));
+    assert_eq!(
+        error.kind,
+        HostErrorKind::PermissionDenied {
+            path,
+            action: "write"
+        }
+    );
+}
+
+#[test]
+fn apply_error_keeps_patch_source_span() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    let span = test_span();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    let mut tx = PatchTx::new();
+
+    tx.push_path(
+        path.clone(),
+        HostValue::String("gold".into()),
+        HostValue::Array(Vec::new()),
+        Some(span),
+    )
+    .expect("record push path");
+    let error = tx
+        .apply(&mut adapter)
+        .expect_err("push apply should fail against non-array adapter state");
+
+    assert_eq!(error.source_span, Some(span));
+    assert_eq!(error.kind, HostErrorKind::InvalidPush { path });
 }
 
 #[test]

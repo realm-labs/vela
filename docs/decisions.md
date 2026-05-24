@@ -2731,3 +2731,29 @@ Consequences:
   state unchanged.
 - Engine-level policy wiring and richer permission scopes remain future M11
   work.
+
+## 2026-05-25: Host Errors Carry Source Spans
+
+Status: Accepted
+
+Context:
+M11 requires source-span propagation into patches and host errors. Patch
+records already carried optional spans, but host failures returned from
+transaction reads, patch validation, and safe-point apply only exposed the
+`HostErrorKind`, making it harder to tie host boundary failures back to the
+script operation that produced them.
+
+Decision:
+Add `source_span: Option<Span>` to `HostError`. `PatchTx` attaches spans to
+transaction read and read-modify-write failures, `ScriptStateAdapter` batch
+apply preserves patch spans by default, and `MockStateAdapter` preserves patch
+spans during validation and rollback-safe apply. VM host-read errors propagate
+the instruction span when converting `HostError` into `VmError`.
+
+Consequences:
+- Host bridge diagnostics can point at the script operation that attempted the
+  denied or invalid host access.
+- Existing host error kind comparisons remain stable, with source location
+  carried separately.
+- Broader diagnostic rendering remains future work; this change only preserves
+  the structured span data across the host boundary.

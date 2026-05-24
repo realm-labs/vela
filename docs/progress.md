@@ -694,6 +694,10 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - `MockStateAdapter` now supports explicit read, write, and call denial for
   host paths. Denied writes and calls fail during batch validation before any
   patch mutates adapter state or records a method call.
+- Host errors now carry optional source spans, and `PatchTx`/adapter batch
+  apply preserve patch instruction spans on transaction read failures,
+  permission validation failures, and late apply failures. VM host-read errors
+  now keep the bytecode instruction span when converting host errors.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

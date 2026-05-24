@@ -1,17 +1,35 @@
 use std::fmt;
 
-use vela_common::{HostMethodId, HostObjectId, HostTypeId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, Span};
 
 use crate::HostPath;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HostError {
     pub kind: HostErrorKind,
+    pub source_span: Option<Span>,
 }
 
 impl HostError {
     pub(crate) fn new(kind: HostErrorKind) -> Self {
-        Self { kind }
+        Self {
+            kind,
+            source_span: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_source_span(mut self, source_span: Option<Span>) -> Self {
+        self.source_span = source_span;
+        self
+    }
+
+    #[must_use]
+    pub fn with_source_span_if_absent(mut self, source_span: Option<Span>) -> Self {
+        if self.source_span.is_none() {
+            self.source_span = source_span;
+        }
+        self
     }
 }
 
