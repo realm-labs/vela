@@ -468,3 +468,30 @@ Consequences:
 - Expression lowering, binding maps, top-level side-effect checks, and type
   hint metadata remain explicit follow-up slices instead of being hidden inside
   the syntax parser.
+
+## 2026-05-24: HIR Binding Maps Resolve Safe Value Names First
+
+Status: Accepted
+
+Context:
+M8 needs binding maps and expression IDs before the compiler can stop scanning
+syntax directly. The current parser still represents some dotted expressions
+and namespace-style calls syntactically, so reporting every unresolved path
+would create false positives for native namespaces such as `reflect.*` and
+future module paths.
+
+Decision:
+Add function-level `BindingMap` values that allocate stable `HirExprId` and
+`HirLocalId` handles, record parameter/`let`/`for`/lambda/pattern bindings,
+and resolve expression paths to local bindings, module declarations, or import
+leaf names. Unresolved-name diagnostics are emitted for value-position and
+assignment-target paths only; callee and field-base paths are recorded when
+they resolve but otherwise left for later semantic/type-aware passes.
+
+Consequences:
+- Local name diagnostics can produce candidate hints without misclassifying
+  native namespaces as missing variables.
+- Later HIR expression lowering has stable IDs and binding facts to attach
+  type facts, effects, and compiler lowering decisions.
+- Full module-qualified path semantics remain a dedicated resolver follow-up
+  instead of being inferred from syntax alone.

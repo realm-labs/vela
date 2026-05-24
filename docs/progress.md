@@ -239,8 +239,17 @@ that introduce loops and closures.
   hints.
 - Added HIR tests for declaration indexing, cross-module import resolution,
   duplicate declaration spans, and unresolved import suggestions.
+- Added first-phase function binding maps with stable `HirExprId` and
+  `HirLocalId` allocation.
+- Binding maps now track parameter, `let`, `for`, lambda parameter, and match
+  pattern bindings, plus expression-to-binding resolutions for locals,
+  module-level declarations, and imported names.
+- Added unresolved value-name diagnostics with candidate hints while avoiding
+  false positives for namespace-style native/module calls.
+- Added HIR tests for local binding resolution, nested `for`/lambda scopes,
+  imported names in function bodies, and unresolved-name suggestions.
 
 ## Next
 
-- Expand M8 lowering with binding maps, expression IDs, type-hint metadata, and
+- Expand M8 lowering with type-hint metadata, top-level side-effect checks, and
   compiler integration through HIR.

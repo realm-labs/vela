@@ -22,3 +22,4 @@ hir_id!(ModuleId);
 hir_id!(HirNodeId);
 hir_id!(HirExprId);
 hir_id!(HirDeclId);
+hir_id!(HirLocalId);

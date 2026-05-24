@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::{ItemKind, SourceFile, Visibility, parse_source};
+use vela_syntax::{FunctionItem, ItemKind, SourceFile, Visibility, parse_source};
 
+use crate::binding::{BindingMap, FunctionBindingInput, bind_function};
 use crate::{HirDeclId, HirNodeId, ModuleId};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -126,9 +127,12 @@ pub struct ModuleGraph {
     modules: Vec<HirModule>,
     module_by_path: BTreeMap<ModulePath, ModuleId>,
     declarations: BTreeMap<HirDeclId, Declaration>,
+    bindings: BTreeMap<HirDeclId, BindingMap>,
     diagnostics: Vec<Diagnostic>,
     next_node_id: u32,
     next_decl_id: u32,
+    next_expr_id: u32,
+    next_local_id: u32,
 }
 
 impl ModuleGraph {
@@ -174,53 +178,60 @@ impl ModuleGraph {
             imports: Vec::new(),
         };
 
-        for item in parsed.items {
-            match item.kind {
+        let mut function_declarations = Vec::new();
+
+        for item in &parsed.items {
+            match &item.kind {
                 ItemKind::Use(use_item) => {
                     hir_module.imports.push(Import {
                         module,
-                        path: use_item.path,
+                        path: use_item.path.clone(),
                         span: item.span,
                         resolution: None,
                     });
                 }
                 ItemKind::Function(function) => {
-                    self.insert_declaration(
+                    let declaration = self.insert_declaration(
                         &mut hir_module,
-                        function.name,
+                        function.name.clone(),
                         DeclarationKind::Function,
-                        item.visibility,
+                        item.visibility.clone(),
                         item.span,
                     );
+                    function_declarations.push((declaration, function.clone()));
                 }
                 ItemKind::Struct(record) => {
                     self.insert_declaration(
                         &mut hir_module,
-                        record.name,
+                        record.name.clone(),
                         DeclarationKind::Struct,
-                        item.visibility,
+                        item.visibility.clone(),
                         item.span,
                     );
                 }
                 ItemKind::Enum(enumeration) => {
                     self.insert_declaration(
                         &mut hir_module,
-                        enumeration.name,
+                        enumeration.name.clone(),
                         DeclarationKind::Enum,
-                        item.visibility,
+                        item.visibility.clone(),
                         item.span,
                     );
                 }
                 ItemKind::Trait(trait_item) => {
                     self.insert_declaration(
                         &mut hir_module,
-                        trait_item.name,
+                        trait_item.name.clone(),
                         DeclarationKind::Trait,
-                        item.visibility,
+                        item.visibility.clone(),
                         item.span,
                     );
                 }
             }
+        }
+
+        for (declaration, function) in function_declarations {
+            self.bind_function_body(&hir_module, declaration, &function);
         }
 
         self.modules.push(hir_module);
@@ -261,6 +272,11 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn bindings(&self, declaration: HirDeclId) -> Option<&BindingMap> {
+        self.bindings.get(&declaration)
+    }
+
+    #[must_use]
     pub fn imports(&self, module: ModuleId) -> Option<&[Import]> {
         self.modules
             .get(usize::try_from(module.get()).ok()?)
@@ -279,7 +295,7 @@ impl ModuleGraph {
         kind: DeclarationKind,
         visibility: Visibility,
         span: Span,
-    ) {
+    ) -> HirDeclId {
         let id = self.next_decl_id();
         let node = self.next_node_id();
         let declaration = Declaration {
@@ -305,6 +321,42 @@ impl ModuleGraph {
         }
 
         self.declarations.insert(id, declaration);
+        id
+    }
+
+    fn bind_function_body(
+        &mut self,
+        module: &HirModule,
+        declaration: HirDeclId,
+        function: &FunctionItem,
+    ) {
+        let module_declarations = module
+            .declarations
+            .names()
+            .filter_map(|name| {
+                module
+                    .declarations
+                    .get(name)
+                    .map(|declaration| (name.to_owned(), declaration))
+            })
+            .collect::<Vec<_>>();
+        let imports = module
+            .imports
+            .iter()
+            .filter_map(|import| import.path.last().cloned())
+            .collect::<Vec<_>>();
+
+        let (bindings, diagnostics) = bind_function(FunctionBindingInput {
+            declaration,
+            params: &function.params,
+            body: &function.body,
+            module_declarations,
+            imports,
+            next_expr_id: &mut self.next_expr_id,
+            next_local_id: &mut self.next_local_id,
+        });
+        self.bindings.insert(declaration, bindings);
+        self.diagnostics.extend(diagnostics);
     }
 
     fn resolve_import_path(&mut self, path: &[String], span: Span) -> Option<ImportResolution> {
@@ -436,6 +488,7 @@ fn levenshtein(lhs: &str, rhs: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{BindingResolution, LocalBindingKind};
 
     fn source(id: u32, module: &str, text: &str) -> ModuleSource {
         ModuleSource::new(SourceId::new(id), ModulePath::from_dotted(module), text)
@@ -542,5 +595,135 @@ struct level { value }
 
         assert_eq!(unresolved.labels.len(), 1);
         assert!(unresolved.labels[0].message.contains("grant"));
+    }
+
+    #[test]
+    fn function_bindings_resolve_params_and_locals_with_expression_ids() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.player",
+            r#"
+fn main(player) {
+    let next = player.level;
+    return next;
+}
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        let [player] = bindings.locals_named("player") else {
+            panic!("expected one player binding");
+        };
+        let [next] = bindings.locals_named("next") else {
+            panic!("expected one next binding");
+        };
+
+        assert_eq!(
+            bindings.local(*player).map(|local| local.kind),
+            Some(LocalBindingKind::Parameter)
+        );
+        assert_eq!(
+            bindings.local(*next).map(|local| local.kind),
+            Some(LocalBindingKind::Let)
+        );
+        assert!(bindings.expression_count() >= 2);
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| resolution == &BindingResolution::Local(*player))
+        );
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| resolution == &BindingResolution::Local(*next))
+        );
+    }
+
+    #[test]
+    fn binding_unresolved_names_report_candidate_hints() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.player",
+            r#"
+fn main(player) {
+    return plaeyr;
+}
+"#,
+        ));
+
+        let unresolved = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::unresolved_name"))
+            .expect("unresolved name diagnostic");
+
+        assert_eq!(unresolved.labels.len(), 1);
+        assert!(unresolved.labels[0].message.contains("player"));
+    }
+
+    #[test]
+    fn binding_tracks_nested_for_and_lambda_scopes() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+fn main(rewards) {
+    for reward in rewards {
+        let mapper = |reward| reward.count;
+    }
+    return rewards;
+}
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        let reward_bindings = bindings.locals_named("reward");
+
+        assert_eq!(reward_bindings.len(), 2);
+        assert_eq!(
+            bindings.local(reward_bindings[0]).map(|local| local.kind),
+            Some(LocalBindingKind::For)
+        );
+        assert_eq!(
+            bindings.local(reward_bindings[1]).map(|local| local.kind),
+            Some(LocalBindingKind::LambdaParameter)
+        );
+    }
+
+    #[test]
+    fn function_bindings_resolve_imported_names() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+        let module = graph.add_source(source(
+            2,
+            "game.main",
+            r#"
+use game.reward.grant
+fn main() { return grant; }
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        assert!(bindings.resolutions().any(|(_, resolution)| {
+            resolution == &BindingResolution::Import("grant".to_owned())
+        }));
     }
 }
