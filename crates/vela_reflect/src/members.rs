@@ -5,7 +5,7 @@ use vela_host::HostValue;
 use crate::{
     FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult,
     ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
-    metadata::{attrs_value, docs_value},
+    metadata::{attrs_value, docs_value, span_value},
     name_candidates, type_of,
 };
 
@@ -345,6 +345,7 @@ fn trait_record(trait_desc: &TraitDesc) -> HostValue {
     );
     fields.insert("docs".to_owned(), docs_value(trait_desc.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&trait_desc.attrs));
+    fields.insert("source_span".to_owned(), span_value(trait_desc.source_span));
     HostValue::Record {
         type_name: "ReflectTrait".to_owned(),
         fields,

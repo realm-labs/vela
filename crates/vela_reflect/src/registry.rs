@@ -4,7 +4,7 @@ use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::modules::{FunctionDesc, ModuleDesc};
 use crate::{ReflectError, ReflectErrorKind, ReflectResult, name_candidates};
 use vela_common::{
-    FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId,
+    FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, Span, TraitId, TypeId, VariantId,
 };
 use vela_host::HostRef;
 
@@ -97,6 +97,7 @@ pub struct TypeDesc {
     pub variants: Vec<VariantDesc>,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl TypeDesc {
@@ -113,6 +114,7 @@ impl TypeDesc {
             variants: Vec::new(),
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -167,6 +169,12 @@ impl TypeDesc {
     #[must_use]
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
         self
     }
 }
@@ -277,6 +285,7 @@ pub struct TraitDesc {
     pub methods: Vec<TraitMethodDesc>,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl TraitDesc {
@@ -289,6 +298,7 @@ impl TraitDesc {
             methods: Vec::new(),
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -307,6 +317,12 @@ impl TraitDesc {
     #[must_use]
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
         self
     }
 }

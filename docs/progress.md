@@ -899,6 +899,11 @@ permissions.
   ranked unknown-permission candidates, and scripts can use
   `reflect.permissions()` plus `reflect.has_permission(name)` behind the same
   `ReadTypeInfo` permission gate.
+- Added optional source-span metadata to reflected top-level schema
+  descriptors for script types, traits, functions, and modules. Copied
+  reflection records now include `source_span` data when available, giving
+  admin/debug tooling declaration locations without exposing mutable schema
+  handles.
 
 ## Next
 

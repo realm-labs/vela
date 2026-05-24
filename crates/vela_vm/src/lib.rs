@@ -7173,6 +7173,44 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflects_type_source_span_metadata() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let player = reflect.type_info("Player");
+    if player.source_span.source == 7
+        && player.source_span.start == 20
+        && player.source_span.end == 42 {
+        return player.name;
+    }
+    return "missing";
+}
+"#,
+        )
+        .expect("compile type source span metadata source");
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .kind(TypeKind::ScriptStruct)
+                .source_span(Span::new(SourceId::new(7), 20, 42)),
+        );
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(registry));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::String("Player".to_owned()))
+        );
+    }
+
+    #[test]
     fn compiled_source_reflect_type_reports_unknown_type_candidates() {
         let program = compile_program_source(
             SourceId::new(1),

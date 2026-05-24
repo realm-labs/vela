@@ -4,7 +4,7 @@ use vela_host::HostValue;
 
 use crate::{
     ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeKind, TypeRegistry,
-    metadata::{attrs_value, docs_value},
+    metadata::{attrs_value, docs_value, span_value},
     name_candidates,
 };
 
@@ -59,6 +59,7 @@ fn type_record(desc: &TypeDesc) -> HostValue {
     );
     fields.insert("docs".to_owned(), docs_value(desc.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&desc.attrs));
+    fields.insert("source_span".to_owned(), span_value(desc.source_span));
     HostValue::Record {
         type_name: "ReflectType".to_owned(),
         fields,
@@ -76,7 +77,7 @@ fn kind_name(kind: TypeKind) -> String {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostTypeId, TypeId, VariantId};
+    use vela_common::{FieldId, HostTypeId, SourceId, Span, TypeId, VariantId};
 
     use super::*;
     use crate::{FieldDesc, TypeDesc, TypeKey, VariantDesc};
@@ -89,6 +90,7 @@ mod tests {
                 .host_type(HostTypeId::new(1))
                 .docs("A host player.")
                 .attr("domain", "gameplay")
+                .source_span(Span::new(SourceId::new(7), 10, 20))
                 .field(FieldDesc::new(FieldId::new(1), "level")),
         );
         registry.register(
@@ -124,6 +126,17 @@ mod tests {
         assert_eq!(
             fields.get("docs"),
             Some(&HostValue::String("A host player.".to_owned()))
+        );
+        assert_eq!(
+            fields.get("source_span"),
+            Some(&HostValue::Record {
+                type_name: "ReflectSourceSpan".to_owned(),
+                fields: BTreeMap::from([
+                    ("source".to_owned(), HostValue::Int(7)),
+                    ("start".to_owned(), HostValue::Int(10)),
+                    ("end".to_owned(), HostValue::Int(20)),
+                ])
+            })
         );
 
         let error = type_by_name(&registry, "Plyer").expect_err("unknown type");

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::FunctionId;
+use vela_common::{FunctionId, Span};
 use vela_hir::{DeclarationKind, FunctionSignature, ModuleGraph};
 use vela_host::HostValue;
 use vela_syntax::Visibility;
@@ -8,7 +8,7 @@ use vela_syntax::Visibility;
 use crate::{
     AttrMap, FunctionAccess, FunctionEffectSet, ReflectError, ReflectErrorKind, ReflectPolicy,
     ReflectResult, ReflectValue, TypeRegistry,
-    metadata::{attrs_value, docs_value},
+    metadata::{attrs_value, docs_value, span_value},
     name_candidates,
     script_attrs::ReflectedScriptAttrs,
 };
@@ -62,6 +62,7 @@ pub struct FunctionDesc {
     pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl FunctionDesc {
@@ -79,6 +80,7 @@ impl FunctionDesc {
             origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -137,6 +139,12 @@ impl FunctionDesc {
         self.attrs.insert(name, value);
         self
     }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -167,6 +175,7 @@ pub struct ModuleDesc {
     pub name: String,
     pub exports: Vec<ModuleExportDesc>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl ModuleDesc {
@@ -176,12 +185,19 @@ impl ModuleDesc {
             name: name.into(),
             exports: Vec::new(),
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
     #[must_use]
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
         self
     }
 
@@ -209,7 +225,7 @@ impl TypeRegistry {
                 continue;
             };
             if self.module_by_name(&module_name).is_none() {
-                self.register_module(ModuleDesc::new(module_name));
+                self.register_module(ModuleDesc::new(module_name).source_span(declaration.span));
             }
         }
 
@@ -231,7 +247,8 @@ impl TypeRegistry {
             )
             .module(module_name)
             .public(declaration.visibility == Visibility::Public)
-            .origin(DeclOrigin::Script);
+            .origin(DeclOrigin::Script)
+            .source_span(declaration.span);
             if let Some(signature) = signature {
                 desc = apply_signature(desc, signature);
             }
@@ -368,6 +385,10 @@ fn module_record_with_exports(
         "attrs".to_owned(),
         ReflectValue::Host(attrs_value(&desc.attrs)),
     );
+    fields.insert(
+        "source_span".to_owned(),
+        ReflectValue::Host(span_value(desc.source_span)),
+    );
     ReflectValue::Record(fields)
 }
 
@@ -449,6 +470,10 @@ fn function_record(desc: &FunctionDesc) -> ReflectValue {
     fields.insert(
         "attrs".to_owned(),
         ReflectValue::Host(attrs_value(&desc.attrs)),
+    );
+    fields.insert(
+        "source_span".to_owned(),
+        ReflectValue::Host(span_value(desc.source_span)),
     );
     ReflectValue::Record(fields)
 }
@@ -594,6 +619,10 @@ fn helper() {
         assert_eq!(module.exports.len(), 2);
         assert_eq!(module.exports[0].name, "game.reward.grant");
         assert_eq!(module.exports[0].kind, ModuleExportKind::Function);
+        assert_eq!(
+            module.source_span.map(|span| span.source),
+            Some(SourceId::new(1))
+        );
 
         let grant = registry
             .function_by_name("game.reward.grant")
@@ -607,6 +636,10 @@ fn helper() {
         assert_eq!(grant.params[1].type_hint.as_deref(), Some("int"));
         assert!(grant.params[1].has_default);
         assert_eq!(grant.return_type.as_deref(), Some("bool"));
+        assert_eq!(
+            grant.source_span.map(|span| span.source),
+            Some(SourceId::new(1))
+        );
 
         let helper = registry
             .function_by_name("game.reward.helper")
@@ -654,6 +687,10 @@ fn helper() {
             )]))))
         );
         assert_eq!(
+            module_metadata.get("source_span"),
+            Some(&ReflectValue::Host(HostValue::Null))
+        );
+        assert_eq!(
             exports(&registry, "game.reward").expect("exports"),
             ReflectValue::Host(HostValue::Array(vec![HostValue::String(
                 "game.reward.grant".into()
@@ -672,6 +709,10 @@ fn helper() {
         assert_eq!(
             function.get("origin"),
             Some(&ReflectValue::Host(HostValue::String("script".into())))
+        );
+        assert_eq!(
+            function.get("source_span"),
+            Some(&ReflectValue::Host(HostValue::Null))
         );
         assert_eq!(
             function.get("effects"),

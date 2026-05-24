@@ -18,7 +18,8 @@ impl TypeRegistry {
                     let mut desc = shape.fields.iter().fold(
                         TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
                             .kind(TypeKind::ScriptStruct)
-                            .schema_hash(struct_schema_hash(&type_name, shape)),
+                            .schema_hash(struct_schema_hash(&type_name, shape))
+                            .source_span(declaration.span),
                         |desc, field| {
                             desc.field(apply_field_attrs(
                                 FieldDesc::new(
@@ -40,7 +41,8 @@ impl TypeRegistry {
                     let mut desc = shape.variants.iter().fold(
                         TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
                             .kind(TypeKind::ScriptEnum)
-                            .schema_hash(enum_schema_hash(&type_name, shape)),
+                            .schema_hash(enum_schema_hash(&type_name, shape))
+                            .source_span(declaration.span),
                         |desc, variant| {
                             let variant_owner = enum_variant_owner(&type_name, &variant.name);
                             let variant_desc =
@@ -74,7 +76,7 @@ impl TypeRegistry {
                     };
                     let trait_name = qualified_type_name(graph, declaration);
                     let mut desc = shape.methods.iter().fold(
-                        TraitDesc::new(trait_name.clone()),
+                        TraitDesc::new(trait_name.clone()).source_span(declaration.span),
                         |desc, method| {
                             desc.method(apply_trait_method_attrs(
                                 TraitMethodDesc::new(
@@ -363,6 +365,12 @@ enum QuestProgress {
             .expect("QuestProgress type metadata");
         assert_eq!(reward.kind, TypeKind::ScriptStruct);
         assert_eq!(progress.kind, TypeKind::ScriptEnum);
+        assert!(reward.source_span.is_some());
+        assert_eq!(
+            reward.source_span.map(|span| span.source),
+            Some(SourceId::new(1))
+        );
+        assert!(progress.source_span.is_some());
         assert!(reward.schema_hash.is_some());
         assert!(progress.schema_hash.is_some());
         assert_eq!(reward.docs.as_deref(), Some("Reward metadata."));
@@ -555,6 +563,10 @@ impl Damageable for Player {
             .expect("Player type");
 
         assert_eq!(damageable.docs.as_deref(), Some("Damage protocol."));
+        assert_eq!(
+            damageable.source_span.map(|span| span.source),
+            Some(SourceId::new(1))
+        );
         assert_eq!(
             damageable
                 .methods

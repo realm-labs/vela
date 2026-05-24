@@ -3742,3 +3742,30 @@ Consequences:
   structure remain immutable from script code.
 - Unknown permission names are diagnosed consistently with other reflection
   lookup failures.
+
+## 2026-05-25: Reflection Descriptors Carry Source Spans
+
+Status: Accepted
+
+Context:
+Runtime reflection errors already return ranked unknown-name candidates, and
+HIR diagnostics preserve declaration spans for compile-time schema errors. M12
+also expects reflection diagnostics/tooling to include related schema
+locations. Reflection descriptors did not carry declaration spans, so scripts
+and host tooling could inspect metadata but could not map reflected script
+schemas back to source.
+
+Decision:
+Add optional `source_span` fields to reflected top-level schema descriptors:
+types, traits, functions, and modules. Script registration populates these
+fields from HIR declaration spans, and copied reflection records expose them as
+`ReflectSourceSpan { source, start, end }` records or `null` for host-provided
+metadata without a source location.
+
+Consequences:
+- Admin/debug tooling can navigate reflected script schemas back to source
+  declarations.
+- Host-registered schemas remain supported by leaving `source_span` unset or
+  setting it explicitly through builder methods.
+- This remains read-only copied metadata and does not allow runtime schema
+  mutation.

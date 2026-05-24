@@ -1737,6 +1737,10 @@ FieldNotFound:
   candidates: ["level"]
 ```
 
+Copied reflection records for script-defined modules, functions, types, and
+traits include `source_span: { source, start, end }` when the registry knows the
+declaration location. Host-provided descriptors may leave this field as `null`.
+
 ```text
 FieldNotWritable:
   type: game.player.Player
