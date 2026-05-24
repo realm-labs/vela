@@ -5,7 +5,7 @@ pub mod script_methods;
 
 use std::collections::BTreeMap;
 
-use vela_common::{FieldId, HostMethodId, Span};
+use vela_common::{FieldId, HostMethodId, MethodId, Span};
 
 use crate::script_methods::ScriptMethodTable;
 
@@ -29,9 +29,11 @@ impl Program {
         &mut self,
         type_name: impl Into<String>,
         method: impl Into<String>,
+        method_id: MethodId,
         function: impl Into<String>,
     ) {
-        self.script_methods.insert(type_name, method, function);
+        self.script_methods
+            .insert(type_name, method, method_id, function);
     }
 
     #[must_use]
@@ -41,8 +43,21 @@ impl Program {
 
     #[must_use]
     pub fn script_method(&self, type_name: &str, method: &str) -> Option<&CodeObject> {
-        let function = self.script_methods.get(type_name, method)?;
-        self.function(function)
+        let method = self.script_methods.get(type_name, method)?;
+        self.function(&method.function)
+    }
+
+    #[must_use]
+    pub fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId> {
+        self.script_methods
+            .get(type_name, method)
+            .map(|method| method.id)
+    }
+
+    #[must_use]
+    pub fn script_method_by_id(&self, type_name: &str, method_id: MethodId) -> Option<&CodeObject> {
+        let method = self.script_methods.get_by_id(type_name, method_id)?;
+        self.function(&method.function)
     }
 }
 

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use vela_common::MethodId;
 use vela_hir::{
     BindingMap, DeclarationKind, FunctionSignature, ImplMetadata, ModuleGraph, ModuleId, ModulePath,
 };
@@ -8,6 +9,7 @@ use vela_syntax::{Block, ImplItem, ItemKind, Param, SourceFile, TraitItem};
 pub(super) struct ScriptImplMethod<'ast> {
     pub(super) target_type: String,
     pub(super) method_name: String,
+    pub(super) method_id: MethodId,
     pub(super) symbol: String,
     pub(super) params: &'ast [Param],
     pub(super) body: &'ast Block,
@@ -116,9 +118,14 @@ fn collect_methods<'ast>(
                 &target_type,
                 &method_metadata.name,
             );
+            let method_id = stable_trait_method_id(
+                &trait_method_owner_name(module_path, &impl_metadata.trait_path),
+                &method_metadata.name,
+            );
             Some(ScriptImplMethod {
                 target_type: target_type.clone(),
                 method_name: method_metadata.name.clone(),
+                method_id,
                 symbol,
                 params: &method.function.params,
                 body: &method.function.body,
@@ -167,9 +174,14 @@ fn collect_default_methods<'ast>(
                 target_type,
                 &method_metadata.name,
             );
+            let method_id = stable_trait_method_id(
+                &trait_method_owner_name(module_path, &impl_metadata.trait_path),
+                &method_metadata.name,
+            );
             Some(ScriptImplMethod {
                 target_type: target_type.to_owned(),
                 method_name: method_metadata.name.clone(),
+                method_id,
                 symbol,
                 params: &method.params,
                 body,
@@ -265,4 +277,37 @@ fn method_symbol(
         target_type,
         method
     )
+}
+
+fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[String]) -> String {
+    if trait_path.len() != 1 {
+        return trait_path.join(".");
+    }
+    let Some(module_path) = module_path else {
+        return trait_path[0].clone();
+    };
+    if module_path.segments().is_empty() {
+        trait_path[0].clone()
+    } else {
+        format!("{}.{}", module_path.join(), trait_path[0])
+    }
+}
+
+fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
+    MethodId::new(stable_id("trait_method", trait_name, method_name))
+}
+
+fn stable_id(kind: &str, owner: &str, member: &str) -> u32 {
+    let mut hash = 0x811c_9dc5;
+    for byte in kind
+        .bytes()
+        .chain([0])
+        .chain(owner.bytes())
+        .chain([0])
+        .chain(member.bytes())
+    {
+        hash ^= u32::from(byte);
+        hash = hash.wrapping_mul(0x0100_0193);
+    }
+    if hash == 0 { 1 } else { hash }
 }

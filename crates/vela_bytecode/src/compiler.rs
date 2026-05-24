@@ -222,6 +222,7 @@ fn insert_script_impl_methods(
         program.insert_script_method(
             method.target_type.clone(),
             method.method_name.clone(),
+            method.method_id,
             method.symbol.clone(),
         );
         program.insert_function(
@@ -2412,6 +2413,7 @@ fn sorted_field_slot(fields: &[vela_syntax::RecordField], field: &str) -> Option
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vela_common::MethodId;
 
     #[test]
     fn compiler_rejects_duplicate_declarations_from_hir() {
@@ -2557,6 +2559,15 @@ fn main() {
             .script_method("Player", "bonus")
             .expect("script impl method dispatch target");
         assert_eq!(method.params, ["self", "amount"]);
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
+        assert_eq!(
+            program
+                .script_method_by_id("Player", method_id)
+                .expect("script method by stable id")
+                .params,
+            ["self", "amount"]
+        );
         assert!(program.function("bonus").is_none());
     }
 
@@ -2583,7 +2594,56 @@ fn main() {
             .script_method("Player", "bonus")
             .expect("trait default method dispatch target");
         assert_eq!(method.params, ["self", "amount"]);
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
+        assert!(program.script_method_by_id("Player", method_id).is_some());
         assert!(program.function("bonus").is_none());
+    }
+
+    #[test]
+    fn compiler_indexes_script_methods_by_receiver_and_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn bonus(self) -> int { return self.value; }
+}
+struct Player { value: int }
+struct Monster { value: int }
+
+impl BonusSource for Player {}
+impl BonusSource for Monster {}
+
+fn main() {
+    return Player { value: 1 }.bonus() + Monster { value: 2 }.bonus();
+}
+"#,
+        )
+        .expect("shared trait method id should index per receiver");
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+
+        assert!(program.script_method_by_id("Player", method_id).is_some());
+        assert!(program.script_method_by_id("Monster", method_id).is_some());
+        assert!(program.script_method_by_id("Missing", method_id).is_none());
+    }
+
+    fn stable_test_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
+        MethodId::new(stable_test_id("trait_method", trait_name, method_name))
+    }
+
+    fn stable_test_id(kind: &str, owner: &str, member: &str) -> u32 {
+        let mut hash = 0x811c_9dc5;
+        for byte in kind
+            .bytes()
+            .chain([0])
+            .chain(owner.bytes())
+            .chain([0])
+            .chain(member.bytes())
+        {
+            hash ^= u32::from(byte);
+            hash = hash.wrapping_mul(0x0100_0193);
+        }
+        if hash == 0 { 1 } else { hash }
     }
 
     #[test]

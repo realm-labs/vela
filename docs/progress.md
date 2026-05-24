@@ -591,10 +591,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Script records and enums can now satisfy dynamic implements checks through
   `TypeRegistry::register_script_types`, including script-visible checks from
   module-qualified compiled programs.
+- Script method dispatch table entries now carry stable `MethodId` metadata
+  derived from the implemented trait method and can be looked up by receiver
+  type plus `MethodId`, while dynamic name lookup remains available.
 - Remaining M10 work includes broader type-flow slot lowering, host type impl
-  dispatch and MethodId-based inline-cache-ready dispatch.
+  dispatch and broader MethodId use in call-site dispatch.
 
 ## Next
 
-- Continue M10 by adding MethodId-oriented dispatch metadata and host type impl
-  dispatch, then extending slot metadata beyond immediate literals.
+- Continue M10 by threading MethodId through call-site dispatch where receiver
+  type facts are available, then extend slot metadata beyond immediate
+  literals.

@@ -1946,3 +1946,28 @@ Consequences:
   through the same `TypeRegistry` surface.
 - Host type impl dispatch remains separate from script record/enum reflection
   and is still later M10 work.
+
+## 2026-05-25: Script Method Tables Carry Stable MethodId Values
+
+Status: Accepted
+
+Context:
+M10 dispatch needs to move from method-name-only lookup toward stable method
+identifiers that can support inline caches and reload ABI checks. Script impl
+methods already compile into hidden functions, but the dispatch table only
+stored receiver type plus method name.
+
+Decision:
+Store a stable `MethodId` with each script method table entry. The ID is
+derived from the implemented trait method, matching the stable trait-method ID
+scheme used by script reflection metadata. Lookup by dynamic method name
+remains supported, and lookup by `receiver type + MethodId` is available for
+future typed call sites and caches.
+
+Consequences:
+- Multiple receiver types can implement the same trait method ID without
+  colliding.
+- Existing dynamic method calls keep working while compiler and VM dispatch can
+  incrementally adopt MethodId-specialized call paths.
+- Host type impl dispatch and call-site MethodId threading remain later M10
+  work.
