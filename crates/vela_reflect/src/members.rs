@@ -4,8 +4,57 @@ use vela_host::HostValue;
 
 use crate::{
     FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TraitDesc,
-    TraitMethodDesc, TypeDesc, TypeRegistry, VariantDesc, type_of,
+    TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc, name_candidates, type_of,
 };
+
+pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(HostValue::String(desc.key.name.clone())))
+}
+
+pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(HostValue::String(
+        match desc.kind {
+            TypeKind::Host => "host",
+            TypeKind::ScriptStruct => "script_struct",
+            TypeKind::ScriptEnum => "script_enum",
+        }
+        .to_owned(),
+    )))
+}
+
+pub fn field(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    let field = desc
+        .fields
+        .iter()
+        .find(|field| field.name == name)
+        .ok_or_else(|| {
+            ReflectError::new(ReflectErrorKind::UnknownField {
+                type_name: desc.key.name.clone(),
+                field: name.to_owned(),
+                candidates: name_candidates(
+                    name,
+                    desc.fields.iter().map(|field| field.name.as_str()),
+                ),
+            })
+        })?;
+    Ok(ReflectValue::Host(field_record(field)))
+}
+
+pub fn has_field(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+) -> ReflectResult<bool> {
+    let desc = target_type(registry, target)?;
+    Ok(desc.fields.iter().any(|field| field.name == name))
+}
 
 pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
@@ -165,6 +214,8 @@ mod tests {
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
                 .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(FieldId::new(1), "id"))
+                .field(FieldDesc::new(FieldId::new(2), "level").writable(true))
                 .method(MethodDesc::new(HostMethodId::new(5), "grant_exp"))
                 .trait_impl(
                     TraitDesc::new("Damageable")
@@ -181,6 +232,39 @@ mod tests {
                 .variant(VariantDesc::new(VariantId::new(13), "Finished")),
         );
         registry
+    }
+
+    #[test]
+    fn name_kind_and_field_queries_return_copied_metadata() {
+        let registry = registry();
+        let target = ReflectValue::HostRef(player_ref());
+
+        assert_eq!(
+            name(&registry, &target).expect("name"),
+            ReflectValue::Host(HostValue::String("Player".to_owned()))
+        );
+        assert_eq!(
+            kind(&registry, &target).expect("kind"),
+            ReflectValue::Host(HostValue::String("host".to_owned()))
+        );
+        assert!(has_field(&registry, &target, "level").expect("has field"));
+
+        let ReflectValue::Host(HostValue::Record { fields, .. }) =
+            field(&registry, &target, "level").expect("field")
+        else {
+            panic!("field metadata should be a record");
+        };
+        assert_eq!(fields.get("writable"), Some(&HostValue::Bool(true)));
+
+        let error = field(&registry, &target, "levle").expect_err("unknown field");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownField {
+                type_name: "Player".to_owned(),
+                field: "levle".to_owned(),
+                candidates: vec!["level".to_owned(), "id".to_owned()]
+            }
+        );
     }
 
     #[test]

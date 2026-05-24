@@ -2886,3 +2886,27 @@ Consequences:
   reflection query shape.
 - Runtime schema mutation remains unavailable; permission checks and field
   detail queries remain follow-up M12 work.
+
+## 2026-05-25: Field Reflection Reuses Copied Member Records
+
+Status: Accepted
+
+Context:
+M12 still needs `reflect.name`, `reflect.kind`, `reflect.field`, and
+`reflect.has_field`. Field descriptors already exist in `TypeDesc`, and the new
+member query module already owns copied metadata record construction for
+methods, traits, and variants.
+
+Decision:
+Add field, name, and kind queries to the same focused `members` module. The VM
+registers thin script-visible natives over those helpers. `reflect.field`
+returns a copied `ReflectField` record with stable ID, name, and writable flag;
+unknown field lookups reuse ranked candidate hints.
+
+Consequences:
+- Type and field query APIs now cover the first-version reflection surface
+  without returning mutable descriptor handles.
+- The facade still only re-exports helpers and does not become a large query
+  implementation file.
+- Attribute/doc metadata and permission-gated reflection remain follow-up M12
+  work.

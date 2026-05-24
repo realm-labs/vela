@@ -8,7 +8,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 pub use members::{
-    has_method, methods, traits as trait_metadata, variant, variant_is,
+    field as field_metadata, has_field, has_method, kind as kind_metadata, methods,
+    name as name_metadata, traits as trait_metadata, variant, variant_is,
     variants as variant_metadata,
 };
 pub use modules::{

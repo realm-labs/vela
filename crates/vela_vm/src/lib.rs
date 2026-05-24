@@ -467,6 +467,20 @@ impl Vm {
                 .map_or(Value::Null, |desc| Value::String(desc.key.name.clone())))
         });
 
+        let name_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.name", move |args, _host| {
+            expect_arity("reflect.name", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.name")?;
+            value_from_reflect(reflect::name_metadata(&name_registry, &target)?)
+        });
+
+        let kind_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.kind", move |args, _host| {
+            expect_arity("reflect.kind", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.kind")?;
+            value_from_reflect(reflect::kind_metadata(&kind_registry, &target)?)
+        });
+
         let fields_registry = Arc::clone(&registry);
         self.register_host_native("reflect.fields", move |args, _host| {
             expect_arity("reflect.fields", args, 1)?;
@@ -480,6 +494,30 @@ impl Vm {
                 .map(|field| Value::String(field.name.clone()))
                 .collect();
             Ok(Value::Array(fields))
+        });
+
+        let field_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.field", move |args, _host| {
+            expect_arity("reflect.field", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.field")?;
+            let field_name = expect_string(&args[1], "reflect.field")?;
+            value_from_reflect(reflect::field_metadata(
+                &field_registry,
+                &target,
+                field_name,
+            )?)
+        });
+
+        let has_field_registry = Arc::clone(&registry);
+        self.register_host_native("reflect.has_field", move |args, _host| {
+            expect_arity("reflect.has_field", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.has_field")?;
+            let field_name = expect_string(&args[1], "reflect.has_field")?;
+            Ok(Value::Bool(reflect::has_field(
+                &has_field_registry,
+                &target,
+                field_name,
+            )?))
         });
 
         let module_registry = Arc::clone(&registry);
@@ -6646,6 +6684,42 @@ fn main(player) {
                 Value::String("id".into()),
                 Value::String("level".into())
             ]))
+        );
+    }
+
+    #[test]
+    fn compiled_source_reflects_name_kind_and_field_metadata() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let field = reflect.field(player, "level");
+    if reflect.name(player) == "Player"
+        && reflect.kind(player) == "host"
+        && reflect.has_field(player, "level")
+        && !reflect.has_field(player, "mana")
+        && field.name == "level"
+        && field.writable {
+        return 1;
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile field reflection source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Ok(Value::Int(1))
         );
     }
 

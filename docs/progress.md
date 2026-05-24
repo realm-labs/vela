@@ -727,8 +727,12 @@ permissions.
   `reflect.variants`, `reflect.variant`, and `reflect.variant_is` natives.
   These return copied method, trait, and variant metadata records and preserve
   current enum variant inspection without exposing mutable schema handles.
+- Extended the same member-query module with read-only `reflect.name`,
+  `reflect.kind`, `reflect.field`, and `reflect.has_field` natives. Field
+  detail records include stable IDs, names, and writable flags, and unknown
+  fields keep ranked candidate hints.
 
 ## Next
 
-- Continue M12 with field detail queries, reflection permissions, lookup
-  budgets, and permission-bounded reflective calls.
+- Continue M12 with reflection permissions, lookup budgets, attributes/docs
+  metadata, and permission-bounded reflective calls.
