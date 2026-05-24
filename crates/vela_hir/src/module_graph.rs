@@ -6,8 +6,8 @@ use vela_syntax::{FunctionItem, ItemKind, SourceFile, Visibility, parse_source};
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
 use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
-    ConstMetadata, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint, StructFieldHint,
-    StructShape,
+    ConstMetadata, EnumShape, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint,
+    StructFieldHint, StructShape,
 };
 use crate::{HirDeclId, HirNodeId, ModuleId};
 
@@ -139,6 +139,7 @@ pub struct ModuleGraph {
     bindings: BTreeMap<HirDeclId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
+    enum_shapes: BTreeMap<HirDeclId, EnumShape>,
     impl_metadata: BTreeMap<HirDeclId, ImplMetadata>,
     impl_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     diagnostics: Vec<Diagnostic>,
@@ -258,13 +259,15 @@ impl ModuleGraph {
                     );
                 }
                 ItemKind::Enum(enumeration) => {
-                    self.insert_declaration(
+                    let declaration = self.insert_declaration(
                         &mut hir_module,
                         enumeration.name.clone(),
                         DeclarationKind::Enum,
                         item.visibility.clone(),
                         item.span,
                     );
+                    self.enum_shapes
+                        .insert(declaration, EnumShape::from_syntax(enumeration));
                 }
                 ItemKind::Trait(trait_item) => {
                     self.insert_declaration(
@@ -370,6 +373,15 @@ impl ModuleGraph {
     #[must_use]
     pub fn struct_shape(&self, declaration: HirDeclId) -> Option<&StructShape> {
         self.struct_shapes.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn enum_shape(&self, declaration: HirDeclId) -> Option<&EnumShape> {
+        self.enum_shapes.get(&declaration)
+    }
+
+    pub fn declarations(&self) -> impl Iterator<Item = &Declaration> {
+        self.declarations.values()
     }
 
     #[must_use]
@@ -1612,6 +1624,35 @@ fn main() { return SAFE_LIMIT; }
                 .iter()
                 .any(|diagnostic| diagnostic.message.contains("BAD_ASSIGN"))
         );
+    }
+
+    #[test]
+    fn lowers_enum_shape_metadata() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.quest",
+            r#"
+enum QuestProgress {
+    None,
+    Active,
+    Finished,
+}
+"#,
+        ));
+        let declarations = graph.module(module).expect("module declarations");
+        let progress = declarations
+            .get("QuestProgress")
+            .expect("QuestProgress declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let shape = graph.enum_shape(progress).expect("enum shape");
+        let variants = shape
+            .variants
+            .iter()
+            .map(|variant| variant.name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(variants, ["None", "Active", "Finished"]);
     }
 
     #[test]

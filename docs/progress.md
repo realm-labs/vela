@@ -2,10 +2,9 @@
 
 ## Current Milestone
 
-M0-M8 runnable prototype and semantic lowering complete enough to expand the
-executable language surface. Current milestone: M9 complete executable
-language surface. Remaining M9 work is focused on executable grammar gaps and
-method-dispatch coverage before moving into stable type metadata.
+M0-M9 runnable prototype, semantic lowering, and the broad executable language
+surface are complete enough to begin stable runtime metadata work. Current
+milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 
 ## Completed
 
@@ -542,7 +541,25 @@ method-dispatch coverage before moving into stable type metadata.
 - Added a focused CLI hot-reload demo module so function-swap workflows use the
   `vela_hot_reload` runtime instead of custom CLI-only code swapping.
 
+### M10: Script Types, Shapes, Traits, And Dispatch
+
+- Added HIR enum-shape metadata alongside existing struct-shape metadata so
+  enum declarations expose variant names through the module graph.
+- Exposed module graph declaration iteration for consumers that need stable
+  metadata without re-reading syntax items.
+- Added `TypeRegistry::register_script_types` in a focused reflection
+  `script_types` module, registering HIR script structs and enums under
+  module-qualified names.
+- Added script `VariantDesc` IDs and deterministic `TypeId`/`FieldId`/
+  `VariantId` generation from qualified type and member names.
+- Added reflection tests proving script struct fields and enum variants enter
+  the registry and member IDs survive source reordering.
+- This is metadata-only M10 groundwork; runtime record slot layouts, schema
+  hashes, trait dispatch, and replacement of named-map record storage remain
+  future M10 work.
+
 ## Next
 
-- Continue M9 language-surface execution by lowering and running the remaining
-  planned expression and statement forms from `docs/grammar.ebnf`.
+- Continue M10 by adding schema hashes and slot-oriented script record/enum
+  layout while keeping script-level behavior compatible with the existing
+  runnable demos.

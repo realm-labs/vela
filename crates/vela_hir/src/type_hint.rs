@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_syntax::{ConstItem, ImplItem, Param, StructField, TypeHint};
+use vela_syntax::{ConstItem, EnumItem, ImplItem, Param, StructField, TypeHint};
 
 use crate::HirNodeId;
 
@@ -83,6 +83,29 @@ impl StructFieldHint {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StructShape {
     pub fields: Vec<StructFieldHint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EnumShape {
+    pub variants: Vec<EnumVariantHint>,
+}
+
+impl EnumShape {
+    #[must_use]
+    pub fn from_syntax(item: &EnumItem) -> Self {
+        Self {
+            variants: item
+                .variants
+                .iter()
+                .map(|name| EnumVariantHint { name: name.clone() })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EnumVariantHint {
+    pub name: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

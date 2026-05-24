@@ -1,9 +1,11 @@
 //! Controlled reflection metadata and value access.
 
+mod script_types;
+
 use std::collections::BTreeMap;
 use std::fmt;
 
-use vela_common::{FieldId, HostMethodId, HostTypeId, TypeId};
+use vela_common::{FieldId, HostMethodId, HostTypeId, TypeId, VariantId};
 use vela_host::{HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -82,6 +84,12 @@ impl TypeDesc {
         self.traits.push(trait_desc);
         self
     }
+
+    #[must_use]
+    pub fn variant(mut self, variant: VariantDesc) -> Self {
+        self.variants.push(variant);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -146,8 +154,20 @@ impl TraitDesc {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VariantDesc {
+    pub id: VariantId,
     pub name: String,
     pub attrs: AttrMap,
+}
+
+impl VariantDesc {
+    #[must_use]
+    pub fn new(id: VariantId, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            attrs: AttrMap::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -180,6 +200,13 @@ impl TypeRegistry {
         self.types_by_key
             .get(key)
             .map(|desc| desc.fields.as_slice())
+    }
+
+    #[must_use]
+    pub fn type_by_name(&self, name: &str) -> Option<&TypeDesc> {
+        self.types_by_key
+            .values()
+            .find(|desc| desc.key.name == name)
     }
 
     fn host_field(&self, host_ref: HostRef, field_name: &str) -> ReflectResult<&FieldDesc> {

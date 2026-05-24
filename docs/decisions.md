@@ -1766,3 +1766,28 @@ Consequences:
   that belong to later milestones.
 - Future Engine/Runtime APIs can reuse the same version-handle semantics at
   event or tick safe points.
+
+## 2026-05-24: Script Type Metadata Uses Qualified Stable IDs
+
+Status: Accepted
+
+Context:
+M10 needs script-defined structs and enums to appear in `TypeRegistry` before
+runtime record slots, enum field layouts, schema hashes, and trait dispatch can
+replace the earlier named-map prototype representation. The metadata must be
+stable across source reordering and must not introduce script generics,
+monkey-patching, or direct host state ownership.
+
+Decision:
+HIR lowers enum variants into enum-shape metadata, matching the existing
+struct-shape path. Reflection registers script structs and enums from the
+module graph through a focused `script_types` module, using module-qualified
+type names and deterministic IDs derived from type/member names for
+`TypeId`, `FieldId`, and `VariantId`.
+
+Consequences:
+- Script type, field, and variant metadata can be queried through the existing
+  registry surface without re-parsing syntax.
+- Field and variant IDs survive declaration member reordering.
+- This does not yet implement slot-based object layout, schema hashes, trait
+  method dispatch, or runtime type-structure mutation.
