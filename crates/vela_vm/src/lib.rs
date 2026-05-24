@@ -498,6 +498,24 @@ impl Vm {
             value_from_reflect(reflect::kind_metadata(&kind_registry, &target)?)
         });
 
+        let attrs_registry = Arc::clone(&registry);
+        let attrs_permissions = permissions.clone();
+        self.register_host_native("reflect.attrs", move |args, _host| {
+            attrs_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
+            expect_arity("reflect.attrs", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.attrs")?;
+            value_from_reflect(reflect::attrs_metadata(&attrs_registry, &target)?)
+        });
+
+        let docs_registry = Arc::clone(&registry);
+        let docs_permissions = permissions.clone();
+        self.register_host_native("reflect.docs", move |args, _host| {
+            docs_permissions.require(reflect::ReflectPermission::ReadTypeInfo)?;
+            expect_arity("reflect.docs", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.docs")?;
+            value_from_reflect(reflect::docs_metadata(&docs_registry, &target)?)
+        });
+
         let fields_registry = Arc::clone(&registry);
         let fields_permissions = permissions.clone();
         self.register_host_native("reflect.fields", move |args, _host| {
@@ -6815,9 +6833,13 @@ fn main(player) {
     let field = reflect.field(player, "level");
     if reflect.name(player) == "Player"
         && reflect.kind(player) == "host"
+        && reflect.docs(player) == "A player host object."
+        && reflect.attrs(player).get("domain") == "gameplay"
         && reflect.has_field(player, "level")
         && !reflect.has_field(player, "mana")
         && field.name == "level"
+        && field.docs == "Current player level."
+        && field.attrs.get("unit") == "level"
         && field.writable {
         return 1;
     }
@@ -7319,9 +7341,20 @@ fn main(player) {
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
                 .host_type(HostTypeId::new(1))
+                .docs("A player host object.")
+                .attr("domain", "gameplay")
                 .field(FieldDesc::new(FieldId::new(1), "id"))
-                .field(FieldDesc::new(level_field(), "level").writable(true))
-                .method(MethodDesc::new(HostMethodId::new(5), "grant_exp"))
+                .field(
+                    FieldDesc::new(level_field(), "level")
+                        .writable(true)
+                        .docs("Current player level.")
+                        .attr("unit", "level"),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .docs("Grant experience.")
+                        .attr("effect", "write"),
+                )
                 .trait_impl(TraitDesc::new("Damageable")),
         );
         registry

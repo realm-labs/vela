@@ -123,9 +123,11 @@ fn inject_native_method_metadata(
                 name: entry.desc.owner.name.clone(),
             })
         })?;
-        owner
-            .methods
-            .push(MethodDesc::new(entry.desc.id, entry.desc.name.clone()));
+        let mut method = MethodDesc::new(entry.desc.id, entry.desc.name.clone());
+        if let Some(docs) = &entry.desc.docs {
+            method = method.docs(docs.clone());
+        }
+        owner.methods.push(method);
     }
     Ok(())
 }

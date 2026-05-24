@@ -2936,3 +2936,28 @@ Consequences:
   stable Engine API without bypassing `PatchTx`.
 - Lookup budgets and deeper `EffectSet`/access metadata checks remain follow-up
   M12 work.
+
+## 2026-05-25: Reflection Metadata Exposes Copied Attrs And Docs
+
+Status: Accepted
+
+Context:
+M12 requires reflection to cover attributes and docs/origin metadata. Descriptor
+types already had `AttrMap` placeholders, and native/function descriptors had
+docs, but scripts could not inspect those values through the reflection API.
+
+Decision:
+Add builder/query APIs to `AttrMap` and docs/attribute builder methods to
+reflected descriptors. A focused metadata helper converts attrs/docs into copied
+host values. `reflect.attrs` and `reflect.docs` query type metadata for a
+target value, while reflected field, method, trait, trait-method, variant,
+module, and function records include copied `attrs` and `docs` fields where
+the descriptor supports them.
+
+Consequences:
+- Admin/debug scripts can inspect schema annotations without receiving mutable
+  descriptor handles.
+- Engine-registered native method docs are copied into reflected method
+  metadata.
+- Parser/HIR extraction of script attributes and deeper access/effect metadata
+  remain follow-up M12 work.

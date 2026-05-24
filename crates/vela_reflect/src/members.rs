@@ -4,7 +4,9 @@ use vela_host::HostValue;
 
 use crate::{
     FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TraitDesc,
-    TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc, name_candidates, type_of,
+    TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
+    metadata::{attrs_value, docs_value},
+    name_candidates, type_of,
 };
 
 pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -22,6 +24,16 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
         }
         .to_owned(),
     )))
+}
+
+pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(attrs_value(&desc.attrs)))
+}
+
+pub fn docs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(docs_value(desc.docs.as_deref())))
 }
 
 pub fn field(
@@ -133,6 +145,8 @@ fn method_record(method: &MethodDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
+    fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
+    fields.insert("attrs".to_owned(), attrs_value(&method.attrs));
     HostValue::Record {
         type_name: "ReflectMethod".to_owned(),
         fields,
@@ -153,6 +167,8 @@ fn trait_record(trait_desc: &TraitDesc) -> HostValue {
         "methods".to_owned(),
         HostValue::Array(trait_desc.methods.iter().map(trait_method_record).collect()),
     );
+    fields.insert("docs".to_owned(), docs_value(trait_desc.docs.as_deref()));
+    fields.insert("attrs".to_owned(), attrs_value(&trait_desc.attrs));
     HostValue::Record {
         type_name: "ReflectTrait".to_owned(),
         fields,
@@ -164,6 +180,8 @@ fn trait_method_record(method: &TraitMethodDesc) -> HostValue {
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
     fields.insert("defaulted".to_owned(), HostValue::Bool(method.has_default));
+    fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
+    fields.insert("attrs".to_owned(), attrs_value(&method.attrs));
     HostValue::Record {
         type_name: "ReflectTraitMethod".to_owned(),
         fields,
@@ -178,6 +196,8 @@ fn variant_record(variant: &VariantDesc) -> HostValue {
         "fields".to_owned(),
         HostValue::Array(variant.fields.iter().map(field_record).collect()),
     );
+    fields.insert("docs".to_owned(), docs_value(variant.docs.as_deref()));
+    fields.insert("attrs".to_owned(), attrs_value(&variant.attrs));
     HostValue::Record {
         type_name: "ReflectVariant".to_owned(),
         fields,
@@ -189,6 +209,8 @@ fn field_record(field: &FieldDesc) -> HostValue {
     fields.insert("id".to_owned(), HostValue::Int(i64::from(field.id.get())));
     fields.insert("name".to_owned(), HostValue::String(field.name.clone()));
     fields.insert("writable".to_owned(), HostValue::Bool(field.writable));
+    fields.insert("docs".to_owned(), docs_value(field.docs.as_deref()));
+    fields.insert("attrs".to_owned(), attrs_value(&field.attrs));
     HostValue::Record {
         type_name: "ReflectField".to_owned(),
         fields,
@@ -214,12 +236,30 @@ mod tests {
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
                 .host_type(HostTypeId::new(1))
+                .docs("A player host object.")
+                .attr("domain", "gameplay")
                 .field(FieldDesc::new(FieldId::new(1), "id"))
-                .field(FieldDesc::new(FieldId::new(2), "level").writable(true))
-                .method(MethodDesc::new(HostMethodId::new(5), "grant_exp"))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "level")
+                        .writable(true)
+                        .docs("Current level.")
+                        .attr("unit", "level"),
+                )
+                .method(
+                    MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                        .docs("Grant experience.")
+                        .attr("effect", "write"),
+                )
                 .trait_impl(
                     TraitDesc::new("Damageable")
-                        .method(TraitMethodDesc::new(MethodId::new(9), "damage").defaulted(true)),
+                        .docs("Can take damage.")
+                        .attr("combat", "true")
+                        .method(
+                            TraitMethodDesc::new(MethodId::new(9), "damage")
+                                .defaulted(true)
+                                .docs("Apply damage.")
+                                .attr("default", "true"),
+                        ),
                 ),
         );
         registry.register(
@@ -227,6 +267,8 @@ mod tests {
                 .kind(TypeKind::ScriptEnum)
                 .variant(
                     VariantDesc::new(VariantId::new(11), "Active")
+                        .docs("Quest is active.")
+                        .attr("state", "open")
                         .field(FieldDesc::new(FieldId::new(12), "count")),
                 )
                 .variant(VariantDesc::new(VariantId::new(13), "Finished")),
@@ -247,6 +289,17 @@ mod tests {
             kind(&registry, &target).expect("kind"),
             ReflectValue::Host(HostValue::String("host".to_owned()))
         );
+        assert_eq!(
+            docs(&registry, &target).expect("docs"),
+            ReflectValue::Host(HostValue::String("A player host object.".to_owned()))
+        );
+        assert_eq!(
+            attrs(&registry, &target).expect("attrs"),
+            ReflectValue::Host(HostValue::Map(BTreeMap::from([(
+                "domain".to_owned(),
+                HostValue::String("gameplay".to_owned())
+            )])))
+        );
         assert!(has_field(&registry, &target, "level").expect("has field"));
 
         let ReflectValue::Host(HostValue::Record { fields, .. }) =
@@ -255,6 +308,17 @@ mod tests {
             panic!("field metadata should be a record");
         };
         assert_eq!(fields.get("writable"), Some(&HostValue::Bool(true)));
+        assert_eq!(
+            fields.get("docs"),
+            Some(&HostValue::String("Current level.".to_owned()))
+        );
+        assert_eq!(
+            fields.get("attrs"),
+            Some(&HostValue::Map(BTreeMap::from([(
+                "unit".to_owned(),
+                HostValue::String("level".to_owned())
+            )])))
+        );
 
         let error = field(&registry, &target, "levle").expect_err("unknown field");
         assert_eq!(

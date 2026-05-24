@@ -363,7 +363,8 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                 .param("amount", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+                .access(FunctionAccess::public().require_permission("player.grant_exp"))
+                .docs("Grant player experience."),
             move |receiver, args, host| {
                 let [Value::Int(amount)] = args else {
                     return Ok(Value::Null);
@@ -379,6 +380,19 @@ fn engine_registers_callable_native_methods_for_host_paths() {
         )
         .build()
         .expect("engine should build");
+    let registry = engine.registry();
+    let reflected_method = registry
+        .type_by_name("Player")
+        .and_then(|desc| {
+            desc.methods
+                .iter()
+                .find(|method| method.name == "grant_exp")
+        })
+        .expect("reflected native method metadata");
+    assert_eq!(
+        reflected_method.docs.as_deref(),
+        Some("Grant player experience.")
+    );
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"

@@ -1,6 +1,7 @@
 //! Controlled reflection metadata and value access.
 
 mod members;
+mod metadata;
 mod modules;
 mod permissions;
 mod script_types;
@@ -9,9 +10,9 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 pub use members::{
-    field as field_metadata, has_field, has_method, kind as kind_metadata, methods,
-    name as name_metadata, traits as trait_metadata, variant, variant_is,
-    variants as variant_metadata,
+    attrs as attrs_metadata, docs as docs_metadata, field as field_metadata, has_field, has_method,
+    kind as kind_metadata, methods, name as name_metadata, traits as trait_metadata, variant,
+    variant_is, variants as variant_metadata,
 };
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
@@ -72,6 +73,32 @@ impl AttrMap {
     pub fn new() -> Self {
         Self::default()
     }
+
+    #[must_use]
+    pub fn with(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.insert(name, value);
+        self
+    }
+
+    pub fn insert(&mut self, name: impl Into<String>, value: impl Into<String>) {
+        self.attrs.insert(name.into(), value.into());
+    }
+
+    #[must_use]
+    pub fn get(&self, name: &str) -> Option<&str> {
+        self.attrs.get(name).map(String::as_str)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.attrs
+            .iter()
+            .map(|(key, value)| (key.as_str(), value.as_str()))
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.attrs.is_empty()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -84,6 +111,7 @@ pub struct TypeDesc {
     pub methods: Vec<MethodDesc>,
     pub traits: Vec<TraitDesc>,
     pub variants: Vec<VariantDesc>,
+    pub docs: Option<String>,
     pub attrs: AttrMap,
 }
 
@@ -99,6 +127,7 @@ impl TypeDesc {
             methods: Vec::new(),
             traits: Vec::new(),
             variants: Vec::new(),
+            docs: None,
             attrs: AttrMap::new(),
         }
     }
@@ -144,6 +173,18 @@ impl TypeDesc {
         self.variants.push(variant);
         self
     }
+
+    #[must_use]
+    pub fn docs(mut self, docs: impl Into<String>) -> Self {
+        self.docs = Some(docs.into());
+        self
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -151,6 +192,7 @@ pub struct FieldDesc {
     pub id: FieldId,
     pub name: String,
     pub writable: bool,
+    pub docs: Option<String>,
     pub attrs: AttrMap,
 }
 
@@ -161,6 +203,7 @@ impl FieldDesc {
             id,
             name: name.into(),
             writable: false,
+            docs: None,
             attrs: AttrMap::new(),
         }
     }
@@ -170,12 +213,25 @@ impl FieldDesc {
         self.writable = writable;
         self
     }
+
+    #[must_use]
+    pub fn docs(mut self, docs: impl Into<String>) -> Self {
+        self.docs = Some(docs.into());
+        self
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MethodDesc {
     pub id: HostMethodId,
     pub name: String,
+    pub docs: Option<String>,
     pub attrs: AttrMap,
 }
 
@@ -185,8 +241,21 @@ impl MethodDesc {
         Self {
             id,
             name: name.into(),
+            docs: None,
             attrs: AttrMap::new(),
         }
+    }
+
+    #[must_use]
+    pub fn docs(mut self, docs: impl Into<String>) -> Self {
+        self.docs = Some(docs.into());
+        self
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
+        self
     }
 }
 
@@ -195,6 +264,7 @@ pub struct TraitDesc {
     pub id: TraitId,
     pub name: String,
     pub methods: Vec<TraitMethodDesc>,
+    pub docs: Option<String>,
     pub attrs: AttrMap,
 }
 
@@ -206,6 +276,7 @@ impl TraitDesc {
             id: stable_trait_id(&name),
             name,
             methods: Vec::new(),
+            docs: None,
             attrs: AttrMap::new(),
         }
     }
@@ -215,6 +286,18 @@ impl TraitDesc {
         self.methods.push(method);
         self
     }
+
+    #[must_use]
+    pub fn docs(mut self, docs: impl Into<String>) -> Self {
+        self.docs = Some(docs.into());
+        self
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -222,6 +305,7 @@ pub struct TraitMethodDesc {
     pub id: MethodId,
     pub name: String,
     pub has_default: bool,
+    pub docs: Option<String>,
     pub attrs: AttrMap,
 }
 
@@ -232,6 +316,7 @@ impl TraitMethodDesc {
             id,
             name: name.into(),
             has_default: false,
+            docs: None,
             attrs: AttrMap::new(),
         }
     }
@@ -241,6 +326,18 @@ impl TraitMethodDesc {
         self.has_default = has_default;
         self
     }
+
+    #[must_use]
+    pub fn docs(mut self, docs: impl Into<String>) -> Self {
+        self.docs = Some(docs.into());
+        self
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -248,6 +345,7 @@ pub struct VariantDesc {
     pub id: VariantId,
     pub name: String,
     pub fields: Vec<FieldDesc>,
+    pub docs: Option<String>,
     pub attrs: AttrMap,
 }
 
@@ -258,6 +356,7 @@ impl VariantDesc {
             id,
             name: name.into(),
             fields: Vec::new(),
+            docs: None,
             attrs: AttrMap::new(),
         }
     }
@@ -265,6 +364,18 @@ impl VariantDesc {
     #[must_use]
     pub fn field(mut self, field: FieldDesc) -> Self {
         self.fields.push(field);
+        self
+    }
+
+    #[must_use]
+    pub fn docs(mut self, docs: impl Into<String>) -> Self {
+        self.docs = Some(docs.into());
+        self
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
         self
     }
 }

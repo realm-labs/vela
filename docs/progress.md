@@ -736,8 +736,13 @@ permissions.
   and `EngineBuilder::reflection_permissions`. Permissioned reflection natives
   reject missing read, write, and call permissions before recording host
   patches.
+- Added descriptor docs and `AttrMap` builder/query APIs for reflected types,
+  fields, methods, traits, trait methods, variants, modules, and functions.
+  Script-visible `reflect.attrs` and `reflect.docs` expose copied type metadata,
+  and reflected field/method/trait/variant/module/function records now include
+  copied `attrs`/`docs` fields where applicable.
 
 ## Next
 
-- Continue M12 with lookup budgets, attributes/docs metadata, and deeper
-  effect/access checks for reflective calls.
+- Continue M12 with lookup budgets and deeper `EffectSet`/access checks for
+  reflective calls.

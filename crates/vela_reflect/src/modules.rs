@@ -7,6 +7,7 @@ use vela_syntax::Visibility;
 
 use crate::{
     AttrMap, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry,
+    metadata::{attrs_value, docs_value},
     name_candidates,
 };
 
@@ -110,6 +111,12 @@ impl FunctionDesc {
         self.docs = Some(docs.into());
         self
     }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
+        self
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -150,6 +157,12 @@ impl ModuleDesc {
             exports: Vec::new(),
             attrs: AttrMap::new(),
         }
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
+        self
     }
 
     pub(crate) fn export_function(&mut self, name: impl Into<String>, function: FunctionId) {
@@ -266,6 +279,10 @@ fn module_record(desc: &ModuleDesc) -> ReflectValue {
                 .collect(),
         )),
     );
+    fields.insert(
+        "attrs".to_owned(),
+        ReflectValue::Host(attrs_value(&desc.attrs)),
+    );
     ReflectValue::Record(fields)
 }
 
@@ -312,6 +329,14 @@ fn function_record(desc: &FunctionDesc) -> ReflectValue {
         ReflectValue::Host(HostValue::Array(
             desc.params.iter().map(param_record).collect(),
         )),
+    );
+    fields.insert(
+        "docs".to_owned(),
+        ReflectValue::Host(docs_value(desc.docs.as_deref())),
+    );
+    fields.insert(
+        "attrs".to_owned(),
+        ReflectValue::Host(attrs_value(&desc.attrs)),
     );
     ReflectValue::Record(fields)
 }
@@ -427,18 +452,22 @@ fn helper() {
 
     #[test]
     fn module_function_queries_return_records_and_candidates() {
-        let mut graph = ModuleGraph::new();
-        graph.add_source(ModuleSource::new(
-            SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
-            r#"
-pub fn grant(amount: int = 1) -> bool {
-    return true;
-}
-"#,
-        ));
         let mut registry = TypeRegistry::new();
-        registry.register_script_modules(&graph);
+        let function_id = FunctionId::new(7);
+        registry.register_module(ModuleDesc::new("game.reward").attr("domain", "gameplay"));
+        registry.register_function(
+            FunctionDesc::new(function_id, "game.reward.grant")
+                .module("game.reward")
+                .param(
+                    FunctionParamDesc::new("amount")
+                        .type_hint("int")
+                        .defaulted(true),
+                )
+                .return_type("bool")
+                .origin(DeclOrigin::Script)
+                .docs("Grant reward.")
+                .attr("event", "reward"),
+        );
 
         let ReflectValue::Record(module_metadata) =
             module(&registry, "game.reward").expect("module")
@@ -448,6 +477,13 @@ pub fn grant(amount: int = 1) -> bool {
         assert_eq!(
             module_metadata.get("name"),
             Some(&ReflectValue::Host(HostValue::String("game.reward".into())))
+        );
+        assert_eq!(
+            module_metadata.get("attrs"),
+            Some(&ReflectValue::Host(HostValue::Map(BTreeMap::from([(
+                "domain".to_owned(),
+                HostValue::String("gameplay".to_owned())
+            )]))))
         );
         assert_eq!(
             exports(&registry, "game.reward").expect("exports"),
@@ -468,6 +504,19 @@ pub fn grant(amount: int = 1) -> bool {
         assert_eq!(
             function.get("origin"),
             Some(&ReflectValue::Host(HostValue::String("script".into())))
+        );
+        assert_eq!(
+            function.get("docs"),
+            Some(&ReflectValue::Host(HostValue::String(
+                "Grant reward.".into()
+            )))
+        );
+        assert_eq!(
+            function.get("attrs"),
+            Some(&ReflectValue::Host(HostValue::Map(BTreeMap::from([(
+                "event".to_owned(),
+                HostValue::String("reward".to_owned())
+            )]))))
         );
 
         let error = module(&registry, "game.rewards").expect_err("unknown module");
