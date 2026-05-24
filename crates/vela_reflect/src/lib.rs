@@ -1,11 +1,17 @@
 //! Controlled reflection metadata and value access.
 
+mod modules;
 mod script_types;
 
 use std::collections::BTreeMap;
 use std::fmt;
 
-use vela_common::{FieldId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId};
+pub use modules::{
+    DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
+};
+use vela_common::{
+    FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId,
+};
 use vela_host::{HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -259,6 +265,9 @@ pub struct TypeRegistry {
     types_by_key: BTreeMap<TypeKey, TypeDesc>,
     host_keys: BTreeMap<HostTypeId, TypeKey>,
     traits_by_name: BTreeMap<String, TraitDesc>,
+    modules_by_name: BTreeMap<String, ModuleDesc>,
+    functions_by_id: BTreeMap<FunctionId, FunctionDesc>,
+    functions_by_name: BTreeMap<String, FunctionId>,
 }
 
 impl TypeRegistry {
@@ -278,6 +287,20 @@ impl TypeRegistry {
         self.traits_by_name.insert(desc.name.clone(), desc);
     }
 
+    pub fn register_module(&mut self, desc: ModuleDesc) {
+        self.modules_by_name.insert(desc.name.clone(), desc);
+    }
+
+    pub fn register_function(&mut self, desc: FunctionDesc) {
+        self.functions_by_name.insert(desc.name.clone(), desc.id);
+        if let Some(module) = &desc.module
+            && let Some(module_desc) = self.modules_by_name.get_mut(module)
+        {
+            module_desc.export_function(desc.name.clone(), desc.id);
+        }
+        self.functions_by_id.insert(desc.id, desc);
+    }
+
     #[must_use]
     pub fn type_of_host(&self, host_ref: HostRef) -> Option<&TypeDesc> {
         let key = self.host_keys.get(&host_ref.type_id)?;
@@ -293,6 +316,26 @@ impl TypeRegistry {
 
     pub fn types(&self) -> impl Iterator<Item = &TypeDesc> {
         self.types_by_key.values()
+    }
+
+    pub fn modules(&self) -> impl Iterator<Item = &ModuleDesc> {
+        self.modules_by_name.values()
+    }
+
+    #[must_use]
+    pub fn module_by_name(&self, name: &str) -> Option<&ModuleDesc> {
+        self.modules_by_name.get(name)
+    }
+
+    #[must_use]
+    pub fn function_by_id(&self, id: FunctionId) -> Option<&FunctionDesc> {
+        self.functions_by_id.get(&id)
+    }
+
+    #[must_use]
+    pub fn function_by_name(&self, name: &str) -> Option<&FunctionDesc> {
+        let id = self.functions_by_name.get(name)?;
+        self.functions_by_id.get(id)
     }
 
     #[must_use]

@@ -69,6 +69,7 @@ dependencies = [
  "vela_common",
  "vela_hir",
  "vela_host",
+ "vela_syntax",
 ]
 
 [[package]]

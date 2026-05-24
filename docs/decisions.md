@@ -2811,3 +2811,30 @@ Consequences:
   references.
 - Production adapters can compute or validate read-only return previews
   separately from applying the method effect at the safe point.
+
+## 2026-05-25: Reflection Registers Script Modules And Functions
+
+Status: Accepted
+
+Context:
+M12 requires `TypeRegistry` and reflection to cover modules and functions in
+addition to types, fields, methods, traits, variants, attributes, and
+permissions. The registry already consumes HIR for script type metadata, but
+module and function declarations were still only visible through the compiler
+and HIR graph.
+
+Decision:
+Add a focused `vela_reflect::modules` module with `ModuleDesc`,
+`FunctionDesc`, parameter metadata, module exports, declaration origin, and
+stable reflected function IDs. `TypeRegistry::register_script_modules` walks
+the HIR module graph and registers script modules plus function descriptors
+with visibility, type-hint display strings, default-parameter markers, return
+hints, and export entries.
+
+Consequences:
+- Reflection has a stable metadata surface for script modules and functions
+  without adding more responsibilities to `lib.rs`.
+- Runtime schema mutation remains disallowed; this is registration-time
+  metadata derived from HIR.
+- Script-visible `reflect.module`, `reflect.exports`, and function permission
+  checks remain follow-up M12 work.

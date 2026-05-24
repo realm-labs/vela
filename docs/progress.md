@@ -2,9 +2,10 @@
 
 ## Current Milestone
 
-M0-M9 runnable prototype, semantic lowering, and the broad executable language
-surface are complete enough to begin stable runtime metadata work. Current
-milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
+M0-M11 runnable prototype, stable script metadata, broad executable language
+surface, and host bridge foundations are complete enough to begin reflection
+and permission expansion. Current milestone: M12 complete reflection and
+permissions.
 
 ## Completed
 
@@ -707,11 +708,18 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   register while still recording a deferred method-call patch for safe-point
   apply, so scripts can observe host method returns without receiving mutable
   Rust references.
-- Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and deeper host path/proxy lowering beyond field/index/key
-  receiver paths.
+
+### M12: Complete Reflection And Permissions
+
+- Added a focused reflection `modules` module with `ModuleDesc`,
+  `FunctionDesc`, function parameter metadata, module exports, declaration
+  origin metadata, and stable reflected function IDs.
+- `TypeRegistry::register_script_modules` now registers script modules and
+  function metadata from the HIR module graph, including visibility, type-hint
+  display metadata, default-parameter markers, return hints, and module export
+  entries.
 
 ## Next
 
-- Continue M10 with broader non-literal receiver facts or deeper host
-  path/proxy lowering beyond field/index/key receiver paths.
+- Continue M12 with script-visible reflection queries for modules, functions,
+  methods, variants, and permission-bounded calls.

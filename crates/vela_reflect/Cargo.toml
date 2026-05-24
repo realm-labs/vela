@@ -8,6 +8,7 @@ license.workspace = true
 vela_common = { path = "../vela_common" }
 vela_hir = { path = "../vela_hir" }
 vela_host = { path = "../vela_host" }
+vela_syntax = { path = "../vela_syntax" }
 
 [lints]
 workspace = true
