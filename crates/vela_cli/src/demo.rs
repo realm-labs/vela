@@ -7,9 +7,11 @@ use vela_host::PatchTx;
 use vela_vm::{ExecutionBudget, HostExecution, Vm};
 
 use self::ids::DemoIds;
+use self::registry::register_demo_reflection_natives;
 use self::state::DemoHostState;
 
 mod ids;
+mod registry;
 mod state;
 
 pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
@@ -47,15 +49,16 @@ pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
             adapter: &mut host_state.adapter,
             tx: &mut tx,
         };
-        Vm::new()
-            .run_program_with_host_managed_heap_and_budget(
-                &program,
-                "main",
-                &args,
-                &mut host,
-                &mut budget,
-            )
-            .map_err(|error| format!("{error:?}"))?
+        let mut vm = Vm::new();
+        register_demo_reflection_natives(&mut vm, ids);
+        vm.run_program_with_host_managed_heap_and_budget(
+            &program,
+            "main",
+            &args,
+            &mut host,
+            &mut budget,
+        )
+        .map_err(|error| format!("{error:?}"))?
     };
     let patch_count = tx.patches().len();
     tx.apply(&mut host_state.adapter)

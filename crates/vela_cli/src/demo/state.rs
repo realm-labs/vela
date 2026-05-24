@@ -5,11 +5,8 @@ use vela_common::{HostObjectId, HostTypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, ScriptStateAdapter};
 use vela_vm::Value;
 
-use super::ids::DemoIds;
+use super::ids::{CTX_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
 
-const PLAYER_TYPE: u32 = 1;
-const CTX_TYPE: u32 = 2;
-const MONSTER_TYPE: u32 = 3;
 const PLAYER_OBJECT: u64 = 7;
 const CTX_OBJECT: u64 = 100;
 const MONSTER_OBJECT: u64 = 200;
@@ -66,6 +63,7 @@ impl DemoHostState {
             exp_path.clone(),
             HostValue::Int(if has_monster { 90 } else { 0 }),
         );
+        adapter.insert_value(HostPath::new(player).field(ids.id_field), HostValue::Int(7));
         adapter.insert_value(quest_count_path.clone(), HostValue::Int(2));
         adapter.insert_value(quest_goal_path, HostValue::Int(3));
         adapter.insert_value(quest_done_path.clone(), HostValue::Bool(false));

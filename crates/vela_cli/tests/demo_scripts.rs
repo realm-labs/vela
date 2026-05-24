@@ -57,3 +57,12 @@ fn quest_progress_demo_runs_through_cli() {
          quest_done=Bool(true) rewards=0 emits=1 patches=3\n"
     );
 }
+
+#[test]
+fn reflect_debug_demo_runs_through_cli() {
+    assert_eq!(
+        run_demo("reflect_debug.lang"),
+        "result=Int(18) level=Int(12) ctx_now=Int(1700000000) \
+         ctx_tick=Int(42) emits=1 patches=2\n"
+    );
+}

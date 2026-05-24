@@ -1,5 +1,9 @@
 use vela_common::{FieldId, HostMethodId};
 
+pub(crate) const PLAYER_TYPE: u32 = 1;
+pub(crate) const CTX_TYPE: u32 = 2;
+pub(crate) const MONSTER_TYPE: u32 = 3;
+
 const LEVEL_FIELD: u32 = 2;
 const NOW_FIELD: u32 = 3;
 const TICK_FIELD: u32 = 4;

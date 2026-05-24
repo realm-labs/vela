@@ -1718,3 +1718,26 @@ Consequences:
   direct Rust state.
 - The script surface can later move from scalar fields to nested host paths
   without changing the safe-point patching contract.
+
+## 2026-05-24: CLI Reflection Demo Registers Static Metadata
+
+Status: Accepted
+
+Context:
+The final demo suite needs a reflection workflow before the full Engine API and
+derive macros are available. Reflection must remain controlled: scripts may
+inspect metadata and perform permitted reads, writes, and calls, but they must
+not mutate type structure.
+
+Decision:
+Register a static demo `TypeRegistry` in a focused CLI module for Player,
+Context, and Monster host refs. The `reflect_debug` script uses VM reflection
+natives to query type names, fields, and traits, then performs a controlled
+`reflect.set` and `reflect.call` that record patches in the active `PatchTx`.
+
+Consequences:
+- Reflection demos run through the same parser, compiler, managed heap VM, and
+  safe-point patch application path as other game-server scripts.
+- The demo does not introduce runtime schema mutation or monkey patching.
+- The static registry can later be replaced by Engine/derive-macro registration
+  without changing script reflection semantics.

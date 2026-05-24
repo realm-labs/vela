@@ -525,10 +525,16 @@ method-dispatch coverage before moving into stable type metadata.
 - Added `examples/game_server_demo/scripts/quest_progress.lang` as a runnable
   demo proving quest counters and completion flags update through host field
   patches and emit a quest completion event at the safe point.
+- Added `examples/game_server_demo/scripts/reflect_debug.lang` as a runnable
+  demo proving script reflection can inspect allowed host fields, check trait
+  metadata, perform controlled host writes, and call host methods through
+  `PatchTx`.
 - Added CLI integration tests that execute the runnable game server demo
   scripts through the built `vela_cli` binary.
 - Split the CLI demo runner into focused ID and host-state modules so the demo
   harness can keep growing without accumulating all logic in one file.
+- Added a focused CLI demo TypeRegistry module for Player, Context, and Monster
+  reflection metadata used by the runnable demo scripts.
 
 ## Next
 

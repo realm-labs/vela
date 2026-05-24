@@ -1,0 +1,11 @@
+fn main(ctx, player) {
+    let fields = reflect.fields(player);
+
+    if reflect.type_of(player) == "Player" && reflect.implements(player, "Damageable") {
+        reflect.set(player, "level", 12);
+        reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
+        return reflect.get(player, "level") + fields.len();
+    }
+
+    return 0;
+}
