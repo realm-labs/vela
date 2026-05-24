@@ -61,6 +61,7 @@ pub(crate) fn make_iterator(
         | Value::String(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Closure(_)
         | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "for in",

@@ -435,6 +435,12 @@ to the later language constructs that introduce loops and closures.
 - Added compiler and VM support for named script-call argument reordering plus
   callee-side default parameter prologues, including managed-heap string
   defaults.
+- Added compiler lowering for lambda expressions into nested `CodeObject`
+  closures with explicit capture registers.
+- Added VM closure values, closure-call dispatch, and capture initialization
+  before lambda parameters, preserving captures after the outer function returns.
+- Added compiler and VM coverage proving captured closures and immediate lambda
+  calls execute from source.
 
 ## Next
 

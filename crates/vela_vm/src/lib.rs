@@ -35,6 +35,7 @@ pub enum Value {
         variant: String,
         fields: BTreeMap<String, Value>,
     },
+    Closure(ClosureValue),
     HeapRef(GcRef),
     HostRef(HostRef),
     Iterator(IteratorState),
@@ -53,6 +54,10 @@ impl Value {
                     .values()
                     .for_each(|value| value.trace_heap_refs(refs));
             }
+            Self::Closure(closure) => closure
+                .captures
+                .iter()
+                .for_each(|value| value.trace_heap_refs(refs)),
             Self::Iterator(iterator) => iterator.trace_heap_refs(refs),
             Self::Null
             | Self::Missing
@@ -63,6 +68,19 @@ impl Value {
             | Self::HostRef(_) => {}
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ClosureValue {
+    code: Arc<CodeObject>,
+    captures: Vec<Value>,
+}
+
+struct ExecutionCall<'a> {
+    code: &'a CodeObject,
+    program: Option<&'a Program>,
+    captures: &'a [Value],
+    args: &'a [Value],
 }
 
 impl From<&Constant> for Value {
@@ -691,12 +709,32 @@ impl Vm {
         args: &[Value],
         host: Option<&mut HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<Value> {
+        self.execute_call(
+            ExecutionCall {
+                code,
+                program,
+                captures: &[],
+                args,
+            },
+            host,
+            heap,
+            budget,
+        )
+    }
+
+    fn execute_call(
+        &self,
+        call: ExecutionCall<'_>,
+        host: Option<&mut HostExecution<'_>>,
+        heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         if let Some(budget) = &mut budget {
             budget.enter_call()?;
         }
-        let result = self.execute_body(code, program, args, host, heap, budget.as_deref_mut());
+        let result = self.execute_body(call, host, heap, budget.as_deref_mut());
         if let Some(budget) = budget {
             budget.exit_call();
         }
@@ -705,13 +743,22 @@ impl Vm {
 
     fn execute_body(
         &self,
-        code: &CodeObject,
-        program: Option<&Program>,
-        args: &[Value],
+        call: ExecutionCall<'_>,
         mut host: Option<&mut HostExecution<'_>>,
         mut heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
+        let code = call.code;
+        let program = call.program;
+        let captures = call.captures;
+        let args = call.args;
+        if captures.len() != usize::from(code.capture_count) {
+            return Err(VmError::new(VmErrorKind::ArityMismatch {
+                name: code.name.clone(),
+                expected: usize::from(code.capture_count),
+                actual: captures.len(),
+            }));
+        }
         if args.len() > code.params.len() {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
                 name: code.name.clone(),
@@ -721,23 +768,38 @@ impl Vm {
         }
 
         let mut frame = CallFrame::new(code.register_count);
-        for (index, arg) in args.iter().enumerate() {
+        for (index, capture) in captures.iter().enumerate() {
             frame.write(
                 Register(u16::try_from(index).map_err(|_| {
                     VmError::new(VmErrorKind::RegisterOutOfBounds {
                         register: Register(u16::MAX),
                     })
                 })?),
+                capture.clone(),
+            )?;
+        }
+        let param_offset = usize::from(code.capture_count);
+        for (index, arg) in args.iter().enumerate() {
+            frame.write(
+                Register(
+                    u16::try_from(param_offset.saturating_add(index)).map_err(|_| {
+                        VmError::new(VmErrorKind::RegisterOutOfBounds {
+                            register: Register(u16::MAX),
+                        })
+                    })?,
+                ),
                 arg.clone(),
             )?;
         }
         for index in args.len()..code.params.len() {
             frame.write(
-                Register(u16::try_from(index).map_err(|_| {
-                    VmError::new(VmErrorKind::RegisterOutOfBounds {
-                        register: Register(u16::MAX),
-                    })
-                })?),
+                Register(
+                    u16::try_from(param_offset.saturating_add(index)).map_err(|_| {
+                        VmError::new(VmErrorKind::RegisterOutOfBounds {
+                            register: Register(u16::MAX),
+                        })
+                    })?,
+                ),
                 Value::Missing,
             )?;
         }
@@ -747,11 +809,13 @@ impl Vm {
             .filter(|arg| !matches!(arg, Value::Missing))
             .count();
         for (index, has_default) in defaults.iter().enumerate() {
-            let register = Register(u16::try_from(index).map_err(|_| {
-                VmError::new(VmErrorKind::RegisterOutOfBounds {
-                    register: Register(u16::MAX),
-                })
-            })?);
+            let register = Register(u16::try_from(param_offset.saturating_add(index)).map_err(
+                |_| {
+                    VmError::new(VmErrorKind::RegisterOutOfBounds {
+                        register: Register(u16::MAX),
+                    })
+                },
+            )?);
             if !has_default && matches!(frame.read(register)?, Value::Missing) {
                 return Err(VmError::new(VmErrorKind::ArityMismatch {
                     name: code.name.clone(),
@@ -937,6 +1001,51 @@ impl Vm {
                         function,
                         Some(program),
                         &values,
+                        host.as_deref_mut(),
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    );
+                    if let (Some(heap), Some(protected_root_len)) =
+                        (heap.as_deref_mut(), protected_root_len)
+                    {
+                        heap.truncate_protected_roots(protected_root_len);
+                    }
+                    let result = result?;
+                    frame.write(*dst, result)?;
+                }
+                InstructionKind::MakeClosure {
+                    dst,
+                    code,
+                    captures,
+                } => {
+                    let captures = captures
+                        .iter()
+                        .map(|register| frame.read(*register).cloned())
+                        .collect::<VmResult<Vec<_>>>()?;
+                    frame.write(
+                        *dst,
+                        Value::Closure(ClosureValue {
+                            code: Arc::new((**code).clone()),
+                            captures,
+                        }),
+                    )?;
+                }
+                InstructionKind::CallClosure { dst, callee, args } => {
+                    let closure = expect_closure(frame.read(*callee)?, "closure call")?;
+                    let values = args
+                        .iter()
+                        .map(|register| frame.read(*register).cloned())
+                        .collect::<VmResult<Vec<_>>>()?;
+                    let protected_root_len = heap
+                        .as_deref_mut()
+                        .map(|heap| heap.push_protected_roots(frame.heap_roots()));
+                    let result = self.execute_call(
+                        ExecutionCall {
+                            code: &closure.code,
+                            program,
+                            captures: &closure.captures,
+                            args: &values,
+                        },
                         host.as_deref_mut(),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
@@ -1356,9 +1465,11 @@ pub(crate) fn value_to_heap_slot(
             };
             Ok(HeapSlot::Ref(reference))
         }
-        Value::Iterator(_) | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "heap slot",
-        })),
+        Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
+            Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "heap slot",
+            }))
+        }
     }
 }
 
@@ -1416,6 +1527,17 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
                 enum_name: enum_name.clone(),
                 variant: variant.clone(),
                 fields,
+            }),
+        Value::Closure(closure) => closure
+            .captures
+            .iter()
+            .map(|capture| materialize_value(capture, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|captures| {
+                Value::Closure(ClosureValue {
+                    code: Arc::clone(&closure.code),
+                    captures,
+                })
             }),
         Value::Null
         | Value::Bool(_)
@@ -1507,6 +1629,7 @@ fn store_value_in_heap_if_needed(
         | Value::Float(_)
         | Value::HeapRef(_)
         | Value::HostRef(_)
+        | Value::Closure(_)
         | Value::Iterator(_) => Ok(value),
         Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "missing value",
@@ -1692,6 +1815,13 @@ fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> 
     }
 }
 
+fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureValue> {
+    match value {
+        Value::Closure(closure) => Ok(closure.clone()),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    }
+}
+
 fn value_from_host(value: HostValue) -> Value {
     match value {
         HostValue::Null => Value::Null,
@@ -1721,6 +1851,7 @@ fn value_to_host(
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Closure(_)
         | Value::Iterator(_)
         | Value::Missing
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
@@ -1737,7 +1868,7 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::ReflectValue::Record(values))
         }
-        Value::Array(_) | Value::Enum { .. } | Value::Missing => {
+        Value::Array(_) | Value::Enum { .. } | Value::Closure(_) | Value::Missing => {
             Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
         Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
@@ -1774,6 +1905,7 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Closure(_)
         | Value::HeapRef(_)
         | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
@@ -2688,6 +2820,47 @@ fn main(value = 7) {
         .expect("compile entrypoint default");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
+    fn runs_compiled_lambdas_with_captures_after_outer_return() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn make_adder(base) {
+    return |value| value + base;
+}
+
+fn main() {
+    let add = make_adder(10);
+    return add(5);
+}
+"#,
+        )
+        .expect("compile captured lambda");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(15))
+        );
+    }
+
+    #[test]
+    fn runs_immediate_lambda_calls_and_block_returns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let direct = (|value| value + 1)(4);
+    let block = |value| { return value + direct; };
+    return block(6);
+}
+"#,
+            "main",
+        )
+        .expect("compile immediate lambda call");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(11)));
     }
 
     #[test]

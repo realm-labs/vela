@@ -32,6 +32,7 @@ pub struct CodeObject {
     pub name: String,
     pub params: Vec<String>,
     pub param_defaults: Vec<bool>,
+    pub capture_count: u16,
     pub register_count: u16,
     pub constants: Vec<Constant>,
     pub instructions: Vec<Instruction>,
@@ -44,6 +45,7 @@ impl CodeObject {
             name: name.into(),
             params: Vec::new(),
             param_defaults: Vec::new(),
+            capture_count: 0,
             register_count,
             constants: Vec::new(),
             instructions: Vec::new(),
@@ -60,6 +62,12 @@ impl CodeObject {
     #[must_use]
     pub fn with_param_defaults(mut self, defaults: Vec<bool>) -> Self {
         self.param_defaults = defaults;
+        self
+    }
+
+    #[must_use]
+    pub fn with_capture_count(mut self, capture_count: u16) -> Self {
+        self.capture_count = capture_count;
         self
     }
 
@@ -204,6 +212,16 @@ pub enum InstructionKind {
         dst: Register,
         name: String,
         args: Vec<CallArgument>,
+    },
+    MakeClosure {
+        dst: Register,
+        code: Box<CodeObject>,
+        captures: Vec<Register>,
+    },
+    CallClosure {
+        dst: Register,
+        callee: Register,
+        args: Vec<Register>,
     },
     MakeArray {
         dst: Register,

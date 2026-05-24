@@ -1310,3 +1310,27 @@ Consequences:
 - Entrypoints and script-to-script calls can omit defaulted parameters.
 - Named arguments are supported for resolved script functions; host/native
   named argument support remains a later signature-aware bridge/stdlib task.
+
+## 2026-05-24: Closures Capture Snapshot Values
+
+Status: Accepted
+
+Context:
+M9 requires lambda expressions and closures while preserving the host boundary
+rules: scripts cannot hold real Rust references, host mutation must enter
+`PatchTx`, and the first interpreter is not a moving-GC or JIT runtime.
+
+Decision:
+The compiler emits `MakeClosure` with a nested `CodeObject` and explicit capture
+registers discovered from HIR local binding facts. The VM stores closures as
+inline values containing an `Arc<CodeObject>` plus captured `Value` snapshots.
+Closure calls initialize capture registers first, then lambda parameters, and
+execute through the same budgeted VM call path as script functions.
+
+Consequences:
+- Captured script values remain available after the outer frame returns.
+- Closures do not expose Rust references or bypass `PatchTx` for host mutation.
+- Captures are snapshot values in this MVP; shared mutable upvalue cells, if
+  needed, are a later runtime feature rather than implicit reference capture.
+- Closure objects can later move to heap-backed storage without changing source
+  lambda syntax.

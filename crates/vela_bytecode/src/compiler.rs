@@ -1,6 +1,7 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
 mod control_flow;
+mod lambdas;
 mod methods;
 mod operators;
 mod patterns;
@@ -25,6 +26,7 @@ use crate::{
     Register,
 };
 use control_flow::LoopContext;
+use lambdas::{LambdaCapture, collect_lambda_captures};
 use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
 use patterns::{
@@ -541,7 +543,7 @@ struct Compiler<'ast> {
     hir_locals: HashMap<HirLocalId, Register>,
     bindings: &'ast BindingMap,
     next_register: u16,
-    params: &'ast [Param],
+    param_defaults: Vec<Option<Expr>>,
     body: &'ast Block,
     facts: CompilerFacts,
     loop_stack: Vec<LoopContext>,
@@ -591,8 +593,76 @@ impl<'ast> Compiler<'ast> {
             hir_locals,
             bindings,
             next_register: param_count,
-            params: &function.params,
+            param_defaults: function
+                .params
+                .iter()
+                .map(|param| param.default_value.clone())
+                .collect(),
             body: &function.body,
+            facts,
+            loop_stack: Vec::new(),
+        })
+    }
+
+    fn new_lambda(
+        name: String,
+        lambda_span: Span,
+        params: &[Param],
+        fallback_body: &'ast Block,
+        captures: &[LambdaCapture],
+        bindings: &'ast BindingMap,
+        facts: CompilerFacts,
+    ) -> CompileResult<Self> {
+        let capture_count = u16::try_from(captures.len())
+            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
+        let param_count = u16::try_from(params.len())
+            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
+        let param_names = params
+            .iter()
+            .map(|param| param.name.clone())
+            .collect::<Vec<_>>();
+        let param_default_flags = vec![false; params.len()];
+        let mut locals = HashMap::new();
+        let mut hir_locals = HashMap::new();
+
+        for (index, capture) in captures.iter().enumerate() {
+            let register = Register(
+                u16::try_from(index)
+                    .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+            );
+            locals.insert(capture.name.clone(), register);
+            hir_locals.insert(capture.local, register);
+        }
+        for (index, param) in params.iter().enumerate() {
+            let register = Register(
+                capture_count
+                    .checked_add(
+                        u16::try_from(index)
+                            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+                    )
+                    .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+            );
+            locals.insert(param.name.clone(), register);
+            if let Some(local) =
+                bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, lambda_span)
+            {
+                hir_locals.insert(local, register);
+            }
+        }
+
+        Ok(Self {
+            code: CodeObject::new(name, 0)
+                .with_params(param_names)
+                .with_param_defaults(param_default_flags)
+                .with_capture_count(capture_count),
+            locals,
+            hir_locals,
+            bindings,
+            next_register: capture_count
+                .checked_add(param_count)
+                .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+            param_defaults: vec![None; params.len()],
+            body: fallback_body,
             facts,
             loop_stack: Vec::new(),
         })
@@ -610,13 +680,18 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_param_defaults(&mut self) -> CompileResult<()> {
-        for index in 0..self.params.len() {
-            let Some(default_value) = self.params[index].default_value.clone() else {
+        for index in 0..self.param_defaults.len() {
+            let Some(default_value) = self.param_defaults[index].clone() else {
                 continue;
             };
             let param = Register(
-                u16::try_from(index)
-                    .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+                self.code
+                    .capture_count
+                    .checked_add(
+                        u16::try_from(index)
+                            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+                    )
+                    .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
             let skip_default = self.emit_jump_if_not_missing(param);
             let value = self.compile_expr(&default_value)?;
@@ -767,12 +842,22 @@ impl<'ast> Compiler<'ast> {
                     return Ok(dst);
                 }
 
-                let fallback_name = callable_name(callee)?;
                 let dst = self.alloc_register()?;
                 if let Some((declaration, name)) = self.script_function_call(callee) {
                     let args = self.compile_script_call_args(declaration, args)?;
                     self.emit(InstructionKind::CallFunction { dst, name, args });
+                } else if self.local_callee(callee).is_some()
+                    || !matches!(callee.kind, ExprKind::Path(_))
+                {
+                    reject_named_args(args, "closure call")?;
+                    let callee = self.compile_expr(callee)?;
+                    let args = args
+                        .iter()
+                        .map(|arg| self.compile_expr(&arg.value))
+                        .collect::<CompileResult<Vec<_>>>()?;
+                    self.emit(InstructionKind::CallClosure { dst, callee, args });
                 } else {
+                    let fallback_name = callable_name(callee)?;
                     reject_named_args(args, "native call")?;
                     let arg_registers = args
                         .iter()
@@ -786,6 +871,7 @@ impl<'ast> Compiler<'ast> {
                 }
                 Ok(dst)
             }
+            ExprKind::Lambda { params, body } => self.compile_lambda(expr, params, body),
             ExprKind::Block(block) => {
                 let dst = self.alloc_register()?;
                 let returned = self.compile_block_value_to(block, dst)?;
@@ -853,11 +939,9 @@ impl<'ast> Compiler<'ast> {
                 }
             }
             ExprKind::Assign { .. } => self.compile_assignment(expr),
-            ExprKind::SelfValue | ExprKind::Try(_) | ExprKind::Lambda { .. } | ExprKind::Error => {
-                Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "expression",
-                )))
-            }
+            ExprKind::SelfValue | ExprKind::Try(_) | ExprKind::Error => Err(CompileError::new(
+                CompileErrorKind::UnsupportedSyntax("expression"),
+            )),
             ExprKind::Match(match_expr) => {
                 let dst = self.alloc_register()?;
                 let returned = self.compile_match_value_to(match_expr, dst)?;
@@ -939,6 +1023,55 @@ impl<'ast> Compiler<'ast> {
             .collect()
     }
 
+    fn compile_lambda(
+        &mut self,
+        lambda: &Expr,
+        params: &[Param],
+        body: &Expr,
+    ) -> CompileResult<Register> {
+        let captures = collect_lambda_captures(self.bindings, &self.hir_locals, body);
+        let capture_registers = captures
+            .iter()
+            .map(|capture| capture.register)
+            .collect::<Vec<_>>();
+        let code = Compiler::new_lambda(
+            format!("{}::<lambda@{}>", self.code.name, lambda.span.start),
+            lambda.span,
+            params,
+            self.body,
+            &captures,
+            self.bindings,
+            self.facts.clone(),
+        )?
+        .compile_lambda_body(body)?;
+        let dst = self.alloc_register()?;
+        self.emit(InstructionKind::MakeClosure {
+            dst,
+            code: Box::new(code),
+            captures: capture_registers,
+        });
+        Ok(dst)
+    }
+
+    fn compile_lambda_body(mut self, body: &Expr) -> CompileResult<CodeObject> {
+        self.compile_param_defaults()?;
+        match &body.kind {
+            ExprKind::Block(block) => {
+                let dst = self.alloc_register()?;
+                let returned = self.compile_block_value_to(block, dst)?;
+                if !returned {
+                    self.emit(InstructionKind::Return { src: dst });
+                }
+            }
+            _ => {
+                let value = self.compile_expr(body)?;
+                self.emit(InstructionKind::Return { src: value });
+            }
+        }
+        self.code.register_count = self.next_register;
+        Ok(self.code)
+    }
+
     fn tuple_enum_constructor_call(&self, callee: &Expr) -> Option<(String, String)> {
         let ExprKind::Path(path) = &callee.kind else {
             return None;
@@ -959,6 +1092,14 @@ impl<'ast> Compiler<'ast> {
             .get(declaration)
             .cloned()
             .map(|name| (*declaration, name))
+    }
+
+    fn local_callee(&self, callee: &Expr) -> Option<HirLocalId> {
+        let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(callee.span)
+        else {
+            return None;
+        };
+        Some(*local)
     }
 
     fn type_symbol_at_span(&self, span: Span) -> Option<String> {
@@ -2163,6 +2304,37 @@ fn main() {
     }
 
     #[test]
+    fn compiler_lowers_lambdas_with_captures() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn make_adder(base) {
+    return |value| value + base;
+}
+
+fn main() {
+    let add = make_adder(10);
+    return add(5);
+}
+"#,
+        )
+        .expect("capturing lambda should compile");
+        let make_adder = program.function("make_adder").expect("make_adder function");
+        let main = program.function("main").expect("main function");
+
+        assert!(make_adder.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::MakeClosure { code, captures, .. }
+                if code.capture_count == 1 && code.params == ["value"] && captures.len() == 1
+        )));
+        assert!(
+            main.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::CallClosure { .. }))
+        );
+    }
+
+    #[test]
     fn compiler_uses_hir_declarations_for_literal_const_reads() {
         let code = compile_function_source(
             SourceId::new(1),
@@ -2393,10 +2565,12 @@ fn main() {
         )
         .expect("shadowed callee name should compile through HIR binding facts");
 
-        assert!(code.instructions.iter().any(|instruction| matches!(
-            &instruction.kind,
-            InstructionKind::CallNative { name, .. } if name == "helper"
-        )));
+        assert!(
+            code.instructions.iter().any(|instruction| matches!(
+                &instruction.kind,
+                InstructionKind::CallClosure { .. }
+            ))
+        );
         assert!(!code.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
             InstructionKind::CallFunction { name, .. } if name == "helper"
