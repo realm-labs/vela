@@ -3,6 +3,7 @@
 mod control_flow;
 mod methods;
 mod operators;
+mod value_flow;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
@@ -24,6 +25,7 @@ use crate::{
 use control_flow::LoopContext;
 use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
+use value_flow::{BlockValue, block_value};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompileError {
@@ -694,13 +696,14 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::Block(block) => {
-                let returned = self.compile_statements(&block.statements)?;
+                let dst = self.alloc_register()?;
+                let returned = self.compile_block_value_to(block, dst)?;
                 if returned {
                     Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "return inside block expression",
                     )))
                 } else {
-                    self.emit_constant(Constant::Null)
+                    Ok(dst)
                 }
             }
             ExprKind::Array(items) => {
@@ -748,13 +751,14 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::If(if_expr) => {
-                let returned = self.compile_if(if_expr)?;
+                let dst = self.alloc_register()?;
+                let returned = self.compile_if_value_to(if_expr, dst)?;
                 if returned {
                     Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "returning if expression",
                     )))
                 } else {
-                    self.emit_constant(Constant::Null)
+                    Ok(dst)
                 }
             }
             ExprKind::Assign { .. } => self.compile_assignment(expr),
@@ -1172,6 +1176,32 @@ impl<'ast> Compiler<'ast> {
         Ok(dst)
     }
 
+    fn compile_block_value_to(&mut self, block: &Block, dst: Register) -> CompileResult<bool> {
+        match block_value(block) {
+            BlockValue::Empty => {
+                self.emit_constant_to(dst, Constant::Null);
+                Ok(false)
+            }
+            BlockValue::TailExpr { prefix, expr } => {
+                for stmt in prefix {
+                    if self.compile_statement(stmt)? {
+                        return Ok(true);
+                    }
+                }
+                let value = self.compile_expr(expr)?;
+                self.emit(InstructionKind::Move { dst, src: value });
+                Ok(false)
+            }
+            BlockValue::Statements(statements) => {
+                let returned = self.compile_statements(statements)?;
+                if !returned {
+                    self.emit_constant_to(dst, Constant::Null);
+                }
+                Ok(returned)
+            }
+        }
+    }
+
     fn compile_if(&mut self, if_expr: &IfExpr) -> CompileResult<bool> {
         let condition = self.compile_expr(&if_expr.condition)?;
         let jump_to_else = self.emit_jump_if_false(condition);
@@ -1189,6 +1219,37 @@ impl<'ast> Compiler<'ast> {
             Some(ElseBranch::Block(block)) => self.compile_statements(&block.statements)?,
             Some(ElseBranch::If(if_expr)) => self.compile_if(if_expr)?,
             None => false,
+        };
+
+        if let Some(jump_to_end) = jump_to_end {
+            self.patch_jump(jump_to_end, self.current_offset())?;
+        }
+
+        Ok(then_returned && else_returned)
+    }
+
+    fn compile_if_value_to(&mut self, if_expr: &IfExpr, dst: Register) -> CompileResult<bool> {
+        let Some(else_branch) = &if_expr.else_branch else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "if expression without else",
+            )));
+        };
+
+        let condition = self.compile_expr(&if_expr.condition)?;
+        let jump_to_else = self.emit_jump_if_false(condition);
+
+        let then_returned = self.compile_block_value_to(&if_expr.then_branch, dst)?;
+        let jump_to_end = if then_returned {
+            None
+        } else {
+            Some(self.emit_jump())
+        };
+
+        self.patch_jump(jump_to_else, self.current_offset())?;
+
+        let else_returned = match else_branch {
+            ElseBranch::Block(block) => self.compile_block_value_to(block, dst)?,
+            ElseBranch::If(if_expr) => self.compile_if_value_to(if_expr, dst)?,
         };
 
         if let Some(jump_to_end) = jump_to_end {
@@ -1332,7 +1393,11 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn emit_bool_constant_to(&mut self, dst: Register, value: bool) {
-        let constant = self.code.push_constant(Constant::Bool(value));
+        self.emit_constant_to(dst, Constant::Bool(value));
+    }
+
+    fn emit_constant_to(&mut self, dst: Register, value: Constant) {
+        let constant = self.code.push_constant(value);
         self.emit(InstructionKind::LoadConst { dst, constant });
     }
 
@@ -2261,6 +2326,61 @@ fn main() {
             instruction.kind,
             InstructionKind::CallNative { ref name, .. } if name == "fail"
         )));
+    }
+
+    #[test]
+    fn compiler_lowers_block_and_if_expression_values() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = {
+        let base = 2;
+        base + 3;
+    };
+    return if value > 4 {
+        value;
+    } else {
+        0;
+    };
+}
+"#,
+            "main",
+        )
+        .expect("block and if expression values should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::JumpIfFalse { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Move { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_if_expression_without_else() {
+        let error = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = if true {
+        1;
+    };
+    return value;
+}
+"#,
+            "main",
+        )
+        .expect_err("if expression without else should be rejected");
+
+        assert_eq!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax("if expression without else")
+        );
     }
 
     #[test]

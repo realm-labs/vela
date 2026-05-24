@@ -402,6 +402,14 @@ to the later language constructs that introduce loops and closures.
   `player.grant_exp(20)` into `CallHostMethod` bytecode.
 - Added VM coverage proving source-level host method calls record `PatchTx`
   method-call patches and apply them only at the host safe point.
+- Added compiler lowering for block expression values using the final
+  expression statement as the block value, falling back to `null` for empty or
+  statement-only blocks.
+- Added compiler lowering for `if` expression values by merging branch results
+  into a stable destination register, with explicit diagnostics when an
+  expression-valued `if` omits `else`.
+- Added compiler and VM coverage proving block and `if` expression values
+  compile and execute from source.
 
 ## Next
 

@@ -2235,6 +2235,31 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_block_and_if_expression_values() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = {
+        let base = 2;
+        base + 3;
+    };
+    let selected = if value > 4 {
+        value;
+    } else {
+        0;
+    };
+    return selected;
+}
+"#,
+            "main",
+        )
+        .expect("compile block and if expression values");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(5)));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_for_in_source() {
         let program = compile_program_source(
             SourceId::new(1),

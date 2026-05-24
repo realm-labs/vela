@@ -1150,3 +1150,29 @@ Consequences:
 - Rust hosts control which source method names lower to host effects.
 - Nested host-path method calls and script/stdlib method dispatch remain
   separate follow-up slices.
+
+## 2026-05-24: Block And If Values Reuse Branch Register Merging
+
+Status: Accepted
+
+Context:
+M9 requires block, `if`, and `match` expression values. The VM already has
+register moves, constants, and jumps, so the first executable slice can be
+implemented in bytecode lowering without adding new VM instructions.
+
+Decision:
+The compiler treats a block expression's final expression statement as the
+block value and uses `null` for empty or statement-only blocks. `if` expressions
+allocate one destination register and compile each non-returning branch to move
+its value into that destination before jumping to the common end. Statement
+`if` syntax can still omit `else`, but expression-valued `if` requires `else`
+so every non-returning path produces a value.
+
+Consequences:
+- Source such as `let x = { let base = 2; base + 3; };` and
+  `let y = if cond { x; } else { 0; };` now compiles and runs.
+- The VM register model remains unchanged.
+- The syntax parser still does not preserve expression-statement terminators,
+  so this first slice treats the final expression statement as a value even if
+  the source used a semicolon. A later syntax/HIR refinement can preserve
+  terminator intent without changing the VM lowering model.
