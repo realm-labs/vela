@@ -132,12 +132,37 @@ pub enum InstructionKind {
         lhs: Register,
         rhs: Register,
     },
+    Rem {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
     Equal {
         dst: Register,
         lhs: Register,
         rhs: Register,
     },
+    NotEqual {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
     Less {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    LessEqual {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    Greater {
+        dst: Register,
+        lhs: Register,
+        rhs: Register,
+    },
+    GreaterEqual {
         dst: Register,
         lhs: Register,
         rhs: Register,

@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-M2: Minimal Bytecode VM Loop.
+M3: HostRef And PatchTx.
 
 ## Completed
 
@@ -59,8 +59,13 @@ M2: Minimal Bytecode VM Loop.
 - Added compiler lowering for `if/else` statement branches using
   `JumpIfFalse`/`Jump` bytecode patching, with compiled-source tests for both
   then and else return paths.
+- Added bytecode, compiler lowering, and VM execution for remainder and the
+  remaining comparison operators used by M2 (`!=`, `<=`, `>`, `>=`), with a
+  compiled-source operator test.
 
 ## Next
 
-- Finish M2 comparison/operator coverage and decide the next boundary between
-  M2 completion and starting M3 host-state bytecode.
+- Start M3 with a `vela_host` crate containing `HostRef`, `HostPath`,
+  `PathSegment`, `PatchOp`, and `PatchTx` overlay semantics.
+- Add tests for `Set`, `Add`, read-after-write overlay behavior, and stale
+  host generation rejection.

@@ -291,19 +291,14 @@ impl<'ast> Compiler<'ast> {
             BinaryOp::Sub => InstructionKind::Sub { dst, lhs, rhs },
             BinaryOp::Mul => InstructionKind::Mul { dst, lhs, rhs },
             BinaryOp::Div => InstructionKind::Div { dst, lhs, rhs },
+            BinaryOp::Rem => InstructionKind::Rem { dst, lhs, rhs },
             BinaryOp::Equal => InstructionKind::Equal { dst, lhs, rhs },
+            BinaryOp::NotEqual => InstructionKind::NotEqual { dst, lhs, rhs },
             BinaryOp::Less => InstructionKind::Less { dst, lhs, rhs },
-            BinaryOp::Greater => InstructionKind::Less {
-                dst,
-                lhs: rhs,
-                rhs: lhs,
-            },
-            BinaryOp::Or
-            | BinaryOp::And
-            | BinaryOp::NotEqual
-            | BinaryOp::LessEqual
-            | BinaryOp::GreaterEqual
-            | BinaryOp::Rem => {
+            BinaryOp::LessEqual => InstructionKind::LessEqual { dst, lhs, rhs },
+            BinaryOp::Greater => InstructionKind::Greater { dst, lhs, rhs },
+            BinaryOp::GreaterEqual => InstructionKind::GreaterEqual { dst, lhs, rhs },
+            BinaryOp::Or | BinaryOp::And => {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "binary operator",
                 )));

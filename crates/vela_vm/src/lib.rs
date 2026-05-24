@@ -176,12 +176,50 @@ impl Vm {
                     let value = div_numeric(frame.read(*lhs)?, frame.read(*rhs)?)?;
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::Rem { dst, lhs, rhs } => {
+                    let value = rem_numeric(frame.read(*lhs)?, frame.read(*rhs)?)?;
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::Equal { dst, lhs, rhs } => {
                     let value = Value::Bool(frame.read(*lhs)? == frame.read(*rhs)?);
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::NotEqual { dst, lhs, rhs } => {
+                    let value = Value::Bool(frame.read(*lhs)? != frame.read(*rhs)?);
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::Less { dst, lhs, rhs } => {
-                    let value = compare_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "less")?;
+                    let value =
+                        compare_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "less", |a, b| {
+                            a < b
+                        })?;
+                    frame.write(*dst, Value::Bool(value))?;
+                }
+                InstructionKind::LessEqual { dst, lhs, rhs } => {
+                    let value = compare_numeric(
+                        frame.read(*lhs)?,
+                        frame.read(*rhs)?,
+                        "less_equal",
+                        |a, b| a <= b,
+                    )?;
+                    frame.write(*dst, Value::Bool(value))?;
+                }
+                InstructionKind::Greater { dst, lhs, rhs } => {
+                    let value = compare_numeric(
+                        frame.read(*lhs)?,
+                        frame.read(*rhs)?,
+                        "greater",
+                        |a, b| a > b,
+                    )?;
+                    frame.write(*dst, Value::Bool(value))?;
+                }
+                InstructionKind::GreaterEqual { dst, lhs, rhs } => {
+                    let value = compare_numeric(
+                        frame.read(*lhs)?,
+                        frame.read(*rhs)?,
+                        "greater_equal",
+                        |a, b| a >= b,
+                    )?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::JumpIfFalse { condition, target } => {
@@ -309,10 +347,27 @@ fn div_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     }
 }
 
-fn compare_numeric(lhs: &Value, rhs: &Value, operation: &'static str) -> VmResult<bool> {
+fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs < rhs),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs < rhs),
+        (Value::Int(_), Value::Int(0)) => Err(VmError::new(VmErrorKind::DivisionByZero)),
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs % rhs)),
+        (Value::Float(_), Value::Float(rhs)) if *rhs == 0.0 => {
+            Err(VmError::new(VmErrorKind::DivisionByZero))
+        }
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs % rhs)),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation: "rem" })),
+    }
+}
+
+fn compare_numeric(
+    lhs: &Value,
+    rhs: &Value,
+    operation: &'static str,
+    compare: impl FnOnce(f64, f64) -> bool,
+) -> VmResult<bool> {
+    match (lhs, rhs) {
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(compare(*lhs as f64, *rhs as f64)),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(compare(*lhs, *rhs)),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -573,5 +628,30 @@ fn main() {
         .expect("compile if source");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    }
+
+    #[test]
+    fn runs_compiled_comparison_and_remainder_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    if 10 % 4 == 2 {
+        if 3 >= 3 {
+            if 2 <= 5 {
+                if 5 != 6 {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+"#,
+            "main",
+        )
+        .expect("compile operator source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
     }
 }
