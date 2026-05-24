@@ -338,3 +338,28 @@ Consequences:
 - Memory-budget enforcement now covers VM-created script heap objects.
 - Native calls, reflection, and host conversion still need heap-aware value
   resolution before heap execution can become the default path.
+
+## 2026-05-24: Heap Mode Materializes Values At Native Boundaries
+
+Status: Accepted
+
+Context:
+Heap-backed bytecode now produces `Value::HeapRef` for script strings and
+aggregates. Existing native functions and host patch conversion code expect
+ordinary `Value` or `HostValue` inputs, and should not need to know about
+temporary migration handles.
+
+Decision:
+When heap-backed execution calls a native or host-native function, materialize
+heap refs into inline `Value` shapes for the call. If the native returns a
+string or aggregate while heap execution is active, store that result back in
+`ScriptHeap` and return a `HeapRef`. Host `HostValue` conversion resolves
+heap-backed strings for host field writes and method-call patch arguments.
+
+Consequences:
+- Existing native functions can run under heap-backed bytecode without direct
+  heap access.
+- Host patches can record copied string values from heap-backed scripts without
+  exposing Rust references.
+- Reflection still needs its own heap-aware resolution path before heap-backed
+  execution can be made the default.

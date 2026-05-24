@@ -200,10 +200,16 @@ script heap are implemented; VM value migration and GC pacing remain.
 - Added VM tests proving heap execution allocates compiled array/string values,
   reads heap-backed record fields, matches heap-backed enum variants, and
   rejects bytecode allocations that exceed the memory budget.
+- Added heap-aware native call argument materialization so native functions see
+  ordinary `Value` shapes when called from heap-backed bytecode.
+- Added heap-aware native return storage for string and aggregate results.
+- Added heap-aware host `HostValue` conversion for heap-backed strings used in
+  host field writes and host method call arguments.
+- Added VM tests proving heap-backed native args/results and host string patch
+  conversions work under memory budgeting.
 
 ## Next
 
-- Move reflection/native/host conversion paths toward heap-aware value
-  resolution.
+- Move reflection helpers toward heap-aware value resolution.
 - Wire safe-point GC execution to heap-backed bytecode execution using active
   call-frame roots.

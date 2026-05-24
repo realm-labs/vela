@@ -479,6 +479,16 @@ impl Vm {
         self.execute(code, None, &[], Some(host), None, Some(budget))
     }
 
+    pub fn run_with_host_heap_and_budget(
+        &self,
+        code: &CodeObject,
+        host: &mut HostExecution<'_>,
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        self.execute(code, None, &[], Some(host), Some(heap), Some(budget))
+    }
+
     pub fn run_program_with_host(
         &self,
         program: &Program,
@@ -508,6 +518,30 @@ impl Vm {
             })
         })?;
         self.execute(code, Some(program), args, Some(host), None, Some(budget))
+    }
+
+    pub fn run_program_with_host_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute(
+            code,
+            Some(program),
+            args,
+            Some(host),
+            Some(heap),
+            Some(budget),
+        )
     }
 
     fn execute(
@@ -664,6 +698,7 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
+                    let values = materialize_values(&values, heap.as_deref())?;
                     let result = if let Some(native) = self.natives.get(name) {
                         native(&values)?
                     } else if let Some(native) = self.host_natives.get(name) {
@@ -682,6 +717,11 @@ impl Vm {
                         budget.check_patch_count(host.tx.patches().len())?;
                     }
                     if let Some(dst) = dst {
+                        let result = store_value_in_heap_if_needed(
+                            result,
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                        )?;
                         frame.write(*dst, result)?;
                     }
                 }
@@ -821,7 +861,8 @@ impl Vm {
                 }
                 InstructionKind::SetHostField { root, field, src } => {
                     let root = expect_host_ref(frame.read(*root)?, "set_host_field")?;
-                    let value = value_to_host(frame.read(*src)?, "set_host_field")?;
+                    let value =
+                        value_to_host(frame.read(*src)?, "set_host_field", heap.as_deref())?;
                     let path = HostPath::new(root).field(*field);
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {
@@ -835,7 +876,8 @@ impl Vm {
                 }
                 InstructionKind::AddHostField { root, field, rhs } => {
                     let root = expect_host_ref(frame.read(*root)?, "add_host_field")?;
-                    let value = value_to_host(frame.read(*rhs)?, "add_host_field")?;
+                    let value =
+                        value_to_host(frame.read(*rhs)?, "add_host_field", heap.as_deref())?;
                     let path = HostPath::new(root).field(*field);
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {
@@ -859,7 +901,13 @@ impl Vm {
                     let path = HostPath::new(root);
                     let values = args
                         .iter()
-                        .map(|register| value_to_host(frame.read(*register)?, "call_host_method"))
+                        .map(|register| {
+                            value_to_host(
+                                frame.read(*register)?,
+                                "call_host_method",
+                                heap.as_deref(),
+                            )
+                        })
                         .collect::<VmResult<Vec<_>>>()?;
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {
@@ -1062,6 +1110,134 @@ fn value_from_heap_slot(slot: &HeapSlot) -> Value {
     }
 }
 
+fn materialize_values(values: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<Vec<Value>> {
+    values
+        .iter()
+        .map(|value| materialize_value(value, heap))
+        .collect()
+}
+
+fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
+    match value {
+        Value::HeapRef(reference) => {
+            let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "heap ref",
+                }));
+            };
+            materialize_heap_value(heap_value, heap)
+        }
+        Value::Array(values) => Ok(Value::Array(materialize_values(values, heap)?)),
+        Value::Map(values) => values
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(Value::Map),
+        Value::Record { type_name, fields } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|fields| Value::Record {
+                type_name: type_name.clone(),
+                fields,
+            }),
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|fields| Value::Enum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields,
+            }),
+        Value::Null
+        | Value::Bool(_)
+        | Value::Int(_)
+        | Value::Float(_)
+        | Value::String(_)
+        | Value::HostRef(_) => Ok(value.clone()),
+    }
+}
+
+fn materialize_heap_value(value: &HeapValue, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
+    match value {
+        HeapValue::String(value) => Ok(Value::String(value.clone())),
+        HeapValue::Array(values) => values
+            .iter()
+            .map(|value| materialize_heap_slot(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(Value::Array),
+        HeapValue::Map(values) => values
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), materialize_heap_slot(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(Value::Map),
+        HeapValue::Record { type_name, fields } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), materialize_heap_slot(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|fields| Value::Record {
+                type_name: type_name.clone(),
+                fields,
+            }),
+        HeapValue::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), materialize_heap_slot(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|fields| Value::Enum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields,
+            }),
+        HeapValue::Set(values) => values
+            .iter()
+            .map(|value| materialize_heap_slot(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(Value::Array),
+    }
+}
+
+fn materialize_heap_slot(slot: &HeapSlot, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
+    match slot {
+        HeapSlot::Ref(reference) => materialize_value(&Value::HeapRef(*reference), heap),
+        _ => Ok(value_from_heap_slot(slot)),
+    }
+}
+
+fn store_value_in_heap_if_needed(
+    value: Value,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let Some(heap) = heap else {
+        return Ok(value);
+    };
+    match value {
+        Value::String(_)
+        | Value::Array(_)
+        | Value::Map(_)
+        | Value::Record { .. }
+        | Value::Enum { .. } => {
+            let slot = value_to_heap_slot(&value, heap, budget)?;
+            Ok(value_from_heap_slot(&slot))
+        }
+        Value::Null
+        | Value::Bool(_)
+        | Value::Int(_)
+        | Value::Float(_)
+        | Value::HeapRef(_)
+        | Value::HostRef(_) => Ok(value),
+    }
+}
+
 fn get_record_field_value(
     value: &Value,
     field: &str,
@@ -1226,18 +1402,25 @@ fn value_from_host(value: HostValue) -> Value {
     }
 }
 
-fn value_to_host(value: &Value, operation: &'static str) -> VmResult<HostValue> {
+fn value_to_host(
+    value: &Value,
+    operation: &'static str,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<HostValue> {
     match value {
         Value::Null => Ok(HostValue::Null),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
         Value::Int(value) => Ok(HostValue::Int(*value)),
         Value::Float(value) => Ok(HostValue::Float(*value)),
         Value::String(value) => Ok(HostValue::String(value.clone())),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
+            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        },
         Value::Array(_)
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
-        | Value::HeapRef(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -1257,7 +1440,7 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
         }
         Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
-            reflect::ReflectValue::Host(value_to_host(value, operation)?),
+            reflect::ReflectValue::Host(value_to_host(value, operation, None)?),
         ),
     }
 }
@@ -1574,6 +1757,36 @@ fn main() {
         .expect("compile native call source");
 
         assert_eq!(vm.run(&code), Ok(Value::Int(7)));
+    }
+
+    #[test]
+    fn heap_execution_materializes_native_args_and_stores_result() {
+        let mut vm = Vm::new();
+        vm.register_native("echo_label", |args| {
+            assert_eq!(args, [Value::String("compiled".into())]);
+            Ok(Value::String("native-result".into()))
+        });
+        let code = compile_function_source(
+            SourceId::new(1),
+            "fn main() { return echo_label(\"compiled\"); }",
+            "main",
+        )
+        .expect("compile native call source");
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = vm
+            .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
+            .expect("run heap native call");
+
+        let Value::HeapRef(result_ref) = result else {
+            panic!("expected heap-backed native result");
+        };
+        assert_eq!(
+            heap.get(result_ref),
+            Some(&HeapValue::String("native-result".into()))
+        );
     }
 
     #[test]
@@ -1996,6 +2209,54 @@ fn main() {
     }
 
     #[test]
+    fn heap_execution_converts_heap_string_for_host_field_write() {
+        let host_ref = player_ref(3);
+        let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+        let gold = code.push_constant(Constant::String("gold".into()));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+            root: Register(0),
+            field: level_field(),
+            src: Register(1),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(1),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
+        let mut tx = PatchTx::new();
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host_heap_and_budget(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+                &mut heap_execution,
+                &mut budget,
+            )
+        };
+
+        assert!(matches!(result, Ok(Value::HeapRef(_))));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::Set(HostValue::String("gold".into()))
+        );
+    }
+
+    #[test]
     fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
         let host_ref = player_ref(3);
         let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
@@ -2359,6 +2620,60 @@ fn main(player) {
                 method,
                 vec![HostValue::String("gold".into())]
             )]
+        );
+    }
+
+    #[test]
+    fn heap_execution_converts_heap_string_for_host_method_call() {
+        let host_ref = player_ref(3);
+        let method = HostMethodId::new(8);
+        let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+        let gold = code.push_constant(Constant::String("gold".into()));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: gold,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::CallHostMethod {
+            dst: Some(Register(2)),
+            root: Register(0),
+            method,
+            args: vec![Register(1)],
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        adapter.insert_method_return(method, HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution { heap: &mut heap };
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host_heap_and_budget(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+                &mut heap_execution,
+                &mut budget,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Null));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::CallHostMethod {
+                method,
+                args: vec![HostValue::String("gold".into())]
+            }
         );
     }
 
