@@ -11,6 +11,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vela_cli"
+version = "0.1.0"
+dependencies = [
+ "vela_bytecode",
+ "vela_common",
+ "vela_host",
+ "vela_vm",
+]
+
+[[package]]
 name = "vela_common"
 version = "0.1.0"
 

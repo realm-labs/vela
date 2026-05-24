@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-M6: Hot Reload First.
+M0-M6 runnable prototype loop complete. Next milestone: M7 GC.
 
 ## Completed
 
@@ -151,8 +151,11 @@ M6: Hot Reload First.
 - Added tests proving new calls enter new code, old version handles keep old
   code runnable, deleted parameters are rejected, and newly added helper
   functions are accepted.
+- Added the `vela_cli` crate and
+  `examples/game_server_demo/scripts/level_up.lang` as an executable demo path.
+- Verified the demo script runs through parser, bytecode compiler, VM host
+  execution, `PatchTx`, and safe-point host apply.
 
 ## Next
 
-- Add an executable demo path under `examples/game_server_demo` and validate it
-  with a script run.
+- Begin M7 GC planning and implementation when the next milestone starts.
