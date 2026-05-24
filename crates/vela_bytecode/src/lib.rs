@@ -365,7 +365,7 @@ pub enum InstructionKind {
     GetHostPath {
         dst: Register,
         root: Register,
-        fields: Vec<FieldId>,
+        segments: Vec<HostPathSegment>,
     },
     SetHostField {
         root: Register,
@@ -374,7 +374,7 @@ pub enum InstructionKind {
     },
     SetHostPath {
         root: Register,
-        fields: Vec<FieldId>,
+        segments: Vec<HostPathSegment>,
         src: Register,
     },
     AddHostField {
@@ -384,7 +384,7 @@ pub enum InstructionKind {
     },
     AddHostPath {
         root: Register,
-        fields: Vec<FieldId>,
+        segments: Vec<HostPathSegment>,
         rhs: Register,
     },
     CallHostMethod {
@@ -397,6 +397,12 @@ pub enum InstructionKind {
     Return {
         src: Register,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HostPathSegment {
+    Field(FieldId),
+    Value(Register),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

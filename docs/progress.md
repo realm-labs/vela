@@ -654,11 +654,16 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   operations. Configured paths such as `player.stats.level += 2` now compile
   to `AddHostPath`, record a nested `PatchTx` patch, and later reads observe
   the transaction overlay.
+- Host path bytecode now carries ordered static field segments and dynamic
+  bracket segments. Paths such as `player.inventory.items[item_id].count += 1`
+  compile to indexed/keyed `AddHostPath`, and runtime string segment values
+  become `HostPath::key` entries while integer values become `HostPath::index`
+  entries.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and deeper host path/proxy lowering beyond field-only method
-  receivers.
+  receiver facts and deeper host path/proxy lowering beyond field/index/key
+  receiver paths.
 
 ## Next
 
 - Continue M10 with broader non-literal receiver facts or deeper host
-  path/proxy lowering beyond field-only receiver paths.
+  path/proxy lowering beyond field/index/key receiver paths.

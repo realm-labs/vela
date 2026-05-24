@@ -2449,3 +2449,31 @@ Consequences:
 - Reads after nested writes use the existing `PatchTx` overlay semantics.
 - This does not yet add path proxy values, index/key/variant host path
   segments, or non-add RMW operations.
+
+## 2026-05-25: Host Path Bytecode Supports Dynamic Bracket Segments
+
+Status: Accepted
+
+Context:
+M11 requires paths like `player.inventory.items[item_id].count += 1`, which mix
+static host fields with dynamic bracket segments. The previous path bytecode
+only carried `FieldId` segments, so bracket syntax compiled through normal
+script indexing and could not target a single `HostPath`.
+
+Decision:
+Generalize `GetHostPath`, `SetHostPath`, and `AddHostPath` to carry ordered
+bytecode host path segments. Static dot segments remain `FieldId` values, and
+bracket segment expressions compile into registers. At runtime, integer
+segment values become `HostPath::index` entries and string segment values are
+interned into VM-local host path keys.
+
+Consequences:
+- Scripts can record nested patches for paths such as
+  `player.inventory.items[item_id].count` without exposing mutable host
+  references.
+- Existing direct field bytecode remains the one-segment fast path.
+- VM-local key interning is sufficient for path identity within one VM
+  execution; a host-owned key registry may be needed later for cross-runtime
+  persistence or human-readable diagnostics.
+- Variant-field path segments, `PathProxy` values, and non-add RMW operations
+  remain future M11 work.

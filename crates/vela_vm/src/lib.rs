@@ -13,6 +13,7 @@ mod set_methods;
 mod stdlib;
 mod try_propagation;
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
@@ -23,8 +24,10 @@ pub use ranges::RangeValue;
 use script_methods::{call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
-use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
-use vela_common::FieldId;
+use vela_bytecode::{
+    CallArgument, CodeObject, Constant, HostPathSegment, InstructionKind, Program, Register,
+};
+use vela_common::{FieldId, SymbolInterner};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
 };
@@ -333,6 +336,7 @@ pub struct Vm {
     natives: HashMap<String, NativeFunction>,
     host_natives: HashMap<String, HostNativeFunction>,
     type_registry: Option<Arc<TypeRegistry>>,
+    host_path_symbols: RefCell<SymbolInterner>,
 }
 
 pub struct HostExecution<'host> {
@@ -1441,9 +1445,20 @@ impl Vm {
                     let value = host.tx.read_path(host.adapter, &path)?;
                     frame.write(*dst, value_from_host(value))?;
                 }
-                InstructionKind::GetHostPath { dst, root, fields } => {
+                InstructionKind::GetHostPath {
+                    dst,
+                    root,
+                    segments,
+                } => {
                     let root = expect_host_ref(frame.read(*root)?, "get_host_path")?;
-                    let path = host_field_path(root, fields);
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    let path = host_path_from_segments(
+                        root,
+                        segments,
+                        &frame,
+                        heap.as_deref(),
+                        &mut symbols,
+                    )?;
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {
                             operation: "host context",
@@ -1467,10 +1482,21 @@ impl Vm {
                     }
                     host.tx.set_path(path, value, instruction.span)?;
                 }
-                InstructionKind::SetHostPath { root, fields, src } => {
+                InstructionKind::SetHostPath {
+                    root,
+                    segments,
+                    src,
+                } => {
                     let root = expect_host_ref(frame.read(*root)?, "set_host_path")?;
                     let value = value_to_host(frame.read(*src)?, "set_host_path", heap.as_deref())?;
-                    let path = host_field_path(root, fields);
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    let path = host_path_from_segments(
+                        root,
+                        segments,
+                        &frame,
+                        heap.as_deref(),
+                        &mut symbols,
+                    )?;
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {
                             operation: "host context",
@@ -1498,10 +1524,21 @@ impl Vm {
                     host.tx
                         .add_path(path, value, base_value, instruction.span)?;
                 }
-                InstructionKind::AddHostPath { root, fields, rhs } => {
+                InstructionKind::AddHostPath {
+                    root,
+                    segments,
+                    rhs,
+                } => {
                     let root = expect_host_ref(frame.read(*root)?, "add_host_path")?;
                     let value = value_to_host(frame.read(*rhs)?, "add_host_path", heap.as_deref())?;
-                    let path = host_field_path(root, fields);
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    let path = host_path_from_segments(
+                        root,
+                        segments,
+                        &frame,
+                        heap.as_deref(),
+                        &mut symbols,
+                    )?;
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {
                             operation: "host context",
@@ -2207,6 +2244,40 @@ fn host_field_path(root: HostRef, fields: &[FieldId]) -> HostPath {
         .fold(HostPath::new(root), |path, field| path.field(*field))
 }
 
+fn host_path_from_segments(
+    root: HostRef,
+    segments: &[HostPathSegment],
+    frame: &CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    symbols: &mut SymbolInterner,
+) -> VmResult<HostPath> {
+    let mut path = HostPath::new(root);
+    for segment in segments {
+        path = match segment {
+            HostPathSegment::Field(field) => path.field(*field),
+            HostPathSegment::Value(register) => {
+                match materialize_value(frame.read(*register)?, heap)? {
+                    Value::Int(index) => {
+                        let index = u32::try_from(index).map_err(|_| {
+                            VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "host path index",
+                            })
+                        })?;
+                        path.index(index)
+                    }
+                    Value::String(key) => path.key(symbols.intern(key)),
+                    _ => {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host path index",
+                        }));
+                    }
+                }
+            }
+        };
+    }
+    Ok(path)
+}
+
 fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureValue> {
     match value {
         Value::Closure(closure) => Ok(closure.clone()),
@@ -2410,13 +2481,14 @@ mod tests {
     use super::*;
     use crate::heap::{HeapValue, ScriptHeap};
     use std::collections::BTreeMap;
+    use std::num::NonZeroU32;
     use std::sync::Arc;
     use vela_bytecode::compiler::{
         CompilerOptions, compile_function_source, compile_module_sources, compile_program_source,
         compile_program_source_with_options,
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
-    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol, TypeId};
     use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
@@ -5574,6 +5646,59 @@ fn main(player) {
         assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
         tx.apply(&mut adapter).expect("apply nested host patch");
         assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
+    }
+
+    #[test]
+    fn compiled_source_mutates_indexed_host_field_through_patch_tx() {
+        let host_ref = player_ref(3);
+        let inventory = FieldId::new(8);
+        let items = FieldId::new(9);
+        let count = FieldId::new(10);
+        let item_key = Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"));
+        let item_count = HostPath::new(host_ref)
+            .field(inventory)
+            .field(items)
+            .key(item_key)
+            .field(count);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    let item_id = "gold";
+    player.inventory.items[item_id].count += 1;
+    return player.inventory.items[item_id].count;
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("items", items)
+                .with_host_field("count", count),
+        )
+        .expect("compile indexed host field source");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(item_count.clone(), HostValue::Int(4));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(5)));
+        assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(4)));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].path, item_count);
+        assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+        tx.apply(&mut adapter).expect("apply indexed host patch");
+        assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
     }
 
     #[test]

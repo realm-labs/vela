@@ -27,12 +27,12 @@ use vela_syntax::{
 };
 
 use crate::{
-    CallArgument, CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program,
-    Register,
+    CallArgument, CodeObject, Constant, HostPathSegment, Instruction, InstructionKind,
+    InstructionOffset, Program, Register,
 };
 use control_flow::LoopContext;
 use field_slots::ScriptFieldSlots;
-use host_paths::{HostFieldPath, HostPathRoot, host_field_path, host_field_path_parts};
+use host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path, host_field_path_parts};
 use lambdas::{LambdaCapture, collect_lambda_captures};
 use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
@@ -1055,14 +1055,15 @@ impl<'ast> Compiler<'ast> {
                     Ok(dst)
                 } else {
                     if let Some(path) = host_field_path(&self.facts.options, expr)
-                        && path.fields.len() > 1
+                        && path.segments.len() > 1
                     {
                         let root = self.compile_host_path_root(expr.span, path.root)?;
+                        let segments = self.compile_host_path_segments(path.segments)?;
                         let dst = self.alloc_register()?;
                         self.emit(InstructionKind::GetHostPath {
                             dst,
                             root,
-                            fields: path.fields,
+                            segments,
                         });
                         return Ok(dst);
                     }
@@ -1081,6 +1082,19 @@ impl<'ast> Compiler<'ast> {
                 }
             }
             ExprKind::Index { base, index } => {
+                if let Some(path) = host_field_path(&self.facts.options, expr)
+                    && !path.segments.is_empty()
+                {
+                    let root = self.compile_host_path_root(expr.span, path.root)?;
+                    let segments = self.compile_host_path_segments(path.segments)?;
+                    let dst = self.alloc_register()?;
+                    self.emit(InstructionKind::GetHostPath {
+                        dst,
+                        root,
+                        segments,
+                    });
+                    return Ok(dst);
+                }
                 let base = self.compile_expr(base)?;
                 let index = self.compile_expr(index)?;
                 let dst = self.alloc_register()?;
@@ -1589,38 +1603,49 @@ impl<'ast> Compiler<'ast> {
                 self.compile_local_assignment(*op, target.span, name, local, value, script_fact)?;
             return Ok(assigned);
         }
-        if let ExprKind::Index { base, index } = &target.kind {
+        if matches!(&target.kind, ExprKind::Index { .. })
+            && host_field_path(&self.facts.options, target).is_none()
+            && let ExprKind::Index { base, index } = &target.kind
+        {
             return self.compile_index_assignment(*op, base, index, value);
         }
         if let Some(target) = self.record_field_assignment_target(target)? {
             return self.compile_record_field_assignment(*op, target, value);
         }
-        let HostFieldPath { root, fields } = self.compile_host_assignment_target(target)?;
+        let HostPath { root, segments } = self.compile_host_assignment_target(target)?;
         let root = self.compile_host_path_root(target.span, root)?;
+        let field = match segments.as_slice() {
+            [HostPathPart::Field(field)] => Some(*field),
+            _ => None,
+        };
+        let segments = field
+            .is_none()
+            .then(|| self.compile_host_path_segments(segments))
+            .transpose()?;
         let src = self.compile_expr(value)?;
         match op {
             AssignOp::Set => {
-                if fields.len() == 1 {
-                    self.emit(InstructionKind::SetHostField {
+                if let Some(field) = field {
+                    self.emit(InstructionKind::SetHostField { root, field, src });
+                } else {
+                    self.emit(InstructionKind::SetHostPath {
                         root,
-                        field: fields[0],
+                        segments: segments.expect("host path segments"),
                         src,
                     });
-                } else {
-                    self.emit(InstructionKind::SetHostPath { root, fields, src });
                 }
             }
             AssignOp::Add => {
-                if fields.len() == 1 {
+                if let Some(field) = field {
                     self.emit(InstructionKind::AddHostField {
                         root,
-                        field: fields[0],
+                        field,
                         rhs: src,
                     });
                 } else {
                     self.emit(InstructionKind::AddHostPath {
                         root,
-                        fields,
+                        segments: segments.expect("host path segments"),
                         rhs: src,
                     });
                 }
@@ -1962,14 +1987,15 @@ impl<'ast> Compiler<'ast> {
             )));
         }
         if let Some(host_path) = host_field_path_parts(&self.facts.options, path)
-            && host_path.fields.len() > 1
+            && host_path.segments.len() > 1
         {
             let root = self.compile_host_path_root(span, host_path.root)?;
+            let segments = self.compile_host_path_segments(host_path.segments)?;
             let dst = self.alloc_register()?;
             self.emit(InstructionKind::GetHostPath {
                 dst,
                 root,
-                fields: host_path.fields,
+                segments,
             });
             return Ok(dst);
         }
@@ -2048,13 +2074,13 @@ impl<'ast> Compiler<'ast> {
     fn compile_host_assignment_target<'expr>(
         &mut self,
         target: &'expr Expr,
-    ) -> CompileResult<HostFieldPath<'expr>> {
+    ) -> CompileResult<HostPath<'expr>> {
         let Some(path) = host_field_path(&self.facts.options, target) else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment target",
             )));
         };
-        if path.fields.is_empty() {
+        if path.segments.is_empty() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "host path",
             )));
@@ -2071,6 +2097,19 @@ impl<'ast> Compiler<'ast> {
             HostPathRoot::Expr(expr) => self.compile_expr(expr),
             HostPathRoot::LocalPath(name) => self.local_register_at_span(span, name),
         }
+    }
+
+    fn compile_host_path_segments<'expr>(
+        &mut self,
+        segments: Vec<HostPathPart<'expr>>,
+    ) -> CompileResult<Vec<HostPathSegment>> {
+        segments
+            .into_iter()
+            .map(|segment| match segment {
+                HostPathPart::Field(field) => Ok(HostPathSegment::Field(field)),
+                HostPathPart::Value(expr) => self.compile_expr(expr).map(HostPathSegment::Value),
+            })
+            .collect()
     }
 
     fn compile_literal(&mut self, literal: &Literal) -> CompileResult<Register> {
@@ -3558,16 +3597,75 @@ fn main(player) {
         assert!(code.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
             InstructionKind::AddHostPath {
-                fields,
+                segments,
                 ..
-            } if fields.as_slice() == [stats, level]
+            } if segments.as_slice() == [
+                HostPathSegment::Field(stats),
+                HostPathSegment::Field(level)
+            ]
         )));
         assert!(code.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
             InstructionKind::GetHostPath {
-                fields,
+                segments,
                 ..
-            } if fields.as_slice() == [stats, level]
+            } if segments.as_slice() == [
+                HostPathSegment::Field(stats),
+                HostPathSegment::Field(level)
+            ]
+        )));
+    }
+
+    #[test]
+    fn compiler_lowers_indexed_host_field_paths() {
+        let inventory = FieldId::new(3);
+        let items = FieldId::new(4);
+        let count = FieldId::new(5);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player, item_id) {
+    player.inventory.items[item_id].count += 1;
+    return player.inventory.items[item_id].count;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("items", items)
+                .with_host_field("count", count),
+        )
+        .expect("indexed host field path should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::AddHostPath {
+                segments,
+                ..
+            } if matches!(
+                segments.as_slice(),
+                [
+                    HostPathSegment::Field(first),
+                    HostPathSegment::Field(second),
+                    HostPathSegment::Value(_),
+                    HostPathSegment::Field(third)
+                ] if *first == inventory && *second == items && *third == count
+            )
+        )));
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::GetHostPath {
+                segments,
+                ..
+            } if matches!(
+                segments.as_slice(),
+                [
+                    HostPathSegment::Field(first),
+                    HostPathSegment::Field(second),
+                    HostPathSegment::Value(_),
+                    HostPathSegment::Field(third)
+                ] if *first == inventory && *second == items && *third == count
+            )
         )));
     }
 
