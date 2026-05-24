@@ -209,7 +209,7 @@ impl PatchTx {
 
     pub fn read_path(
         &self,
-        adapter: &impl ScriptStateAdapter,
+        adapter: &(impl ScriptStateAdapter + ?Sized),
         path: &HostPath,
     ) -> HostResult<HostValue> {
         self.overlay

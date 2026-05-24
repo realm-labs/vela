@@ -76,7 +76,14 @@ M3: HostRef And PatchTx.
 - Added tests that transaction reads prefer overlay values, adapter snapshots
   remain unchanged before apply, `Set`/`Add` patches commit at apply time, and
   stale generations are rejected on read/apply.
+- Added VM host-field bytecode for `GetHostField`, `SetHostField`, and
+  `AddHostField`, plus `Value::HostRef` and a host execution context carrying
+  `ScriptStateAdapter` and `PatchTx`.
+- Added VM tests that host reads go through `PatchTx`, host writes record
+  patches without mutating adapter state until apply, `+=` records `Add`, and
+  stale generations fail at the VM host boundary.
 
 ## Next
 
-- Connect VM-level host field bytecode to `PatchTx`.
+- Lower parsed host-style field assignment expressions into host bytecode.
+- Add `CallHostMethod` VM support for controlled host method calls.

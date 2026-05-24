@@ -5,6 +5,9 @@ use std::fmt;
 use std::sync::Arc;
 
 use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
+use vela_host::{
+    HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -15,6 +18,7 @@ pub enum Value {
     String(String),
     Array(Vec<Value>),
     Map(BTreeMap<String, Value>),
+    HostRef(HostRef),
 }
 
 impl From<&Constant> for Value {
@@ -74,16 +78,28 @@ pub enum VmErrorKind {
         expected: usize,
         actual: usize,
     },
+    Host(HostErrorKind),
     MissingReturn,
 }
 
 pub type VmResult<T> = Result<T, VmError>;
+
+impl From<HostError> for VmError {
+    fn from(value: HostError) -> Self {
+        Self::new(VmErrorKind::Host(value.kind))
+    }
+}
 
 pub type NativeFunction = Arc<dyn Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static>;
 
 #[derive(Clone, Default)]
 pub struct Vm {
     natives: HashMap<String, NativeFunction>,
+}
+
+pub struct HostExecution<'host> {
+    pub adapter: &'host mut dyn ScriptStateAdapter,
+    pub tx: &'host mut PatchTx,
 }
 
 impl Vm {
@@ -101,7 +117,7 @@ impl Vm {
     }
 
     pub fn run(&self, code: &CodeObject) -> VmResult<Value> {
-        self.execute(code, None, &[])
+        self.execute(code, None, &[], None)
     }
 
     pub fn run_program(&self, program: &Program, entry: &str, args: &[Value]) -> VmResult<Value> {
@@ -110,7 +126,30 @@ impl Vm {
                 name: entry.to_owned(),
             })
         })?;
-        self.execute(code, Some(program), args)
+        self.execute(code, Some(program), args, None)
+    }
+
+    pub fn run_with_host(
+        &self,
+        code: &CodeObject,
+        host: &mut HostExecution<'_>,
+    ) -> VmResult<Value> {
+        self.execute(code, None, &[], Some(host))
+    }
+
+    pub fn run_program_with_host(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+    ) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute(code, Some(program), args, Some(host))
     }
 
     fn execute(
@@ -118,6 +157,7 @@ impl Vm {
         code: &CodeObject,
         program: Option<&Program>,
         args: &[Value],
+        mut host: Option<&mut HostExecution<'_>>,
     ) -> VmResult<Value> {
         if code.params.len() != args.len() {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
@@ -256,7 +296,8 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
-                    let result = self.execute(function, Some(program), &values)?;
+                    let result =
+                        self.execute(function, Some(program), &values, host.as_deref_mut())?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::MakeArray { dst, elements } => {
@@ -272,6 +313,41 @@ impl Vm {
                         values.insert(key.clone(), frame.read(*register)?.clone());
                     }
                     frame.write(*dst, Value::Map(values))?;
+                }
+                InstructionKind::GetHostField { dst, root, field } => {
+                    let root = expect_host_ref(frame.read(*root)?, "get_host_field")?;
+                    let path = HostPath::new(root).field(*field);
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    let value = host.tx.read_path(host.adapter, &path)?;
+                    frame.write(*dst, value_from_host(value))?;
+                }
+                InstructionKind::SetHostField { root, field, src } => {
+                    let root = expect_host_ref(frame.read(*root)?, "set_host_field")?;
+                    let value = value_to_host(frame.read(*src)?, "set_host_field")?;
+                    let path = HostPath::new(root).field(*field);
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    host.tx.set_path(path, value, instruction.span)?;
+                }
+                InstructionKind::AddHostField { root, field, rhs } => {
+                    let root = expect_host_ref(frame.read(*root)?, "add_host_field")?;
+                    let value = value_to_host(frame.read(*rhs)?, "add_host_field")?;
+                    let path = HostPath::new(root).field(*field);
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    host.tx
+                        .add_path(path, value, base_value, instruction.span)?;
                 }
                 InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
             }
@@ -359,6 +435,36 @@ fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     }
 }
 
+fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> {
+    match value {
+        Value::HostRef(value) => Ok(*value),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    }
+}
+
+fn value_from_host(value: HostValue) -> Value {
+    match value {
+        HostValue::Null => Value::Null,
+        HostValue::Bool(value) => Value::Bool(value),
+        HostValue::Int(value) => Value::Int(value),
+        HostValue::Float(value) => Value::Float(value),
+        HostValue::String(value) => Value::String(value),
+    }
+}
+
+fn value_to_host(value: &Value, operation: &'static str) -> VmResult<HostValue> {
+    match value {
+        Value::Null => Ok(HostValue::Null),
+        Value::Bool(value) => Ok(HostValue::Bool(*value)),
+        Value::Int(value) => Ok(HostValue::Int(*value)),
+        Value::Float(value) => Ok(HostValue::Float(*value)),
+        Value::String(value) => Ok(HostValue::String(value.clone())),
+        Value::Array(_) | Value::Map(_) | Value::HostRef(_) => {
+            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+        }
+    }
+}
+
 fn compare_numeric(
     lhs: &Value,
     rhs: &Value,
@@ -390,7 +496,8 @@ mod tests {
     use std::collections::BTreeMap;
     use vela_bytecode::compiler::{compile_function_source, compile_program_source};
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
-    use vela_common::SourceId;
+    use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
+    use vela_host::{HostValue, MockStateAdapter, PatchOp};
 
     #[test]
     fn runs_basic_arithmetic() {
@@ -653,5 +760,188 @@ fn main() {
         .expect("compile operator source");
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+    }
+
+    #[test]
+    fn reads_host_field_through_patch_transaction() {
+        let (program, host_ref) = host_read_program();
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let result = Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        );
+
+        assert_eq!(result, Ok(Value::Int(9)));
+    }
+
+    #[test]
+    fn set_host_field_records_patch_and_overlay_read() {
+        let host_ref = player_ref(3);
+        let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+        let ten = code.push_constant(Constant::Int(10));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: ten,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+            root: Register(0),
+            field: level_field(),
+            src: Register(1),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::GetHostField {
+            dst: Register(2),
+            root: Register(0),
+            field: level_field(),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(10)));
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(9))
+        );
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
+        tx.apply(&mut adapter).expect("apply patches");
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(10))
+        );
+    }
+
+    #[test]
+    fn add_host_field_records_patch_and_overlay_read() {
+        let host_ref = player_ref(3);
+        let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+        let one = code.push_constant(Constant::Int(1));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: one,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::AddHostField {
+            root: Register(0),
+            field: level_field(),
+            rhs: Register(1),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::GetHostField {
+            dst: Register(2),
+            root: Register(0),
+            field: level_field(),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(10)));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+        tx.apply(&mut adapter).expect("apply patches");
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(10))
+        );
+    }
+
+    #[test]
+    fn host_field_read_rejects_stale_generation() {
+        let (program, _host_ref) = host_read_program();
+        let fresh_ref = player_ref(3);
+        let stale_ref = player_ref(2);
+        let mut adapter = host_adapter(fresh_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let error = Vm::new()
+            .run_program_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
+            .expect_err("stale host read");
+
+        assert_eq!(
+            error.kind,
+            VmErrorKind::Host(vela_host::HostErrorKind::StaleGeneration {
+                expected: 2,
+                actual: 3
+            })
+        );
+    }
+
+    fn host_read_program() -> (Program, HostRef) {
+        let host_ref = player_ref(3);
+        let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
+        code.push_instruction(Instruction::new(InstructionKind::GetHostField {
+            dst: Register(1),
+            root: Register(0),
+            field: level_field(),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(1),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        (program, host_ref)
+    }
+
+    fn host_adapter(host_ref: HostRef, value: HostValue) -> MockStateAdapter {
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(level_path(host_ref), value);
+        adapter
+    }
+
+    fn player_ref(generation: u32) -> HostRef {
+        HostRef::new(HostTypeId::new(1), HostObjectId::new(7), generation)
+    }
+
+    fn level_path(host_ref: HostRef) -> HostPath {
+        HostPath::new(host_ref).field(level_field())
+    }
+
+    fn level_field() -> FieldId {
+        FieldId::new(2)
     }
 }

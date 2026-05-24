@@ -81,3 +81,25 @@ Consequences:
 - A later bridge can convert between VM values and host patch values at the VM
   host-boundary instruction layer.
 - PatchTx semantics can be tested before full script-to-host execution exists.
+
+## 2026-05-24: VM Host Mutation Requires An Explicit Host Context
+
+Status: Accepted
+
+Context:
+M3 needs bytecode-level host field reads and writes while preserving the rule
+that scripts never receive real Rust `&mut` references. The normal VM execution
+path should continue to run pure script bytecode without requiring host state.
+
+Decision:
+Add explicit host field bytecode operations and execute them only through a
+`HostExecution` context containing a `ScriptStateAdapter` and `PatchTx`.
+`GetHostField`, `SetHostField`, and `AddHostField` build `HostPath` values from
+script-visible `HostRef` values and route all reads/writes through the
+transaction overlay and adapter.
+
+Consequences:
+- Host mutation remains opt-in at the VM boundary.
+- Script bytecode can read overlay writes in the same transaction.
+- Adapter state is mutated only when the host applies the collected patches at
+  a safe point.

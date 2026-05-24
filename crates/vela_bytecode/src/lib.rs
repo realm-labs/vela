@@ -4,7 +4,7 @@ pub mod compiler;
 
 use std::collections::BTreeMap;
 
-use vela_common::Span;
+use vela_common::{FieldId, Span};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Program {
@@ -191,6 +191,21 @@ pub enum InstructionKind {
     MakeMap {
         dst: Register,
         entries: Vec<(String, Register)>,
+    },
+    GetHostField {
+        dst: Register,
+        root: Register,
+        field: FieldId,
+    },
+    SetHostField {
+        root: Register,
+        field: FieldId,
+        src: Register,
+    },
+    AddHostField {
+        root: Register,
+        field: FieldId,
+        rhs: Register,
     },
     Return {
         src: Register,
