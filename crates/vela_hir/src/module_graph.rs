@@ -6,7 +6,8 @@ use vela_syntax::{FunctionItem, ItemKind, SourceFile, Visibility, parse_source};
 use crate::binding::{BindingMap, FunctionBindingInput, bind_function};
 use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
-    ConstMetadata, FunctionSignature, HirTypeHint, ParamHint, StructFieldHint, StructShape,
+    ConstMetadata, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint, StructFieldHint,
+    StructShape,
 };
 use crate::{HirDeclId, HirNodeId, ModuleId};
 
@@ -71,6 +72,7 @@ pub enum DeclarationKind {
     Struct,
     Enum,
     Trait,
+    Impl,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -136,6 +138,8 @@ pub struct ModuleGraph {
     bindings: BTreeMap<HirDeclId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
+    impl_metadata: BTreeMap<HirDeclId, ImplMetadata>,
+    impl_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     diagnostics: Vec<Diagnostic>,
     next_node_id: u32,
     next_decl_id: u32,
@@ -187,6 +191,7 @@ impl ModuleGraph {
         };
 
         let mut function_declarations = Vec::new();
+        let mut impl_method_declarations = Vec::new();
 
         for item in &parsed.items {
             match &item.kind {
@@ -268,11 +273,42 @@ impl ModuleGraph {
                         item.span,
                     );
                 }
+                ItemKind::Impl(impl_item) => {
+                    let name = impl_declaration_name(&impl_item.trait_path, &impl_item.target_path);
+                    let declaration = self.insert_declaration(
+                        &mut hir_module,
+                        name,
+                        DeclarationKind::Impl,
+                        item.visibility.clone(),
+                        item.span,
+                    );
+                    let method_nodes = impl_item
+                        .methods
+                        .iter()
+                        .map(|method| (self.next_node_id(), method.function.body.span))
+                        .collect::<Vec<_>>();
+                    self.impl_metadata.insert(
+                        declaration,
+                        ImplMetadata::from_syntax(impl_item, method_nodes.clone()),
+                    );
+                    impl_method_declarations.extend(
+                        impl_item
+                            .methods
+                            .iter()
+                            .zip(method_nodes)
+                            .map(|(method, (node, _))| {
+                                (declaration, node, method.function.clone())
+                            }),
+                    );
+                }
             }
         }
 
         for (declaration, function) in function_declarations {
             self.bind_function_body(&hir_module, declaration, &function);
+        }
+        for (declaration, node, function) in impl_method_declarations {
+            self.bind_impl_method_body(&hir_module, declaration, node, &function);
         }
 
         self.modules.push(hir_module);
@@ -330,6 +366,16 @@ impl ModuleGraph {
     #[must_use]
     pub fn struct_shape(&self, declaration: HirDeclId) -> Option<&StructShape> {
         self.struct_shapes.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn impl_metadata(&self, declaration: HirDeclId) -> Option<&ImplMetadata> {
+        self.impl_metadata.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn impl_method_bindings(&self, method: HirNodeId) -> Option<&BindingMap> {
+        self.impl_method_bindings.get(&method)
     }
 
     #[must_use]
@@ -412,6 +458,42 @@ impl ModuleGraph {
             next_local_id: &mut self.next_local_id,
         });
         self.bindings.insert(declaration, bindings);
+        self.diagnostics.extend(diagnostics);
+    }
+
+    fn bind_impl_method_body(
+        &mut self,
+        module: &HirModule,
+        declaration: HirDeclId,
+        method: HirNodeId,
+        function: &FunctionItem,
+    ) {
+        let module_declarations = module
+            .declarations
+            .names()
+            .filter_map(|name| {
+                module
+                    .declarations
+                    .get(name)
+                    .map(|declaration| (name.to_owned(), declaration))
+            })
+            .collect::<Vec<_>>();
+        let imports = module
+            .imports
+            .iter()
+            .filter_map(|import| import.path.last().cloned())
+            .collect::<Vec<_>>();
+
+        let (bindings, diagnostics) = bind_function(FunctionBindingInput {
+            declaration,
+            params: &function.params,
+            body: &function.body,
+            module_declarations,
+            imports,
+            next_expr_id: &mut self.next_expr_id,
+            next_local_id: &mut self.next_local_id,
+        });
+        self.impl_method_bindings.insert(method, bindings);
         self.diagnostics.extend(diagnostics);
     }
 
@@ -514,6 +596,14 @@ fn closest_name(
         .map(|candidate| candidate.as_ref().to_owned())
         .min_by_key(|candidate| candidate_distance(wanted, candidate))
         .filter(|candidate| candidate_distance(wanted, candidate) <= 3)
+}
+
+fn impl_declaration_name(trait_path: &[String], target_path: &[String]) -> String {
+    format!(
+        "impl {} for {}",
+        trait_path.join("."),
+        target_path.join(".")
+    )
 }
 
 fn candidate_distance(wanted: &str, candidate: &str) -> usize {
@@ -921,5 +1011,75 @@ fn main() { return SAFE_LIMIT; }
                 .iter()
                 .any(|diagnostic| diagnostic.message.contains("BAD_ASSIGN"))
         );
+    }
+
+    #[test]
+    fn lowers_impl_metadata_and_method_bindings() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.combat",
+            r#"
+trait Damageable { fn damage(self, amount: int) -> int; }
+struct Player { hp: int }
+
+impl Damageable for Player {
+    fn damage(self, amount: int) -> int {
+        let remaining: int = self.hp - amount;
+        return remaining;
+    }
+}
+"#,
+        ));
+        let declarations = graph.module(module).expect("module declarations");
+        let impl_decl = declarations
+            .get("impl Damageable for Player")
+            .expect("impl declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        assert_eq!(
+            graph.declaration(impl_decl).map(|decl| decl.kind),
+            Some(DeclarationKind::Impl)
+        );
+
+        let metadata = graph.impl_metadata(impl_decl).expect("impl metadata");
+        assert_eq!(metadata.trait_path, ["Damageable"]);
+        assert_eq!(metadata.target_path, ["Player"]);
+        assert_eq!(metadata.methods.len(), 1);
+        let method = &metadata.methods[0];
+        assert_eq!(method.name, "damage");
+        assert_eq!(
+            method.signature.params[1]
+                .type_hint
+                .as_ref()
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("int")
+        );
+        assert_eq!(
+            method
+                .signature
+                .return_type
+                .as_ref()
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("int")
+        );
+
+        let bindings = graph
+            .impl_method_bindings(method.node)
+            .expect("impl method bindings");
+        let [remaining] = bindings.locals_named("remaining") else {
+            panic!("expected remaining binding");
+        };
+        assert_eq!(
+            bindings
+                .local(*remaining)
+                .and_then(|local| local.type_hint.as_ref())
+                .map(HirTypeHint::display)
+                .as_deref(),
+            Some("int")
+        );
+        assert!(bindings.expression_count() >= 3);
     }
 }

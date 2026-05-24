@@ -1,5 +1,7 @@
 use vela_common::Span;
-use vela_syntax::{ConstItem, Param, StructField, TypeHint};
+use vela_syntax::{ConstItem, ImplItem, Param, StructField, TypeHint};
+
+use crate::HirNodeId;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
@@ -79,4 +81,52 @@ impl StructFieldHint {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StructShape {
     pub fields: Vec<StructFieldHint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ImplMetadata {
+    pub trait_path: Vec<String>,
+    pub target_path: Vec<String>,
+    pub methods: Vec<ImplMethodMetadata>,
+}
+
+impl ImplMetadata {
+    #[must_use]
+    pub fn from_syntax(item: &ImplItem, method_nodes: Vec<(HirNodeId, Span)>) -> Self {
+        Self {
+            trait_path: item.trait_path.clone(),
+            target_path: item.target_path.clone(),
+            methods: item
+                .methods
+                .iter()
+                .zip(method_nodes)
+                .map(|(method, (node, span))| ImplMethodMetadata {
+                    node,
+                    name: method.function.name.clone(),
+                    signature: FunctionSignature {
+                        params: method
+                            .function
+                            .params
+                            .iter()
+                            .map(ParamHint::from_syntax)
+                            .collect(),
+                        return_type: method
+                            .function
+                            .return_type
+                            .as_ref()
+                            .map(HirTypeHint::from_syntax),
+                    },
+                    span,
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ImplMethodMetadata {
+    pub node: HirNodeId,
+    pub name: String,
+    pub signature: FunctionSignature,
+    pub span: Span,
 }

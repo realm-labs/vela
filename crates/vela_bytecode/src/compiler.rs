@@ -813,6 +813,12 @@ fn main(player) {
             r#"
 const BONUS: int = 5;
 
+trait BonusSource { fn bonus(self) -> int; }
+struct Player { level: int }
+impl BonusSource for Player {
+    fn bonus(self) -> int { return self.level; }
+}
+
 fn add_bonus(value) {
     return value + 5;
 }

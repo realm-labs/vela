@@ -28,6 +28,7 @@ pub enum ItemKind {
     Struct(StructItem),
     Enum(EnumItem),
     Trait(TraitItem),
+    Impl(ImplItem),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -91,6 +92,19 @@ pub struct TraitMethod {
     pub name: String,
     pub params: Vec<Param>,
     pub return_type: Option<TypeHint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ImplItem {
+    pub trait_path: Vec<String>,
+    pub target_path: Vec<String>,
+    pub methods: Vec<ImplMethod>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ImplMethod {
+    pub attrs: Vec<Attribute>,
+    pub function: FunctionItem,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

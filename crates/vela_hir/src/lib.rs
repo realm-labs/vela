@@ -13,5 +13,6 @@ pub use module_graph::{
     ModulePath, ModuleSource, ResolvedImport,
 };
 pub use type_hint::{
-    ConstMetadata, FunctionSignature, HirTypeHint, ParamHint, StructFieldHint, StructShape,
+    ConstMetadata, FunctionSignature, HirTypeHint, ImplMetadata, ImplMethodMetadata, ParamHint,
+    StructFieldHint, StructShape,
 };

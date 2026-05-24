@@ -2,9 +2,9 @@ use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::ast::{
     Argument, AssignOp, Attribute, BinaryOp, Block, ConstItem, ElseBranch, Expr, ExprKind,
-    FunctionItem, IfExpr, Item, ItemKind, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern,
-    RecordField, RecordPatternField, SourceFile, Stmt, StmtKind, StructField, StructItem,
-    TraitItem, TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
+    FunctionItem, IfExpr, ImplItem, ImplMethod, Item, ItemKind, Literal, MapEntry, MatchArm,
+    MatchExpr, Param, Pattern, RecordField, RecordPatternField, SourceFile, Stmt, StmtKind,
+    StructField, StructItem, TraitItem, TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
 };
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, Token, TokenKind};
@@ -71,6 +71,8 @@ impl Parser {
             self.parse_enum_item().map(ItemKind::Enum)
         } else if self.eat_keyword(Keyword::Trait).is_some() {
             self.parse_trait_item().map(ItemKind::Trait)
+        } else if self.eat_keyword(Keyword::Impl).is_some() {
+            self.parse_impl_item().map(ItemKind::Impl)
         } else {
             self.error_here("expected item");
             return None;
@@ -187,6 +189,49 @@ impl Parser {
 
         self.eat_symbol(Symbol::RBrace);
         Some(TraitItem { name, methods })
+    }
+
+    fn parse_impl_item(&mut self) -> Option<ImplItem> {
+        let trait_path = self.parse_path();
+        if trait_path.is_empty() {
+            self.error_here("expected impl trait path");
+        }
+        if self.eat_keyword(Keyword::For).is_none() {
+            self.error_here("expected `for` in impl declaration");
+        }
+        let target_path = self.parse_path();
+        if target_path.is_empty() {
+            self.error_here("expected impl target path");
+        }
+
+        let mut methods = Vec::new();
+        if self.eat_symbol(Symbol::LBrace).is_none() {
+            self.error_here("expected impl body");
+            return Some(ImplItem {
+                trait_path,
+                target_path,
+                methods,
+            });
+        }
+
+        while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
+            let attrs = self.parse_attributes();
+            if self.eat_keyword(Keyword::Fn).is_some() {
+                if let Some(function) = self.parse_function_item() {
+                    methods.push(ImplMethod { attrs, function });
+                }
+            } else {
+                self.error_here("expected impl method");
+                self.advance();
+            }
+        }
+
+        self.eat_symbol(Symbol::RBrace);
+        Some(ImplItem {
+            trait_path,
+            target_path,
+            methods,
+        })
     }
 
     fn parse_block(&mut self) -> Option<Block> {
@@ -647,7 +692,7 @@ impl Parser {
         let start = self.eat_symbol(Symbol::Pipe).expect("checked").span;
         let mut params = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::Pipe) {
-            if let Some(param) = self.eat_ident() {
+            if let Some(param) = self.eat_parameter_name() {
                 let type_hint = self.parse_type_annotation();
                 params.push(Param {
                     name: param,
@@ -874,7 +919,7 @@ impl Parser {
         }
 
         while !self.at_eof() && !self.check_symbol(Symbol::RParen) {
-            if let Some(param) = self.eat_ident() {
+            if let Some(param) = self.eat_parameter_name() {
                 let type_hint = self.parse_type_annotation();
                 params.push(Param {
                     name: param,
@@ -894,6 +939,20 @@ impl Parser {
 
         self.eat_symbol(Symbol::RParen);
         params
+    }
+
+    fn eat_parameter_name(&mut self) -> Option<String> {
+        match self.current().kind.clone() {
+            TokenKind::Ident(name) => {
+                self.advance();
+                Some(name)
+            }
+            TokenKind::Keyword(Keyword::SelfValue) => {
+                self.advance();
+                Some("self".to_owned())
+            }
+            _ => None,
+        }
     }
 
     fn parse_struct_fields_in_braces(&mut self) -> Vec<StructField> {
@@ -1156,6 +1215,7 @@ impl Parser {
                 || self.check_keyword(Keyword::Struct)
                 || self.check_keyword(Keyword::Enum)
                 || self.check_keyword(Keyword::Trait)
+                || self.check_keyword(Keyword::Impl)
             {
                 return;
             }
@@ -1350,11 +1410,17 @@ enum QuestProgress {
 trait Damageable {
     fn damage(self, amount);
 }
+
+impl Damageable for Player {
+    fn damage(self, amount) {
+        return amount;
+    }
+}
 "#,
         );
 
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-        assert_eq!(parsed.items.len(), 6);
+        assert_eq!(parsed.items.len(), 7);
         assert!(matches!(parsed.items[0].kind, ItemKind::Use(_)));
 
         let ItemKind::Const(constant) = &parsed.items[1].kind else {
@@ -1390,6 +1456,14 @@ trait Damageable {
             panic!("expected trait item");
         };
         assert_eq!(trait_method_names(&trait_item.methods), ["damage"]);
+
+        let ItemKind::Impl(impl_item) = &parsed.items[6].kind else {
+            panic!("expected impl item");
+        };
+        assert_eq!(impl_item.trait_path, ["Damageable"]);
+        assert_eq!(impl_item.target_path, ["Player"]);
+        assert_eq!(impl_item.methods.len(), 1);
+        assert_eq!(impl_item.methods[0].function.name, "damage");
     }
 
     #[test]
@@ -1662,6 +1736,7 @@ pub fn on_kill(ctx, player, monster) {
 struct KillReward { item_id, count }
 enum QuestProgress { None, Active { quest_id, count } }
 trait Damageable { fn damage(self, amount); }
+impl Damageable for Player { fn damage(self, amount) { return amount; } }
 "#,
         );
 
@@ -1683,6 +1758,7 @@ pub fn on_kill(ctx, player, monster)
 struct KillReward(item_id, count)
 enum QuestProgress(None, Active)
 trait Damageable(damage)
+impl Damageable for Player(damage)
 "#
         );
     }
@@ -1769,6 +1845,21 @@ fn next() {}
                         "trait {}({})",
                         trait_item.name,
                         trait_method_names(&trait_item.methods).join(", ")
+                    )
+                    .expect("write syntax snapshot");
+                }
+                ItemKind::Impl(impl_item) => {
+                    let methods = impl_item
+                        .methods
+                        .iter()
+                        .map(|method| method.function.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    writeln!(
+                        out,
+                        "impl {} for {}({methods})",
+                        impl_item.trait_path.join("."),
+                        impl_item.target_path.join(".")
                     )
                     .expect("write syntax snapshot");
                 }

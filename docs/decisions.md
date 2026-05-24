@@ -567,3 +567,27 @@ Consequences:
   reflection scanning, and function execution rather than module-load effects.
 - More precise const value evaluation and binding analysis can be added later
   without weakening the no-arbitrary-top-level-effects rule.
+
+## 2026-05-24: Impl Blocks Lower To Metadata Before Dispatch
+
+Status: Accepted
+
+Context:
+M8 needs the grammar's declaration surface to lower into stable semantic
+metadata, while M10 will handle actual trait/protocol dispatch and runtime type
+registration.
+
+Decision:
+Parse `impl Trait for Type { fn ... }` blocks as module items and lower them to
+HIR impl declarations. HIR stores the implemented trait path, target type path,
+method signatures, method spans, and per-method binding maps keyed by stable
+HIR nodes. Impl methods are not exported as top-level bytecode functions in
+this slice.
+
+Consequences:
+- Later trait dispatch, schema hashing, and hot reload ABI checks have stable
+  impl metadata to consume.
+- Method bodies receive local binding diagnostics and metadata without changing
+  the current function-call surface.
+- Full runtime method dispatch remains an explicit M10/M11 follow-up rather
+  than being inferred from syntax heuristics.

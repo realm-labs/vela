@@ -270,8 +270,15 @@ that introduce loops and closures.
 - Added compiler tests proving pure const declarations can coexist with
   functions while side-effecting const initializers stop before bytecode
   generation.
+- Added parser support for `impl Trait for Type { fn ... }` blocks and method
+  parameter parsing for `self`.
+- HIR now indexes impl declarations, preserves trait/target paths, method
+  signatures, method body spans, and per-method binding maps keyed by stable
+  HIR nodes.
+- Added HIR and compiler tests proving impl metadata participates in semantic
+  validation while impl methods remain out of top-level bytecode program
+  exports.
 
 ## Next
 
-- Expand M8 declaration lowering for impl metadata and deepen compiler
-  consumption of HIR binding facts.
+- Deepen compiler consumption of HIR binding facts and declaration metadata.
