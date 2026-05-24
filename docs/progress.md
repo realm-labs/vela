@@ -519,6 +519,11 @@ method-dispatch coverage before moving into stable type metadata.
 - Added runnable context/event demo coverage for `ctx.now`, `ctx.tick`, and
   `ctx.emit(...)` through the existing HostRef/PatchTx bridge, with VM
   source-level managed-heap coverage and a structured CLI demo module.
+- Added `examples/game_server_demo/scripts/monster_kill_reward.lang` as a
+  runnable demo proving a monster kill can award exp, level up a player, record
+  a reward host method call, and emit gameplay events through `PatchTx`.
+- Added CLI integration tests that execute the runnable game server demo
+  scripts through the built `vela_cli` binary.
 
 ## Next
 

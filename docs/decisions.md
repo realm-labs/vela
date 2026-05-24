@@ -1672,3 +1672,26 @@ Consequences:
   host effects.
 - The demo runner can prove context and player workflows without adding a
   separate event bus abstraction before the Engine API stabilizes.
+
+## 2026-05-24: Demo Workflows Use Named HostRef Parameters
+
+Status: Accepted
+
+Context:
+The final demo suite needs level-up, context/event, and monster-kill workflows
+before the full Engine API and derive macros exist. Scripts still must not
+receive Rust references or mutate host state outside `PatchTx`.
+
+Decision:
+Keep the CLI demo runner as a thin embedding harness that binds known `main`
+parameter names (`ctx`, `player`, `monster`) to `HostRef` values. Demo fields
+and methods are registered through `CompilerOptions`, and side effects are
+observed only after applying the collected `PatchTx`.
+
+Consequences:
+- Demo scripts can grow toward the final game-server acceptance suite without
+  adding custom native glue for each script.
+- The harness remains temporary and can be replaced by the Engine API later
+  without changing script-side host mutation semantics.
+- Unknown demo parameters fail explicitly instead of silently receiving dynamic
+  placeholder values.

@@ -13,6 +13,8 @@ script:
 
 ```bash
 cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.lang
+cargo run -p vela_cli -- examples/game_server_demo/scripts/context_event.lang
+cargo run -p vela_cli -- examples/game_server_demo/scripts/monster_kill_reward.lang
 ```
 
 Benchmark and fuzz targets are optional until the related crates exist:
