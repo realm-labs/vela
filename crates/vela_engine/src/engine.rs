@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use vela_bytecode::compiler::CompilerOptions;
 use vela_common::FunctionId;
 use vela_reflect::TypeRegistry;
 use vela_vm::{Vm, VmError, VmErrorKind, VmResult};
@@ -80,6 +81,17 @@ impl Engine {
     #[must_use]
     pub fn permissions(&self) -> &PermissionSet {
         &self.permissions
+    }
+
+    #[must_use]
+    pub fn compiler_options(&self) -> CompilerOptions {
+        let mut options = CompilerOptions::new();
+        for desc in self.registry.types() {
+            for method in &desc.methods {
+                options = options.with_host_method(method.name.clone(), method.id);
+            }
+        }
+        options
     }
 
     #[must_use]

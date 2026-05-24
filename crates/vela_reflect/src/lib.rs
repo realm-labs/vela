@@ -291,6 +291,10 @@ impl TypeRegistry {
             .map(|desc| desc.fields.as_slice())
     }
 
+    pub fn types(&self) -> impl Iterator<Item = &TypeDesc> {
+        self.types_by_key.values()
+    }
+
     #[must_use]
     pub fn type_by_name(&self, name: &str) -> Option<&TypeDesc> {
         self.types_by_key

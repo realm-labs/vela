@@ -87,6 +87,8 @@ fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     let mut host_ids = BTreeSet::new();
+    let mut host_method_ids = BTreeSet::new();
+    let mut host_method_names = BTreeSet::new();
 
     for desc in types {
         if !ids.insert(desc.key.id) {
@@ -105,6 +107,18 @@ fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
             return Err(EngineError::new(EngineErrorKind::DuplicateHostTypeId {
                 id: host_type_id.get(),
             }));
+        }
+        for method in &desc.methods {
+            if !host_method_ids.insert(method.id) {
+                return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodId {
+                    id: method.id.get(),
+                }));
+            }
+            if !host_method_names.insert(method.name.as_str()) {
+                return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodName {
+                    name: method.name.clone(),
+                }));
+            }
         }
     }
 

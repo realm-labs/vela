@@ -1,7 +1,7 @@
-use vela_bytecode::compiler::compile_program_source;
-use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_reflect::{FieldDesc, TypeDesc, TypeKey};
+use vela_reflect::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
@@ -196,6 +196,55 @@ fn main(player) {
 }
 
 #[test]
+fn engine_compiler_options_lower_registered_host_methods() {
+    let method = HostMethodId::new(5);
+    let engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(method, "grant_exp")),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    player.grant_exp(10);
+    return 1;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].path, HostPath::new(host_ref));
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(10)],
+        }
+    );
+}
+
+#[test]
 fn engine_rejects_duplicate_native_function_ids() {
     let result = Engine::builder()
         .register_native_fn(
@@ -246,6 +295,28 @@ fn engine_rejects_duplicate_type_names() {
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateTypeName {
             name: "Player".to_owned()
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_host_method_names() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp")),
+        )
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Monster"))
+                .host_type(HostTypeId::new(2))
+                .method(MethodDesc::new(HostMethodId::new(2), "grant_exp")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodName {
+            name: "grant_exp".to_owned()
         }
     ));
 }

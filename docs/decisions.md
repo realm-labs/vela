@@ -2319,3 +2319,28 @@ Consequences:
   before callback dispatch.
 - This is Engine-level native permission enforcement; field/method reflection
   permissions and native method registration remain future work.
+
+## 2026-05-25: Engine Derives Host Method Compiler Options
+
+Status: Accepted
+
+Context:
+The bytecode compiler can lower configured host method names to
+`CallHostMethod`, but hosts still had to duplicate method registrations between
+`TypeDesc::methods` and `CompilerOptions::with_host_method`. The current
+compiler option surface is name-based, so ambiguous method names across host
+types would compile nondeterministically if accepted by Engine registration.
+
+Decision:
+Expose `TypeRegistry::types` for read-only metadata iteration and add
+`Engine::compiler_options`, which derives host method lowering options from
+registered `TypeDesc::methods`. Engine build validation now rejects duplicate
+host method IDs and duplicate host method names across registered host schemas.
+
+Consequences:
+- Hosts can register method metadata once in Engine schemas and compile source
+  with matching host method lowering.
+- Method calls still enter the existing `CallHostMethod`/`PatchTx` path and do
+  not expose mutable Rust references to scripts.
+- Type-aware host method disambiguation and callable native method dispatch
+  remain future work.

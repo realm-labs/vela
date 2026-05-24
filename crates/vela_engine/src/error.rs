@@ -19,6 +19,8 @@ pub enum EngineErrorKind {
     DuplicateTypeId { id: u32 },
     DuplicateTypeName { name: String },
     DuplicateHostTypeId { id: u32 },
+    DuplicateHostMethodId { id: u32 },
+    DuplicateHostMethodName { name: String },
 }
 
 pub type EngineResult<T> = Result<T, EngineError>;
@@ -38,6 +40,12 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DuplicateHostTypeId { id } => {
                 write!(formatter, "duplicate host type id {id}")
+            }
+            EngineErrorKind::DuplicateHostMethodId { id } => {
+                write!(formatter, "duplicate host method id {id}")
+            }
+            EngineErrorKind::DuplicateHostMethodName { name } => {
+                write!(formatter, "duplicate host method name {name}")
             }
         }
     }

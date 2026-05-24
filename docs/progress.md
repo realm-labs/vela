@@ -638,10 +638,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   requirements; installed pure and host-aware natives now reject calls with a
   `PermissionDenied` VM error before invoking the Rust callback or recording
   patches.
+- Engine now derives bytecode compiler host-method options from registered
+  `TypeDesc::methods`, allowing host schemas to drive `CallHostMethod`
+  lowering; duplicate host method names and IDs are rejected while the compiler
+  method map remains name-based.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and fuller Engine builder/native method APIs.
+  receiver facts and fuller Engine native method callable APIs.
 
 ## Next
 
 - Continue M10 with broader non-literal receiver facts or fuller Engine
-  builder/native method APIs.
+  native method callable APIs.
