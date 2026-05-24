@@ -4764,6 +4764,34 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_typed_record_slot_field_reads() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    item_id: string,
+    count: int,
+}
+
+fn make_reward() {
+    return Reward { item_id: "gold", count: 2 };
+}
+
+fn main() {
+    let reward: Reward = make_reward();
+    return reward.count;
+}
+"#,
+        )
+        .expect("compile typed record slot field read");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(2))
+        );
+    }
+
+    #[test]
     fn returns_first_class_enum_values() {
         let code = compile_function_source(
             SourceId::new(1),

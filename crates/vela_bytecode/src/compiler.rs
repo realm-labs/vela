@@ -1,6 +1,7 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
 mod control_flow;
+mod field_slots;
 mod lambdas;
 mod methods;
 mod operators;
@@ -29,6 +30,7 @@ use crate::{
     Register,
 };
 use control_flow::LoopContext;
+use field_slots::ScriptFieldSlots;
 use lambdas::{LambdaCapture, collect_lambda_captures};
 use methods::{HostMethodReceiver, host_method_call};
 use operators::{compound_assignment_instruction, non_logical_binary_instruction};
@@ -94,6 +96,7 @@ struct CompilerFacts {
     script_function_symbols: BTreeMap<HirDeclId, String>,
     script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
     script_method_ids: BTreeMap<(String, String), MethodId>,
+    script_field_slots: ScriptFieldSlots,
     type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
@@ -117,11 +120,13 @@ pub fn compile_function_source_with_options(
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
+    let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
         script_method_ids: BTreeMap::new(),
+        script_field_slots,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -149,11 +154,13 @@ pub fn compile_program_source_with_options(
     let script_impl_methods = semantic.script_impl_methods();
     let script_method_ids = script_method_ids(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
+    let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
         script_method_ids,
+        script_field_slots,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -195,11 +202,13 @@ pub fn compile_module_sources_with_options(
     let script_impl_methods = semantic.script_impl_methods();
     let script_method_ids = script_method_ids(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
+    let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
         script_method_ids,
+        script_field_slots,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -358,6 +367,10 @@ impl SemanticSource {
             .collect()
     }
 
+    fn script_field_slots(&self, type_symbols: &BTreeMap<HirDeclId, String>) -> ScriptFieldSlots {
+        ScriptFieldSlots::from_graph(&self.graph, type_symbols)
+    }
+
     fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
         let mut values_by_declaration = BTreeMap::new();
         let mut values_by_name = BTreeMap::new();
@@ -471,6 +484,10 @@ impl SemanticModules {
                 })
             })
             .collect()
+    }
+
+    fn script_field_slots(&self, type_symbols: &BTreeMap<HirDeclId, String>) -> ScriptFieldSlots {
+        ScriptFieldSlots::from_graph(&self.graph, type_symbols)
     }
 
     fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
@@ -925,6 +942,7 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
             ExprKind::Unary { op, expr } => self.compile_unary(*op, expr),
             ExprKind::Field { base, name } => {
+                let typed_record_slot = self.script_record_field_slot_for_receiver(base, name);
                 let root = self.compile_expr(base)?;
                 let dst = self.alloc_register()?;
                 if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
@@ -942,6 +960,13 @@ impl<'ast> Compiler<'ast> {
                             slot,
                         }),
                     }
+                } else if let Some(slot) = typed_record_slot {
+                    self.emit(InstructionKind::GetRecordSlot {
+                        dst,
+                        record: root,
+                        field: name.clone(),
+                        slot,
+                    });
                 } else if let Some(field) = self.facts.options.host_fields.get(name).copied() {
                     self.emit(InstructionKind::GetHostField { dst, root, field });
                 } else {
@@ -1369,6 +1394,15 @@ impl<'ast> Compiler<'ast> {
         self.script_method_id_for_type(&type_name, method)
     }
 
+    fn script_record_field_slot_for_receiver(&self, receiver: &Expr, field: &str) -> Option<usize> {
+        let type_name = self.script_type_for_expr(receiver)?;
+        self.script_record_field_slot_for_type(&type_name, field)
+    }
+
+    fn script_record_field_slot_for_type(&self, type_name: &str, field: &str) -> Option<usize> {
+        self.facts.script_field_slots.get(type_name, field)
+    }
+
     fn script_method_id_for_receiver_path(
         &self,
         receiver_path: &[String],
@@ -1745,6 +1779,16 @@ impl<'ast> Compiler<'ast> {
         for (index, segment) in path.iter().enumerate().skip(1) {
             let dst = self.alloc_register()?;
             if index == 1
+                && let Some(slot) =
+                    self.script_record_field_slot_for_path_root(span, &path[0], segment)
+            {
+                self.emit(InstructionKind::GetRecordSlot {
+                    dst,
+                    record: current,
+                    field: segment.clone(),
+                    slot,
+                });
+            } else if index == 1
                 && let Some(field) = self.facts.options.host_fields.get(segment).copied()
             {
                 self.emit(InstructionKind::GetHostField {
@@ -1762,6 +1806,19 @@ impl<'ast> Compiler<'ast> {
             current = dst;
         }
         Ok(current)
+    }
+
+    fn script_record_field_slot_for_path_root(
+        &self,
+        span: Span,
+        root: &str,
+        field: &str,
+    ) -> Option<usize> {
+        let type_name = match self.bindings.resolution_at_span(span) {
+            Some(BindingResolution::Local(local)) => self.script_types.local(*local),
+            _ => self.script_types.name(root),
+        }?;
+        self.script_record_field_slot_for_type(&type_name, field)
     }
 
     fn compile_host_assignment_target(
@@ -4307,6 +4364,41 @@ fn main() {
                     slot: 0,
                     ..
                 } if field == "amount"
+            )
+        }));
+    }
+
+    #[test]
+    fn compiler_lowers_typed_record_field_reads_to_slots() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    item_id: string,
+    count: int,
+}
+
+fn make_reward() {
+    return Reward { item_id: "gold", count: 2 };
+}
+
+fn main() {
+    let reward: Reward = make_reward();
+    return reward.count;
+}
+"#,
+        )
+        .expect("typed record field read should compile to slot bytecode");
+        let main = program.function("main").expect("main function");
+
+        assert!(main.instructions.iter().any(|instruction| {
+            matches!(
+                instruction.kind,
+                InstructionKind::GetRecordSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "count"
             )
         }));
     }

@@ -612,11 +612,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Match binding patterns now preserve known script receiver type facts from
   the scrutinee for simple bindings such as
   `match player { bound => bound.bonus(5) }`.
-- Remaining M10 work includes broader type-flow slot lowering, host type impl
-  dispatch, and broader MethodId use for destructured variant fields and other
-  non-literal receiver facts.
+- The compiler now derives declared script struct field slots from HIR shape
+  metadata and lowers field reads on typed struct receivers to `GetRecordSlot`,
+  extending slot bytecode beyond immediate record literals.
+- Remaining M10 work includes broader slot lowering for writes and enum
+  variants, host type impl dispatch, and broader MethodId use for destructured
+  variant fields and other non-literal receiver facts.
 
 ## Next
 
-- Continue M10 by extending MethodId and slot lowering into destructured
-  pattern facts and host type impl dispatch.
+- Continue M10 by extending slot lowering into typed record writes or enum
+  variants, then host type impl dispatch.
