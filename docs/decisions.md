@@ -1994,3 +1994,28 @@ Consequences:
 - Dynamic method calls keep their existing behavior while type-flow facts can
   opt into the specialized instruction later.
 - The method name is still carried for diagnostics and unknown-method errors.
+
+## 2026-05-25: Local Script Type Facts Stay In Compiler Submodules
+
+Status: Accepted
+
+Context:
+M10 needs MethodId call-site lowering to move beyond immediate literals, but
+the compiler is already large. Adding receiver type tracking directly into
+`compiler.rs` would make later slot and dispatch work harder to review.
+
+Decision:
+Keep local script receiver type facts in `compiler/script_types.rs`. The main
+compiler records facts at let and local assignment boundaries and asks the
+module to recover a script type for simple local-path receivers. This supports
+`let player = Player { ... }; player.bonus(...)` lowering to `CallMethodId`
+without introducing whole-program type inference.
+
+Consequences:
+- MethodId dispatch now covers a common local receiver pattern while preserving
+  dynamic fallback dispatch.
+- The type-flow surface remains deliberately narrow and can grow toward
+  parameter hints, pattern bindings, and slot lowering without piling the logic
+  into one file.
+- These facts are compile-time hints only; scripts still use dynamic runtime
+  values and do not gain generics or Rust references.

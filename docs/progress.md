@@ -597,10 +597,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Added `CallMethodId` bytecode plus VM dispatch through `receiver type +
   MethodId`, and the compiler emits it for immediate script record/enum
   receiver method calls when the script method metadata is known.
+- Added focused local script type-flow facts for let-bound script record/enum
+  values, allowing `player.bonus(...)` style calls to lower to `CallMethodId`
+  after `let player = Player { ... }`.
 - Remaining M10 work includes broader type-flow slot lowering, host type impl
-  dispatch, and broader MethodId use for locals and other type-flow facts.
+  dispatch, and broader MethodId use for assignments, parameters, pattern
+  bindings, and other non-literal receiver facts.
 
 ## Next
 
-- Continue M10 by extending MethodId and slot lowering beyond immediate
-  literals into local/type-flow facts, then add host type impl dispatch.
+- Continue M10 by extending MethodId and slot lowering into parameter/type-hint
+  facts and host type impl dispatch.

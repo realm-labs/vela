@@ -6,6 +6,7 @@ mod methods;
 mod operators;
 mod patterns;
 mod script_impls;
+mod script_types;
 mod value_flow;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -34,6 +35,7 @@ use patterns::{
     enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
     record_pattern_field_match, tuple_variant_field_name,
 };
+use script_types::{ScriptTypeFlow, expression_script_type};
 use value_flow::{BlockValue, block_value};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -602,6 +604,7 @@ struct Compiler<'ast> {
     code: CodeObject,
     locals: HashMap<String, Register>,
     hir_locals: HashMap<HirLocalId, Register>,
+    script_types: ScriptTypeFlow,
     bindings: &'ast BindingMap,
     next_register: u16,
     param_defaults: Vec<Option<Expr>>,
@@ -669,6 +672,7 @@ impl<'ast> Compiler<'ast> {
                 .with_param_defaults(param_defaults),
             locals,
             hir_locals,
+            script_types: ScriptTypeFlow::default(),
             bindings,
             next_register: param_count,
             param_defaults: params
@@ -734,6 +738,7 @@ impl<'ast> Compiler<'ast> {
                 .with_capture_count(capture_count),
             locals,
             hir_locals,
+            script_types: ScriptTypeFlow::default(),
             bindings,
             next_register: capture_count
                 .checked_add(param_count)
@@ -793,6 +798,9 @@ impl<'ast> Compiler<'ast> {
     fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
         match &stmt.kind {
             StmtKind::Let { name, value, .. } => {
+                let script_type = value
+                    .as_ref()
+                    .and_then(|value| self.script_type_for_expr(value));
                 let (register, returned) = if let Some(value) = value {
                     self.compile_let_initializer(value)?
                 } else {
@@ -804,6 +812,9 @@ impl<'ast> Compiler<'ast> {
                         .local_named_at(name, LocalBindingKind::Let, stmt.span)
                 {
                     self.hir_locals.insert(local, register);
+                    self.script_types.set_local(local, name, script_type);
+                } else {
+                    self.script_types.set_name(name, script_type);
                 }
                 Ok(returned)
             }
@@ -988,18 +999,29 @@ impl<'ast> Compiler<'ast> {
                     && self.locals.contains_key(&receiver_path[0])
                 {
                     reject_named_args(args, "script method call")?;
+                    let method_id = self.script_method_id_for_receiver_path(receiver_path, method);
                     let receiver = self.compile_path_expr(callee.span, receiver_path)?;
                     let arg_registers = args
                         .iter()
                         .map(|arg| self.compile_expr(&arg.value))
                         .collect::<CompileResult<Vec<_>>>()?;
                     let dst = self.alloc_register()?;
-                    self.emit(InstructionKind::CallMethod {
-                        dst,
-                        receiver,
-                        method: method.clone(),
-                        args: arg_registers,
-                    });
+                    if let Some(method_id) = method_id {
+                        self.emit(InstructionKind::CallMethodId {
+                            dst,
+                            receiver,
+                            method: method.clone(),
+                            method_id,
+                            args: arg_registers,
+                        });
+                    } else {
+                        self.emit(InstructionKind::CallMethod {
+                            dst,
+                            receiver,
+                            method: method.clone(),
+                            args: arg_registers,
+                        });
+                    }
                     return Ok(dst);
                 }
 
@@ -1289,26 +1311,36 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn script_method_id_for_receiver(&self, receiver: &Expr, method: &str) -> Option<MethodId> {
-        let type_name = self.script_receiver_type_name(receiver)?;
+        let type_name = self.script_type_for_expr(receiver)?;
+        self.script_method_id_for_type(&type_name, method)
+    }
+
+    fn script_method_id_for_receiver_path(
+        &self,
+        receiver_path: &[String],
+        method: &str,
+    ) -> Option<MethodId> {
+        let [receiver] = receiver_path else {
+            return None;
+        };
+        let type_name = self.script_types.name(receiver)?;
+        self.script_method_id_for_type(&type_name, method)
+    }
+
+    fn script_method_id_for_type(&self, type_name: &str, method: &str) -> Option<MethodId> {
         self.facts
             .script_method_ids
-            .get(&(type_name, method.to_owned()))
+            .get(&(type_name.to_owned(), method.to_owned()))
             .copied()
     }
 
-    fn script_receiver_type_name(&self, receiver: &Expr) -> Option<String> {
-        match &receiver.kind {
-            ExprKind::Record { path, .. } => {
-                if let Some(type_name) = self.type_symbol_at_span(receiver.span) {
-                    return Some(type_name);
-                }
-                if let Some((enum_path, _)) = enum_variant_path(path) {
-                    return Some(enum_path);
-                }
-                Some(path.join("."))
-            }
-            _ => None,
-        }
+    fn script_type_for_expr(&self, expr: &Expr) -> Option<String> {
+        expression_script_type(
+            expr,
+            |span| self.type_symbol_at_span(span),
+            |span| self.script_types.local_at_span(self.bindings, span),
+            |name| self.script_types.name(name),
+        )
     }
 
     fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
@@ -1318,7 +1350,11 @@ impl<'ast> Compiler<'ast> {
             )));
         };
         if let Some((name, local)) = self.local_assignment_target(target) {
-            let assigned = self.compile_local_assignment(*op, target.span, name, local, value)?;
+            let script_type = (*op == AssignOp::Set)
+                .then(|| self.script_type_for_expr(value))
+                .flatten();
+            let assigned =
+                self.compile_local_assignment(*op, target.span, name, local, value, script_type)?;
             return Ok(assigned);
         }
         if let ExprKind::Index { base, index } = &target.kind {
@@ -1367,10 +1403,15 @@ impl<'ast> Compiler<'ast> {
         name: String,
         local: Option<HirLocalId>,
         value: &Expr,
+        script_type: Option<String>,
     ) -> CompileResult<Register> {
         let target = self.local_register_at_span(target_span, &name)?;
         if let Some(local) = local {
             self.hir_locals.insert(local, target);
+            self.script_types
+                .set_local(local, name.clone(), script_type);
+        } else {
+            self.script_types.set_name(name.clone(), script_type);
         }
         let assigned = match op {
             AssignOp::Set => {
@@ -1564,6 +1605,7 @@ impl<'ast> Compiler<'ast> {
         }
         if let Some(local) = loop_local {
             self.hir_locals.remove(&local);
+            self.script_types.remove_local(local, binding);
         }
 
         Ok(false)
@@ -1887,6 +1929,7 @@ impl<'ast> Compiler<'ast> {
             let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
+            let previous_script_types = self.script_types.clone();
             self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
@@ -1900,6 +1943,7 @@ impl<'ast> Compiler<'ast> {
             };
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
+            self.script_types = previous_script_types;
             all_arms_return &= arm_returned;
             if !arm_returned {
                 end_jumps.push(self.emit_jump());
@@ -1933,6 +1977,7 @@ impl<'ast> Compiler<'ast> {
             let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
+            let previous_script_types = self.script_types.clone();
             self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
@@ -1940,6 +1985,7 @@ impl<'ast> Compiler<'ast> {
             let arm_returned = self.compile_match_arm_value_to(&arm.body, dst)?;
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
+            self.script_types = previous_script_types;
             all_arms_return &= arm_returned;
             if !arm_returned {
                 end_jumps.push(self.emit_jump());
@@ -2118,6 +2164,7 @@ impl<'ast> Compiler<'ast> {
                 .local_named_at(binding, LocalBindingKind::Pattern, body_span)
         {
             self.hir_locals.insert(local, register);
+            self.script_types.remove_local(local, binding);
         }
     }
 
@@ -2670,6 +2717,39 @@ fn main() {
             } if lowered == method_id
         )));
         assert!(program.function("bonus").is_none());
+    }
+
+    #[test]
+    fn compiler_specializes_let_record_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(5);
+}
+"#,
+        )
+        .expect("let-bound script record method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
     }
 
     #[test]
