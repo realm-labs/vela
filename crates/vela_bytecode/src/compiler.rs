@@ -1281,7 +1281,7 @@ impl<'ast> Compiler<'ast> {
             let next_arm_jump = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
-            self.bind_match_fields(scrutinee, &arm.pattern, arm.body.span)?;
+            self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
             let arm_returned = match &arm.body.kind {
                 ExprKind::Block(block) => self.compile_statements(&block.statements)?,
                 _ => {
@@ -1328,7 +1328,7 @@ impl<'ast> Compiler<'ast> {
             let next_arm_jump = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
-            self.bind_match_fields(scrutinee, &arm.pattern, arm.body.span)?;
+            self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
             let arm_returned = self.compile_match_arm_value_to(&arm.body, dst)?;
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
@@ -1400,38 +1400,57 @@ impl<'ast> Compiler<'ast> {
                 });
                 Ok(Some(self.emit_jump_if_false(condition)))
             }
-            Pattern::Binding(_) | Pattern::TupleVariant { .. } => Err(CompileError::new(
+            Pattern::Binding(_) => Ok(None),
+            Pattern::TupleVariant { .. } => Err(CompileError::new(
                 CompileErrorKind::UnsupportedSyntax("match pattern"),
             )),
         }
     }
 
-    fn bind_match_fields(
+    fn bind_match_pattern_locals(
         &mut self,
         scrutinee: Register,
         pattern: &Pattern,
         body_span: Span,
     ) -> CompileResult<()> {
-        let Pattern::RecordVariant { fields, .. } = pattern else {
-            return Ok(());
-        };
-        for field in fields {
-            let binding = record_pattern_binding(field)?;
-            let dst = self.alloc_register()?;
-            self.emit(InstructionKind::GetEnumField {
-                dst,
-                value: scrutinee,
-                field: field.name.clone(),
-            });
-            self.locals.insert(binding.clone(), dst);
-            if let Some(local) =
-                self.bindings
-                    .local_named_at(&binding, LocalBindingKind::Pattern, body_span)
-            {
-                self.hir_locals.insert(local, dst);
+        match pattern {
+            Pattern::Binding(binding) => {
+                let dst = self.alloc_register()?;
+                self.emit(InstructionKind::Move {
+                    dst,
+                    src: scrutinee,
+                });
+                self.bind_match_local(binding, dst, body_span);
+                Ok(())
             }
+            Pattern::RecordVariant { fields, .. } => {
+                for field in fields {
+                    let binding = record_pattern_binding(field)?;
+                    let dst = self.alloc_register()?;
+                    self.emit(InstructionKind::GetEnumField {
+                        dst,
+                        value: scrutinee,
+                        field: field.name.clone(),
+                    });
+                    self.bind_match_local(&binding, dst, body_span);
+                }
+                Ok(())
+            }
+            Pattern::Wildcard | Pattern::Literal(_) | Pattern::Path(_) => Ok(()),
+            Pattern::TupleVariant { .. } => Err(CompileError::new(
+                CompileErrorKind::UnsupportedSyntax("match pattern"),
+            )),
         }
-        Ok(())
+    }
+
+    fn bind_match_local(&mut self, binding: &str, register: Register, body_span: Span) {
+        self.locals.insert(binding.to_owned(), register);
+        if let Some(local) =
+            self.bindings
+                .local_named_at(binding, LocalBindingKind::Pattern, body_span)
+        {
+            self.hir_locals.insert(local, register);
+        }
     }
 
     fn compile_map_entry(&mut self, entry: &MapEntry) -> CompileResult<(String, Register)> {
@@ -2525,6 +2544,34 @@ fn main() {
                 ))
                 .count()
                 >= 2
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_binding_match_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 7;
+    return match value {
+        bound => bound + 1,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("binding match patterns should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Move { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Add { .. }))
         );
     }
 

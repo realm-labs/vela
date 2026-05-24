@@ -1223,3 +1223,23 @@ Consequences:
   semantics as ordinary expressions.
 - Heap-backed string literal patterns work through existing heap-aware equality.
 - Binding patterns, tuple variants, and guards remain separate M9 slices.
+
+## 2026-05-24: Binding Match Patterns Copy The Scrutinee
+
+Status: Accepted
+
+Context:
+M9 requires binding patterns. The HIR binding map already declares pattern
+locals scoped to match arm bodies, but binding a pattern name directly to the
+scrutinee register would make assignment to that name mutate the original
+scrutinee local when the scrutinee is a local variable.
+
+Decision:
+Binding patterns are catch-all patterns. The compiler emits a `Move` from the
+scrutinee into a fresh pattern-local register, then binds that register through
+the HIR local map for the arm body.
+
+Consequences:
+- `match value { bound => bound + 1 }` executes from source.
+- Assigning to `bound` inside the arm updates only the pattern local.
+- Tuple variant destructuring remains a separate M9 slice.

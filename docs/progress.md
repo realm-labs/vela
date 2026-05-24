@@ -418,6 +418,10 @@ to the later language constructs that introduce loops and closures.
   with compiled literal constants.
 - Added VM coverage proving integer and heap-backed string literal patterns
   execute from source.
+- Added compiler lowering for binding match patterns by moving the scrutinee
+  into a fresh pattern-local register.
+- Added VM coverage proving binding patterns execute from source and assignment
+  to the binding does not mutate the original scrutinee.
 
 ## Next
 

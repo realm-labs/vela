@@ -2332,6 +2332,47 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_binding_match_patterns() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 7;
+    return match value {
+        bound => bound + 1,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("compile binding match patterns");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
+    fn binding_match_assignment_does_not_mutate_scrutinee() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 7;
+    match value {
+        bound => {
+            bound = 100;
+        }
+    }
+    return value;
+}
+"#,
+            "main",
+        )
+        .expect("compile binding match assignment");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_for_in_source() {
         let program = compile_program_source(
             SourceId::new(1),
