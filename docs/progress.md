@@ -684,6 +684,9 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   copied enum names, variant names, and fields. Managed-heap script enums can
   be written through `PatchTx` and read back from exact-path overlays as
   script enum values.
+- Host boundary value conversion now supports host-ref values as copied
+  external handles through `PatchTx`. Host refs remain outside the script heap
+  ownership model and are not traced as Rust-owned state.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

@@ -2605,7 +2605,7 @@ Consequences:
 - Nested key reads after setting an entire map still require a future
   overlay-descendant lookup model; this change does not reinterpret a
   `HostPath::key` as indexing into an overlaid parent map.
-- Host-ref and richer nullable conversions remain future M11 work.
+- Richer nullable conversions remain future M11 work.
 
 ## 2026-05-25: Host Values Support Script Records
 
@@ -2630,8 +2630,7 @@ Consequences:
 - Exact overlay reads preserve the record type name and script field values.
 - The host still receives copied data only; scripts do not receive Rust
   references or mutate host-owned record structure.
-- Host-ref, nullable, and descendant overlay conversions remain future M11
-  work.
+- Nullable and descendant overlay conversions remain future M11 work.
 
 ## 2026-05-25: Host Values Support Script Enums
 
@@ -2656,5 +2655,28 @@ Consequences:
 - Exact overlay reads preserve enum name, variant name, and field values.
 - The host receives copied enum data only; scripts do not mutate host-owned
   enum structure.
-- Host-ref, nullable, and descendant overlay conversions remain future M11
-  work.
+- Nullable and descendant overlay conversions remain future M11 work.
+
+## 2026-05-25: Host Values Support HostRef Handles
+
+Status: Accepted
+
+Context:
+M11 requires host value conversion for host refs, but scripts must never own
+Rust host state or receive real mutable references. The VM already treats
+`Value::HostRef` and heap `HeapSlot::HostRef` as external handles that are not
+traced as Rust-owned state by the script GC.
+
+Decision:
+Add `HostValue::HostRef(HostRef)` and convert script `Value::HostRef` to that
+copied handle when recording host patches or method arguments. Exact host path
+reads convert the handle back into `Value::HostRef`. This conversion copies
+only the stable host handle; it does not move host state under script heap
+ownership and does not expose Rust references.
+
+Consequences:
+- Scripts can pass host-ref values through `PatchTx::Set` and exact overlay
+  reads.
+- Host refs remain external to the script heap and keep the existing GC
+  behavior.
+- Nullable and descendant overlay conversions remain future M11 work.

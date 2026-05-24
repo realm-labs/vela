@@ -44,6 +44,7 @@ pub(crate) fn value_from_host(value: HostValue) -> Value {
                 variant,
             }
         }
+        HostValue::HostRef(value) => Value::HostRef(value),
     }
 }
 
@@ -89,6 +90,7 @@ pub(crate) fn value_to_host(
                 variant: variant.clone(),
                 fields,
             }),
+        Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
             Some(HeapValue::Array(values)) => values
@@ -138,8 +140,7 @@ pub(crate) fn value_to_host(
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
-        | Value::Missing
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 

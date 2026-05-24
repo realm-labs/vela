@@ -5059,6 +5059,54 @@ fn main(player) {
     }
 
     #[test]
+    fn managed_heap_host_execution_converts_host_ref_for_host_write_and_overlay_read() {
+        let host_ref = player_ref(3);
+        let target_ref = HostRef::new(HostTypeId::new(2), HostObjectId::new(11), 4);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player, target) {
+    player.level = target;
+    return player.level;
+}
+"#,
+            &CompilerOptions::new().with_host_field("level", level_field()),
+        )
+        .expect("compile host ref write source");
+        let mut adapter = host_adapter(host_ref, HostValue::Null);
+        let mut tx = PatchTx::new();
+        let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new()
+                .run_program_with_host_managed_heap_and_budget(
+                    &program,
+                    "main",
+                    &[Value::HostRef(host_ref), Value::HostRef(target_ref)],
+                    &mut host,
+                    &mut budget,
+                )
+                .expect("run managed host ref source")
+        };
+
+        assert_eq!(result, Value::HostRef(target_ref));
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::Set(HostValue::HostRef(target_ref))
+        );
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Null)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
     fn passes_arguments_to_program_entry() {
         let program = compile_program_source(
             SourceId::new(1),

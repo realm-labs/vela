@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use crate::HostRef;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum HostValue {
     Null,
@@ -18,6 +20,7 @@ pub enum HostValue {
         variant: String,
         fields: BTreeMap<String, HostValue>,
     },
+    HostRef(HostRef),
 }
 
 pub(crate) fn add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
