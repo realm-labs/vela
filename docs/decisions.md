@@ -1461,3 +1461,26 @@ Consequences:
   execute through the same bytecode path as top-level tuple variant patterns.
 - Missing or invalid field accesses still surface as VM enum-field errors,
   matching the current dynamic enum behavior.
+
+## 2026-05-24: Math Standard Library Registers As VM Natives
+
+Status: Accepted
+
+Context:
+M13 requires deterministic math helpers, and existing bytecode lowering already
+routes qualified calls such as `math.max(...)` through native dispatch when no
+script function or receiver method applies. The VM needed a structured way to
+install these helpers without moving stdlib logic into the VM facade.
+
+Decision:
+Add a focused `stdlib` VM module with `register_standard_natives()`. The first
+slice registers `math.max`, `math.min`, `math.clamp`, `math.floor`,
+`math.ceil`, and `math.abs` as pure native functions. Integer-only operations
+preserve integer results; mixed numeric operations use floats; invalid numeric
+domains report VM type errors.
+
+Consequences:
+- Hosts can opt into the deterministic math stdlib through one VM API call.
+- Qualified math calls execute through the existing native-call bytecode path.
+- Additional stdlib namespaces can grow in the `stdlib` module without adding
+  implementation logic to `lib.rs`.

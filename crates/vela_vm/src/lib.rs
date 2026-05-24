@@ -6,6 +6,7 @@ mod iteration;
 mod ranges;
 mod record_fields;
 mod script_methods;
+mod stdlib;
 mod try_propagation;
 
 use std::collections::{BTreeMap, HashMap};
@@ -410,6 +411,16 @@ impl Vm {
         + 'static,
     ) {
         self.host_natives.insert(name.into(), Arc::new(function));
+    }
+
+    pub fn register_standard_natives(&mut self) {
+        stdlib::register(self);
+    }
+
+    #[must_use]
+    pub fn with_standard_natives(mut self) -> Self {
+        self.register_standard_natives();
+        self
     }
 
     pub fn register_reflection_natives(&mut self, registry: Arc<TypeRegistry>) {

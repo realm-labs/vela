@@ -492,6 +492,9 @@ method-dispatch coverage before moving into stable type metadata.
   registers back in inline and managed-heap execution.
 - Added string predicate script methods `contains`, `starts_with`, and
   `ends_with` for inline and heap-backed strings.
+- Added VM standard native registration for `math.max`, `math.min`,
+  `math.clamp`, `math.floor`, `math.ceil`, and `math.abs`, with source-level
+  inline and managed-heap execution coverage.
 
 ## Next
 
