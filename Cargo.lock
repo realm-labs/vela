@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "vela"
+name = "vela_common"
 version = "0.1.0"
