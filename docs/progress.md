@@ -567,10 +567,17 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   writes, with VM validation that the expected field still matches the slot.
 - The bytecode compiler now lowers immediate record/enum literal field reads
   such as `Reward { count: 2 }.count` to slot-index bytecode.
-- Remaining M10 work includes broader type-flow slot lowering, trait dispatch,
-  impl method execution, and dynamic implements checks.
+- HIR now preserves script trait method signatures and whether a trait method
+  has a default body.
+- TypeRegistry now registers script trait declarations and attaches script
+  impl-block trait metadata to script types, including stable trait and trait
+  method IDs.
+- Added syntax, HIR, and reflection coverage for trait default metadata and
+  script `impl Trait for Type` registration.
+- Remaining M10 work includes broader type-flow slot lowering, trait method
+  dispatch, impl method execution, and dynamic implements checks.
 
 ## Next
 
-- Continue M10 by extending resolved slot metadata beyond immediate literals
-  and adding trait/impl dispatch over script and host types.
+- Continue M10 by adding executable trait/impl method dispatch over script and
+  host types, then extending slot metadata beyond immediate literals.

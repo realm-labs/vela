@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_syntax::{ConstItem, EnumItem, ImplItem, Param, StructField, TypeHint};
+use vela_syntax::{ConstItem, EnumItem, ImplItem, Param, StructField, TraitItem, TypeHint};
 
 use crate::HirNodeId;
 
@@ -106,6 +106,38 @@ impl EnumShape {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnumVariantHint {
     pub name: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraitShape {
+    pub methods: Vec<TraitMethodMetadata>,
+}
+
+impl TraitShape {
+    #[must_use]
+    pub fn from_syntax(item: &TraitItem) -> Self {
+        Self {
+            methods: item
+                .methods
+                .iter()
+                .map(|method| TraitMethodMetadata {
+                    name: method.name.clone(),
+                    signature: FunctionSignature {
+                        params: method.params.iter().map(ParamHint::from_syntax).collect(),
+                        return_type: method.return_type.as_ref().map(HirTypeHint::from_syntax),
+                    },
+                    has_default: method.has_default,
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraitMethodMetadata {
+    pub name: String,
+    pub signature: FunctionSignature,
+    pub has_default: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

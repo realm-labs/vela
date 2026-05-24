@@ -1,7 +1,10 @@
-use vela_common::{FieldId, TypeId, VariantId};
+use vela_common::{FieldId, MethodId, TypeId, VariantId};
 use vela_hir::{Declaration, DeclarationKind, ModuleGraph};
 
-use crate::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc};
+use crate::{
+    FieldDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry,
+    VariantDesc,
+};
 
 impl TypeRegistry {
     pub fn register_script_types(&mut self, graph: &ModuleGraph) {
@@ -43,10 +46,44 @@ impl TypeRegistry {
                     );
                     self.register(desc);
                 }
-                DeclarationKind::Const
-                | DeclarationKind::Function
-                | DeclarationKind::Trait
-                | DeclarationKind::Impl => {}
+                DeclarationKind::Trait => {
+                    let Some(shape) = graph.trait_shape(declaration.id) else {
+                        continue;
+                    };
+                    let trait_name = qualified_type_name(graph, declaration);
+                    let desc = shape.methods.iter().fold(
+                        TraitDesc::new(trait_name.clone()),
+                        |desc, method| {
+                            desc.method(
+                                TraitMethodDesc::new(
+                                    stable_trait_method_id(&trait_name, &method.name),
+                                    method.name.clone(),
+                                )
+                                .defaulted(method.has_default),
+                            )
+                        },
+                    );
+                    self.register_trait(desc);
+                }
+                DeclarationKind::Const | DeclarationKind::Function | DeclarationKind::Impl => {}
+            }
+        }
+
+        for declaration in graph.declarations() {
+            if declaration.kind != DeclarationKind::Impl {
+                continue;
+            }
+            let Some(metadata) = graph.impl_metadata(declaration.id) else {
+                continue;
+            };
+            let trait_name = qualified_path_name(graph, declaration, &metadata.trait_path);
+            let target_name = qualified_path_name(graph, declaration, &metadata.target_path);
+            let trait_desc = self
+                .trait_by_name(&trait_name)
+                .cloned()
+                .unwrap_or_else(|| TraitDesc::new(trait_name));
+            if let Some(target) = self.type_by_name_mut(&target_name) {
+                target.traits.push(trait_desc);
             }
         }
     }
@@ -60,6 +97,20 @@ fn qualified_type_name(graph: &ModuleGraph, declaration: &Declaration) -> String
         declaration.name.clone()
     } else {
         format!("{}.{}", module_path.join(), declaration.name)
+    }
+}
+
+fn qualified_path_name(graph: &ModuleGraph, owner: &Declaration, path: &[String]) -> String {
+    if path.len() != 1 {
+        return path.join(".");
+    }
+    let Some(module_path) = graph.module_path(owner.module) else {
+        return path[0].clone();
+    };
+    if module_path.segments().is_empty() {
+        path[0].clone()
+    } else {
+        format!("{}.{}", module_path.join(), path[0])
     }
 }
 
@@ -131,6 +182,10 @@ fn stable_field_id(type_name: &str, field_name: &str) -> FieldId {
 
 fn stable_variant_id(type_name: &str, variant_name: &str) -> VariantId {
     VariantId::new(stable_id("variant", type_name, variant_name))
+}
+
+fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
+    MethodId::new(stable_id("trait_method", trait_name, method_name))
 }
 
 fn stable_id(kind: &str, owner: &str, member: &str) -> u32 {
@@ -316,5 +371,57 @@ enum QuestProgress {
 
         assert_ne!(original_reward.schema_hash, changed_reward.schema_hash);
         assert_ne!(original_progress.schema_hash, changed_progress.schema_hash);
+    }
+
+    #[test]
+    fn registers_script_traits_and_impls_from_hir() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.combat"),
+            r#"
+trait Damageable {
+    fn damage(self, amount: int) -> int;
+    fn alive(self) -> bool { return true; }
+}
+
+struct Player { hp: int }
+
+impl Damageable for Player {
+    fn damage(self, amount: int) -> int {
+        return self.hp - amount;
+    }
+}
+"#,
+        ));
+        let mut registry = TypeRegistry::new();
+
+        registry.register_script_types(&graph);
+
+        let damageable = registry
+            .trait_by_name("game.combat.Damageable")
+            .expect("Damageable trait");
+        let player = registry
+            .type_by_name("game.combat.Player")
+            .expect("Player type");
+
+        assert_eq!(
+            damageable
+                .methods
+                .iter()
+                .map(|method| (method.name.as_str(), method.has_default))
+                .collect::<Vec<_>>(),
+            [("damage", false), ("alive", true)]
+        );
+        assert_eq!(
+            player
+                .traits
+                .iter()
+                .map(|trait_desc| trait_desc.name.as_str())
+                .collect::<Vec<_>>(),
+            ["game.combat.Damageable"]
+        );
+        assert_eq!(player.traits[0].id, damageable.id);
+        assert_eq!(player.traits[0].methods, damageable.methods);
     }
 }

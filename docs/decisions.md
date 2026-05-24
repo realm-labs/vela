@@ -1846,3 +1846,28 @@ Consequences:
 - Immediate literal field reads now exercise the slot path end to end.
 - Later HIR type facts can reuse the same bytecode forms for locals,
   parameters, pattern bindings, and declared script types.
+
+## 2026-05-25: Script Trait Registration Is Metadata First
+
+Status: Accepted
+
+Context:
+M10 needs trait declarations, default methods, impl blocks, and dynamic
+implements checks. The runtime does not yet execute impl methods through
+method dispatch, but reflection and reload checks need stable trait metadata
+before dispatch can be wired safely.
+
+Decision:
+Preserve trait method signatures and default-body presence in HIR. Register
+script trait declarations in `TypeRegistry` with stable `TraitId` and
+`MethodId` values, and attach script `impl Trait for Type` metadata to the
+target script `TypeDesc`. Trait paths are module-qualified in the same style
+as script struct and enum type names.
+
+Consequences:
+- Reflection and future ABI checks can observe script trait methods without
+  re-parsing syntax.
+- Script type descriptors can report implemented script traits before method
+  dispatch is executable.
+- Actual trait method dispatch and default method execution remain later M10
+  work.

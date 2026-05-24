@@ -14,5 +14,5 @@ pub use module_graph::{
 };
 pub use type_hint::{
     ConstMetadata, EnumShape, EnumVariantHint, FunctionSignature, HirTypeHint, ImplMetadata,
-    ImplMethodMetadata, ParamHint, StructFieldHint, StructShape,
+    ImplMethodMetadata, ParamHint, StructFieldHint, StructShape, TraitMethodMetadata, TraitShape,
 };

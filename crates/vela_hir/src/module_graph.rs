@@ -7,7 +7,7 @@ use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_funct
 use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
     ConstMetadata, EnumShape, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint,
-    StructFieldHint, StructShape,
+    StructFieldHint, StructShape, TraitShape,
 };
 use crate::{HirDeclId, HirNodeId, ModuleId};
 
@@ -140,6 +140,7 @@ pub struct ModuleGraph {
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
     enum_shapes: BTreeMap<HirDeclId, EnumShape>,
+    trait_shapes: BTreeMap<HirDeclId, TraitShape>,
     impl_metadata: BTreeMap<HirDeclId, ImplMetadata>,
     impl_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     diagnostics: Vec<Diagnostic>,
@@ -270,13 +271,15 @@ impl ModuleGraph {
                         .insert(declaration, EnumShape::from_syntax(enumeration));
                 }
                 ItemKind::Trait(trait_item) => {
-                    self.insert_declaration(
+                    let declaration = self.insert_declaration(
                         &mut hir_module,
                         trait_item.name.clone(),
                         DeclarationKind::Trait,
                         item.visibility.clone(),
                         item.span,
                     );
+                    self.trait_shapes
+                        .insert(declaration, TraitShape::from_syntax(trait_item));
                 }
                 ItemKind::Impl(impl_item) => {
                     let name = impl_declaration_name(&impl_item.trait_path, &impl_item.target_path);
@@ -378,6 +381,11 @@ impl ModuleGraph {
     #[must_use]
     pub fn enum_shape(&self, declaration: HirDeclId) -> Option<&EnumShape> {
         self.enum_shapes.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn trait_shape(&self, declaration: HirDeclId) -> Option<&TraitShape> {
+        self.trait_shapes.get(&declaration)
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = &Declaration> {
@@ -1662,7 +1670,10 @@ enum QuestProgress {
             1,
             "game.combat",
             r#"
-trait Damageable { fn damage(self, amount: int) -> int; }
+trait Damageable {
+    fn damage(self, amount: int) -> int;
+    fn alive(self) -> bool { return true; }
+}
 struct Player { hp: int }
 
 impl Damageable for Player {
@@ -1674,11 +1685,20 @@ impl Damageable for Player {
 "#,
         ));
         let declarations = graph.module(module).expect("module declarations");
+        let trait_decl = declarations
+            .get("Damageable")
+            .expect("Damageable declaration");
         let impl_decl = declarations
             .get("impl Damageable for Player")
             .expect("impl declaration");
 
         assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let trait_shape = graph.trait_shape(trait_decl).expect("trait shape");
+        assert_eq!(trait_shape.methods.len(), 2);
+        assert_eq!(trait_shape.methods[0].name, "damage");
+        assert!(!trait_shape.methods[0].has_default);
+        assert_eq!(trait_shape.methods[1].name, "alive");
+        assert!(trait_shape.methods[1].has_default);
         assert_eq!(
             graph.declaration(impl_decl).map(|decl| decl.kind),
             Some(DeclarationKind::Impl)

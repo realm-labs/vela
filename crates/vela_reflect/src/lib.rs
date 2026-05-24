@@ -5,7 +5,7 @@ mod script_types;
 use std::collections::BTreeMap;
 use std::fmt;
 
-use vela_common::{FieldId, HostMethodId, HostTypeId, TypeId, VariantId};
+use vela_common::{FieldId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId};
 use vela_host::{HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -177,17 +177,54 @@ impl MethodDesc {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitDesc {
+    pub id: TraitId,
     pub name: String,
+    pub methods: Vec<TraitMethodDesc>,
     pub attrs: AttrMap,
 }
 
 impl TraitDesc {
     #[must_use]
     pub fn new(name: impl Into<String>) -> Self {
+        let name = name.into();
         Self {
-            name: name.into(),
+            id: stable_trait_id(&name),
+            name,
+            methods: Vec::new(),
             attrs: AttrMap::new(),
         }
+    }
+
+    #[must_use]
+    pub fn method(mut self, method: TraitMethodDesc) -> Self {
+        self.methods.push(method);
+        self
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraitMethodDesc {
+    pub id: MethodId,
+    pub name: String,
+    pub has_default: bool,
+    pub attrs: AttrMap,
+}
+
+impl TraitMethodDesc {
+    #[must_use]
+    pub fn new(id: MethodId, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            has_default: false,
+            attrs: AttrMap::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
+        self
     }
 }
 
@@ -213,6 +250,7 @@ impl VariantDesc {
 pub struct TypeRegistry {
     types_by_key: BTreeMap<TypeKey, TypeDesc>,
     host_keys: BTreeMap<HostTypeId, TypeKey>,
+    traits_by_name: BTreeMap<String, TraitDesc>,
 }
 
 impl TypeRegistry {
@@ -226,6 +264,10 @@ impl TypeRegistry {
             self.host_keys.insert(host_type_id, desc.key.clone());
         }
         self.types_by_key.insert(desc.key.clone(), desc);
+    }
+
+    pub fn register_trait(&mut self, desc: TraitDesc) {
+        self.traits_by_name.insert(desc.name.clone(), desc);
     }
 
     #[must_use]
@@ -248,6 +290,20 @@ impl TypeRegistry {
             .find(|desc| desc.key.name == name)
     }
 
+    #[must_use]
+    pub fn trait_by_name(&self, name: &str) -> Option<&TraitDesc> {
+        self.traits_by_name.get(name)
+    }
+
+    fn type_by_name_mut(&mut self, name: &str) -> Option<&mut TypeDesc> {
+        let key = self
+            .types_by_key
+            .keys()
+            .find(|key| key.name == name)
+            .cloned()?;
+        self.types_by_key.get_mut(&key)
+    }
+
     fn host_field(&self, host_ref: HostRef, field_name: &str) -> ReflectResult<&FieldDesc> {
         let desc = self.type_of_host(host_ref).ok_or_else(|| {
             ReflectError::new(ReflectErrorKind::UnknownType {
@@ -265,6 +321,25 @@ impl TypeRegistry {
         })?;
         find_method(desc, method_name)
     }
+}
+
+fn stable_trait_id(name: &str) -> TraitId {
+    TraitId::new(stable_reflect_id("trait", name, ""))
+}
+
+fn stable_reflect_id(kind: &str, owner: &str, member: &str) -> u32 {
+    let mut hash = 0x811c_9dc5;
+    for byte in kind
+        .bytes()
+        .chain([0])
+        .chain(owner.bytes())
+        .chain([0])
+        .chain(member.bytes())
+    {
+        hash ^= u32::from(byte);
+        hash = hash.wrapping_mul(0x0100_0193);
+    }
+    if hash == 0 { 1 } else { hash }
 }
 
 #[derive(Clone, Debug, PartialEq)]

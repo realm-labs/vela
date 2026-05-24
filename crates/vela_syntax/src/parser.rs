@@ -176,6 +176,7 @@ impl Parser {
                         name: method,
                         params,
                         return_type,
+                        has_default: self.check_symbol(Symbol::LBrace),
                     });
                 } else {
                     self.parse_parameter_list();
@@ -1477,6 +1478,7 @@ enum QuestProgress {
 
 trait Damageable {
     fn damage(self, amount);
+    fn alive(self) { return true; }
 }
 
 impl Damageable for Player {
@@ -1527,7 +1529,9 @@ impl Damageable for Player {
         let ItemKind::Trait(trait_item) = &parsed.items[5].kind else {
             panic!("expected trait item");
         };
-        assert_eq!(trait_method_names(&trait_item.methods), ["damage"]);
+        assert_eq!(trait_method_names(&trait_item.methods), ["damage", "alive"]);
+        assert!(!trait_item.methods[0].has_default);
+        assert!(trait_item.methods[1].has_default);
 
         let ItemKind::Impl(impl_item) = &parsed.items[6].kind else {
             panic!("expected impl item");
