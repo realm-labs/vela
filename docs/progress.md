@@ -429,6 +429,8 @@ method-dispatch coverage before moving into stable type metadata.
 - Added compiler and VM execution for record-variant field subpatterns,
   including literal field checks and nested tuple-variant patterns in inline
   and managed-heap execution.
+- Added executable grammar coverage for hexadecimal integer literals, binary
+  integer literals, and decimal float literals with exponents.
 - Added HIR resolution and compiler lowering for declared tuple-style enum
   constructor calls such as `Damage.Physical(7, 2)`.
 - Added tuple variant pattern destructuring with positional enum fields and VM

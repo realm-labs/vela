@@ -2239,6 +2239,27 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_radix_ints_and_exponent_floats() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let base = 0x10 + 0b10;
+    let scaled = 3.5e+1 / 2.5;
+    if base == 18 && scaled == 14.0 {
+        return scaled;
+    }
+    return 0.0;
+}
+"#,
+            "main",
+        )
+        .expect("compile numeric literal source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Float(14.0)));
+    }
+
+    #[test]
     fn runs_compiled_unary_operator_source() {
         let code = compile_function_source(
             SourceId::new(1),

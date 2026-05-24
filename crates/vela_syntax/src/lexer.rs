@@ -157,6 +157,29 @@ impl<'src> Lexer<'src> {
 
     fn lex_number(&mut self) {
         let start = self.offset;
+        if self.peek_char() == Some('0') && matches!(self.peek_next_char(), Some('x' | 'X')) {
+            self.bump_char();
+            self.bump_char();
+            self.consume_digits_or_underscores_with(|ch| ch.is_ascii_hexdigit());
+            self.push_token(
+                TokenKind::Int(self.slice(start, self.offset).to_owned()),
+                start,
+                self.offset,
+            );
+            return;
+        }
+        if self.peek_char() == Some('0') && matches!(self.peek_next_char(), Some('b' | 'B')) {
+            self.bump_char();
+            self.bump_char();
+            self.consume_digits_or_underscores_with(|ch| matches!(ch, '0' | '1'));
+            self.push_token(
+                TokenKind::Int(self.slice(start, self.offset).to_owned()),
+                start,
+                self.offset,
+            );
+            return;
+        }
+
         self.consume_digits_or_underscores();
         let mut is_float = false;
 
@@ -170,6 +193,10 @@ impl<'src> Lexer<'src> {
             self.consume_digits_or_underscores();
         }
 
+        if is_float && self.has_valid_exponent() {
+            self.consume_exponent();
+        }
+
         let text = self.slice(start, self.offset).to_owned();
         if is_float {
             self.push_token(TokenKind::Float(text), start, self.offset);
@@ -179,12 +206,33 @@ impl<'src> Lexer<'src> {
     }
 
     fn consume_digits_or_underscores(&mut self) {
-        while self
-            .peek_char()
-            .is_some_and(|ch| ch == '_' || ch.is_ascii_digit())
-        {
+        self.consume_digits_or_underscores_with(|ch| ch.is_ascii_digit());
+    }
+
+    fn consume_digits_or_underscores_with(&mut self, is_digit: impl Fn(char) -> bool) {
+        while self.peek_char().is_some_and(|ch| ch == '_' || is_digit(ch)) {
             self.bump_char();
         }
+    }
+
+    fn has_valid_exponent(&self) -> bool {
+        let mut chars = self.text.get(self.offset..).unwrap_or_default().chars();
+        if !matches!(chars.next(), Some('e' | 'E')) {
+            return false;
+        }
+        match chars.next() {
+            Some('+' | '-') => chars.next().is_some_and(|ch| ch.is_ascii_digit()),
+            Some(ch) => ch.is_ascii_digit(),
+            None => false,
+        }
+    }
+
+    fn consume_exponent(&mut self) {
+        self.bump_char();
+        if matches!(self.peek_char(), Some('+' | '-')) {
+            self.bump_char();
+        }
+        self.consume_digits_or_underscores();
     }
 
     fn lex_ident_or_keyword(&mut self) {

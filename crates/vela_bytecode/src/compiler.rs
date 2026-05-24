@@ -2168,15 +2168,26 @@ fn evaluate_numeric_compare_const(
 }
 
 fn parse_int(value: &str) -> CompileResult<i64> {
-    value
-        .replace('_', "")
-        .parse()
-        .map_err(|error: ParseIntError| {
-            CompileError::new(CompileErrorKind::InvalidIntLiteral {
-                literal: value.to_owned(),
-                error: error.to_string(),
-            })
+    let value_without_separators = value.replace('_', "");
+    let (radix, digits) = if let Some(digits) = value_without_separators
+        .strip_prefix("0x")
+        .or_else(|| value_without_separators.strip_prefix("0X"))
+    {
+        (16, digits)
+    } else if let Some(digits) = value_without_separators
+        .strip_prefix("0b")
+        .or_else(|| value_without_separators.strip_prefix("0B"))
+    {
+        (2, digits)
+    } else {
+        (10, value_without_separators.as_str())
+    };
+    i64::from_str_radix(digits, radix).map_err(|error: ParseIntError| {
+        CompileError::new(CompileErrorKind::InvalidIntLiteral {
+            literal: value.to_owned(),
+            error: error.to_string(),
         })
+    })
 }
 
 fn parse_float(value: &str) -> CompileResult<f64> {
@@ -2337,6 +2348,24 @@ fn main(player) {
                 ..
             } if lowered_method == method
         )));
+    }
+
+    #[test]
+    fn compiler_lowers_radix_ints_and_exponent_floats() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return 0x10 + 0b10 + 3.5e+1;
+}
+"#,
+            "main",
+        )
+        .expect("numeric literal source should compile");
+
+        assert!(code.constants.contains(&Constant::Int(16)));
+        assert!(code.constants.contains(&Constant::Int(2)));
+        assert!(code.constants.contains(&Constant::Float(35.0)));
     }
 
     #[test]

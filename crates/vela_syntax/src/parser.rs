@@ -1420,6 +1420,18 @@ mod tests {
     }
 
     #[test]
+    fn lexes_radix_ints_and_exponent_floats() {
+        let lexed = lex(source_id(), "0x2a 0b1010 1_000 3.5e+2 4.25E-1");
+
+        assert!(lexed.diagnostics.is_empty());
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Int("0x2a".into()));
+        assert_eq!(lexed.tokens[1].kind, TokenKind::Int("0b1010".into()));
+        assert_eq!(lexed.tokens[2].kind, TokenKind::Int("1_000".into()));
+        assert_eq!(lexed.tokens[3].kind, TokenKind::Float("3.5e+2".into()));
+        assert_eq!(lexed.tokens[4].kind, TokenKind::Float("4.25E-1".into()));
+    }
+
+    #[test]
     fn parses_core_module_items() {
         let parsed = parse_source(
             source_id(),
