@@ -56,8 +56,11 @@ M2: Minimal Bytecode VM Loop.
 - Added `MakeArray` and `MakeMap` bytecode operations, compiler lowering for
   array/map literals, and VM tests that return array/map values from compiled
   source.
+- Added compiler lowering for `if/else` statement branches using
+  `JumpIfFalse`/`Jump` bytecode patching, with compiled-source tests for both
+  then and else return paths.
 
 ## Next
 
-- Finish M2 control-flow lowering by compiling `if/else` statements and
-  expressions into branch bytecode.
+- Finish M2 comparison/operator coverage and decide the next boundary between
+  M2 completion and starting M3 host-state bytecode.

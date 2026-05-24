@@ -534,4 +534,44 @@ fn double(value) {
 
         assert_eq!(Vm::new().run(&code), Ok(Value::Map(expected)));
     }
+
+    #[test]
+    fn runs_compiled_if_then_branch_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    if 2 < 3 {
+        return 10;
+    } else {
+        return 20;
+    }
+}
+"#,
+            "main",
+        )
+        .expect("compile if source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(10)));
+    }
+
+    #[test]
+    fn runs_compiled_if_else_branch_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    if 3 < 2 {
+        return 10;
+    } else {
+        return 20;
+    }
+}
+"#,
+            "main",
+        )
+        .expect("compile if source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    }
 }

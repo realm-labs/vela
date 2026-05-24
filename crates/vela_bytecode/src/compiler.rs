@@ -5,11 +5,13 @@ use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, SourceId};
 use vela_syntax::{
-    BinaryOp, Block, Expr, ExprKind, FunctionItem, ItemKind, Literal, MapEntry, SourceFile, Stmt,
-    StmtKind, parse_source,
+    BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal, MapEntry,
+    SourceFile, Stmt, StmtKind, parse_source,
 };
 
-use crate::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
+use crate::{
+    CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompileError {
@@ -164,6 +166,9 @@ impl<'ast> Compiler<'ast> {
                 Ok(true)
             }
             StmtKind::Expr(expr) => {
+                if let ExprKind::If(if_expr) = &expr.kind {
+                    return self.compile_if(if_expr);
+                }
                 self.compile_expr(expr)?;
                 Ok(false)
             }
@@ -233,6 +238,16 @@ impl<'ast> Compiler<'ast> {
                 self.emit(InstructionKind::MakeMap { dst, entries });
                 Ok(dst)
             }
+            ExprKind::If(if_expr) => {
+                let returned = self.compile_if(if_expr)?;
+                if returned {
+                    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "returning if expression",
+                    )))
+                } else {
+                    self.emit_constant(Constant::Null)
+                }
+            }
             ExprKind::Assign { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment expression",
             ))),
@@ -244,7 +259,6 @@ impl<'ast> Compiler<'ast> {
             | ExprKind::Try(_)
             | ExprKind::Record { .. }
             | ExprKind::Lambda { .. }
-            | ExprKind::If(_)
             | ExprKind::Match(_)
             | ExprKind::Error => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "expression",
@@ -299,6 +313,32 @@ impl<'ast> Compiler<'ast> {
         Ok(dst)
     }
 
+    fn compile_if(&mut self, if_expr: &IfExpr) -> CompileResult<bool> {
+        let condition = self.compile_expr(&if_expr.condition)?;
+        let jump_to_else = self.emit_jump_if_false(condition);
+
+        let then_returned = self.compile_statements(&if_expr.then_branch.statements)?;
+        let jump_to_end = if then_returned {
+            None
+        } else {
+            Some(self.emit_jump())
+        };
+
+        self.patch_jump(jump_to_else, self.current_offset())?;
+
+        let else_returned = match &if_expr.else_branch {
+            Some(ElseBranch::Block(block)) => self.compile_statements(&block.statements)?,
+            Some(ElseBranch::If(if_expr)) => self.compile_if(if_expr)?,
+            None => false,
+        };
+
+        if let Some(jump_to_end) = jump_to_end {
+            self.patch_jump(jump_to_end, self.current_offset())?;
+        }
+
+        Ok(then_returned && else_returned)
+    }
+
     fn compile_map_entry(&mut self, entry: &MapEntry) -> CompileResult<(String, Register)> {
         let key = map_key_name(&entry.key)?;
         let value = self.compile_expr(&entry.value)?;
@@ -323,6 +363,49 @@ impl<'ast> Compiler<'ast> {
 
     fn emit(&mut self, kind: InstructionKind) {
         self.code.push_instruction(Instruction::new(kind));
+    }
+
+    fn emit_jump_if_false(&mut self, condition: Register) -> usize {
+        let offset = self.current_offset();
+        self.emit(InstructionKind::JumpIfFalse {
+            condition,
+            target: InstructionOffset(usize::MAX),
+        });
+        offset
+    }
+
+    fn emit_jump(&mut self) -> usize {
+        let offset = self.current_offset();
+        self.emit(InstructionKind::Jump {
+            target: InstructionOffset(usize::MAX),
+        });
+        offset
+    }
+
+    fn patch_jump(&mut self, offset: usize, target: usize) -> CompileResult<()> {
+        let instruction =
+            self.code.instructions.get_mut(offset).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax("jump patch"))
+            })?;
+        match &mut instruction.kind {
+            InstructionKind::JumpIfFalse {
+                target: jump_target,
+                ..
+            }
+            | InstructionKind::Jump {
+                target: jump_target,
+            } => {
+                *jump_target = InstructionOffset(target);
+                Ok(())
+            }
+            _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "jump patch",
+            ))),
+        }
+    }
+
+    fn current_offset(&self) -> usize {
+        self.code.instructions.len()
     }
 }
 
