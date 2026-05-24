@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
@@ -19,6 +21,9 @@ pub(crate) fn call_method(
         "has" => map_has(receiver, args, heap).map(Value::Bool),
         "get" => map_get(receiver, args, heap),
         "get_or" => map_get_or(receiver, args, heap),
+        "keys" => map_keys(receiver, args, heap),
+        "values" => map_values(receiver, args, heap),
+        "entries" => map_entries(receiver, args, heap),
         _ => Err(VmError::new(VmErrorKind::UnknownMethod {
             method: method.to_owned(),
         })),
@@ -132,6 +137,91 @@ fn map_get_or(
                 .map_or_else(|| args[1].clone(), value_from_heap_slot))
         }
         _ => type_error("method get_or"),
+    }
+}
+
+fn map_keys(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
+    expect_no_args("keys", args)?;
+    match receiver {
+        Value::Map(values) => Ok(Value::Array(
+            values
+                .keys()
+                .map(|key| Value::String(key.clone()))
+                .collect(),
+        )),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method keys");
+            };
+            Ok(Value::Array(
+                values
+                    .keys()
+                    .map(|key| Value::String(key.clone()))
+                    .collect(),
+            ))
+        }
+        _ => type_error("method keys"),
+    }
+}
+
+fn map_values(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("values", args)?;
+    match receiver {
+        Value::Map(values) => Ok(Value::Array(values.values().cloned().collect())),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method values");
+            };
+            Ok(Value::Array(
+                values.values().map(value_from_heap_slot).collect(),
+            ))
+        }
+        _ => type_error("method values"),
+    }
+}
+
+fn map_entries(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("entries", args)?;
+    match receiver {
+        Value::Map(values) => Ok(Value::Array(
+            values
+                .iter()
+                .map(|(key, value)| map_entry(key, value.clone()))
+                .collect(),
+        )),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method entries");
+            };
+            Ok(Value::Array(
+                values
+                    .iter()
+                    .map(|(key, value)| map_entry(key, value_from_heap_slot(value)))
+                    .collect(),
+            ))
+        }
+        _ => type_error("method entries"),
+    }
+}
+
+fn map_entry(key: &str, value: Value) -> Value {
+    let mut fields = BTreeMap::new();
+    fields.insert("key".to_owned(), Value::String(key.to_owned()));
+    fields.insert("value".to_owned(), value);
+    Value::Record {
+        type_name: "MapEntry".to_owned(),
+        fields,
     }
 }
 

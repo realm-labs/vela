@@ -2527,8 +2527,14 @@ fn main() {
     let values = [1, 2, 3];
     let rewards = {"gold": 4, "xp": 6};
     let empty = [];
+    let keys = rewards.keys();
+    let amounts = rewards.values();
+    let entries = rewards.entries();
     if empty.is_empty() && values.len() == 3 && rewards.len() == 2 && ("gold").len() == 4
-        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", 10) == 10 {
+        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", 10) == 10
+        && keys[0] == "gold" && keys[1] == "xp"
+        && amounts[0] == 4 && amounts[1] == 6
+        && entries[0].key == "gold" && entries[1].value == 6 {
         return (1..=3).len();
     }
     return 0;
@@ -2998,8 +3004,14 @@ fn main() {
 fn main() {
     let names = ["gold", "xp"];
     let rewards = {"gold": 4, "xp": 6};
+    let keys = rewards.keys();
+    let amounts = rewards.values();
+    let entries = rewards.entries();
     if names.len() == 2 && rewards.is_empty() == false && ("quest").len() == 5
-        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", "fallback") == "fallback" {
+        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", "fallback") == "fallback"
+        && keys[0] == "gold" && keys[1] == "xp"
+        && amounts[0] == 4 && amounts[1] == 6
+        && entries[0].key == "gold" && entries[1].value == 6 {
         return names[0].len();
     }
     return 0;

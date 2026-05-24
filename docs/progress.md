@@ -476,6 +476,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added VM coverage proving map methods preserve dynamic map values, return
   `null` for missing `get` keys, and keep fallback values heap-safe in managed
   execution.
+- Added deterministic read-only map script methods `keys`, `values`, and
+  `entries`, with `entries` returning script-visible `MapEntry` records in
+  inline and managed-heap execution.
 
 ## Next
 
