@@ -149,6 +149,10 @@ pub enum VmErrorKind {
     UnknownNative {
         name: String,
     },
+    PermissionDenied {
+        native: String,
+        permission: String,
+    },
     UnknownFunction {
         name: String,
     },

@@ -2295,3 +2295,27 @@ Consequences:
 - Duplicate native ABI IDs and names are rejected across both native kinds.
 - Permission enforcement and native method registration remain separate Engine
   work.
+
+## 2026-05-25: Engine Enforces Native Permission Requirements
+
+Status: Accepted
+
+Context:
+Native descriptors already carry required permission metadata, but the first
+Engine API slice only stored that metadata. The architecture requires
+permission checks before native dispatch, especially for host-aware natives
+that can record `PatchTx` mutations.
+
+Decision:
+Add an Engine-owned `PermissionSet` and builder APIs for granting permissions.
+During VM installation, wrap pure and host-aware native callables with a
+permission check against the descriptor's `FunctionAccess`. Missing
+permissions return `VmErrorKind::PermissionDenied` before the Rust callback is
+invoked.
+
+Consequences:
+- Host applications can configure which native capabilities an Engine grants.
+- Denied host-aware natives cannot record patches because rejection happens
+  before callback dispatch.
+- This is Engine-level native permission enforcement; field/method reflection
+  permissions and native method registration remain future work.

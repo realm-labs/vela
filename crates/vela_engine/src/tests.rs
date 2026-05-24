@@ -2,7 +2,7 @@ use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_reflect::{FieldDesc, TypeDesc, TypeKey};
-use vela_vm::{HostExecution, Value};
+use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
     EffectSet, Engine, EngineErrorKind, FunctionAccess, NativeFunctionDesc, NativeFunctionId,
@@ -48,6 +48,7 @@ fn main() {
 #[test]
 fn engine_installs_registered_host_native_functions_into_vm() {
     let engine = Engine::builder()
+        .grant_permission("player.write")
         .register_host_native_fn(
             NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(2))
                 .param(
@@ -105,6 +106,93 @@ fn main(player) {
         HostPath::new(host_ref).field(FieldId::new(1))
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
+}
+
+#[test]
+fn engine_denies_native_calls_missing_required_permission() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.secret", NativeFunctionId::new(3))
+                .returns(TypeHint::Int)
+                .access(FunctionAccess::public().require_permission("game.secret")),
+            |_| Ok(Value::Int(99)),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.secret();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert!(matches!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+            native: "game.secret".to_owned(),
+            permission: "game.secret".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_denies_host_native_before_recording_patches() {
+    let engine = Engine::builder()
+        .register_host_native_fn(
+            NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(4))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            |args, host| {
+                let [Value::HostRef(player), Value::Int(level)] = args else {
+                    return Ok(Value::Null);
+                };
+                host.tx.set_path(
+                    HostPath::new(*player).field(FieldId::new(1)),
+                    HostValue::Int(*level),
+                    None,
+                )?;
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    game.set_level(player, 9);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+            native: "game.set_level".to_owned(),
+            permission: "player.write".to_owned(),
+        }
+    ));
+    assert!(tx.patches().is_empty());
 }
 
 #[test]

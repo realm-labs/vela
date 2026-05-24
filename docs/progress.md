@@ -634,11 +634,14 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Engine registration now supports host-aware native functions that receive
   `HostExecution` and can record host mutations through `PatchTx`; duplicate
   native IDs and names are checked across pure and host-aware native entries.
+- Added Engine-owned permission grants and native descriptor permission
+  requirements; installed pure and host-aware natives now reject calls with a
+  `PermissionDenied` VM error before invoking the Rust callback or recording
+  patches.
 - Remaining M10 work includes broader MethodId use for other non-literal
-  receiver facts and fuller Engine builder/native method and permission
-  enforcement APIs.
+  receiver facts and fuller Engine builder/native method APIs.
 
 ## Next
 
 - Continue M10 with broader non-literal receiver facts or fuller Engine
-  builder/native method and permission enforcement APIs.
+  builder/native method APIs.

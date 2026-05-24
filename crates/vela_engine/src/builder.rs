@@ -5,7 +5,7 @@ use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
     Engine, EngineError, EngineErrorKind, EngineResult, HostNativeFunctionEntry,
-    NativeFunctionDesc, NativeFunctionEntry,
+    NativeFunctionDesc, NativeFunctionEntry, PermissionSet,
 };
 
 #[derive(Clone, Default)]
@@ -13,6 +13,7 @@ pub struct EngineBuilder {
     types: Vec<TypeDesc>,
     native_functions: Vec<NativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
+    permissions: PermissionSet,
 }
 
 impl EngineBuilder {
@@ -24,6 +25,18 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_type(mut self, desc: TypeDesc) -> Self {
         self.types.push(desc);
+        self
+    }
+
+    #[must_use]
+    pub fn grant_permission(mut self, permission: impl Into<String>) -> Self {
+        self.permissions.insert(permission);
+        self
+    }
+
+    #[must_use]
+    pub fn permissions(mut self, permissions: PermissionSet) -> Self {
+        self.permissions = permissions;
         self
     }
 
@@ -65,6 +78,7 @@ impl EngineBuilder {
             registry,
             self.native_functions,
             self.host_native_functions,
+            self.permissions,
         ))
     }
 }

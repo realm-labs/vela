@@ -4,6 +4,8 @@ use vela_common::FunctionId;
 use vela_reflect::TypeKey;
 use vela_vm::{HostExecution, Value, VmResult};
 
+use crate::PermissionSet;
+
 pub type NativeFunctionId = FunctionId;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -120,7 +122,7 @@ impl EffectSet {
 pub struct FunctionAccess {
     pub public: bool,
     pub reflect_callable: bool,
-    pub required_permissions: Vec<String>,
+    pub required_permissions: PermissionSet,
 }
 
 impl FunctionAccess {
@@ -137,7 +139,7 @@ impl FunctionAccess {
 
     #[must_use]
     pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
-        self.required_permissions.push(permission.into());
+        self.required_permissions.insert(permission);
         self
     }
 }
@@ -147,7 +149,7 @@ impl Default for FunctionAccess {
         Self {
             public: true,
             reflect_callable: false,
-            required_permissions: Vec::new(),
+            required_permissions: PermissionSet::new(),
         }
     }
 }
