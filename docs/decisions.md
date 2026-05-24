@@ -591,3 +591,26 @@ Consequences:
   the current function-call surface.
 - Full runtime method dispatch remains an explicit M10/M11 follow-up rather
   than being inferred from syntax heuristics.
+
+## 2026-05-24: Bytecode Source Compilation Uses HIR Function Metadata
+
+Status: Accepted
+
+Context:
+M8 requires the bytecode compiler to consume HIR instead of treating the syntax
+AST as the only semantic source. The compiler still lowers function bodies from
+syntax, but declaration and signature facts now exist in HIR.
+
+Decision:
+Keep the HIR `ModuleGraph` produced during semantic validation and use it to
+discover script functions and retrieve function signatures. `CodeObject`
+parameter names now come from HIR signature metadata, and impl methods remain
+metadata-only until method dispatch is implemented.
+
+Consequences:
+- Function discovery now follows HIR declaration kind instead of ad hoc syntax
+  scans.
+- Future ABI checks and function lowering can reuse the same signature source
+  as diagnostics and tooling.
+- Body bytecode generation can migrate to HIR binding maps incrementally
+  without changing the public source compilation entrypoints again.

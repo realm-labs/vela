@@ -4,7 +4,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, FieldId, SourceId};
-use vela_hir::{ModuleGraph, ModulePath};
+use vela_hir::{DeclarationKind, FunctionSignature, HirDeclId, ModuleGraph, ModuleId, ModulePath};
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
     MapEntry, MatchExpr, Pattern, RecordPatternField, SourceFile, Stmt, StmtKind, parse_source,
@@ -71,21 +71,13 @@ pub fn compile_function_source_with_options(
     function_name: &str,
     options: &CompilerOptions,
 ) -> CompileResult<CodeObject> {
-    let parsed = parse_semantic_source(source, text)?;
-    let script_functions = script_function_names(&parsed);
+    let semantic = parse_semantic_source(source, text)?;
+    let script_functions = semantic.script_function_names();
+    let (function, signature) = semantic.function(function_name).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
+    })?;
 
-    let function = parsed
-        .items
-        .iter()
-        .find_map(|item| match &item.kind {
-            ItemKind::Function(function) if function.name == function_name => Some(function),
-            _ => None,
-        })
-        .ok_or_else(|| {
-            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
-        })?;
-
-    Compiler::new(function, script_functions, options.clone())?.compile()
+    Compiler::new(function, signature, script_functions, options.clone())?.compile()
 }
 
 pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Program> {
@@ -97,16 +89,23 @@ pub fn compile_program_source_with_options(
     text: &str,
     options: &CompilerOptions,
 ) -> CompileResult<Program> {
-    let parsed = parse_semantic_source(source, text)?;
-    let script_functions = script_function_names(&parsed);
+    let semantic = parse_semantic_source(source, text)?;
+    let script_functions = semantic.script_function_names();
     let mut program = Program::new();
 
-    for item in &parsed.items {
-        if let ItemKind::Function(function) = &item.kind {
-            program.insert_function(
-                Compiler::new(function, script_functions.clone(), options.clone())?.compile()?,
-            );
-        }
+    for name in &script_functions {
+        let (function, signature) = semantic
+            .function(name)
+            .expect("HIR function declarations come from parsed function items");
+        program.insert_function(
+            Compiler::new(
+                function,
+                signature,
+                script_functions.clone(),
+                options.clone(),
+            )?
+            .compile()?,
+        );
     }
 
     Ok(program)
@@ -123,29 +122,60 @@ fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFil
     }
 }
 
-fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
+struct SemanticSource {
+    parsed: SourceFile,
+    graph: ModuleGraph,
+    module: ModuleId,
+}
+
+impl SemanticSource {
+    fn function(&self, name: &str) -> Option<(&FunctionItem, &FunctionSignature)> {
+        let declaration = self.function_declaration(name)?;
+        let signature = self.graph.function_signature(declaration)?;
+        let function = self.parsed.items.iter().find_map(|item| match &item.kind {
+            ItemKind::Function(function) if function.name == name => Some(function),
+            _ => None,
+        })?;
+        Some((function, signature))
+    }
+
+    fn script_function_names(&self) -> BTreeSet<String> {
+        let Some(declarations) = self.graph.module(self.module) else {
+            return BTreeSet::new();
+        };
+        declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = declarations.get(name)?;
+                let declaration = self.graph.declaration(declaration)?;
+                (declaration.kind == DeclarationKind::Function).then(|| name.to_owned())
+            })
+            .collect()
+    }
+
+    fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
+        let declaration = self.graph.module(self.module)?.get(name)?;
+        let metadata = self.graph.declaration(declaration)?;
+        (metadata.kind == DeclarationKind::Function).then_some(declaration)
+    }
+}
+
+fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
     let parsed = parse_checked_source(source, text)?;
     let mut graph = ModuleGraph::new();
-    graph.add_parsed_source(source, ModulePath::from_dotted("main"), parsed.clone());
+    let module = graph.add_parsed_source(source, ModulePath::from_dotted("main"), parsed.clone());
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
-        Ok(parsed)
+        Ok(SemanticSource {
+            parsed,
+            graph,
+            module,
+        })
     } else {
         Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
             graph.diagnostics().to_vec(),
         )))
     }
-}
-
-fn script_function_names(parsed: &SourceFile) -> BTreeSet<String> {
-    parsed
-        .items
-        .iter()
-        .filter_map(|item| match &item.kind {
-            ItemKind::Function(function) => Some(function.name.clone()),
-            _ => None,
-        })
-        .collect()
 }
 
 struct Compiler<'ast> {
@@ -160,12 +190,13 @@ struct Compiler<'ast> {
 impl<'ast> Compiler<'ast> {
     fn new(
         function: &'ast FunctionItem,
+        signature: &FunctionSignature,
         script_functions: BTreeSet<String>,
         options: CompilerOptions,
     ) -> CompileResult<Self> {
-        let param_count = u16::try_from(function.params.len())
+        let param_count = u16::try_from(signature.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
-        let param_names = function
+        let param_names = signature
             .params
             .iter()
             .map(|param| param.name.clone())
@@ -833,6 +864,7 @@ fn main() {
         let main = program.function("main").expect("main function");
 
         assert_eq!(main.params, Vec::<String>::new());
+        assert!(program.function("bonus").is_none());
         assert!(!main.instructions.is_empty());
         assert!(
             main.instructions.iter().any(|instruction| matches!(
@@ -840,6 +872,22 @@ fn main() {
                 InstructionKind::CallFunction { .. }
             ))
         );
+    }
+
+    #[test]
+    fn compiler_uses_hir_signatures_for_code_object_params() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main(player: game.Player, amount: int) -> int {
+    return amount;
+}
+"#,
+            "main",
+        )
+        .expect("typed params should compile through HIR signature metadata");
+
+        assert_eq!(code.params, ["player", "amount"]);
     }
 
     #[test]

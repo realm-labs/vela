@@ -278,7 +278,12 @@ that introduce loops and closures.
 - Added HIR and compiler tests proving impl metadata participates in semantic
   validation while impl methods remain out of top-level bytecode program
   exports.
+- Bytecode source compilation now carries the HIR module graph forward after
+  semantic validation and uses HIR function declarations/signatures for script
+  function discovery and emitted `CodeObject` parameter names.
+- Added compiler tests proving HIR signatures drive code object params and impl
+  methods are not exported as top-level script functions.
 
 ## Next
 
-- Deepen compiler consumption of HIR binding facts and declaration metadata.
+- Deepen compiler consumption of HIR binding maps for local/register lowering.
