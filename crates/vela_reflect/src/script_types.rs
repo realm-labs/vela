@@ -22,11 +22,14 @@ impl TypeRegistry {
                             .source_span(declaration.span),
                         |desc, field| {
                             desc.field(apply_field_attrs(
-                                FieldDesc::new(
-                                    stable_field_id(&type_name, &field.name),
-                                    field.name.clone(),
-                                )
-                                .source_span(field.span),
+                                apply_field_type_hint(
+                                    FieldDesc::new(
+                                        stable_field_id(&type_name, &field.name),
+                                        field.name.clone(),
+                                    )
+                                    .source_span(field.span),
+                                    &field.type_hint,
+                                ),
                                 &field.attrs,
                             ))
                         },
@@ -56,13 +59,16 @@ impl TypeRegistry {
                                         .source_span(variant.span),
                                         &variant.attrs,
                                     ),
-                                    |desc, (field_name, field_attrs, field_span, _)| {
+                                    |desc, (field_name, field_attrs, field_span, type_hint)| {
                                         desc.field(apply_field_attrs(
-                                            FieldDesc::new(
-                                                stable_field_id(&variant_owner, &field_name),
-                                                field_name,
-                                            )
-                                            .source_span(field_span),
+                                            apply_field_type_hint_display(
+                                                FieldDesc::new(
+                                                    stable_field_id(&variant_owner, &field_name),
+                                                    field_name,
+                                                )
+                                                .source_span(field_span),
+                                                &type_hint,
+                                            ),
                                             &field_attrs,
                                         ))
                                     },
@@ -136,6 +142,21 @@ fn apply_field_attrs(mut desc: FieldDesc, attrs: &[vela_hir::HirAttribute]) -> F
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
     desc
+}
+
+fn apply_field_type_hint(desc: FieldDesc, type_hint: &Option<vela_hir::HirTypeHint>) -> FieldDesc {
+    match type_hint {
+        Some(hint) => desc.type_hint(hint.display()),
+        None => desc,
+    }
+}
+
+fn apply_field_type_hint_display(desc: FieldDesc, type_hint: &str) -> FieldDesc {
+    if type_hint.is_empty() {
+        desc
+    } else {
+        desc.type_hint(type_hint)
+    }
 }
 
 fn apply_variant_attrs(mut desc: VariantDesc, attrs: &[vela_hir::HirAttribute]) -> VariantDesc {
@@ -402,6 +423,7 @@ enum QuestProgress {
             .iter()
             .find(|field| field.name == "count")
             .expect("count field");
+        assert_eq!(count_field.type_hint.as_deref(), Some("int"));
         assert_eq!(
             count_field.source_span.map(|span| span.source),
             Some(SourceId::new(1))
@@ -431,6 +453,14 @@ enum QuestProgress {
                 .map(|field| field.name.as_str())
                 .collect::<Vec<_>>(),
             ["quest_id", "count"]
+        );
+        assert_eq!(
+            active
+                .fields
+                .iter()
+                .find(|field| field.name == "quest_id")
+                .and_then(|field| field.type_hint.as_deref()),
+            Some("string")
         );
         assert_eq!(
             active

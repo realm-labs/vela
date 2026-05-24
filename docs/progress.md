@@ -913,6 +913,10 @@ permissions.
   trait methods. Copied member records now expose `source_span`, and unknown
   field, method, and variant reflection errors include related candidate
   records with source spans when available.
+- Added reflected field type-hint metadata. `FieldDesc` can carry an optional
+  copied type-hint string, script struct fields and enum payload fields
+  populate it from HIR, and `reflect.field`/`reflect.fields` expose it as a
+  `type` field without introducing script generics or runtime schema mutation.
 
 ## Next
 

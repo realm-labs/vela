@@ -6934,6 +6934,7 @@ fn main(player) {
         && reflect.has_field(player, "level")
         && !reflect.has_field(player, "mana")
         && field.name == "level"
+        && field.type == "int"
         && field.docs == "Current player level."
         && field.attrs.get("unit") == "level"
         && field.writable {
@@ -7824,6 +7825,7 @@ fn main(player) {
                 .field(
                     FieldDesc::new(level_field(), "level")
                         .writable(true)
+                        .type_hint("int")
                         .docs("Current player level.")
                         .attr("unit", "level"),
                 )

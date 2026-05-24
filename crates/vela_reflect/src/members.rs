@@ -417,6 +417,14 @@ fn field_record(field: &FieldDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(field.id.get())));
     fields.insert("name".to_owned(), HostValue::String(field.name.clone()));
+    fields.insert(
+        "type".to_owned(),
+        field
+            .type_hint
+            .as_ref()
+            .filter(|hint| !hint.is_empty())
+            .map_or(HostValue::Null, |hint| HostValue::String(hint.clone())),
+    );
     fields.insert("writable".to_owned(), HostValue::Bool(field.writable));
     fields.insert("access".to_owned(), field_access_record(field));
     fields.insert("docs".to_owned(), docs_value(field.docs.as_deref()));
@@ -478,6 +486,7 @@ mod tests {
                 .field(
                     FieldDesc::new(FieldId::new(2), "level")
                         .writable(true)
+                        .type_hint("int")
                         .source_span(Span::new(SourceId::new(8), 50, 55))
                         .docs("Current level.")
                         .attr("unit", "level"),
@@ -554,6 +563,10 @@ mod tests {
             panic!("field metadata should be a record");
         };
         assert_eq!(fields.get("writable"), Some(&HostValue::Bool(true)));
+        assert_eq!(
+            fields.get("type"),
+            Some(&HostValue::String("int".to_owned()))
+        );
         assert_eq!(
             fields.get("access"),
             Some(&HostValue::Record {

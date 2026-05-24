@@ -1744,6 +1744,9 @@ descriptors may leave this field as `null`. Unknown reflection lookups carry
 ranked related candidates with the same optional source spans where descriptors
 have source locations, so admin/debug tooling can jump from a misspelled lookup
 to nearby schema declarations without parsing human-readable messages.
+Field reflection records also expose the declared `type` hint when one is
+known, or `null` for unhinted/dynamic fields. These are copied documentation and
+tooling hints, not generic script types or static enforcement.
 
 ```text
 FieldNotWritable:

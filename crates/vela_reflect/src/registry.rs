@@ -186,6 +186,7 @@ impl TypeDesc {
 pub struct FieldDesc {
     pub id: FieldId,
     pub name: String,
+    pub type_hint: Option<String>,
     pub writable: bool,
     pub access: FieldAccess,
     pub docs: Option<String>,
@@ -199,6 +200,7 @@ impl FieldDesc {
         Self {
             id,
             name: name.into(),
+            type_hint: None,
             writable: false,
             access: FieldAccess::default(),
             docs: None,
@@ -219,6 +221,12 @@ impl FieldDesc {
     pub fn access(mut self, access: FieldAccess) -> Self {
         self.writable = access.writable;
         self.access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn type_hint(mut self, type_hint: impl Into<String>) -> Self {
+        self.type_hint = Some(type_hint.into());
         self
     }
 

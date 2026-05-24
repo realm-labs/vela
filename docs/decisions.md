@@ -3820,3 +3820,27 @@ Consequences:
   builder methods.
 - Reflection still exposes copied metadata only; schema structure remains
   immutable at runtime.
+
+## 2026-05-25: Field Reflection Exposes Copied Type Hints
+
+Status: Accepted
+
+Context:
+M12 reflection includes `TypeHint` metadata. Function and module reflection
+already copied function parameter and return hint strings, and HIR already
+preserved field type hints for schema hashes. Reflected field records still
+dropped that hint, so tools could inspect a field name and access policy but
+not its declared value shape.
+
+Decision:
+Add an optional copied `type_hint` string to `FieldDesc`. Script struct fields
+and enum payload fields populate it from HIR hints, host descriptors can opt in
+through a builder, and copied `ReflectField` records expose the value as
+`type`, using `null` when no hint is known.
+
+Consequences:
+- Admin/debug tooling can display field value hints consistently with function
+  parameter metadata.
+- This remains documentation/tooling metadata; it does not add script generics
+  or static enforcement.
+- Unhinted dynamic fields and host schemas without hints remain valid.
