@@ -2373,6 +2373,48 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_match_guards() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 7;
+    return match value {
+        bound if bound < 5 => 10,
+        bound if bound == 7 => bound + 1,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("compile match guards");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
+    fn match_guards_can_read_record_pattern_bindings() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let damage = Damage.Physical { amount: 7 };
+    return match damage {
+        Damage.Physical { amount } if amount > 10 => 100,
+        Damage.Physical { amount } if amount == 7 => amount + 1,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("compile guarded record pattern");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_for_in_source() {
         let program = compile_program_source(
             SourceId::new(1),

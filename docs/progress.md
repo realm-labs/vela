@@ -422,6 +422,10 @@ to the later language constructs that introduce loops and closures.
   into a fresh pattern-local register.
 - Added VM coverage proving binding patterns execute from source and assignment
   to the binding does not mutate the original scrutinee.
+- Added compiler lowering for `match` guards after pattern locals are bound,
+  with false guards falling through to the next arm.
+- Added VM coverage proving guards can read binding-pattern locals and
+  record-pattern field bindings.
 
 ## Next
 

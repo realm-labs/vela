@@ -1273,15 +1273,16 @@ impl<'ast> Compiler<'ast> {
         let mut all_arms_return = !match_expr.arms.is_empty();
 
         for arm in &match_expr.arms {
-            if arm.guard.is_some() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "match guard",
-                )));
+            let mut next_arm_jumps = Vec::new();
+            if let Some(jump) = self.compile_match_pattern(scrutinee, &arm.pattern)? {
+                next_arm_jumps.push(jump);
             }
-            let next_arm_jump = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
+            if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
+                next_arm_jumps.push(jump);
+            }
             let arm_returned = match &arm.body.kind {
                 ExprKind::Block(block) => self.compile_statements(&block.statements)?,
                 _ => {
@@ -1295,10 +1296,11 @@ impl<'ast> Compiler<'ast> {
             if !arm_returned {
                 end_jumps.push(self.emit_jump());
             }
-            if let Some(next_arm_jump) = next_arm_jump {
-                self.patch_jump(next_arm_jump, self.current_offset())?;
-            } else {
+            if next_arm_jumps.is_empty() {
                 break;
+            }
+            for jump in next_arm_jumps {
+                self.patch_jump(jump, self.current_offset())?;
             }
         }
 
@@ -1320,15 +1322,16 @@ impl<'ast> Compiler<'ast> {
         let mut has_catch_all = false;
 
         for arm in &match_expr.arms {
-            if arm.guard.is_some() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "match guard",
-                )));
+            let mut next_arm_jumps = Vec::new();
+            if let Some(jump) = self.compile_match_pattern(scrutinee, &arm.pattern)? {
+                next_arm_jumps.push(jump);
             }
-            let next_arm_jump = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             self.bind_match_pattern_locals(scrutinee, &arm.pattern, arm.body.span)?;
+            if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
+                next_arm_jumps.push(jump);
+            }
             let arm_returned = self.compile_match_arm_value_to(&arm.body, dst)?;
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
@@ -1336,11 +1339,12 @@ impl<'ast> Compiler<'ast> {
             if !arm_returned {
                 end_jumps.push(self.emit_jump());
             }
-            if let Some(next_arm_jump) = next_arm_jump {
-                self.patch_jump(next_arm_jump, self.current_offset())?;
-            } else {
+            if next_arm_jumps.is_empty() {
                 has_catch_all = true;
                 break;
+            }
+            for jump in next_arm_jumps {
+                self.patch_jump(jump, self.current_offset())?;
             }
         }
 
@@ -1354,6 +1358,14 @@ impl<'ast> Compiler<'ast> {
         }
 
         Ok(all_arms_return)
+    }
+
+    fn compile_match_guard(&mut self, guard: Option<&Expr>) -> CompileResult<Option<usize>> {
+        let Some(guard) = guard else {
+            return Ok(None);
+        };
+        let condition = self.compile_expr(guard)?;
+        Ok(Some(self.emit_jump_if_false(condition)))
     }
 
     fn compile_match_arm_value_to(&mut self, body: &Expr, dst: Register) -> CompileResult<bool> {
@@ -2572,6 +2584,41 @@ fn main() {
             code.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::Add { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_match_guards() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let value = 7;
+    return match value {
+        bound if bound < 5 => 10,
+        bound if bound == 7 => bound + 1,
+        _ => 0,
+    };
+}
+"#,
+            "main",
+        )
+        .expect("match guards should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .filter(|instruction| matches!(
+                    instruction.kind,
+                    InstructionKind::JumpIfFalse { .. }
+                ))
+                .count()
+                >= 2
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Less { .. }))
         );
     }
 

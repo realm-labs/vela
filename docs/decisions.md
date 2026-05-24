@@ -1243,3 +1243,24 @@ Consequences:
 - `match value { bound => bound + 1 }` executes from source.
 - Assigning to `bound` inside the arm updates only the pattern local.
 - Tuple variant destructuring remains a separate M9 slice.
+
+## 2026-05-24: Match Guards Run After Pattern Binding
+
+Status: Accepted
+
+Context:
+M9 requires match guards. Guards should be able to refer to names introduced by
+the arm pattern, including whole-scrutinee binding patterns and record-variant
+field bindings.
+
+Decision:
+The compiler lowers an arm by checking the pattern first, binding pattern locals
+to registers, then compiling the guard expression. A false pattern check or
+false guard both jump to the next arm. An arm with no pattern fallthrough and no
+guard remains a catch-all arm.
+
+Consequences:
+- Guards can read destructured pattern locals.
+- Guarded binding or wildcard arms no longer stop later arms from being
+  considered when the guard is false.
+- Guard expressions reuse ordinary truthiness and budgeted bytecode execution.
