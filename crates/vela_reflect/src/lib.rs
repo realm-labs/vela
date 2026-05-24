@@ -76,6 +76,12 @@ impl TypeDesc {
         self.methods.push(method);
         self
     }
+
+    #[must_use]
+    pub fn trait_impl(mut self, trait_desc: TraitDesc) -> Self {
+        self.traits.push(trait_desc);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -111,10 +117,31 @@ pub struct MethodDesc {
     pub attrs: AttrMap,
 }
 
+impl MethodDesc {
+    #[must_use]
+    pub fn new(id: HostMethodId, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            attrs: AttrMap::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitDesc {
     pub name: String,
     pub attrs: AttrMap,
+}
+
+impl TraitDesc {
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            attrs: AttrMap::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -163,6 +190,15 @@ impl TypeRegistry {
         })?;
         find_field(desc, field_name)
     }
+
+    fn host_method(&self, host_ref: HostRef, method_name: &str) -> ReflectResult<&MethodDesc> {
+        let desc = self.type_of_host(host_ref).ok_or_else(|| {
+            ReflectError::new(ReflectErrorKind::UnknownType {
+                host_type_id: host_ref.type_id,
+            })
+        })?;
+        find_method(desc, method_name)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -199,6 +235,11 @@ pub enum ReflectErrorKind {
     UnknownField {
         type_name: String,
         field: String,
+        candidates: Vec<String>,
+    },
+    UnknownMethod {
+        type_name: String,
+        method: String,
         candidates: Vec<String>,
     },
     FieldNotWritable {
@@ -284,6 +325,49 @@ pub fn set(
     }
 }
 
+pub fn call(
+    ctx: &mut ReflectContext<'_>,
+    target: &ReflectValue,
+    method: &str,
+    args: Vec<ReflectValue>,
+) -> ReflectResult<ReflectValue> {
+    let ReflectValue::HostRef(host_ref) = target else {
+        return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
+    };
+    let method_desc = ctx.registry.host_method(*host_ref, method)?;
+    let args = args
+        .into_iter()
+        .map(host_arg)
+        .collect::<ReflectResult<Vec<_>>>()?;
+    ctx.tx
+        .call_method(HostPath::new(*host_ref), method_desc.id, args, None)
+        .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
+    Ok(ReflectValue::Host(HostValue::Null))
+}
+
+pub fn implements(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    trait_name: &str,
+) -> ReflectResult<bool> {
+    match target {
+        ReflectValue::HostRef(host_ref) => {
+            let desc = registry.type_of_host(*host_ref).ok_or_else(|| {
+                ReflectError::new(ReflectErrorKind::UnknownType {
+                    host_type_id: host_ref.type_id,
+                })
+            })?;
+            Ok(desc
+                .traits
+                .iter()
+                .any(|trait_desc| trait_desc.name == trait_name))
+        }
+        ReflectValue::Host(_) | ReflectValue::Record(_) => {
+            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
+        }
+    }
+}
+
 fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDesc> {
     desc.fields
         .iter()
@@ -292,7 +376,7 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
             ReflectError::new(ReflectErrorKind::UnknownField {
                 type_name: desc.key.name.clone(),
                 field: field.to_owned(),
-                candidates: field_candidates(
+                candidates: name_candidates(
                     field,
                     desc.fields.iter().map(|field| field.name.as_str()),
                 ),
@@ -300,17 +384,40 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
         })
 }
 
+fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a MethodDesc> {
+    desc.methods
+        .iter()
+        .find(|candidate| candidate.name == method)
+        .ok_or_else(|| {
+            ReflectError::new(ReflectErrorKind::UnknownMethod {
+                type_name: desc.key.name.clone(),
+                method: method.to_owned(),
+                candidates: name_candidates(
+                    method,
+                    desc.methods.iter().map(|method| method.name.as_str()),
+                ),
+            })
+        })
+}
+
+fn host_arg(value: ReflectValue) -> ReflectResult<HostValue> {
+    let ReflectValue::Host(value) = value else {
+        return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
+    };
+    Ok(value)
+}
+
 fn record_unknown_field(field: &str, record: &BTreeMap<String, ReflectValue>) -> ReflectErrorKind {
     ReflectErrorKind::UnknownField {
         type_name: "record".to_owned(),
         field: field.to_owned(),
-        candidates: field_candidates(field, record.keys().map(String::as_str)),
+        candidates: name_candidates(field, record.keys().map(String::as_str)),
     }
 }
 
-fn field_candidates<'a>(field: &str, candidates: impl Iterator<Item = &'a str>) -> Vec<String> {
+fn name_candidates<'a>(name: &str, candidates: impl Iterator<Item = &'a str>) -> Vec<String> {
     let mut candidates = candidates
-        .map(|candidate| (edit_distance(field, candidate), candidate.to_owned()))
+        .map(|candidate| (edit_distance(name, candidate), candidate.to_owned()))
         .collect::<Vec<_>>();
     candidates.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
     candidates
@@ -356,7 +463,9 @@ mod tests {
             TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "id"))
-                .field(FieldDesc::new(FieldId::new(2), "level").writable(true)),
+                .field(FieldDesc::new(FieldId::new(2), "level").writable(true))
+                .method(MethodDesc::new(HostMethodId::new(5), "grant_exp"))
+                .trait_impl(TraitDesc::new("Damageable")),
         );
         registry
     }
@@ -531,6 +640,120 @@ mod tests {
                 expected: 2,
                 actual: 3
             }
+        );
+    }
+
+    #[test]
+    fn reflect_call_host_ref_records_patch() {
+        let registry = registry();
+        let mut adapter = adapter_with_level(HostValue::Int(9));
+        adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
+        let mut tx = PatchTx::new();
+        {
+            let mut ctx = ReflectContext {
+                registry: &registry,
+                adapter: &adapter,
+                tx: &mut tx,
+            };
+
+            let value = call(
+                &mut ctx,
+                &ReflectValue::HostRef(player_ref()),
+                "grant_exp",
+                vec![ReflectValue::Host(HostValue::Int(20))],
+            )
+            .expect("reflect call");
+
+            assert_eq!(value, ReflectValue::Host(HostValue::Null));
+            assert_eq!(ctx.tx.patches().len(), 1);
+            assert_eq!(
+                ctx.tx.patches()[0].op,
+                PatchOp::CallHostMethod {
+                    method: HostMethodId::new(5),
+                    args: vec![HostValue::Int(20)]
+                }
+            );
+            assert!(adapter.method_calls().is_empty());
+        }
+
+        tx.apply(&mut adapter).expect("apply reflect call");
+        assert_eq!(
+            adapter.method_calls(),
+            &[(
+                HostPath::new(player_ref()),
+                HostMethodId::new(5),
+                vec![HostValue::Int(20)]
+            )]
+        );
+    }
+
+    #[test]
+    fn reflect_call_rejects_non_host_args() {
+        let registry = registry();
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error = call(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "grant_exp",
+            vec![ReflectValue::Record(BTreeMap::new())],
+        )
+        .expect_err("invalid arg");
+
+        assert_eq!(error.kind, ReflectErrorKind::InvalidValue);
+        assert!(ctx.tx.patches().is_empty());
+    }
+
+    #[test]
+    fn unknown_methods_include_candidate_hints() {
+        let registry = registry();
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error = call(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "grant_xp",
+            Vec::new(),
+        )
+        .expect_err("unknown method");
+
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownMethod {
+                type_name: "Player".to_owned(),
+                method: "grant_xp".to_owned(),
+                candidates: vec!["grant_exp".to_owned()]
+            }
+        );
+    }
+
+    #[test]
+    fn reflect_implements_uses_registry_metadata() {
+        let registry = registry();
+
+        assert!(
+            implements(
+                &registry,
+                &ReflectValue::HostRef(player_ref()),
+                "Damageable"
+            )
+            .expect("implements check")
+        );
+        assert!(
+            !implements(&registry, &ReflectValue::HostRef(player_ref()), "Inventory")
+                .expect("implements check")
         );
     }
 }

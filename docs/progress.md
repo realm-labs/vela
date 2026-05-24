@@ -104,8 +104,15 @@ M4: Reflection System.
 - Added tests for host-ref patch creation, overlay reads, record field reads,
   read-only field errors, unknown-field candidate hints, type field queries,
   and propagation of host generation errors.
+- Added controlled `reflect.call` and `reflect.implements` helpers that resolve
+  host method and trait metadata through `TypeRegistry`.
+- Routed `reflect.call(host_ref, "method", args)` to `PatchTx::call_method`
+  so reflective host calls are applied only at the host safe point.
+- Added tests for reflective host method patch recording, deferred apply,
+  invalid reflective call arguments, unknown-method candidate hints, and trait
+  implementation checks.
 
 ## Next
 
-- Add controlled `reflect.call` for host methods and `reflect.implements`
-  checks using registry metadata.
+- Integrate reflection APIs with script-visible native calls or VM/runtime
+  plumbing as the next M4 vertical slice.
