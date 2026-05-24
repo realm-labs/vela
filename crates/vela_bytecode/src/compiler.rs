@@ -717,10 +717,10 @@ impl<'ast> Compiler<'ast> {
     fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
         match &stmt.kind {
             StmtKind::Let { name, value, .. } => {
-                let register = if let Some(value) = value {
-                    self.compile_expr(value)?
+                let (register, returned) = if let Some(value) = value {
+                    self.compile_let_initializer(value)?
                 } else {
-                    self.emit_constant(Constant::Null)?
+                    (self.emit_constant(Constant::Null)?, false)
                 };
                 self.locals.insert(name.clone(), register);
                 if let Some(local) =
@@ -729,7 +729,7 @@ impl<'ast> Compiler<'ast> {
                 {
                     self.hir_locals.insert(local, register);
                 }
-                Ok(false)
+                Ok(returned)
             }
             StmtKind::Return(value) => {
                 let register = if let Some(value) = value {
@@ -763,6 +763,15 @@ impl<'ast> Compiler<'ast> {
             StmtKind::Break => self.compile_break(),
             StmtKind::Continue => self.compile_continue(),
         }
+    }
+
+    fn compile_let_initializer(&mut self, value: &Expr) -> CompileResult<(Register, bool)> {
+        if let ExprKind::Block(block) = &value.kind {
+            let dst = self.alloc_register()?;
+            let returned = self.compile_block_value_to(block, dst)?;
+            return Ok((dst, returned));
+        }
+        self.compile_expr(value).map(|register| (register, false))
     }
 
     fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
@@ -3101,6 +3110,29 @@ fn main() {
         assert_eq!(
             error.kind,
             CompileErrorKind::UnsupportedSyntax("if expression without else")
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_returning_block_initializers() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let ignored = {
+        return 7;
+    };
+    return 0;
+}
+"#,
+            "main",
+        )
+        .expect("returning block initializer should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Return { .. }))
         );
     }
 

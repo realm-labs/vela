@@ -2595,6 +2595,25 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_returning_block_initializer() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let ignored = {
+        return 7;
+    };
+    return 0;
+}
+"#,
+            "main",
+        )
+        .expect("compile returning block initializer");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    }
+
+    #[test]
     fn runs_compiled_match_expression_values() {
         let code = compile_function_source(
             SourceId::new(1),

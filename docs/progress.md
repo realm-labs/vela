@@ -405,6 +405,8 @@ method-dispatch coverage before moving into stable type metadata.
 - Added compiler lowering for block expression values using the final
   expression statement as the block value, falling back to `null` for empty or
   statement-only blocks.
+- Added return propagation for `return` statements inside block-expression
+  `let` initializers.
 - Added compiler lowering for `if` expression values by merging branch results
   into a stable destination register, with explicit diagnostics when an
   expression-valued `if` omits `else`.
