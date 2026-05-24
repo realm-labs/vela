@@ -808,8 +808,14 @@ permissions.
 - Extended `HotReloadDiagnostic` with stable machine-readable diagnostic codes
   and affected targets for function, schema, and method ABI failures, so hosts
   can route rejected reload reports without parsing human-readable reasons.
+- Enforced `ReflectPermission::InspectHostPath` for host-ref reflection
+  metadata queries such as `reflect.type_of`, `reflect.fields`, method/trait
+  metadata, variants, and `reflect.implements`. Script-value metadata remains
+  available with `ReadTypeInfo` alone, preserving read-only tooling for
+  non-host values while keeping host path inspection behind the admin/debug
+  permission bit.
 
 ## Next
 
-- Continue M12 with remaining reflection permission polish and broader
-  hot-reload report diagnostics.
+- Continue M12 with broader reflection permission coverage, effect/access
+  reporting polish, and remaining hot-reload report diagnostics.

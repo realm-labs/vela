@@ -6480,6 +6480,72 @@ fn main(player) {
     }
 
     #[test]
+    fn reflection_permissions_deny_host_ref_metadata_without_inspection() {
+        let host_ref = player_ref(3);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return reflect.type_of(player);
+}
+"#,
+        )
+        .expect("compile denied host-ref metadata source");
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_permissions(
+            Arc::new(reflection_registry()),
+            reflect::ReflectPermissionSet::new().with(reflect::ReflectPermission::ReadTypeInfo),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+                permission: reflect::ReflectPermission::InspectHostPath
+            })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflection_permissions_allow_script_metadata_without_host_inspection() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Player { level: int }
+
+fn main() {
+    let player = Player { level: 7 };
+    return reflect.name(player);
+}
+"#,
+        )
+        .expect("compile script metadata source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_permissions(
+            Arc::new(script_reflection_registry()),
+            reflect::ReflectPermissionSet::new().with(reflect::ReflectPermission::ReadTypeInfo),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::String("Player".into()))
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn reflection_lookup_budget_stops_after_limit() {
         let host_ref = player_ref(3);
         let program = compile_program_source(

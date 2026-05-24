@@ -42,6 +42,7 @@ impl Vm {
             )?;
             expect_arity("reflect.type_of", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.type_of")?;
+            check_host_ref_inspection(&type_of_policy, &target)?;
             Ok(reflect::type_of(&type_of_registry, &target)
                 .map_or(Value::Null, |desc| Value::String(desc.key.name.clone())))
         });
@@ -57,6 +58,7 @@ impl Vm {
             )?;
             expect_arity("reflect.name", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.name")?;
+            check_host_ref_inspection(&name_policy, &target)?;
             value_from_reflect(reflect::name_metadata(&name_registry, &target)?)
         });
 
@@ -71,6 +73,7 @@ impl Vm {
             )?;
             expect_arity("reflect.kind", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.kind")?;
+            check_host_ref_inspection(&kind_policy, &target)?;
             value_from_reflect(reflect::kind_metadata(&kind_registry, &target)?)
         });
 
@@ -85,6 +88,7 @@ impl Vm {
             )?;
             expect_arity("reflect.attrs", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.attrs")?;
+            check_host_ref_inspection(&attrs_policy, &target)?;
             value_from_reflect(reflect::attrs_metadata(&attrs_registry, &target)?)
         });
 
@@ -99,6 +103,7 @@ impl Vm {
             )?;
             expect_arity("reflect.docs", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.docs")?;
+            check_host_ref_inspection(&docs_policy, &target)?;
             value_from_reflect(reflect::docs_metadata(&docs_registry, &target)?)
         });
 
@@ -113,6 +118,7 @@ impl Vm {
             )?;
             expect_arity("reflect.fields", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.fields")?;
+            check_host_ref_inspection(&fields_policy, &target)?;
             let Some(desc) = reflect::type_of(&fields_registry, &target) else {
                 return Ok(Value::Null);
             };
@@ -135,6 +141,7 @@ impl Vm {
             )?;
             expect_arity("reflect.field", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.field")?;
+            check_host_ref_inspection(&field_policy, &target)?;
             let field_name = expect_string(&args[1], "reflect.field")?;
             value_from_reflect(reflect::field_metadata(
                 &field_registry,
@@ -154,6 +161,7 @@ impl Vm {
             )?;
             expect_arity("reflect.has_field", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.has_field")?;
+            check_host_ref_inspection(&has_field_policy, &target)?;
             let field_name = expect_string(&args[1], "reflect.has_field")?;
             Ok(Value::Bool(reflect::has_field(
                 &has_field_registry,
@@ -218,6 +226,7 @@ impl Vm {
             )?;
             expect_arity("reflect.methods", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.methods")?;
+            check_host_ref_inspection(&methods_policy, &target)?;
             value_from_reflect(reflect::methods(&methods_registry, &target)?)
         });
 
@@ -232,6 +241,7 @@ impl Vm {
             )?;
             expect_arity("reflect.has_method", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.has_method")?;
+            check_host_ref_inspection(&has_method_policy, &target)?;
             let method_name = expect_string(&args[1], "reflect.has_method")?;
             Ok(Value::Bool(reflect::has_method(
                 &has_method_registry,
@@ -251,6 +261,7 @@ impl Vm {
             )?;
             expect_arity("reflect.traits", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.traits")?;
+            check_host_ref_inspection(&traits_policy, &target)?;
             value_from_reflect(reflect::trait_metadata(&traits_registry, &target)?)
         });
 
@@ -265,6 +276,7 @@ impl Vm {
             )?;
             expect_arity("reflect.variants", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.variants")?;
+            check_host_ref_inspection(&variants_policy, &target)?;
             value_from_reflect(reflect::variant_metadata(&variants_registry, &target)?)
         });
 
@@ -278,6 +290,7 @@ impl Vm {
             )?;
             expect_arity("reflect.variant", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.variant")?;
+            check_host_ref_inspection(&variant_policy, &target)?;
             value_from_reflect(reflect::variant(&target)?)
         });
 
@@ -291,6 +304,7 @@ impl Vm {
             )?;
             expect_arity("reflect.variant_is", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.variant_is")?;
+            check_host_ref_inspection(&variant_is_policy, &target)?;
             let variant_name = expect_string(&args[1], "reflect.variant_is")?;
             Ok(Value::Bool(reflect::variant_is(&target, variant_name)?))
         });
@@ -383,6 +397,7 @@ impl Vm {
             )?;
             expect_arity("reflect.implements", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.implements")?;
+            check_host_ref_inspection(&implements_policy, &target)?;
             let trait_name = expect_string(&args[1], "reflect.implements")?;
             Ok(Value::Bool(reflect::implements(
                 &registry, &target, trait_name,
@@ -398,5 +413,15 @@ fn check_reflect_policy(
 ) -> VmResult<()> {
     policy.require(permission)?;
     lookup_budget.consume()?;
+    Ok(())
+}
+
+fn check_host_ref_inspection(
+    policy: &reflect::ReflectPolicy,
+    target: &reflect::ReflectValue,
+) -> VmResult<()> {
+    if matches!(target, reflect::ReflectValue::HostRef(_)) {
+        policy.require(reflect::ReflectPermission::InspectHostPath)?;
+    }
     Ok(())
 }

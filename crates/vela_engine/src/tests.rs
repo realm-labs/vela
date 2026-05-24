@@ -372,7 +372,9 @@ fn main(player) {
 fn engine_installs_permissioned_reflection_natives() {
     let engine = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .reflection_permissions(ReflectPermissionSet::read_only())
+        .reflection_permissions(
+            ReflectPermissionSet::read_only().with(ReflectPermission::InspectHostPath),
+        )
         .build()
         .expect("engine should build");
     let program = compile_program_source(

@@ -3275,3 +3275,29 @@ Consequences:
   consistent field.
 - Future source-span and related-location work can extend diagnostics without
   changing the current report shape.
+
+## 2026-05-25: Host Ref Metadata Requires InspectHostPath
+
+Status: Accepted
+
+Context:
+M12 separates normal type metadata reads from host path inspection. `ReadTypeInfo`
+is useful for script values and general schemas, but host refs identify live host
+objects and their configured path surface, so exposing that metadata should use
+the dedicated `InspectHostPath` permission.
+
+Decision:
+Keep `ReadTypeInfo` as the base permission for metadata natives, then require
+`InspectHostPath` when the reflected target is a `HostRef`. This applies to
+host-ref type/name/kind/field/method/trait/variant metadata and
+`reflect.implements`; module and function registry queries are unchanged because
+they do not inspect a host object path.
+
+Consequences:
+- Read-only gameplay/config policies can still inspect script-value metadata
+  without gaining host-ref metadata access.
+- GM/admin policies continue to use `ReflectPermissionSet::all()` for host-ref
+  inspection workflows.
+- Dynamic host value reads, writes, and calls remain controlled by their
+  existing field and method permissions and still route mutations through
+  `PatchTx`.
