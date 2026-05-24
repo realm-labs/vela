@@ -797,3 +797,28 @@ Consequences:
   instead of only the source declaration name.
 - Alias support stays declarative; it does not introduce re-export or wildcard
   import behavior.
+
+## 2026-05-24: Multi-Module Bytecode Uses Declaration Symbols
+
+Status: Accepted
+
+Context:
+HIR could resolve imports across modules, but bytecode compilation still
+accepted only a single source file. Call lowering also emitted the callee's
+source spelling, which meant aliased imports could not target the actual script
+function symbol.
+
+Decision:
+Add a multi-module bytecode compilation entrypoint over HIR `ModuleSource`
+inputs. Carry a declaration-to-function-symbol map into body lowering and emit
+`CallFunction` with the resolved declaration's function symbol instead of the
+callee spelling.
+
+Consequences:
+- Imported script functions, including aliased imports, can compile and execute
+  across modules.
+- The current VM `Program` remains string-keyed, so this slice keeps simple
+  function names and leaves duplicate cross-module symbol policy to a later ABI
+  and program-version step.
+- Native/dynamic fallback remains available for calls that do not resolve to a
+  known script function declaration.

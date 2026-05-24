@@ -6,7 +6,7 @@ use std::num::{ParseFloatError, ParseIntError};
 use vela_common::{Diagnostic, FieldId, SourceId, Span};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
-    LocalBindingKind, ModuleGraph, ModuleId, ModulePath,
+    LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource,
 };
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
@@ -76,7 +76,7 @@ pub fn compile_function_source_with_options(
     options: &CompilerOptions,
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
-    let script_function_declarations = semantic.script_function_declarations();
+    let script_function_symbols = semantic.script_function_symbols();
     let const_values = semantic.const_values()?;
     let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
@@ -86,7 +86,7 @@ pub fn compile_function_source_with_options(
         function,
         signature,
         bindings,
-        script_function_declarations,
+        script_function_symbols,
         const_values,
         options.clone(),
     )?
@@ -104,7 +104,7 @@ pub fn compile_program_source_with_options(
 ) -> CompileResult<Program> {
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
-    let script_function_declarations = semantic.script_function_declarations();
+    let script_function_symbols = semantic.script_function_symbols();
     let const_values = semantic.const_values()?;
     let mut program = Program::new();
 
@@ -117,7 +117,41 @@ pub fn compile_program_source_with_options(
                 function,
                 signature,
                 bindings,
-                script_function_declarations.clone(),
+                script_function_symbols.clone(),
+                const_values.clone(),
+                options.clone(),
+            )?
+            .compile()?,
+        );
+    }
+
+    Ok(program)
+}
+
+pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<Program> {
+    compile_module_sources_with_options(sources, &CompilerOptions::default())
+}
+
+pub fn compile_module_sources_with_options(
+    sources: &[ModuleSource],
+    options: &CompilerOptions,
+) -> CompileResult<Program> {
+    let semantic = parse_semantic_modules(sources)?;
+    let script_functions = semantic.script_function_declarations();
+    let script_function_symbols = semantic.script_function_symbols();
+    let const_values = semantic.const_values()?;
+    let mut program = Program::new();
+
+    for declaration in script_functions {
+        let (function, signature, bindings) = semantic
+            .function(declaration)
+            .expect("HIR function declaration comes from parsed function item");
+        program.insert_function(
+            Compiler::new(
+                function,
+                signature,
+                bindings,
+                script_function_symbols.clone(),
                 const_values.clone(),
                 options.clone(),
             )?
@@ -143,6 +177,12 @@ struct SemanticSource {
     parsed: SourceFile,
     graph: ModuleGraph,
     module: ModuleId,
+}
+
+struct SemanticModules {
+    parsed: BTreeMap<ModuleId, SourceFile>,
+    graph: ModuleGraph,
+    modules: Vec<ModuleId>,
 }
 
 impl SemanticSource {
@@ -171,16 +211,16 @@ impl SemanticSource {
             .collect()
     }
 
-    fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {
+    fn script_function_symbols(&self) -> BTreeMap<HirDeclId, String> {
         let Some(declarations) = self.graph.module(self.module) else {
-            return BTreeSet::new();
+            return BTreeMap::new();
         };
         declarations
             .names()
             .filter_map(|name| {
                 let declaration = declarations.get(name)?;
                 let metadata = self.graph.declaration(declaration)?;
-                (metadata.kind == DeclarationKind::Function).then_some(declaration)
+                (metadata.kind == DeclarationKind::Function).then(|| (declaration, name.to_owned()))
             })
             .collect()
     }
@@ -214,6 +254,76 @@ impl SemanticSource {
     }
 }
 
+impl SemanticModules {
+    fn function(
+        &self,
+        declaration: HirDeclId,
+    ) -> Option<(&FunctionItem, &FunctionSignature, &BindingMap)> {
+        let metadata = self.graph.declaration(declaration)?;
+        let signature = self.graph.function_signature(declaration)?;
+        let bindings = self.graph.bindings(declaration)?;
+        let parsed = self.parsed.get(&metadata.module)?;
+        let function = parsed.items.iter().find_map(|item| match &item.kind {
+            ItemKind::Function(function) if function.name == metadata.name => Some(function),
+            _ => None,
+        })?;
+        Some((function, signature, bindings))
+    }
+
+    fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {
+        self.modules
+            .iter()
+            .filter_map(|module| self.graph.module(*module))
+            .flat_map(|declarations| {
+                declarations.names().filter_map(|name| {
+                    let declaration = declarations.get(name)?;
+                    let metadata = self.graph.declaration(declaration)?;
+                    (metadata.kind == DeclarationKind::Function).then_some(declaration)
+                })
+            })
+            .collect()
+    }
+
+    fn script_function_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        self.modules
+            .iter()
+            .filter_map(|module| self.graph.module(*module))
+            .flat_map(|declarations| {
+                declarations.names().filter_map(|name| {
+                    let declaration = declarations.get(name)?;
+                    let metadata = self.graph.declaration(declaration)?;
+                    (metadata.kind == DeclarationKind::Function)
+                        .then(|| (declaration, metadata.name.clone()))
+                })
+            })
+            .collect()
+    }
+
+    fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
+        let mut values_by_declaration = BTreeMap::new();
+        for module in &self.modules {
+            let mut values_by_name = BTreeMap::new();
+            let Some(parsed) = self.parsed.get(module) else {
+                continue;
+            };
+            for item in &parsed.items {
+                let ItemKind::Const(item) = &item.kind else {
+                    continue;
+                };
+                let Some(declaration) = self.graph.module(*module).and_then(|m| m.get(&item.name))
+                else {
+                    continue;
+                };
+                if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
+                    values_by_declaration.insert(declaration, value.clone());
+                    values_by_name.insert(item.name.clone(), value);
+                }
+            }
+        }
+        Ok(values_by_declaration)
+    }
+}
+
 fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
     let parsed = parse_checked_source(source, text)?;
     let mut graph = ModuleGraph::new();
@@ -232,6 +342,42 @@ fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<Semantic
     }
 }
 
+fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<SemanticModules> {
+    let mut parsed = BTreeMap::new();
+    let mut graph = ModuleGraph::new();
+    let mut modules = Vec::new();
+    let mut syntax_diagnostics = Vec::new();
+
+    for source in sources {
+        let source_file = parse_source(source.id, &source.text);
+        if !source_file.diagnostics.is_empty() {
+            syntax_diagnostics.extend(source_file.diagnostics.clone());
+        }
+        let module = graph.add_parsed_source(source.id, source.path.clone(), source_file.clone());
+        parsed.insert(module, source_file);
+        modules.push(module);
+    }
+
+    if !syntax_diagnostics.is_empty() {
+        return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
+            syntax_diagnostics,
+        )));
+    }
+
+    graph.resolve_imports();
+    if graph.diagnostics().is_empty() {
+        Ok(SemanticModules {
+            parsed,
+            graph,
+            modules,
+        })
+    } else {
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            graph.diagnostics().to_vec(),
+        )))
+    }
+}
+
 struct Compiler<'ast> {
     code: CodeObject,
     locals: HashMap<String, Register>,
@@ -239,7 +385,7 @@ struct Compiler<'ast> {
     bindings: &'ast BindingMap,
     next_register: u16,
     body: &'ast Block,
-    script_function_declarations: BTreeSet<HirDeclId>,
+    script_function_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
 }
@@ -249,7 +395,7 @@ impl<'ast> Compiler<'ast> {
         function: &'ast FunctionItem,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
-        script_function_declarations: BTreeSet<HirDeclId>,
+        script_function_symbols: BTreeMap<HirDeclId, String>,
         const_values: BTreeMap<HirDeclId, Constant>,
         options: CompilerOptions,
     ) -> CompileResult<Self> {
@@ -283,7 +429,7 @@ impl<'ast> Compiler<'ast> {
             bindings,
             next_register: param_count,
             body: &function.body,
-            script_function_declarations,
+            script_function_symbols,
             const_values,
             options,
         })
@@ -376,13 +522,13 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::Call { callee, args } => {
-                let name = callable_name(callee)?;
+                let fallback_name = callable_name(callee)?;
                 let arg_registers = args
                     .iter()
                     .map(|arg| self.compile_expr(&arg.value))
                     .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
-                if self.is_script_function_call(callee) {
+                if let Some(name) = self.script_function_call_name(callee) {
                     self.emit(InstructionKind::CallFunction {
                         dst,
                         name,
@@ -391,7 +537,7 @@ impl<'ast> Compiler<'ast> {
                 } else {
                     self.emit(InstructionKind::CallNative {
                         dst: Some(dst),
-                        name,
+                        name: fallback_name,
                         args: arg_registers,
                     });
                 }
@@ -474,12 +620,13 @@ impl<'ast> Compiler<'ast> {
         }
     }
 
-    fn is_script_function_call(&self, callee: &Expr) -> bool {
-        matches!(
-            self.bindings.resolution_at_span(callee.span),
-            Some(BindingResolution::Declaration(declaration))
-                if self.script_function_declarations.contains(declaration)
-        )
+    fn script_function_call_name(&self, callee: &Expr) -> Option<String> {
+        let Some(BindingResolution::Declaration(declaration)) =
+            self.bindings.resolution_at_span(callee.span)
+        else {
+            return None;
+        };
+        self.script_function_symbols.get(declaration).cloned()
     }
 
     fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<()> {
@@ -1324,6 +1471,44 @@ fn main() {
         assert!(!code.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
             InstructionKind::CallFunction { name, .. } if name == "helper"
+        )));
+    }
+
+    #[test]
+    fn compiler_emits_script_calls_for_imported_aliases_across_modules() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.grant as give_reward
+
+fn main() {
+    return give_reward(4);
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub fn grant(amount) {
+    return amount + 1;
+}
+"#,
+            ),
+        ])
+        .expect("cross-module imported script function should compile");
+
+        let main = program.function("main").expect("main function");
+        assert!(program.function("grant").is_some());
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallFunction { name, .. } if name == "grant"
+        )));
+        assert!(!main.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallNative { name, .. } if name == "give_reward"
         )));
     }
 

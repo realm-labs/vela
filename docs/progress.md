@@ -322,6 +322,10 @@ that introduce loops and closures.
   declarations under the alias name in function bodies.
 - Added syntax and HIR coverage proving import aliases resolve to the target
   declaration while exposing the alias as the local binding name.
+- Added multi-module bytecode compilation from HIR `ModuleSource` inputs and
+  declaration-to-function symbol mapping for script calls.
+- Added compiler and VM coverage proving an aliased imported function call
+  compiles as `CallFunction` and executes across modules.
 
 ## Next
 

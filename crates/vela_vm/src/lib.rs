@@ -1682,11 +1682,12 @@ mod tests {
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use vela_bytecode::compiler::{
-        CompilerOptions, compile_function_source, compile_program_source,
+        CompilerOptions, compile_function_source, compile_module_sources, compile_program_source,
         compile_program_source_with_options,
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+    use vela_hir::{ModulePath, ModuleSource};
     use vela_host::{HostValue, MockStateAdapter, PatchOp};
     use vela_reflect::{FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey};
 
@@ -1991,6 +1992,38 @@ fn main() {
         assert_eq!(
             Vm::new().run_program(&program, "main", &[]),
             Ok(Value::Int(30))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_cross_module_imported_script_call() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.grant as give_reward
+
+fn main() {
+    return give_reward(4);
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub fn grant(amount) {
+    return amount + 1;
+}
+"#,
+            ),
+        ])
+        .expect("compile imported cross-module script call");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(5))
         );
     }
 
