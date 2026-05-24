@@ -1080,13 +1080,20 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
-                    let result =
-                        call_method(frame.read(*receiver)?, method, &values, heap.as_deref())?;
+                    let mut receiver_value = frame.read(*receiver)?.clone();
+                    let result = call_method(
+                        &mut receiver_value,
+                        method,
+                        &values,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
                     let result = store_value_in_heap_if_needed(
                         result,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                     )?;
+                    frame.write(*receiver, receiver_value)?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::TryPropagate { dst, src } => {
@@ -2581,15 +2588,19 @@ fn main() {
     let values = [1, 2, 3];
     let rewards = {"gold": 4, "xp": 6};
     let empty = [];
+    values.push(4);
+    let popped = values.pop();
+    rewards.set("quest", 8);
+    let removed = rewards.remove("gold");
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
-    if empty.is_empty() && values.len() == 3 && rewards.len() == 2 && ("gold").len() == 4
-        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", 10) == 10
-        && keys[0] == "gold" && keys[1] == "xp"
-        && amounts[0] == 4 && amounts[1] == 6
-        && entries[0].key == "gold" && entries[1].value == 6 {
-        return (1..=3).len();
+    if empty.is_empty() && values.len() == 3 && popped == 4 && rewards.len() == 2 && ("gold").len() == 4
+        && removed == 4 && rewards.has("quest") && rewards.get("xp") == 6 && rewards.get_or("missing", 10) == 10
+        && keys[0] == "quest" && keys[1] == "xp"
+        && amounts[0] == 8 && amounts[1] == 6
+        && entries[0].key == "quest" && entries[1].value == 6 {
+        return values.len();
     }
     return 0;
 }
@@ -3058,14 +3069,18 @@ fn main() {
 fn main() {
     let names = ["gold", "xp"];
     let rewards = {"gold": 4, "xp": 6};
+    names.push("quest");
+    let popped = names.pop();
+    rewards.set("quest", "done");
+    let removed = rewards.remove("gold");
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
-    if names.len() == 2 && rewards.is_empty() == false && ("quest").len() == 5
-        && rewards.has("gold") && rewards.get("xp") == 6 && rewards.get_or("missing", "fallback") == "fallback"
-        && keys[0] == "gold" && keys[1] == "xp"
-        && amounts[0] == 4 && amounts[1] == 6
-        && entries[0].key == "gold" && entries[1].value == 6 {
+    if names.len() == 2 && popped == "quest" && removed == 4 && rewards.is_empty() == false && ("quest").len() == 5
+        && rewards.has("quest") && rewards.get("xp") == 6 && rewards.get_or("missing", "fallback") == "fallback"
+        && keys[0] == "quest" && keys[1] == "xp"
+        && amounts[0] == "done" && amounts[1] == 6
+        && entries[0].key == "quest" && entries[1].value == 6 {
         return names[0].len();
     }
     return 0;

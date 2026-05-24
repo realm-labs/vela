@@ -1,29 +1,37 @@
 use std::collections::BTreeMap;
 
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
+    value_to_heap_slot,
+};
 
 pub(crate) fn call_method(
-    receiver: &Value,
+    receiver: &mut Value,
     method: &str,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match method {
         "len" => {
             expect_no_args(method, args)?;
-            len(receiver, heap).map(Value::Int)
+            len(receiver, heap.as_deref()).map(Value::Int)
         }
         "is_empty" => {
             expect_no_args(method, args)?;
-            is_empty(receiver, heap).map(Value::Bool)
+            is_empty(receiver, heap.as_deref()).map(Value::Bool)
         }
-        "has" => map_has(receiver, args, heap).map(Value::Bool),
-        "get" => map_get(receiver, args, heap),
-        "get_or" => map_get_or(receiver, args, heap),
-        "keys" => map_keys(receiver, args, heap),
-        "values" => map_values(receiver, args, heap),
-        "entries" => map_entries(receiver, args, heap),
+        "push" => array_push(receiver, args, heap, budget),
+        "pop" => array_pop(receiver, args, heap),
+        "has" => map_has(receiver, args, heap.as_deref()).map(Value::Bool),
+        "get" => map_get(receiver, args, heap.as_deref()),
+        "get_or" => map_get_or(receiver, args, heap.as_deref()),
+        "set" => map_set(receiver, args, heap, budget),
+        "remove" => map_remove(receiver, args, heap),
+        "keys" => map_keys(receiver, args, heap.as_deref()),
+        "values" => map_values(receiver, args, heap.as_deref()),
+        "entries" => map_entries(receiver, args, heap.as_deref()),
         _ => Err(VmError::new(VmErrorKind::UnknownMethod {
             method: method.to_owned(),
         })),
@@ -86,6 +94,56 @@ fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool
     }
 }
 
+fn array_push(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("push", args, 1)?;
+    match receiver {
+        Value::Array(values) => {
+            values.push(args[0].clone());
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method push");
+            };
+            let slot = value_to_heap_slot(&args[0], heap, budget)?;
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method push");
+            };
+            values.push(slot);
+            Ok(Value::Null)
+        }
+        _ => type_error("method push"),
+    }
+}
+
+fn array_pop(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("pop", args)?;
+    match receiver {
+        Value::Array(values) => Ok(values.pop().unwrap_or(Value::Null)),
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method pop");
+            };
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method pop");
+            };
+            Ok(values
+                .pop()
+                .map_or(Value::Null, |slot| value_from_heap_slot(&slot)))
+        }
+        _ => type_error("method pop"),
+    }
+}
+
 fn map_has(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<bool> {
     expect_arity("has", args, 1)?;
     let key = map_key(&args[0], heap)?;
@@ -137,6 +195,58 @@ fn map_get_or(
                 .map_or_else(|| args[1].clone(), value_from_heap_slot))
         }
         _ => type_error("method get_or"),
+    }
+}
+
+fn map_set(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("set", args, 2)?;
+    let key = map_key(&args[0], heap.as_deref())?;
+    match receiver {
+        Value::Map(values) => {
+            values.insert(key, args[1].clone());
+            Ok(args[1].clone())
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method set");
+            };
+            let slot = value_to_heap_slot(&args[1], heap, budget)?;
+            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method set");
+            };
+            values.insert(key, slot);
+            Ok(args[1].clone())
+        }
+        _ => type_error("method set"),
+    }
+}
+
+fn map_remove(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("remove", args, 1)?;
+    let key = map_key(&args[0], heap.as_deref())?;
+    match receiver {
+        Value::Map(values) => Ok(values.remove(&key).unwrap_or(Value::Null)),
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method remove");
+            };
+            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method remove");
+            };
+            Ok(values
+                .remove(&key)
+                .map_or(Value::Null, |slot| value_from_heap_slot(&slot)))
+        }
+        _ => type_error("method remove"),
     }
 }
 

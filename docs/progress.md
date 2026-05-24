@@ -487,6 +487,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added deterministic read-only map script methods `keys`, `values`, and
   `entries`, with `entries` returning script-visible `MapEntry` records in
   inline and managed-heap execution.
+- Added mutating collection script methods `array.push`, `array.pop`,
+  `map.set`, and `map.remove`, with method dispatch writing mutated receiver
+  registers back in inline and managed-heap execution.
 
 ## Next
 
