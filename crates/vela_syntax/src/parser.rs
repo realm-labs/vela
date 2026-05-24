@@ -703,6 +703,7 @@ impl Parser {
                 params.push(Param {
                     name: param,
                     type_hint,
+                    default_value: None,
                 });
             } else {
                 self.error_here("expected lambda parameter");
@@ -927,11 +928,16 @@ impl Parser {
         while !self.at_eof() && !self.check_symbol(Symbol::RParen) {
             if let Some(param) = self.eat_parameter_name() {
                 let type_hint = self.parse_type_annotation();
+                let default_value = if self.eat_symbol(Symbol::Equal).is_some() {
+                    Some(self.parse_expression())
+                } else {
+                    None
+                };
                 params.push(Param {
                     name: param,
                     type_hint,
+                    default_value,
                 });
-                self.skip_parameter_tail();
             } else {
                 self.advance();
             }
@@ -1051,18 +1057,6 @@ impl Parser {
             index = index.saturating_add(1);
         }
         false
-    }
-
-    fn skip_parameter_tail(&mut self) {
-        let mut depth = 0_u32;
-        while !self.at_eof() {
-            if depth == 0 && (self.check_symbol(Symbol::Comma) || self.check_symbol(Symbol::RParen))
-            {
-                break;
-            }
-            self.bump_depth(&mut depth);
-            self.advance();
-        }
     }
 
     fn skip_member_tail(&mut self) {
@@ -1726,6 +1720,47 @@ struct Reward {
                 diagnostic.code.as_deref() == Some("syntax::generic_type_hint")
             })
         );
+    }
+
+    #[test]
+    fn parses_parameter_defaults_and_named_arguments() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+fn grant(player, amount = 10, reason: string = "quest") {
+    return apply(amount = amount, reason = reason);
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Function(function) = &parsed.items[0].kind else {
+            panic!("expected function item");
+        };
+        assert!(function.params[0].default_value.is_none());
+        assert!(matches!(
+            function.params[1]
+                .default_value
+                .as_ref()
+                .map(|expr| &expr.kind),
+            Some(ExprKind::Literal(Literal::Int(value))) if value == "10"
+        ));
+        assert!(matches!(
+            function.params[2]
+                .default_value
+                .as_ref()
+                .map(|expr| &expr.kind),
+            Some(ExprKind::Literal(Literal::String(value))) if value == "quest"
+        ));
+        let StmtKind::Return(Some(Expr {
+            kind: ExprKind::Call { args, .. },
+            ..
+        })) = &function.body.statements[0].kind
+        else {
+            panic!("expected call return");
+        };
+        assert_eq!(args[0].name.as_deref(), Some("amount"));
+        assert_eq!(args[1].name.as_deref(), Some("reason"));
     }
 
     #[test]

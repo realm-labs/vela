@@ -54,6 +54,7 @@ pub struct TypeHint {
 pub struct Param {
     pub name: String,
     pub type_hint: Option<TypeHint>,
+    pub default_value: Option<Expr>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

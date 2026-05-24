@@ -28,6 +28,7 @@ impl HirTypeHint {
 pub struct ParamHint {
     pub name: String,
     pub type_hint: Option<HirTypeHint>,
+    pub default_value_span: Option<Span>,
 }
 
 impl ParamHint {
@@ -36,6 +37,7 @@ impl ParamHint {
         Self {
             name: param.name.clone(),
             type_hint: param.type_hint.as_ref().map(HirTypeHint::from_syntax),
+            default_value_span: param.default_value.as_ref().map(|value| value.span),
         }
     }
 }

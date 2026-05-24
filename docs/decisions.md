@@ -1287,3 +1287,26 @@ Consequences:
   imported enum aliases work consistently with record-style constructors.
 - M10 can replace the string positional field names with stable `VariantId` and
   field-slot metadata without changing source syntax.
+
+## 2026-05-24: Default Parameters Use Callee Prologues
+
+Status: Accepted
+
+Context:
+M9 requires function parameter defaults and named call arguments. Defaults can
+be ordinary expressions and should run in the callee environment so they can
+refer to parameters already initialized for that call.
+
+Decision:
+The parser and HIR preserve default parameter expressions and named argument
+syntax. The compiler reorders named script-call arguments against the resolved
+function signature and emits an omitted-argument marker for parameters that
+have defaults. Each compiled function emits a prologue that replaces omitted
+parameter registers by evaluating that parameter's default expression.
+
+Consequences:
+- Defaults execute with the same budgeted bytecode path as ordinary script
+  expressions.
+- Entrypoints and script-to-script calls can omit defaulted parameters.
+- Named arguments are supported for resolved script functions; host/native
+  named argument support remains a later signature-aware bridge/stdlib task.

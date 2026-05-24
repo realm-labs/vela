@@ -231,6 +231,11 @@ impl<'a> BindingLowerer<'a> {
                 input.body.span,
             );
         }
+        for param in input.params {
+            if let Some(default_value) = &param.default_value {
+                lowerer.bind_expr(default_value, PathUsage::Value);
+            }
+        }
         lowerer.bind_block_without_new_scope(input.body);
         lowerer
     }

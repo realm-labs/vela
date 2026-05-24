@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 pub use iteration::IteratorState;
-use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
+use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
 };
@@ -18,6 +18,7 @@ use vela_reflect::{self as reflect, ReflectError, ReflectErrorKind, TypeRegistry
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
+    Missing,
     Null,
     Bool(bool),
     Int(i64),
@@ -54,6 +55,7 @@ impl Value {
             }
             Self::Iterator(iterator) => iterator.trace_heap_refs(refs),
             Self::Null
+            | Self::Missing
             | Self::Bool(_)
             | Self::Int(_)
             | Self::Float(_)
@@ -710,7 +712,7 @@ impl Vm {
         mut heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
-        if code.params.len() != args.len() {
+        if args.len() > code.params.len() {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
                 name: code.name.clone(),
                 expected: code.params.len(),
@@ -728,6 +730,35 @@ impl Vm {
                 })?),
                 arg.clone(),
             )?;
+        }
+        for index in args.len()..code.params.len() {
+            frame.write(
+                Register(u16::try_from(index).map_err(|_| {
+                    VmError::new(VmErrorKind::RegisterOutOfBounds {
+                        register: Register(u16::MAX),
+                    })
+                })?),
+                Value::Missing,
+            )?;
+        }
+        let defaults = normalized_param_defaults(code);
+        let actual = args
+            .iter()
+            .filter(|arg| !matches!(arg, Value::Missing))
+            .count();
+        for (index, has_default) in defaults.iter().enumerate() {
+            let register = Register(u16::try_from(index).map_err(|_| {
+                VmError::new(VmErrorKind::RegisterOutOfBounds {
+                    register: Register(u16::MAX),
+                })
+            })?);
+            if !has_default && matches!(frame.read(register)?, Value::Missing) {
+                return Err(VmError::new(VmErrorKind::ArityMismatch {
+                    name: code.name.clone(),
+                    expected: code.params.len(),
+                    actual,
+                }));
+            }
         }
         let mut ip = 0_usize;
 
@@ -843,6 +874,12 @@ impl Vm {
                         ip = target.0;
                     }
                 }
+                InstructionKind::JumpIfNotMissing { value, target } => {
+                    if !matches!(frame.read(*value)?, Value::Missing) {
+                        validate_jump(code, target.0)?;
+                        ip = target.0;
+                    }
+                }
                 InstructionKind::Jump { target } => {
                     validate_jump(code, target.0)?;
                     ip = target.0;
@@ -888,7 +925,10 @@ impl Vm {
                     })?;
                     let values = args
                         .iter()
-                        .map(|register| frame.read(*register).cloned())
+                        .map(|arg| match arg {
+                            CallArgument::Register(register) => frame.read(*register).cloned(),
+                            CallArgument::Missing => Ok(Value::Missing),
+                        })
                         .collect::<VmResult<Vec<_>>>()?;
                     let protected_root_len = heap
                         .as_deref_mut()
@@ -1197,6 +1237,12 @@ fn value_from_constant(
     }
 }
 
+fn normalized_param_defaults(code: &CodeObject) -> Vec<bool> {
+    let mut defaults = code.param_defaults.clone();
+    defaults.resize(code.params.len(), false);
+    defaults
+}
+
 fn allocate_heap_value(
     value: HeapValue,
     heap: &mut HeapExecution<'_>,
@@ -1310,8 +1356,8 @@ pub(crate) fn value_to_heap_slot(
             };
             Ok(HeapSlot::Ref(reference))
         }
-        Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "iterator heap slot",
+        Value::Iterator(_) | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "heap slot",
         })),
     }
 }
@@ -1377,8 +1423,8 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
         | Value::Float(_)
         | Value::String(_)
         | Value::HostRef(_) => Ok(value.clone()),
-        Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "iterator materialize",
+        Value::Iterator(_) | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "materialize",
         })),
     }
 }
@@ -1462,6 +1508,9 @@ fn store_value_in_heap_if_needed(
         | Value::HeapRef(_)
         | Value::HostRef(_)
         | Value::Iterator(_) => Ok(value),
+        Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "missing value",
+        })),
     }
 }
 
@@ -1673,6 +1722,7 @@ fn value_to_host(
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::Iterator(_)
+        | Value::Missing
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -1687,7 +1737,7 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::ReflectValue::Record(values))
         }
-        Value::Array(_) | Value::Enum { .. } => {
+        Value::Array(_) | Value::Enum { .. } | Value::Missing => {
             Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
         Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
@@ -1716,6 +1766,7 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
     match value {
         Value::String(value) => Ok(value),
         Value::Null
+        | Value::Missing
         | Value::Bool(_)
         | Value::Int(_)
         | Value::Float(_)
@@ -1755,7 +1806,7 @@ fn compare_numeric(
 }
 
 fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Null | Value::Bool(false))
+    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
 }
 
 fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
@@ -2598,6 +2649,67 @@ fn main() {
         assert_eq!(
             Vm::new().run_program(&program, "main", &[]),
             Ok(Value::Int(30))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_named_args_and_parameter_defaults() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn grant(base, amount = 10, bonus = amount + 1) {
+    return base + amount + bonus;
+}
+
+fn main() {
+    return grant(bonus = 5, base = 1);
+}
+"#,
+        )
+        .expect("compile named args and parameter defaults");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(16))
+        );
+    }
+
+    #[test]
+    fn runs_entrypoint_parameter_defaults() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main(value = 7) {
+    return value + 1;
+}
+"#,
+            "main",
+        )
+        .expect("compile entrypoint default");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_parameter_defaults() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn choose(prefix = "quest", suffix = "done") {
+    return prefix == "quest" && suffix == "done";
+}
+
+fn main() {
+    return choose(suffix = "done");
+}
+"#,
+        )
+        .expect("compile heap parameter defaults");
+        let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
+
+        assert_eq!(
+            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            Ok(Value::Bool(true))
         );
     }
 

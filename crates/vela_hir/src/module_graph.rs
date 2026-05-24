@@ -1547,6 +1547,41 @@ struct Reward {
     }
 
     #[test]
+    fn lowers_parameter_default_metadata_and_bindings() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.rewards",
+            r#"
+const BASE = 10
+
+fn grant(amount = BASE, bonus = amount + 1) {
+    return amount + bonus;
+}
+"#,
+        ));
+        let declarations = graph.module(module).expect("module declarations");
+        let grant = declarations.get("grant").expect("grant declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let signature = graph.function_signature(grant).expect("function signature");
+        assert!(signature.params[0].default_value_span.is_some());
+        assert!(signature.params[1].default_value_span.is_some());
+        let bindings = graph.bindings(grant).expect("function bindings");
+        assert!(bindings.resolutions().any(|(_, resolution)| {
+            resolution
+                == &BindingResolution::Declaration(
+                    declarations.get("BASE").expect("BASE declaration"),
+                )
+        }));
+        assert!(bindings.resolutions().any(|(_, resolution)| {
+            matches!(resolution, BindingResolution::Local(local) if bindings
+                .local(*local)
+                .is_some_and(|binding| binding.name == "amount"))
+        }));
+    }
+
+    #[test]
     fn rejects_side_effecting_const_initializers() {
         let mut graph = ModuleGraph::new();
         graph.add_source(source(

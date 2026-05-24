@@ -54,6 +54,7 @@ pub(crate) fn make_iterator(
             }
         }
         Value::Null
+        | Value::Missing
         | Value::Bool(_)
         | Value::Int(_)
         | Value::Float(_)

@@ -12,15 +12,17 @@ use std::num::{ParseFloatError, ParseIntError};
 use vela_common::{Diagnostic, FieldId, HostMethodId, SourceId, Span};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
-    ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource,
+    ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource, ParamHint,
 };
 use vela_syntax::{
-    AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
-    MapEntry, MatchExpr, Pattern, SourceFile, Stmt, StmtKind, UnaryOp, parse_source,
+    Argument, AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr,
+    ItemKind, Literal, MapEntry, MatchExpr, Param, Pattern, SourceFile, Stmt, StmtKind, UnaryOp,
+    parse_source,
 };
 
 use crate::{
-    CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
+    CallArgument, CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program,
+    Register,
 };
 use control_flow::LoopContext;
 use methods::{HostMethodReceiver, host_method_call};
@@ -83,6 +85,7 @@ impl CompilerOptions {
 #[derive(Clone, Debug)]
 struct CompilerFacts {
     script_function_symbols: BTreeMap<HirDeclId, String>,
+    script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
     type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
@@ -104,10 +107,12 @@ pub fn compile_function_source_with_options(
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
     let script_function_symbols = semantic.script_function_symbols();
+    let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
+        script_function_signatures,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -131,10 +136,12 @@ pub fn compile_program_source_with_options(
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
     let script_function_symbols = semantic.script_function_symbols();
+    let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
+        script_function_signatures,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -171,10 +178,12 @@ pub fn compile_module_sources_with_options(
     let semantic = parse_semantic_modules(sources)?;
     let script_functions = semantic.script_function_declarations();
     let script_function_symbols = semantic.script_function_symbols();
+    let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
+        script_function_signatures,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -257,6 +266,17 @@ impl SemanticSource {
                 let declaration = declarations.get(name)?;
                 let metadata = self.graph.declaration(declaration)?;
                 (metadata.kind == DeclarationKind::Function).then(|| (declaration, name.to_owned()))
+            })
+            .collect()
+    }
+
+    fn script_function_signatures(&self) -> BTreeMap<HirDeclId, Vec<ParamHint>> {
+        self.script_function_symbols()
+            .keys()
+            .filter_map(|declaration| {
+                self.graph
+                    .function_signature(*declaration)
+                    .map(|signature| (*declaration, signature.params.clone()))
             })
             .collect()
     }
@@ -353,6 +373,17 @@ impl SemanticModules {
                     (metadata.kind == DeclarationKind::Function)
                         .then(|| (declaration, format!("{path}.{}", metadata.name)))
                 })
+            })
+            .collect()
+    }
+
+    fn script_function_signatures(&self) -> BTreeMap<HirDeclId, Vec<ParamHint>> {
+        self.script_function_symbols()
+            .keys()
+            .filter_map(|declaration| {
+                self.graph
+                    .function_signature(*declaration)
+                    .map(|signature| (*declaration, signature.params.clone()))
             })
             .collect()
     }
@@ -510,6 +541,7 @@ struct Compiler<'ast> {
     hir_locals: HashMap<HirLocalId, Register>,
     bindings: &'ast BindingMap,
     next_register: u16,
+    params: &'ast [Param],
     body: &'ast Block,
     facts: CompilerFacts,
     loop_stack: Vec<LoopContext>,
@@ -530,6 +562,11 @@ impl<'ast> Compiler<'ast> {
             .iter()
             .map(|param| param.name.clone())
             .collect::<Vec<_>>();
+        let param_defaults = function
+            .params
+            .iter()
+            .map(|param| param.default_value.is_some())
+            .collect::<Vec<_>>();
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
         let parameter_locals = bindings
@@ -547,11 +584,14 @@ impl<'ast> Compiler<'ast> {
         }
 
         Ok(Self {
-            code: CodeObject::new(code_name, 0).with_params(param_names),
+            code: CodeObject::new(code_name, 0)
+                .with_params(param_names)
+                .with_param_defaults(param_defaults),
             locals,
             hir_locals,
             bindings,
             next_register: param_count,
+            params: &function.params,
             body: &function.body,
             facts,
             loop_stack: Vec::new(),
@@ -559,6 +599,7 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile(mut self) -> CompileResult<CodeObject> {
+        self.compile_param_defaults()?;
         let returned = self.compile_statements(&self.body.statements)?;
         if !returned {
             let null = self.emit_constant(Constant::Null)?;
@@ -566,6 +607,26 @@ impl<'ast> Compiler<'ast> {
         }
         self.code.register_count = self.next_register;
         Ok(self.code)
+    }
+
+    fn compile_param_defaults(&mut self) -> CompileResult<()> {
+        for index in 0..self.params.len() {
+            let Some(default_value) = self.params[index].default_value.clone() else {
+                continue;
+            };
+            let param = Register(
+                u16::try_from(index)
+                    .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+            );
+            let skip_default = self.emit_jump_if_not_missing(param);
+            let value = self.compile_expr(&default_value)?;
+            self.emit(InstructionKind::Move {
+                dst: param,
+                src: value,
+            });
+            self.patch_jump(skip_default, self.current_offset())?;
+        }
+        Ok(())
     }
 
     fn compile_statements(&mut self, statements: &[Stmt]) -> CompileResult<bool> {
@@ -685,6 +746,7 @@ impl<'ast> Compiler<'ast> {
                 }
 
                 if let Some(call) = host_method_call(&self.facts.options, callee) {
+                    reject_named_args(args, "host method call")?;
                     let root = match call.receiver {
                         HostMethodReceiver::Expr(receiver) => self.compile_expr(receiver)?,
                         HostMethodReceiver::LocalPath(name) => {
@@ -706,18 +768,16 @@ impl<'ast> Compiler<'ast> {
                 }
 
                 let fallback_name = callable_name(callee)?;
-                let arg_registers = args
-                    .iter()
-                    .map(|arg| self.compile_expr(&arg.value))
-                    .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
-                if let Some(name) = self.script_function_call_name(callee) {
-                    self.emit(InstructionKind::CallFunction {
-                        dst,
-                        name,
-                        args: arg_registers,
-                    });
+                if let Some((declaration, name)) = self.script_function_call(callee) {
+                    let args = self.compile_script_call_args(declaration, args)?;
+                    self.emit(InstructionKind::CallFunction { dst, name, args });
                 } else {
+                    reject_named_args(args, "native call")?;
+                    let arg_registers = args
+                        .iter()
+                        .map(|arg| self.compile_expr(&arg.value))
+                        .collect::<CompileResult<Vec<_>>>()?;
                     self.emit(InstructionKind::CallNative {
                         dst: Some(dst),
                         name: fallback_name,
@@ -812,6 +872,73 @@ impl<'ast> Compiler<'ast> {
         }
     }
 
+    fn compile_script_call_args(
+        &mut self,
+        declaration: HirDeclId,
+        args: &[Argument],
+    ) -> CompileResult<Vec<CallArgument>> {
+        let params = self
+            .facts
+            .script_function_signatures
+            .get(&declaration)
+            .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("script call")))?
+            .clone();
+        let mut slots = vec![None; params.len()];
+        let mut next_positional = 0_usize;
+        let mut seen_named = false;
+
+        for arg in args {
+            let index = if let Some(name) = &arg.name {
+                seen_named = true;
+                params
+                    .iter()
+                    .position(|param| param.name == *name)
+                    .ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "unknown named argument",
+                        ))
+                    })?
+            } else {
+                if seen_named {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "positional argument after named argument",
+                    )));
+                }
+                let index = next_positional;
+                next_positional = next_positional.saturating_add(1);
+                if index >= params.len() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "too many arguments",
+                    )));
+                }
+                index
+            };
+
+            if slots[index].is_some() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "duplicate argument",
+                )));
+            }
+            slots[index] = Some(CallArgument::Register(self.compile_expr(&arg.value)?));
+        }
+
+        slots
+            .into_iter()
+            .zip(params)
+            .map(|(slot, param)| {
+                if let Some(arg) = slot {
+                    Ok(arg)
+                } else if param.default_value_span.is_some() {
+                    Ok(CallArgument::Missing)
+                } else {
+                    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing required argument",
+                    )))
+                }
+            })
+            .collect()
+    }
+
     fn tuple_enum_constructor_call(&self, callee: &Expr) -> Option<(String, String)> {
         let ExprKind::Path(path) = &callee.kind else {
             return None;
@@ -821,13 +948,17 @@ impl<'ast> Compiler<'ast> {
         Some((enum_name, variant))
     }
 
-    fn script_function_call_name(&self, callee: &Expr) -> Option<String> {
+    fn script_function_call(&self, callee: &Expr) -> Option<(HirDeclId, String)> {
         let Some(BindingResolution::Declaration(declaration)) =
             self.bindings.resolution_at_span(callee.span)
         else {
             return None;
         };
-        self.facts.script_function_symbols.get(declaration).cloned()
+        self.facts
+            .script_function_symbols
+            .get(declaration)
+            .cloned()
+            .map(|name| (*declaration, name))
     }
 
     fn type_symbol_at_span(&self, span: Span) -> Option<String> {
@@ -1596,6 +1727,15 @@ impl<'ast> Compiler<'ast> {
         offset
     }
 
+    fn emit_jump_if_not_missing(&mut self, value: Register) -> usize {
+        let offset = self.current_offset();
+        self.emit(InstructionKind::JumpIfNotMissing {
+            value,
+            target: InstructionOffset(usize::MAX),
+        });
+        offset
+    }
+
     fn emit_jump(&mut self) -> usize {
         let offset = self.current_offset();
         self.emit(InstructionKind::Jump {
@@ -1621,6 +1761,10 @@ impl<'ast> Compiler<'ast> {
             })?;
         match &mut instruction.kind {
             InstructionKind::JumpIfFalse {
+                target: jump_target,
+                ..
+            }
+            | InstructionKind::JumpIfNotMissing {
                 target: jump_target,
                 ..
             }
@@ -1652,6 +1796,15 @@ fn callable_name(callee: &Expr) -> CompileResult<String> {
             "callable expression",
         ))),
     }
+}
+
+fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<()> {
+    if args.iter().any(|arg| arg.name.is_some()) {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            context,
+        )));
+    }
+    Ok(())
 }
 
 fn map_key_name(key: &Expr) -> CompileResult<String> {
@@ -1977,6 +2130,36 @@ fn main(player: game.Player, amount: int) -> int {
         .expect("typed params should compile through HIR signature metadata");
 
         assert_eq!(code.params, ["player", "amount"]);
+    }
+
+    #[test]
+    fn compiler_lowers_parameter_defaults_and_named_script_args() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn grant(base, amount = 10, bonus = amount + 1) {
+    return base + amount + bonus;
+}
+
+fn main() {
+    return grant(bonus = 5, base = 1);
+}
+"#,
+        )
+        .expect("named args and defaults should compile");
+        let grant = program.function("grant").expect("grant function");
+        let main = program.function("main").expect("main function");
+
+        assert_eq!(grant.param_defaults, [false, true, true]);
+        assert!(grant.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::JumpIfNotMissing { .. }
+        )));
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallFunction { args, .. }
+                if args.len() == 3 && matches!(args[1], CallArgument::Missing)
+        )));
     }
 
     #[test]

@@ -430,6 +430,11 @@ to the later language constructs that introduce loops and closures.
   constructor calls such as `Damage.Physical(7, 2)`.
 - Added tuple variant pattern destructuring with positional enum fields and VM
   coverage for inline and managed-heap execution.
+- Added parser and HIR metadata for function parameter default expressions and
+  named call arguments.
+- Added compiler and VM support for named script-call argument reordering plus
+  callee-side default parameter prologues, including managed-heap string
+  defaults.
 
 ## Next
 

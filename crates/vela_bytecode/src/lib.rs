@@ -31,6 +31,7 @@ impl Program {
 pub struct CodeObject {
     pub name: String,
     pub params: Vec<String>,
+    pub param_defaults: Vec<bool>,
     pub register_count: u16,
     pub constants: Vec<Constant>,
     pub instructions: Vec<Instruction>,
@@ -42,6 +43,7 @@ impl CodeObject {
         Self {
             name: name.into(),
             params: Vec::new(),
+            param_defaults: Vec::new(),
             register_count,
             constants: Vec::new(),
             instructions: Vec::new(),
@@ -50,7 +52,14 @@ impl CodeObject {
 
     #[must_use]
     pub fn with_params(mut self, params: Vec<String>) -> Self {
+        self.param_defaults = vec![false; params.len()];
         self.params = params;
+        self
+    }
+
+    #[must_use]
+    pub fn with_param_defaults(mut self, defaults: Vec<bool>) -> Self {
+        self.param_defaults = defaults;
         self
     }
 
@@ -179,6 +188,10 @@ pub enum InstructionKind {
         condition: Register,
         target: InstructionOffset,
     },
+    JumpIfNotMissing {
+        value: Register,
+        target: InstructionOffset,
+    },
     Jump {
         target: InstructionOffset,
     },
@@ -190,7 +203,7 @@ pub enum InstructionKind {
     CallFunction {
         dst: Register,
         name: String,
-        args: Vec<Register>,
+        args: Vec<CallArgument>,
     },
     MakeArray {
         dst: Register,
@@ -270,6 +283,12 @@ pub enum InstructionKind {
     Return {
         src: Register,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CallArgument {
+    Register(Register),
+    Missing,
 }
 
 #[cfg(test)]

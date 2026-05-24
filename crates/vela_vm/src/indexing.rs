@@ -58,6 +58,7 @@ pub(crate) fn get_index(
             }
         }
         Value::Null
+        | Value::Missing
         | Value::Bool(_)
         | Value::Int(_)
         | Value::Float(_)
@@ -119,6 +120,7 @@ pub(crate) fn set_index(
             }
         }
         Value::Null
+        | Value::Missing
         | Value::Bool(_)
         | Value::Int(_)
         | Value::Float(_)
@@ -189,6 +191,7 @@ fn array_index(index: &Value) -> VmResult<usize> {
     match index {
         Value::Int(index) if *index >= 0 => Ok(*index as usize),
         Value::Null
+        | Value::Missing
         | Value::Bool(_)
         | Value::Int(_)
         | Value::Float(_)
@@ -215,6 +218,7 @@ fn map_key(index: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> 
             })),
         },
         Value::Null
+        | Value::Missing
         | Value::Bool(_)
         | Value::Int(_)
         | Value::Float(_)
