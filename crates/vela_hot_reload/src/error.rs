@@ -31,6 +31,15 @@ pub enum HotReloadErrorKind {
         old: Vec<String>,
         new: Vec<String>,
     },
+    ChangedFunctionParameters {
+        function: String,
+        old: Vec<String>,
+        new: Vec<String>,
+    },
+    AddedFunctionParametersWithoutDefaults {
+        function: String,
+        added: Vec<String>,
+    },
     RemovedSchema {
         type_name: String,
         old_hash: u64,

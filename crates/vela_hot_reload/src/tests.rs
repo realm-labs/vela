@@ -66,6 +66,62 @@ fn deleted_function_parameters_are_rejected() {
 }
 
 #[test]
+fn reordered_function_parameters_are_rejected() {
+    let initial = compile_initial(SourceId::new(1), "fn main(player, monster) { return 1; }")
+        .expect("compile initial");
+
+    let error = compile_update(
+        &initial,
+        SourceId::new(2),
+        "fn main(monster, player) { return 2; }",
+    )
+    .expect_err("reordered params");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedFunctionParameters {
+            function: "main".to_owned(),
+            old: vec!["player".to_owned(), "monster".to_owned()],
+            new: vec!["monster".to_owned(), "player".to_owned()],
+        }
+    );
+}
+
+#[test]
+fn appended_function_parameters_are_accepted() {
+    let initial = compile_initial(SourceId::new(1), "fn main(player) { return 1; }")
+        .expect("compile initial");
+
+    compile_update(
+        &initial,
+        SourceId::new(2),
+        "fn main(player, amount = 1) { return amount; }",
+    )
+    .expect("defaulted append keeps existing parameter ABI");
+}
+
+#[test]
+fn appended_function_parameters_without_defaults_are_rejected() {
+    let initial = compile_initial(SourceId::new(1), "fn main(player) { return 1; }")
+        .expect("compile initial");
+
+    let error = compile_update(
+        &initial,
+        SourceId::new(2),
+        "fn main(player, amount) { return amount; }",
+    )
+    .expect_err("required appended param should break existing callers");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::AddedFunctionParametersWithoutDefaults {
+            function: "main".to_owned(),
+            added: vec!["amount".to_owned()],
+        }
+    );
+}
+
+#[test]
 fn new_private_helper_functions_are_accepted() {
     let initial = compile_initial(SourceId::new(1), "fn main() { return 1; }").expect("initial");
     let mut runtime = HotReloadRuntime::new(initial);

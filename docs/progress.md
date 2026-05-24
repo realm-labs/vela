@@ -786,6 +786,10 @@ permissions.
   host schema/method compiler options and validate against the registry-derived
   ABI manifest, so embedders do not need to manually keep compiler metadata and
   reload policy metadata in sync.
+- Added a focused hot-reload function-signature compatibility module. Updates
+  now reject reordered or renamed existing function parameters, continue to
+  reject deleted parameters, and still allow appending new defaulted parameters,
+  tightening the function ABI checks required before a safe-point code swap.
 
 ## Next
 

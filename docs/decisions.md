@@ -3157,3 +3157,26 @@ Consequences:
   manually assembling manifests and compiler options.
 - Lower-level hot-reload APIs remain available for tests and specialized
   runtimes that build their own manifests.
+
+## 2026-05-25: Hot Reload Preserves Existing Parameter ABI
+
+Status: Accepted
+
+Context:
+Hot reload swaps function code objects at safe points while existing call frames
+continue on old code. New calls may still target old callers or host event
+bindings that know the previous parameter names and order, so accepting
+renamed or reordered existing parameters can silently reinterpret arguments.
+
+Decision:
+Function-signature compatibility lives in a focused hot-reload module. Updates
+must preserve every existing parameter name at the same position, reject
+deleted parameters, and may append new parameters after the preserved prefix.
+
+Consequences:
+- Event handlers and host-facing functions keep a stable positional ABI across
+  function-level updates.
+- Appended parameters remain possible for later default-aware compatibility
+  policy, while existing call sites continue to see the same prefix contract.
+- The compile driver delegates signature policy instead of accumulating more
+  compatibility logic directly in `compile.rs`.

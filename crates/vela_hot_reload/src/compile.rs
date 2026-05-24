@@ -1,13 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::CodeObject;
 use vela_bytecode::compiler::{CompilerOptions, compile_program_source_with_options};
 use vela_common::SourceId;
 
 use crate::{
     FunctionSymbolId, HotReloadAbi, HotReloadError, HotReloadErrorKind, HotReloadResult, HotUpdate,
-    ProgramVersion, ProgramVersionId,
+    ProgramVersion, ProgramVersionId, function_signature::ensure_compatible_function_signature,
 };
 
 pub fn compile_initial(source: SourceId, text: &str) -> HotReloadResult<ProgramVersion> {
@@ -94,27 +93,10 @@ pub fn compile_update_with_abi_and_options(
     let mut functions = BTreeMap::new();
     for (name, code) in program.functions {
         if let Some(old_code) = previous.functions.get(&FunctionSymbolId::new(&name)) {
-            ensure_compatible_params(&name, old_code, &code)?;
+            ensure_compatible_function_signature(&name, old_code, &code)?;
         }
         functions.insert(FunctionSymbolId::new(name), Arc::new(code));
     }
     previous.abi().ensure_compatible_update(&abi)?;
     Ok(HotUpdate::new(functions, abi))
-}
-
-fn ensure_compatible_params(
-    name: &str,
-    old_code: &CodeObject,
-    new_code: &CodeObject,
-) -> HotReloadResult<()> {
-    if new_code.params.len() < old_code.params.len() {
-        return Err(HotReloadError::new(
-            HotReloadErrorKind::DeletedFunctionParameters {
-                function: name.to_owned(),
-                old: old_code.params.clone(),
-                new: new_code.params.clone(),
-            },
-        ));
-    }
-    Ok(())
 }

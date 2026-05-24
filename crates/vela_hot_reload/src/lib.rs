@@ -3,6 +3,7 @@
 mod abi;
 mod compile;
 mod error;
+mod function_signature;
 mod runtime;
 mod symbol;
 mod version;
