@@ -3,7 +3,8 @@
 ## Current Milestone
 
 M0-M6 runnable prototype loop complete. Current milestone: M7 runtime safety,
-budgets, and GC.
+budgets, and GC. Initial execution-budget enforcement is implemented; GC and
+script heap work remain.
 
 ## Completed
 
@@ -157,10 +158,26 @@ budgets, and GC.
 - Verified the demo script runs through parser, bytecode compiler, VM host
   execution, `PatchTx`, and safe-point host apply.
 
+### M7: Runtime Safety, Budgets, And GC
+
+- Added `ExecutionBudget` and `ExecutionBudgetKind` to the VM with limits for
+  instructions, memory bytes, call depth, and patch count.
+- Added budgeted VM entrypoints for plain code, programs, host execution, and
+  host program execution while preserving the existing unbudgeted convenience
+  entrypoints.
+- Charged the instruction budget in the VM dispatch loop and preserved the
+  executed-instruction counter on budget errors.
+- Enforced maximum call depth across recursive script function calls.
+- Enforced patch-count limits before direct VM host writes/method calls and
+  after opaque host-native calls that may record patches.
+- Added VM tests for instruction exhaustion, recursive call-depth exhaustion,
+  and patch-count exhaustion without mutating host adapter state.
+
 ## Next
 
-- Start M7 with `ExecutionBudget` and budget charging in the VM dispatch loop.
-- Add call-depth and patch-count limit tests before adding new looping
-  execution paths.
+- Add the first script heap model with stable `GcRef` handles and explicit root
+  collection from call frames and temporary VM values.
+- Connect memory-budget accounting to heap allocation once arrays, maps,
+  strings, records, and enums move to the script heap.
 - Plan the non-moving heap and root model for strings, arrays, maps, records,
   enums, closures, and temporary VM values.

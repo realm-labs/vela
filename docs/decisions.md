@@ -213,3 +213,26 @@ Consequences:
 - Old version lifetime is represented by normal `Arc` ownership.
 - The VM can continue executing immutable `Program` snapshots while hot-reload
   policy evolves around it.
+
+## 2026-05-24: Budgeted VM Entrypoints Preserve Existing Convenience Runs
+
+Status: Accepted
+
+Context:
+M7 needs bounded execution without forcing all existing prototype tests and demo
+callers to construct runtime policy objects immediately.
+
+Decision:
+Add `ExecutionBudget` to `vela_vm` and expose explicit budgeted run entrypoints
+next to the existing unbudgeted convenience entrypoints. The budget tracks
+instruction count and current call depth internally, while configured limits
+remain public runtime policy. Direct VM host patch operations reserve patch
+capacity before recording a patch; opaque host-native calls are checked after
+they return.
+
+Consequences:
+- Existing M0-M6 callers keep working while embedders can opt into limits.
+- Recursive script calls share one budget through the existing recursive VM
+  execution path.
+- Reflection and other host natives need a later `NativeCallContext` to reserve
+  patch budget before mutation instead of only being checked after return.

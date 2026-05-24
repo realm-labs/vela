@@ -99,7 +99,103 @@ pub enum VmErrorKind {
         variant: String,
         field: String,
     },
+    BudgetExceeded {
+        budget: ExecutionBudgetKind,
+        limit: u64,
+    },
     MissingReturn,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExecutionBudgetKind {
+    Instructions,
+    CallDepth,
+    Patches,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExecutionBudget {
+    pub instruction_limit: u64,
+    pub memory_limit_bytes: usize,
+    pub max_call_depth: usize,
+    pub max_patches: usize,
+    instructions_executed: u64,
+    current_call_depth: usize,
+}
+
+impl ExecutionBudget {
+    #[must_use]
+    pub fn new(
+        instruction_limit: u64,
+        memory_limit_bytes: usize,
+        max_call_depth: usize,
+        max_patches: usize,
+    ) -> Self {
+        Self {
+            instruction_limit,
+            memory_limit_bytes,
+            max_call_depth,
+            max_patches,
+            instructions_executed: 0,
+            current_call_depth: 0,
+        }
+    }
+
+    #[must_use]
+    pub fn unbounded() -> Self {
+        Self::new(u64::MAX, usize::MAX, usize::MAX, usize::MAX)
+    }
+
+    #[must_use]
+    pub fn instructions_executed(&self) -> u64 {
+        self.instructions_executed
+    }
+
+    #[must_use]
+    pub fn current_call_depth(&self) -> usize {
+        self.current_call_depth
+    }
+
+    fn charge_instruction(&mut self) -> VmResult<()> {
+        if self.instructions_executed >= self.instruction_limit {
+            return Err(VmError::new(VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::Instructions,
+                limit: self.instruction_limit,
+            }));
+        }
+        self.instructions_executed = self.instructions_executed.saturating_add(1);
+        Ok(())
+    }
+
+    fn enter_call(&mut self) -> VmResult<()> {
+        if self.current_call_depth >= self.max_call_depth {
+            return Err(VmError::new(VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::CallDepth,
+                limit: u64::try_from(self.max_call_depth).unwrap_or(u64::MAX),
+            }));
+        }
+        self.current_call_depth = self.current_call_depth.saturating_add(1);
+        Ok(())
+    }
+
+    fn exit_call(&mut self) {
+        self.current_call_depth = self.current_call_depth.saturating_sub(1);
+    }
+
+    fn check_patch_count(&self, patch_count: usize) -> VmResult<()> {
+        if patch_count > self.max_patches {
+            Err(VmError::new(VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::Patches,
+                limit: u64::try_from(self.max_patches).unwrap_or(u64::MAX),
+            }))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn reserve_patch(&self, current_patch_count: usize) -> VmResult<()> {
+        self.check_patch_count(current_patch_count.saturating_add(1))
+    }
 }
 
 pub type VmResult<T> = Result<T, VmError>;
@@ -251,7 +347,15 @@ impl Vm {
     }
 
     pub fn run(&self, code: &CodeObject) -> VmResult<Value> {
-        self.execute(code, None, &[], None)
+        self.execute(code, None, &[], None, None)
+    }
+
+    pub fn run_with_budget(
+        &self,
+        code: &CodeObject,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        self.execute(code, None, &[], None, Some(budget))
     }
 
     pub fn run_program(&self, program: &Program, entry: &str, args: &[Value]) -> VmResult<Value> {
@@ -260,7 +364,22 @@ impl Vm {
                 name: entry.to_owned(),
             })
         })?;
-        self.execute(code, Some(program), args, None)
+        self.execute(code, Some(program), args, None, None)
+    }
+
+    pub fn run_program_with_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute(code, Some(program), args, None, Some(budget))
     }
 
     pub fn run_with_host(
@@ -268,7 +387,16 @@ impl Vm {
         code: &CodeObject,
         host: &mut HostExecution<'_>,
     ) -> VmResult<Value> {
-        self.execute(code, None, &[], Some(host))
+        self.execute(code, None, &[], Some(host), None)
+    }
+
+    pub fn run_with_host_and_budget(
+        &self,
+        code: &CodeObject,
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        self.execute(code, None, &[], Some(host), Some(budget))
     }
 
     pub fn run_program_with_host(
@@ -283,7 +411,23 @@ impl Vm {
                 name: entry.to_owned(),
             })
         })?;
-        self.execute(code, Some(program), args, Some(host))
+        self.execute(code, Some(program), args, Some(host), None)
+    }
+
+    pub fn run_program_with_host_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program.function(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        self.execute(code, Some(program), args, Some(host), Some(budget))
     }
 
     fn execute(
@@ -291,7 +435,26 @@ impl Vm {
         code: &CodeObject,
         program: Option<&Program>,
         args: &[Value],
+        host: Option<&mut HostExecution<'_>>,
+        mut budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<Value> {
+        if let Some(budget) = &mut budget {
+            budget.enter_call()?;
+        }
+        let result = self.execute_body(code, program, args, host, budget.as_deref_mut());
+        if let Some(budget) = budget {
+            budget.exit_call();
+        }
+        result
+    }
+
+    fn execute_body(
+        &self,
+        code: &CodeObject,
+        program: Option<&Program>,
+        args: &[Value],
         mut host: Option<&mut HostExecution<'_>>,
+        mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         if code.params.len() != args.len() {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
@@ -316,6 +479,9 @@ impl Vm {
 
         while ip < code.instructions.len() {
             let instruction = &code.instructions[ip];
+            if let Some(budget) = budget.as_deref_mut() {
+                budget.charge_instruction()?;
+            }
             ip = ip.saturating_add(1);
 
             match &instruction.kind {
@@ -425,6 +591,9 @@ impl Vm {
                             name: name.clone(),
                         }));
                     };
+                    if let (Some(budget), Some(host)) = (budget.as_deref(), host.as_deref()) {
+                        budget.check_patch_count(host.tx.patches().len())?;
+                    }
                     if let Some(dst) = dst {
                         frame.write(*dst, result)?;
                     }
@@ -440,8 +609,13 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
-                    let result =
-                        self.execute(function, Some(program), &values, host.as_deref_mut())?;
+                    let result = self.execute(
+                        function,
+                        Some(program),
+                        &values,
+                        host.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::MakeArray { dst, elements } => {
@@ -564,6 +738,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
                     host.tx.set_path(path, value, instruction.span)?;
                 }
                 InstructionKind::AddHostField { root, field, rhs } => {
@@ -576,6 +753,9 @@ impl Vm {
                         })
                     })?;
                     let base_value = host.tx.read_path(host.adapter, &path)?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
                     host.tx
                         .add_path(path, value, base_value, instruction.span)?;
                 }
@@ -596,6 +776,9 @@ impl Vm {
                             operation: "host context",
                         })
                     })?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
                     host.tx
                         .call_method(path, *method, values, instruction.span)?;
                     if let Some(dst) = dst {
@@ -910,6 +1093,69 @@ mod tests {
         }));
 
         assert_eq!(vm.run(&code), Ok(Value::Null));
+    }
+
+    #[test]
+    fn instruction_budget_stops_dispatch_before_next_instruction() {
+        let mut code = CodeObject::new("budgeted", 2);
+        let one = code.push_constant(Constant::Int(1));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: one,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Move {
+            dst: Register(1),
+            src: Register(0),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(1),
+        }));
+        let mut budget = ExecutionBudget::new(2, usize::MAX, usize::MAX, usize::MAX);
+
+        let error = Vm::new()
+            .run_with_budget(&code, &mut budget)
+            .expect_err("third instruction exceeds budget");
+
+        assert_eq!(
+            error.kind,
+            VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::Instructions,
+                limit: 2,
+            }
+        );
+        assert_eq!(budget.instructions_executed(), 2);
+        assert_eq!(budget.current_call_depth(), 0);
+    }
+
+    #[test]
+    fn call_depth_budget_stops_recursive_scripts() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn recurse() {
+    return recurse();
+}
+
+fn main() {
+    return recurse();
+}
+"#,
+        )
+        .expect("compile recursive source");
+        let mut budget = ExecutionBudget::new(100, usize::MAX, 2, usize::MAX);
+
+        let error = Vm::new()
+            .run_program_with_budget(&program, "main", &[], &mut budget)
+            .expect_err("recursive call exceeds call depth");
+
+        assert_eq!(
+            error.kind,
+            VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::CallDepth,
+                limit: 2,
+            }
+        );
+        assert_eq!(budget.current_call_depth(), 0);
     }
 
     #[test]
@@ -1242,6 +1488,70 @@ fn main() {
         assert_eq!(
             adapter.read_path(&level_path(host_ref)),
             Ok(HostValue::Int(10))
+        );
+    }
+
+    #[test]
+    fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
+        let host_ref = player_ref(3);
+        let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+        let ten = code.push_constant(Constant::Int(10));
+        let eleven = code.push_constant(Constant::Int(11));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant: ten,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+            root: Register(0),
+            field: level_field(),
+            src: Register(1),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(2),
+            constant: eleven,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::SetHostField {
+            root: Register(0),
+            field: level_field(),
+            src: Register(2),
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+        let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut budget = ExecutionBudget::new(100, usize::MAX, usize::MAX, 1);
+
+        let error = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new()
+                .run_program_with_host_and_budget(
+                    &program,
+                    "main",
+                    &[Value::HostRef(host_ref)],
+                    &mut host,
+                    &mut budget,
+                )
+                .expect_err("second patch exceeds budget")
+        };
+
+        assert_eq!(
+            error.kind,
+            VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::Patches,
+                limit: 1,
+            }
+        );
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
+        assert_eq!(
+            adapter.read_path(&level_path(host_ref)),
+            Ok(HostValue::Int(9))
         );
     }
 
