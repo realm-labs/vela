@@ -1595,6 +1595,34 @@ impl Vm {
                     host.tx
                         .sub_path(path, value, base_value, instruction.span)?;
                 }
+                InstructionKind::PushHostPath {
+                    root,
+                    segments,
+                    value,
+                } => {
+                    let root = expect_host_ref(frame.read(*root)?, "push_host_path")?;
+                    let value =
+                        value_to_host(frame.read(*value)?, "push_host_path", heap.as_deref())?;
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    let path = host_path_from_segments(
+                        root,
+                        segments,
+                        &frame,
+                        heap.as_deref(),
+                        &mut symbols,
+                    )?;
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "host context",
+                        })
+                    })?;
+                    let base_value = host.tx.read_path(host.adapter, &path)?;
+                    if let Some(budget) = budget.as_deref() {
+                        budget.reserve_patch(host.tx.patches().len())?;
+                    }
+                    host.tx
+                        .push_path(path, value, base_value, instruction.span)?;
+                }
                 InstructionKind::CallHostMethod {
                     dst,
                     root,
@@ -2337,6 +2365,7 @@ fn value_from_host(value: HostValue) -> Value {
         HostValue::Int(value) => Value::Int(value),
         HostValue::Float(value) => Value::Float(value),
         HostValue::String(value) => Value::String(value),
+        HostValue::Array(values) => Value::Array(values.into_iter().map(value_from_host).collect()),
     }
 }
 
@@ -2351,12 +2380,22 @@ fn value_to_host(
         Value::Int(value) => Ok(HostValue::Int(*value)),
         Value::Float(value) => Ok(HostValue::Float(*value)),
         Value::String(value) => Ok(HostValue::String(value.clone())),
+        Value::Array(values) => values
+            .iter()
+            .map(|value| value_to_host(value, operation, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(HostValue::Array),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
+            Some(HeapValue::Array(values)) => values
+                .iter()
+                .map(value_from_heap_slot)
+                .map(|value| value_to_host(&value, operation, heap))
+                .collect::<VmResult<Vec<_>>>()
+                .map(HostValue::Array),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
-        Value::Array(_)
-        | Value::Set(_)
+        Value::Set(_)
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
@@ -5736,6 +5775,66 @@ fn main(player) {
         assert_eq!(tx.patches()[0].op, PatchOp::Sub(HostValue::Int(2)));
         tx.apply(&mut adapter).expect("apply nested host sub patch");
         assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
+    }
+
+    #[test]
+    fn compiled_source_pushes_host_path_through_patch_tx() {
+        let host_ref = player_ref(3);
+        let inventory = FieldId::new(8);
+        let rewards = FieldId::new(9);
+        let reward_path = HostPath::new(host_ref).field(inventory).field(rewards);
+        let program = compile_program_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.inventory.rewards.push("gold");
+    return player.inventory.rewards.len();
+}
+"#,
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("rewards", rewards),
+        )
+        .expect("compile host path push source");
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(
+            reward_path.clone(),
+            HostValue::Array(vec![HostValue::String("xp".into())]),
+        );
+        let mut tx = PatchTx::new();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            Vm::new().run_program_with_host(
+                &program,
+                "main",
+                &[Value::HostRef(host_ref)],
+                &mut host,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(2)));
+        assert_eq!(
+            adapter.read_path(&reward_path),
+            Ok(HostValue::Array(vec![HostValue::String("xp".into())]))
+        );
+        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches()[0].path, reward_path);
+        assert_eq!(
+            tx.patches()[0].op,
+            PatchOp::Push(HostValue::String("gold".into()))
+        );
+        tx.apply(&mut adapter).expect("apply host push patch");
+        assert_eq!(
+            adapter.read_path(&reward_path),
+            Ok(HostValue::Array(vec![
+                HostValue::String("xp".into()),
+                HostValue::String("gold".into())
+            ]))
+        );
     }
 
     #[test]

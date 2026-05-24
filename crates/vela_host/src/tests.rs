@@ -79,6 +79,54 @@ fn sub_path_uses_previous_overlay_value() {
 }
 
 #[test]
+fn push_path_records_patch_and_updates_overlay_from_base() {
+    let mut tx = PatchTx::new();
+    let path = level_path();
+
+    tx.push_path(
+        path.clone(),
+        HostValue::String("gold".into()),
+        HostValue::Array(vec![HostValue::String("xp".into())]),
+        None,
+    )
+    .expect("push path");
+
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::Push(HostValue::String("gold".into()))
+    );
+    assert_eq!(
+        tx.read_overlay(&path),
+        Some(&HostValue::Array(vec![
+            HostValue::String("xp".into()),
+            HostValue::String("gold".into())
+        ]))
+    );
+}
+
+#[test]
+fn push_path_uses_previous_overlay_value() {
+    let mut tx = PatchTx::new();
+    let path = level_path();
+
+    tx.set_path(path.clone(), HostValue::Array(Vec::new()), None)
+        .expect("set path");
+    tx.push_path(
+        path.clone(),
+        HostValue::Int(3),
+        HostValue::Array(vec![HostValue::Int(1)]),
+        None,
+    )
+    .expect("push path");
+
+    assert_eq!(
+        tx.read_overlay(&path),
+        Some(&HostValue::Array(vec![HostValue::Int(3)]))
+    );
+}
+
+#[test]
 fn stale_generation_reports_error() {
     let host_ref = player_ref(3);
     let snapshot = HostObjectSnapshot {
@@ -115,7 +163,7 @@ fn transaction_read_prefers_overlay_before_adapter_snapshot() {
 }
 
 #[test]
-fn apply_commits_set_add_and_sub_at_safe_point() {
+fn apply_commits_set_add_sub_and_push_at_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_value(path.clone(), HostValue::Int(9));
@@ -132,6 +180,39 @@ fn apply_commits_set_add_and_sub_at_safe_point() {
     tx.apply(&mut adapter).expect("apply transaction");
 
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(7)));
+}
+
+#[test]
+fn apply_commits_push_at_safe_point() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    adapter.insert_value(
+        path.clone(),
+        HostValue::Array(vec![HostValue::String("xp".into())]),
+    );
+    let mut tx = PatchTx::new();
+
+    tx.push_path(
+        path.clone(),
+        HostValue::String("gold".into()),
+        HostValue::Array(Vec::new()),
+        None,
+    )
+    .expect("push path");
+    assert_eq!(
+        adapter.read_path(&path),
+        Ok(HostValue::Array(vec![HostValue::String("xp".into())]))
+    );
+
+    tx.apply(&mut adapter).expect("apply push transaction");
+
+    assert_eq!(
+        adapter.read_path(&path),
+        Ok(HostValue::Array(vec![
+            HostValue::String("xp".into()),
+            HostValue::String("gold".into())
+        ]))
+    );
 }
 
 #[test]

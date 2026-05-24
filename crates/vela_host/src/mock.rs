@@ -4,7 +4,7 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
     HostError, HostErrorKind, HostObjectSnapshot, HostPath, HostRef, HostResult, HostValue, Patch,
-    PatchOp, PatchTx, ScriptStateAdapter, add_values, sub_values,
+    PatchOp, PatchTx, ScriptStateAdapter, add_values, push_value, sub_values,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -102,12 +102,9 @@ impl ScriptStateAdapter for MockStateAdapter {
     fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
         self.validate_path(&patch.path)?;
         match &patch.op {
-            PatchOp::Set(_) | PatchOp::Add(_) | PatchOp::Sub(_) => Ok(()),
+            PatchOp::Set(_) | PatchOp::Add(_) | PatchOp::Sub(_) | PatchOp::Push(_) => Ok(()),
             PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
                 op: "remove",
-            })),
-            PatchOp::Push(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
-                op: "push",
             })),
             PatchOp::CallHostMethod { method, .. } if self.method_returns.contains_key(method) => {
                 Ok(())
@@ -145,9 +142,15 @@ impl ScriptStateAdapter for MockStateAdapter {
             PatchOp::Remove => Err(HostError::new(HostErrorKind::UnsupportedPatch {
                 op: "remove",
             })),
-            PatchOp::Push(_) => Err(HostError::new(HostErrorKind::UnsupportedPatch {
-                op: "push",
-            })),
+            PatchOp::Push(value) => {
+                let current = self.read_path(&patch.path)?;
+                let next = push_value(&current, value).ok_or_else(|| {
+                    HostError::new(HostErrorKind::InvalidPush {
+                        path: patch.path.clone(),
+                    })
+                })?;
+                self.write_path(&patch.path, next)
+            }
             PatchOp::CallHostMethod { method, args } => {
                 self.call_method(&patch.path, method, &args).map(|_| ())
             }

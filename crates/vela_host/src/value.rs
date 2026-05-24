@@ -5,6 +5,7 @@ pub enum HostValue {
     Int(i64),
     Float(f64),
     String(String),
+    Array(Vec<HostValue>),
 }
 
 pub(crate) fn add_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> {
@@ -21,4 +22,13 @@ pub(crate) fn sub_values(lhs: &HostValue, rhs: &HostValue) -> Option<HostValue> 
         (HostValue::Float(lhs), HostValue::Float(rhs)) => Some(HostValue::Float(lhs - rhs)),
         _ => None,
     }
+}
+
+pub(crate) fn push_value(collection: &HostValue, value: HostValue) -> Option<HostValue> {
+    let HostValue::Array(values) = collection else {
+        return None;
+    };
+    let mut values = values.clone();
+    values.push(value);
+    Some(HostValue::Array(values))
 }

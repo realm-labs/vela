@@ -1152,6 +1152,10 @@ impl<'ast> Compiler<'ast> {
                     return Ok(dst);
                 }
 
+                if let Some(push) = self.host_path_push_call(callee, args)? {
+                    return Ok(push);
+                }
+
                 if let ExprKind::Field { base, name } = &callee.kind {
                     reject_named_args(args, "script method call")?;
                     let method_id = self.script_method_id_for_receiver(base, name);
@@ -2097,6 +2101,42 @@ impl<'ast> Compiler<'ast> {
             )));
         }
         Ok(path)
+    }
+
+    fn host_path_push_call(
+        &mut self,
+        callee: &Expr,
+        args: &[Argument],
+    ) -> CompileResult<Option<Register>> {
+        let path = match &callee.kind {
+            ExprKind::Field { base, name } if name == "push" => {
+                host_field_path(&self.facts.options, base)
+            }
+            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "push") => {
+                host_field_path_parts(&self.facts.options, &parts[..parts.len() - 1])
+            }
+            _ => None,
+        };
+        let Some(path) = path else {
+            return Ok(None);
+        };
+        reject_named_args(args, "host path push")?;
+        let [arg] = args else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "host path push arity",
+            )));
+        };
+        let root = self.compile_host_path_root(callee.span, path.root)?;
+        let segments = self.compile_host_path_segments(path.segments)?;
+        let value = self.compile_expr(&arg.value)?;
+        self.emit(InstructionKind::PushHostPath {
+            root,
+            segments,
+            value,
+        });
+        let dst = self.alloc_register()?;
+        self.emit_constant_to(dst, Constant::Null);
+        Ok(Some(dst))
     }
 
     fn compile_host_path_root<'expr>(
@@ -3747,6 +3787,37 @@ fn main(player) {
             } if segments.as_slice() == [
                 HostPathSegment::Field(stats),
                 HostPathSegment::Field(level)
+            ]
+        )));
+    }
+
+    #[test]
+    fn compiler_lowers_host_path_push_calls() {
+        let inventory = FieldId::new(3);
+        let rewards = FieldId::new(4);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.inventory.rewards.push("gold");
+    return 1;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("inventory", inventory)
+                .with_host_field("rewards", rewards),
+        )
+        .expect("host path push should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::PushHostPath {
+                segments,
+                ..
+            } if segments.as_slice() == [
+                HostPathSegment::Field(inventory),
+                HostPathSegment::Field(rewards)
             ]
         )));
     }

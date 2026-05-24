@@ -4,7 +4,7 @@ use vela_common::Span;
 
 use crate::{
     HostError, HostErrorKind, HostPath, HostRef, HostResult, HostValue, Patch, PatchOp,
-    ScriptStateAdapter, add_values, sub_values,
+    ScriptStateAdapter, add_values, push_value, sub_values,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -88,6 +88,25 @@ impl PatchTx {
         self.patches.push(Patch {
             path: path.clone(),
             op: PatchOp::Sub(value),
+            source_span,
+        });
+        self.overlay.insert(path, next);
+        Ok(())
+    }
+
+    pub fn push_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let current = self.overlay.get(&path).cloned().unwrap_or(base_value);
+        let next = push_value(&current, value.clone())
+            .ok_or_else(|| HostError::new(HostErrorKind::InvalidPush { path: path.clone() }))?;
+        self.patches.push(Patch {
+            path: path.clone(),
+            op: PatchOp::Push(value),
             source_span,
         });
         self.overlay.insert(path, next);

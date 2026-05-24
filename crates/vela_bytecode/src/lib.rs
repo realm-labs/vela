@@ -397,6 +397,11 @@ pub enum InstructionKind {
         segments: Vec<HostPathSegment>,
         rhs: Register,
     },
+    PushHostPath {
+        root: Register,
+        segments: Vec<HostPathSegment>,
+        value: Register,
+    },
     CallHostMethod {
         dst: Option<Register>,
         root: Register,

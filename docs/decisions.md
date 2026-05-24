@@ -2526,3 +2526,31 @@ Consequences:
 - Reads after host `-=` observe the transaction overlay.
 - Multiplicative/divisive/rem RMW, `Remove`, and `Push` remain future M11
   transaction work.
+
+## 2026-05-25: Host Path Push Records Array Patch Transactions
+
+Status: Accepted
+
+Context:
+`PatchOp::Push` existed in the host patch model, and script arrays already
+have a `push` method, but host paths could not use that syntax without either
+reading a copied array value or registering an explicit host method. M11 calls
+for push-style patch transaction effects while preserving the rule that
+scripts do not receive mutable host references.
+
+Decision:
+Add array-valued `HostValue` support and `PatchTx::push_path`, which records a
+`PatchOp::Push` and updates the transaction overlay by appending to the
+current host array snapshot. The compiler lowers `host.path.push(value)` to
+`PushHostPath` when the receiver resolves as a configured host path and no
+configured host method handles the call. The VM converts script array/scalar
+values through `HostValue` and records the push patch after reading the base
+snapshot or overlay.
+
+Consequences:
+- Scripts can append to array-valued host paths through PatchTx with natural
+  method syntax.
+- Reads after `host.path.push(value)` observe the overlay array.
+- Host methods named `push` still take precedence when explicitly configured.
+- `Remove`, non-array push targets, and richer host value conversion for maps,
+  records, and enums remain future M11 work.

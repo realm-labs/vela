@@ -16,7 +16,7 @@ pub use path::{HostPath, HostRef, PathSegment};
 pub use tx::{HostObjectSnapshot, PatchTx};
 pub use value::HostValue;
 
-pub(crate) use value::{add_values, sub_values};
+pub(crate) use value::{add_values, push_value, sub_values};
 
 #[cfg(test)]
 mod tests;
