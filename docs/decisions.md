@@ -3060,3 +3060,29 @@ Consequences:
 - Reflection still cannot mutate module or function structure at runtime.
 - Function metadata now has enough shape for later hot-reload effect and access
   ABI compatibility checks.
+
+## 2026-05-25: Hot Reload ABI Checks Use Copied Manifests
+
+Status: Accepted
+
+Context:
+Function-level hot reload already preserved old code and rejected deleted
+parameters, but M12 requires schema and effect/access compatibility checks at
+safe points. The reflection registry owns the schema hashes and copied access
+metadata needed for those checks, while hot reload should not hold mutable
+schema descriptors or expose runtime monkey patching.
+
+Decision:
+Represent hot-reload compatibility with a copied `HotReloadAbi` manifest built
+from `TypeRegistry` or explicit descriptor entries. `compile_update_with_abi`
+compiles the new source, validates existing parameter compatibility, and then
+rejects removed/changed schema hashes or changed function/method effect and
+reflective access metadata before producing a `HotUpdate`.
+
+Consequences:
+- Hot reload can enforce schema and permission/effect ABI stability without
+  giving scripts mutable access to type structure.
+- Existing code objects are still swapped only through `HotReloadRuntime` at
+  the update boundary.
+- The CLI and Engine hot-reload paths can later pass registry-derived manifests
+  without changing the core versioning API.

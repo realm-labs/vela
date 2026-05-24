@@ -764,8 +764,14 @@ permissions.
   `TypeRegistry` as reflected host functions with parameter hints, return
   hints, module exports, docs, effect bits, reflect visibility, and required
   permissions for `reflect.function` tooling.
+- Split `vela_hot_reload` into focused ABI, compile, runtime, symbol, version,
+  and error modules. Added `HotReloadAbi` manifests that can be built from
+  `TypeRegistry` and validated during `compile_update_with_abi`, rejecting
+  removed or changed schema hashes plus function/method effect and reflective
+  access changes before a hot update reaches the runtime safe-point swap.
 
 ## Next
 
 - Continue M12 with remaining ranked related-span diagnostics for unknown
-  schema names and deeper permission/effect ABI checks for hot reload.
+  schema names and wiring ABI manifests into the CLI/Engine hot-reload demo
+  path.

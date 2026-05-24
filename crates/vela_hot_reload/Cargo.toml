@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 vela_bytecode = { path = "../vela_bytecode" }
 vela_common = { path = "../vela_common" }
+vela_reflect = { path = "../vela_reflect" }
 
 [dev-dependencies]
 vela_vm = { path = "../vela_vm" }
