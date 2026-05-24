@@ -1695,3 +1695,26 @@ Consequences:
   without changing script-side host mutation semantics.
 - Unknown demo parameters fail explicitly instead of silently receiving dynamic
   placeholder values.
+
+## 2026-05-24: Quest Demo Uses Scalar Host Fields Before Nested Paths
+
+Status: Accepted
+
+Context:
+The final demo needs quest progress, but M11 nested `HostPath` lowering and
+PathProxy values are still future work. The current runnable host bridge safely
+supports root host refs, configured fields, and method-call patches.
+
+Decision:
+Represent the first quest-progress demo with scalar player fields
+`quest_count`, `quest_goal`, and `quest_done`. The script updates those fields
+through ordinary host field bytecode and emits completion through `ctx.emit`.
+Nested quest objects remain a later M11 host-path expansion.
+
+Consequences:
+- The quest workflow is runnable and covered by the same CLI binary tests as
+  the other game-server demos.
+- Host mutation still flows only through `PatchTx`; scripts do not receive
+  direct Rust state.
+- The script surface can later move from scalar fields to nested host paths
+  without changing the safe-point patching contract.

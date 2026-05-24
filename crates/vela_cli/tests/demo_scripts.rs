@@ -44,6 +44,16 @@ fn context_event_demo_runs_through_cli() {
 fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.lang"),
-        "result=Int(2) level=Int(2) exp=Int(0) rewards=1 emits=2 patches=6\n"
+        "result=Int(2) level=Int(2) exp=Int(0) quest_count=Int(2) \
+         quest_done=Bool(false) rewards=1 emits=2 patches=6\n"
+    );
+}
+
+#[test]
+fn quest_progress_demo_runs_through_cli() {
+    assert_eq!(
+        run_demo("quest_progress.lang"),
+        "result=Int(3) level=Int(1) exp=Int(90) quest_count=Int(3) \
+         quest_done=Bool(true) rewards=0 emits=1 patches=3\n"
     );
 }

@@ -522,8 +522,13 @@ method-dispatch coverage before moving into stable type metadata.
 - Added `examples/game_server_demo/scripts/monster_kill_reward.lang` as a
   runnable demo proving a monster kill can award exp, level up a player, record
   a reward host method call, and emit gameplay events through `PatchTx`.
+- Added `examples/game_server_demo/scripts/quest_progress.lang` as a runnable
+  demo proving quest counters and completion flags update through host field
+  patches and emit a quest completion event at the safe point.
 - Added CLI integration tests that execute the runnable game server demo
   scripts through the built `vela_cli` binary.
+- Split the CLI demo runner into focused ID and host-state modules so the demo
+  harness can keep growing without accumulating all logic in one file.
 
 ## Next
 
