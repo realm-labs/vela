@@ -2022,8 +2022,40 @@ pub fn grant(amount) {
         .expect("compile imported cross-module script call");
 
         assert_eq!(
-            Vm::new().run_program(&program, "main", &[]),
+            Vm::new().run_program(&program, "game.main.main", &[]),
             Ok(Value::Int(5))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_same_named_cross_module_functions() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.main as reward_main
+
+fn main() {
+    return reward_main();
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub fn main() {
+    return 7;
+}
+"#,
+            ),
+        ])
+        .expect("compile same-named cross-module functions");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "game.main.main", &[]),
+            Ok(Value::Int(7))
         );
     }
 

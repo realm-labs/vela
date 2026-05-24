@@ -822,3 +822,26 @@ Consequences:
   and program-version step.
 - Native/dynamic fallback remains available for calls that do not resolve to a
   known script function declaration.
+
+## 2026-05-24: Multi-Module Function Symbols Are Qualified
+
+Status: Accepted
+
+Context:
+The initial multi-module bytecode path kept function symbols as plain function
+names. That allowed modules with the same function name to overwrite each other
+in the string-keyed `Program` map and made imported call targets ambiguous.
+
+Decision:
+For multi-module compilation, use `module.path.function` as the bytecode
+function symbol and emit imported script calls to that qualified symbol.
+Single-source compilation keeps plain function names for compatibility with the
+existing hot reload and demo paths.
+
+Consequences:
+- Multi-module programs can contain same-named functions from different
+  modules without collision.
+- VM entrypoints for multi-module programs use qualified names such as
+  `game.main.main`.
+- Future program-version and ABI work has stable module-qualified symbols to
+  build on while the single-file prototype path remains unchanged.

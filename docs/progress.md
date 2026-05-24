@@ -326,6 +326,11 @@ that introduce loops and closures.
   declaration-to-function symbol mapping for script calls.
 - Added compiler and VM coverage proving an aliased imported function call
   compiles as `CallFunction` and executes across modules.
+- Multi-module bytecode now uses module-qualified function symbols such as
+  `game.reward.grant`, preventing same-named functions in different modules
+  from overwriting each other in `Program`.
+- Added compiler and VM coverage proving same-named functions in separate
+  modules compile and dispatch through their qualified symbols.
 
 ## Next
 

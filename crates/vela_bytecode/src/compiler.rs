@@ -83,6 +83,7 @@ pub fn compile_function_source_with_options(
     })?;
 
     Compiler::new(
+        function.name.clone(),
         function,
         signature,
         bindings,
@@ -114,6 +115,7 @@ pub fn compile_program_source_with_options(
             .expect("HIR function declarations come from parsed function items");
         program.insert_function(
             Compiler::new(
+                function.name.clone(),
                 function,
                 signature,
                 bindings,
@@ -146,8 +148,13 @@ pub fn compile_module_sources_with_options(
         let (function, signature, bindings) = semantic
             .function(declaration)
             .expect("HIR function declaration comes from parsed function item");
+        let code_name = script_function_symbols
+            .get(&declaration)
+            .expect("script function symbol exists for declaration")
+            .clone();
         program.insert_function(
             Compiler::new(
+                code_name,
                 function,
                 signature,
                 bindings,
@@ -287,13 +294,17 @@ impl SemanticModules {
     fn script_function_symbols(&self) -> BTreeMap<HirDeclId, String> {
         self.modules
             .iter()
-            .filter_map(|module| self.graph.module(*module))
-            .flat_map(|declarations| {
-                declarations.names().filter_map(|name| {
+            .filter_map(|module| {
+                let path = self.graph.module_path(*module)?.join();
+                let declarations = self.graph.module(*module)?;
+                Some((path, declarations))
+            })
+            .flat_map(|(path, declarations)| {
+                declarations.names().filter_map(move |name| {
                     let declaration = declarations.get(name)?;
                     let metadata = self.graph.declaration(declaration)?;
                     (metadata.kind == DeclarationKind::Function)
-                        .then(|| (declaration, metadata.name.clone()))
+                        .then(|| (declaration, format!("{path}.{}", metadata.name)))
                 })
             })
             .collect()
@@ -392,6 +403,7 @@ struct Compiler<'ast> {
 
 impl<'ast> Compiler<'ast> {
     fn new(
+        code_name: String,
         function: &'ast FunctionItem,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
@@ -423,7 +435,7 @@ impl<'ast> Compiler<'ast> {
         }
 
         Ok(Self {
-            code: CodeObject::new(function.name.clone(), 0).with_params(param_names),
+            code: CodeObject::new(code_name, 0).with_params(param_names),
             locals,
             hir_locals,
             bindings,
@@ -1500,15 +1512,54 @@ pub fn grant(amount) {
         ])
         .expect("cross-module imported script function should compile");
 
-        let main = program.function("main").expect("main function");
-        assert!(program.function("grant").is_some());
+        let main = program
+            .function("game.main.main")
+            .expect("qualified main function");
+        assert!(program.function("game.reward.grant").is_some());
         assert!(main.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
-            InstructionKind::CallFunction { name, .. } if name == "grant"
+            InstructionKind::CallFunction { name, .. } if name == "game.reward.grant"
         )));
         assert!(!main.instructions.iter().any(|instruction| matches!(
             &instruction.kind,
             InstructionKind::CallNative { name, .. } if name == "give_reward"
+        )));
+    }
+
+    #[test]
+    fn compiler_keeps_same_named_functions_in_separate_modules() {
+        let program = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.main as reward_main
+
+fn main() {
+    return reward_main();
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.reward"),
+                r#"
+pub fn main() {
+    return 7;
+}
+"#,
+            ),
+        ])
+        .expect("same-named cross-module functions should compile");
+
+        assert!(program.function("game.main.main").is_some());
+        assert!(program.function("game.reward.main").is_some());
+        let main = program
+            .function("game.main.main")
+            .expect("qualified main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::CallFunction { name, .. } if name == "game.reward.main"
         )));
     }
 
