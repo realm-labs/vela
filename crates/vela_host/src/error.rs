@@ -43,6 +43,10 @@ pub enum HostErrorKind {
     MissingPath {
         path: HostPath,
     },
+    PermissionDenied {
+        path: HostPath,
+        action: &'static str,
+    },
     InvalidAdd {
         path: HostPath,
     },

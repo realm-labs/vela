@@ -691,6 +691,9 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
   `MockStateAdapter` validates the batch and restores its snapshot if a later
   patch fails during apply, proving failed mock applies leave adapter state
   unchanged.
+- `MockStateAdapter` now supports explicit read, write, and call denial for
+  host paths. Denied writes and calls fail during batch validation before any
+  patch mutates adapter state or records a method call.
 - Remaining M10 work includes broader MethodId use for other non-literal
   receiver facts and deeper host path/proxy lowering beyond field/index/key
   receiver paths.

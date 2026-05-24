@@ -2706,3 +2706,28 @@ Consequences:
   rollback mechanism behind the same hook.
 - Conflict reporting and mandatory rollback semantics for every external
   adapter remain future M11 work.
+
+## 2026-05-25: Mock Adapter Enforces Host Access Policies
+
+Status: Accepted
+
+Context:
+M11 requires read-only and permission-denied host paths to fail before apply.
+The mock adapter previously validated object freshness and method existence,
+but it had no explicit read/write/call policy surface for host bridge tests.
+
+Decision:
+Add path-level read, write, and call denial sets to `MockStateAdapter` and
+report `HostErrorKind::PermissionDenied { path, action }` when a denied access
+is attempted. Reads check read policy after freshness validation. Patch
+validation checks write policy for mutating patch operations and call policy
+for host method patches before the batch apply phase can mutate state or
+record method calls.
+
+Consequences:
+- Host bridge tests can exercise permission-denied read, write, and call
+  paths without exposing mutable Rust references.
+- Denied patch writes and calls fail during batch validation and leave adapter
+  state unchanged.
+- Engine-level policy wiring and richer permission scopes remain future M11
+  work.

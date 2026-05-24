@@ -307,6 +307,83 @@ fn failed_apply_leaves_mock_adapter_state_unchanged() {
 }
 
 #[test]
+fn read_denied_path_fails_without_hiding_freshness_checks() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    adapter.deny_read(path.clone());
+
+    let error = adapter
+        .read_path(&path)
+        .expect_err("read denied path should fail");
+
+    assert_eq!(
+        error.kind,
+        HostErrorKind::PermissionDenied {
+            path,
+            action: "read"
+        }
+    );
+}
+
+#[test]
+fn write_denied_patch_fails_validation_before_mutation() {
+    let mut adapter = MockStateAdapter::new();
+    let level = level_path();
+    let rewards = rewards_path();
+    adapter.insert_value(level.clone(), HostValue::Int(9));
+    adapter.insert_value(rewards.clone(), HostValue::Int(1));
+    adapter.deny_write(rewards.clone());
+    let mut tx = PatchTx::new();
+
+    tx.set_path(level.clone(), HostValue::Int(10), None)
+        .expect("set level");
+    tx.set_path(rewards.clone(), HostValue::Int(2), None)
+        .expect("set rewards");
+
+    let error = tx
+        .apply(&mut adapter)
+        .expect_err("write denied patch should fail validation");
+
+    assert_eq!(
+        error.kind,
+        HostErrorKind::PermissionDenied {
+            path: rewards.clone(),
+            action: "write"
+        }
+    );
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(9)));
+    assert_eq!(adapter.read_path(&rewards), Ok(HostValue::Int(1)));
+}
+
+#[test]
+fn call_denied_patch_fails_validation_before_method_call() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    let method = HostMethodId::new(4);
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    adapter.insert_method_return(method, HostValue::Null);
+    adapter.deny_call(path.clone());
+    let mut tx = PatchTx::new();
+
+    tx.call_method(path.clone(), method, vec![HostValue::Int(1)], None)
+        .expect("record method call");
+
+    let error = tx
+        .apply(&mut adapter)
+        .expect_err("call denied patch should fail validation");
+
+    assert_eq!(
+        error.kind,
+        HostErrorKind::PermissionDenied {
+            path,
+            action: "call"
+        }
+    );
+    assert!(adapter.method_calls().is_empty());
+}
+
+#[test]
 fn adapter_rejects_stale_generation_on_read_and_apply() {
     let mut adapter = MockStateAdapter::new();
     let fresh_path = level_path();

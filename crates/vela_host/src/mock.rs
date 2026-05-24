@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
@@ -28,6 +28,9 @@ pub struct MockStateAdapter {
     values: BTreeMap<HostPath, HostValue>,
     method_returns: BTreeMap<HostMethodId, HostValue>,
     method_calls: Vec<(HostPath, HostMethodId, Vec<HostValue>)>,
+    denied_reads: BTreeSet<HostPath>,
+    denied_writes: BTreeSet<HostPath>,
+    denied_calls: BTreeSet<HostPath>,
 }
 
 impl MockStateAdapter {
@@ -44,6 +47,18 @@ impl MockStateAdapter {
 
     pub fn insert_method_return(&mut self, method: HostMethodId, value: HostValue) {
         self.method_returns.insert(method, value);
+    }
+
+    pub fn deny_read(&mut self, path: HostPath) {
+        self.denied_reads.insert(path);
+    }
+
+    pub fn deny_write(&mut self, path: HostPath) {
+        self.denied_writes.insert(path);
+    }
+
+    pub fn deny_call(&mut self, path: HostPath) {
+        self.denied_calls.insert(path);
     }
 
     #[must_use]
@@ -65,11 +80,29 @@ impl MockStateAdapter {
         };
         PatchTx::require_fresh_ref(path.root, &snapshot)
     }
+
+    fn validate_access(&self, path: &HostPath, action: &'static str) -> HostResult<()> {
+        let denied = match action {
+            "read" => self.denied_reads.contains(path),
+            "write" => self.denied_writes.contains(path),
+            "call" => self.denied_calls.contains(path),
+            _ => false,
+        };
+        if denied {
+            Err(HostError::new(HostErrorKind::PermissionDenied {
+                path: path.clone(),
+                action,
+            }))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl ScriptStateAdapter for MockStateAdapter {
     fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
         self.validate_path(path)?;
+        self.validate_access(path, "read")?;
         self.values
             .get(path)
             .cloned()
@@ -78,6 +111,7 @@ impl ScriptStateAdapter for MockStateAdapter {
 
     fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
         self.validate_path(path)?;
+        self.validate_access(path, "write")?;
         self.values.insert(path.clone(), value);
         Ok(())
     }
@@ -89,6 +123,7 @@ impl ScriptStateAdapter for MockStateAdapter {
         args: &[HostValue],
     ) -> HostResult<HostValue> {
         self.validate_path(path)?;
+        self.validate_access(path, "call")?;
         let value = self
             .method_returns
             .get(&method)
@@ -106,9 +141,9 @@ impl ScriptStateAdapter for MockStateAdapter {
             | PatchOp::Add(_)
             | PatchOp::Sub(_)
             | PatchOp::Push(_)
-            | PatchOp::Remove => Ok(()),
+            | PatchOp::Remove => self.validate_access(&patch.path, "write"),
             PatchOp::CallHostMethod { method, .. } if self.method_returns.contains_key(method) => {
-                Ok(())
+                self.validate_access(&patch.path, "call")
             }
             PatchOp::CallHostMethod { method, .. } => {
                 Err(HostError::new(HostErrorKind::UnsupportedMethod {
