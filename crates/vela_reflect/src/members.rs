@@ -159,6 +159,28 @@ pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult
     )))
 }
 
+pub fn variants_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    _policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(HostValue::Array(
+        desc.variants
+            .iter()
+            .map(|variant| {
+                variant_record_with_fields(
+                    variant,
+                    variant
+                        .fields
+                        .iter()
+                        .filter(|field| field.access.reflect_readable),
+                )
+            })
+            .collect(),
+    )))
+}
+
 pub fn variant(target: &ReflectValue) -> ReflectResult<ReflectValue> {
     Ok(ReflectValue::Host(HostValue::String(
         variant_name(target)?.to_owned(),
@@ -330,12 +352,19 @@ fn trait_method_record(method: &TraitMethodDesc) -> HostValue {
 }
 
 fn variant_record(variant: &VariantDesc) -> HostValue {
+    variant_record_with_fields(variant, variant.fields.iter())
+}
+
+fn variant_record_with_fields<'a>(
+    variant: &VariantDesc,
+    variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
+) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(variant.id.get())));
     fields.insert("name".to_owned(), HostValue::String(variant.name.clone()));
     fields.insert(
         "fields".to_owned(),
-        HostValue::Array(variant.fields.iter().map(field_record).collect()),
+        HostValue::Array(variant_fields.into_iter().map(field_record).collect()),
     );
     fields.insert("docs".to_owned(), docs_value(variant.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&variant.attrs));
@@ -738,6 +767,62 @@ mod tests {
         assert_eq!(
             fields.get("name"),
             Some(&HostValue::String("secret".to_owned()))
+        );
+    }
+
+    #[test]
+    fn variants_with_policy_hide_non_reflect_readable_fields() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(700), "QuestProgress"))
+                .kind(TypeKind::ScriptEnum)
+                .variant(
+                    VariantDesc::new(VariantId::new(1), "Active")
+                        .field(FieldDesc::new(FieldId::new(1), "count"))
+                        .field(
+                            FieldDesc::new(FieldId::new(2), "secret")
+                                .access(crate::FieldAccess::new().reflect_readable(false)),
+                        ),
+                ),
+        );
+        let target = ReflectValue::ScriptEnum {
+            enum_name: "QuestProgress".to_owned(),
+            variant: "Active".to_owned(),
+            fields: BTreeMap::new(),
+        };
+
+        let ReflectValue::Host(HostValue::Array(raw_variants)) =
+            variants(&registry, &target).expect("raw variants")
+        else {
+            panic!("variants should be an array");
+        };
+        let HostValue::Record { fields, .. } = &raw_variants[0] else {
+            panic!("variant metadata should be a record");
+        };
+        assert!(matches!(
+            fields.get("fields"),
+            Some(HostValue::Array(raw_fields)) if raw_fields.len() == 2
+        ));
+
+        let ReflectValue::Host(HostValue::Array(policy_variants)) =
+            variants_with_policy(&registry, &target, &ReflectPolicy::read_only())
+                .expect("policy variants")
+        else {
+            panic!("variants should be an array");
+        };
+        let HostValue::Record { fields, .. } = &policy_variants[0] else {
+            panic!("variant metadata should be a record");
+        };
+        let Some(HostValue::Array(policy_fields)) = fields.get("fields") else {
+            panic!("variant fields should be an array");
+        };
+        assert_eq!(policy_fields.len(), 1);
+        let HostValue::Record { fields, .. } = &policy_fields[0] else {
+            panic!("field metadata should be a record");
+        };
+        assert_eq!(
+            fields.get("name"),
+            Some(&HostValue::String("count".to_owned()))
         );
     }
 }

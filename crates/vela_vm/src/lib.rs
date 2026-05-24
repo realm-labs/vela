@@ -6941,6 +6941,37 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_reflect_variants_respect_field_access() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let quest = QuestProgress.Active { count: 1 };
+    let variants = reflect.variants(quest);
+    if variants[0].fields.len() == 1 && variants[0].fields[0].name == "count" {
+        return variants.len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile policy variant reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(member_reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::Int(2))
+        );
+    }
+
+    #[test]
     fn compiled_source_reflect_methods_respect_method_policy() {
         let host_ref = player_ref(3);
         let program = compile_program_source(
@@ -7561,7 +7592,11 @@ pub fn grant(player: Player, amount: int = 1) -> bool {
                 .kind(TypeKind::ScriptEnum)
                 .variant(
                     VariantDesc::new(VariantId::new(10), "Active")
-                        .field(FieldDesc::new(FieldId::new(11), "count")),
+                        .field(FieldDesc::new(FieldId::new(11), "count"))
+                        .field(
+                            FieldDesc::new(FieldId::new(13), "secret")
+                                .access(FieldAccess::new().reflect_readable(false)),
+                        ),
                 )
                 .variant(VariantDesc::new(VariantId::new(12), "Finished")),
         );

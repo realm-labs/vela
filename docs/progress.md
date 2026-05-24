@@ -870,6 +870,11 @@ permissions.
   `reflect.implements`. Known-but-unimplemented traits still return `false`,
   while misspelled or unregistered trait names now report ranked candidates
   through both the reflection API and compiled VM native path.
+- Added policy-aware variant metadata reflection. Script-visible
+  `reflect.variants` now filters each variant's field metadata through
+  `FieldAccess::reflect_readable`, so hidden enum payload fields are not
+  exposed to gameplay policies while raw registry variant queries remain
+  available for trusted host inspection.
 
 ## Next
 

@@ -3590,3 +3590,27 @@ Consequences:
   registry.
 - Reflection still only reads registered metadata and does not mutate type or
   trait structure at runtime.
+
+## 2026-05-25: Variant Metadata Respects FieldAccess Readability
+
+Status: Accepted
+
+Context:
+`reflect.fields`, `reflect.field`, and `reflect.has_field` already hid fields
+whose `FieldAccess::reflect_readable` flag is false. `reflect.variants` still
+returned raw payload field metadata for each enum variant, which let scripts
+discover hidden variant fields through a different metadata path.
+
+Decision:
+Keep raw `variants` metadata for trusted host-side inspection and add a
+policy-aware variant metadata helper for VM reflection natives. Script-visible
+`reflect.variants` now filters each variant's `fields` array to include only
+fields marked reflect-readable.
+
+Consequences:
+- Gameplay policies no longer leak hidden enum payload field names through
+  variant metadata.
+- Admin/debug host code can still use the raw helper when it needs full schema
+  inspection.
+- Reflection remains schema-safe because the policy filters copied metadata and
+  does not mutate registered variant descriptors.

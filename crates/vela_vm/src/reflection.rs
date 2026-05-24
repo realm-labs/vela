@@ -289,7 +289,11 @@ impl Vm {
             expect_arity("reflect.variants", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.variants")?;
             check_host_ref_inspection(&variants_policy, &target)?;
-            value_from_reflect(reflect::variant_metadata(&variants_registry, &target)?)
+            value_from_reflect(reflect::variant_metadata_with_policy(
+                &variants_registry,
+                &target,
+                &variants_policy,
+            )?)
         });
 
         let variant_policy = policy.clone();

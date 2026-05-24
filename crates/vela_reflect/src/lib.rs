@@ -17,7 +17,7 @@ pub use members::{
     field_names_with_policy, field_with_policy as field_metadata_with_policy, has_field,
     has_field_with_policy, has_method, has_method_with_policy, kind as kind_metadata, methods,
     methods_with_policy, name as name_metadata, traits as trait_metadata, variant, variant_is,
-    variants as variant_metadata,
+    variants as variant_metadata, variants_with_policy as variant_metadata_with_policy,
 };
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
