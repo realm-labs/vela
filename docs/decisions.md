@@ -2045,3 +2045,29 @@ Consequences:
   generics, monomorphization, or Rust reference semantics.
 - Broader type-flow for `self`, pattern bindings, captures, and slot lowering
   remains separate M10 work.
+
+## 2026-05-25: Impl Method Bodies Seed Self Receiver Type
+
+Status: Accepted
+
+Context:
+Hidden script impl and trait-default methods are compiled as ordinary code
+objects, but the compiler already knows the concrete impl target type while
+building those code objects. Without threading that fact into method bodies,
+`self.other_method()` falls back to dynamic name dispatch even when the target
+method has stable `MethodId` metadata.
+
+Decision:
+Compile hidden script method bodies through a dedicated constructor that seeds
+`self` in the compiler-local script type facts with the impl target type. This
+lets calls from one script method to another lower to `CallMethodId` when the
+receiver method is known, while preserving normal dynamic fallback for other
+receivers.
+
+Consequences:
+- Trait default methods and explicit impl methods can use MethodId dispatch
+  when they call other trait methods on `self`.
+- The fact is compiler-local and does not expose Rust references, add script
+  generics, or change runtime value layout.
+- Captured `self` in closures and pattern-bound receiver facts remain later
+  M10 type-flow work.

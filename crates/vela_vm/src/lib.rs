@@ -3105,6 +3105,36 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_self_method_id_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn label(self) -> string;
+    fn summary(self) -> string { return self.label(); }
+}
+struct Player { name: string }
+
+impl BonusSource for Player {
+    fn label(self) -> string {
+        return self.name;
+    }
+}
+
+fn main() {
+    return Player { name: "hero" }.summary();
+}
+"#,
+        )
+        .expect("compile self method id dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::String("hero".to_owned()))
+        );
+    }
+
+    #[test]
     fn explicit_impl_method_overrides_trait_default_dispatch() {
         let program = compile_program_source(
             SourceId::new(1),

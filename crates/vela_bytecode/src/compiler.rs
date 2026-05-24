@@ -237,12 +237,13 @@ fn insert_script_impl_methods(
             method.symbol.clone(),
         );
         program.insert_function(
-            Compiler::new_body(
+            Compiler::new_script_method_body(
                 method.symbol,
                 method.params,
                 method.signature,
                 method.body,
                 method.bindings,
+                &method.target_type,
                 facts.clone(),
             )?
             .compile()?,
@@ -692,6 +693,22 @@ impl<'ast> Compiler<'ast> {
             facts,
             loop_stack: Vec::new(),
         })
+    }
+
+    fn new_script_method_body(
+        code_name: String,
+        params: &'ast [Param],
+        signature: &FunctionSignature,
+        body: &'ast Block,
+        bindings: &'ast BindingMap,
+        receiver_type: &str,
+        facts: CompilerFacts,
+    ) -> CompileResult<Self> {
+        let mut compiler = Self::new_body(code_name, params, signature, body, bindings, facts)?;
+        compiler
+            .script_types
+            .set_name("self", Some(receiver_type.to_owned()));
+        Ok(compiler)
     }
 
     fn new_lambda(
@@ -2745,6 +2762,43 @@ fn main() {
             } if lowered == method_id
         )));
         assert!(program.function("bonus").is_none());
+    }
+
+    #[test]
+    fn compiler_specializes_self_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn label(self) -> string;
+    fn summary(self) -> string { return self.label(); }
+}
+struct Player { name: string }
+
+impl BonusSource for Player {
+    fn label(self) -> string {
+        return self.name;
+    }
+}
+
+fn main() {
+    return Player { name: "hero" }.summary();
+}
+"#,
+        )
+        .expect("self method calls should specialize by method id");
+
+        let label_id = stable_test_trait_method_id("main.BonusSource", "label");
+        let summary = program
+            .script_method("Player", "summary")
+            .expect("trait default summary method");
+        assert!(summary.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == label_id
+        )));
     }
 
     #[test]
