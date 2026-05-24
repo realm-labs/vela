@@ -752,3 +752,26 @@ Consequences:
   introduced.
 - Non-literal const evaluation remains a separate compiler feature rather than
   being inferred during general expression lowering.
+
+## 2026-05-24: Const Expression Evaluation Is Source-Order And Scalar
+
+Status: Accepted
+
+Context:
+After literal const reads became executable, pure const expressions such as
+`const BONUS = BASE + 5 * 2` still could not be read despite HIR accepting them
+as side-effect free.
+
+Decision:
+Evaluate top-level const initializers during semantic source preparation only
+for scalar literals, unary scalar operations, numeric/comparison binary
+operations, and references to earlier const declarations in the same module.
+Unsupported expressions remain metadata-only for now.
+
+Consequences:
+- Common configuration constants can be composed without creating module-load
+  bytecode or host side effects.
+- Evaluation is finite and deterministic because it only uses earlier
+  source-order values, avoiding recursive const dependency walks.
+- Aggregate consts, forward references, and richer expression forms remain
+  explicit follow-ups for later language-surface work.

@@ -1905,6 +1905,25 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_const_expression_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+const BASE: int = 10;
+const BONUS: int = BASE + 5 * 2;
+
+fn main() {
+    return BONUS;
+}
+"#,
+            "main",
+        )
+        .expect("compile const expression source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    }
+
+    #[test]
     fn runs_compiled_native_call_source() {
         let mut vm = Vm::new();
         vm.register_native("log", |args| {

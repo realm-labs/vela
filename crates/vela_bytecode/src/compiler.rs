@@ -10,7 +10,8 @@ use vela_hir::{
 };
 use vela_syntax::{
     AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
-    MapEntry, MatchExpr, Pattern, RecordPatternField, SourceFile, Stmt, StmtKind, parse_source,
+    MapEntry, MatchExpr, Pattern, RecordPatternField, SourceFile, Stmt, StmtKind, UnaryOp,
+    parse_source,
 };
 
 use crate::{
@@ -76,7 +77,7 @@ pub fn compile_function_source_with_options(
 ) -> CompileResult<CodeObject> {
     let semantic = parse_semantic_source(source, text)?;
     let script_function_declarations = semantic.script_function_declarations();
-    let const_values = semantic.literal_const_values()?;
+    let const_values = semantic.const_values()?;
     let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
     })?;
@@ -104,7 +105,7 @@ pub fn compile_program_source_with_options(
     let semantic = parse_semantic_source(source, text)?;
     let script_functions = semantic.script_function_names();
     let script_function_declarations = semantic.script_function_declarations();
-    let const_values = semantic.literal_const_values()?;
+    let const_values = semantic.const_values()?;
     let mut program = Program::new();
 
     for name in &script_functions {
@@ -184,24 +185,26 @@ impl SemanticSource {
             .collect()
     }
 
-    fn literal_const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
-        self.parsed
-            .items
-            .iter()
-            .filter_map(|item| {
-                let ItemKind::Const(item) = &item.kind else {
-                    return None;
-                };
-                let declaration = self.graph.module(self.module)?.get(&item.name)?;
-                Some((declaration, &item.value.kind))
-            })
-            .filter_map(|(declaration, value)| match value {
-                ExprKind::Literal(literal) => {
-                    Some(compile_literal_constant(literal).map(|value| (declaration, value)))
-                }
-                _ => None,
-            })
-            .collect()
+    fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
+        let mut values_by_declaration = BTreeMap::new();
+        let mut values_by_name = BTreeMap::new();
+        for item in &self.parsed.items {
+            let ItemKind::Const(item) = &item.kind else {
+                continue;
+            };
+            let Some(declaration) = self
+                .graph
+                .module(self.module)
+                .and_then(|m| m.get(&item.name))
+            else {
+                continue;
+            };
+            if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
+                values_by_declaration.insert(declaration, value.clone());
+                values_by_name.insert(item.name.clone(), value);
+            }
+        }
+        Ok(values_by_declaration)
     }
 
     fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
@@ -880,6 +883,121 @@ fn compile_literal_constant(literal: &Literal) -> CompileResult<Constant> {
     })
 }
 
+fn evaluate_const_expr(
+    expr: &Expr,
+    values_by_name: &BTreeMap<String, Constant>,
+) -> CompileResult<Option<Constant>> {
+    match &expr.kind {
+        ExprKind::Literal(literal) => compile_literal_constant(literal).map(Some),
+        ExprKind::Path(path) => {
+            let [name] = path.as_slice() else {
+                return Ok(None);
+            };
+            Ok(values_by_name.get(name).cloned())
+        }
+        ExprKind::Unary { op, expr } => {
+            let Some(value) = evaluate_const_expr(expr, values_by_name)? else {
+                return Ok(None);
+            };
+            Ok(evaluate_unary_const(*op, value))
+        }
+        ExprKind::Binary { op, left, right } => {
+            let Some(left) = evaluate_const_expr(left, values_by_name)? else {
+                return Ok(None);
+            };
+            let Some(right) = evaluate_const_expr(right, values_by_name)? else {
+                return Ok(None);
+            };
+            Ok(evaluate_binary_const(*op, left, right))
+        }
+        ExprKind::Block(_)
+        | ExprKind::If(_)
+        | ExprKind::Match(_)
+        | ExprKind::SelfValue
+        | ExprKind::Assign { .. }
+        | ExprKind::Field { .. }
+        | ExprKind::Call { .. }
+        | ExprKind::Index { .. }
+        | ExprKind::Try(_)
+        | ExprKind::Array(_)
+        | ExprKind::Map(_)
+        | ExprKind::Record { .. }
+        | ExprKind::Lambda { .. }
+        | ExprKind::Error => Ok(None),
+    }
+}
+
+fn evaluate_unary_const(op: UnaryOp, value: Constant) -> Option<Constant> {
+    match (op, value) {
+        (UnaryOp::Negate, Constant::Int(value)) => value.checked_neg().map(Constant::Int),
+        (UnaryOp::Negate, Constant::Float(value)) => Some(Constant::Float(-value)),
+        (UnaryOp::Not, Constant::Bool(value)) => Some(Constant::Bool(!value)),
+        _ => None,
+    }
+}
+
+fn evaluate_binary_const(op: BinaryOp, left: Constant, right: Constant) -> Option<Constant> {
+    match op {
+        BinaryOp::Add => evaluate_numeric_const(left, right, i64::checked_add, |a, b| a + b),
+        BinaryOp::Sub => evaluate_numeric_const(left, right, i64::checked_sub, |a, b| a - b),
+        BinaryOp::Mul => evaluate_numeric_const(left, right, i64::checked_mul, |a, b| a * b),
+        BinaryOp::Div => match (left, right) {
+            (Constant::Int(_), Constant::Int(0)) => None,
+            (Constant::Int(left), Constant::Int(right)) => {
+                left.checked_div(right).map(Constant::Int)
+            }
+            (Constant::Float(_), Constant::Float(0.0)) => None,
+            (Constant::Float(left), Constant::Float(right)) => Some(Constant::Float(left / right)),
+            _ => None,
+        },
+        BinaryOp::Rem => match (left, right) {
+            (Constant::Int(_), Constant::Int(0)) => None,
+            (Constant::Int(left), Constant::Int(right)) => {
+                left.checked_rem(right).map(Constant::Int)
+            }
+            (Constant::Float(_), Constant::Float(0.0)) => None,
+            (Constant::Float(left), Constant::Float(right)) => Some(Constant::Float(left % right)),
+            _ => None,
+        },
+        BinaryOp::Equal => Some(Constant::Bool(left == right)),
+        BinaryOp::NotEqual => Some(Constant::Bool(left != right)),
+        BinaryOp::Less => evaluate_numeric_compare_const(left, right, |a, b| a < b),
+        BinaryOp::LessEqual => evaluate_numeric_compare_const(left, right, |a, b| a <= b),
+        BinaryOp::Greater => evaluate_numeric_compare_const(left, right, |a, b| a > b),
+        BinaryOp::GreaterEqual => evaluate_numeric_compare_const(left, right, |a, b| a >= b),
+        BinaryOp::Or | BinaryOp::And => None,
+    }
+}
+
+fn evaluate_numeric_const(
+    left: Constant,
+    right: Constant,
+    int_op: impl FnOnce(i64, i64) -> Option<i64>,
+    float_op: impl FnOnce(f64, f64) -> f64,
+) -> Option<Constant> {
+    match (left, right) {
+        (Constant::Int(left), Constant::Int(right)) => int_op(left, right).map(Constant::Int),
+        (Constant::Float(left), Constant::Float(right)) => {
+            Some(Constant::Float(float_op(left, right)))
+        }
+        _ => None,
+    }
+}
+
+fn evaluate_numeric_compare_const(
+    left: Constant,
+    right: Constant,
+    op: impl FnOnce(f64, f64) -> bool,
+) -> Option<Constant> {
+    match (left, right) {
+        (Constant::Int(left), Constant::Int(right)) => {
+            Some(Constant::Bool(op(left as f64, right as f64)))
+        }
+        (Constant::Float(left), Constant::Float(right)) => Some(Constant::Bool(op(left, right))),
+        _ => None,
+    }
+}
+
 fn parse_int(value: &str) -> CompileResult<i64> {
     value
         .replace('_', "")
@@ -1040,6 +1158,43 @@ fn main() {
         assert_eq!(
             constant.map(|constant| &code.constants[constant.0]),
             Some(&Constant::Int(5))
+        );
+    }
+
+    #[test]
+    fn compiler_evaluates_pure_scalar_const_expressions() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+const BASE: int = 10;
+const BONUS: int = BASE + 5 * 2;
+
+fn main() {
+    return BONUS;
+}
+"#,
+            "main",
+        )
+        .expect("pure scalar const expressions should compile");
+
+        let returned = code
+            .instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::Return { src } => Some(src),
+                _ => None,
+            })
+            .expect("return instruction");
+        let constant = code.instructions.iter().find_map(|instruction| {
+            let InstructionKind::LoadConst { dst, constant } = instruction.kind else {
+                return None;
+            };
+            (dst == returned).then_some(constant)
+        });
+
+        assert_eq!(
+            constant.map(|constant| &code.constants[constant.0]),
+            Some(&Constant::Int(20))
         );
     }
 

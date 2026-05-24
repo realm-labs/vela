@@ -313,6 +313,11 @@ that introduce loops and closures.
   constants.
 - Added compiler regression coverage proving literal top-level const reads no
   longer fall through to legacy unknown-local lookup.
+- Bytecode const lowering now evaluates source-order pure scalar const
+  expressions, including references to earlier const declarations, without
+  introducing top-level execution.
+- Added compiler and VM coverage proving const expression reads compile and run
+  as scalar values.
 
 ## Next
 
