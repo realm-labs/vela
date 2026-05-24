@@ -832,8 +832,12 @@ permissions.
   span and copied compiler labels. Rejected reload reports now surface parser or
   semantic diagnostic locations directly while preserving the original
   `HotReloadError` for full host-side inspection.
+- Added copied compiler diagnostic records to rejected compile reload reports,
+  so host tooling can inspect source diagnostic messages, codes, spans, and
+  labels from `HotReloadDiagnostic::source_diagnostics` without unpacking the
+  embedded compiler error.
 
 ## Next
 
-- Continue M12 with remaining reflection access/reporting polish and compile
-  diagnostic detail for hot-reload reports.
+- Continue M12 with remaining reflection access/reporting polish and richer
+  hot-reload report rendering data.

@@ -1,7 +1,7 @@
 use std::fmt;
 
 use vela_bytecode::compiler::{CompileError, CompileErrorKind};
-use vela_common::{Label, Span};
+use vela_common::{Diagnostic, Label, Span};
 
 use crate::{AccessAbi, EffectAbi};
 
@@ -163,9 +163,17 @@ impl HotReloadError {
             .flat_map(|diagnostic| diagnostic.labels.iter().cloned())
             .collect()
     }
+
+    #[must_use]
+    pub fn source_diagnostics(&self) -> Vec<Diagnostic> {
+        let HotReloadErrorKind::Compile(error) = &self.kind else {
+            return Vec::new();
+        };
+        compile_diagnostics(error).map_or_else(Vec::new, |diagnostics| diagnostics.to_vec())
+    }
 }
 
-fn compile_diagnostics(error: &CompileError) -> Option<&[vela_common::Diagnostic]> {
+fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
     match &error.kind {
         CompileErrorKind::SyntaxDiagnostics(diagnostics)
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => Some(diagnostics),

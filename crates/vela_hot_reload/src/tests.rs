@@ -200,6 +200,11 @@ fn rejected_compile_report_carries_source_span_and_labels() {
         diagnostic.source_span.expect("compile source span").source,
         SourceId::new(2)
     );
+    assert!(diagnostic.source_diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .message
+            .contains("script type hints do not support generics")
+    }));
     assert!(
         diagnostic
             .labels

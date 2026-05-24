@@ -3396,3 +3396,26 @@ Consequences:
 - Existing machine-readable reload codes and targets remain stable.
 - Future richer report details can add more structured fields without changing
   the safe-point update semantics.
+
+## 2026-05-25: Hot Reload Reports Copy Source Diagnostics
+
+Status: Accepted
+
+Context:
+Compile rejection reports exposed a primary span and flattened labels, but host
+tooling still needed to inspect the embedded compiler error to access diagnostic
+messages, diagnostic codes, and per-diagnostic spans. That made the report less
+self-contained for admin/debug UIs.
+
+Decision:
+Add `source_diagnostics` to `HotReloadDiagnostic` and copy syntax/semantic
+compiler diagnostics into that field for compile failures. Keep `source_span`
+and `labels` as convenience fields for the first primary span and flattened
+related labels.
+
+Consequences:
+- Hosts can render compile rejection messages directly from the reload report.
+- Existing report consumers can continue using `code`, `target`, `reason`, and
+  `repair_hint` without unpacking compiler internals.
+- ABI and policy failures keep `source_diagnostics` empty until they gain
+  source-location evidence.
