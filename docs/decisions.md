@@ -1971,3 +1971,26 @@ Consequences:
   incrementally adopt MethodId-specialized call paths.
 - Host type impl dispatch and call-site MethodId threading remain later M10
   work.
+
+## 2026-05-25: CallMethodId Specializes Proven Script Receivers
+
+Status: Accepted
+
+Context:
+After script method table entries gained stable `MethodId` metadata, call
+sites still used string-only `CallMethod` bytecode. M10 needs MethodId-based
+dispatch to land incrementally without requiring whole-program type inference.
+
+Decision:
+Add `CallMethodId` bytecode carrying both the source method name and stable
+`MethodId`. The compiler emits it only when the receiver type is known locally,
+starting with immediate script record and enum literals whose type symbol is
+already resolved. The VM dispatches through `receiver type + MethodId`; normal
+`CallMethod` remains the dynamic fallback for less certain receiver values.
+
+Consequences:
+- MethodId dispatch now executes end to end for a concrete script call-site
+  category.
+- Dynamic method calls keep their existing behavior while type-flow facts can
+  opt into the specialized instruction later.
+- The method name is still carried for diagnostics and unknown-method errors.

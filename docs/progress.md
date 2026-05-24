@@ -594,11 +594,13 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Script method dispatch table entries now carry stable `MethodId` metadata
   derived from the implemented trait method and can be looked up by receiver
   type plus `MethodId`, while dynamic name lookup remains available.
+- Added `CallMethodId` bytecode plus VM dispatch through `receiver type +
+  MethodId`, and the compiler emits it for immediate script record/enum
+  receiver method calls when the script method metadata is known.
 - Remaining M10 work includes broader type-flow slot lowering, host type impl
-  dispatch and broader MethodId use in call-site dispatch.
+  dispatch, and broader MethodId use for locals and other type-flow facts.
 
 ## Next
 
-- Continue M10 by threading MethodId through call-site dispatch where receiver
-  type facts are available, then extend slot metadata beyond immediate
-  literals.
+- Continue M10 by extending MethodId and slot lowering beyond immediate
+  literals into local/type-flow facts, then add host type impl dispatch.

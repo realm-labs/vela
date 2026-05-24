@@ -1,4 +1,5 @@
 use vela_bytecode::Program;
+use vela_common::MethodId;
 
 use crate::array_methods::{self, MethodRuntime};
 use crate::heap::{GcRef, HeapValue};
@@ -281,6 +282,7 @@ pub(crate) fn call_method(
         "entries" => map_entries(receiver, args, heap.as_deref()),
         _ => call_script_impl_method(
             receiver,
+            ScriptMethodLookup::Name(method),
             method,
             args,
             vm,
@@ -294,8 +296,36 @@ pub(crate) fn call_method(
 }
 
 #[allow(clippy::too_many_arguments)]
+pub(crate) fn call_method_id(
+    receiver: &Value,
+    method: &str,
+    method_id: MethodId,
+    args: &[Value],
+    vm: &Vm,
+    program: Option<&Program>,
+    host: Option<&mut HostExecution<'_>>,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    caller_roots: Vec<GcRef>,
+) -> VmResult<Value> {
+    call_script_impl_method(
+        receiver,
+        ScriptMethodLookup::Id(method_id),
+        method,
+        args,
+        vm,
+        program,
+        host,
+        heap,
+        budget,
+        &caller_roots,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn call_script_impl_method(
     receiver: &Value,
+    lookup: ScriptMethodLookup<'_>,
     method: &str,
     args: &[Value],
     vm: &Vm,
@@ -310,8 +340,10 @@ fn call_script_impl_method(
             method: method.to_owned(),
         })
     })?;
-    let Some(function) = program.and_then(|program| program.script_method(&type_name, method))
-    else {
+    let Some(function) = program.and_then(|program| match lookup {
+        ScriptMethodLookup::Name(name) => program.script_method(&type_name, name),
+        ScriptMethodLookup::Id(method_id) => program.script_method_by_id(&type_name, method_id),
+    }) else {
         return Err(VmError::new(VmErrorKind::UnknownMethod {
             method: method.to_owned(),
         }));
@@ -335,6 +367,12 @@ fn call_script_impl_method(
         heap.truncate_protected_roots(protected_root_len);
     }
     result
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ScriptMethodLookup<'a> {
+    Name(&'a str),
+    Id(MethodId),
 }
 
 fn receiver_type_name(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Option<String> {

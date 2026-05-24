@@ -20,7 +20,7 @@ use std::sync::Arc;
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 pub use iteration::IteratorState;
 pub use ranges::RangeValue;
-use script_methods::call_method;
+use script_methods::{call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
@@ -1150,6 +1150,37 @@ impl Vm {
                         budget.as_deref_mut(),
                     )?;
                     frame.write(*receiver, receiver_value)?;
+                    frame.write(*dst, result)?;
+                }
+                InstructionKind::CallMethodId {
+                    dst,
+                    receiver,
+                    method,
+                    method_id,
+                    args,
+                } => {
+                    let values = args
+                        .iter()
+                        .map(|register| frame.read(*register).cloned())
+                        .collect::<VmResult<Vec<_>>>()?;
+                    let receiver_value = frame.read(*receiver)?.clone();
+                    let result = call_method_id(
+                        &receiver_value,
+                        method,
+                        *method_id,
+                        &values,
+                        self,
+                        program,
+                        host.as_deref_mut(),
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        frame.heap_roots(),
+                    )?;
+                    let result = store_value_in_heap_if_needed(
+                        result,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::TryPropagate { dst, src } => {
@@ -2981,6 +3012,33 @@ fn main() {
 "#,
         )
         .expect("compile script impl method dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(12))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_immediate_script_method_id_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    return Player { level: 7 }.bonus(5);
+}
+"#,
+        )
+        .expect("compile immediate script method id dispatch");
 
         assert_eq!(
             Vm::new().run_program(&program, "main", &[]),

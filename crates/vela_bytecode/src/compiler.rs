@@ -11,7 +11,7 @@ mod value_flow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_common::{Diagnostic, FieldId, HostMethodId, SourceId, Span};
+use vela_common::{Diagnostic, FieldId, HostMethodId, MethodId, SourceId, Span};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
     ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath, ModuleSource, ParamHint,
@@ -90,6 +90,7 @@ impl CompilerOptions {
 struct CompilerFacts {
     script_function_symbols: BTreeMap<HirDeclId, String>,
     script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
+    script_method_ids: BTreeMap<(String, String), MethodId>,
     type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
@@ -117,6 +118,7 @@ pub fn compile_function_source_with_options(
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
+        script_method_ids: BTreeMap::new(),
         type_symbols,
         const_values,
         options: options.clone(),
@@ -141,11 +143,14 @@ pub fn compile_program_source_with_options(
     let script_functions = semantic.script_function_names();
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
+    let script_impl_methods = semantic.script_impl_methods();
+    let script_method_ids = script_method_ids(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
+        script_method_ids,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -167,7 +172,7 @@ pub fn compile_program_source_with_options(
             .compile()?,
         );
     }
-    insert_script_impl_methods(&mut program, semantic.script_impl_methods(), &facts)?;
+    insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
 
     Ok(program)
 }
@@ -184,11 +189,14 @@ pub fn compile_module_sources_with_options(
     let script_functions = semantic.script_function_declarations();
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
+    let script_impl_methods = semantic.script_impl_methods();
+    let script_method_ids = script_method_ids(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
     let const_values = semantic.const_values()?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
+        script_method_ids,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -208,7 +216,7 @@ pub fn compile_module_sources_with_options(
             Compiler::new(code_name, function, signature, bindings, facts.clone())?.compile()?,
         );
     }
-    insert_script_impl_methods(&mut program, semantic.script_impl_methods(), &facts)?;
+    insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
 
     Ok(program)
 }
@@ -238,6 +246,20 @@ fn insert_script_impl_methods(
         );
     }
     Ok(())
+}
+
+fn script_method_ids(
+    methods: &[script_impls::ScriptImplMethod<'_>],
+) -> BTreeMap<(String, String), MethodId> {
+    methods
+        .iter()
+        .map(|method| {
+            (
+                (method.target_type.clone(), method.method_name.clone()),
+                method.method_id,
+            )
+        })
+        .collect()
 }
 
 fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
@@ -935,18 +957,29 @@ impl<'ast> Compiler<'ast> {
 
                 if let ExprKind::Field { base, name } = &callee.kind {
                     reject_named_args(args, "script method call")?;
+                    let method_id = self.script_method_id_for_receiver(base, name);
                     let receiver = self.compile_expr(base)?;
                     let arg_registers = args
                         .iter()
                         .map(|arg| self.compile_expr(&arg.value))
                         .collect::<CompileResult<Vec<_>>>()?;
                     let dst = self.alloc_register()?;
-                    self.emit(InstructionKind::CallMethod {
-                        dst,
-                        receiver,
-                        method: name.clone(),
-                        args: arg_registers,
-                    });
+                    if let Some(method_id) = method_id {
+                        self.emit(InstructionKind::CallMethodId {
+                            dst,
+                            receiver,
+                            method: name.clone(),
+                            method_id,
+                            args: arg_registers,
+                        });
+                    } else {
+                        self.emit(InstructionKind::CallMethod {
+                            dst,
+                            receiver,
+                            method: name.clone(),
+                            args: arg_registers,
+                        });
+                    }
                     return Ok(dst);
                 }
                 if let ExprKind::Path(path) = &callee.kind
@@ -1253,6 +1286,29 @@ impl<'ast> Compiler<'ast> {
             return None;
         };
         self.facts.type_symbols.get(declaration).cloned()
+    }
+
+    fn script_method_id_for_receiver(&self, receiver: &Expr, method: &str) -> Option<MethodId> {
+        let type_name = self.script_receiver_type_name(receiver)?;
+        self.facts
+            .script_method_ids
+            .get(&(type_name, method.to_owned()))
+            .copied()
+    }
+
+    fn script_receiver_type_name(&self, receiver: &Expr) -> Option<String> {
+        match &receiver.kind {
+            ExprKind::Record { path, .. } => {
+                if let Some(type_name) = self.type_symbol_at_span(receiver.span) {
+                    return Some(type_name);
+                }
+                if let Some((enum_path, _)) = enum_variant_path(path) {
+                    return Some(enum_path);
+                }
+                Some(path.join("."))
+            }
+            _ => None,
+        }
     }
 
     fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
@@ -2568,6 +2624,14 @@ fn main() {
                 .params,
             ["self", "amount"]
         );
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
         assert!(program.function("bonus").is_none());
     }
 
@@ -2597,6 +2661,14 @@ fn main() {
         let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
         assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
         assert!(program.script_method_by_id("Player", method_id).is_some());
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
         assert!(program.function("bonus").is_none());
     }
 
