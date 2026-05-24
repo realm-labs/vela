@@ -1442,6 +1442,14 @@ impl<'ast> Compiler<'ast> {
             .enum_variant(&fact.type_name, variant, field)
     }
 
+    fn enum_variant_field_fact(&self, path: &[String], field: &str) -> Option<ScriptTypeFact> {
+        let (_, variant) = enum_variant_path(path)?;
+        let enum_name = self.type_symbol_for_pattern(path)?;
+        self.facts
+            .script_field_slots
+            .enum_variant_field_fact(&enum_name, &variant, field)
+    }
+
     fn script_record_field_slot_for_type(&self, type_name: &str, field: &str) -> Option<usize> {
         self.facts.script_field_slots.record(type_name, field)
     }
@@ -2131,7 +2139,7 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_match(&mut self, match_expr: &MatchExpr) -> CompileResult<bool> {
-        let scrutinee_type = self.script_type_for_expr(&match_expr.scrutinee);
+        let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
         let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
@@ -2145,7 +2153,7 @@ impl<'ast> Compiler<'ast> {
                 scrutinee,
                 &arm.pattern,
                 arm.body.span,
-                scrutinee_type.as_deref(),
+                scrutinee_fact.clone(),
             )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
@@ -2184,7 +2192,7 @@ impl<'ast> Compiler<'ast> {
         match_expr: &MatchExpr,
         dst: Register,
     ) -> CompileResult<bool> {
-        let scrutinee_type = self.script_type_for_expr(&match_expr.scrutinee);
+        let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
         let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
@@ -2199,7 +2207,7 @@ impl<'ast> Compiler<'ast> {
                 scrutinee,
                 &arm.pattern,
                 arm.body.span,
-                scrutinee_type.as_deref(),
+                scrutinee_fact.clone(),
             )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
@@ -2331,7 +2339,7 @@ impl<'ast> Compiler<'ast> {
         scrutinee: Register,
         pattern: &Pattern,
         body_span: Span,
-        script_type: Option<&str>,
+        script_fact: Option<ScriptTypeFact>,
     ) -> CompileResult<()> {
         match pattern {
             Pattern::Binding(binding) => {
@@ -2340,10 +2348,10 @@ impl<'ast> Compiler<'ast> {
                     dst,
                     src: scrutinee,
                 });
-                self.bind_match_local(binding, dst, body_span, script_type);
+                self.bind_match_local(binding, dst, body_span, script_fact);
                 Ok(())
             }
-            Pattern::RecordVariant { fields, .. } => {
+            Pattern::RecordVariant { path, fields } => {
                 for field in fields {
                     if !record_pattern_field_declares_locals(field) {
                         continue;
@@ -2354,16 +2362,17 @@ impl<'ast> Compiler<'ast> {
                         value: scrutinee,
                         field: field.name.clone(),
                     });
+                    let field_fact = self.enum_variant_field_fact(path, &field.name);
                     match &field.pattern {
                         Some(pattern) => {
-                            self.bind_match_pattern_locals(dst, pattern, body_span, None)?
+                            self.bind_match_pattern_locals(dst, pattern, body_span, field_fact)?
                         }
-                        None => self.bind_match_local(&field.name, dst, body_span, None),
+                        None => self.bind_match_local(&field.name, dst, body_span, field_fact),
                     }
                 }
                 Ok(())
             }
-            Pattern::TupleVariant { fields, .. } => {
+            Pattern::TupleVariant { path, fields } => {
                 for (index, field) in fields.iter().enumerate() {
                     if !pattern_declares_locals(field) {
                         continue;
@@ -2374,7 +2383,9 @@ impl<'ast> Compiler<'ast> {
                         value: scrutinee,
                         field: tuple_variant_field_name(index),
                     });
-                    self.bind_match_pattern_locals(field_value, field, body_span, None)?;
+                    let field_name = tuple_variant_field_name(index);
+                    let field_fact = self.enum_variant_field_fact(path, &field_name);
+                    self.bind_match_pattern_locals(field_value, field, body_span, field_fact)?;
                 }
                 Ok(())
             }
@@ -2387,7 +2398,7 @@ impl<'ast> Compiler<'ast> {
         binding: &str,
         register: Register,
         body_span: Span,
-        script_type: Option<&str>,
+        script_fact: Option<ScriptTypeFact>,
     ) {
         self.locals.insert(binding.to_owned(), register);
         if let Some(local) =
@@ -2396,7 +2407,7 @@ impl<'ast> Compiler<'ast> {
         {
             self.hir_locals.insert(local, register);
             self.script_types
-                .set_local(local, binding, script_type.map(str::to_owned));
+                .set_local_fact(local, binding, script_fact);
         }
     }
 
@@ -3053,6 +3064,88 @@ fn main() {
 "#,
         )
         .expect("binding pattern receiver method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
+    }
+
+    #[test]
+    fn compiler_specializes_record_variant_field_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+enum Event {
+    Grant { player: Player },
+    None,
+}
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let event = Event.Grant { player: Player { level: 7 } };
+    return match event {
+        Event.Grant { player } => player.bonus(5),
+        _ => 0,
+    };
+}
+"#,
+        )
+        .expect("record variant field receiver method should specialize by method id");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::CallMethodId {
+                method_id: lowered,
+                ..
+            } if lowered == method_id
+        )));
+    }
+
+    #[test]
+    fn compiler_specializes_tuple_variant_field_method_calls_by_method_id() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+enum Event {
+    Grant(player: Player),
+    None,
+}
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let event = Event.Grant(Player { level: 7 });
+    return match event {
+        Event.Grant(player) => player.bonus(5),
+        _ => 0,
+    };
+}
+"#,
+        )
+        .expect("tuple variant field receiver method should specialize by method id");
 
         let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
         let main = program.function("main").expect("main function");

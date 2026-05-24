@@ -619,10 +619,13 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - Syntax, HIR, reflection, and compiler metadata now preserve declared enum
   tuple/record variant payload fields; typed locals initialized from declared
   enum constructors can lower variant field reads to `GetEnumSlot`.
+- Destructured record and tuple variant pattern locals now preserve declared
+  enum payload script type facts, allowing method calls on those locals to
+  lower to `CallMethodId`.
 - Remaining M10 work includes host type impl dispatch and broader MethodId use
-  for destructured variant fields and other non-literal receiver facts.
+  for other non-literal receiver facts.
 
 ## Next
 
-- Continue M10 with destructured variant field facts or host type impl
-  dispatch.
+- Continue M10 with host type impl dispatch or broader non-literal receiver
+  facts.

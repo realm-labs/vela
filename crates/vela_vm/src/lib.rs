@@ -3194,6 +3194,78 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_record_variant_field_method_id_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+enum Event {
+    Grant { player: Player },
+    None,
+}
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let event = Event.Grant { player: Player { level: 7 } };
+    return match event {
+        Event.Grant { player } => player.bonus(5),
+        _ => 0,
+    };
+}
+"#,
+        )
+        .expect("compile record variant field method id dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(12))
+        );
+    }
+
+    #[test]
+    fn runs_compiled_tuple_variant_field_method_id_dispatch() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+enum Event {
+    Grant(player: Player),
+    None,
+}
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let event = Event.Grant(Player { level: 7 });
+    return match event {
+        Event.Grant(player) => player.bonus(5),
+        _ => 0,
+    };
+}
+"#,
+        )
+        .expect("compile tuple variant field method id dispatch");
+
+        assert_eq!(
+            Vm::new().run_program(&program, "main", &[]),
+            Ok(Value::Int(12))
+        );
+    }
+
+    #[test]
     fn explicit_impl_method_overrides_trait_default_dispatch() {
         let program = compile_program_source(
             SourceId::new(1),

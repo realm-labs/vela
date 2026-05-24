@@ -2173,3 +2173,26 @@ Consequences:
   mutation boundaries.
 - Destructured match pattern field facts and host type impl dispatch remain
   later M10 work.
+
+## 2026-05-25: Destructured Variant Fields Preserve Declared Type Facts
+
+Status: Accepted
+
+Context:
+Record and tuple variant patterns bind payload fields into fresh locals. Even
+after enum variant payload metadata became available in HIR, those locals were
+still bound without script receiver type facts, so method calls on destructured
+script record values fell back to dynamic method-name dispatch.
+
+Decision:
+Carry script type facts for declared enum payload fields in the compiler's HIR
+field metadata table. When binding record or tuple variant pattern locals, look
+up the matched enum variant and payload field, then seed the bound local with
+the declared script type fact.
+
+Consequences:
+- Destructured variant payload locals can lower script trait method calls to
+  `CallMethodId`.
+- The facts are still compiler-local metadata; runtime enum layout and host
+  mutation boundaries are unchanged.
+- Host type impl dispatch remains separate M10 work.
