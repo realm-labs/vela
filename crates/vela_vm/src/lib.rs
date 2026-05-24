@@ -2162,19 +2162,37 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::ReflectValue::Record(values))
         }
-        Value::Record { fields: values, .. } => {
+        Value::Record {
+            type_name,
+            fields: values,
+        } => {
             let values = values
                 .iter()
                 .map(|(key, value)| Ok((key.to_owned(), value_to_reflect(value, operation)?)))
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
-            Ok(reflect::ReflectValue::Record(values))
+            Ok(reflect::ReflectValue::ScriptRecord {
+                type_name: type_name.clone(),
+                fields: values,
+            })
         }
-        Value::Array(_)
-        | Value::Set(_)
-        | Value::Enum { .. }
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        Value::Enum {
+            enum_name,
+            variant,
+            fields: values,
+        } => {
+            let values = values
+                .iter()
+                .map(|(key, value)| Ok((key.to_owned(), value_to_reflect(value, operation)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            Ok(reflect::ReflectValue::ScriptEnum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields: values,
+            })
+        }
+        Value::Array(_) | Value::Set(_) | Value::Range(_) | Value::Closure(_) | Value::Missing => {
+            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+        }
         Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
@@ -2193,6 +2211,31 @@ fn value_from_reflect(value: reflect::ReflectValue) -> VmResult<Value> {
                 .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(Value::Map(values))
+        }
+        reflect::ReflectValue::ScriptRecord { type_name, fields } => {
+            let fields = fields
+                .into_iter()
+                .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            Ok(Value::Record {
+                fields: ScriptFields::from_pairs(&type_name, fields),
+                type_name,
+            })
+        }
+        reflect::ReflectValue::ScriptEnum {
+            enum_name,
+            variant,
+            fields,
+        } => {
+            let fields = fields
+                .into_iter()
+                .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            Ok(Value::Enum {
+                fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
+                enum_name,
+                variant,
+            })
         }
     }
 }
@@ -2274,9 +2317,9 @@ mod tests {
     };
     use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
     use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
-    use vela_hir::{ModulePath, ModuleSource};
+    use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
     use vela_host::{HostValue, MockStateAdapter, PatchOp};
-    use vela_reflect::{FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey};
+    use vela_reflect::{FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
 
     #[test]
     fn runs_basic_arithmetic() {
@@ -5218,6 +5261,38 @@ fn main(player) {
     }
 
     #[test]
+    fn compiled_source_reflects_script_record_implements() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Player { level: int }
+
+fn main() {
+    let player = Player { level: 7 };
+    if reflect.type_of(player) == "Player" && reflect.implements(player, "Damageable") {
+        return reflect.get(player, "level") + reflect.fields(player).len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile script record reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(script_reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::Int(8))
+        );
+    }
+
+    #[test]
     fn heap_execution_reflection_fields_returns_heap_metadata_array() {
         let host_ref = player_ref(3);
         let program = compile_program_source(
@@ -5268,6 +5343,93 @@ fn main(player) {
         assert_eq!(
             field_names,
             vec![Value::String("id".into()), Value::String("level".into())]
+        );
+    }
+
+    #[test]
+    fn heap_execution_reflects_script_record_implements() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Player { level: int }
+
+fn main() {
+    let player = Player { level: 7 };
+    if reflect.type_of(player) == "Player" && reflect.implements(player, "Damageable") {
+        return reflect.get(player, "level") + reflect.fields(player).len();
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("compile heap script record reflection source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(script_reflection_registry()));
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut adapter,
+                tx: &mut tx,
+            };
+            vm.run_program_with_host_managed_heap_and_budget(
+                &program,
+                "main",
+                &[],
+                &mut host,
+                &mut budget,
+            )
+        };
+
+        assert_eq!(result, Ok(Value::Int(8)));
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn compiled_module_reflects_registered_script_trait_impls() {
+        let sources = [ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game"),
+            r#"
+trait Damageable {
+    fn damage(self) -> int { return self.level; }
+}
+struct Player { level: int }
+
+impl Damageable for Player {}
+
+pub fn main() {
+    let player = Player { level: 7 };
+    if reflect.type_of(player) == "game.Player" && reflect.implements(player, "game.Damageable") {
+        return player.damage() + reflect.fields(player).len();
+    }
+    return 0;
+}
+"#,
+        )];
+        let mut graph = ModuleGraph::new();
+        for source in &sources {
+            graph.add_source(source.clone());
+        }
+        graph.resolve_imports();
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let mut registry = TypeRegistry::new();
+        registry.register_script_types(&graph);
+        let program = compile_module_sources(&sources).expect("compile script trait module");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(registry));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "game.main", &[], &mut host),
+            Ok(Value::Int(8))
         );
     }
 
@@ -5459,6 +5621,17 @@ fn main(player) {
                 .field(FieldDesc::new(FieldId::new(1), "id"))
                 .field(FieldDesc::new(level_field(), "level").writable(true))
                 .method(MethodDesc::new(HostMethodId::new(5), "grant_exp"))
+                .trait_impl(TraitDesc::new("Damageable")),
+        );
+        registry
+    }
+
+    fn script_reflection_registry() -> TypeRegistry {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(200), "Player"))
+                .kind(TypeKind::ScriptStruct)
+                .field(FieldDesc::new(FieldId::new(20), "level"))
                 .trait_impl(TraitDesc::new("Damageable")),
         );
         registry

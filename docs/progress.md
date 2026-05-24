@@ -585,11 +585,16 @@ milestone: M10 script type metadata, shapes, traits, and dispatch foundations.
 - The VM now executes trait default methods through the same script method
   dispatch path, with explicit impl methods taking precedence in inline and
   managed-heap execution.
+- Reflection now preserves script record and enum type names when converting VM
+  values, allowing `reflect.type_of`, `reflect.fields`, `reflect.get`, and
+  `reflect.implements` to query script type metadata at runtime.
+- Script records and enums can now satisfy dynamic implements checks through
+  `TypeRegistry::register_script_types`, including script-visible checks from
+  module-qualified compiled programs.
 - Remaining M10 work includes broader type-flow slot lowering, host type impl
-  dispatch, MethodId-based inline-cache-ready dispatch, and dynamic implements
-  checks.
+  dispatch and MethodId-based inline-cache-ready dispatch.
 
 ## Next
 
-- Continue M10 by adding dynamic implements checks and MethodId-oriented
-  dispatch metadata, then extending slot metadata beyond immediate literals.
+- Continue M10 by adding MethodId-oriented dispatch metadata and host type impl
+  dispatch, then extending slot metadata beyond immediate literals.

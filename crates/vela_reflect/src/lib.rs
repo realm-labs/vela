@@ -347,6 +347,15 @@ pub enum ReflectValue {
     Host(HostValue),
     HostRef(HostRef),
     Record(BTreeMap<String, ReflectValue>),
+    ScriptRecord {
+        type_name: String,
+        fields: BTreeMap<String, ReflectValue>,
+    },
+    ScriptEnum {
+        enum_name: String,
+        variant: String,
+        fields: BTreeMap<String, ReflectValue>,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -403,6 +412,8 @@ pub struct ReflectContext<'a> {
 pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&'a TypeDesc> {
     match value {
         ReflectValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
+        ReflectValue::ScriptRecord { type_name, .. } => registry.type_by_name(type_name),
+        ReflectValue::ScriptEnum { enum_name, .. } => registry.type_by_name(enum_name),
         ReflectValue::Host(_) | ReflectValue::Record(_) => None,
     }
 }
@@ -425,10 +436,10 @@ pub fn get(
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
             Ok(ReflectValue::Host(value))
         }
-        ReflectValue::Record(record) => record
-            .get(field)
-            .cloned()
-            .ok_or_else(|| ReflectError::new(record_unknown_field(field, record))),
+        ReflectValue::Record(record) => get_record_field(field, record),
+        ReflectValue::ScriptRecord { fields, .. } | ReflectValue::ScriptEnum { fields, .. } => {
+            get_record_field(field, fields)
+        }
         ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
@@ -460,9 +471,10 @@ pub fn set(
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
             Ok(())
         }
-        ReflectValue::Record(_) | ReflectValue::Host(_) => {
-            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
-        }
+        ReflectValue::Record(_)
+        | ReflectValue::ScriptRecord { .. }
+        | ReflectValue::ScriptEnum { .. }
+        | ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
 
@@ -503,10 +515,33 @@ pub fn implements(
                 .iter()
                 .any(|trait_desc| trait_desc.name == trait_name))
         }
+        ReflectValue::ScriptRecord { type_name, .. }
+        | ReflectValue::ScriptEnum {
+            enum_name: type_name,
+            ..
+        } => {
+            let Some(desc) = registry.type_by_name(type_name) else {
+                return Ok(false);
+            };
+            Ok(desc
+                .traits
+                .iter()
+                .any(|trait_desc| trait_desc.name == trait_name))
+        }
         ReflectValue::Host(_) | ReflectValue::Record(_) => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
     }
+}
+
+fn get_record_field(
+    field: &str,
+    record: &BTreeMap<String, ReflectValue>,
+) -> ReflectResult<ReflectValue> {
+    record
+        .get(field)
+        .cloned()
+        .ok_or_else(|| ReflectError::new(record_unknown_field(field, record)))
 }
 
 fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDesc> {
@@ -895,6 +930,56 @@ mod tests {
         assert!(
             !implements(&registry, &ReflectValue::HostRef(player_ref()), "Inventory")
                 .expect("implements check")
+        );
+    }
+
+    #[test]
+    fn reflect_implements_uses_script_type_metadata() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(200), "game.Player"))
+                .kind(TypeKind::ScriptStruct)
+                .trait_impl(TraitDesc::new("game.Damageable")),
+        );
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(201), "game.Progress"))
+                .kind(TypeKind::ScriptEnum)
+                .trait_impl(TraitDesc::new("game.Trackable")),
+        );
+
+        assert!(
+            implements(
+                &registry,
+                &ReflectValue::ScriptRecord {
+                    type_name: "game.Player".to_owned(),
+                    fields: BTreeMap::new(),
+                },
+                "game.Damageable",
+            )
+            .expect("script record implements check")
+        );
+        assert!(
+            implements(
+                &registry,
+                &ReflectValue::ScriptEnum {
+                    enum_name: "game.Progress".to_owned(),
+                    variant: "Active".to_owned(),
+                    fields: BTreeMap::new(),
+                },
+                "game.Trackable",
+            )
+            .expect("script enum implements check")
+        );
+        assert!(
+            !implements(
+                &registry,
+                &ReflectValue::ScriptRecord {
+                    type_name: "game.Player".to_owned(),
+                    fields: BTreeMap::new(),
+                },
+                "game.Trackable",
+            )
+            .expect("script record negative implements check")
         );
     }
 }

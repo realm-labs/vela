@@ -1921,3 +1921,28 @@ Consequences:
   references or changing host mutation boundaries.
 - Dynamic implements checks and MethodId-based dispatch caching remain later
   M10 work.
+
+## 2026-05-25: Script Reflection Preserves Runtime Type Names
+
+Status: Accepted
+
+Context:
+`reflect.implements` originally worked only for host references. Script record
+values were converted into anonymous reflection records, which made useful
+field reads possible but discarded the runtime type name needed to query
+`TypeRegistry` trait metadata.
+
+Decision:
+Add typed script record and script enum reflection values that preserve their
+runtime type names while still exposing controlled field reads. Keep anonymous
+`ReflectValue::Record` for map-like reflection data. `reflect.type_of`,
+`reflect.fields`, and `reflect.implements` now consult registered script type
+metadata for typed script records and enums.
+
+Consequences:
+- Runtime implements checks work for script-defined types without monkey
+  patching or mutating type descriptors.
+- Script-visible reflection can inspect script values and host references
+  through the same `TypeRegistry` surface.
+- Host type impl dispatch remains separate from script record/enum reflection
+  and is still later M10 work.
