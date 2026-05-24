@@ -226,6 +226,11 @@ pub enum InstructionKind {
         base: Register,
         index: Register,
     },
+    SetIndex {
+        base: Register,
+        index: Register,
+        src: Register,
+    },
     EnumTagEqual {
         dst: Register,
         value: Register,

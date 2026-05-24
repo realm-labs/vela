@@ -386,6 +386,10 @@ to the later language constructs that introduce loops and closures.
   a focused VM indexing module for array/map lookup.
 - Added compiler and VM coverage proving array and map index reads execute in
   both inline and managed-heap execution modes.
+- Added `SetIndex` bytecode and compiler lowering for array/map index
+  assignment expressions, including compound numeric assignment.
+- Added VM coverage proving index writes execute for inline and managed-heap
+  arrays/maps while keeping host-path indexing out of this M9 slice.
 
 ## Next
 

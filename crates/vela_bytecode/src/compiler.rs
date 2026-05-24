@@ -768,6 +768,9 @@ impl<'ast> Compiler<'ast> {
             let assigned = self.compile_local_assignment(*op, target.span, name, local, value)?;
             return Ok(assigned);
         }
+        if let ExprKind::Index { base, index } = &target.kind {
+            return self.compile_index_assignment(*op, base, index, value);
+        }
         let (root, field) = self.compile_host_assignment_target(target)?;
         let src = self.compile_expr(value)?;
         match op {
@@ -829,6 +832,44 @@ impl<'ast> Compiler<'ast> {
         if let Some(local) = local {
             self.hir_locals.insert(local, assigned);
         }
+        Ok(assigned)
+    }
+
+    fn compile_index_assignment(
+        &mut self,
+        op: AssignOp,
+        base: &Expr,
+        index: &Expr,
+        value: &Expr,
+    ) -> CompileResult<Register> {
+        let base = self.compile_expr(base)?;
+        let index = self.compile_expr(index)?;
+        let assigned = match op {
+            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                self.emit(InstructionKind::GetIndex {
+                    dst: current,
+                    base,
+                    index,
+                });
+                let rhs = self.compile_expr(value)?;
+                let dst = self.alloc_register()?;
+                self.emit(
+                    compound_assignment_instruction(op, dst, current, rhs).ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "compound assignment operator",
+                        ))
+                    })?,
+                );
+                dst
+            }
+        };
+        self.emit(InstructionKind::SetIndex {
+            base,
+            index,
+            src: assigned,
+        });
         Ok(assigned)
     }
 
@@ -2121,6 +2162,29 @@ fn main() {
                 .filter(|instruction| matches!(instruction.kind, InstructionKind::GetIndex { .. }))
                 .count()
                 >= 2
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_index_writes() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let values = [2, 4, 8];
+    values[1] = 10;
+    values[2] += 5;
+    return values[1] + values[2];
+}
+"#,
+            "main",
+        )
+        .expect("index writes should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::SetIndex { .. }))
         );
     }
 

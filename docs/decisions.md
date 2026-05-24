@@ -1054,3 +1054,27 @@ Consequences:
 - Heap-backed index reads return heap slots as VM values, preserving existing
   managed-heap materialization at return/native boundaries.
 - Index writes and nested host path indexing remain explicit follow-up slices.
+
+## 2026-05-24: Index Writes Mutate Script Collections Only
+
+Status: Accepted
+
+Context:
+M9 includes index writes, but host-path indexing and nested host mutation must
+remain under the HostPath/PathProxy/PatchTx model planned for M11. The VM now
+has array/map index reads for inline and heap-backed script values.
+
+Decision:
+Add `SetIndex` bytecode for script arrays and maps. Inline arrays/maps are
+updated by writing the mutated collection value back to the base register.
+Heap-backed arrays/maps mutate the script heap object after converting the
+assigned value into a heap slot with the existing memory-budget path. Compound
+index assignment lowers to `GetIndex`, the numeric operation, and `SetIndex`.
+
+Consequences:
+- Script collection mutation becomes executable without exposing host mutable
+  references or bypassing PatchTx.
+- Heap-backed writes preserve managed-heap result materialization and memory
+  accounting for newly stored heap values.
+- Host collection/index writes still require the later PathProxy and nested
+  PatchTx work.

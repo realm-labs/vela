@@ -1005,6 +1005,17 @@ impl Vm {
                     )?;
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::SetIndex { base, index, src } => {
+                    let mut base_value = frame.read(*base)?.clone();
+                    indexing::set_index(
+                        &mut base_value,
+                        frame.read(*index)?,
+                        frame.read(*src)?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    frame.write(*base, base_value)?;
+                }
                 InstructionKind::EnumTagEqual {
                     dst,
                     value,
@@ -1194,7 +1205,7 @@ fn values_to_heap_map(
         .collect()
 }
 
-fn value_to_heap_slot(
+pub(crate) fn value_to_heap_slot(
     value: &Value,
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
@@ -2067,6 +2078,66 @@ fn map_case() {
                 .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
                 .expect("run heap map index"),
             Value::Int(7)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn runs_compiled_index_write_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let values = [2, 4, 8];
+    let rewards = { "xp": 6 };
+    values[1] = 10;
+    values[2] += 5;
+    rewards["xp"] += values[1];
+    rewards["gold"] = 3;
+    let copy = (values[0] = rewards["gold"]);
+    return values[0] + values[1] + values[2] + rewards["xp"] + copy;
+}
+"#,
+            "main",
+        )
+        .expect("compile index write source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(45)));
+    }
+
+    #[test]
+    fn managed_heap_execution_writes_heap_index_values() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn array_case() {
+    let names = ["gold", "xp"];
+    names[0] = "silver";
+    return names[0];
+}
+
+fn map_case() {
+    let rewards = { "gold": 7 };
+    rewards["gold"] += 5;
+    rewards["xp"] = 3;
+    return rewards["gold"] + rewards["xp"];
+}
+"#,
+        )
+        .expect("compile heap index write source");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new()
+                .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
+                .expect("run heap array index write"),
+            Value::String("silver".into())
+        );
+        assert_eq!(
+            Vm::new()
+                .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
+                .expect("run heap map index write"),
+            Value::Int(15)
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }

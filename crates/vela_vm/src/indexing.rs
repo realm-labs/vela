@@ -1,5 +1,8 @@
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
+    value_to_heap_slot,
+};
 
 pub(crate) fn get_index(
     base: &Value,
@@ -65,6 +68,119 @@ pub(crate) fn get_index(
             operation: "index",
         })),
     }
+}
+
+pub(crate) fn set_index(
+    base: &mut Value,
+    index: &Value,
+    src: &Value,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<()> {
+    match base {
+        Value::Array(values) => {
+            let index = array_index(index)?;
+            let len = values.len();
+            let slot = values.get_mut(index).ok_or_else(|| {
+                VmError::new(VmErrorKind::IndexOutOfBounds {
+                    index: i64::try_from(index).unwrap_or(i64::MAX),
+                    len,
+                })
+            })?;
+            *slot = src.clone();
+            Ok(())
+        }
+        Value::Map(values) => {
+            let key = map_key(index, heap.as_deref())?;
+            values.insert(key, src.clone());
+            Ok(())
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "index assignment",
+                }));
+            };
+            match heap.heap.get(*reference) {
+                Some(HeapValue::Array(_)) => {
+                    set_heap_array_index(*reference, index, src, heap, budget)
+                }
+                Some(HeapValue::Map(_)) => set_heap_map_index(*reference, index, src, heap, budget),
+                Some(
+                    HeapValue::String(_)
+                    | HeapValue::Set(_)
+                    | HeapValue::Record { .. }
+                    | HeapValue::Enum { .. },
+                )
+                | None => Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "index assignment",
+                })),
+            }
+        }
+        Value::Null
+        | Value::Bool(_)
+        | Value::Int(_)
+        | Value::Float(_)
+        | Value::String(_)
+        | Value::Record { .. }
+        | Value::Enum { .. }
+        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        })),
+    }
+}
+
+fn set_heap_array_index(
+    reference: crate::heap::GcRef,
+    index: &Value,
+    src: &Value,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<()> {
+    let index = array_index(index)?;
+    let slot = value_to_heap_slot(src, heap, budget)?;
+    let HeapValue::Array(values) = heap.heap.get_mut(reference).map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        })
+    })?
+    else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        }));
+    };
+    let len = values.len();
+    let target = values.get_mut(index).ok_or_else(|| {
+        VmError::new(VmErrorKind::IndexOutOfBounds {
+            index: i64::try_from(index).unwrap_or(i64::MAX),
+            len,
+        })
+    })?;
+    *target = slot;
+    Ok(())
+}
+
+fn set_heap_map_index(
+    reference: crate::heap::GcRef,
+    index: &Value,
+    src: &Value,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<()> {
+    let key = map_key(index, Some(&*heap))?;
+    let slot = value_to_heap_slot(src, heap, budget)?;
+    let HeapValue::Map(values) = heap.heap.get_mut(reference).map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        })
+    })?
+    else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "index assignment",
+        }));
+    };
+    values.insert(key, slot);
+    Ok(())
 }
 
 fn array_index(index: &Value) -> VmResult<usize> {
