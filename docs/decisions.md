@@ -1008,7 +1008,7 @@ Consequences:
 - If operand-returning logic is ever desired, it will be an explicit language
   change instead of accidental VM behavior.
 
-## 2026-05-24: Local Assignment Rebinds Registers
+## 2026-05-24: Local Assignment Writes Stable Registers
 
 Status: Accepted
 
@@ -1019,19 +1019,21 @@ IDs rather than mutable stack slots, while host-field assignment already routes
 through PatchTx-specific instructions.
 
 Decision:
-Compile assignment to a single-name local by computing the assigned value into
-a register and rebinding the HIR local ID to that register for subsequent
-reads. Compound assignment reads the previous register, emits the matching
-numeric operation, then rebinds the local. Assignment expressions evaluate to
-the assigned value. Host-field assignment remains on the existing host patch
-bytecode path.
+Compile assignment to a single-name local by computing the assigned value and
+writing it back into the local's stable register with `Move`. Compound
+assignment reads the stable local register, emits the matching numeric
+operation, moves the result back into the stable local register, and evaluates
+to the computed result. Host-field assignment remains on the existing host
+patch bytecode path.
 
 Consequences:
 - Local reassignment works without introducing mutable script references or
   changing the VM register model.
-- HIR-resolved shadowing remains authoritative for which local is rebound.
-- Future closure/upvalue work must promote captured locals from simple
-  register rebinding into explicit upvalue cells.
+- HIR-resolved shadowing remains authoritative for which local is written.
+- Repeated bytecode, such as loop bodies, observes the latest local value on
+  each iteration.
+- Future closure/upvalue work must promote captured locals from stable
+  function registers into explicit upvalue cells.
 
 ## 2026-05-24: Index Reads Start With Arrays And Maps
 
@@ -1078,3 +1080,25 @@ Consequences:
   accounting for newly stored heap values.
 - Host collection/index writes still require the later PathProxy and nested
   PatchTx work.
+
+## 2026-05-24: For-In Starts With Snapshot Collection Iterators
+
+Status: Accepted
+
+Context:
+M9 needs executable `for value in iterable` loops before break/continue and
+host-provided iterables can be completed. Arrays and maps already exist in
+inline and heap-backed execution modes.
+
+Decision:
+Compile `for` loops to `IterInit` plus `IterNext` bytecode. The VM creates a
+snapshot iterator over script arrays or map values, preserving map iteration in
+key order through `BTreeMap`. The loop binding writes into a stable local
+register, and normal local assignment inside the loop mutates stable registers
+at runtime.
+
+Consequences:
+- Array and map `for-in` loops execute in both inline and managed-heap modes.
+- Mutating the iterated collection during iteration does not change the current
+  iterator snapshot.
+- Break/continue and host-provided iterables remain explicit follow-up slices.

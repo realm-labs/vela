@@ -2,12 +2,14 @@
 
 pub mod heap;
 mod indexing;
+mod iteration;
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
 
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
+pub use iteration::IteratorState;
 use vela_bytecode::{CodeObject, Constant, InstructionKind, Program, Register};
 use vela_host::{
     HostError, HostErrorKind, HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter,
@@ -34,6 +36,7 @@ pub enum Value {
     },
     HeapRef(GcRef),
     HostRef(HostRef),
+    Iterator(IteratorState),
 }
 
 impl Value {
@@ -49,6 +52,7 @@ impl Value {
                     .values()
                     .for_each(|value| value.trace_heap_refs(refs));
             }
+            Self::Iterator(iterator) => iterator.trace_heap_refs(refs),
             Self::Null
             | Self::Bool(_)
             | Self::Int(_)
@@ -1016,6 +1020,34 @@ impl Vm {
                     )?;
                     frame.write(*base, base_value)?;
                 }
+                InstructionKind::IterInit { dst, iterable } => {
+                    let iterator =
+                        iteration::make_iterator(frame.read(*iterable)?, heap.as_deref())?;
+                    frame.write(*dst, Value::Iterator(iterator))?;
+                }
+                InstructionKind::IterNext {
+                    iterator,
+                    dst,
+                    jump_if_done,
+                } => {
+                    let value = frame.read(*iterator)?.clone();
+                    let Value::Iterator(mut iterator_state) = value else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "iterator",
+                        }));
+                    };
+                    match iterator_state.next() {
+                        Some(value) => {
+                            frame.write(*iterator, Value::Iterator(iterator_state))?;
+                            frame.write(*dst, value)?;
+                        }
+                        None => {
+                            frame.write(*iterator, Value::Iterator(iterator_state))?;
+                            validate_jump(code, jump_if_done.0)?;
+                            ip = jump_if_done.0;
+                        }
+                    }
+                }
                 InstructionKind::EnumTagEqual {
                     dst,
                     value,
@@ -1278,6 +1310,9 @@ pub(crate) fn value_to_heap_slot(
             };
             Ok(HeapSlot::Ref(reference))
         }
+        Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "iterator heap slot",
+        })),
     }
 }
 
@@ -1342,6 +1377,9 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
         | Value::Float(_)
         | Value::String(_)
         | Value::HostRef(_) => Ok(value.clone()),
+        Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "iterator materialize",
+        })),
     }
 }
 
@@ -1422,7 +1460,8 @@ fn store_value_in_heap_if_needed(
         | Value::Int(_)
         | Value::Float(_)
         | Value::HeapRef(_)
-        | Value::HostRef(_) => Ok(value),
+        | Value::HostRef(_)
+        | Value::Iterator(_) => Ok(value),
     }
 }
 
@@ -1633,6 +1672,7 @@ fn value_to_host(
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
+        | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -1651,6 +1691,7 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
             Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
         Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
             reflect::ReflectValue::Host(value_to_host(value, operation, None)?),
         ),
@@ -1683,6 +1724,7 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::HeapRef(_)
+        | Value::Iterator(_)
         | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
@@ -2138,6 +2180,73 @@ fn map_case() {
                 .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
                 .expect("run heap map index write"),
             Value::Int(15)
+        );
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn runs_compiled_for_in_source() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let total = 0;
+    for value in [1, 2, 3] {
+        total += value;
+    }
+    let rewards = { "gold": 4, "xp": 6 };
+    for reward in rewards {
+        total += reward;
+    }
+    return total;
+}
+"#,
+            "main",
+        )
+        .expect("compile for-in source");
+
+        assert_eq!(Vm::new().run(&code), Ok(Value::Int(16)));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_for_in_source() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn sum() {
+    let total = 0;
+    for value in [1, 2, 3] {
+        total += value;
+    }
+    for reward in { "gold": 4, "xp": 6 } {
+        total += reward;
+    }
+    return total;
+}
+
+fn last_name() {
+    let name = "";
+    for value in ["gold", "xp"] {
+        name = value;
+    }
+    return name;
+}
+"#,
+        )
+        .expect("compile heap for-in source");
+        let mut budget = ExecutionBudget::unbounded();
+
+        assert_eq!(
+            Vm::new()
+                .run_program_with_managed_heap_and_budget(&program, "sum", &[], &mut budget)
+                .expect("run heap for-in sum"),
+            Value::Int(16)
+        );
+        assert_eq!(
+            Vm::new()
+                .run_program_with_managed_heap_and_budget(&program, "last_name", &[], &mut budget)
+                .expect("run heap for-in string"),
+            Value::String("xp".into())
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }

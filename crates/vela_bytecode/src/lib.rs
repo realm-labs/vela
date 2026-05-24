@@ -231,6 +231,15 @@ pub enum InstructionKind {
         index: Register,
         src: Register,
     },
+    IterInit {
+        dst: Register,
+        iterable: Register,
+    },
+    IterNext {
+        iterator: Register,
+        dst: Register,
+        jump_if_done: InstructionOffset,
+    },
     EnumTagEqual {
         dst: Register,
         value: Register,

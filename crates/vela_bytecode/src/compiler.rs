@@ -600,7 +600,12 @@ impl<'ast> Compiler<'ast> {
                 Ok(false)
             }
             StmtKind::Block(block) => self.compile_statements(&block.statements),
-            StmtKind::Break | StmtKind::Continue | StmtKind::For { .. } => Err(CompileError::new(
+            StmtKind::For {
+                binding,
+                iterable,
+                body,
+            } => self.compile_for(stmt.span, binding, iterable, body),
+            StmtKind::Break | StmtKind::Continue => Err(CompileError::new(
                 CompileErrorKind::UnsupportedSyntax("control-flow statement"),
             )),
         }
@@ -812,26 +817,33 @@ impl<'ast> Compiler<'ast> {
         local: Option<HirLocalId>,
         value: &Expr,
     ) -> CompileResult<Register> {
+        let target = self.local_register_at_span(target_span, &name)?;
+        if let Some(local) = local {
+            self.hir_locals.insert(local, target);
+        }
         let assigned = match op {
-            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Set => {
+                let src = self.compile_expr(value)?;
+                self.emit(InstructionKind::Move { dst: target, src });
+                src
+            }
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
-                let lhs = self.local_register_at_span(target_span, &name)?;
                 let rhs = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;
                 self.emit(
-                    compound_assignment_instruction(op, dst, lhs, rhs).ok_or_else(|| {
+                    compound_assignment_instruction(op, dst, target, rhs).ok_or_else(|| {
                         CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "compound assignment operator",
                         ))
                     })?,
                 );
+                self.emit(InstructionKind::Move {
+                    dst: target,
+                    src: dst,
+                });
                 dst
             }
         };
-        self.locals.insert(name, assigned);
-        if let Some(local) = local {
-            self.hir_locals.insert(local, assigned);
-        }
         Ok(assigned)
     }
 
@@ -871,6 +883,51 @@ impl<'ast> Compiler<'ast> {
             src: assigned,
         });
         Ok(assigned)
+    }
+
+    fn compile_for(
+        &mut self,
+        stmt_span: Span,
+        binding: &str,
+        iterable: &Expr,
+        body: &Block,
+    ) -> CompileResult<bool> {
+        let iterable = self.compile_expr(iterable)?;
+        let iterator = self.alloc_register()?;
+        self.emit(InstructionKind::IterInit {
+            dst: iterator,
+            iterable,
+        });
+
+        let binding_register = self.alloc_register()?;
+        let previous_binding = self.locals.insert(binding.to_owned(), binding_register);
+        let loop_local = self
+            .bindings
+            .local_named_at(binding, LocalBindingKind::For, stmt_span);
+        if let Some(local) = loop_local {
+            self.hir_locals.insert(local, binding_register);
+        }
+
+        let loop_start = self.current_offset();
+        let done_jump = self.emit_iter_next(iterator, binding_register);
+        let body_returned = self.compile_statements(&body.statements)?;
+        if !body_returned {
+            self.emit(InstructionKind::Jump {
+                target: InstructionOffset(loop_start),
+            });
+        }
+        self.patch_jump(done_jump, self.current_offset())?;
+
+        if let Some(previous) = previous_binding {
+            self.locals.insert(binding.to_owned(), previous);
+        } else {
+            self.locals.remove(binding);
+        }
+        if let Some(local) = loop_local {
+            self.hir_locals.remove(&local);
+        }
+
+        Ok(false)
     }
 
     fn compile_local_path(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
@@ -1236,6 +1293,16 @@ impl<'ast> Compiler<'ast> {
         offset
     }
 
+    fn emit_iter_next(&mut self, iterator: Register, dst: Register) -> usize {
+        let offset = self.current_offset();
+        self.emit(InstructionKind::IterNext {
+            iterator,
+            dst,
+            jump_if_done: InstructionOffset(usize::MAX),
+        });
+        offset
+    }
+
     fn patch_jump(&mut self, offset: usize, target: usize) -> CompileResult<()> {
         let instruction =
             self.code.instructions.get_mut(offset).ok_or_else(|| {
@@ -1248,6 +1315,10 @@ impl<'ast> Compiler<'ast> {
             }
             | InstructionKind::Jump {
                 target: jump_target,
+            }
+            | InstructionKind::IterNext {
+                jump_if_done: jump_target,
+                ..
             } => {
                 *jump_target = InstructionOffset(target);
                 Ok(())
@@ -2185,6 +2256,35 @@ fn main() {
             code.instructions
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::SetIndex { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_for_in_loops() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let total = 0;
+    for value in [1, 2, 3] {
+        total += value;
+    }
+    return total;
+}
+"#,
+            "main",
+        )
+        .expect("for-in loop should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::IterInit { .. }))
+        );
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::IterNext { .. }))
         );
     }
 

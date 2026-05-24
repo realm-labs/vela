@@ -379,7 +379,7 @@ to the later language constructs that introduce loops and closures.
 - Added VM coverage proving short-circuited logical RHS calls are not executed
   and logical expressions produce boolean results.
 - Added local assignment lowering for `=`, `+=`, `-=`, `*=`, `/=`, and `%=`
-  by rebinding HIR local IDs to newly computed registers.
+  by writing computed values back into stable HIR local registers.
 - Added compiler and VM coverage proving local assignment statements and
   assignment expressions compile and execute from source.
 - Added `GetIndex` bytecode, compiler lowering for index read expressions, and
@@ -390,6 +390,10 @@ to the later language constructs that introduce loops and closures.
   assignment expressions, including compound numeric assignment.
 - Added VM coverage proving index writes execute for inline and managed-heap
   arrays/maps while keeping host-path indexing out of this M9 slice.
+- Added `IterInit` and `IterNext` bytecode plus compiler lowering for `for-in`
+  loops over script arrays and maps.
+- Added VM coverage proving `for-in` loops execute in inline and managed-heap
+  modes, with map loops iterating values in key order.
 
 ## Next
 
