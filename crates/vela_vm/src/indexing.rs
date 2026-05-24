@@ -63,6 +63,7 @@ pub(crate) fn get_index(
         | Value::Int(_)
         | Value::Float(_)
         | Value::String(_)
+        | Value::Set(_)
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::Range(_)
@@ -127,6 +128,7 @@ pub(crate) fn set_index(
         | Value::Int(_)
         | Value::Float(_)
         | Value::String(_)
+        | Value::Set(_)
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::Range(_)
@@ -201,6 +203,7 @@ fn array_index(index: &Value) -> VmResult<usize> {
         | Value::Float(_)
         | Value::String(_)
         | Value::Array(_)
+        | Value::Set(_)
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
@@ -229,6 +232,7 @@ fn map_key(index: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> 
         | Value::Int(_)
         | Value::Float(_)
         | Value::Array(_)
+        | Value::Set(_)
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }

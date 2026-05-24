@@ -54,6 +54,7 @@ pub(crate) fn make_iterator(
     match iterable {
         Value::Array(values) => Ok(IteratorState::new(values.clone())),
         Value::Map(values) => Ok(IteratorState::new(values.values().cloned().collect())),
+        Value::Set(values) => Ok(IteratorState::new(values.clone())),
         Value::Range(range) => Ok(IteratorState::range(range.cursor())),
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
@@ -62,18 +63,17 @@ pub(crate) fn make_iterator(
                 }));
             };
             match heap_value {
-                HeapValue::Array(values) => Ok(IteratorState::new(
+                HeapValue::Array(values) | HeapValue::Set(values) => Ok(IteratorState::new(
                     values.iter().map(value_from_heap_slot).collect(),
                 )),
                 HeapValue::Map(values) => Ok(IteratorState::new(
                     values.values().map(value_from_heap_slot).collect(),
                 )),
-                HeapValue::String(_)
-                | HeapValue::Set(_)
-                | HeapValue::Record { .. }
-                | HeapValue::Enum { .. } => Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "for in",
-                })),
+                HeapValue::String(_) | HeapValue::Record { .. } | HeapValue::Enum { .. } => {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "for in",
+                    }))
+                }
             }
         }
         Value::Null

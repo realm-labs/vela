@@ -62,6 +62,7 @@ pub(crate) fn set_record_field_value(
         | Value::Float(_)
         | Value::String(_)
         | Value::Array(_)
+        | Value::Set(_)
         | Value::Map(_)
         | Value::Enum { .. }
         | Value::Closure(_)

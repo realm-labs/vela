@@ -5,6 +5,7 @@ use vela_bytecode::Program;
 use crate::array_methods::{self, MethodRuntime};
 use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
+use crate::set_methods;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
     value_from_heap_slot, value_to_heap_slot,
@@ -251,13 +252,33 @@ pub(crate) fn call_method(
                 caller_roots: &caller_roots,
             },
         ),
-        "has" => map_has(receiver, args, heap.as_deref()).map(Value::Bool),
+        "has" => {
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::has(receiver, args, heap.as_deref())
+            } else {
+                map_has(receiver, args, heap.as_deref())
+            }
+        }
+        .map(Value::Bool),
         "get" => map_get(receiver, args, heap.as_deref()),
         "get_or" => map_get_or(receiver, args, heap.as_deref()),
+        "add" => set_methods::add(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "set" => map_set(receiver, args, heap.as_deref_mut(), budget),
-        "remove" => map_remove(receiver, args, heap.as_deref_mut()),
+        "remove" => {
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::remove(receiver, args, heap.as_deref_mut())
+            } else {
+                map_remove(receiver, args, heap.as_deref_mut())
+            }
+        }
         "keys" => map_keys(receiver, args, heap.as_deref()),
-        "values" => map_values(receiver, args, heap.as_deref()),
+        "values" => {
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::values(receiver, args, heap.as_deref())
+            } else {
+                map_values(receiver, args, heap.as_deref())
+            }
+        }
         "entries" => map_entries(receiver, args, heap.as_deref()),
         _ => Err(VmError::new(VmErrorKind::UnknownMethod {
             method: method.to_owned(),
@@ -284,6 +305,7 @@ fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
         Value::String(value) => usize_to_i64(value.chars().count(), "method len"),
         Value::Array(values) => usize_to_i64(values.len(), "method len"),
         Value::Map(values) => usize_to_i64(values.len(), "method len"),
+        Value::Set(values) => usize_to_i64(values.len(), "method len"),
         Value::Range(range) => range.len().ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
                 operation: "method len",
@@ -317,6 +339,7 @@ fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool
         Value::String(value) => Ok(value.is_empty()),
         Value::Array(values) => Ok(values.is_empty()),
         Value::Map(values) => Ok(values.is_empty()),
+        Value::Set(values) => Ok(values.is_empty()),
         Value::Range(range) => Ok(range.is_empty()),
         Value::HeapRef(reference) => {
             let Some(value) = heap.and_then(|heap| heap.heap.get(*reference)) else {

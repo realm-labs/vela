@@ -8,6 +8,7 @@ mod map_methods;
 mod ranges;
 mod record_fields;
 mod script_methods;
+mod set_methods;
 mod stdlib;
 mod try_propagation;
 
@@ -36,6 +37,7 @@ pub enum Value {
     String(String),
     Array(Vec<Value>),
     Map(BTreeMap<String, Value>),
+    Set(Vec<Value>),
     Record {
         type_name: String,
         fields: BTreeMap<String, Value>,
@@ -57,6 +59,7 @@ impl Value {
         match self {
             Self::HeapRef(reference) => refs.push(*reference),
             Self::Array(values) => values.iter().for_each(|value| value.trace_heap_refs(refs)),
+            Self::Set(values) => values.iter().for_each(|value| value.trace_heap_refs(refs)),
             Self::Map(values) => values
                 .values()
                 .for_each(|value| value.trace_heap_refs(refs)),
@@ -1525,6 +1528,15 @@ pub(crate) fn value_to_heap_slot(
             };
             Ok(HeapSlot::Ref(reference))
         }
+        Value::Set(values) => {
+            let slots = values_to_heap_slots(values, heap, budget.as_deref_mut())?;
+            let Value::HeapRef(reference) =
+                allocate_heap_value(HeapValue::Set(slots), heap, budget)?
+            else {
+                unreachable!("heap allocation always returns a heap ref");
+            };
+            Ok(HeapSlot::Ref(reference))
+        }
         Value::Map(values) => {
             let slots = values_to_heap_map(values, heap, budget.as_deref_mut())?;
             let Value::HeapRef(reference) =
@@ -1606,6 +1618,7 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
             materialize_heap_value(heap_value, heap)
         }
         Value::Array(values) => Ok(Value::Array(materialize_values(values, heap)?)),
+        Value::Set(values) => Ok(Value::Set(materialize_values(values, heap)?)),
         Value::Map(values) => values
             .iter()
             .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
@@ -1694,7 +1707,7 @@ fn materialize_heap_value(value: &HeapValue, heap: Option<&HeapExecution<'_>>) -
             .iter()
             .map(|value| materialize_heap_slot(value, heap))
             .collect::<VmResult<Vec<_>>>()
-            .map(Value::Array),
+            .map(Value::Set),
     }
 }
 
@@ -1722,6 +1735,7 @@ fn store_value_in_heap_if_needed(
     match value {
         Value::String(_)
         | Value::Array(_)
+        | Value::Set(_)
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. } => {
@@ -1954,6 +1968,7 @@ fn value_to_host(
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
         Value::Array(_)
+        | Value::Set(_)
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }
@@ -1976,6 +1991,7 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
             Ok(reflect::ReflectValue::Record(values))
         }
         Value::Array(_)
+        | Value::Set(_)
         | Value::Enum { .. }
         | Value::Range(_)
         | Value::Closure(_)
@@ -2011,6 +2027,7 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Int(_)
         | Value::Float(_)
         | Value::Array(_)
+        | Value::Set(_)
         | Value::Map(_)
         | Value::Record { .. }
         | Value::Enum { .. }

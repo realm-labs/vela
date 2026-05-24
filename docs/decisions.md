@@ -1602,3 +1602,27 @@ Consequences:
   as other array higher-order methods.
 - More advanced comparator-style sorting remains a later extension instead of
   running arbitrary callbacks inside a sort comparator.
+
+## 2026-05-24: Sets Start From Array Conversion And Scalar Elements
+
+Status: Accepted
+
+Context:
+M13 requires set APIs, and the managed heap already has `HeapValue::Set`, but
+scripts previously had no way to create or manipulate set values. Set literal
+syntax and shape-specialized element facts are still later work.
+
+Decision:
+Expose sets through `set.from_array(array)` and a focused `set_methods` VM
+module. Runtime sets preserve insertion order for iteration and `values()`,
+deduplicate scalar elements, and support `has`, `add`, `remove`, `len`,
+`is_empty`, and `for-in`. The first element domain is `null`, bool, int,
+finite float, and string; nested collections, closures, host refs, and
+non-finite floats fail with VM type errors.
+
+Consequences:
+- Scripts can use set workflows before dedicated set literal syntax exists.
+- Managed-heap set values use the existing non-moving `HeapValue::Set` storage
+  and budgeted heap conversion path.
+- Element semantics stay deterministic and conservative until TypeFacts and
+  script type metadata can describe richer set values.

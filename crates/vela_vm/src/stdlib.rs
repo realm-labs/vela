@@ -7,6 +7,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.floor", math_floor);
     vm.register_native("math.ceil", math_ceil);
     vm.register_native("math.abs", math_abs);
+    vm.register_native("set.from_array", crate::set_methods::from_array);
 }
 
 fn math_max(args: &[Value]) -> VmResult<Value> {
@@ -111,7 +112,7 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, Vm};
+    use crate::{ExecutionBudget, Vm, VmErrorKind};
 
     #[test]
     fn runs_compiled_math_standard_natives() {
@@ -153,5 +154,89 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math stdlib source should run");
         assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
+    fn runs_compiled_set_standard_natives_and_methods() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["fire", "ice", "fire"]);
+    let added = tags.add("arcane");
+    let duplicate = tags.add("ice");
+    let removed = tags.remove("fire");
+    let values = tags.values().sort_by(|tag| tag);
+    if tags.len() == 2
+        && added
+        && !duplicate
+        && removed
+        && !tags.has("fire")
+        && tags.has("arcane")
+        && values[0] == "arcane"
+        && values[1] == "ice"
+    {
+        return values.len();
+    }
+    return 0;
+}
+"#;
+
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set stdlib source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("set stdlib source should run");
+        assert_eq!(result, crate::Value::Int(2));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_set_standard_natives_and_iteration() {
+        let source = r#"
+fn main() {
+    let ids = set.from_array([1, 2, 2, 3]);
+    ids.add(4);
+    ids.remove(2);
+    let total = 0;
+    for id in ids {
+        total += id;
+    }
+    return total;
+}
+"#;
+
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set stdlib source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set stdlib source should run");
+        assert_eq!(result, crate::Value::Int(8));
+    }
+
+    #[test]
+    fn set_from_array_rejects_non_scalar_elements() {
+        let source = r#"
+fn main() {
+    return set.from_array([[1]]);
+}
+"#;
+
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set type error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("set.from_array should reject non-scalar elements");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "set.from_array"
+            }
+        );
     }
 }

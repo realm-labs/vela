@@ -510,6 +510,9 @@ method-dispatch coverage before moving into stable type metadata.
 - Added `array.sort_by` for stable, non-mutating sorting by numeric or string
   lambda keys, with managed-heap execution support and explicit type errors for
   mixed key domains.
+- Added first script-visible set APIs through `set.from_array`, `set.has`,
+  `set.add`, `set.remove`, `set.values`, `len`, `is_empty`, and `for-in`
+  iteration, backed by `Value::Set` and managed-heap `HeapValue::Set`.
 
 ## Next
 
