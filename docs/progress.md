@@ -894,6 +894,11 @@ permissions.
   the `vela_reflect` crate root into focused modules, keeping the public
   re-export surface stable while making future M12 reflection work less
   monolithic.
+- Added read-only reflection permission metadata. Rust callers can enumerate
+  active `ReflectPolicy` permission names and validate permission names with
+  ranked unknown-permission candidates, and scripts can use
+  `reflect.permissions()` plus `reflect.has_permission(name)` behind the same
+  `ReadTypeInfo` permission gate.
 
 ## Next
 

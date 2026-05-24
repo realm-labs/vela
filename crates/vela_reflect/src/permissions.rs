@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::{FunctionDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult};
+use crate::{
+    FunctionDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult, name_candidates,
+};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ReflectPermission {
@@ -17,6 +19,18 @@ pub enum ReflectPermission {
 }
 
 impl ReflectPermission {
+    pub const ALL: &'static [Self] = &[
+        Self::ReadTypeInfo,
+        Self::ReadValueFields,
+        Self::WriteValueFields,
+        Self::CallMethods,
+        Self::CallHostReadMethods,
+        Self::CallHostWriteMethods,
+        Self::CallEventMethods,
+        Self::AccessPrivate,
+        Self::InspectHostPath,
+    ];
+
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -30,6 +44,14 @@ impl ReflectPermission {
             Self::AccessPrivate => "reflect.access_private",
             Self::InspectHostPath => "reflect.inspect_host_path",
         }
+    }
+
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|permission| permission.as_str() == name)
     }
 }
 
@@ -48,16 +70,10 @@ impl ReflectPermissionSet {
 
     #[must_use]
     pub fn all() -> Self {
-        Self::new()
-            .with(ReflectPermission::ReadTypeInfo)
-            .with(ReflectPermission::ReadValueFields)
-            .with(ReflectPermission::WriteValueFields)
-            .with(ReflectPermission::CallMethods)
-            .with(ReflectPermission::CallHostReadMethods)
-            .with(ReflectPermission::CallHostWriteMethods)
-            .with(ReflectPermission::CallEventMethods)
-            .with(ReflectPermission::AccessPrivate)
-            .with(ReflectPermission::InspectHostPath)
+        ReflectPermission::ALL
+            .iter()
+            .copied()
+            .fold(Self::new(), Self::with)
     }
 
     #[must_use]
@@ -82,6 +98,10 @@ impl ReflectPermissionSet {
         self.permissions.contains(&permission)
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = ReflectPermission> + '_ {
+        self.permissions.iter().copied()
+    }
+
     pub fn require(&self, permission: ReflectPermission) -> ReflectResult<()> {
         if self.contains(permission) {
             Ok(())
@@ -97,6 +117,30 @@ impl Default for ReflectPermissionSet {
     fn default() -> Self {
         Self::all()
     }
+}
+
+#[must_use]
+pub fn permission_names(policy: &ReflectPolicy) -> Vec<&'static str> {
+    policy
+        .permissions()
+        .iter()
+        .map(ReflectPermission::as_str)
+        .collect()
+}
+
+pub fn has_permission(policy: &ReflectPolicy, permission: &str) -> ReflectResult<bool> {
+    let Some(permission) = ReflectPermission::from_name(permission) else {
+        return Err(ReflectError::new(ReflectErrorKind::UnknownPermission {
+            permission: permission.to_owned(),
+            candidates: name_candidates(
+                permission,
+                ReflectPermission::ALL
+                    .iter()
+                    .map(|permission| permission.as_str()),
+            ),
+        }));
+    };
+    Ok(policy.permissions().contains(permission))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -322,6 +366,41 @@ mod tests {
             error.kind,
             ReflectErrorKind::PermissionDenied {
                 permission: ReflectPermission::WriteValueFields
+            }
+        );
+    }
+
+    #[test]
+    fn permission_metadata_reports_names_and_unknown_candidates() {
+        let policy = ReflectPolicy::new(
+            ReflectPermissionSet::new()
+                .with(ReflectPermission::ReadTypeInfo)
+                .with(ReflectPermission::InspectHostPath),
+        );
+
+        assert_eq!(
+            permission_names(&policy),
+            vec!["reflect.read_type_info", "reflect.inspect_host_path"]
+        );
+        assert_eq!(
+            has_permission(&policy, "reflect.inspect_host_path"),
+            Ok(true)
+        );
+        assert_eq!(
+            has_permission(&policy, "reflect.write_value_fields"),
+            Ok(false)
+        );
+        let error =
+            has_permission(&policy, "reflect.inspect_host").expect_err("unknown permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownPermission {
+                permission: "reflect.inspect_host".to_owned(),
+                candidates: vec![
+                    "reflect.inspect_host_path".to_owned(),
+                    "reflect.call_methods".to_owned(),
+                    "reflect.access_private".to_owned()
+                ]
             }
         );
     }

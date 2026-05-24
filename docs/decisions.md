@@ -3716,3 +3716,29 @@ Consequences:
 - Future registry metadata changes have a focused module boundary.
 - Runtime schema mutation remains unavailable; this is a structural refactor,
   not a behavior change.
+
+## 2026-05-25: Reflection Permissions Are Queryable Metadata
+
+Status: Accepted
+
+Context:
+M12 requires reflection to cover permissions as well as types, modules,
+functions, fields, methods, traits, variants, and attributes. Before this
+decision, `ReflectPolicy` enforced reflection permissions and member-specific
+permissions, but scripts could not inspect the active reflection permission set
+for admin/debug tooling.
+
+Decision:
+Expose read-only permission metadata through `permission_names` and
+`has_permission` helpers plus script-visible `reflect.permissions()` and
+`reflect.has_permission(name)`. These queries require `ReadTypeInfo`, consume
+the reflection lookup budget, and validate unknown permission names with ranked
+candidates.
+
+Consequences:
+- Scripts can branch on the active reflection policy without gaining new write
+  or call capability.
+- Permission metadata is copied string data; policies and registered schema
+  structure remain immutable from script code.
+- Unknown permission names are diagnosed consistently with other reflection
+  lookup failures.

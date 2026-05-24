@@ -30,7 +30,8 @@ pub use modules::{
     module as module_metadata, module_with_policy as module_metadata_with_policy,
 };
 pub use permissions::{
-    ReflectLookupBudget, ReflectPermission, ReflectPermissionSet, ReflectPolicy,
+    ReflectLookupBudget, ReflectPermission, ReflectPermissionSet, ReflectPolicy, has_permission,
+    permission_names,
 };
 pub use registry::{
     AttrMap, FieldDesc, MethodDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,

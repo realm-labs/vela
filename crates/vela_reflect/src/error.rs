@@ -58,6 +58,10 @@ pub enum ReflectErrorKind {
         function: String,
         candidates: Vec<String>,
     },
+    UnknownPermission {
+        permission: String,
+        candidates: Vec<String>,
+    },
     PermissionDenied {
         permission: ReflectPermission,
     },

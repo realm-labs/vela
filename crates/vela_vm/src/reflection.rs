@@ -31,6 +31,40 @@ impl Vm {
     ) {
         self.register_type_registry(Arc::clone(&registry));
         let lookup_budget = Arc::new(reflect::ReflectLookupBudget::new(policy.lookup_limit()));
+
+        let permissions_policy = policy.clone();
+        let permissions_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.permissions", move |args, _host| {
+            check_reflect_policy(
+                &permissions_policy,
+                &permissions_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.permissions", args, 0)?;
+            Ok(Value::Array(
+                reflect::permission_names(&permissions_policy)
+                    .into_iter()
+                    .map(|permission| Value::String(permission.to_owned()))
+                    .collect(),
+            ))
+        });
+
+        let has_permission_policy = policy.clone();
+        let has_permission_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.has_permission", move |args, _host| {
+            check_reflect_policy(
+                &has_permission_policy,
+                &has_permission_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.has_permission", args, 1)?;
+            let permission = expect_string(&args[0], "reflect.has_permission")?;
+            Ok(Value::Bool(reflect::has_permission(
+                &has_permission_policy,
+                permission,
+            )?))
+        });
+
         let type_of_registry = Arc::clone(&registry);
         let type_of_policy = policy.clone();
         let type_of_budget = Arc::clone(&lookup_budget);

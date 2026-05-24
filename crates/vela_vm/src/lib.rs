@@ -6601,6 +6601,119 @@ fn main() {
     }
 
     #[test]
+    fn reflection_permissions_report_active_policy_metadata() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    if !reflect.has_permission("reflect.inspect_host_path") {
+        return 0;
+    }
+    if reflect.has_permission("reflect.write_value_fields") {
+        return 0;
+    }
+    return reflect.permissions();
+}
+"#,
+        )
+        .expect("compile reflection permission metadata source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_permissions(
+            Arc::new(TypeRegistry::new()),
+            reflect::ReflectPermissionSet::read_only()
+                .with(reflect::ReflectPermission::InspectHostPath),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert_eq!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Ok(Value::Array(vec![
+                Value::String("reflect.read_type_info".to_owned()),
+                Value::String("reflect.read_value_fields".to_owned()),
+                Value::String("reflect.inspect_host_path".to_owned()),
+            ]))
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflection_permissions_report_unknown_permission_candidates() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return reflect.has_permission("reflect.inspect_host");
+}
+"#,
+        )
+        .expect("compile reflection unknown permission source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_permissions(
+            Arc::new(TypeRegistry::new()),
+            reflect::ReflectPermissionSet::read_only(),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let error = vm
+            .run_program_with_host(&program, "main", &[], &mut host)
+            .expect_err("unknown permission should diagnose");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::Reflect(ReflectErrorKind::UnknownPermission {
+                permission: "reflect.inspect_host".to_owned(),
+                candidates: vec![
+                    "reflect.inspect_host_path".to_owned(),
+                    "reflect.call_methods".to_owned(),
+                    "reflect.access_private".to_owned()
+                ]
+            })
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflection_permissions_deny_permission_metadata_without_type_read() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return reflect.permissions();
+}
+"#,
+        )
+        .expect("compile denied reflection permission metadata source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_permissions(
+            Arc::new(TypeRegistry::new()),
+            reflect::ReflectPermissionSet::new(),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+                permission: reflect::ReflectPermission::ReadTypeInfo
+            })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn reflection_permissions_deny_function_metadata_without_function_permission() {
         let program = compile_program_source(
             SourceId::new(1),

@@ -1127,6 +1127,9 @@ reflect.traits(type)
 
 reflect.module(name)
 reflect.exports(module)
+
+reflect.permissions()
+reflect.has_permission(name)
 ```
 
 For `HostRef`, `reflect.set(player, "level", 10)` creates a `Patch` instead of mutating Rust directly.
