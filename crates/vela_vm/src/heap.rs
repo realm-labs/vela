@@ -127,6 +127,62 @@ pub struct GcStats {
     pub bytes_freed: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GcConfig {
+    pub max_pause_micros: u64,
+    pub heap_growth_factor: f64,
+}
+
+impl Default for GcConfig {
+    fn default() -> Self {
+        Self {
+            max_pause_micros: 500,
+            heap_growth_factor: 1.5,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GcBudget {
+    pub max_sweep_slots: usize,
+    pub max_pause_micros: u64,
+}
+
+impl GcBudget {
+    #[must_use]
+    pub const fn sweep_slots(max_sweep_slots: usize) -> Self {
+        Self {
+            max_sweep_slots,
+            max_pause_micros: 0,
+        }
+    }
+
+    #[must_use]
+    pub const fn micros(max_pause_micros: u64) -> Self {
+        Self {
+            max_sweep_slots: usize::MAX,
+            max_pause_micros,
+        }
+    }
+
+    #[must_use]
+    pub const fn unlimited() -> Self {
+        Self {
+            max_sweep_slots: usize::MAX,
+            max_pause_micros: u64::MAX,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GcStepStats {
+    pub marked: usize,
+    pub sweep_slots_visited: usize,
+    pub swept: usize,
+    pub bytes_freed: usize,
+    pub complete: bool,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HeapError {
     pub kind: HeapErrorKind,
@@ -166,11 +222,33 @@ struct HeapEntry {
     object: Option<HeapObject>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
+struct IncrementalGc {
+    sweep_index: usize,
+}
+
+#[derive(Clone, Debug)]
 pub struct ScriptHeap {
     entries: Vec<HeapEntry>,
     free_list: Vec<usize>,
     allocated_bytes: usize,
+    gc_config: GcConfig,
+    next_gc_at_bytes: usize,
+    incremental_gc: Option<IncrementalGc>,
+}
+
+impl Default for ScriptHeap {
+    fn default() -> Self {
+        let gc_config = GcConfig::default();
+        Self {
+            entries: Vec::new(),
+            free_list: Vec::new(),
+            allocated_bytes: 0,
+            gc_config,
+            next_gc_at_bytes: 1,
+            incremental_gc: None,
+        }
+    }
 }
 
 impl ScriptHeap {
@@ -225,6 +303,26 @@ impl ScriptHeap {
         self.allocated_bytes
     }
 
+    #[must_use]
+    pub fn gc_config(&self) -> GcConfig {
+        self.gc_config
+    }
+
+    pub fn set_gc_config(&mut self, config: GcConfig) {
+        self.gc_config = config;
+        self.update_next_gc_threshold();
+    }
+
+    #[must_use]
+    pub fn next_gc_at_bytes(&self) -> usize {
+        self.next_gc_at_bytes
+    }
+
+    #[must_use]
+    pub fn should_collect(&self) -> bool {
+        self.allocated_bytes >= self.next_gc_at_bytes
+    }
+
     pub fn collect_full(&mut self, roots: &[GcRef]) -> GcStats {
         self.collect_full_with_budget(roots, None)
     }
@@ -234,6 +332,8 @@ impl ScriptHeap {
         roots: &[GcRef],
         mut budget: Option<&mut ExecutionBudget>,
     ) -> GcStats {
+        self.incremental_gc = None;
+        self.clear_marks();
         let marked = self.mark_from_roots(roots);
         let mut swept = 0;
         let mut bytes_freed = 0;
@@ -257,11 +357,95 @@ impl ScriptHeap {
         if let Some(budget) = &mut budget {
             budget.release_memory(bytes_freed);
         }
+        self.update_next_gc_threshold();
 
         GcStats {
             marked,
             swept,
             bytes_freed,
+        }
+    }
+
+    pub fn step_gc(&mut self, roots: &[GcRef], budget: GcBudget) -> GcStepStats {
+        self.step_gc_with_budget(roots, budget, None)
+    }
+
+    pub fn step_gc_with_budget(
+        &mut self,
+        roots: &[GcRef],
+        budget: GcBudget,
+        mut execution_budget: Option<&mut ExecutionBudget>,
+    ) -> GcStepStats {
+        let marked = if self.incremental_gc.is_some() {
+            0
+        } else {
+            self.clear_marks();
+            let marked = self.mark_from_roots(roots);
+            self.incremental_gc = Some(IncrementalGc { sweep_index: 0 });
+            marked
+        };
+
+        let mut sweep_slots_visited = 0;
+        let mut swept = 0;
+        let mut bytes_freed = 0;
+        let mut complete = false;
+
+        while sweep_slots_visited < budget.max_sweep_slots {
+            let Some(state) = self.incremental_gc.as_mut() else {
+                complete = true;
+                break;
+            };
+            if state.sweep_index >= self.entries.len() {
+                self.incremental_gc = None;
+                complete = true;
+                break;
+            }
+
+            let index = state.sweep_index;
+            state.sweep_index += 1;
+            sweep_slots_visited += 1;
+
+            let Some(object) = self.entries[index].object.as_mut() else {
+                continue;
+            };
+            if object.marked {
+                object.marked = false;
+                continue;
+            }
+
+            let object = self.entries[index]
+                .object
+                .take()
+                .expect("checked object exists");
+            bytes_freed += object.size_bytes;
+            swept += 1;
+            self.free_list.push(index);
+        }
+
+        if !complete
+            && self
+                .incremental_gc
+                .as_ref()
+                .is_some_and(|state| state.sweep_index >= self.entries.len())
+        {
+            self.incremental_gc = None;
+            complete = true;
+        }
+
+        self.allocated_bytes = self.allocated_bytes.saturating_sub(bytes_freed);
+        if let Some(execution_budget) = &mut execution_budget {
+            execution_budget.release_memory(bytes_freed);
+        }
+        if complete {
+            self.update_next_gc_threshold();
+        }
+
+        GcStepStats {
+            marked,
+            sweep_slots_visited,
+            swept,
+            bytes_freed,
+            complete,
         }
     }
 
@@ -309,6 +493,22 @@ impl ScriptHeap {
         }
 
         marked
+    }
+
+    fn clear_marks(&mut self) {
+        for object in self
+            .entries
+            .iter_mut()
+            .filter_map(|entry| entry.object.as_mut())
+        {
+            object.marked = false;
+        }
+    }
+
+    fn update_next_gc_threshold(&mut self) {
+        let factor = self.gc_config.heap_growth_factor.max(1.0);
+        let grown = (self.allocated_bytes as f64 * factor).ceil() as usize;
+        self.next_gc_at_bytes = grown.max(self.allocated_bytes.saturating_add(1));
     }
 
     fn entry(&self, reference: GcRef) -> Option<&HeapEntry> {
@@ -432,5 +632,133 @@ mod tests {
         assert!(stats.bytes_freed > 0);
         assert!(budget.memory_bytes_allocated() < before);
         assert_eq!(budget.memory_bytes_allocated(), heap.allocated_bytes());
+    }
+
+    #[test]
+    fn step_gc_sweeps_with_slot_budget_across_calls() {
+        let mut heap = ScriptHeap::new();
+        let first = heap.allocate(HeapValue::String("first".into()));
+        let second = heap.allocate(HeapValue::String("second".into()));
+        let third = heap.allocate(HeapValue::String("third".into()));
+
+        let first_step = heap.step_gc(&[], GcBudget::sweep_slots(1));
+        assert_eq!(
+            first_step,
+            GcStepStats {
+                marked: 0,
+                sweep_slots_visited: 1,
+                swept: 1,
+                bytes_freed: first_step.bytes_freed,
+                complete: false,
+            }
+        );
+        assert!(!heap.contains(first));
+        assert!(heap.contains(second));
+        assert!(heap.contains(third));
+
+        let second_step = heap.step_gc(&[], GcBudget::sweep_slots(1));
+        assert_eq!(second_step.marked, 0);
+        assert_eq!(second_step.sweep_slots_visited, 1);
+        assert_eq!(second_step.swept, 1);
+        assert!(!second_step.complete);
+        assert!(!heap.contains(second));
+        assert!(heap.contains(third));
+
+        let final_step = heap.step_gc(&[], GcBudget::sweep_slots(1));
+        assert_eq!(final_step.marked, 0);
+        assert_eq!(final_step.sweep_slots_visited, 1);
+        assert_eq!(final_step.swept, 1);
+        assert!(final_step.complete);
+        assert!(!heap.contains(third));
+        assert_eq!(heap.live_object_count(), 0);
+    }
+
+    #[test]
+    fn step_gc_preserves_roots_while_sweeping_incrementally() {
+        let mut heap = ScriptHeap::new();
+        let child = heap.allocate(HeapValue::String("child".into()));
+        let root = heap.allocate(HeapValue::Array(vec![HeapSlot::Ref(child)]));
+        let garbage = heap.allocate(HeapValue::String("garbage".into()));
+
+        let first_step = heap.step_gc(&[root], GcBudget::sweep_slots(1));
+        assert_eq!(first_step.marked, 2);
+        assert_eq!(first_step.sweep_slots_visited, 1);
+        assert_eq!(first_step.swept, 0);
+        assert!(!first_step.complete);
+        assert!(heap.contains(child));
+        assert!(heap.contains(root));
+        assert!(heap.contains(garbage));
+
+        let second_step = heap.step_gc(&[root], GcBudget::unlimited());
+        assert_eq!(second_step.marked, 0);
+        assert_eq!(second_step.swept, 1);
+        assert!(second_step.complete);
+        assert!(heap.contains(child));
+        assert!(heap.contains(root));
+        assert!(!heap.contains(garbage));
+    }
+
+    #[test]
+    fn step_gc_releases_execution_memory_budget_for_swept_objects() {
+        let mut heap = ScriptHeap::new();
+        let mut budget = ExecutionBudget::new(u64::MAX, 1024, usize::MAX, usize::MAX);
+        let root = heap
+            .allocate_with_budget(HeapValue::String("live".into()), &mut budget)
+            .expect("root allocation");
+        let garbage = heap
+            .allocate_with_budget(HeapValue::String("garbage".into()), &mut budget)
+            .expect("garbage allocation");
+        let before = budget.memory_bytes_allocated();
+
+        let stats = heap.step_gc_with_budget(&[root], GcBudget::unlimited(), Some(&mut budget));
+
+        assert!(stats.complete);
+        assert_eq!(stats.swept, 1);
+        assert!(heap.contains(root));
+        assert!(!heap.contains(garbage));
+        assert!(budget.memory_bytes_allocated() < before);
+        assert_eq!(budget.memory_bytes_allocated(), heap.allocated_bytes());
+    }
+
+    #[test]
+    fn full_gc_aborts_in_progress_step_and_restarts_from_current_roots() {
+        let mut heap = ScriptHeap::new();
+        let first = heap.allocate(HeapValue::String("first".into()));
+        let second = heap.allocate(HeapValue::String("second".into()));
+        let third = heap.allocate(HeapValue::String("third".into()));
+
+        let partial = heap.step_gc(&[second], GcBudget::sweep_slots(1));
+        assert!(!partial.complete);
+        assert!(!heap.contains(first));
+        assert!(heap.contains(second));
+        assert!(heap.contains(third));
+
+        let full = heap.collect_full(&[third]);
+
+        assert_eq!(full.marked, 1);
+        assert_eq!(full.swept, 1);
+        assert!(!heap.contains(second));
+        assert!(heap.contains(third));
+    }
+
+    #[test]
+    fn gc_config_tracks_next_collection_threshold() {
+        let mut heap = ScriptHeap::new();
+        heap.set_gc_config(GcConfig {
+            max_pause_micros: 200,
+            heap_growth_factor: 1.0,
+        });
+        let live = heap.allocate(HeapValue::String("live".into()));
+
+        let stats = heap.collect_full(&[live]);
+
+        assert_eq!(stats.swept, 0);
+        assert_eq!(heap.gc_config().max_pause_micros, 200);
+        assert_eq!(heap.next_gc_at_bytes(), heap.allocated_bytes() + 1);
+        assert!(!heap.should_collect());
+
+        let _extra = heap.allocate(HeapValue::String("extra".into()));
+
+        assert!(heap.should_collect());
     }
 }

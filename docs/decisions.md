@@ -286,3 +286,28 @@ Consequences:
   runnable prototype.
 - The next GC step is to produce heap refs from normal bytecode execution and
   call collection only at safe points with active frame roots.
+
+## 2026-05-24: Step GC Uses Resumable Sweep Slots First
+
+Status: Accepted
+
+Context:
+M7 needs `step_gc` pacing at event/tick safe points. The current heap has a
+full mark-sweep collector, but no runtime event loop or heap-backed bytecode
+values yet. Tests still need deterministic GC pacing behavior.
+
+Decision:
+Add `GcConfig`, `GcBudget`, and `GcStepStats` to `vela_vm::heap`. A step starts
+by marking from explicit roots, then resumes sweeping from the previous slot on
+subsequent calls. `GcBudget::sweep_slots` provides deterministic pacing for
+tests; `GcBudget::micros` carries the public pause-budget shape from the
+architecture and currently maps to an unbounded sweep slot budget until runtime
+wall-clock pacing exists. Completed collections update the next collection
+threshold from the configured heap growth factor.
+
+Consequences:
+- Event/tick integrations can call `step_gc` without moving heap objects.
+- Deterministic tests can prove pause/resume behavior without relying on wall
+  clock timing.
+- Full collection explicitly aborts and restarts any in-progress step so marks
+  do not leak across collection modes.

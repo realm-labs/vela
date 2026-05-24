@@ -186,11 +186,16 @@ script heap are implemented; VM value migration and GC pacing remain.
   and nested inline aggregate values can be converted into explicit GC roots.
 - Added VM tests proving register-held and nested heap refs keep heap objects
   alive during full collection while unrooted objects are swept.
+- Added `GcConfig`, `GcBudget`, `GcStepStats`, threshold tracking, and
+  resumable `step_gc` sweeping for event/tick safe-point pacing.
+- Added heap tests proving stepped GC can pause and resume sweeping, preserves
+  roots across incremental steps, releases execution memory budget for swept
+  objects, restarts cleanly when a full collection interrupts a step, and
+  updates collection thresholds from heap growth config.
 
 ## Next
 
 - Migrate VM-owned string, array, map, record, and enum values onto `GcRef`
   handles while preserving current source behavior.
-- Add `step_gc` pacing and collection thresholds for event/tick safe points.
 - Wire safe-point GC execution to the call-frame root collector once heap-backed
   values are produced by normal bytecode execution.
