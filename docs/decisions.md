@@ -5685,3 +5685,25 @@ Consequences:
   rules.
 - Analysis and completion metadata advertise the richer key/value callback
   shape without adding script-visible generics.
+
+## 2026-05-25: Map Merge Is Non-Mutating And Right-Biased
+
+Status: Accepted
+
+Context:
+Gameplay scripts often compose copied config maps, reward maps, and temporary
+state maps. Mutating `map.set` is useful for local updates, but composing maps
+through repeated mutation is noisy and can obscure which source wins duplicate
+keys.
+
+Decision:
+Add `map.merge(other)` as a pure script-value method. It returns a new map,
+leaves both input maps unchanged, iterates keys deterministically through the
+existing ordered map representation, and lets the right-hand map replace
+duplicate keys.
+
+Consequences:
+- Scripts can compose map-shaped data without host glue or PatchTx mutation.
+- Duplicate-key behavior is explicit and deterministic.
+- Analysis and completion metadata expose map-to-map TypeFacts while keeping
+  script syntax free of generics.

@@ -347,6 +347,14 @@ mod tests {
             ),
         )));
         assert!(map.contains(&CompletionItem::new(
+            "merge",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::map(TypeFact::String, TypeFact::Int)],
+                TypeFact::map(TypeFact::String, TypeFact::Int),
+            ),
+        )));
+        assert!(map.contains(&CompletionItem::new(
             "any",
             CompletionKind::Method,
             TypeFact::function(

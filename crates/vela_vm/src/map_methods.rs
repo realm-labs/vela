@@ -106,6 +106,22 @@ pub(crate) fn count(
     Ok(count)
 }
 
+pub(crate) fn merge(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&crate::HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("merge", args, 1)?;
+    let mut merged = BTreeMap::new();
+    for (key, value) in map_entries(receiver, heap, "method merge")? {
+        merged.insert(key, value);
+    }
+    for (key, value) in map_entries(&args[0], heap, "method merge")? {
+        merged.insert(key, value);
+    }
+    Ok(Value::Map(merged))
+}
+
 pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
     match receiver {
         Value::Map(_) => true,
@@ -271,5 +287,81 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map higher-order methods should run");
         assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn runs_compiled_map_merge_method() {
+        let source = r#"
+fn main() {
+    let base = {"gold": 4, "xp": 6};
+    let bonus = {"quest": 8, "xp": 10};
+    let merged = base.merge(bonus);
+    if base["xp"] == 6
+        && merged.len() == 3
+        && merged["gold"] == 4
+        && merged["quest"] == 8
+        && merged["xp"] == 10
+    {
+        return merged.keys().join(",");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main").expect("merge source");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("map merge should run");
+        assert_eq!(result, Value::String("gold,quest,xp".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_map_merge_method() {
+        let source = r#"
+fn main() {
+    let base = {"state": "active", "owner": "wolf"};
+    let patch = {"state": "done", "reward": "gold"};
+    let merged = base.merge(patch);
+    if base["state"] == "active"
+        && merged["state"] == "done"
+        && merged["owner"] == "wolf"
+        && merged["reward"] == "gold"
+    {
+        return merged.values().join("|");
+    }
+    return "";
+}
+"#;
+        let code =
+            compile_function_source(SourceId::new(1), source, "main").expect("heap merge source");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap map merge should run");
+        assert_eq!(result, Value::String("wolf|gold|done".to_owned()));
+    }
+
+    #[test]
+    fn map_merge_rejects_non_map_arguments() {
+        let source = r#"
+fn main() {
+    return {"gold": 4}.merge(["xp"]);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("merge type error source");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("map merge should reject non-map argument");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method merge"
+            }
+        );
     }
 }

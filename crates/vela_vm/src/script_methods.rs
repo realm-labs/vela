@@ -259,6 +259,7 @@ pub(crate) fn call_method(
                 caller_roots: &caller_roots,
             },
         ),
+        "merge" => map_methods::merge(receiver, args, heap.as_deref()),
         "has" => {
             if set_methods::is_set(receiver, heap.as_deref()) {
                 set_methods::has(receiver, args, heap.as_deref())

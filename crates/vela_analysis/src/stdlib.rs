@@ -15,6 +15,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "keys",
     "values",
     "entries",
+    "merge",
     "map_values",
     "filter",
     "any",
@@ -515,6 +516,10 @@ fn map_method_fact(
             "entries",
             TypeFact::array(TypeFact::record("MapEntry")),
         )),
+        "merge" => Some(
+            StdlibMethodFact::new(receiver, "merge", TypeFact::map(key.clone(), value.clone()))
+                .with_params(vec![TypeFact::map(key.clone(), value.clone())]),
+        ),
         "map_values" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             Some(
@@ -790,6 +795,13 @@ mod tests {
             mapped.lambda.expect("map_values lambda").params,
             vec![TypeFact::Int]
         );
+
+        let merged = stdlib_method_fact(&receiver, "merge", None).expect("merge fact");
+        assert_eq!(
+            merged.params,
+            vec![TypeFact::map(TypeFact::String, TypeFact::Int)]
+        );
+        assert_eq!(merged.returns, receiver);
 
         let any = stdlib_method_fact(&receiver, "any", None).expect("any fact");
         assert_eq!(any.returns, TypeFact::Bool);

@@ -1327,6 +1327,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `(key, value)` callbacks while preserving one-argument value predicates.
   Analysis TypeFacts and completion metadata now advertise the key/value
   callback shape.
+- Added non-mutating `map.merge(other)` for deterministic copied-map
+  composition. The right-hand map wins duplicate keys, inline and managed-heap
+  execution preserve the receiver, and analysis TypeFacts plus completion
+  metadata expose the map-to-map signature.
 - Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
   script boundary. Native function and method macros now expose Result returns
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to
