@@ -1228,6 +1228,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   now reject script-visible Rust reference parameters at expansion time while
   preserving the allowed NativeCallContext, HostExecution, and HostPath
   boundary parameters; shared signature helpers keep macro parsing structured.
+- Extended M14 typed native signature conversion to four script arguments for
+  pure, host, context-host, and native method callbacks, with Engine tests
+  proving copied conversions and PatchTx host effects.
 
 ## Next
 
