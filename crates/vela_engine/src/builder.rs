@@ -84,6 +84,13 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    pub fn with_controlled_random(mut self, seed: u64) -> Self {
+        self.native_functions
+            .push(crate::random::controlled_math_random(seed));
+        self
+    }
+
+    #[must_use]
     pub fn register_native_fn(
         mut self,
         desc: NativeFunctionDesc,

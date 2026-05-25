@@ -6,6 +6,7 @@ mod error;
 mod method;
 mod native;
 mod permission;
+mod random;
 mod reload;
 
 pub use builder::EngineBuilder;
@@ -17,6 +18,7 @@ pub use native::{
     NativeFunctionId, NativeParamDesc, TypeHint,
 };
 pub use permission::PermissionSet;
+pub use random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
 pub use vela_hot_reload::HotReloadPolicy;
 pub use vela_reflect::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 

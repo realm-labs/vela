@@ -3997,3 +3997,26 @@ Consequences:
   or mutate type structure.
 - Dynamic records without registry metadata remain useful for generic copied
   reflection data.
+
+## 2026-05-25: Controlled Random Is Engine Installed
+
+Status: Accepted
+
+Context:
+M13 requires controlled random through permissions or context, and the
+architecture calls out `math.random` as permissioned. Installing random as an
+ordinary VM standard native would expose nondeterminism to any script that calls
+`register_standard_natives()`, bypassing the host permission model.
+
+Decision:
+Expose `EngineBuilder::with_controlled_random(seed)`, which registers
+`math.random(min, max)` as a stable native function requiring the `std.random`
+permission. The native uses Engine-owned seeded state, returns inclusive
+integer ranges, and is reflected as normal host-provided function metadata.
+
+Consequences:
+- Gameplay hosts must opt into random and grant `std.random` before scripts can
+  call it.
+- Replays and tests can use a fixed seed for deterministic random sequences.
+- Script heap values still do not own host or native state; the RNG state lives
+  inside the Engine-installed native closure.

@@ -3,9 +3,9 @@
 ## Current Milestone
 
 M0-M11 runnable prototype, stable script metadata, broad executable language
-surface, and host bridge foundations are complete enough to begin reflection
-and permission expansion. Current milestone: M12 complete reflection and
-permissions.
+surface, and host bridge foundations are complete enough to continue
+reflection, permissions, and standard-library expansion. Current milestone:
+M12/M13 reflection and standard-library completion.
 
 ## Completed
 
@@ -498,6 +498,10 @@ permissions.
 - Added VM standard native registration for `math.max`, `math.min`,
   `math.clamp`, `math.floor`, `math.ceil`, and `math.abs`, with source-level
   inline and managed-heap execution coverage.
+- Added Engine-installed controlled random through permission-gated
+  `math.random(min, max)`. The seeded native is deterministic per Engine,
+  carries stable reflection metadata, and fails before execution unless the
+  host grants `std.random`.
 - Added array higher-order script methods `map`, `filter`, `find`, `any`,
   `all`, and `count` backed by script closures, preserving VM budgets, host
   context, and managed-heap roots during callback execution.
