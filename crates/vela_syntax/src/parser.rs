@@ -358,9 +358,7 @@ impl Parser {
     }
 
     fn parse_for_statement(&mut self) -> StmtKind {
-        let binding = self
-            .expect_ident("expected loop binding")
-            .unwrap_or_default();
+        let pattern = self.parse_pattern();
         if self.eat_keyword(Keyword::In).is_none() {
             self.error_here("expected `in`");
         }
@@ -370,7 +368,7 @@ impl Parser {
             span: self.current().span,
         });
         StmtKind::For {
-            binding,
+            pattern,
             iterable,
             body,
         }
@@ -1788,6 +1786,35 @@ fn on_kill(ctx, player, monster) {
     }
 
     #[test]
+    fn parses_for_in_patterns() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+fn main(rewards) {
+    for Reward.Grant { amount } in rewards {
+        total += amount;
+    }
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Function(function) = &parsed.items[0].kind else {
+            panic!("expected function item");
+        };
+        let StmtKind::For { pattern, .. } = &function.body.statements[0].kind else {
+            panic!("expected for statement");
+        };
+        let Pattern::RecordVariant { path, fields } = pattern else {
+            panic!("expected record variant pattern");
+        };
+        assert_eq!(path, &["Reward", "Grant"]);
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].name, "amount");
+        assert!(fields[0].pattern.is_none());
+    }
+
+    #[test]
     fn parses_match_lambda_record_and_map_expressions() {
         let parsed = parse_source(
             source_id(),
@@ -2358,12 +2385,17 @@ fn next() {}
             StmtKind::Break => writeln!(out, "{pad}break").expect("write syntax snapshot"),
             StmtKind::Continue => writeln!(out, "{pad}continue").expect("write syntax snapshot"),
             StmtKind::For {
-                binding,
+                pattern,
                 iterable,
                 body,
             } => {
-                writeln!(out, "{pad}for {binding} in {}", expr_kind_name(iterable))
-                    .expect("write syntax snapshot");
+                writeln!(
+                    out,
+                    "{pad}for {} in {}",
+                    pattern_snapshot_name(pattern),
+                    expr_kind_name(iterable)
+                )
+                .expect("write syntax snapshot");
                 snapshot_block(out, body, indent + 1);
             }
             StmtKind::Expr(expr) => snapshot_expr_stmt(out, expr, indent),
@@ -2425,6 +2457,17 @@ fn next() {}
             Pattern::Path(_) => "path",
             Pattern::TupleVariant { .. } => "tuple_variant",
             Pattern::RecordVariant { .. } => "record_variant",
+        }
+    }
+
+    fn pattern_snapshot_name(pattern: &Pattern) -> String {
+        match pattern {
+            Pattern::Wildcard => "_".to_owned(),
+            Pattern::Literal(_) => "literal".to_owned(),
+            Pattern::Binding(name) => name.clone(),
+            Pattern::Path(path) => path.join("."),
+            Pattern::TupleVariant { path, .. } => format!("{}(...)", path.join(".")),
+            Pattern::RecordVariant { path, .. } => format!("{} {{...}}", path.join(".")),
         }
     }
 }

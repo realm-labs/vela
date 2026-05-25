@@ -601,6 +601,38 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_for_in_variant_patterns() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum Reward {
+    Grant { amount },
+    Skip { amount },
+}
+
+fn main() {
+    let total = 0;
+    let rewards = [
+        Reward.Grant { amount: 2 },
+        Reward.Skip { amount: 100 },
+        Reward.Grant { amount: 5 },
+    ];
+    for Reward.Grant { amount } in rewards {
+        total += amount;
+    }
+    return total;
+}
+"#,
+    )
+    .expect("compile for-in variant patterns");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "main", &[]),
+        Ok(Value::Int(7))
+    );
+}
+
+#[test]
 fn runs_compiled_for_in_over_native_iterator() {
     let code = compile_function_source(
         SourceId::new(1),

@@ -162,7 +162,7 @@ pub enum StmtKind {
     Break,
     Continue,
     For {
-        binding: String,
+        pattern: Pattern,
         iterable: Expr,
         body: Block,
     },

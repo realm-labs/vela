@@ -1075,10 +1075,10 @@ impl<'ast> Compiler<'ast> {
             }
             StmtKind::Block(block) => self.compile_statements(&block.statements),
             StmtKind::For {
-                binding,
+                pattern,
                 iterable,
                 body,
-            } => self.compile_for(stmt.span, binding, iterable, body),
+            } => self.compile_for(stmt.span, pattern, iterable, body),
             StmtKind::Break => self.compile_break(),
             StmtKind::Continue => self.compile_continue(),
         }
@@ -1927,7 +1927,7 @@ impl<'ast> Compiler<'ast> {
     fn compile_for(
         &mut self,
         stmt_span: Span,
-        binding: &str,
+        pattern: &Pattern,
         iterable: &Expr,
         body: &Block,
     ) -> CompileResult<bool> {
@@ -1938,17 +1938,21 @@ impl<'ast> Compiler<'ast> {
             iterable,
         });
 
-        let binding_register = self.alloc_register()?;
-        let previous_binding = self.locals.insert(binding.to_owned(), binding_register);
-        let loop_local = self
-            .bindings
-            .local_named_at(binding, LocalBindingKind::For, stmt_span);
-        if let Some(local) = loop_local {
-            self.hir_locals.insert(local, binding_register);
-        }
+        let item_register = self.alloc_register()?;
+        let previous_locals = self.locals.clone();
+        let previous_hir_locals = self.hir_locals.clone();
+        let previous_script_types = self.script_types.clone();
 
         let loop_start = self.current_offset();
-        let done_jump = self.emit_iter_next(iterator, binding_register);
+        let done_jump = self.emit_iter_next(iterator, item_register);
+        let mismatch_jumps = self.compile_match_pattern(item_register, pattern)?;
+        self.bind_pattern_locals(
+            item_register,
+            pattern,
+            stmt_span,
+            None,
+            LocalBindingKind::For,
+        )?;
         self.loop_stack.push(LoopContext::new(loop_start));
         let body_returned = self.compile_statements(&body.statements)?;
         let loop_context = self
@@ -1962,6 +1966,9 @@ impl<'ast> Compiler<'ast> {
         }
         let loop_end = self.current_offset();
         self.patch_jump(done_jump, loop_end)?;
+        for jump in mismatch_jumps {
+            self.patch_jump(jump, loop_start)?;
+        }
         for jump in loop_context.break_jumps() {
             self.patch_jump(*jump, loop_end)?;
         }
@@ -1969,15 +1976,9 @@ impl<'ast> Compiler<'ast> {
             self.patch_jump(*jump, loop_context.continue_target())?;
         }
 
-        if let Some(previous) = previous_binding {
-            self.locals.insert(binding.to_owned(), previous);
-        } else {
-            self.locals.remove(binding);
-        }
-        if let Some(local) = loop_local {
-            self.hir_locals.remove(&local);
-            self.script_types.remove_local(local, binding);
-        }
+        self.locals = previous_locals;
+        self.hir_locals = previous_hir_locals;
+        self.script_types = previous_script_types;
 
         Ok(false)
     }
@@ -2440,11 +2441,12 @@ impl<'ast> Compiler<'ast> {
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
-            self.bind_match_pattern_locals(
+            self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
                 arm.body.span,
                 scrutinee_fact.clone(),
+                LocalBindingKind::Pattern,
             )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
@@ -2494,11 +2496,12 @@ impl<'ast> Compiler<'ast> {
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
-            self.bind_match_pattern_locals(
+            self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
                 arm.body.span,
                 scrutinee_fact.clone(),
+                LocalBindingKind::Pattern,
             )?;
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
@@ -2625,12 +2628,13 @@ impl<'ast> Compiler<'ast> {
         Ok(vec![self.emit_jump_if_false(condition)])
     }
 
-    fn bind_match_pattern_locals(
+    fn bind_pattern_locals(
         &mut self,
         scrutinee: Register,
         pattern: &Pattern,
         body_span: Span,
         script_fact: Option<ScriptTypeFact>,
+        kind: LocalBindingKind,
     ) -> CompileResult<()> {
         match pattern {
             Pattern::Binding(binding) => {
@@ -2639,7 +2643,7 @@ impl<'ast> Compiler<'ast> {
                     dst,
                     src: scrutinee,
                 });
-                self.bind_match_local(binding, dst, body_span, script_fact);
+                self.bind_pattern_local(binding, dst, body_span, script_fact, kind);
                 Ok(())
             }
             Pattern::RecordVariant { path, fields } => {
@@ -2656,9 +2660,11 @@ impl<'ast> Compiler<'ast> {
                     let field_fact = self.enum_variant_field_fact(path, &field.name);
                     match &field.pattern {
                         Some(pattern) => {
-                            self.bind_match_pattern_locals(dst, pattern, body_span, field_fact)?
+                            self.bind_pattern_locals(dst, pattern, body_span, field_fact, kind)?
                         }
-                        None => self.bind_match_local(&field.name, dst, body_span, field_fact),
+                        None => {
+                            self.bind_pattern_local(&field.name, dst, body_span, field_fact, kind)
+                        }
                     }
                 }
                 Ok(())
@@ -2676,7 +2682,7 @@ impl<'ast> Compiler<'ast> {
                     });
                     let field_name = tuple_variant_field_name(index);
                     let field_fact = self.enum_variant_field_fact(path, &field_name);
-                    self.bind_match_pattern_locals(field_value, field, body_span, field_fact)?;
+                    self.bind_pattern_locals(field_value, field, body_span, field_fact, kind)?;
                 }
                 Ok(())
             }
@@ -2684,18 +2690,16 @@ impl<'ast> Compiler<'ast> {
         }
     }
 
-    fn bind_match_local(
+    fn bind_pattern_local(
         &mut self,
         binding: &str,
         register: Register,
         body_span: Span,
         script_fact: Option<ScriptTypeFact>,
+        kind: LocalBindingKind,
     ) {
         self.locals.insert(binding.to_owned(), register);
-        if let Some(local) =
-            self.bindings
-                .local_named_at(binding, LocalBindingKind::Pattern, body_span)
-        {
+        if let Some(local) = self.bindings.local_named_at(binding, kind, body_span) {
             self.hir_locals.insert(local, register);
             self.script_types
                 .set_local_fact(local, binding, script_fact);
@@ -5835,6 +5839,45 @@ fn main() {
                 .iter()
                 .any(|instruction| matches!(instruction.kind, InstructionKind::IterNext { .. }))
         );
+    }
+
+    #[test]
+    fn compiler_lowers_for_in_patterns() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Reward {
+    Grant { amount },
+    Skip { amount },
+}
+
+fn main() {
+    let total = 0;
+    let rewards = [
+        Reward.Grant { amount: 2 },
+        Reward.Skip { amount: 100 },
+        Reward.Grant { amount: 5 },
+    ];
+    for Reward.Grant { amount } in rewards {
+        total += amount;
+    }
+    return total;
+}
+"#,
+        )
+        .expect("for-in pattern should compile");
+        let main = program.function("main").expect("main function");
+
+        assert!(
+            main.instructions.iter().any(|instruction| matches!(
+                instruction.kind,
+                InstructionKind::EnumTagEqual { .. }
+            ))
+        );
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            InstructionKind::GetEnumField { ref field, .. } if field == "amount"
+        )));
     }
 
     #[test]

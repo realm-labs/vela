@@ -290,13 +290,13 @@ impl<'a> BindingLowerer<'a> {
             }
             StmtKind::Break | StmtKind::Continue => {}
             StmtKind::For {
-                binding,
+                pattern,
                 iterable,
                 body,
             } => {
                 self.bind_expr(iterable, PathUsage::Value);
                 self.push_scope();
-                self.declare_local(binding.clone(), LocalBindingKind::For, None, statement.span);
+                self.bind_pattern(pattern, statement.span, LocalBindingKind::For);
                 self.bind_block_without_new_scope(body);
                 self.pop_scope();
             }
@@ -430,7 +430,7 @@ impl<'a> BindingLowerer<'a> {
 
     fn bind_match_arm(&mut self, arm: &MatchArm) {
         self.push_scope();
-        self.bind_pattern(&arm.pattern, arm.body.span);
+        self.bind_pattern(&arm.pattern, arm.body.span, LocalBindingKind::Pattern);
         if let Some(guard) = &arm.guard {
             self.bind_expr(guard, PathUsage::Value);
         }
@@ -438,21 +438,21 @@ impl<'a> BindingLowerer<'a> {
         self.pop_scope();
     }
 
-    fn bind_pattern(&mut self, pattern: &Pattern, span: Span) {
+    fn bind_pattern(&mut self, pattern: &Pattern, span: Span, kind: LocalBindingKind) {
         match pattern {
             Pattern::Binding(name) => {
-                self.declare_local(name.clone(), LocalBindingKind::Pattern, None, span);
+                self.declare_local(name.clone(), kind, None, span);
             }
             Pattern::TupleVariant { path, fields } => {
                 self.bind_pattern_path(path);
                 for field in fields {
-                    self.bind_pattern(field, span);
+                    self.bind_pattern(field, span, kind);
                 }
             }
             Pattern::RecordVariant { path, fields } => {
                 self.bind_pattern_path(path);
                 for field in fields {
-                    self.bind_record_pattern_field(field, span);
+                    self.bind_record_pattern_field(field, span, kind);
                 }
             }
             Pattern::Path(path) => {
@@ -462,11 +462,16 @@ impl<'a> BindingLowerer<'a> {
         }
     }
 
-    fn bind_record_pattern_field(&mut self, field: &RecordPatternField, span: Span) {
+    fn bind_record_pattern_field(
+        &mut self,
+        field: &RecordPatternField,
+        span: Span,
+        kind: LocalBindingKind,
+    ) {
         match &field.pattern {
-            Some(pattern) => self.bind_pattern(pattern, span),
+            Some(pattern) => self.bind_pattern(pattern, span, kind),
             None => {
-                self.declare_local(field.name.clone(), LocalBindingKind::Pattern, None, span);
+                self.declare_local(field.name.clone(), kind, None, span);
             }
         }
     }

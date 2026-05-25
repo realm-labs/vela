@@ -1561,6 +1561,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   previously loaded script function now fails with `reload.function.removed`
   before the runtime version changes, preventing stale function code from being
   silently retained across accepted reloads.
+- Extended executable grammar support for `for pattern in expr` loops. Syntax
+  now preserves loop patterns, HIR records destructured loop locals as
+  `LocalBindingKind::For`, and bytecode reuses match-pattern checks so
+  nonmatching iterator values are skipped while matching enum payload fields
+  are bound for the loop body.
 
 ## Next
 

@@ -109,11 +109,6 @@ impl ScriptTypeFlow {
             }
         }
     }
-
-    pub(super) fn remove_local(&mut self, local: HirLocalId, name: &str) {
-        self.locals.remove(&local);
-        self.names.remove(name);
-    }
 }
 
 pub(super) fn expression_script_fact(

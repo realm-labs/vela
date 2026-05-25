@@ -1506,6 +1506,43 @@ fn main(rewards) {
     }
 
     #[test]
+    fn binding_tracks_for_pattern_locals() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+enum Reward {
+    Grant { amount },
+    Skip { amount },
+}
+
+fn main(rewards) {
+    let total = 0;
+    for Reward.Grant { amount } in rewards {
+        total += amount;
+    }
+    return total;
+}
+"#,
+        ));
+        let main = graph
+            .module(module)
+            .and_then(|module| module.get("main"))
+            .expect("main declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let bindings = graph.bindings(main).expect("main bindings");
+        let amount_bindings = bindings.locals_named("amount");
+
+        assert_eq!(amount_bindings.len(), 1);
+        assert_eq!(
+            bindings.local(amount_bindings[0]).map(|local| local.kind),
+            Some(LocalBindingKind::For)
+        );
+    }
+
+    #[test]
     fn duplicate_lambda_parameters_report_both_spans() {
         let mut graph = ModuleGraph::new();
         graph.add_source(source(

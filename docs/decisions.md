@@ -6406,3 +6406,28 @@ Consequences:
 - Accepted hot reloads no longer silently retain stale omitted functions.
 - The check stays in `vela_hot_reload` alongside the existing function
   parameter ABI checks instead of moving reload policy into VM dispatch.
+
+## 2026-05-26: For-In Patterns Filter Nonmatching Items
+
+Status: Accepted
+
+Context:
+The planned grammar allows `for pattern in expr`, but the runnable
+implementation only accepted a single identifier binding. Match patterns
+already define the executable shape for enum tag checks and payload
+destructuring, so for-in loops needed a compatible lowering without adding a
+new VM pattern subsystem.
+
+Decision:
+Represent for-in loop bindings as syntax `Pattern`s, bind any pattern locals in
+HIR as `LocalBindingKind::For`, and lower loop patterns through the existing
+match-pattern bytecode checks. A loop item that does not satisfy the pattern
+jumps to the next iterator step; a matching item binds destructured locals for
+the loop body.
+
+Consequences:
+- Enum record and tuple payloads can be destructured directly in for-in loops.
+- Nonmatching iterator values are skipped deterministically, matching filter
+  style pattern-loop semantics.
+- The VM instruction set remains unchanged, and host mutation boundaries are
+  unaffected.
