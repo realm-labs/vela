@@ -7,6 +7,7 @@ use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
 use crate::script_object::ScriptFields;
 use crate::set_methods;
+use crate::string_methods;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
     value_from_heap_slot, value_to_heap_slot,
@@ -33,33 +34,15 @@ pub(crate) fn call_method(
             expect_no_args(method, args)?;
             is_empty(receiver, heap.as_deref()).map(Value::Bool)
         }
-        "contains" => string_predicate(
-            receiver,
-            method,
-            "method contains",
-            args,
-            heap.as_deref(),
-            |value, needle| value.contains(needle),
-        )
-        .map(Value::Bool),
-        "starts_with" => string_predicate(
-            receiver,
-            method,
-            "method starts_with",
-            args,
-            heap.as_deref(),
-            |value, prefix| value.starts_with(prefix),
-        )
-        .map(Value::Bool),
-        "ends_with" => string_predicate(
-            receiver,
-            method,
-            "method ends_with",
-            args,
-            heap.as_deref(),
-            |value, suffix| value.ends_with(suffix),
-        )
-        .map(Value::Bool),
+        "contains" => string_methods::contains(receiver, args, heap.as_deref()).map(Value::Bool),
+        "starts_with" => {
+            string_methods::starts_with(receiver, args, heap.as_deref()).map(Value::Bool)
+        }
+        "ends_with" => string_methods::ends_with(receiver, args, heap.as_deref()).map(Value::Bool),
+        "to_upper" => string_methods::to_upper(receiver, args, heap.as_deref()),
+        "to_lower" => string_methods::to_lower(receiver, args, heap.as_deref()),
+        "trim" => string_methods::trim(receiver, args, heap.as_deref()),
+        "split" => string_methods::split(receiver, args, heap.as_deref()),
         "push" => array_push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "pop" => array_pop(receiver, args, heap.as_deref_mut()),
         "map" => array_methods::map(
@@ -397,20 +380,6 @@ fn receiver_type_name(
     }
 }
 
-fn string_predicate(
-    receiver: &Value,
-    method: &str,
-    operation: &'static str,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-    predicate: impl FnOnce(&str, &str) -> bool,
-) -> VmResult<bool> {
-    expect_arity(method, args, 1)?;
-    let receiver = string_value(receiver, heap, operation)?;
-    let needle = string_value(&args[0], heap, operation)?;
-    Ok(predicate(receiver, needle))
-}
-
 fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
     match receiver {
         Value::String(value) => usize_to_i64(value.chars().count(), "method len"),
@@ -729,22 +698,7 @@ fn expect_arity(method: &str, args: &[Value], expected: usize) -> VmResult<()> {
 }
 
 fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
-    string_value(value, heap, "map key").map(str::to_owned)
-}
-
-fn string_value<'a>(
-    value: &'a Value,
-    heap: Option<&'a HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<&'a str> {
-    match value {
-        Value::String(value) => Ok(value),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(value),
-            _ => type_error(operation),
-        },
-        _ => type_error(operation),
-    }
+    string_methods::string_value(value, heap, "map key").map(str::to_owned)
 }
 
 fn usize_to_i64(value: usize, operation: &'static str) -> VmResult<i64> {

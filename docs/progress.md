@@ -492,6 +492,9 @@ permissions.
   registers back in inline and managed-heap execution.
 - Added string predicate script methods `contains`, `starts_with`, and
   `ends_with` for inline and heap-backed strings.
+- Split string script methods into a focused VM module and added gameplay
+  string utilities `trim`, `to_lower`, `to_upper`, and `split` with inline and
+  managed-heap execution coverage.
 - Added VM standard native registration for `math.max`, `math.min`,
   `math.clamp`, `math.floor`, `math.ceil`, and `math.abs`, with source-level
   inline and managed-heap execution coverage.
@@ -947,4 +950,5 @@ permissions.
 
 ## Next
 
-- Continue M12 with remaining reflection access/reporting polish.
+- Continue M12/M13 with remaining reflection access/reporting polish and
+  standard-library gameplay conveniences.

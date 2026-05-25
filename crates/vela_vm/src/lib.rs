@@ -13,6 +13,7 @@ mod script_methods;
 mod script_object;
 mod set_methods;
 mod stdlib;
+mod string_methods;
 mod try_propagation;
 
 use std::cell::RefCell;
