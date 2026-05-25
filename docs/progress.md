@@ -1421,6 +1421,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   function, host function, and host method macros now reject unsafe Rust
   callbacks through a shared signature helper before generating Engine
   registration code.
+- Tightened the same M14 macro signature boundary for non-Rust ABI callbacks.
+  Native function, context-host function, host function, and host method macros
+  now reject `extern` signatures before generating typed Engine registrations.
 
 ## Next
 

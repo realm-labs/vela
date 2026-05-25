@@ -34,6 +34,17 @@ pub(crate) fn reject_unsafe_signature(signature: &Signature, context: &str) -> R
     ))
 }
 
+pub(crate) fn reject_extern_signature(signature: &Signature, context: &str) -> Result<()> {
+    if signature.abi.is_none() {
+        return Ok(());
+    }
+
+    Err(syn::Error::new(
+        signature.abi.span(),
+        format!("{context} does not support extern ABI functions"),
+    ))
+}
+
 pub(crate) fn reject_unsupported_integer_type(ty: &Type) -> Result<()> {
     if let Some(unsupported) = unsupported_integer_type(ty) {
         return Err(syn::Error::new(

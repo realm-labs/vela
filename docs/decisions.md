@@ -6082,3 +6082,24 @@ Consequences:
 - Macro users get an immediate diagnostic instead of generated-code failures.
 - The scripting boundary continues to avoid exposing Rust unsafe or reference
   semantics to scripts.
+
+## 2026-05-25: Native Macros Reject Extern ABI Callbacks
+
+Status: Accepted
+
+Context:
+M14 typed-native registration expects ordinary Rust callback functions and
+methods. `extern` ABI callbacks do not participate in the same Rust closure
+trait path used by `EngineBuilder` typed registration, and accepting them would
+surface errors from generated helper code rather than from the macro boundary.
+
+Decision:
+Reject `extern` ABI signatures through a shared macro signature helper. Apply
+the check to `#[script_function]`, `#[script_context_function]`,
+`#[script_host_function]`, and individual `#[script_method]` callbacks.
+
+Consequences:
+- Engine registration helpers stay on the ordinary Rust ABI callback path.
+- Macro diagnostics remain explicit for unsupported callback shapes.
+- Host integrations that need FFI must wrap that FFI behind a normal safe Rust
+  function before exposing it to scripts.
