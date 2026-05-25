@@ -4377,3 +4377,29 @@ Consequences:
   `PatchTx`.
 - Conversion failures happen before the typed callback runs, so failed method
   argument conversion leaves the transaction unchanged.
+
+## 2026-05-25: Rust Result Conversion Uses Dynamic Result Enum
+
+Status: Accepted
+
+Context:
+M13 already exposes script-visible `result.ok` and `result.err` constructors,
+and try propagation recognizes dynamic `Result.Ok(value)` and
+`Result.Err(error)` enum values. M14 typed native registration needs the same
+shape for idiomatic Rust callback signatures without adding script generics.
+
+Decision:
+Implement `IntoScriptArg` and `FromScriptArg` for Rust `Result<T, E>` in the
+focused Engine argument conversion module. `Ok(value)` maps to
+`Value::Enum { enum_name: "Result", variant: "Ok", fields["0"] = value }`;
+`Err(error)` maps to the same enum with variant `"Err"`. Incoming dynamic
+`Result` enum values convert by reading tuple field `"0"` through the requested
+copied Rust type.
+
+Consequences:
+- Typed native functions can return Rust `Result<T, E>` as script-visible
+  dynamic Result values that participate in existing try propagation.
+- This is an embedding conversion only; the script language still has no
+  generic `Result<T, E>` syntax or monomorphized result types.
+- Malformed Result values and inner payload type mismatches report structured
+  VM type errors before callback logic can observe invalid data.

@@ -1029,6 +1029,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   host methods. Method callbacks now receive the safe `HostPath` receiver plus
   `HostExecution` and typed copied arguments, preserving the `PatchTx` mutation
   boundary while reusing the Engine signature conversion rules.
+- Added Rust `Result<T, E>` support to Engine script argument conversion.
+  Typed native functions can now return or extract copied Rust results through
+  the existing dynamic `Result.Ok`/`Result.Err` enum value shape, preserving the
+  no-script-generics language boundary.
 
 ## Next
 

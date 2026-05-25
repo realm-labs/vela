@@ -114,6 +114,39 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_return_dynamic_result_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(bool,), _>(
+            NativeFunctionDesc::new("game.checked_bonus", NativeFunctionId::new(109))
+                .param("ok", TypeHint::Bool)
+                .returns(TypeHint::Any),
+            |ok: bool| -> std::result::Result<i64, String> {
+                if ok { Ok(11) } else { Err("denied".to_owned()) }
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.checked_bonus(false);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Enum {
+            enum_name: "Result".to_owned(),
+            variant: "Err".to_owned(),
+            fields: [("0".to_owned(), Value::String("denied".to_owned()))].into(),
+        }),
+    );
+}
+
+#[test]
 fn typed_native_functions_report_arity_and_type_errors() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64), _>(
@@ -163,6 +196,55 @@ fn script_arg_conversions_support_optional_values() {
         Option::<i64>::from_script_arg(&Value::String("bad".to_owned())),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "int" },
+            ..
+        })
+    ));
+}
+
+#[test]
+fn script_arg_conversions_support_result_values() {
+    let ok_value = std::result::Result::<i64, String>::Ok(4).into_script_arg();
+    let err_value = std::result::Result::<i64, String>::Err("bad".to_owned()).into_script_arg();
+
+    assert_eq!(
+        std::result::Result::<i64, String>::from_script_arg(&ok_value),
+        Ok(Ok(4)),
+    );
+    assert_eq!(
+        std::result::Result::<i64, String>::from_script_arg(&err_value),
+        Ok(Err("bad".to_owned())),
+    );
+    assert_eq!(
+        crate::args![std::result::Result::<i64, String>::Err(
+            "missing".to_owned()
+        )],
+        vec![Value::Enum {
+            enum_name: "Result".to_owned(),
+            variant: "Err".to_owned(),
+            fields: [("0".to_owned(), Value::String("missing".to_owned()))].into(),
+        }],
+    );
+    assert!(matches!(
+        std::result::Result::<i64, String>::from_script_arg(&Value::Enum {
+            enum_name: "Result".to_owned(),
+            variant: "Ok".to_owned(),
+            fields: [("0".to_owned(), Value::String("bad".to_owned()))].into(),
+        }),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch { operation: "int" },
+            ..
+        })
+    ));
+    assert!(matches!(
+        std::result::Result::<i64, String>::from_script_arg(&Value::Enum {
+            enum_name: "Result".to_owned(),
+            variant: "Unknown".to_owned(),
+            fields: [("0".to_owned(), Value::Int(1))].into(),
+        }),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch {
+                operation: "result",
+            },
             ..
         })
     ));

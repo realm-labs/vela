@@ -205,6 +205,47 @@ where
     }
 }
 
+impl<T, E> IntoScriptArg for std::result::Result<T, E>
+where
+    T: IntoScriptArg,
+    E: IntoScriptArg,
+{
+    fn into_script_arg(self) -> Value {
+        match self {
+            Ok(value) => enum_payload("Result", "Ok", value.into_script_arg()),
+            Err(error) => enum_payload("Result", "Err", error.into_script_arg()),
+        }
+    }
+}
+
+impl<T, E> FromScriptArg for std::result::Result<T, E>
+where
+    T: FromScriptArg,
+    E: FromScriptArg,
+{
+    const TYPE_NAME: &'static str = "result";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        match value {
+            Value::Enum {
+                enum_name,
+                variant,
+                fields,
+            } if enum_name == "Result" || enum_name.rsplit('.').next() == Some("Result") => {
+                let payload = fields
+                    .get("0")
+                    .ok_or_else(|| type_mismatch(Self::TYPE_NAME))?;
+                match variant.as_str() {
+                    "Ok" => T::from_script_arg(payload).map(Ok),
+                    "Err" => E::from_script_arg(payload).map(Err),
+                    _ => Err(type_mismatch(Self::TYPE_NAME)),
+                }
+            }
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
 impl<T> IntoScriptArg for Vec<T>
 where
     T: IntoScriptArg,
@@ -280,6 +321,14 @@ fn type_mismatch(operation: &'static str) -> VmError {
     VmError {
         kind: VmErrorKind::TypeMismatch { operation },
         source_span: None,
+    }
+}
+
+fn enum_payload(enum_name: &str, variant: &str, payload: Value) -> Value {
+    Value::Enum {
+        enum_name: enum_name.to_owned(),
+        variant: variant.to_owned(),
+        fields: [("0".to_owned(), payload)].into(),
     }
 }
 
