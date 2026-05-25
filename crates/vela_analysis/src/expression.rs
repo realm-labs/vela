@@ -509,6 +509,8 @@ mod tests {
             fn main() {
                 if option.is_some(maybe_player) { maybe_player } else { maybe_player };
                 if !result.is_err(grant_result) { grant_result } else { grant_result };
+                if maybe_player.is_none() { maybe_player } else { maybe_player };
+                if grant_result.is_ok() { grant_result } else { grant_result };
             }
             "#,
         );
@@ -540,6 +542,34 @@ mod tests {
         };
         let then_scope = scope.narrowed_by_condition(&result_if.condition, true);
         let else_scope = scope.narrowed_by_condition(&result_if.condition, false);
+        assert_eq!(
+            then_scope.path_fact(&grant_result),
+            Some(&TypeFact::result_ok(TypeFact::Int))
+        );
+        assert_eq!(
+            else_scope.path_fact(&grant_result),
+            Some(&TypeFact::result_err(TypeFact::String))
+        );
+
+        let ExprKind::If(option_method_if) = &expressions[2].kind else {
+            panic!("expected option method if expression");
+        };
+        let then_scope = scope.narrowed_by_condition(&option_method_if.condition, true);
+        let else_scope = scope.narrowed_by_condition(&option_method_if.condition, false);
+        assert_eq!(
+            then_scope.path_fact(&maybe_player),
+            Some(&TypeFact::option_none())
+        );
+        assert_eq!(
+            else_scope.path_fact(&maybe_player),
+            Some(&TypeFact::option_some(TypeFact::host("Player")))
+        );
+
+        let ExprKind::If(result_method_if) = &expressions[3].kind else {
+            panic!("expected result method if expression");
+        };
+        let then_scope = scope.narrowed_by_condition(&result_method_if.condition, true);
+        let else_scope = scope.narrowed_by_condition(&result_method_if.condition, false);
         assert_eq!(
             then_scope.path_fact(&grant_result),
             Some(&TypeFact::result_ok(TypeFact::Int))

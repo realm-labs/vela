@@ -1609,6 +1609,13 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   and `#[script_method]` now accept repeated `attr = "key=value"` metadata and
   generate `NativeFunctionDesc`/`NativeMethodDesc` attrs that flow through the
   existing Engine reflection pipeline.
+- Added M13 Option/Result helper method parity. Dynamic Option values now
+  support `.is_some()`, `.is_none()`, `.unwrap_or(value)`, and `.ok_or(error)`;
+  Result values support `.is_ok()`, `.is_err()`, `.unwrap_or(value)`, and
+  `.to_option()`. Inline and managed-heap execution share the focused
+  `option_result_methods` implementation, and analysis/completion facts plus
+  branch narrowing understand the method predicate forms without adding script
+  generics.
 
 ## Next
 

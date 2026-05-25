@@ -529,6 +529,39 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Bool)),
         )));
+
+        let option = member_completions(&facts, &TypeFact::option(TypeFact::Int));
+        assert!(option.contains(&CompletionItem::new(
+            "unwrap_or",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::Any],
+                TypeFact::union([TypeFact::Int, TypeFact::Any]),
+            ),
+        )));
+        assert!(option.contains(&CompletionItem::new(
+            "ok_or",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::Any],
+                TypeFact::result(TypeFact::Int, TypeFact::Any),
+            ),
+        )));
+
+        let result = member_completions(&facts, &TypeFact::result(TypeFact::Int, TypeFact::String));
+        assert!(result.contains(&CompletionItem::new(
+            "unwrap_or",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::Any],
+                TypeFact::union([TypeFact::Int, TypeFact::Any]),
+            ),
+        )));
+        assert!(result.contains(&CompletionItem::new(
+            "to_option",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Int)),
+        )));
     }
 
     #[test]

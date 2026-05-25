@@ -391,6 +391,32 @@ mod tests {
 
     #[test]
     fn option_and_result_map_methods_expose_dynamic_enum_facts() {
+        let unwrapped_option =
+            stdlib_method_fact(&TypeFact::option(TypeFact::Int), "unwrap_or", None)
+                .expect("option unwrap_or fact");
+        assert_eq!(
+            unwrapped_option.returns,
+            TypeFact::union([TypeFact::Int, TypeFact::Any])
+        );
+        assert_eq!(unwrapped_option.params, vec![TypeFact::Any]);
+
+        let unwrapped_some =
+            stdlib_method_fact(&TypeFact::option_some(TypeFact::Int), "unwrap_or", None)
+                .expect("some unwrap_or fact");
+        assert_eq!(unwrapped_some.returns, TypeFact::Int);
+
+        let ok_or = stdlib_method_fact(&TypeFact::option(TypeFact::Int), "ok_or", None)
+            .expect("option ok_or fact");
+        assert_eq!(
+            ok_or.returns,
+            TypeFact::result(TypeFact::Int, TypeFact::Any)
+        );
+        assert_eq!(ok_or.params, vec![TypeFact::Any]);
+
+        let none_ok_or =
+            stdlib_method_fact(&TypeFact::option_none(), "ok_or", None).expect("none ok_or fact");
+        assert_eq!(none_ok_or.returns, TypeFact::result_err(TypeFact::Any));
+
         let maybe = stdlib_method_fact(
             &TypeFact::option(TypeFact::Int),
             "map",
@@ -624,6 +650,39 @@ mod tests {
         )
         .expect("err or_else fact");
         assert_eq!(recovered_err.returns, TypeFact::result_ok(TypeFact::String));
+
+        let result_is_ok = stdlib_method_fact(
+            &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
+            "is_ok",
+            None,
+        )
+        .expect("result is_ok fact");
+        assert_eq!(result_is_ok.returns, TypeFact::Bool);
+
+        let unwrapped_result = stdlib_method_fact(
+            &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
+            "unwrap_or",
+            None,
+        )
+        .expect("result unwrap_or fact");
+        assert_eq!(
+            unwrapped_result.returns,
+            TypeFact::union([TypeFact::Int, TypeFact::Any])
+        );
+        assert_eq!(unwrapped_result.params, vec![TypeFact::Any]);
+
+        let ok_to_option =
+            stdlib_method_fact(&TypeFact::result_ok(TypeFact::Int), "to_option", None)
+                .expect("ok to_option fact");
+        assert_eq!(ok_to_option.returns, TypeFact::option_some(TypeFact::Int));
+
+        let err_to_option = stdlib_method_fact(
+            &TypeFact::result_err(TypeFact::record("Error")),
+            "to_option",
+            None,
+        )
+        .expect("err to_option fact");
+        assert_eq!(err_to_option.returns, TypeFact::option_none());
     }
 
     #[test]
@@ -743,6 +802,13 @@ mod tests {
                     .is_some_and(|lambda| lambda.params == vec![TypeFact::String, TypeFact::Int])
         }));
         let option_facts = stdlib_method_facts(&TypeFact::option(TypeFact::Int), None);
+        assert!(
+            option_facts
+                .iter()
+                .any(|fact| fact.method == "unwrap_or" && fact.params == vec![TypeFact::Any])
+        );
+        assert!(option_facts.iter().any(|fact| fact.method == "ok_or"
+            && fact.returns == TypeFact::result(TypeFact::Int, TypeFact::Any)));
         assert!(option_facts.iter().any(|fact| {
             fact.method == "map"
                 && fact
@@ -752,6 +818,15 @@ mod tests {
         }));
         let result_facts =
             stdlib_method_facts(&TypeFact::result(TypeFact::Int, TypeFact::String), None);
+        assert!(
+            result_facts
+                .iter()
+                .any(|fact| fact.method == "unwrap_or" && fact.params == vec![TypeFact::Any])
+        );
+        assert!(
+            result_facts.iter().any(|fact| fact.method == "to_option"
+                && fact.returns == TypeFact::option(TypeFact::Int))
+        );
         assert!(result_facts.iter().any(|fact| {
             fact.method == "map_err"
                 && fact

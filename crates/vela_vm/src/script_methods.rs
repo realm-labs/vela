@@ -75,6 +75,13 @@ pub(crate) fn call_method(
         "join" => array_methods::join(receiver, args, heap.as_deref()),
         "distinct" => array_methods::distinct(receiver, args, heap.as_deref()),
         "reverse" => array_methods::reverse(receiver, args, heap.as_deref()),
+        "is_some" => option_result_methods::is_some(receiver, args, heap.as_deref()),
+        "is_none" => option_result_methods::is_none(receiver, args, heap.as_deref()),
+        "is_ok" => option_result_methods::is_ok(receiver, args, heap.as_deref()),
+        "is_err" => option_result_methods::is_err(receiver, args, heap.as_deref()),
+        "unwrap_or" => option_result_methods::unwrap_or(receiver, args, heap.as_deref()),
+        "ok_or" => option_result_methods::ok_or(receiver, args, heap.as_deref()),
+        "to_option" => option_result_methods::to_option(receiver, args, heap.as_deref()),
         "map" => {
             if option_result_methods::is_option_or_result(receiver, heap.as_deref()) {
                 option_result_methods::map(

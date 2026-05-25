@@ -71,19 +71,45 @@ fn option_result_predicate<'a>(
             expr,
         } => option_result_predicate(expr, scope, !truthy),
         ExprKind::Call { callee, args } => {
-            let ExprKind::Path(callee_path) = &callee.kind else {
+            if let Some((path, predicate)) = path_predicate_call(callee, args) {
+                let fact = scope.path_fact(path)?;
+                let variant = predicate_variant(&predicate, truthy)?;
+                let narrowed = narrowed_variant_fact(fact, variant)?;
+                return Some((path, narrowed));
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+fn path_predicate_call<'a>(
+    callee: &'a Expr,
+    args: &'a [vela_syntax::Argument],
+) -> Option<(&'a [String], String)> {
+    match &callee.kind {
+        ExprKind::Path(callee_path) => {
+            if let [arg] = args {
+                let ExprKind::Path(arg_path) = &arg.value.kind else {
+                    return None;
+                };
+                return Some((arg_path.as_slice(), callee_path.join(".")));
+            }
+            if args.is_empty()
+                && let Some((method, receiver_path)) = callee_path.split_last()
+            {
+                return Some((receiver_path, method.clone()));
+            }
+            None
+        }
+        ExprKind::Field { base, name } => {
+            if !args.is_empty() {
+                return None;
+            }
+            let ExprKind::Path(path) = &base.kind else {
                 return None;
             };
-            let [arg] = args.as_slice() else {
-                return None;
-            };
-            let ExprKind::Path(arg_path) = &arg.value.kind else {
-                return None;
-            };
-            let fact = scope.path_fact(arg_path)?;
-            let variant = predicate_variant(&callee_path.join("."), truthy)?;
-            let narrowed = narrowed_variant_fact(fact, variant)?;
-            Some((arg_path.as_slice(), narrowed))
+            Some((path.as_slice(), name.clone()))
         }
         _ => None,
     }
@@ -91,10 +117,18 @@ fn option_result_predicate<'a>(
 
 fn predicate_variant(name: &str, truthy: bool) -> Option<DynamicVariant> {
     match (name, truthy) {
-        ("option.is_some", true) | ("option.is_none", false) => Some(DynamicVariant::OptionSome),
-        ("option.is_some", false) | ("option.is_none", true) => Some(DynamicVariant::OptionNone),
-        ("result.is_ok", true) | ("result.is_err", false) => Some(DynamicVariant::ResultOk),
-        ("result.is_ok", false) | ("result.is_err", true) => Some(DynamicVariant::ResultErr),
+        ("option.is_some" | "is_some", true) | ("option.is_none" | "is_none", false) => {
+            Some(DynamicVariant::OptionSome)
+        }
+        ("option.is_some" | "is_some", false) | ("option.is_none" | "is_none", true) => {
+            Some(DynamicVariant::OptionNone)
+        }
+        ("result.is_ok" | "is_ok", true) | ("result.is_err" | "is_err", false) => {
+            Some(DynamicVariant::ResultOk)
+        }
+        ("result.is_ok" | "is_ok", false) | ("result.is_err" | "is_err", true) => {
+            Some(DynamicVariant::ResultErr)
+        }
         _ => None,
     }
 }

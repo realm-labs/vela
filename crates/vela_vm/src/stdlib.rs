@@ -300,6 +300,46 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_option_result_helper_methods() {
+        let source = r#"
+fn main() {
+    let some = option.some(4);
+    let none = option.none();
+    let ok = result.ok(9);
+    let err = result.err("missing");
+    let converted_ok = some.ok_or("missing");
+    let converted_err = none.ok_or("missing");
+
+    if some.is_some()
+        && none.is_none()
+        && ok.is_ok()
+        && err.is_err()
+        && converted_ok.is_ok()
+        && converted_err.is_err()
+    {
+        return some.unwrap_or(0)
+            + none.unwrap_or(5)
+            + ok.unwrap_or(0)
+            + err.unwrap_or(7)
+            + converted_ok.to_option().unwrap_or(0)
+            + converted_err.to_option().unwrap_or(11);
+    }
+    return 0;
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option/result helper method source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option/result helper method source should run");
+        assert_eq!(result, crate::Value::Int(40));
+    }
+
+    #[test]
     fn runs_compiled_option_ok_or_with_try_propagation() {
         let source = r#"
 fn checked(raw) {
@@ -558,6 +598,44 @@ fn main() {
         let result = vm
             .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
             .expect("heap option filter source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_option_result_helper_methods() {
+        let source = r#"
+fn main() {
+    let some = option.some(["quest", "done"]);
+    let none = option.none();
+    let ok = result.ok(["done"]);
+    let err = result.err(["blocked"]);
+    let converted_ok = some.ok_or(["missing"]);
+    let converted_err = none.ok_or(["missing"]);
+
+    return some.is_some()
+        && none.is_none()
+        && ok.is_ok()
+        && err.is_err()
+        && converted_ok.is_ok()
+        && converted_err.is_err()
+        && some.unwrap_or([]).join(".") == "quest.done"
+        && none.unwrap_or(["fallback"]).join(".") == "fallback"
+        && ok.unwrap_or([]).join(".") == "done"
+        && err.unwrap_or(["fallback"]).join(".") == "fallback"
+        && converted_ok.to_option().unwrap_or([]).join(".") == "quest.done"
+        && converted_err.to_option().unwrap_or(["fallback"]).join(".") == "fallback";
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap option/result helper method source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap option/result helper method source should run");
         assert_eq!(result, crate::Value::Bool(true));
     }
 
