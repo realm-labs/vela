@@ -1522,13 +1522,16 @@ falling back to unsafe host mutation or namespace-native glue.
 Decision:
 Add a focused `map_methods` VM module. `map.map_values(|v| ...)` transforms map
 values while preserving keys, `map.filter(|k, v| ...)` keeps entries by
-predicate, and `map.any/all/count(|v| ...)` evaluate predicates over values.
-`script_methods` routes shared higher-order names to map or array
-implementations by inspecting inline or heap-backed receiver shape.
+predicate, `map.find(|k, v| ...)` returns an optional `MapEntry` record, and
+`map.any/all/count(|v| ...)` evaluate predicates over values. `script_methods`
+routes shared higher-order names to map or array implementations by inspecting
+inline or heap-backed receiver shape.
 
 Consequences:
 - Maps now support lambda-based transformations in both inline and managed-heap
   execution.
+- `map.find` preserves the matched key and value without introducing generic
+  tuple or option types.
 - Shared method names stay explicit and type-directed instead of relying on
   native namespaces or host state.
 - Map callback logic remains separate from the general method-dispatch module.
@@ -5824,3 +5827,27 @@ Consequences:
   receive Rust mutable references.
 - The implementation stays split across the existing typed adapter modules
   rather than centralizing unrelated callback shapes.
+
+## 2026-05-25: Map Find Returns Optional MapEntry Records
+
+Status: Accepted
+
+Context:
+Gameplay scripts often search reward tables, quest-state maps, and config maps
+for the first entry matching both key and value conditions. `map.any` and
+`map.count` answer predicate questions, while `map.entries().filter(...).first()`
+is noisy and allocates an intermediate array.
+
+Decision:
+Add `map.find(callback)` as a pure copied-map helper. It accepts the same
+value-only or `(key, value)` callback shapes as map predicates and returns
+dynamic `Option.Some(MapEntry { key, value })` for the first matching ordered
+entry, or `Option.None` when no entry matches.
+
+Consequences:
+- Scripts can inspect the matched key and value without manual accumulator
+  loops or intermediate entry arrays.
+- The return shape reuses the existing `MapEntry` record convention from
+  `map.entries()` and does not introduce script-language generics.
+- The helper works only on copied script maps and does not cross the host
+  mutation boundary.

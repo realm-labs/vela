@@ -355,6 +355,17 @@ mod tests {
             ),
         )));
         assert!(map.contains(&CompletionItem::new(
+            "find",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(
+                    vec![TypeFact::String, TypeFact::Int],
+                    TypeFact::Bool,
+                )],
+                TypeFact::option(TypeFact::record("MapEntry")),
+            ),
+        )));
+        assert!(map.contains(&CompletionItem::new(
             "any",
             CompletionKind::Method,
             TypeFact::function(

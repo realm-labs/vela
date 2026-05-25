@@ -18,6 +18,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "merge",
     "map_values",
     "filter",
+    "find",
     "any",
     "all",
     "count",
@@ -545,6 +546,14 @@ fn map_method_fact(
             )
             .with_lambda(vec![key, value], TypeFact::Bool),
         ),
+        "find" => Some(
+            StdlibMethodFact::new(
+                receiver,
+                "find",
+                TypeFact::option(TypeFact::record("MapEntry")),
+            )
+            .with_lambda(vec![key.clone(), value.clone()], TypeFact::Bool),
+        ),
         "any" => Some(
             StdlibMethodFact::new(receiver, "any", TypeFact::Bool)
                 .with_lambda(vec![key.clone(), value.clone()], TypeFact::Bool),
@@ -812,6 +821,16 @@ mod tests {
             vec![TypeFact::map(TypeFact::String, TypeFact::Int)]
         );
         assert_eq!(merged.returns, receiver);
+
+        let found = stdlib_method_fact(&receiver, "find", None).expect("find fact");
+        assert_eq!(
+            found.returns,
+            TypeFact::option(TypeFact::record("MapEntry"))
+        );
+        assert_eq!(
+            found.lambda.expect("find lambda").params,
+            vec![TypeFact::String, TypeFact::Int]
+        );
 
         let any = stdlib_method_fact(&receiver, "any", None).expect("any fact");
         assert_eq!(any.returns, TypeFact::Bool);

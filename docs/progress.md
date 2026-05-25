@@ -524,6 +524,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added map higher-order script methods `map_values` and `filter`, plus
   value-predicate `any`, `all`, and `count`, with receiver-category dispatch
   shared with array methods in inline and managed-heap execution.
+- Added `map.find` with lambda predicates, returning
+  `Option.Some(MapEntry { key, value })` or `Option.None` in inline and
+  managed-heap execution.
 - Added `array.sum` for direct numeric totals and callback-transformed numeric
   totals, preserving integer results until a float participates and returning
   `0` for empty arrays.
@@ -1339,6 +1342,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `(key, value)` callbacks while preserving one-argument value predicates.
   Analysis TypeFacts and completion metadata now advertise the key/value
   callback shape.
+- Added key-aware `map.find()` for first-match map searches. It returns
+  dynamic `Option.Some(MapEntry { key, value })` or `Option.None`, supports
+  one-argument value callbacks and `(key, value)` callbacks, and exposes
+  analysis TypeFacts plus completion metadata.
 - Added non-mutating `map.merge(other)` for deterministic copied-map
   composition. The right-hand map wins duplicate keys, inline and managed-heap
   execution preserve the receiver, and analysis TypeFacts plus completion

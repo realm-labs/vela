@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::array_methods::MethodRuntime;
 use crate::heap::HeapValue;
+use crate::option_result::option_value;
+use crate::script_object::ScriptFields;
 use crate::{Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 pub(crate) fn map_values(
@@ -48,6 +50,24 @@ pub(crate) fn filter(
         }
     }
     Ok(Value::Map(filtered))
+}
+
+pub(crate) fn find(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("find", args, 1)?;
+    let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
+    for (key, value) in entries {
+        let predicate_args =
+            map_predicate_args(&args[0], key.clone(), value.clone(), "method find")?;
+        let predicate = call_callback(&mut runtime, "method find", &args[0], predicate_args, &[])?;
+        if is_truthy(&predicate) {
+            return Ok(option_value(Some(map_entry(&key, value))));
+        }
+    }
+    Ok(option_value(None))
 }
 
 pub(crate) fn any(
@@ -211,6 +231,19 @@ fn map_predicate_args(
     }
 }
 
+fn map_entry(key: &str, value: Value) -> Value {
+    Value::Record {
+        type_name: "MapEntry".to_owned(),
+        fields: ScriptFields::from_pairs(
+            "MapEntry",
+            [
+                ("key".to_owned(), Value::String(key.to_owned())),
+                ("value".to_owned(), value),
+            ],
+        ),
+    }
+}
+
 fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
@@ -287,6 +320,55 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map higher-order methods should run");
         assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn runs_compiled_map_find_method() {
+        let source = r#"
+fn main() {
+    let rewards = {"gold": 4, "xp": 6, "quest": 8};
+    let found = rewards.find(|key, value| key == "xp" && value == 6);
+    let missing = rewards.find(|key, value| key == "missing" && value > 0);
+    let entry = option.unwrap_or(found, MapEntry { key: "", value: 0 });
+    if entry.key == "xp" && entry.value == 6 && option.is_none(missing) {
+        return 1;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map find source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("map find should run");
+        assert_eq!(result, Value::Int(1));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_map_find_method() {
+        let source = r#"
+fn main() {
+    let quests = {"boar": "done", "wolf": "active", "wyrm": "done"};
+    let found = quests.find(|key, value| key.starts_with("w") && value == "done");
+    let missing = quests.find(|value| value == "blocked");
+    let entry = option.unwrap_or(found, MapEntry { key: "", value: "" });
+    if entry.key == "wyrm" && entry.value == "done" && option.is_none(missing) {
+        return entry.key;
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap map find source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap map find should run");
+        assert_eq!(result, Value::String("wyrm".to_owned()));
     }
 
     #[test]
