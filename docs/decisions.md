@@ -6630,3 +6630,28 @@ Consequences:
   behavior.
 - Result values do not gain a same-named filter method; method dispatch only
   routes Option receivers to this implementation.
+
+## 2026-05-26: Native Macros Emit Static Descriptor Attrs
+
+Status: Accepted
+
+Context:
+Engine-native descriptors can already carry static attributes that flow into
+reflected function and method metadata, but macro-registered host APIs could
+not set those tags. That left the low-boilerplate M14 path less expressive than
+manual descriptor construction for policy, documentation, and tooling tags.
+
+Decision:
+Allow `#[script_function]`, `#[script_context_function]`,
+`#[script_host_function]`, and `#[script_method]` to accept repeated
+`attr = "key=value"` entries. The macros parse these into copied descriptor
+metadata and emit `.attr(key, value)` calls on generated
+`NativeFunctionDesc` and `NativeMethodDesc` values.
+
+Consequences:
+- Macro-registered Rust APIs can expose the same controlled reflection tags as
+  explicitly registered descriptors.
+- Attributes remain static descriptor metadata; scripts still cannot mutate
+  schema or monkey patch reflected structure at runtime.
+- The parser is shared between function and method macros, keeping metadata
+  syntax consistent across M14 embedding paths.

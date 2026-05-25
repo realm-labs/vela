@@ -17,7 +17,9 @@ use vela_vm::{HostExecution, VmResult};
     name = "game.grant_bonus",
     effect = "pure",
     reflect = true,
-    permission = "bonus.read"
+    permission = "bonus.read",
+    attr = "domain=gameplay",
+    attr = "stable=true"
 )]
 fn grant_bonus(amount: i64, multiplier: i64) -> i64 {
     amount * multiplier
@@ -155,6 +157,8 @@ fn script_function_generates_native_function_metadata() {
                     .reflect_callable(true)
                     .require_permission("bonus.read"),
             )
+            .attr("domain", "gameplay")
+            .attr("stable", "true")
             .docs("Grants a copied bonus amount."),
     );
 }

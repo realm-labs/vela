@@ -23,7 +23,8 @@ impl Player {
         id = 7,
         effect = "write_host",
         permission = "player.write",
-        reflect = true
+        reflect = true,
+        attr = "domain=player"
     )]
     pub fn grant_exp(
         _ctx: &mut vela_engine::NativeCallContext<'_, '_>,
@@ -146,6 +147,7 @@ fn script_methods_generates_native_method_metadata() {
                     .reflect_callable(true)
                     .require_permission("player.write"),
             )
+            .attr("domain", "player")
             .docs("Grants copied experience through the host patch path."),
     );
     assert_eq!(

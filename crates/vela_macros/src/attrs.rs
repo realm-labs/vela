@@ -85,6 +85,24 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
     Ok(parsed)
 }
 
+pub(crate) fn parse_key_value_attr(literal: LitStr, context: &str) -> Result<(String, String)> {
+    let raw = literal.value();
+    let Some((name, value)) = raw.split_once('=') else {
+        return Err(error(
+            literal.span(),
+            &format!("{context} attr metadata must use `key=value`"),
+        ));
+    };
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(error(
+            literal.span(),
+            &format!("{context} attr metadata key cannot be empty"),
+        ));
+    }
+    Ok((name.to_owned(), value.trim().to_owned()))
+}
+
 fn parse_doc_attr(attr: &Attribute) -> Result<Option<String>> {
     match &attr.meta {
         Meta::NameValue(name_value) => {

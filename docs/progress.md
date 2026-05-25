@@ -1604,6 +1604,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   only when the predicate is truthy, `Option.None` passes through, and
   analysis/completion facts expose the predicate payload shape without adding
   script generics.
+- Extended M14 native function and method macros with static descriptor attrs.
+  `#[script_function]`, `#[script_context_function]`, `#[script_host_function]`,
+  and `#[script_method]` now accept repeated `attr = "key=value"` metadata and
+  generate `NativeFunctionDesc`/`NativeMethodDesc` attrs that flow through the
+  existing Engine reflection pipeline.
 
 ## Next
 

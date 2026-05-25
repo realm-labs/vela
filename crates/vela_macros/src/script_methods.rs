@@ -7,7 +7,7 @@ use syn::{
     ReturnType, Type, parse2,
 };
 
-use crate::attrs::{error, spanned_error};
+use crate::attrs::{error, parse_key_value_attr, spanned_error};
 use crate::signature::{
     docs_from_attrs, param_name, reject_extern_signature, reject_generic_signature,
     reject_script_reference_param, reject_script_reference_return, reject_unsafe_signature,
@@ -21,6 +21,7 @@ struct MethodMeta {
     name: String,
     effect: MethodEffect,
     docs: Option<String>,
+    attrs: Vec<(String, String)>,
     permissions: Vec<String>,
     reflect_callable: bool,
     params: Vec<ParamMeta>,
@@ -65,6 +66,7 @@ struct ScriptMethodAttrs {
     name: Option<String>,
     effect: Option<MethodEffect>,
     docs: Option<String>,
+    attrs: Vec<(String, String)>,
     permissions: Vec<String>,
     reflect_callable: bool,
 }
@@ -206,6 +208,10 @@ fn parse_script_method_attrs(attrs: &[Attribute]) -> Result<ScriptMethodAttrs> {
                     parsed.effect = Some(parse_effect(&value.parse::<LitStr>()?.value())?);
                 }
                 "docs" => parsed.docs = Some(value.parse::<LitStr>()?.value()),
+                "attr" => parsed.attrs.push(parse_key_value_attr(
+                    value.parse::<LitStr>()?,
+                    "script_method",
+                )?),
                 "permission" => parsed.permissions.push(value.parse::<LitStr>()?.value()),
                 "reflect" | "reflect_callable" => {
                     parsed.reflect_callable = value.parse::<LitBool>()?.value;
@@ -284,6 +290,7 @@ fn method_meta(
         name: attrs.name.unwrap_or_else(|| method.sig.ident.to_string()),
         effect: attrs.effect.unwrap_or(MethodEffect::Pure),
         docs,
+        attrs: attrs.attrs,
         permissions: attrs.permissions,
         reflect_callable: attrs.reflect_callable,
         params,
@@ -390,6 +397,11 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
         .docs
         .as_ref()
         .map(|docs| quote! { desc = desc.docs(#docs); });
+    let attrs = method.attrs.iter().map(|(name, value)| {
+        quote! {
+            desc = desc.attr(#name, #value);
+        }
+    });
 
     quote! {{
         let mut desc = ::vela_engine::NativeMethodDesc::new(
@@ -403,6 +415,7 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
         #(
             desc = desc.param(#params);
         )*
+        #(#attrs)*
         #docs
         desc
     }}
