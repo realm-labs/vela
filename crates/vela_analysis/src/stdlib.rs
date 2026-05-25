@@ -198,6 +198,8 @@ pub fn stdlib_function_completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::Int, TypeFact::Int],
             TypeFact::Int,
         ),
+        StdlibFunctionFact::new("ctx.now", Vec::new(), TypeFact::Int),
+        StdlibFunctionFact::new("ctx.tick", Vec::new(), TypeFact::Int),
         StdlibFunctionFact::new(
             "set.from_array",
             vec![TypeFact::array(TypeFact::Any)],
@@ -309,6 +311,14 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "math.random",
                 args.to_vec(),
+                TypeFact::Int,
+            ))
+        }
+        "ctx.now" | "ctx.tick" => {
+            expect_len(args, 0)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                Vec::new(),
                 TypeFact::Int,
             ))
         }
@@ -564,6 +574,8 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "math.min" => Some("math.min"),
         "math.floor" => Some("math.floor"),
         "math.ceil" => Some("math.ceil"),
+        "ctx.now" => Some("ctx.now"),
+        "ctx.tick" => Some("ctx.tick"),
         _ => None,
     }
 }
@@ -799,6 +811,18 @@ mod tests {
                 .returns,
             TypeFact::set(TypeFact::String)
         );
+        assert_eq!(
+            stdlib_function_fact("ctx.now", &[])
+                .expect("ctx.now fact")
+                .returns,
+            TypeFact::Int
+        );
+        assert_eq!(
+            stdlib_function_fact("ctx.tick", &[])
+                .expect("ctx.tick fact")
+                .returns,
+            TypeFact::Int
+        );
     }
 
     #[test]
@@ -849,5 +873,15 @@ mod tests {
         assert!(facts.iter().any(|fact| {
             fact.name == "set.from_array" && fact.returns == TypeFact::set(TypeFact::Any)
         }));
+        assert!(
+            facts
+                .iter()
+                .any(|fact| fact.name == "ctx.now" && fact.returns == TypeFact::Int)
+        );
+        assert!(
+            facts
+                .iter()
+                .any(|fact| fact.name == "ctx.tick" && fact.returns == TypeFact::Int)
+        );
     }
 }

@@ -4,6 +4,7 @@
 
 mod args;
 mod builder;
+mod clock;
 mod context;
 mod engine;
 mod error;
@@ -19,6 +20,7 @@ mod typed;
 
 pub use args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 pub use builder::EngineBuilder;
+pub use clock::{CONTEXT_TIME_PERMISSION, CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID};
 pub use context::NativeCallContext;
 pub use engine::Engine;
 pub use error::{EngineError, EngineErrorKind, EngineResult};

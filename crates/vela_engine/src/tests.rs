@@ -12,9 +12,10 @@ use vela_vm::{ExecutionBudgetKind, VmError, VmResult};
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
-    CONTROLLED_RANDOM_PERMISSION, CallOptions, EffectSet, Engine, EngineErrorKind,
-    EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext,
-    NativeFunctionDesc, NativeFunctionId, NativeMethodDesc, ScriptArgsExt, TypeHint,
+    CONTEXT_TIME_PERMISSION, CONTROLLED_RANDOM_PERMISSION, CTX_NOW_FUNCTION_ID,
+    CTX_TICK_FUNCTION_ID, CallOptions, EffectSet, Engine, EngineErrorKind, EngineSourceErrorKind,
+    FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext, NativeFunctionDesc,
+    NativeFunctionId, NativeMethodDesc, ScriptArgsExt, TypeHint,
 };
 use crate::{FromScriptArg, IntoScriptArg};
 
@@ -1285,6 +1286,87 @@ fn engine_controlled_random_registers_metadata() {
     assert_eq!(
         function.access.required_permissions(),
         &[CONTROLLED_RANDOM_PERMISSION.to_owned()]
+    );
+}
+
+#[test]
+fn engine_context_clock_requires_permission() {
+    let engine = Engine::builder()
+        .with_context_clock(1_700_000_000, 42)
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return ctx.now();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert!(matches!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+            native: "ctx.now".to_owned(),
+            permission: CONTEXT_TIME_PERMISSION.to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_context_clock_returns_configured_values() {
+    let engine = Engine::builder()
+        .grant_permission(CONTEXT_TIME_PERMISSION)
+        .with_context_clock(1_700_000_000, 42)
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return ctx.now() + ctx.tick();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(1_700_000_042))
+    );
+}
+
+#[test]
+fn engine_context_clock_registers_metadata() {
+    let engine = Engine::builder()
+        .with_context_clock(1, 2)
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.registry();
+    let now = registry
+        .function_by_name("ctx.now")
+        .expect("ctx.now metadata");
+    let tick = registry
+        .function_by_name("ctx.tick")
+        .expect("ctx.tick metadata");
+
+    assert_eq!(now.id, CTX_NOW_FUNCTION_ID);
+    assert_eq!(now.module.as_deref(), Some("ctx"));
+    assert!(now.params.is_empty());
+    assert_eq!(now.return_type.as_deref(), Some("int"));
+    assert_eq!(
+        now.access.required_permissions(),
+        &[CONTEXT_TIME_PERMISSION.to_owned()]
+    );
+    assert_eq!(tick.id, CTX_TICK_FUNCTION_ID);
+    assert_eq!(tick.module.as_deref(), Some("ctx"));
+    assert!(tick.params.is_empty());
+    assert_eq!(tick.return_type.as_deref(), Some("int"));
+    assert_eq!(
+        tick.access.required_permissions(),
+        &[CONTEXT_TIME_PERMISSION.to_owned()]
     );
 }
 

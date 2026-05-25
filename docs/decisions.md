@@ -5167,3 +5167,30 @@ Consequences:
   results instead of comparing against `null`.
 - This is a runtime behavior change for scripts that expected raw `pop`
   values; the new behavior is consistent with the M13 Option-style contract.
+
+## 2026-05-25: Context Clock Helpers Are Permissioned Engine Natives
+
+Status: Accepted
+
+Context:
+M13 requires `ctx.now`, `ctx.tick`, logging, and event helpers, and its
+acceptance criteria require random and wall-clock APIs to use explicit
+permissions. The demo already proves host-field `ctx.now`/`ctx.tick` can flow
+through the HostRef/PatchTx bridge, but embedders also need a standard
+permissioned helper path that does not depend on exposing host fields.
+
+Decision:
+Add `EngineBuilder::with_context_clock(now, tick)`, which installs deterministic
+no-argument natives named `ctx.now` and `ctx.tick`. Both return copied integer
+values, require the `ctx.time` permission, expose normal native-function
+reflection metadata, and are represented in `vela_analysis` as integer-returning
+stdlib facts. The helper follows the existing `with_controlled_random` pattern
+instead of reading wall-clock time directly.
+
+Consequences:
+- Embedders can opt into deterministic, permission-gated context time helpers
+  without exposing Rust references or host state.
+- Gameplay scripts can call `ctx.now()` and `ctx.tick()` when the Engine grants
+  `ctx.time`; denied calls fail before native execution.
+- The existing host-field demo path remains valid for host-specific contexts,
+  while the Engine helper provides a standard permission-aware API.

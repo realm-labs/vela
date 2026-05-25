@@ -1179,6 +1179,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   returns dynamic `Option.Some(value)` or `Option.None` in inline and
   managed-heap execution, and analysis stdlib facts expose the Option return
   shape without adding script-visible generics.
+- Added Engine-installed permissioned context clock helpers `ctx.now()` and
+  `ctx.tick()`. `EngineBuilder::with_context_clock(now, tick)` registers
+  deterministic no-arg natives that require `ctx.time`, expose reflection
+  metadata, and have analysis TypeFacts as integer-returning context helpers.
 
 ## Next
 

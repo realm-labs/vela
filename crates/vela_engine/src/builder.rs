@@ -113,6 +113,13 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    pub fn with_context_clock(mut self, now: i64, tick: i64) -> Self {
+        self.native_functions
+            .extend(crate::clock::context_clock_functions(now, tick));
+        self
+    }
+
+    #[must_use]
     pub fn register_native_fn(
         mut self,
         desc: NativeFunctionDesc,
