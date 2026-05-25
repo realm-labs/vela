@@ -1,0 +1,52 @@
+use syn::{Attribute, Pat, PatType, Result, Type, spanned::Spanned};
+
+pub(crate) fn reject_script_reference_param(param: &PatType) -> Result<()> {
+    if matches!(param.ty.as_ref(), Type::Reference(_)) {
+        return Err(syn::Error::new(
+            param.span(),
+            "script-visible parameters cannot use Rust references; pass copied values, HostRef, or HostPath",
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn param_name(param: &PatType) -> String {
+    match param.pat.as_ref() {
+        Pat::Ident(ident) => ident.ident.to_string().trim_start_matches('_').to_owned(),
+        _ => "arg".to_owned(),
+    }
+}
+
+pub(crate) fn type_ident(ty: &Type) -> Option<String> {
+    match ty {
+        Type::Path(path) => path
+            .path
+            .segments
+            .last()
+            .map(|segment| segment.ident.to_string()),
+        Type::Reference(reference) => type_ident(&reference.elem),
+        _ => None,
+    }
+}
+
+pub(crate) fn docs_from_attrs(attrs: &[Attribute]) -> Option<String> {
+    let docs = attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("doc"))
+        .filter_map(doc_from_attr)
+        .collect::<Vec<_>>();
+    (!docs.is_empty()).then(|| docs.join("\n"))
+}
+
+fn doc_from_attr(attr: &Attribute) -> Option<String> {
+    let syn::Meta::NameValue(name_value) = &attr.meta else {
+        return None;
+    };
+    let syn::Expr::Lit(expr_lit) = &name_value.value else {
+        return None;
+    };
+    let syn::Lit::Str(doc) = &expr_lit.lit else {
+        return None;
+    };
+    Some(doc.value().trim().to_owned())
+}

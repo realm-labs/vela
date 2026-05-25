@@ -5,6 +5,7 @@ mod hash;
 mod script_function;
 mod script_host;
 mod script_methods;
+mod signature;
 
 use proc_macro::TokenStream;
 

@@ -3,11 +3,12 @@ use std::collections::BTreeSet;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    Attribute, FnArg, ImplItem, ImplItemFn, ItemImpl, LitBool, LitInt, LitStr, Pat, PatType,
-    Result, ReturnType, Type, TypePath, parse2,
+    Attribute, FnArg, ImplItem, ImplItemFn, ItemImpl, LitBool, LitInt, LitStr, PatType, Result,
+    ReturnType, Type, TypePath, parse2,
 };
 
 use crate::attrs::{error, spanned_error};
+use crate::signature::{docs_from_attrs, param_name, reject_script_reference_param, type_ident};
 
 #[derive(Clone)]
 struct MethodMeta {
@@ -245,6 +246,7 @@ fn method_meta(
             skipped_receiver = true;
             continue;
         }
+        reject_script_reference_param(param)?;
         params.push(ParamMeta {
             name: param_name(param),
             ty: param.ty.as_ref().clone(),
@@ -291,13 +293,6 @@ fn has_callable_native_boundary(method: &ImplItemFn) -> bool {
         return false;
     };
     is_host_path(&receiver.ty) && is_host_execution_param(host)
-}
-
-fn param_name(param: &PatType) -> String {
-    match param.pat.as_ref() {
-        Pat::Ident(ident) => ident.ident.to_string().trim_start_matches('_').to_owned(),
-        _ => "arg".to_owned(),
-    }
 }
 
 fn return_hint(output: &ReturnType) -> HintKind {
@@ -349,40 +344,6 @@ fn hint_for_type(ty: &Type) -> HintKind {
 
 fn is_unit_tuple(ty: &Type) -> bool {
     matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty())
-}
-
-fn type_ident(ty: &Type) -> Option<String> {
-    match ty {
-        Type::Path(path) => path
-            .path
-            .segments
-            .last()
-            .map(|segment| segment.ident.to_string()),
-        Type::Reference(reference) => type_ident(&reference.elem),
-        _ => None,
-    }
-}
-
-fn docs_from_attrs(attrs: &[Attribute]) -> Option<String> {
-    let docs = attrs
-        .iter()
-        .filter(|attr| attr.path().is_ident("doc"))
-        .filter_map(doc_from_attr)
-        .collect::<Vec<_>>();
-    (!docs.is_empty()).then(|| docs.join("\n"))
-}
-
-fn doc_from_attr(attr: &Attribute) -> Option<String> {
-    let syn::Meta::NameValue(name_value) = &attr.meta else {
-        return None;
-    };
-    let syn::Expr::Lit(expr_lit) = &name_value.value else {
-        return None;
-    };
-    let syn::Lit::Str(doc) = &expr_lit.lit else {
-        return None;
-    };
-    Some(doc.value().trim().to_owned())
 }
 
 fn method_tokens(method: &MethodMeta) -> TokenStream {
@@ -537,5 +498,22 @@ mod tests {
         .expect_err("self receiver should fail macro expansion");
 
         assert!(error.to_string().contains("HostRef receiver parameters"));
+    }
+
+    #[test]
+    fn rejects_script_visible_rust_reference_parameters() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1)]
+                pub fn grant(player: HostRef, amount: &mut i64) {}
+            }
+        })
+        .expect_err("script-visible Rust references should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script-visible parameters cannot use Rust references")
+        );
     }
 }

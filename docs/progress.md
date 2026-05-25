@@ -1224,6 +1224,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   metadata. Reload updates now reject missing ABI entries with explicit
   diagnostics, source spans, and repair hints instead of silently accepting
   removed reflective callable surfaces.
+- Strengthened M14 macro signature safety. Native function and method macros
+  now reject script-visible Rust reference parameters at expansion time while
+  preserving the allowed NativeCallContext, HostExecution, and HostPath
+  boundary parameters; shared signature helpers keep macro parsing structured.
 
 ## Next
 

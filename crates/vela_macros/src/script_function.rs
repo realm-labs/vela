@@ -1,11 +1,12 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    Attribute, FnArg, ItemFn, LitBool, LitInt, LitStr, Pat, PatType, Result, ReturnType, Type,
-    TypePath, parse::Parser, parse2,
+    FnArg, ItemFn, LitBool, LitInt, LitStr, PatType, Result, ReturnType, Type, TypePath,
+    parse::Parser, parse2,
 };
 
 use crate::attrs::{error, spanned_error};
+use crate::signature::{docs_from_attrs, param_name, reject_script_reference_param, type_ident};
 
 #[derive(Clone)]
 struct FunctionMeta {
@@ -267,6 +268,7 @@ fn function_meta(
                 "use #[script_host_function] for HostExecution callbacks",
             ));
         }
+        reject_script_reference_param(param)?;
         params.push(ParamMeta {
             name: param_name(param),
             ty: param.ty.as_ref().clone(),
@@ -292,13 +294,6 @@ fn is_context_param(param: &PatType) -> bool {
 
 fn is_host_execution_param(param: &PatType) -> bool {
     type_ident(&param.ty).is_some_and(|ident| ident == "HostExecution")
-}
-
-fn param_name(param: &PatType) -> String {
-    match param.pat.as_ref() {
-        Pat::Ident(ident) => ident.ident.to_string().trim_start_matches('_').to_owned(),
-        _ => "arg".to_owned(),
-    }
 }
 
 fn return_hint(output: &ReturnType) -> HintKind {
@@ -349,40 +344,6 @@ fn hint_for_type(ty: &Type) -> HintKind {
 
 fn is_unit_tuple(ty: &Type) -> bool {
     matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty())
-}
-
-fn type_ident(ty: &Type) -> Option<String> {
-    match ty {
-        Type::Path(path) => path
-            .path
-            .segments
-            .last()
-            .map(|segment| segment.ident.to_string()),
-        Type::Reference(reference) => type_ident(&reference.elem),
-        _ => None,
-    }
-}
-
-fn docs_from_attrs(attrs: &[Attribute]) -> Option<String> {
-    let docs = attrs
-        .iter()
-        .filter(|attr| attr.path().is_ident("doc"))
-        .filter_map(doc_from_attr)
-        .collect::<Vec<_>>();
-    (!docs.is_empty()).then(|| docs.join("\n"))
-}
-
-fn doc_from_attr(attr: &Attribute) -> Option<String> {
-    let syn::Meta::NameValue(name_value) = &attr.meta else {
-        return None;
-    };
-    let syn::Expr::Lit(expr_lit) = &name_value.value else {
-        return None;
-    };
-    let syn::Lit::Str(doc) = &expr_lit.lit else {
-        return None;
-    };
-    Some(doc.value().trim().to_owned())
 }
 
 fn desc_tokens(function: &FunctionMeta) -> TokenStream {
@@ -574,5 +535,23 @@ mod tests {
         .expect_err("missing host execution parameter should fail macro expansion");
 
         assert!(error.to_string().contains("HostExecution"));
+    }
+
+    #[test]
+    fn rejects_script_visible_rust_reference_parameters() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn mutate_player(player: &mut Player) {}
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("script-visible Rust references should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script-visible parameters cannot use Rust references")
+        );
     }
 }
