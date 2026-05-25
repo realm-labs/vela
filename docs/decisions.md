@@ -5647,6 +5647,29 @@ Consequences:
 - The helper does not add float-specific generics or implicit numeric
   coercions.
 
+## 2026-05-25: String Parse Bool Uses Exact Literals
+
+Status: Accepted
+
+Context:
+Gameplay config and event metadata often encode feature flags as text. Scripts
+need to turn those fields into booleans without host glue, but implicit
+normalization rules such as case folding or whitespace trimming can hide data
+quality problems and make diagnostics less predictable.
+
+Decision:
+Add `string.parse_bool()` as a no-argument script-value method. It accepts only
+the exact literals `true` and `false`, returns `Option.Some(bool)` on success,
+and returns `Option.None` for every other string. Scripts can compose
+`trim()` or `to_lower()` before parsing when they intentionally want looser
+input handling.
+
+Consequences:
+- Gameplay scripts can parse text flags with existing dynamic Option helpers.
+- Invalid flags remain ordinary control flow instead of VM errors.
+- The helper does not add implicit string coercions or case-insensitive
+  parsing rules.
+
 ## 2026-05-25: Set Relationship Predicates Use Existing Scalar Keys
 
 Status: Accepted

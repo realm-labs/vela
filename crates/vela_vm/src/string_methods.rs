@@ -233,6 +233,20 @@ pub(crate) fn parse_float(
     ))
 }
 
+pub(crate) fn parse_bool(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("parse_bool", args)?;
+    let value = string_value(receiver, heap, "method parse_bool")?;
+    Ok(option_value(match value {
+        "true" => Some(Value::Bool(true)),
+        "false" => Some(Value::Bool(false)),
+        _ => None,
+    }))
+}
+
 pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match value {
         Value::String(_) => true,
@@ -688,5 +702,53 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string parse_float should run");
         assert_eq!(result, Value::Int(3));
+    }
+
+    #[test]
+    fn string_parse_bool_returns_options() {
+        let source = r#"
+fn main() {
+    let enabled = "true".parse_bool();
+    let disabled = "false".parse_bool();
+    let uppercase = "TRUE".parse_bool();
+    let yes = "yes".parse_bool();
+    if option.unwrap_or(enabled, false)
+        && !option.unwrap_or(disabled, true)
+        && option.is_none(uppercase)
+        && option.is_none(yes)
+    {
+        return option.unwrap_or("false".parse_bool(), true);
+    }
+    return true;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string parse_bool source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("string parse_bool should run");
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_parse_bool() {
+        let source = r#"
+fn main() {
+    let raw = " true ";
+    let parsed = raw.trim().parse_bool();
+    return option.unwrap_or(parsed, false);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string parse_bool source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string parse_bool should run");
+        assert_eq!(result, Value::Bool(true));
     }
 }

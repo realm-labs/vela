@@ -505,6 +505,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   It returns dynamic `Option.Some(float)` for finite `f64` input and
   `Option.None` for invalid or non-finite strings in inline and managed-heap
   execution.
+- Added `string.parse_bool()` for deterministic text-to-bool parsing. It
+  accepts exact `true` and `false` literals, returns dynamic
+  `Option.Some(bool)` or `Option.None`, and works in inline and managed-heap
+  execution.
 - Added VM standard native registration for `math.max`, `math.min`,
   `math.clamp`, `math.floor`, `math.ceil`, and `math.abs`, with source-level
   inline and managed-heap execution coverage.
@@ -1357,6 +1361,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   TypeFacts plus completion metadata.
 - Added `string.parse_float()` for gameplay/config numeric text parsing. It
   accepts finite `f64` input, returns dynamic `Option.Some(float)` or
+  `Option.None`, works in managed-heap execution, and exposes analysis
+  TypeFacts plus completion metadata.
+- Added `string.parse_bool()` for gameplay/config flag parsing. It accepts
+  exact `true` and `false` literals, returns dynamic `Option.Some(bool)` or
   `Option.None`, works in managed-heap execution, and exposes analysis
   TypeFacts plus completion metadata.
 - Extended `map.any`, `map.all`, and `map.count` to support key-aware

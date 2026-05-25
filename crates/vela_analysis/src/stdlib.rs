@@ -56,6 +56,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "split",
     "parse_int",
     "parse_float",
+    "parse_bool",
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -692,6 +693,11 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             "parse_float",
             TypeFact::option(TypeFact::Float),
         )),
+        "parse_bool" => Some(StdlibMethodFact::new(
+            receiver,
+            "parse_bool",
+            TypeFact::option(TypeFact::Bool),
+        )),
         _ => None,
     }
 }
@@ -994,6 +1000,11 @@ mod tests {
             stdlib_method_fact(&TypeFact::String, "parse_float", None).expect("parse_float fact");
         assert_eq!(parse_float.params, Vec::<TypeFact>::new());
         assert_eq!(parse_float.returns, TypeFact::option(TypeFact::Float));
+
+        let parse_bool =
+            stdlib_method_fact(&TypeFact::String, "parse_bool", None).expect("parse_bool fact");
+        assert_eq!(parse_bool.params, Vec::<TypeFact>::new());
+        assert_eq!(parse_bool.returns, TypeFact::option(TypeFact::Bool));
     }
 
     #[test]
