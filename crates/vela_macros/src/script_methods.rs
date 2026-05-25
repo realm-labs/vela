@@ -99,6 +99,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
     reject_generic_signature(&item.generics, "#[script_methods]")?;
 
     let mut seen_ids = BTreeSet::new();
+    let mut seen_names = BTreeSet::new();
     let mut methods = Vec::new();
     for impl_item in &mut item.items {
         let ImplItem::Fn(method) = impl_item else {
@@ -116,6 +117,16 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
         })?;
         if !seen_ids.insert(id) {
             return Err(error(method.sig.ident.span(), "duplicate script method id"));
+        }
+        let name = attrs
+            .name
+            .clone()
+            .unwrap_or_else(|| method.sig.ident.to_string());
+        if !seen_names.insert(name) {
+            return Err(error(
+                method.sig.ident.span(),
+                "duplicate script method name",
+            ));
         }
         let docs = attrs
             .docs
@@ -521,6 +532,22 @@ mod tests {
         .expect_err("duplicate method IDs should fail macro expansion");
 
         assert!(error.to_string().contains("duplicate script method id"));
+    }
+
+    #[test]
+    fn rejects_duplicate_method_names() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1, name = "grant")]
+                pub fn add_exp(player: HostRef, amount: i64) {}
+
+                #[script_method(id = 2, name = "grant")]
+                pub fn grant_exp(player: HostRef, amount: i64) {}
+            }
+        })
+        .expect_err("duplicate method names should fail macro expansion");
+
+        assert!(error.to_string().contains("duplicate script method name"));
     }
 
     #[test]

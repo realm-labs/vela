@@ -1457,6 +1457,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `ScriptHost` and `ScriptReflect` now reject duplicate script-visible field
   names during macro expansion, complementing duplicate field ID checks and
   preventing invalid generated schemas from reaching Engine registration.
+- Tightened M14 host method macro validation for exposed method names.
+  `#[script_methods]` now rejects duplicate script-visible method names during
+  expansion, complementing duplicate method ID checks before generated method
+  metadata reaches Engine registration.
 
 ## Next
 
