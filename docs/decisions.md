@@ -6843,3 +6843,26 @@ Consequences:
 - The method remains deterministic and returns copied script set values.
 - Analysis and completion facts expose the helper without adding script
   generics or changing set storage.
+
+## 2026-05-26: Set Filter Preserves Receiver Order
+
+Status: Accepted
+
+Context:
+Gameplay scripts commonly filter tag and requirement sets by predicate. Arrays
+and maps already support predicate filtering, while set workflows had to
+materialize arrays and rebuild sets manually.
+
+Decision:
+Add `set.filter(predicate)` as a non-mutating script-value method. The
+predicate receives each copied set element in deterministic receiver order, and
+truthy results keep the element in a copied set with the existing scalar set
+element restrictions.
+
+Consequences:
+- Scripts can express tag eligibility filters directly on set values.
+- Filtering preserves deterministic set order and does not mutate the
+  receiver.
+- Runtime support stays in `set_methods`; dispatch, analysis facts, and
+  completions are wired through their existing focused modules without adding
+  script-language generics.

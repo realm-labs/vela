@@ -30,6 +30,7 @@ const SET_METHOD_NAMES: &[&str] = &[
     "add",
     "remove",
     "values",
+    "filter",
     "union",
     "intersection",
     "difference",
@@ -96,7 +97,7 @@ pub(super) fn method_fact(
         TypeFact::Map { key, value } => {
             map_method_fact((**key).clone(), (**value).clone(), method, lambda_return)
         }
-        TypeFact::Set { element } => set_method_fact((**element).clone(), method),
+        TypeFact::Set { element } => set_method_fact((**element).clone(), method, lambda_return),
         TypeFact::String => string_method_fact(method),
         TypeFact::Option { some } => {
             option_method_fact((**some).clone(), OptionShape::Maybe, method, lambda_return)
@@ -349,7 +350,11 @@ fn map_method_fact(
     }
 }
 
-fn set_method_fact(element: TypeFact, method: &str) -> Option<StdlibMethodFact> {
+fn set_method_fact(
+    element: TypeFact,
+    method: &str,
+    _lambda_return: Option<&TypeFact>,
+) -> Option<StdlibMethodFact> {
     let receiver = TypeFact::set(element.clone());
     match method {
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::Int)),
@@ -371,6 +376,10 @@ fn set_method_fact(element: TypeFact, method: &str) -> Option<StdlibMethodFact> 
             "values",
             TypeFact::array(element.clone()),
         )),
+        "filter" => Some(
+            StdlibMethodFact::new(receiver, "filter", TypeFact::set(element.clone()))
+                .with_lambda(vec![element], TypeFact::Bool),
+        ),
         "union" | "intersection" | "difference" | "symmetric_difference" => Some(
             StdlibMethodFact::new(
                 receiver,

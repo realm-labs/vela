@@ -197,6 +197,19 @@ pub(crate) fn call_method(
                         caller_roots: &caller_roots,
                     },
                 )
+            } else if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::filter(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
             } else if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::filter(
                     receiver,

@@ -1,4 +1,5 @@
 use crate::heap::{HeapSlot, HeapValue};
+use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
     value_to_heap_slot,
@@ -118,6 +119,34 @@ pub(crate) fn values(
 ) -> VmResult<Value> {
     expect_arity("values", args, 0)?;
     set_values(receiver, heap, "method values").map(Value::Array)
+}
+
+pub(crate) fn filter(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("filter", args, 1)?;
+    let values = set_values(receiver, runtime.heap.as_deref(), "method filter")?;
+    let mut filtered = Vec::new();
+    for value in values {
+        let predicate = call_callback(
+            &mut runtime,
+            "method filter",
+            &args[0],
+            std::slice::from_ref(&value),
+            &filtered,
+        )?;
+        if is_truthy(&predicate) {
+            push_unique(
+                &mut filtered,
+                value,
+                runtime.heap.as_deref(),
+                "method filter",
+            )?;
+        }
+    }
+    Ok(Value::Set(filtered))
 }
 
 pub(crate) fn union(
@@ -376,6 +405,10 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
+fn is_truthy(value: &Value) -> bool {
+    !matches!(value, Value::Bool(false) | Value::Null)
+}
+
 #[cfg(test)]
 mod tests {
     use vela_bytecode::compiler::compile_function_source;
@@ -484,6 +517,73 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string set predicates should run");
         assert_eq!(result, Value::String("bonus,daily,quest,raid".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_set_filter_method() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["daily", "quest", "raid", "daily"]);
+    let filtered = tags.filter(|tag| tag.starts_with("q") || tag == "raid");
+    let unchanged = tags.values().sort_by(|tag| tag).join(",");
+    if unchanged == "daily,quest,raid" && filtered.len() == 2 {
+        return filtered.values().sort_by(|tag| tag).join(",");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set filter source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("set filter should run");
+        assert_eq!(result, Value::String("quest,raid".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_set_filter_method() {
+        let source = r#"
+fn main() {
+    let ids = set.from_array([1, 2, 3, 4, 5]);
+    let filtered = ids.filter(|id| id > 2 && id != 4);
+    return filtered.values().sum() + ids.values().sum();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set filter source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set filter should run");
+        assert_eq!(result, Value::Int(23));
+    }
+
+    #[test]
+    fn set_filter_rejects_non_callback_args() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["quest"]);
+    return tags.filter("quest");
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set filter type error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("set filter should reject non-callback args");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method filter"
+            }
+        );
     }
 
     #[test]

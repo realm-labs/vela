@@ -429,6 +429,14 @@ mod tests {
 
         let set = member_completions(&facts, &TypeFact::set(TypeFact::String));
         assert!(set.contains(&CompletionItem::new(
+            "filter",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)],
+                TypeFact::set(TypeFact::String),
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
             "union",
             CompletionKind::Method,
             TypeFact::function(

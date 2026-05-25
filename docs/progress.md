@@ -1652,6 +1652,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   gameplay tag-delta helper. It preserves receiver-only values before
   argument-only values, works in inline and managed-heap execution, rejects
   non-set operands, and is exposed through analysis facts and completions.
+- Added M13 `set.filter(predicate)` for deterministic, non-mutating tag and
+  requirement filtering. It invokes callback predicates in receiver order,
+  preserves scalar set semantics in inline and managed-heap execution, rejects
+  non-callback arguments, and exposes lambda parameter facts plus completions.
 
 ## Next
 

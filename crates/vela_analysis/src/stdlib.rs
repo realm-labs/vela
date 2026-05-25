@@ -234,6 +234,12 @@ mod tests {
                 .returns,
             TypeFact::array(TypeFact::String)
         );
+        let set_filter = stdlib_method_fact(&set, "filter", None).expect("set filter fact");
+        assert_eq!(
+            set_filter.params,
+            vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)]
+        );
+        assert_eq!(set_filter.returns, TypeFact::set(TypeFact::String));
         let union = stdlib_method_fact(&set, "union", None).expect("union fact");
         assert_eq!(union.params, vec![TypeFact::set(TypeFact::String)]);
         assert_eq!(union.returns, TypeFact::set(TypeFact::String));
@@ -445,6 +451,18 @@ mod tests {
             )
             .is_none()
         );
+    }
+
+    #[test]
+    fn set_lambda_methods_expose_element_parameter_facts() {
+        let receiver = TypeFact::set(TypeFact::String);
+
+        let filter = stdlib_method_fact(&receiver, "filter", None).expect("filter fact");
+        assert_eq!(
+            filter.lambda.expect("filter lambda").params,
+            vec![TypeFact::String]
+        );
+        assert_eq!(filter.returns, receiver);
     }
 
     #[test]
