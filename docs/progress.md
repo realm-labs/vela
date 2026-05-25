@@ -1284,6 +1284,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `array.join(separator)` for deterministic string assembly over script
   string arrays in inline and managed-heap execution, with analysis TypeFacts
   and completion metadata.
+- Added `string.find(needle)` as a UTF-8 character-indexed string search
+  helper that returns dynamic `Option.Some(index)`/`Option.None` in inline and
+  managed-heap execution, with analysis TypeFacts and completion metadata.
 
 ## Next
 

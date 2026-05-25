@@ -92,18 +92,24 @@ pub(crate) fn call_method(
                 )
             }
         }
-        "find" => array_methods::find(
-            receiver,
-            args,
-            MethodRuntime {
-                vm,
-                program,
-                host: host.as_deref_mut(),
-                heap: heap.as_deref_mut(),
-                budget: budget.as_deref_mut(),
-                caller_roots: &caller_roots,
-            },
-        ),
+        "find" => {
+            if string_methods::is_string(receiver, heap.as_deref()) {
+                string_methods::find(receiver, args, heap.as_deref())
+            } else {
+                array_methods::find(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            }
+        }
         "any" => {
             if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::any(

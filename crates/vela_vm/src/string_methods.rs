@@ -1,4 +1,5 @@
 use crate::heap::HeapValue;
+use crate::option_result::option_value;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn contains(
@@ -44,6 +45,23 @@ pub(crate) fn ends_with(
         heap,
         |value, suffix| value.ends_with(suffix),
     )
+}
+
+pub(crate) fn find(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("find", args, 1)?;
+    let value = string_value(receiver, heap, "method find")?;
+    let needle = string_value(&args[0], heap, "method find")?;
+    let Some(byte_index) = value.find(needle) else {
+        return Ok(option_value(None));
+    };
+    let char_index = value[..byte_index].chars().count();
+    Ok(option_value(Some(Value::Int(
+        i64::try_from(char_index).unwrap_or(i64::MAX),
+    ))))
 }
 
 pub(crate) fn to_upper(
@@ -131,6 +149,17 @@ pub(crate) fn split(
             .map(|part| Value::String(part.to_owned()))
             .collect(),
     ))
+}
+
+pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
+    match value {
+        Value::String(_) => true,
+        Value::HeapRef(reference) => matches!(
+            heap.and_then(|heap| heap.heap.get(*reference)),
+            Some(HeapValue::String(_))
+        ),
+        _ => false,
+    }
 }
 
 pub(crate) fn string_value<'a>(
@@ -316,6 +345,71 @@ fn main() {
         assert_eq!(
             error.kind,
             crate::VmErrorKind::IndexOutOfBounds { index: 10, len: 5 }
+        );
+    }
+
+    #[test]
+    fn string_find_returns_character_indexes_as_options() {
+        let source = r#"
+fn main() {
+    let event = "xp奖励.done";
+    let reward = event.find("奖励");
+    let missing = event.find("missing");
+    if option.unwrap_or(reward, -1) == 2
+        && option.unwrap_or(missing, 99) == 99
+    {
+        return option.unwrap_or(event.find(".done"), -1);
+    }
+    return -1;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string find source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("string find should run");
+        assert_eq!(result, Value::Int(4));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_find() {
+        let source = r#"
+fn main() {
+    let name = "monster.wolf.alpha";
+    return option.unwrap_or(name.find("wolf"), -1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string find source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string find should run");
+        assert_eq!(result, Value::Int(8));
+    }
+
+    #[test]
+    fn string_find_rejects_non_string_needles() {
+        let source = r#"
+fn main() {
+    return "quest".find(1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string find type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("string find should reject non-string needles");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method find"
+            }
         );
     }
 }

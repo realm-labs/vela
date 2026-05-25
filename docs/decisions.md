@@ -5439,3 +5439,28 @@ Consequences:
   typing; dynamic runtime validation keeps the boundary explicit.
 - The helper remains in the focused VM array-method module and shares the
   existing stdlib analysis/completion metadata path.
+
+## 2026-05-25: String Find Returns Dynamic Option Indexes
+
+Status: Accepted
+
+Context:
+M13 string helpers should support common gameplay and diagnostic text
+workflows while staying UTF-8 safe and consistent with Option-style collection
+APIs. `string.contains` reports only presence, and `string.slice` already uses
+character indexes instead of byte offsets.
+
+Decision:
+Add `string.find(needle)` as a script-value method. It requires a string
+needle, returns `Option.Some(index)` with a zero-based character index for the
+first match, and returns `Option.None` when no match exists. Managed-heap
+execution materializes heap-backed strings before searching. Array
+`find(|value| ...)` keeps its existing closure-based semantics through
+receiver-category dispatch.
+
+Consequences:
+- Scripts can locate substrings and compose the result with `?`,
+  `option.unwrap_or`, and `string.slice`.
+- Runtime indexes stay aligned with `string.slice`, avoiding byte-offset leaks.
+- The overloaded `find` name remains deterministic: string receivers search
+  strings, while array receivers execute callback predicates.

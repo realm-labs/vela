@@ -26,6 +26,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "len",
     "is_empty",
     "contains",
+    "find",
     "starts_with",
     "ends_with",
     "to_upper",
@@ -559,6 +560,10 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             StdlibMethodFact::new(receiver, "contains", TypeFact::Bool)
                 .with_params(vec![TypeFact::String]),
         ),
+        "find" => Some(
+            StdlibMethodFact::new(receiver, "find", TypeFact::option(TypeFact::Int))
+                .with_params(vec![TypeFact::String]),
+        ),
         "starts_with" => Some(
             StdlibMethodFact::new(receiver, "starts_with", TypeFact::Bool)
                 .with_params(vec![TypeFact::String]),
@@ -790,6 +795,10 @@ mod tests {
 
     #[test]
     fn string_methods_expose_replacement_and_split_facts() {
+        let find = stdlib_method_fact(&TypeFact::String, "find", None).expect("find fact");
+        assert_eq!(find.params, vec![TypeFact::String]);
+        assert_eq!(find.returns, TypeFact::option(TypeFact::Int));
+
         let replace = stdlib_method_fact(&TypeFact::String, "replace", None).expect("replace fact");
         assert_eq!(replace.params, vec![TypeFact::String, TypeFact::String]);
         assert_eq!(replace.returns, TypeFact::String);
