@@ -13,6 +13,7 @@ mod reload;
 mod runtime;
 mod schema;
 mod source;
+mod typed;
 
 pub use args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 pub use builder::EngineBuilder;
@@ -29,6 +30,7 @@ pub use random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
 pub use runtime::{CallOptions, Runtime};
 pub use schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use source::{EngineSourceError, EngineSourceErrorKind};
+pub use typed::{IntoNativeReturn, TypedNativeFunction};
 pub use vela_common::{HostObjectId, HostTypeId};
 pub use vela_host::HostRef;
 pub use vela_hot_reload::HotReloadPolicy;

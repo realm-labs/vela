@@ -4252,3 +4252,29 @@ Consequences:
   Rust host object or `&mut` reference is exposed to scripts.
 - Duplicate method IDs/names and unknown owner types continue to fail through
   existing Engine build validation.
+
+## 2026-05-25: Typed Native Registration Reuses Script Arg Traits
+
+Status: Accepted
+
+Context:
+M14 requires Rust signature conversion rules and a stable Engine API for native
+functions. `FromScriptArg` and `IntoScriptArg` already express copied
+conversion boundaries, but callers still had to hand-write `&[Value]`
+destructuring for ordinary pure native functions.
+
+Decision:
+Add a focused Engine `typed` module with `TypedNativeFunction` and
+`IntoNativeReturn`. `EngineBuilder::register_typed_native_fn` adapts Rust
+closures with 0-3 copied arguments into ordinary native function callbacks,
+reusing `FromScriptArg` for argument conversion and `IntoScriptArg` for return
+values. The adapter enforces exact arity and reports VM `ArityMismatch` or
+`TypeMismatch` errors.
+
+Consequences:
+- Simple native functions can be registered through typed Rust closures without
+  mixing conversion boilerplate into gameplay callback code.
+- The boundary remains copied values only; host object access still requires
+  `HostRef`, `HostPath`, `PatchTx`, or context-native APIs.
+- Host-aware typed wrappers and generated method wrappers remain follow-up M14
+  work.

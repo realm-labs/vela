@@ -1007,6 +1007,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   generated method metadata can now populate the Engine registry/compiler
   options without a dummy native callback, and a macro integration test proves
   `player.grant_exp(5)` compiles to a `PatchTx` host-method patch.
+- Added a focused Engine typed-native adapter module plus
+  `EngineBuilder::register_typed_native_fn`. Pure native functions can now be
+  registered from Rust closures with typed copied arguments and typed returns
+  for arities 0-3, reusing `FromScriptArg`/`IntoScriptArg` and reporting
+  structured VM arity/type errors.
 
 ## Next
 

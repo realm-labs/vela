@@ -53,6 +53,72 @@ fn main() {
 }
 
 #[test]
+fn engine_registers_typed_native_functions() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(i64, i64), _>(
+            NativeFunctionDesc::new("game.add", NativeFunctionId::new(101))
+                .param("lhs", TypeHint::Int)
+                .param("rhs", TypeHint::Int)
+                .returns(TypeHint::Int),
+            |lhs: i64, rhs: i64| lhs + rhs,
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game.label", NativeFunctionId::new(102))
+                .returns(TypeHint::String),
+            || "typed",
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.add(2, 3) + game.label().len();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(10)),
+    );
+}
+
+#[test]
+fn typed_native_functions_report_arity_and_type_errors() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(i64, i64), _>(
+            NativeFunctionDesc::new("game.add", NativeFunctionId::new(103)),
+            |lhs: i64, rhs: i64| lhs + rhs,
+        )
+        .build()
+        .expect("engine should build");
+    let function = engine
+        .native_function_by_name("game.add")
+        .expect("typed native should be registered");
+
+    assert!(matches!(
+        (function.function)(&[Value::Int(1)]),
+        Err(VmError {
+            kind: VmErrorKind::ArityMismatch {
+                expected: 2,
+                actual: 1,
+                ..
+            },
+            ..
+        })
+    ));
+    assert!(matches!(
+        (function.function)(&[Value::String("x".to_owned()), Value::Int(1)]),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch { operation: "int" },
+            ..
+        })
+    ));
+}
+
+#[test]
 fn engine_registers_native_function_reflection_metadata() {
     let engine = Engine::builder()
         .register_native_fn(
