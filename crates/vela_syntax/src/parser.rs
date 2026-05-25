@@ -7,6 +7,7 @@ use crate::ast::{
     SourceFile, Stmt, StmtKind, StructField, StructItem, TraitItem, TraitMethod, TypeHint, UnaryOp,
     UseItem, Visibility,
 };
+use crate::attribute::normalize_attribute_value;
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, Token, TokenKind};
 
@@ -108,18 +109,31 @@ impl Parser {
 
     fn parse_attribute_value(&mut self) -> Option<String> {
         self.eat_symbol(Symbol::LParen)?;
-        let value = match &self.current().kind {
-            TokenKind::String(value) | TokenKind::Ident(value) => {
-                let value = value.clone();
+        let mut tokens = Vec::new();
+        let mut depth = 1_usize;
+        while !self.at_eof() {
+            if self.check_symbol(Symbol::RParen) && depth == 1 {
                 self.advance();
-                Some(value)
+                break;
             }
-            _ => None,
-        };
-        if self.check_symbol(Symbol::RParen) {
-            self.advance();
+
+            let token = self.advance();
+            match token.kind {
+                TokenKind::Symbol(Symbol::LParen | Symbol::LBracket | Symbol::LBrace) => {
+                    depth = depth.saturating_add(1);
+                    tokens.push(token.kind);
+                }
+                TokenKind::Symbol(Symbol::RParen | Symbol::RBracket | Symbol::RBrace) => {
+                    depth = depth.saturating_sub(1);
+                    tokens.push(token.kind);
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => tokens.push(token.kind),
+            }
         }
-        value
+        Some(normalize_attribute_value(&tokens))
     }
 
     fn parse_use_item(&mut self) -> Option<UseItem> {
@@ -1674,6 +1688,30 @@ impl Damageable for Player {
         assert_eq!(impl_item.target_path, ["Player"]);
         assert_eq!(impl_item.methods.len(), 1);
         assert_eq!(impl_item.methods[0].function.name, "damage");
+    }
+
+    #[test]
+    fn parses_structured_attribute_arguments() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+#[rule(kind = game.reward.Rule, tags = ["daily", "quest"], config = { enabled: true, limit: 10 })]
+fn main() {
+    return null;
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Function(function) = &parsed.items[0].kind else {
+            panic!("expected function item");
+        };
+        assert_eq!(function.name, "main");
+        assert_eq!(parsed.items[0].attrs[0].path, ["rule"]);
+        assert_eq!(
+            parsed.items[0].attrs[0].value.as_deref(),
+            Some("kind=game.reward.Rule,tags=[\"daily\",\"quest\"],config={enabled:true,limit:10}")
+        );
     }
 
     #[test]

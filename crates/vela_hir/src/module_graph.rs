@@ -2168,6 +2168,7 @@ pub fn grant(player: Player) {
 
 #[doc("Reward metadata")]
 #[domain("gameplay")]
+#[policy(level = 3, tags = ["reward", game.reward.Event])]
 struct Reward {
     #[doc("Reward item id")]
     item_id: string,
@@ -2203,6 +2204,11 @@ trait Damageable {
         assert_eq!(reward_attrs[0].name, "doc");
         assert_eq!(reward_attrs[0].value.as_deref(), Some("Reward metadata"));
         assert_eq!(reward_attrs[1].name, "domain");
+        assert_eq!(reward_attrs[2].name, "policy");
+        assert_eq!(
+            reward_attrs[2].value.as_deref(),
+            Some("level=3,tags=[\"reward\",game.reward.Event]")
+        );
         let reward_shape = graph.struct_shape(reward).expect("Reward shape");
         assert_eq!(reward_shape.fields[0].attrs[0].name, "doc");
         assert_eq!(

@@ -1,6 +1,7 @@
 //! Lexer and parser for Vela source files.
 
 pub mod ast;
+mod attribute;
 mod lexer;
 mod parser;
 mod token;

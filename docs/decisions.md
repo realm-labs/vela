@@ -6200,3 +6200,25 @@ Consequences:
   values before any host patch can be recorded.
 - Existing Rust `Option<T>` return behavior remains compatible with current
   embedders.
+
+## 2026-05-26: Structured Attribute Arguments Normalize As Metadata Strings
+
+Status: Accepted
+
+Context:
+The grammar allows attribute literals, paths, arrays, maps, and named
+arguments. Existing HIR and reflection metadata carry copied string attributes,
+and runtime reflection must not mutate type structure.
+
+Decision:
+Normalize parsed structured attribute argument tokens into deterministic
+strings in the syntax layer, preserving single string and identifier
+compatibility. HIR and reflection continue carrying copied `AttrMap` strings.
+
+Consequences:
+- Structured attribute syntax can flow through parser, HIR, and TypeRegistry
+  reflection now.
+- Runtime reflection stays schema-safe and does not expose mutable attribute
+  structures.
+- Rich typed attribute values can be added later without breaking current
+  copied metadata.

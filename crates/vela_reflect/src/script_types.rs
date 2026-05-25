@@ -393,6 +393,7 @@ mod tests {
             r#"
 #[doc("Reward metadata.")]
 #[domain("gameplay")]
+#[policy(level = 3, tags = ["reward", game.reward.Event])]
 struct Reward {
     #[doc("Reward count.")]
     count: int = 1,
@@ -429,6 +430,10 @@ enum QuestProgress {
         assert!(progress.schema_hash.is_some());
         assert_eq!(reward.docs.as_deref(), Some("Reward metadata."));
         assert_eq!(reward.attrs.get("domain"), Some("gameplay"));
+        assert_eq!(
+            reward.attrs.get("policy"),
+            Some("level=3,tags=[\"reward\",game.reward.Event]")
+        );
         assert_eq!(
             reward
                 .fields

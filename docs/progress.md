@@ -1519,6 +1519,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Reflection runtime failures now keep stable `reflect::*` diagnostic codes,
   human-readable messages, ranked candidate names, and related schema source
   labels instead of being flattened into generic VM reflection errors.
+- Extended attribute argument parsing toward the planned grammar surface.
+  Structured attribute arguments with named values, paths, arrays, maps, and
+  literals are now normalized through syntax, preserved in HIR, and exposed
+  through reflected script metadata without changing runtime schema structure.
 
 ## Next
 
