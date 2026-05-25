@@ -507,6 +507,11 @@ M12/M13 reflection and standard-library completion.
   file, while `compile_dir` recursively loads `.lang` files, derives module
   paths from relative file paths, assigns deterministic source IDs, and
   compiles the resulting module graph.
+- Added an Engine `Runtime` wrapper with `CallOptions`. Runtime calls install
+  Engine schemas/natives into a VM, execute with configured instruction,
+  memory, call-depth, and patch budgets, use managed heap execution by default,
+  and leave host mutations in the caller-provided `PatchTx` for safe-point
+  application.
 - Added array higher-order script methods `map`, `filter`, `find`, `any`,
   `all`, and `count` backed by script closures, preserving VM budgets, host
   context, and managed-heap roots during callback execution.

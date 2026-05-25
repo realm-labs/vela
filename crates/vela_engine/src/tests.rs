@@ -6,12 +6,13 @@ use vela_reflect::{
     FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission, ReflectPermissionSet,
     SchemaHash, TypeDesc, TypeKey,
 };
+use vela_vm::{ExecutionBudgetKind, VmError};
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
-    CONTROLLED_RANDOM_PERMISSION, EffectSet, Engine, EngineErrorKind, EngineSourceErrorKind,
-    FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeFunctionDesc, NativeFunctionId,
-    NativeMethodDesc, TypeHint,
+    CONTROLLED_RANDOM_PERMISSION, CallOptions, EffectSet, Engine, EngineErrorKind,
+    EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeFunctionDesc,
+    NativeFunctionId, NativeMethodDesc, TypeHint,
 };
 
 #[test]
@@ -393,6 +394,100 @@ fn main(player) {
         HostPath::new(host_ref).field(FieldId::new(1))
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
+}
+
+#[test]
+fn runtime_call_records_host_patches_without_applying() {
+    let method = HostMethodId::new(23);
+    let engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(method, "grant_exp")),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    player.grant_exp(12);
+    return "done";
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = crate::Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    let result = runtime
+        .call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::gameplay(),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect("runtime call should run");
+
+    assert_eq!(result, Value::String("done".to_owned()));
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(12)]
+        }
+    );
+    assert!(
+        adapter.method_calls().is_empty(),
+        "runtime call must not apply patches"
+    );
+}
+
+#[test]
+fn runtime_call_enforces_call_options_budget() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for value in 1..=100 {
+        total += value;
+    }
+    return total;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = crate::Runtime::new(engine, program);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    let error = runtime
+        .call(
+            "main",
+            &[],
+            CallOptions::new(4, usize::MAX, usize::MAX, usize::MAX),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect_err("runtime call should exhaust instruction budget");
+
+    assert_eq!(
+        error,
+        VmError {
+            kind: VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::Instructions,
+                limit: 4
+            },
+            source_span: None,
+        }
+    );
+    assert!(tx.patches().is_empty());
 }
 
 #[test]

@@ -4045,3 +4045,27 @@ Consequences:
   `game.reward`.
 - Source loading remains separate from `engine.rs`, keeping filesystem concerns
   out of the core Engine install/call API.
+
+## 2026-05-25: Runtime Calls Own Budgets And Borrow PatchTx
+
+Status: Accepted
+
+Context:
+M14 requires `Runtime::call` with `CallOptions`. Existing embedders had to
+manually create a `Vm`, install Engine metadata, choose managed-heap execution,
+construct `ExecutionBudget`, and pass `HostExecution` with an adapter and
+`PatchTx`.
+
+Decision:
+Add a focused Engine `Runtime` type that owns an `Engine` plus compiled
+`Program`. `Runtime::call(entry, args, options, adapter, tx)` creates a fresh
+Engine-installed VM for the call, constructs an `ExecutionBudget` from
+`CallOptions`, uses managed heap execution by default, and borrows the
+caller-provided adapter and `PatchTx`.
+
+Consequences:
+- Host mutation still cannot happen through Rust `&mut` references; scripts
+  can only record patches into the supplied transaction.
+- Hosts keep safe-point control because `Runtime::call` does not apply patches.
+- Budget defaults are centralized in `CallOptions::gameplay()` while tests can
+  select tighter limits for deterministic budget failures.
