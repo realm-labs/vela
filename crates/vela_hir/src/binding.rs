@@ -224,11 +224,11 @@ impl<'a> BindingLowerer<'a> {
         };
 
         for param in input.params {
-            lowerer.declare_local(
+            lowerer.declare_parameter(
                 param.name.clone(),
                 LocalBindingKind::Parameter,
                 param.type_hint.as_ref().map(HirTypeHint::from_syntax),
-                input.body.span,
+                param.span,
             );
         }
         for param in input.params {
@@ -359,11 +359,11 @@ impl<'a> BindingLowerer<'a> {
             ExprKind::Lambda { params, body } => {
                 self.push_scope();
                 for param in params {
-                    self.declare_local(
+                    self.declare_parameter(
                         param.name.clone(),
                         LocalBindingKind::LambdaParameter,
                         param.type_hint.as_ref().map(HirTypeHint::from_syntax),
-                        expr.span,
+                        param.span,
                     );
                 }
                 self.bind_expr(body, PathUsage::Value);
@@ -630,6 +630,30 @@ impl<'a> BindingLowerer<'a> {
             },
         );
         id
+    }
+
+    fn declare_parameter(
+        &mut self,
+        name: String,
+        kind: LocalBindingKind,
+        type_hint: Option<HirTypeHint>,
+        span: Span,
+    ) -> HirLocalId {
+        if let Some(previous) = self
+            .scopes
+            .last()
+            .and_then(|scope| scope.get(&name))
+            .and_then(|local| self.locals.get(local))
+        {
+            self.diagnostics.push(
+                Diagnostic::error(format!("duplicate parameter `{name}`"))
+                    .with_code("hir::duplicate_parameter")
+                    .with_span(span)
+                    .with_label(previous.span, "previous parameter is here")
+                    .with_label(span, "duplicate parameter is here"),
+            );
+        }
+        self.declare_local(name, kind, type_hint, span)
     }
 
     fn push_scope(&mut self) {

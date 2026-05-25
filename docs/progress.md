@@ -1473,6 +1473,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Registered native functions, host methods, injected native method
   descriptors, and trait method metadata now reject duplicate reflected
   parameter names before entering `TypeRegistry` or hot-reload ABI metadata.
+- Added HIR duplicate-parameter diagnostics for script function and lambda
+  parameters, including previous/duplicate source labels. The bytecode
+  compiler now rejects those semantic diagnostics before register allocation,
+  and lambda parameter HIR lookup uses parameter spans instead of whole-lambda
+  spans.
 
 ## Next
 

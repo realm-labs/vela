@@ -1045,6 +1045,31 @@ struct level { value }
     }
 
     #[test]
+    fn duplicate_function_parameters_report_both_spans() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.player",
+            r#"
+fn grant(amount, amount) {
+    return amount;
+}
+"#,
+        ));
+
+        let duplicate = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_parameter"))
+            .expect("duplicate parameter diagnostic");
+
+        assert_eq!(duplicate.labels.len(), 2);
+        assert!(duplicate.labels[0].message.contains("previous"));
+        assert!(duplicate.labels[1].message.contains("duplicate"));
+        assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
+    }
+
+    #[test]
     fn unresolved_imports_include_candidate_hints() {
         let mut graph = ModuleGraph::new();
         graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
@@ -1193,6 +1218,32 @@ fn main(rewards) {
             bindings.local(reward_bindings[1]).map(|local| local.kind),
             Some(LocalBindingKind::LambdaParameter)
         );
+    }
+
+    #[test]
+    fn duplicate_lambda_parameters_report_both_spans() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+fn main(reward) {
+    let mapper = |count, count| count;
+    return mapper(reward);
+}
+"#,
+        ));
+
+        let duplicate = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_parameter"))
+            .expect("duplicate lambda parameter diagnostic");
+
+        assert_eq!(duplicate.labels.len(), 2);
+        assert!(duplicate.labels[0].message.contains("previous"));
+        assert!(duplicate.labels[1].message.contains("duplicate"));
+        assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
     }
 
     #[test]

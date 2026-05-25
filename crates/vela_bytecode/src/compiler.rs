@@ -801,7 +801,7 @@ impl<'ast> Compiler<'ast> {
 
     fn new_lambda(
         name: String,
-        lambda_span: Span,
+        _lambda_span: Span,
         params: &[Param],
         fallback_body: &'ast Block,
         captures: &[LambdaCapture],
@@ -844,7 +844,7 @@ impl<'ast> Compiler<'ast> {
                 type_hint_script_type(&HirTypeHint::from_syntax(hint), known_type_names.iter())
             });
             if let Some(local) =
-                bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, lambda_span)
+                bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, param.span)
             {
                 hir_locals.insert(local, register);
                 script_types.set_local(local, &param.name, script_type);
@@ -3008,6 +3008,28 @@ fn main() { return 2; }
             diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_declaration"))
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_duplicate_parameters_from_hir() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(amount, amount) {
+    return amount;
+}
+"#,
+        )
+        .expect_err("duplicate parameter should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_parameter"))
         );
     }
 
