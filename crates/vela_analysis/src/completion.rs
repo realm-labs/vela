@@ -418,6 +418,14 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::array(TypeFact::String)),
         )));
+        assert!(array.contains(&CompletionItem::new(
+            "slice",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::Int, TypeFact::Int],
+                TypeFact::array(TypeFact::String),
+            ),
+        )));
 
         let set = member_completions(&facts, &TypeFact::set(TypeFact::String));
         assert!(set.contains(&CompletionItem::new(

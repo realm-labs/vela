@@ -55,7 +55,13 @@ pub(crate) fn call_method(
         "trim_start" => string_methods::trim_start(receiver, args, heap.as_deref()),
         "trim_end" => string_methods::trim_end(receiver, args, heap.as_deref()),
         "replace" => string_methods::replace(receiver, args, heap.as_deref()),
-        "slice" => string_methods::slice(receiver, args, heap.as_deref()),
+        "slice" => {
+            if string_methods::is_string(receiver, heap.as_deref()) {
+                string_methods::slice(receiver, args, heap.as_deref())
+            } else {
+                array_methods::slice(receiver, args, heap.as_deref())
+            }
+        }
         "split" => string_methods::split(receiver, args, heap.as_deref()),
         "parse_int" => string_methods::parse_int(receiver, args, heap.as_deref()),
         "parse_float" => string_methods::parse_float(receiver, args, heap.as_deref()),

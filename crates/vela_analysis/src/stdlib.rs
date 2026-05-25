@@ -2,7 +2,7 @@ use crate::TypeFact;
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
     "len", "is_empty", "push", "pop", "first", "last", "join", "contains", "distinct", "reverse",
-    "map", "filter", "find", "any", "all", "count", "sum", "group_by", "sort_by",
+    "slice", "map", "filter", "find", "any", "all", "count", "sum", "group_by", "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
     "len",
@@ -436,6 +436,10 @@ fn array_method_fact(
             "reverse",
             TypeFact::array(element.clone()),
         )),
+        "slice" => Some(
+            StdlibMethodFact::new(receiver, "slice", TypeFact::array(element.clone()))
+                .with_params(vec![TypeFact::Int, TypeFact::Int]),
+        ),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             Some(
@@ -926,6 +930,9 @@ mod tests {
                 .returns,
             TypeFact::array(TypeFact::Float)
         );
+        let slice = stdlib_method_fact(&array, "slice", None).expect("slice fact");
+        assert_eq!(slice.params, vec![TypeFact::Int, TypeFact::Int]);
+        assert_eq!(slice.returns, TypeFact::array(TypeFact::Float));
         assert_eq!(
             stdlib_method_fact(&set, "values", None)
                 .expect("values fact")

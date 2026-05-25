@@ -1386,6 +1386,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added non-mutating `array.reverse()` for copied array ordering. It works in
   inline and managed-heap execution, preserves the receiver, and exposes
   analysis TypeFacts plus completion metadata.
+- Added non-mutating `array.slice(start, end)` for deterministic half-open
+  array slicing. It preserves the receiver, supports inline and managed-heap
+  execution, reports out-of-bounds indexes through the VM error path, and
+  exposes analysis TypeFacts plus completion metadata.
 - Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
   script boundary. Native function and method macros now expose Result returns
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to

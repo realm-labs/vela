@@ -154,6 +154,27 @@ pub(crate) fn reverse(
     Ok(Value::Array(values))
 }
 
+pub(crate) fn slice(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("slice", args, 2)?;
+    let values = array_values(receiver, heap, "method slice")?;
+    let start = index_value(&args[0], "method slice")?;
+    let end = index_value(&args[1], "method slice")?;
+    if start > end {
+        return type_error("method slice");
+    }
+    if start > values.len() {
+        return Err(index_out_of_bounds(start, values.len()));
+    }
+    if end > values.len() {
+        return Err(index_out_of_bounds(end, values.len()));
+    }
+    Ok(Value::Array(values[start..end].to_vec()))
+}
+
 pub(crate) fn any(
     receiver: &Value,
     args: &[Value],
@@ -448,6 +469,13 @@ fn array_values(
     }
 }
 
+fn index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
+    match value {
+        Value::Int(value) if *value >= 0 => Ok(*value as usize),
+        _ => type_error(operation),
+    }
+}
+
 fn call_unary_callback(
     runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
@@ -482,6 +510,13 @@ fn option_value(variant: &str, payload: Option<Value>) -> Value {
         variant: variant.to_owned(),
         fields: ScriptFields::from_pairs(&format!("Option.{variant}"), fields),
     }
+}
+
+fn index_out_of_bounds(index: usize, len: usize) -> VmError {
+    VmError::new(VmErrorKind::IndexOutOfBounds {
+        index: i64::try_from(index).unwrap_or(i64::MAX),
+        len,
+    })
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
@@ -775,6 +810,82 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array reverse should run");
         assert_eq!(result, Value::String("daily|quest".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_slice_method() {
+        let source = r#"
+fn main() {
+    let rewards = [
+        Reward { item_id: "gold", count: 2 },
+        Reward { item_id: "xp", count: 1 },
+        Reward { item_id: "gem", count: 3 },
+    ];
+    let middle = [10, 20, 30, 40].slice(1, 3);
+    let reward_slice = rewards.slice(0, 2);
+    let empty = rewards.slice(2, 2);
+    if middle[0] == 20
+        && middle[1] == 30
+        && reward_slice[1].item_id == "xp"
+        && rewards.len() == 3
+        && empty.is_empty()
+    {
+        return reward_slice[0].count;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array slice source should compile");
+
+        let result = Vm::new().run(&code).expect("array slice should run");
+        assert_eq!(result, Value::Int(2));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_slice_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily", "quest", "raid", "bonus"];
+    let nested = [["daily", "quest"], ["raid"], ["bonus"]];
+    let tag_slice = tags.slice(1, 3);
+    let nested_slice = nested.slice(0, 2);
+    if tags.join(",") == "daily,quest,raid,bonus"
+        && tag_slice.join("|") == "quest|raid"
+        && nested_slice[0].join("|") == "daily|quest"
+    {
+        return nested_slice[1].join("|");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array slice source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array slice should run");
+        assert_eq!(result, Value::String("raid".to_owned()));
+    }
+
+    #[test]
+    fn array_slice_rejects_out_of_bounds_ranges() {
+        let source = r#"
+fn main() {
+    return [1, 2].slice(0, 3);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array slice bounds source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array slice should reject out of bounds index");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::IndexOutOfBounds { index: 3, len: 2 }
+        );
     }
 
     #[test]

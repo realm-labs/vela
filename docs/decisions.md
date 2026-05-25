@@ -5826,6 +5826,29 @@ Consequences:
 - Analysis and completion metadata expose array return TypeFacts without
   adding script-visible generics.
 
+## 2026-05-25: Array Slice Uses Half-Open Indexes
+
+Status: Accepted
+
+Context:
+Gameplay scripts often need a copied window of rewards, priorities, or tags
+without mutating the source array. Strings already expose half-open
+`slice(start, end)`, and arrays should use the same index model so authors do
+not have to remember two slicing conventions.
+
+Decision:
+Add `array.slice(start, end)` as a pure script-value method. It accepts
+non-negative integer indexes, uses a half-open range, returns a copied array,
+leaves the receiver unchanged, and reports out-of-bounds indexes through the
+VM index error path in both inline and managed-heap execution.
+
+Consequences:
+- Scripts can take deterministic copied windows of arrays without host glue or
+  PatchTx mutation.
+- Array and string slicing share the same half-open source-level convention.
+- Analysis and completion metadata expose array return TypeFacts without
+  adding script-visible generics.
+
 ## 2026-05-25: Engine Compiler Options Come From Schema Metadata
 
 Status: Accepted
