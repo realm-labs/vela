@@ -975,6 +975,13 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   during expansion, and generated metadata is tested against equivalent
   hand-written reflection descriptors without exposing Rust references or
   applying host mutations.
+- Added `NativeCallContext` and
+  `EngineBuilder::register_context_host_native_fn` for host-aware native
+  functions that need Engine metadata, active permissions, `ScriptStateAdapter`,
+  `PatchTx`, and execution-budget access. Context natives install into the VM
+  with the same descriptor reflection metadata and duplicate-ID validation as
+  existing native functions, can charge instruction budgets explicitly, and
+  still mutate host state only by recording patches.
 
 ## Next
 

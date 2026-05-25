@@ -8,7 +8,10 @@ use vela_hot_reload::HotReloadPolicy;
 use vela_reflect::{ReflectPolicy, TypeRegistry};
 use vela_vm::{HostExecution, Value, Vm, VmError, VmErrorKind, VmResult};
 
-use crate::{EngineBuilder, HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry};
+use crate::{
+    ContextHostNativeFunctionEntry, EngineBuilder, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry,
+};
 use crate::{FunctionAccess, NativeMethodDesc, NativeMethodEntry, PermissionSet};
 
 #[derive(Clone)]
@@ -16,11 +19,23 @@ pub struct Engine {
     registry: Arc<TypeRegistry>,
     native_functions: BTreeMap<FunctionId, NativeFunctionEntry>,
     host_native_functions: BTreeMap<FunctionId, HostNativeFunctionEntry>,
+    context_host_native_functions: BTreeMap<FunctionId, ContextHostNativeFunctionEntry>,
     native_methods: BTreeMap<HostMethodId, NativeMethodEntry>,
     native_function_names: BTreeMap<String, FunctionId>,
     permissions: PermissionSet,
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
+}
+
+pub(crate) struct EngineParts {
+    pub(crate) registry: TypeRegistry,
+    pub(crate) native_functions: Vec<NativeFunctionEntry>,
+    pub(crate) host_native_functions: Vec<HostNativeFunctionEntry>,
+    pub(crate) context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
+    pub(crate) native_methods: Vec<NativeMethodEntry>,
+    pub(crate) permissions: PermissionSet,
+    pub(crate) reflection_policy: Option<ReflectPolicy>,
+    pub(crate) hot_reload_policy: HotReloadPolicy,
 }
 
 impl Engine {
@@ -30,24 +45,24 @@ impl Engine {
     }
 
     #[must_use]
-    pub(crate) fn new(
-        registry: TypeRegistry,
-        native_functions: Vec<NativeFunctionEntry>,
-        host_native_functions: Vec<HostNativeFunctionEntry>,
-        native_methods: Vec<NativeMethodEntry>,
-        permissions: PermissionSet,
-        reflection_policy: Option<ReflectPolicy>,
-        hot_reload_policy: HotReloadPolicy,
-    ) -> Self {
-        let native_functions = native_functions
+    pub(crate) fn new(parts: EngineParts) -> Self {
+        let native_functions = parts
+            .native_functions
             .into_iter()
             .map(|entry| (entry.desc.id, entry))
             .collect::<BTreeMap<_, _>>();
-        let host_native_functions = host_native_functions
+        let host_native_functions = parts
+            .host_native_functions
             .into_iter()
             .map(|entry| (entry.desc.id, entry))
             .collect::<BTreeMap<_, _>>();
-        let native_methods = native_methods
+        let context_host_native_functions = parts
+            .context_host_native_functions
+            .into_iter()
+            .map(|entry| (entry.desc.id, entry))
+            .collect::<BTreeMap<_, _>>();
+        let native_methods = parts
+            .native_methods
             .into_iter()
             .map(|entry| (entry.desc.id, entry))
             .collect::<BTreeMap<_, _>>();
@@ -55,18 +70,24 @@ impl Engine {
             .values()
             .map(|entry| &entry.desc)
             .chain(host_native_functions.values().map(|entry| &entry.desc))
+            .chain(
+                context_host_native_functions
+                    .values()
+                    .map(|entry| &entry.desc),
+            )
             .map(|desc| (desc.name.clone(), desc.id))
             .collect();
 
         Self {
-            registry: Arc::new(registry),
+            registry: Arc::new(parts.registry),
             native_functions,
             host_native_functions,
+            context_host_native_functions,
             native_methods,
             native_function_names,
-            permissions,
-            reflection_policy,
-            hot_reload_policy,
+            permissions: parts.permissions,
+            reflection_policy: parts.reflection_policy,
+            hot_reload_policy: parts.hot_reload_policy,
         }
     }
 
@@ -85,6 +106,10 @@ impl Engine {
         self.native_function(id)
             .map(|entry| &entry.desc)
             .or_else(|| self.host_native_function(id).map(|entry| &entry.desc))
+            .or_else(|| {
+                self.context_host_native_function(id)
+                    .map(|entry| &entry.desc)
+            })
     }
 
     #[must_use]
@@ -128,6 +153,23 @@ impl Engine {
     pub fn host_native_function_by_name(&self, name: &str) -> Option<&HostNativeFunctionEntry> {
         let id = self.native_function_names.get(name)?;
         self.host_native_function(*id)
+    }
+
+    #[must_use]
+    pub fn context_host_native_function(
+        &self,
+        id: FunctionId,
+    ) -> Option<&ContextHostNativeFunctionEntry> {
+        self.context_host_native_functions.get(&id)
+    }
+
+    #[must_use]
+    pub fn context_host_native_function_by_name(
+        &self,
+        name: &str,
+    ) -> Option<&ContextHostNativeFunctionEntry> {
+        let id = self.native_function_names.get(name)?;
+        self.context_host_native_function(*id)
     }
 
     #[must_use]
@@ -184,6 +226,18 @@ impl Engine {
             vm.register_host_native(name.clone(), move |args, host| {
                 check_permissions(&name, &access, &permissions)?;
                 function(args, host)
+            });
+        }
+        for entry in self.context_host_native_functions.values() {
+            let name = entry.desc.name.clone();
+            let access = entry.desc.access.clone();
+            let permissions = self.permissions.clone();
+            let function = Arc::clone(&entry.function);
+            let engine = self.clone();
+            vm.register_budgeted_host_native(name.clone(), move |args, host, budget| {
+                check_permissions(&name, &access, &permissions)?;
+                let mut context = crate::NativeCallContext::new(&engine, host, budget);
+                function(args, &mut context)
             });
         }
     }

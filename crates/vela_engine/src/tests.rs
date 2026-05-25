@@ -397,6 +397,152 @@ fn main(player) {
 }
 
 #[test]
+fn engine_installs_context_host_native_functions_into_vm() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game.context_set_level", NativeFunctionId::new(23))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Bool)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            |args, ctx| {
+                let [Value::HostRef(player), Value::Int(level)] = args else {
+                    return Ok(Value::Bool(false));
+                };
+                assert!(ctx.has_permission("player.write"));
+                assert!(
+                    ctx.engine()
+                        .native_function_by_name("game.context_set_level")
+                        .is_none()
+                );
+                assert!(
+                    ctx.engine()
+                        .context_host_native_function_by_name("game.context_set_level")
+                        .is_some()
+                );
+                ctx.tx().set_path(
+                    HostPath::new(*player).field(FieldId::new(1)),
+                    HostValue::Int(*level),
+                    None,
+                )?;
+                Ok(Value::Bool(true))
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game.context_set_level(player, 11);
+}
+"#,
+    )
+    .expect("program should compile");
+    let registry = engine.registry();
+    let function = registry
+        .function_by_name("game.context_set_level")
+        .expect("context host native metadata");
+    assert_eq!(function.id, NativeFunctionId::new(23));
+    assert!(function.effects.writes_host);
+    assert_eq!(
+        function.access.required_permissions(),
+        &["player.write".to_owned()]
+    );
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Bool(true))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].path,
+        HostPath::new(host_ref).field(FieldId::new(1))
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(11)));
+}
+
+#[test]
+fn context_host_native_can_charge_execution_budget_before_patching() {
+    let engine = Engine::builder()
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game.expensive_set_level", NativeFunctionId::new(24))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            |args, ctx| {
+                ctx.charge_instructions(100)?;
+                let [Value::HostRef(player), Value::Int(level)] = args else {
+                    return Ok(Value::Null);
+                };
+                ctx.tx().set_path(
+                    HostPath::new(*player).field(FieldId::new(1)),
+                    HostValue::Int(*level),
+                    None,
+                )?;
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    game.expensive_set_level(player, 13);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = crate::Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    let error = runtime
+        .call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::new(50, usize::MAX, usize::MAX, usize::MAX),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect_err("native budget charge should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 50
+        }
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn runtime_call_records_host_patches_without_applying() {
     let method = HostMethodId::new(23);
     let engine = Engine::builder()
@@ -1132,6 +1278,25 @@ fn engine_rejects_duplicate_names_across_host_and_pure_natives() {
         Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionName {
             name: "game.same".to_owned()
         }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_context_host_native_ids() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.first", NativeFunctionId::new(30)),
+            |_| Ok(Value::Null),
+        )
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game.second", NativeFunctionId::new(30)),
+            |_, _| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionId { id: 30 }
     ));
 }
 

@@ -4,7 +4,7 @@ use vela_common::FunctionId;
 use vela_reflect::TypeKey;
 use vela_vm::{HostExecution, Value, VmResult};
 
-use crate::PermissionSet;
+use crate::{NativeCallContext, PermissionSet};
 
 pub type NativeFunctionId = FunctionId;
 
@@ -179,6 +179,12 @@ pub type HostNativeFunction = Arc<
         + Sync
         + 'static,
 >;
+pub type ContextHostNativeFunction = Arc<
+    dyn for<'ctx, 'host> Fn(&[Value], &mut NativeCallContext<'ctx, 'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+>;
 
 #[derive(Clone)]
 pub struct NativeFunctionEntry {
@@ -210,6 +216,31 @@ impl HostNativeFunctionEntry {
     pub fn new(
         desc: NativeFunctionDesc,
         function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self {
+            desc,
+            function: Arc::new(function),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ContextHostNativeFunctionEntry {
+    pub desc: NativeFunctionDesc,
+    pub function: ContextHostNativeFunction,
+}
+
+impl ContextHostNativeFunctionEntry {
+    #[must_use]
+    pub fn new(
+        desc: NativeFunctionDesc,
+        function: impl for<'ctx, 'host> Fn(
+            &[Value],
+            &mut NativeCallContext<'ctx, 'host>,
+        ) -> VmResult<Value>
         + Send
         + Sync
         + 'static,

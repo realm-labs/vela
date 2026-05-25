@@ -257,14 +257,20 @@ impl ExecutionBudget {
         self.current_call_depth
     }
 
-    fn charge_instruction(&mut self) -> VmResult<()> {
-        if self.instructions_executed >= self.instruction_limit {
+    pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {
+        let next = self.instructions_executed.saturating_add(instructions);
+        if next > self.instruction_limit {
             return Err(VmError::new(VmErrorKind::BudgetExceeded {
                 budget: ExecutionBudgetKind::Instructions,
                 limit: self.instruction_limit,
             }));
         }
-        self.instructions_executed = self.instructions_executed.saturating_add(1);
+        self.instructions_executed = next;
+        Ok(())
+    }
+
+    fn charge_instruction(&mut self) -> VmResult<()> {
+        self.charge_instructions(1)?;
         Ok(())
     }
 
@@ -334,7 +340,11 @@ impl From<ReflectError> for VmError {
 
 pub type NativeFunction = Arc<dyn Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static>;
 pub type HostNativeFunction = Arc<
-    dyn for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+    dyn for<'host, 'budget> Fn(
+            &[Value],
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<Value>
         + Send
         + Sync
         + 'static,
@@ -432,6 +442,24 @@ impl Vm {
         &mut self,
         name: impl Into<String>,
         function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.host_natives.insert(
+            name.into(),
+            Arc::new(move |args, host, _budget| function(args, host)),
+        );
+    }
+
+    pub fn register_budgeted_host_native(
+        &mut self,
+        name: impl Into<String>,
+        function: impl for<'host, 'budget> Fn(
+            &[Value],
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<Value>
         + Send
         + Sync
         + 'static,
@@ -970,7 +998,7 @@ impl Vm {
                                 operation: "host context",
                             })
                         })?;
-                        native(&values, host)?
+                        native(&values, host, budget.as_deref_mut())?
                     } else {
                         return Err(VmError::new(VmErrorKind::UnknownNative {
                             name: name.clone(),

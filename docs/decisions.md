@@ -4097,3 +4097,30 @@ Consequences:
 - The macro does not generate field accessors, method dispatch, or adapter
   apply logic yet, so scripts still cannot obtain Rust `&mut` references.
 - Method macros and native call context conversion remain separate M14 slices.
+
+## 2026-05-25: Context Host Natives Use Budget-Aware VM Dispatch
+
+Status: Accepted
+
+Context:
+M14 calls for `NativeCallContext` with runtime metadata, state adapter,
+`PatchTx`, permissions, and budget access. Existing Engine host natives only
+received `HostExecution`, and VM host-native dispatch did not pass the active
+`ExecutionBudget` into callbacks.
+
+Decision:
+Add a focused Engine `NativeCallContext` and
+`EngineBuilder::register_context_host_native_fn`. VM host-native dispatch now
+supports an optional active `ExecutionBudget`; the legacy `register_host_native`
+API remains source-compatible by wrapping old callbacks and ignoring the
+budget. Context natives receive the Engine, permission view, adapter, `PatchTx`,
+and optional budget, and can explicitly charge instruction units before doing
+host work.
+
+Consequences:
+- Native code that performs non-trivial Rust-side work can participate in the
+  same instruction budget used by scripts.
+- Host mutation remains behind `PatchTx`; the context exposes the transaction
+  and adapter but never a Rust `&mut` host object.
+- Context-native descriptors share reflection metadata and duplicate stable-ID
+  validation with existing native functions.

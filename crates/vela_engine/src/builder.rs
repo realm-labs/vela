@@ -9,9 +9,9 @@ use vela_reflect::{
 use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
-    Engine, EngineError, EngineErrorKind, EngineResult, HostNativeFunctionEntry,
-    NativeFunctionDesc, NativeFunctionEntry, NativeMethodDesc, NativeMethodEntry, PermissionSet,
-    TypeHint,
+    ContextHostNativeFunctionEntry, Engine, EngineError, EngineErrorKind, EngineResult,
+    HostNativeFunctionEntry, NativeCallContext, NativeFunctionDesc, NativeFunctionEntry,
+    NativeMethodDesc, NativeMethodEntry, PermissionSet, TypeHint, engine::EngineParts,
 };
 
 #[derive(Clone, Default)]
@@ -19,6 +19,7 @@ pub struct EngineBuilder {
     types: Vec<TypeDesc>,
     native_functions: Vec<NativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
+    context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
     native_methods: Vec<NativeMethodEntry>,
     permissions: PermissionSet,
     reflection_policy: Option<ReflectPolicy>,
@@ -116,6 +117,23 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    pub fn register_context_host_native_fn(
+        mut self,
+        desc: NativeFunctionDesc,
+        function: impl for<'ctx, 'host> Fn(
+            &[Value],
+            &mut NativeCallContext<'ctx, 'host>,
+        ) -> VmResult<Value>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.context_host_native_functions
+            .push(ContextHostNativeFunctionEntry::new(desc, function));
+        self
+    }
+
+    #[must_use]
     pub fn register_native_method_fn(
         mut self,
         desc: NativeMethodDesc,
@@ -137,7 +155,11 @@ impl EngineBuilder {
         let mut types = self.types;
         inject_native_method_metadata(&mut types, &self.native_methods)?;
         validate_types(&types)?;
-        validate_native_functions(&self.native_functions, &self.host_native_functions)?;
+        validate_native_functions(
+            &self.native_functions,
+            &self.host_native_functions,
+            &self.context_host_native_functions,
+        )?;
 
         let mut registry = TypeRegistry::new();
         for desc in types {
@@ -147,17 +169,19 @@ impl EngineBuilder {
             &mut registry,
             &self.native_functions,
             &self.host_native_functions,
+            &self.context_host_native_functions,
         );
 
-        Ok(Engine::new(
+        Ok(Engine::new(EngineParts {
             registry,
-            self.native_functions,
-            self.host_native_functions,
-            self.native_methods,
-            self.permissions,
-            self.reflection_policy,
-            self.hot_reload_policy,
-        ))
+            native_functions: self.native_functions,
+            host_native_functions: self.host_native_functions,
+            context_host_native_functions: self.context_host_native_functions,
+            native_methods: self.native_methods,
+            permissions: self.permissions,
+            reflection_policy: self.reflection_policy,
+            hot_reload_policy: self.hot_reload_policy,
+        }))
     }
 }
 
@@ -192,11 +216,17 @@ fn inject_native_function_metadata(
     registry: &mut TypeRegistry,
     native_functions: &[NativeFunctionEntry],
     host_native_functions: &[HostNativeFunctionEntry],
+    context_host_native_functions: &[ContextHostNativeFunctionEntry],
 ) {
     for desc in native_functions
         .iter()
         .map(|entry| &entry.desc)
         .chain(host_native_functions.iter().map(|entry| &entry.desc))
+        .chain(
+            context_host_native_functions
+                .iter()
+                .map(|entry| &entry.desc),
+        )
     {
         if let Some(module_name) = native_function_module(&desc.name)
             && registry.module_by_name(&module_name).is_none()
@@ -333,6 +363,7 @@ fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
 fn validate_native_functions(
     functions: &[NativeFunctionEntry],
     host_functions: &[HostNativeFunctionEntry],
+    context_host_functions: &[ContextHostNativeFunctionEntry],
 ) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
@@ -341,6 +372,7 @@ fn validate_native_functions(
         .iter()
         .map(|entry| &entry.desc)
         .chain(host_functions.iter().map(|entry| &entry.desc))
+        .chain(context_host_functions.iter().map(|entry| &entry.desc))
     {
         if !ids.insert(desc.id) {
             return Err(EngineError::new(
