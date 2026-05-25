@@ -5067,3 +5067,28 @@ Consequences:
   is copied analysis data and cannot monkey patch type structure.
 - Hover support stays separate from completion and diagnostics modules, keeping
   M16 tooling code modular.
+
+## 2026-05-25: Match Pattern Variant Diagnostics Are Advisory
+
+Status: Accepted
+
+Context:
+M16 calls for semantic diagnostics for variants. Exhaustiveness diagnostics
+already warn when known enum matches omit variants, but a misspelled variant in
+a match arm could still fall through analysis as a dynamic pattern until
+runtime behavior exposed the problem.
+
+Decision:
+Add a focused `vela_analysis::diagnostics::match_patterns` module that checks
+match arm variant names only when the scrutinee fact is precise enough: a
+known registry enum, dynamic Option, or dynamic Result. It reports
+`analysis::unknown_variant` with ranked candidate labels. Unknown scrutinees
+or patterns owned by a different enum path are ignored to avoid pretending the
+analyzer has stronger facts than it does.
+
+Consequences:
+- Script authors get candidate-backed diagnostics for common enum/Option/Result
+  pattern typos before bytecode execution.
+- Diagnostics remain analysis-only and do not mutate TypeRegistry, reflection
+  metadata, VM matching, or script enum structure.
+- Dynamic boundaries continue to degrade without blocking execution.

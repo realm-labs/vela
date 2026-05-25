@@ -1127,6 +1127,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   copied expression facts plus `TypeRegistry` facts, `vela_analysis` can now
   report unknown fields and methods for precise receivers with candidate
   labels while degrading cleanly for dynamic `Unknown` receivers.
+- Added analysis diagnostics for unknown match pattern variants. Known enum,
+  dynamic Option, and dynamic Result scrutinees now report misspelled
+  `match` variants with ranked candidate labels while unknown or dynamic
+  scrutinees still degrade without blocking execution.
 - Added first-pass analysis flow narrowing for null checks. `TypeFact` can now
   remove or select `null` from union facts, and `ExprFactScope` applies that
   narrowing to `if value == null` / `if value != null` branches so expression
