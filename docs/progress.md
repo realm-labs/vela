@@ -1231,6 +1231,12 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Extended M14 typed native signature conversion to four script arguments for
   pure, host, context-host, and native method callbacks, with Engine tests
   proving copied conversions and PatchTx host effects.
+- Split Engine typed-native adapter implementations into focused pure,
+  context-host, host, method, return, and trait modules so signature conversion
+  logic can grow without piling unrelated adapter code into one file.
+- Added M14 Rust set signature conversion for `BTreeSet<T>` and `HashSet<T>`.
+  Typed Engine natives and macro-generated native functions can now accept and
+  return copied script set values through the existing `Value::Set` boundary.
 
 ## Next
 

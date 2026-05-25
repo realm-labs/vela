@@ -1,4 +1,5 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::hash::Hash;
 
 use vela_host::HostRef;
 use vela_vm::{Value, VmError, VmErrorKind, VmResult};
@@ -313,6 +314,63 @@ where
                 .iter()
                 .map(|(key, value)| Ok((key.clone(), T::from_script_arg(value)?)))
                 .collect(),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
+impl<T> IntoScriptArg for BTreeSet<T>
+where
+    T: IntoScriptArg,
+{
+    fn into_script_arg(self) -> Value {
+        Value::Set(
+            self.into_iter()
+                .map(IntoScriptArg::into_script_arg)
+                .collect(),
+        )
+    }
+}
+
+impl<T> FromScriptArg for BTreeSet<T>
+where
+    T: FromScriptArg + Ord,
+{
+    const TYPE_NAME: &'static str = "set";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        match value {
+            Value::Set(values) => values.iter().map(T::from_script_arg).collect(),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
+impl<T> IntoScriptArg for HashSet<T>
+where
+    T: IntoScriptArg + Eq + Hash + Ord,
+{
+    fn into_script_arg(self) -> Value {
+        let mut values = self.into_iter().collect::<Vec<_>>();
+        values.sort();
+        Value::Set(
+            values
+                .into_iter()
+                .map(IntoScriptArg::into_script_arg)
+                .collect(),
+        )
+    }
+}
+
+impl<T> FromScriptArg for HashSet<T>
+where
+    T: FromScriptArg + Eq + Hash,
+{
+    const TYPE_NAME: &'static str = "set";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        match value {
+            Value::Set(values) => values.iter().map(T::from_script_arg).collect(),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }

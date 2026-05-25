@@ -1,5 +1,7 @@
 #![allow(clippy::result_large_err)]
 
+use std::collections::BTreeSet;
+
 use vela_common::{FieldId, HostObjectId, HostTypeId};
 use vela_engine::{
     EffectSet, Engine, FunctionAccess, HostRef, NativeCallContext, NativeFunctionDesc,
@@ -56,6 +58,12 @@ fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmRes
     Ok(score)
 }
 
+/// Counts copied unique labels from a script set.
+#[script_function(id = 44, name = "game.count_labels", effect = "pure", reflect = true)]
+fn count_labels(labels: BTreeSet<String>) -> i64 {
+    i64::try_from(labels.len()).expect("label count fits i64")
+}
+
 #[test]
 fn script_function_generates_native_function_metadata() {
     assert_eq!(
@@ -71,6 +79,19 @@ fn script_function_generates_native_function_metadata() {
                     .require_permission("bonus.read"),
             )
             .docs("Grants a copied bonus amount."),
+    );
+}
+
+#[test]
+fn script_function_generates_set_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_count_labels(),
+        NativeFunctionDesc::new("game.count_labels", NativeFunctionId::new(44))
+            .param("labels", TypeHint::Set)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Counts copied unique labels from a script set."),
     );
 }
 
@@ -135,6 +156,42 @@ fn main() {
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(42)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_set_native_with_engine() {
+    let engine = vela_register_native_function_count_labels(Engine::builder())
+        .build()
+        .expect("engine should build from macro set native function");
+    let root = unique_test_dir("script_function_set_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(labels) {
+    return game.count_labels(labels);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered set native");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Set(vec![
+                Value::String("raid".to_owned()),
+                Value::String("pvp".to_owned()),
+                Value::String("raid".to_owned()),
+            ])],
+        ),
+        Ok(Value::Int(2)),
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }

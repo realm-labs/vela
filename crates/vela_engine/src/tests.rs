@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
@@ -146,6 +146,46 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_accept_set_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(BTreeSet<String>,), _>(
+            NativeFunctionDesc::new("game.count_tags", NativeFunctionId::new(224))
+                .param("tags", TypeHint::Set)
+                .returns(TypeHint::Int),
+            |tags: BTreeSet<String>| i64::try_from(tags.len()).expect("set length fits i64"),
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game.reward_tags", NativeFunctionId::new(225))
+                .returns(TypeHint::Set),
+            || BTreeSet::from(["daily".to_owned(), "quest".to_owned()]),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(tags) {
+    return game.count_tags(tags) + game.reward_tags().len();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Set(vec![
+                Value::String("fire".to_owned()),
+                Value::String("ice".to_owned()),
+                Value::String("fire".to_owned()),
+            ])],
+        ),
+        Ok(Value::Int(4)),
+    );
+}
+
+#[test]
 fn typed_native_functions_return_dynamic_result_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(bool,), _>(
@@ -277,6 +317,51 @@ fn script_arg_conversions_support_result_values() {
             kind: VmErrorKind::TypeMismatch {
                 operation: "result",
             },
+            ..
+        })
+    ));
+}
+
+#[test]
+fn script_arg_conversions_support_set_values() {
+    let mut tree = BTreeSet::new();
+    tree.insert("fire".to_owned());
+    tree.insert("ice".to_owned());
+    assert_eq!(
+        tree.clone().into_script_arg(),
+        Value::Set(vec![
+            Value::String("fire".to_owned()),
+            Value::String("ice".to_owned()),
+        ]),
+    );
+    assert_eq!(
+        BTreeSet::<String>::from_script_arg(&Value::Set(vec![
+            Value::String("ice".to_owned()),
+            Value::String("fire".to_owned()),
+            Value::String("fire".to_owned()),
+        ])),
+        Ok(tree),
+    );
+
+    let mut hash = HashSet::new();
+    hash.insert(2_i64);
+    hash.insert(1_i64);
+    assert_eq!(
+        hash.clone().into_script_arg(),
+        Value::Set(vec![Value::Int(1), Value::Int(2)]),
+    );
+    assert_eq!(
+        HashSet::<i64>::from_script_arg(&Value::Set(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(2),
+        ])),
+        Ok(hash),
+    );
+    assert!(matches!(
+        BTreeSet::<i64>::from_script_arg(&Value::Array(vec![Value::Int(1)])),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch { operation: "set" },
             ..
         })
     ));
