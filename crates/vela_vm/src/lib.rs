@@ -12,6 +12,7 @@ mod indexing;
 mod iteration;
 mod map_methods;
 mod math_stdlib;
+mod method_runtime;
 mod option_result;
 mod ranges;
 mod record_fields;

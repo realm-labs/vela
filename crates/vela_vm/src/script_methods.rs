@@ -2,9 +2,10 @@ use vela_bytecode::Program;
 use vela_common::MethodId;
 use vela_reflect::TypeRegistry;
 
-use crate::array_methods::{self, MethodRuntime};
+use crate::array_methods;
 use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
+use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
 use crate::script_object::ScriptFields;
 use crate::set_methods;

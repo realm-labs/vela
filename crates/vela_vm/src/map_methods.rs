@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use crate::array_methods::MethodRuntime;
 use crate::heap::HeapValue;
+use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::option_result::option_value;
 use crate::script_object::ScriptFields;
 use crate::{Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
@@ -20,7 +20,7 @@ pub(crate) fn map_values(
             &mut runtime,
             "method map_values",
             &args[0],
-            vec![value],
+            &[value],
             &protected,
         )?;
         mapped.insert(key, value);
@@ -42,7 +42,7 @@ pub(crate) fn filter(
             &mut runtime,
             "method filter",
             &args[0],
-            vec![Value::String(key.clone()), value.clone()],
+            &[Value::String(key.clone()), value.clone()],
             &protected,
         )?;
         if is_truthy(&predicate) {
@@ -62,7 +62,7 @@ pub(crate) fn find(
     for (key, value) in entries {
         let predicate_args =
             map_predicate_args(&args[0], key.clone(), value.clone(), "method find")?;
-        let predicate = call_callback(&mut runtime, "method find", &args[0], predicate_args, &[])?;
+        let predicate = call_callback(&mut runtime, "method find", &args[0], &predicate_args, &[])?;
         if is_truthy(&predicate) {
             return Ok(option_value(Some(map_entry(&key, value))));
         }
@@ -79,7 +79,7 @@ pub(crate) fn any(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
     for (key, value) in entries {
         let predicate_args = map_predicate_args(&args[0], key, value, "method any")?;
-        let predicate = call_callback(&mut runtime, "method any", &args[0], predicate_args, &[])?;
+        let predicate = call_callback(&mut runtime, "method any", &args[0], &predicate_args, &[])?;
         if is_truthy(&predicate) {
             return Ok(true);
         }
@@ -96,7 +96,7 @@ pub(crate) fn all(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
     for (key, value) in entries {
         let predicate_args = map_predicate_args(&args[0], key, value, "method all")?;
-        let predicate = call_callback(&mut runtime, "method all", &args[0], predicate_args, &[])?;
+        let predicate = call_callback(&mut runtime, "method all", &args[0], &predicate_args, &[])?;
         if !is_truthy(&predicate) {
             return Ok(false);
         }
@@ -114,7 +114,8 @@ pub(crate) fn count(
     let mut count = 0_i64;
     for (key, value) in entries {
         let predicate_args = map_predicate_args(&args[0], key, value, "method count")?;
-        let predicate = call_callback(&mut runtime, "method count", &args[0], predicate_args, &[])?;
+        let predicate =
+            call_callback(&mut runtime, "method count", &args[0], &predicate_args, &[])?;
         if is_truthy(&predicate) {
             count = count.checked_add(1).ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
@@ -177,42 +178,6 @@ fn map_entries(
         }
         _ => type_error(operation),
     }
-}
-
-fn call_callback(
-    runtime: &mut MethodRuntime<'_, '_, '_>,
-    operation: &'static str,
-    callback: &Value,
-    args: Vec<Value>,
-    protected_values: &[Value],
-) -> VmResult<Value> {
-    let Value::Closure(closure) = callback else {
-        return type_error(operation);
-    };
-    let mut roots = runtime.caller_roots.to_vec();
-    args.iter()
-        .for_each(|value| value.trace_heap_refs(&mut roots));
-    protected_values
-        .iter()
-        .for_each(|value| value.trace_heap_refs(&mut roots));
-    let protected_root_len = runtime
-        .heap
-        .as_deref_mut()
-        .map(|heap| heap.push_protected_roots(roots));
-    let result = runtime.vm.execute_closure_value(
-        closure,
-        runtime.program,
-        &args,
-        runtime.host.as_deref_mut(),
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    );
-    if let (Some(heap), Some(protected_root_len)) =
-        (runtime.heap.as_deref_mut(), protected_root_len)
-    {
-        heap.truncate_protected_roots(protected_root_len);
-    }
-    result
 }
 
 fn map_predicate_args(

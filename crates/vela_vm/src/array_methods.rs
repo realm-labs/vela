@@ -1,23 +1,12 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use vela_bytecode::Program;
-
-use crate::heap::{GcRef, HeapValue};
+use crate::heap::HeapValue;
+use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::script_object::ScriptFields;
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
-    value_from_heap_slot, values_equal,
+    HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot, values_equal,
 };
-
-pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
-    pub(crate) vm: &'a Vm,
-    pub(crate) program: Option<&'a Program>,
-    pub(crate) host: Option<&'a mut HostExecution<'host>>,
-    pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
-    pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) caller_roots: &'a [GcRef],
-}
 
 pub(crate) fn map(
     receiver: &Value,
@@ -466,32 +455,7 @@ fn call_unary_callback(
     value: Value,
     protected_values: &[Value],
 ) -> VmResult<Value> {
-    let Value::Closure(closure) = callback else {
-        return type_error(operation);
-    };
-    let mut roots = runtime.caller_roots.to_vec();
-    value.trace_heap_refs(&mut roots);
-    protected_values
-        .iter()
-        .for_each(|value| value.trace_heap_refs(&mut roots));
-    let protected_root_len = runtime
-        .heap
-        .as_deref_mut()
-        .map(|heap| heap.push_protected_roots(roots));
-    let result = runtime.vm.execute_closure_value(
-        closure,
-        runtime.program,
-        &[value],
-        runtime.host.as_deref_mut(),
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    );
-    if let (Some(heap), Some(protected_root_len)) =
-        (runtime.heap.as_deref_mut(), protected_root_len)
-    {
-        heap.truncate_protected_roots(protected_root_len);
-    }
-    result
+    call_callback(runtime, operation, callback, &[value], protected_values)
 }
 
 fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {

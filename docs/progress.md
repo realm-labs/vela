@@ -527,6 +527,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `map.find` with lambda predicates, returning
   `Option.Some(MapEntry { key, value })` or `Option.None` in inline and
   managed-heap execution.
+- Split shared higher-order method callback execution into a focused VM
+  `method_runtime` module, so array and map stdlib modules no longer own each
+  other's heap-root and budget plumbing.
 - Added `array.sum` for direct numeric totals and callback-transformed numeric
   totals, preserving integer results until a float participates and returning
   `0` for empty arrays.
