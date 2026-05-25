@@ -1025,6 +1025,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   native callbacks can now accept `Option<T>` from dynamic `null`/value inputs
   and return optional copied values back as `null` or the inner script value,
   without adding script-language generics.
+- Added `EngineBuilder::register_typed_native_method_fn` for callable native
+  host methods. Method callbacks now receive the safe `HostPath` receiver plus
+  `HostExecution` and typed copied arguments, preserving the `PatchTx` mutation
+  boundary while reusing the Engine signature conversion rules.
 
 ## Next
 

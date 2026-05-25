@@ -4352,3 +4352,28 @@ Consequences:
   keeps diagnostics consistent with the existing conversion traits.
 - Script-level `Option.Some`/`Option.None` enum helpers remain distinct from
   Rust embedding `Option<T>` conversion.
+
+## 2026-05-25: Typed Native Methods Keep HostPath As Receiver
+
+Status: Accepted
+
+Context:
+Engine callable native methods already registered stable method metadata and an
+untyped callback accepting `&HostPath`, raw script `Value` args, and
+`HostExecution`. M14 typed native registration covered pure and host-native
+functions, but callable methods still required manual value destructuring.
+
+Decision:
+Add `TypedNativeMethodFunction` in the focused Engine typed module and expose
+`EngineBuilder::register_typed_native_method_fn`. The typed callback receives
+the safe `&HostPath` receiver, `&mut HostExecution`, then 0-3 copied typed
+arguments converted through `FromScriptArg`; return values use
+`IntoNativeReturn`.
+
+Consequences:
+- Callable host methods can use typed Rust signatures without exposing real
+  Rust host object references to scripts.
+- Method callbacks still mutate host state only through `HostExecution` and
+  `PatchTx`.
+- Conversion failures happen before the typed callback runs, so failed method
+  argument conversion leaves the transaction unchanged.

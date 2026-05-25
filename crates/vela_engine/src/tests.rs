@@ -1669,6 +1669,101 @@ fn main(player: Player) {
 }
 
 #[test]
+fn engine_registers_typed_callable_native_methods_for_host_paths() {
+    let method = HostMethodId::new(8);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .grant_permission("player.grant_exp")
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_typed_native_method_fn::<(i64,), _>(
+            NativeMethodDesc::new(owner, method, "typed_grant_exp")
+                .param("amount", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+            typed_grant_exp,
+        )
+        .build()
+        .expect("engine should build");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            method,
+            &HostPath::new(host_ref),
+            &[Value::Int(15)],
+            &mut host,
+        ),
+        Ok(Value::Int(15))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(15)],
+        }
+    );
+}
+
+#[test]
+fn typed_callable_native_method_conversion_errors_before_patch() {
+    let method = HostMethodId::new(8);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .grant_permission("player.grant_exp")
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_typed_native_method_fn::<(i64,), _>(
+            NativeMethodDesc::new(owner, method, "typed_grant_exp")
+                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+            typed_grant_exp,
+        )
+        .build()
+        .expect("engine should build");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        engine.call_native_method(
+            method,
+            &HostPath::new(host_ref),
+            &[Value::String("bad".to_owned())],
+            &mut host,
+        ),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch { operation: "int" },
+            ..
+        })
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+fn typed_grant_exp(
+    receiver: &HostPath,
+    host: &mut HostExecution<'_>,
+    amount: i64,
+) -> VmResult<Option<i64>> {
+    host.tx.call_method(
+        receiver.clone(),
+        HostMethodId::new(8),
+        vec![HostValue::Int(amount)],
+        None,
+    )?;
+    Ok(Some(amount))
+}
+
+#[test]
 fn engine_rejects_native_methods_for_unknown_owner_types() {
     let result = Engine::builder()
         .register_native_method_fn(

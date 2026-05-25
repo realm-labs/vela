@@ -32,6 +32,7 @@ pub use schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema
 pub use source::{EngineSourceError, EngineSourceErrorKind};
 pub use typed::{
     IntoNativeReturn, TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
+    TypedNativeMethodFunction,
 };
 pub use vela_common::{HostObjectId, HostTypeId};
 pub use vela_host::HostRef;

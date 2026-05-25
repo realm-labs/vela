@@ -13,7 +13,7 @@ use crate::{
     HostNativeFunctionEntry, NativeCallContext, NativeFunctionDesc, NativeFunctionEntry,
     NativeMethodDesc, NativeMethodEntry, PermissionSet, ScriptHostMethodMetadata, ScriptHostSchema,
     TypeHint, TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
-    engine::EngineParts,
+    TypedNativeMethodFunction, engine::EngineParts,
 };
 
 #[derive(Clone, Default)]
@@ -204,6 +204,20 @@ impl EngineBuilder {
         self.native_methods
             .push(NativeMethodEntry::new(desc, function));
         self
+    }
+
+    #[must_use]
+    pub fn register_typed_native_method_fn<Args, F>(
+        self,
+        desc: NativeMethodDesc,
+        function: F,
+    ) -> Self
+    where
+        F: TypedNativeMethodFunction<Args>,
+    {
+        self.register_native_method_fn(desc, move |receiver, args, host| {
+            function.call_method(receiver, args, host)
+        })
     }
 
     pub fn build(self) -> EngineResult<Engine> {
