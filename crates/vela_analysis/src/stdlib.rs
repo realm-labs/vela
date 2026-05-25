@@ -435,6 +435,40 @@ mod tests {
         .expect("some and_then fact");
         assert_eq!(chained_some.returns, TypeFact::option_none());
 
+        let recovered = stdlib_method_fact(
+            &TypeFact::option(TypeFact::Int),
+            "or_else",
+            Some(&TypeFact::option(TypeFact::String)),
+        )
+        .expect("option or_else fact");
+        assert_eq!(
+            recovered.returns,
+            TypeFact::option(TypeFact::union([TypeFact::Int, TypeFact::String]))
+        );
+        assert_eq!(
+            recovered.lambda.expect("option or_else lambda").params,
+            Vec::<TypeFact>::new()
+        );
+
+        let recovered_some = stdlib_method_fact(
+            &TypeFact::option_some(TypeFact::Int),
+            "or_else",
+            Some(&TypeFact::option(TypeFact::String)),
+        )
+        .expect("some or_else fact");
+        assert_eq!(recovered_some.returns, TypeFact::option_some(TypeFact::Int));
+
+        let recovered_none = stdlib_method_fact(
+            &TypeFact::option_none(),
+            "or_else",
+            Some(&TypeFact::option_some(TypeFact::String)),
+        )
+        .expect("none or_else fact");
+        assert_eq!(
+            recovered_none.returns,
+            TypeFact::option_some(TypeFact::String)
+        );
+
         let result = stdlib_method_fact(
             &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
             "map",
@@ -536,6 +570,43 @@ mod tests {
             chained_err.returns,
             TypeFact::result_err(TypeFact::record("Error"))
         );
+
+        let recovered_result = stdlib_method_fact(
+            &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
+            "or_else",
+            Some(&TypeFact::result(TypeFact::String, TypeFact::String)),
+        )
+        .expect("result or_else fact");
+        assert_eq!(
+            recovered_result.returns,
+            TypeFact::result(
+                TypeFact::union([TypeFact::Int, TypeFact::String]),
+                TypeFact::String
+            )
+        );
+        assert_eq!(
+            recovered_result
+                .lambda
+                .expect("result or_else lambda")
+                .params,
+            vec![TypeFact::record("Error")]
+        );
+
+        let recovered_ok = stdlib_method_fact(
+            &TypeFact::result_ok(TypeFact::Int),
+            "or_else",
+            Some(&TypeFact::result(TypeFact::String, TypeFact::String)),
+        )
+        .expect("ok or_else fact");
+        assert_eq!(recovered_ok.returns, TypeFact::result_ok(TypeFact::Int));
+
+        let recovered_err = stdlib_method_fact(
+            &TypeFact::result_err(TypeFact::record("Error")),
+            "or_else",
+            Some(&TypeFact::result_ok(TypeFact::String)),
+        )
+        .expect("err or_else fact");
+        assert_eq!(recovered_err.returns, TypeFact::result_ok(TypeFact::String));
     }
 
     #[test]

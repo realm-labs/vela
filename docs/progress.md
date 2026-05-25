@@ -1594,6 +1594,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   same dynamic enum family, while `Option.None` and `Result.Err` pass through;
   analysis/completions expose matching non-generic facts for general and
   narrowed Option/Result shapes.
+- Added Option/Result `.or_else` value methods for M13 fallback chaining.
+  `Option.None` invokes a zero-argument fallback callback that must return an
+  Option-family value, `Result.Err` invokes an error-aware callback that must
+  return a Result-family value, and success variants pass through with
+  matching analysis/completion facts.
 
 ## Next
 

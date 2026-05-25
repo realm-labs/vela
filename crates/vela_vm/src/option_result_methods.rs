@@ -139,6 +139,62 @@ pub(crate) fn and_then(
     }
 }
 
+pub(crate) fn or_else(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("or_else", args, 1)?;
+    let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method or_else",
+        })
+    })?;
+
+    match (tag.kind, tag.variant.as_str()) {
+        (EnumKind::Option, "Some") => {
+            enum_payload(receiver, runtime.heap.as_deref(), "method or_else")
+                .map(|payload| option_value(Some(payload)))
+        }
+        (EnumKind::Option, "None") => {
+            let fallback = call_callback(
+                &mut runtime,
+                "method or_else",
+                &args[0],
+                &[],
+                std::slice::from_ref(receiver),
+            )?;
+            expect_enum_kind(
+                fallback,
+                runtime.heap.as_deref(),
+                EnumKind::Option,
+                "method or_else",
+            )
+        }
+        (EnumKind::Result, "Ok") => {
+            enum_payload(receiver, runtime.heap.as_deref(), "method or_else")
+                .map(|payload| result_value("Ok", payload))
+        }
+        (EnumKind::Result, "Err") => {
+            let payload = enum_payload(receiver, runtime.heap.as_deref(), "method or_else")?;
+            let fallback = call_callback(
+                &mut runtime,
+                "method or_else",
+                &args[0],
+                &[payload],
+                std::slice::from_ref(receiver),
+            )?;
+            expect_enum_kind(
+                fallback,
+                runtime.heap.as_deref(),
+                EnumKind::Result,
+                "method or_else",
+            )
+        }
+        _ => type_error("method or_else"),
+    }
+}
+
 struct EnumTag {
     kind: EnumKind,
     variant: String,

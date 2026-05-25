@@ -622,6 +622,11 @@ mod tests {
                 grant.and_then(|value| ok);
                 failed.and_then(|value| ok);
                 ok.and_then(|value| failed);
+                maybe.or_else(| | some);
+                none.or_else(| | some);
+                grant.or_else(|error| ok);
+                failed.or_else(|error| ok);
+                ok.or_else(|error| failed);
             }
             "#,
         );
@@ -684,6 +689,26 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[12], &scope),
             TypeFact::result_err(TypeFact::record("Error"))
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[13], &scope),
+            TypeFact::option(TypeFact::union([TypeFact::Int, TypeFact::String]))
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[14], &scope),
+            TypeFact::option_some(TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[15], &scope),
+            TypeFact::result_ok(TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[16], &scope),
+            TypeFact::result_ok(TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[17], &scope),
+            TypeFact::result_ok(TypeFact::String)
         );
     }
 

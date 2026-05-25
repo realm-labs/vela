@@ -240,6 +240,41 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_option_result_or_else_methods() {
+        let source = r#"
+fn recover_option() {
+    return option.some(9);
+}
+
+fn recover_result(error) {
+    return result.ok(error.len());
+}
+
+fn main() {
+    let some = option.some(4).or_else(| | recover_option());
+    let none = option.none().or_else(| | recover_option());
+    let ok = result.ok(4).or_else(|error| recover_result(error));
+    let err = result.err("bad").or_else(|error| recover_result(error));
+
+    return option.unwrap_or(some, 0) == 4
+        && option.unwrap_or(none, 0) == 9
+        && result.unwrap_or(ok, 0) == 4
+        && result.unwrap_or(err, 0) == 3;
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option/result or_else source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option/result or_else source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
     fn runs_compiled_option_ok_or_with_try_propagation() {
         let source = r#"
 fn checked(raw) {
@@ -438,6 +473,42 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_option_result_or_else_methods() {
+        let source = r#"
+fn fallback_tags() {
+    return option.some(["fallback"]);
+}
+
+fn fallback_result(errors) {
+    return result.ok(errors.join("."));
+}
+
+fn main() {
+    let some = option.some(["keep"]).or_else(| | fallback_tags());
+    let none = option.none().or_else(| | fallback_tags());
+    let ok = result.ok("done").or_else(|errors| fallback_result(errors));
+    let err = result.err(["bad", "level"]).or_else(|errors| fallback_result(errors));
+
+    return option.unwrap_or(some, []).join(".") == "keep"
+        && option.unwrap_or(none, []).join(".") == "fallback"
+        && result.unwrap_or(ok, "") == "done"
+        && result.unwrap_or(err, "") == "bad.level";
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap option/result or_else source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap option/result or_else source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
     fn option_result_helpers_reject_wrong_dynamic_shapes() {
         let source = r#"
 fn main() {
@@ -481,6 +552,30 @@ fn main() {
             error.kind,
             VmErrorKind::TypeMismatch {
                 operation: "method and_then"
+            }
+        );
+    }
+
+    #[test]
+    fn option_result_or_else_rejects_non_enum_callback_results() {
+        let source = r#"
+fn main() {
+    return option.none().or_else(| | 1);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("invalid or_else callback source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run_program(&program, "main", &[])
+            .expect_err("invalid or_else callback should fail");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method or_else"
             }
         );
     }

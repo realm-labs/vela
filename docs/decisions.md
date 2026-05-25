@@ -6578,3 +6578,29 @@ Consequences:
   instead of being silently wrapped.
 - Runtime logic stays in the focused Option/Result method module; method
   dispatch remains glue-only.
+
+## 2026-05-26: Option And Result Or Else Chain Fallbacks
+
+Status: Accepted
+
+Context:
+Successful-path chaining through `.and_then` still leaves failure recovery
+spelled as explicit `match` blocks. Gameplay scripts need concise fallback
+logic for missing lookups and recoverable Result errors while preserving the
+dynamic enum boundary and avoiding script generics.
+
+Decision:
+Add `.or_else(callback)` as a value method for dynamic `Option` and `Result`
+enum values. `Option.None` invokes a zero-argument fallback callback that must
+return an Option-family value. `Result.Err` invokes a callback with the error
+payload and requires a Result-family return. `Option.Some` and `Result.Ok`
+preserve their success payloads without invoking the callback. Analysis exposes
+non-generic facts for general and narrowed Option/Result shapes.
+
+Consequences:
+- Scripts can express fallback lookup and recoverable-error flows without
+  manual enum matching.
+- Callback return validation stays dynamic and family-based rather than adding
+  generic Option/Result types.
+- The VM keeps fallback chaining in the focused Option/Result stdlib module,
+  with `script_methods` remaining dispatch glue.
