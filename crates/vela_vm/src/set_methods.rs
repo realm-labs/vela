@@ -122,6 +122,32 @@ pub(crate) fn values(
     set_values(receiver, heap, "method values").map(Value::Array)
 }
 
+pub(crate) fn map(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("map", args, 1)?;
+    let values = set_values(receiver, runtime.heap.as_deref(), "method map")?;
+    let mut mapped = Vec::new();
+    for value in values {
+        let mapped_value = call_callback(
+            &mut runtime,
+            "method map",
+            &args[0],
+            std::slice::from_ref(&value),
+            &mapped,
+        )?;
+        push_unique(
+            &mut mapped,
+            mapped_value,
+            runtime.heap.as_deref(),
+            "method map",
+        )?;
+    }
+    Ok(Value::Set(mapped))
+}
+
 pub(crate) fn filter(
     receiver: &Value,
     args: &[Value],
@@ -650,6 +676,50 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set filter should run");
         assert_eq!(result, Value::Int(23));
+    }
+
+    #[test]
+    fn runs_compiled_set_map_method() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["daily", "quest", "raid"]);
+    let mapped = tags.map(|tag| tag.to_upper()).values().sort_by(|tag| tag).join(",");
+    let lengths = tags.map(|tag| tag.len());
+    if tags.len() == 3 && lengths.len() == 2 {
+        return mapped;
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set map source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("set map should run");
+        assert_eq!(result, Value::String("DAILY,QUEST,RAID".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_set_map_method() {
+        let source = r#"
+fn main() {
+    let ids = set.from_array([1, 2, 3, 4]);
+    let doubled = ids.map(|id| id * 2);
+    let parity = ids.map(|id| id % 2);
+    return doubled.values().sum() + parity.values().sum();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set map source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set map should run");
+        assert_eq!(result, Value::Int(21));
     }
 
     #[test]

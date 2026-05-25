@@ -1664,6 +1664,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   function `event` attrs now enter `FunctionAbi`, and updates that add, remove,
   or change event bindings are rejected with report details before a safe-point
   code swap can occur.
+- Added M13 `set.map(transform)` as a deterministic, non-mutating set
+  transform. Callback results are deduplicated through the existing scalar set
+  element rules, work in inline and managed-heap execution, and expose
+  non-generic analysis/completion facts for transformed element shapes.
 
 ## Next
 

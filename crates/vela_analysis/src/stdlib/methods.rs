@@ -30,6 +30,7 @@ const SET_METHOD_NAMES: &[&str] = &[
     "add",
     "remove",
     "values",
+    "map",
     "filter",
     "find",
     "any",
@@ -357,7 +358,7 @@ fn map_method_fact(
 fn set_method_fact(
     element: TypeFact,
     method: &str,
-    _lambda_return: Option<&TypeFact>,
+    lambda_return: Option<&TypeFact>,
 ) -> Option<StdlibMethodFact> {
     let receiver = TypeFact::set(element.clone());
     match method {
@@ -380,6 +381,13 @@ fn set_method_fact(
             "values",
             TypeFact::array(element.clone()),
         )),
+        "map" => {
+            let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
+            Some(
+                StdlibMethodFact::new(receiver, "map", TypeFact::set(mapped.clone()))
+                    .with_lambda(vec![element], mapped),
+            )
+        }
         "filter" => Some(
             StdlibMethodFact::new(receiver, "filter", TypeFact::set(element.clone()))
                 .with_lambda(vec![element], TypeFact::Bool),

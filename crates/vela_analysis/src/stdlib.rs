@@ -234,6 +234,12 @@ mod tests {
                 .returns,
             TypeFact::array(TypeFact::String)
         );
+        let set_map = stdlib_method_fact(&set, "map", Some(&TypeFact::Int)).expect("set map fact");
+        assert_eq!(
+            set_map.params,
+            vec![TypeFact::function(vec![TypeFact::String], TypeFact::Int)]
+        );
+        assert_eq!(set_map.returns, TypeFact::set(TypeFact::Int));
         let set_filter = stdlib_method_fact(&set, "filter", None).expect("set filter fact");
         assert_eq!(
             set_filter.params,
@@ -480,6 +486,13 @@ mod tests {
     #[test]
     fn set_lambda_methods_expose_element_parameter_facts() {
         let receiver = TypeFact::set(TypeFact::String);
+
+        let mapped = stdlib_method_fact(&receiver, "map", Some(&TypeFact::Int)).expect("map fact");
+        assert_eq!(
+            mapped.lambda.expect("map lambda").params,
+            vec![TypeFact::String]
+        );
+        assert_eq!(mapped.returns, TypeFact::set(TypeFact::Int));
 
         let filter = stdlib_method_fact(&receiver, "filter", None).expect("filter fact");
         assert_eq!(

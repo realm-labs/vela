@@ -6912,3 +6912,25 @@ Consequences:
   `FunctionDesc` attrs without adding runtime schema mutation.
 - Hosts that intentionally migrate event bindings must restart or perform an
   explicit migration instead of relying on function-level hot reload.
+
+## 2026-05-26: Set Map Returns Deduplicated Scalar Sets
+
+Status: Accepted
+
+Context:
+M13 collection helpers should let gameplay scripts transform tag and
+requirement sets without converting through arrays. Vela sets intentionally
+remain scalar-only so equality is deterministic and heap-safe.
+
+Decision:
+Add `set.map(transform)` as a non-mutating script-value method. The callback
+receives copied set elements in deterministic receiver order, and callback
+results are inserted into a copied set through the existing scalar set element
+rules.
+
+Consequences:
+- Set transforms align with array `map` while preserving set uniqueness.
+- Non-scalar transform results fail with the normal set type error instead of
+  extending set equality to aggregate values.
+- Analysis and completion facts model the transformed element shape without
+  adding script-language generics.
