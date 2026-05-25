@@ -1198,6 +1198,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added zero-argument `reflect.methods()` for copied, owner-qualified
   TypeRegistry method metadata enumeration using the same policy filtering as
   `reflect.methods(value)`.
+- Added zero-argument `reflect.fields()` for copied, owner-qualified
+  TypeRegistry field metadata enumeration using the same policy filtering as
+  `reflect.fields(value)`.
 
 ## Next
 

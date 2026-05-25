@@ -78,6 +78,37 @@ pub fn field_names_with_policy(
     )))
 }
 
+pub fn all_fields(registry: &TypeRegistry) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .types()
+            .flat_map(|desc| {
+                desc.fields
+                    .iter()
+                    .map(|field| field_record_with_owner(&desc.key.name, field))
+            })
+            .collect(),
+    ))
+}
+
+pub fn all_fields_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .types()
+            .flat_map(|desc| {
+                desc.fields
+                    .iter()
+                    .filter(|field| {
+                        policy
+                            .require_field_read_access(&desc.key.name, field)
+                            .is_ok()
+                    })
+                    .map(|field| field_record_with_owner(&desc.key.name, field))
+            })
+            .collect(),
+    ))
+}
+
 pub fn has_field(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -533,6 +564,17 @@ fn variant_record_with_fields<'a>(
 }
 
 fn field_record(field: &FieldDesc) -> HostValue {
+    field_record_from_fields(field_record_fields(field))
+}
+
+fn field_record_with_owner(type_name: &str, field: &FieldDesc) -> HostValue {
+    let mut fields = BTreeMap::new();
+    fields.insert("owner".to_owned(), HostValue::String(type_name.to_owned()));
+    fields.extend(field_record_fields(field));
+    field_record_from_fields(fields)
+}
+
+fn field_record_fields(field: &FieldDesc) -> BTreeMap<String, HostValue> {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(field.id.get())));
     fields.insert("name".to_owned(), HostValue::String(field.name.clone()));
@@ -549,6 +591,10 @@ fn field_record(field: &FieldDesc) -> HostValue {
     fields.insert("docs".to_owned(), docs_value(field.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&field.attrs));
     fields.insert("source_span".to_owned(), span_value(field.source_span));
+    fields
+}
+
+fn field_record_from_fields(fields: BTreeMap<String, HostValue>) -> HostValue {
     HostValue::Record {
         type_name: "ReflectField".to_owned(),
         fields,
@@ -728,6 +774,25 @@ mod tests {
         assert_eq!(
             fields.get("source_span"),
             Some(&span_value(Some(Span::new(SourceId::new(8), 50, 55))))
+        );
+        let ReflectValue::Host(HostValue::Array(all_fields)) = all_fields(&registry) else {
+            panic!("field list should be an array");
+        };
+        assert_eq!(all_fields.len(), 2);
+        let HostValue::Record {
+            fields: field_list_item,
+            ..
+        } = &all_fields[1]
+        else {
+            panic!("field list item should be a record");
+        };
+        assert_eq!(
+            field_list_item.get("owner"),
+            Some(&HostValue::String("Player".to_owned()))
+        );
+        assert_eq!(
+            field_list_item.get("name"),
+            Some(&HostValue::String("level".to_owned()))
         );
 
         let error = field(&registry, &target, "levle").expect_err("unknown field");
@@ -1118,6 +1183,27 @@ mod tests {
             panic!("fields should be an array");
         };
         assert_eq!(fields, vec![HostValue::String("level".to_owned())]);
+        let ReflectValue::Host(HostValue::Array(all_fields)) =
+            all_fields_with_policy(&registry, &ReflectPolicy::read_only())
+        else {
+            panic!("all fields should be an array");
+        };
+        assert_eq!(all_fields.len(), 1);
+        let HostValue::Record {
+            fields: field_list_item,
+            ..
+        } = &all_fields[0]
+        else {
+            panic!("field list item should be a record");
+        };
+        assert_eq!(
+            field_list_item.get("owner"),
+            Some(&HostValue::String("Player".to_owned()))
+        );
+        assert_eq!(
+            field_list_item.get("name"),
+            Some(&HostValue::String("level".to_owned()))
+        );
         assert!(
             has_field_with_policy(&registry, &target, "level", &ReflectPolicy::read_only())
                 .expect("has level")

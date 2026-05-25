@@ -180,6 +180,12 @@ impl Vm {
                 &fields_budget,
                 reflect::ReflectPermission::ReadTypeInfo,
             )?;
+            if args.is_empty() {
+                return value_from_reflect(reflect::field_metadata_list_with_policy(
+                    &fields_registry,
+                    &fields_policy,
+                ));
+            }
             expect_arity("reflect.fields", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.fields")?;
             check_host_ref_inspection(&fields_policy, &target)?;

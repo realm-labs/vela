@@ -4547,12 +4547,16 @@ fn compiled_source_reflects_name_kind_and_field_metadata() {
         r#"
 fn main(player) {
     let field = reflect.field(player, "level");
+    let all_fields = reflect.fields();
     if reflect.name(player) == "Player"
         && reflect.kind(player) == "host"
         && reflect.docs(player) == "A player host object."
         && option.unwrap_or(reflect.attrs(player).get("domain"), "") == "gameplay"
         && reflect.has_field(player, "level")
         && !reflect.has_field(player, "mana")
+        && all_fields.len() == 2
+        && all_fields[1].owner == "Player"
+        && all_fields[1].name == "level"
         && field.name == "level"
         && field.type == "int"
         && field.docs == "Current player level."
@@ -4589,10 +4593,11 @@ fn compiled_source_reflect_fields_respect_field_access() {
         r#"
 fn main(player) {
     let fields = reflect.fields(player);
+    let all_fields = reflect.fields();
     if reflect.has_field(player, "level")
         && !reflect.has_field(player, "secret")
         && reflect.field(player, "level").name == "level" {
-        return fields.len();
+        return fields.len() * 10 + all_fields.len();
     }
     return 0;
 }
@@ -4618,7 +4623,7 @@ fn main(player) {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
-        Ok(Value::Int(1))
+        Ok(Value::Int(11))
     );
 }
 
