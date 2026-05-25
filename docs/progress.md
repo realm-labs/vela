@@ -1331,6 +1331,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   composition. The right-hand map wins duplicate keys, inline and managed-heap
   execution preserve the receiver, and analysis TypeFacts plus completion
   metadata expose the map-to-map signature.
+- Added non-mutating `array.distinct()` for stable first-seen de-duplication
+  of copied script arrays. It uses VM equality semantics, works in inline and
+  managed-heap execution, preserves the receiver, and exposes analysis
+  TypeFacts plus completion metadata.
 - Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
   script boundary. Native function and method macros now expose Result returns
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to

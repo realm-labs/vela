@@ -135,6 +135,25 @@ pub(crate) fn contains(
     Ok(false)
 }
 
+pub(crate) fn distinct(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("distinct", args, 0)?;
+    let values = array_values(receiver, heap, "method distinct")?;
+    let mut distinct = Vec::new();
+    'values: for value in values {
+        for existing in &distinct {
+            if values_equal(existing, &value, heap)? {
+                continue 'values;
+            }
+        }
+        distinct.push(value);
+    }
+    Ok(Value::Array(distinct))
+}
+
 pub(crate) fn any(
     receiver: &Value,
     args: &[Value],
@@ -670,6 +689,63 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array contains method should run");
         assert_eq!(result, Value::String("daily,quest,raid".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_distinct_method() {
+        let source = r#"
+fn main() {
+    let rewards = [
+        Reward { item_id: "gold", count: 2 },
+        Reward { item_id: "xp", count: 1 },
+        Reward { item_id: "gold", count: 2 },
+    ];
+    let unique = [3, 1, 3, 2, 1].distinct();
+    let unique_rewards = rewards.distinct();
+    if unique.len() == 3
+        && unique[0] == 3
+        && unique[1] == 1
+        && unique[2] == 2
+        && rewards.len() == 3
+        && unique_rewards.len() == 2
+    {
+        return unique_rewards[0].item_id;
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array distinct source should compile");
+
+        let result = Vm::new().run(&code).expect("array distinct should run");
+        assert_eq!(result, Value::String("gold".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_distinct_method() {
+        let source = r#"
+fn main() {
+    let tags = ["raid", "quest", "raid", "daily", "quest"];
+    let nested = [["daily", "quest"], ["daily", "quest"], ["raid"]];
+    let unique_tags = tags.distinct();
+    let unique_nested = nested.distinct();
+    if tags.len() == 5
+        && unique_tags.join(",") == "raid,quest,daily"
+        && unique_nested.len() == 2
+    {
+        return unique_nested[0].join("|");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array distinct source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array distinct should run");
+        assert_eq!(result, Value::String("daily|quest".to_owned()));
     }
 
     #[test]

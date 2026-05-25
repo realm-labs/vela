@@ -397,6 +397,11 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(vec![TypeFact::String], TypeFact::Bool),
         )));
+        assert!(array.contains(&CompletionItem::new(
+            "distinct",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::array(TypeFact::String)),
+        )));
 
         let set = member_completions(&facts, &TypeFact::set(TypeFact::String));
         assert!(set.contains(&CompletionItem::new(

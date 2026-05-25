@@ -1,8 +1,8 @@
 use crate::TypeFact;
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
-    "len", "is_empty", "push", "pop", "first", "last", "join", "contains", "map", "filter", "find",
-    "any", "all", "count", "sum", "group_by", "sort_by",
+    "len", "is_empty", "push", "pop", "first", "last", "join", "contains", "distinct", "map",
+    "filter", "find", "any", "all", "count", "sum", "group_by", "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
     "len",
@@ -422,6 +422,11 @@ fn array_method_fact(
             StdlibMethodFact::new(receiver, "contains", TypeFact::Bool)
                 .with_params(vec![element.clone()]),
         ),
+        "distinct" => Some(StdlibMethodFact::new(
+            receiver,
+            "distinct",
+            TypeFact::array(element.clone()),
+        )),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             Some(
@@ -867,6 +872,12 @@ mod tests {
         let contains = stdlib_method_fact(&array, "contains", None).expect("contains fact");
         assert_eq!(contains.params, vec![TypeFact::Float]);
         assert_eq!(contains.returns, TypeFact::Bool);
+        assert_eq!(
+            stdlib_method_fact(&array, "distinct", None)
+                .expect("distinct fact")
+                .returns,
+            TypeFact::array(TypeFact::Float)
+        );
         assert_eq!(
             stdlib_method_fact(&set, "values", None)
                 .expect("values fact")

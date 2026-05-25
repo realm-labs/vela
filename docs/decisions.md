@@ -5707,3 +5707,25 @@ Consequences:
 - Duplicate-key behavior is explicit and deterministic.
 - Analysis and completion metadata expose map-to-map TypeFacts while keeping
   script syntax free of generics.
+
+## 2026-05-25: Array Distinct Uses VM Equality Semantics
+
+Status: Accepted
+
+Context:
+Gameplay scripts often normalize reward lists, tags, and precomputed script
+collections before applying game logic. A direct distinct helper avoids
+repeating manual accumulator loops and should match existing equality behavior
+rather than inventing a second comparison model.
+
+Decision:
+Add `array.distinct()` as a pure script-value method. It returns a new array,
+preserves first-seen order, leaves the receiver unchanged, and compares values
+through the existing VM equality path in inline and managed-heap execution.
+
+Consequences:
+- Scripts can de-duplicate copied arrays without PatchTx or host-specific
+  helpers.
+- Equality behavior stays centralized with `==` and `array.contains`.
+- Analysis and completion metadata expose array return TypeFacts without
+  adding script-visible generics.
