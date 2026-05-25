@@ -15,8 +15,8 @@ use crate::{
     CONTEXT_TIME_PERMISSION, CONTROLLED_RANDOM_PERMISSION, CTX_NOW_FUNCTION_ID,
     CTX_TICK_FUNCTION_ID, CallOptions, EffectSet, Engine, EngineErrorKind, EngineSourceErrorKind,
     FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext, NativeFunctionDesc,
-    NativeFunctionId, NativeMethodDesc, PermissionSet, Runtime, ScriptArgsExt, ScriptReflectSchema,
-    TypeHint,
+    NativeFunctionId, NativeMethodDesc, PermissionSet, Runtime, ScriptArgsExt,
+    ScriptHostMethodMetadata, ScriptReflectSchema, TypeHint,
 };
 use crate::{FromScriptArg, IntoScriptArg};
 
@@ -28,6 +28,23 @@ impl ScriptReflectSchema for ReflectOnlyPlayer {
             .kind(vela_reflect::TypeKind::Host)
             .host_type(HostTypeId::new(9901))
             .field(FieldDesc::new(FieldId::new(1), "level"))
+    }
+}
+
+struct MetadataOnlyPlayerMethods;
+
+impl ScriptHostMethodMetadata for MetadataOnlyPlayerMethods {
+    fn script_host_method_descs() -> Vec<NativeMethodDesc> {
+        vec![
+            NativeMethodDesc::new(
+                TypeKey::new(TypeId::new(1), "Player"),
+                HostMethodId::new(44),
+                "metadata_bonus",
+            )
+            .param("amount", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_read()),
+        ]
     }
 }
 
@@ -81,6 +98,28 @@ fn engine_builder_registers_reflect_schema_metadata() {
     assert_eq!(reflected.key.id, TypeId::new(9901));
     assert_eq!(reflected.host_type_id, Some(HostTypeId::new(9901)));
     assert_eq!(reflected.fields[0].name, "level");
+}
+
+#[test]
+fn engine_builder_registers_host_methods_from_metadata_trait() {
+    let engine = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_host_methods::<MetadataOnlyPlayerMethods>()
+        .build()
+        .expect("engine should build with host method metadata");
+
+    let registry = engine.registry();
+    let player = registry
+        .type_by_name("Player")
+        .expect("player type should be registered");
+    assert_eq!(player.methods.len(), 1);
+    assert_eq!(player.methods[0].id, HostMethodId::new(44));
+    assert_eq!(player.methods[0].name, "metadata_bonus");
+    assert_eq!(
+        player.methods[0].params[0].type_hint.as_deref(),
+        Some("int")
+    );
+    assert!(player.methods[0].effects.reads_host);
 }
 
 #[test]

@@ -133,7 +133,8 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
 
     let self_ty = item.self_ty.clone();
     let method_tokens = methods.iter().map(method_tokens);
-    let registration_tokens = native_method_registration_tokens(&methods);
+    let native_registration_tokens = native_method_registration_tokens(&methods);
+    let host_method_registration_tokens = script_host_method_registration_tokens(&methods);
     Ok(quote! {
         #item
 
@@ -151,13 +152,27 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 builder: ::vela_engine::EngineBuilder,
             ) -> ::vela_engine::EngineBuilder {
                 let owner_key = Self::vela_host_type_desc().key;
-                #registration_tokens
+                #native_registration_tokens
+            }
+
+            #[must_use]
+            pub fn vela_register_host_methods(
+                builder: ::vela_engine::EngineBuilder,
+            ) -> ::vela_engine::EngineBuilder {
+                let owner_key = Self::vela_host_type_desc().key;
+                #host_method_registration_tokens
             }
         }
 
         impl ::vela_engine::ScriptHostMethodMetadata for #self_ty {
             fn script_host_method_descs() -> ::std::vec::Vec<::vela_engine::NativeMethodDesc> {
                 Self::vela_native_method_descs()
+            }
+
+            fn register_script_host_methods(
+                builder: ::vela_engine::EngineBuilder,
+            ) -> ::vela_engine::EngineBuilder {
+                Self::vela_register_host_methods(builder)
             }
         }
     })
@@ -395,6 +410,31 @@ fn native_method_registration_tokens(methods: &[MethodMeta]) -> TokenStream {
                 Self::#ident,
             )
         };
+    }
+
+    quote! {
+        #builder
+    }
+}
+
+fn script_host_method_registration_tokens(methods: &[MethodMeta]) -> TokenStream {
+    let mut builder = quote! { builder };
+    for method in methods {
+        let desc = method_desc_expr(method);
+        if method.callable_native {
+            let args_tuple = args_tuple_tokens(&method.params);
+            let ident = &method.ident;
+            builder = quote! {
+                #builder.register_typed_native_method_fn::<#args_tuple, _>(
+                    #desc,
+                    Self::#ident,
+                )
+            };
+        } else {
+            builder = quote! {
+                #builder.register_host_method_desc(#desc)
+            };
+        }
     }
 
     quote! {

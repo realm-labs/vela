@@ -60,6 +60,11 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    pub fn register_host_methods<T: ScriptHostMethodMetadata>(self) -> Self {
+        T::register_script_host_methods(self)
+    }
+
+    #[must_use]
     pub fn grant_permission(mut self, permission: impl Into<String>) -> Self {
         self.permissions.insert(permission);
         self

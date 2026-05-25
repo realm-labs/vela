@@ -5492,6 +5492,32 @@ Consequences:
   structured implementation boundary and leaving room for later abstraction if
   wider signatures become necessary.
 
+## 2026-05-25: Host Method Macros Register Through EngineBuilder
+
+Status: Accepted
+
+Context:
+`#[script_methods]` generated copied metadata and an inherent helper for
+callable native method bodies, but embedders still needed to know the macro
+helper name to register callable methods. M14 requires host schemas and native
+functions/methods to be available through a stable Engine API.
+
+Decision:
+Extend `ScriptHostMethodMetadata` with a registration hook and add
+`EngineBuilder::register_host_methods::<T>()`. The default hook registers
+metadata-only descriptors, while `#[script_methods]` overrides it to register
+metadata-only methods through `register_host_method_desc` and callable native
+method bodies through `register_typed_native_method_fn`.
+
+Consequences:
+- Embedders can register generated host method metadata and callable method
+  bodies with a generic EngineBuilder API.
+- Callable methods still cross the host boundary through `HostPath`,
+  `HostExecution`, copied script arguments, and `PatchTx`; scripts do not gain
+  Rust references or runtime schema mutation.
+- The older generated callable-only helper remains available for targeted
+  registration without forcing duplicate metadata into the TypeRegistry.
+
 ## 2026-05-25: String Affix Stripping Returns Dynamic Option Values
 
 Status: Accepted
