@@ -570,9 +570,10 @@ fn main() {
 
 #[test]
 fn script_function_registers_typed_option_native_with_engine() {
-    let engine = vela_register_native_function_optional_bonus(Engine::builder())
-        .build()
-        .expect("engine should build from macro option native function");
+    let engine =
+        vela_register_native_function_optional_bonus(Engine::builder().with_standard_natives())
+            .build()
+            .expect("engine should build from macro option native function");
     let root = unique_test_dir("script_function_option_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
     let source = root.join("main.lang");
@@ -580,7 +581,10 @@ fn script_function_registers_typed_option_native_with_engine() {
         &source,
         r#"
 fn main() {
-    return game.optional_bonus(null) == null && game.optional_bonus(4) == 5;
+    return game.optional_bonus(null) == null
+        && game.optional_bonus(4) == 5
+        && game.optional_bonus(option.none()) == null
+        && game.optional_bonus(option.some(8)) == 9;
 }
 "#,
     )

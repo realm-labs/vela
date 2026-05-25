@@ -222,6 +222,21 @@ where
     fn from_script_arg(value: &Value) -> VmResult<Self> {
         match value {
             Value::Null => Ok(None),
+            Value::Enum {
+                enum_name,
+                variant,
+                fields,
+            } if enum_name == "Option" || enum_name.rsplit('.').next() == Some("Option") => {
+                match variant.as_str() {
+                    "Some" => fields
+                        .get("0")
+                        .ok_or_else(|| type_mismatch(Self::TYPE_NAME))
+                        .and_then(T::from_script_arg)
+                        .map(Some),
+                    "None" => Ok(None),
+                    _ => Err(type_mismatch(Self::TYPE_NAME)),
+                }
+            }
             value => T::from_script_arg(value).map(Some),
         }
     }

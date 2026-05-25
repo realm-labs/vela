@@ -251,6 +251,7 @@ fn main() {
 #[test]
 fn typed_native_functions_accept_optional_values() {
     let engine = Engine::builder()
+        .with_standard_natives()
         .register_typed_native_fn::<(Option<i64>,), _>(
             NativeFunctionDesc::new("game.option_bonus", NativeFunctionId::new(108))
                 .param("bonus", TypeHint::Any)
@@ -263,7 +264,10 @@ fn typed_native_functions_accept_optional_values() {
         SourceId::new(1),
         r#"
 fn main() {
-    return game.option_bonus(null) + game.option_bonus(5);
+    return game.option_bonus(null)
+        + game.option_bonus(5)
+        + game.option_bonus(option.none())
+        + game.option_bonus(option.some(9));
 }
 "#,
     )
@@ -271,7 +275,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(12)),
+        Ok(Value::Int(28)),
     );
 }
 
@@ -603,8 +607,20 @@ fn typed_native_functions_report_arity_and_type_errors() {
 
 #[test]
 fn script_arg_conversions_support_optional_values() {
+    let some_value = Value::Enum {
+        enum_name: "Option".to_owned(),
+        variant: "Some".to_owned(),
+        fields: [("0".to_owned(), Value::Int(3))].into(),
+    };
+    let none_value = Value::Enum {
+        enum_name: "game.std.Option".to_owned(),
+        variant: "None".to_owned(),
+        fields: [].into(),
+    };
     assert_eq!(Option::<i64>::from_script_arg(&Value::Null), Ok(None));
     assert_eq!(Option::<i64>::from_script_arg(&Value::Int(3)), Ok(Some(3)));
+    assert_eq!(Option::<i64>::from_script_arg(&some_value), Ok(Some(3)));
+    assert_eq!(Option::<i64>::from_script_arg(&none_value), Ok(None));
     assert_eq!(
         Some("reward").into_script_arg(),
         Value::String("reward".to_owned())
@@ -618,6 +634,19 @@ fn script_arg_conversions_support_optional_values() {
         Option::<i64>::from_script_arg(&Value::String("bad".to_owned())),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "int" },
+            ..
+        })
+    ));
+    assert!(matches!(
+        Option::<i64>::from_script_arg(&Value::Enum {
+            enum_name: "Option".to_owned(),
+            variant: "Missing".to_owned(),
+            fields: [].into(),
+        }),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch {
+                operation: "option"
+            },
             ..
         })
     ));

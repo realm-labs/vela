@@ -1437,6 +1437,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   validation, macro-generated function/method metadata reports Rust arrays as
   script arrays, host schema derives infer array field hints, and unsupported
   integer widths are rejected even when nested inside array signatures.
+- Extended M14 Rust `Option<T>` inbound conversion so typed Engine natives and
+  macro-generated native functions accept both the existing `null`/value
+  embedding shape and script-visible dynamic `Option.Some`/`Option.None`
+  values produced by the standard library, without changing `Option<T>` return
+  conversion or adding script-language generics.
 
 ## Next
 

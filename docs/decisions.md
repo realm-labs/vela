@@ -6174,3 +6174,29 @@ Consequences:
   can be recorded.
 - Macro metadata now matches the dynamic script value category for fixed-array
   signatures.
+
+## 2026-05-25: Rust Option Inputs Accept Dynamic Option Values
+
+Status: Accepted
+
+Context:
+Rust `Option<T>` conversion at the Engine boundary accepted `null` as `None`
+and copied non-null values as `Some(T)`. Script standard-library helpers,
+collection lookups, and `?` propagation use dynamic enum values named
+`Option.Some` and `Option.None`, so typed native callbacks could not directly
+consume values produced by those script APIs.
+
+Decision:
+Extend `FromScriptArg for Option<T>` to also accept dynamic
+`Option.Some(value)` and `Option.None`, including module-qualified enum names
+ending in `Option`. Keep `IntoScriptArg for Option<T>` unchanged: Rust
+callbacks still return `null` or the copied inner value through the existing
+embedding shape.
+
+Consequences:
+- Typed Engine natives and macro-generated native functions compose with
+  script-visible Option helpers without adding `Option<T>` script syntax.
+- Inbound conversion stays copy-only and still rejects malformed Option enum
+  values before any host patch can be recorded.
+- Existing Rust `Option<T>` return behavior remains compatible with current
+  embedders.
