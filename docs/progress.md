@@ -1453,6 +1453,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   variant IDs/names, and duplicate variant payload field IDs/names before
   schemas enter the `TypeRegistry`, extending the stable-ID duplicate checks
   beyond types, host types, methods, and native functions.
+- Tightened M14 host schema derive validation for exposed field names.
+  `ScriptHost` and `ScriptReflect` now reject duplicate script-visible field
+  names during macro expansion, complementing duplicate field ID checks and
+  preventing invalid generated schemas from reaching Engine registration.
 
 ## Next
 

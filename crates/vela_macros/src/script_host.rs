@@ -133,6 +133,7 @@ fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
     };
 
     let mut seen_ids = BTreeSet::new();
+    let mut seen_names = BTreeSet::new();
     let mut result = Vec::new();
     for field in &fields.named {
         let attrs = parse_script_attrs(&field.attrs)?;
@@ -154,8 +155,12 @@ fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
         }
 
         let rust_name = ident.to_string();
+        let script_name = attrs.field_name(&rust_name);
+        if !seen_names.insert(script_name.clone()) {
+            return Err(error(ident.span(), "duplicate script field name"));
+        }
         result.push(FieldMeta {
-            script_name: attrs.field_name(&rust_name),
+            script_name,
             rust_name,
             id,
             readable: attrs.get,
@@ -261,6 +266,25 @@ mod tests {
         .expect_err("duplicate field IDs should fail macro expansion");
 
         assert!(error.to_string().contains("duplicate script field id"));
+    }
+
+    #[test]
+    fn rejects_duplicate_field_names() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Player {
+                    #[script(get, id = 1, name = "level")]
+                    level: u32,
+                    #[script(get, id = 2, name = "level")]
+                    exp: u64,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("duplicate field names should fail macro expansion");
+
+        assert!(error.to_string().contains("duplicate script field name"));
     }
 
     #[test]
