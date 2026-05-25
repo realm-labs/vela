@@ -4069,3 +4069,31 @@ Consequences:
 - Hosts keep safe-point control because `Runtime::call` does not apply patches.
 - Budget defaults are centralized in `CallOptions::gameplay()` while tests can
   select tighter limits for deterministic budget failures.
+
+## 2026-05-25: Host Derive Macros Generate Metadata Only First
+
+Status: Accepted
+
+Context:
+M14 requires Rust host derive macros, but the host boundary still must prevent
+scripts from receiving real Rust references or mutating host state outside
+`PatchTx`. Existing Engine registration already accepts explicit `TypeDesc`
+metadata, so the first useful macro slice can reduce schema boilerplate without
+changing runtime mutation semantics.
+
+Decision:
+Add a focused `vela_macros` proc-macro crate. `#[derive(ScriptHost)]` generates
+`vela_host_type_desc()`, and `#[derive(ScriptReflect)]` generates
+`vela_reflect_type_desc()`. Both methods return copied reflection descriptors
+for annotated named structs, including stable IDs, host type IDs, field access
+flags, permissions, docs, module attrs, type hints, and a deterministic schema
+hash. The macros reject missing type IDs and duplicate exposed field IDs during
+expansion.
+
+Consequences:
+- Hosts can register macro-generated descriptors through the existing
+  `EngineBuilder::register_type` path and compare them against hand-written
+  descriptors.
+- The macro does not generate field accessors, method dispatch, or adapter
+  apply logic yet, so scripts still cannot obtain Rust `&mut` references.
+- Method macros and native call context conversion remain separate M14 slices.

@@ -4,8 +4,9 @@
 
 M0-M11 runnable prototype, stable script metadata, broad executable language
 surface, and host bridge foundations are complete enough to continue
-reflection, permissions, and standard-library expansion. Current milestone:
-M12/M13 reflection and standard-library completion.
+reflection, permissions, standard-library expansion, and focused Engine
+embedding slices. Current milestone: M12/M13 reflection and standard-library
+completion, with targeted M14 Engine API work as it unblocks embedding.
 
 ## Completed
 
@@ -962,7 +963,21 @@ M12/M13 reflection and standard-library completion.
   when available, while unregistered dynamic records keep the existing
   schema-free behavior.
 
+### M14: Engine, Native Functions, And Rust Host Macros
+
+- Added the `vela_macros` proc-macro crate with first-pass
+  `#[derive(ScriptHost)]` and `#[derive(ScriptReflect)]` support for named Rust
+  structs. Annotated host structs now generate copied `TypeDesc`/`FieldDesc`
+  schema metadata with stable type/host/field IDs, field access flags,
+  permissions, docs, module attrs, inferred or explicit type hints, and a
+  deterministic schema hash.
+- The macro slice rejects missing type IDs and duplicate exposed field IDs
+  during expansion, and generated metadata is tested against equivalent
+  hand-written reflection descriptors without exposing Rust references or
+  applying host mutations.
+
 ## Next
 
 - Continue M12/M13 with remaining reflection access/reporting polish and
-  standard-library gameplay conveniences.
+  standard-library gameplay conveniences, plus M14 native context and method
+  macro slices.

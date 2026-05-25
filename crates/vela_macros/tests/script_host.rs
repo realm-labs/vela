@@ -1,0 +1,76 @@
+use vela_common::{FieldId, HostTypeId, TypeId};
+use vela_macros::{ScriptHost, ScriptReflect};
+use vela_reflect::{FieldAccess, FieldDesc, TypeDesc, TypeKey, TypeKind};
+
+#[allow(dead_code)]
+#[derive(ScriptHost, ScriptReflect)]
+#[script(
+    name = "Player",
+    id = 1001,
+    module = "game.player",
+    docs = "Player host schema."
+)]
+struct Player {
+    #[script(get, set, id = 1, hint = "int", docs = "Current level.")]
+    level: u32,
+    #[script(get, id = 2, name = "display_name", permission = "player.profile")]
+    name: String,
+    #[script(skip)]
+    internal_revision: u64,
+}
+
+#[test]
+fn script_host_derive_generates_type_metadata() {
+    let desc = Player::vela_host_type_desc();
+    let expected = TypeDesc::new(TypeKey::new(TypeId::new(1001), "Player"))
+        .kind(TypeKind::Host)
+        .schema_hash(desc.schema_hash.expect("schema hash should be generated"))
+        .host_type(HostTypeId::new(1001))
+        .attr("module", "game.player")
+        .docs("Player host schema.")
+        .field(
+            FieldDesc::new(FieldId::new(1), "level")
+                .access(
+                    FieldAccess::new()
+                        .readable(true)
+                        .writable(true)
+                        .reflect_readable(true)
+                        .reflect_writable(true),
+                )
+                .attr("rust_name", "level")
+                .type_hint("int")
+                .docs("Current level."),
+        )
+        .field(
+            FieldDesc::new(FieldId::new(2), "display_name")
+                .access(
+                    FieldAccess::new()
+                        .readable(true)
+                        .writable(false)
+                        .reflect_readable(true)
+                        .reflect_writable(false)
+                        .require_permission("player.profile"),
+                )
+                .attr("rust_name", "name")
+                .type_hint("string"),
+        );
+
+    assert_eq!(desc, expected);
+    assert_eq!(desc.kind, TypeKind::Host);
+    assert_eq!(desc.host_type_id, Some(HostTypeId::new(1001)));
+    assert_eq!(desc.attrs.get("module"), Some("game.player"));
+    assert_eq!(desc.fields.len(), 2);
+    assert_eq!(
+        desc.fields[1].access.required_permissions(),
+        &["player.profile".to_owned()]
+    );
+}
+
+#[test]
+fn script_reflect_derive_generates_matching_metadata() {
+    let host_desc = Player::vela_host_type_desc();
+    let reflect_desc = Player::vela_reflect_type_desc();
+
+    assert_eq!(reflect_desc, host_desc);
+    assert!(reflect_desc.schema_hash.is_some());
+}

@@ -1,0 +1,20 @@
+[package]
+name = "vela_macros"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+
+[dev-dependencies]
+vela_common = { path = "../vela_common" }
+vela_reflect = { path = "../vela_reflect" }
+
+[lints]
+workspace = true
