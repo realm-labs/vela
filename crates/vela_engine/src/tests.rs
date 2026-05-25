@@ -7,13 +7,13 @@ use vela_reflect::{
     FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission, ReflectPermissionSet,
     SchemaHash, TypeDesc, TypeKey,
 };
-use vela_vm::{ExecutionBudgetKind, VmError};
+use vela_vm::{ExecutionBudgetKind, VmError, VmResult};
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
     CONTROLLED_RANDOM_PERMISSION, CallOptions, EffectSet, Engine, EngineErrorKind,
-    EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeFunctionDesc,
-    NativeFunctionId, NativeMethodDesc, ScriptArgsExt, TypeHint,
+    EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext,
+    NativeFunctionDesc, NativeFunctionId, NativeMethodDesc, ScriptArgsExt, TypeHint,
 };
 
 #[test]
@@ -116,6 +116,114 @@ fn typed_native_functions_report_arity_and_type_errors() {
             ..
         })
     ));
+}
+
+#[test]
+fn engine_registers_typed_context_host_native_functions() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_typed_context_host_native_fn::<(HostRef, i64), _>(
+            NativeFunctionDesc::new("game.typed_set_level", NativeFunctionId::new(104))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Bool)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            typed_set_level,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game.typed_set_level(player, 17);
+}
+"#,
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        ),
+        Ok(Value::Bool(true)),
+    );
+    assert_eq!(
+        tx.patches()[0].path,
+        HostPath::new(host_ref).field(FieldId::new(1)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(17)));
+}
+
+#[test]
+fn typed_context_host_native_conversion_errors_before_patch() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_typed_context_host_native_fn::<(HostRef, i64), _>(
+            NativeFunctionDesc::new("game.typed_set_level", NativeFunctionId::new(105))
+                .access(FunctionAccess::public().require_permission("player.write")),
+            typed_set_level,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    game.typed_set_level("not a host", 17);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch {
+                operation: "host ref",
+            },
+            ..
+        })
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+fn typed_set_level(
+    ctx: &mut NativeCallContext<'_, '_>,
+    player: HostRef,
+    level: i64,
+) -> VmResult<bool> {
+    ctx.charge_instructions(10)?;
+    let has_permission = ctx.has_permission("player.write");
+    ctx.tx().set_path(
+        HostPath::new(player).field(FieldId::new(1)),
+        HostValue::Int(level),
+        None,
+    )?;
+    Ok(has_permission)
 }
 
 #[test]

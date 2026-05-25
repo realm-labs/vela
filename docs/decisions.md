@@ -4278,3 +4278,28 @@ Consequences:
   `HostRef`, `HostPath`, `PatchTx`, or context-native APIs.
 - Host-aware typed wrappers and generated method wrappers remain follow-up M14
   work.
+
+## 2026-05-25: Typed Context Natives Preserve PatchTx Boundary
+
+Status: Accepted
+
+Context:
+Context host natives are the Engine API for callbacks that need permissions,
+budget access, the active adapter, and `PatchTx`. They still required manual
+`Value` destructuring even after pure typed native registration existed.
+
+Decision:
+Extend the focused Engine `typed` module with
+`TypedContextHostNativeFunction` and add
+`EngineBuilder::register_typed_context_host_native_fn`. The adapter accepts a
+`NativeCallContext` followed by 0-3 copied typed arguments, reuses
+`FromScriptArg` and `IntoNativeReturn`, and reports conversion errors before
+the callback can record patches.
+
+Consequences:
+- Host-aware native callbacks can use typed copied arguments while still
+  charging budget and mutating host state only through `NativeCallContext` and
+  `PatchTx`.
+- A failed argument conversion leaves the transaction unchanged.
+- Generated method wrappers can reuse this adapter shape later without changing
+  the VM native call ABI.

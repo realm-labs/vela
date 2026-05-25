@@ -1012,6 +1012,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   registered from Rust closures with typed copied arguments and typed returns
   for arities 0-3, reusing `FromScriptArg`/`IntoScriptArg` and reporting
   structured VM arity/type errors.
+- Extended the same typed adapter boundary to context host natives with
+  `EngineBuilder::register_typed_context_host_native_fn`. Host-aware callbacks
+  can now receive `NativeCallContext` plus typed copied arguments for arities
+  0-3, charge budgets, and record `PatchTx` writes while conversion failures
+  still happen before any patch is recorded.
 
 ## Next
 
