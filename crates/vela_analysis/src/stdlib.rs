@@ -213,6 +213,9 @@ mod tests {
         let contains = stdlib_method_fact(&array, "contains", None).expect("contains fact");
         assert_eq!(contains.params, vec![TypeFact::Float]);
         assert_eq!(contains.returns, TypeFact::Bool);
+        let index_of = stdlib_method_fact(&array, "index_of", None).expect("index_of fact");
+        assert_eq!(index_of.params, vec![TypeFact::Float]);
+        assert_eq!(index_of.returns, TypeFact::option(TypeFact::Int));
         assert_eq!(
             stdlib_method_fact(&array, "distinct", None)
                 .expect("distinct fact")

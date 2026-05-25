@@ -124,6 +124,26 @@ pub(crate) fn contains(
     Ok(false)
 }
 
+pub(crate) fn index_of(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("index_of", args, 1)?;
+    let values = array_values(receiver, heap, "method index_of")?;
+    for (index, value) in values.into_iter().enumerate() {
+        if values_equal(&value, &args[0], heap)? {
+            let index = i64::try_from(index).map_err(|_| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "method index_of",
+                })
+            })?;
+            return Ok(option_value("Some", Some(Value::Int(index))));
+        }
+    }
+    Ok(option_value("None", None))
+}
+
 pub(crate) fn distinct(
     receiver: &Value,
     args: &[Value],
@@ -699,6 +719,59 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array contains method should run");
         assert_eq!(result, Value::String("daily,quest,raid".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_index_of_method() {
+        let source = r#"
+fn main() {
+    let values = [10, 20, 30, 20];
+    let rewards = [Reward { item_id: "gold", count: 2 }];
+    let expected = Reward { item_id: "gold", count: 2 };
+    if option.unwrap_or(values.index_of(20), -1) == 1
+        && option.unwrap_or(values.index_of(99), -1) == -1
+        && option.unwrap_or(rewards.index_of(expected), -1) == 0
+        && option.unwrap_or([].index_of("missing"), -1) == -1
+    {
+        return 1;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array index_of method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("array index_of method should run");
+        assert_eq!(result, Value::Int(1));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_index_of_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily", "quest", "raid"];
+    let nested = [["daily", "quest"], ["raid"]];
+    if option.unwrap_or(tags.index_of("quest"), -1) == 1
+        && option.unwrap_or(tags.index_of("bonus"), -1) == -1
+        && option.unwrap_or(nested.index_of(["raid"]), -1) == 1
+    {
+        return tags[option.unwrap_or(tags.index_of("raid"), 0)];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array index_of method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array index_of method should run");
+        assert_eq!(result, Value::String("raid".to_owned()));
     }
 
     #[test]
