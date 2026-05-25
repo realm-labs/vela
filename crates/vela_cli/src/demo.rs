@@ -32,7 +32,8 @@ pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
             .with_host_field("quest_goal", ids.quest_goal_field)
             .with_host_field("quest_done", ids.quest_done_field)
             .with_host_method("emit", ids.emit_method)
-            .with_host_method("add_reward", ids.add_reward_method),
+            .with_host_method("add_reward", ids.add_reward_method)
+            .with_host_method("log", ids.log_method),
     )
     .map_err(|error| format!("{error:?}"))?;
 

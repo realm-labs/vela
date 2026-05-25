@@ -4450,7 +4450,8 @@ Consequences:
   keeping host mutation inside `NativeCallContext`/`PatchTx`.
 - Scripts still see only copied arguments and return values; no real Rust
   references are exposed.
-- Callable method wrapper macros remain a separate follow-up slice.
+- HostExecution and callable method wrappers are separate macros so each host
+  boundary stays explicit at the Rust signature.
 
 ## 2026-05-25: Host Function Macro Uses HostExecution Boundary
 
@@ -4501,3 +4502,25 @@ Consequences:
   `HostExecution`, so mutation still flows through `PatchTx`.
 - Metadata-only method descriptors remain supported for deferred host methods
   and compiler lowering.
+
+## 2026-05-25: Context Logging Uses Host Method Patches
+
+Status: Accepted
+
+Context:
+M13 calls for context/time, event emit, and logging helpers. The existing
+context time and event workflow models `ctx.now`/`ctx.tick` as host field reads
+and `ctx.emit(...)` as a `PatchTx` host method call, avoiding VM-owned global
+I/O state.
+
+Decision:
+Model `ctx.log(...)` the same way: as a configured host method on the context
+host object. The VM records a `PatchTx::call_method` patch for logging, and the
+host decides how to apply or route that log at the safe point.
+
+Consequences:
+- Logging remains rollback-safe and follows the same host permission/effect
+  metadata path as event emission.
+- Scripts do not receive file handles, log sinks, or Rust references.
+- The demo can prove logging workflows without adding ambient side effects to
+  the script VM.

@@ -1052,6 +1052,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Rust signature uses the safe `HostPath` plus `HostExecution` boundary. The
   helper registers through `EngineBuilder::register_typed_native_method_fn`,
   while metadata-only methods keep their existing descriptor path.
+- Added the first context logging gameplay helper. `ctx.log(...)` is modeled
+  as a configured host method call, records a `PatchTx` patch just like
+  `ctx.emit(...)`, appears in the game-server demo context schema, and the
+  context-event demo now proves emit plus log patches at the host safe point.
 
 ## Next
 

@@ -15,6 +15,7 @@ const QUEST_GOAL_FIELD: u32 = 11;
 const QUEST_DONE_FIELD: u32 = 12;
 const EMIT_METHOD: u32 = 5;
 const ADD_REWARD_METHOD: u32 = 9;
+const LOG_METHOD: u32 = 13;
 
 #[derive(Clone, Copy)]
 pub(crate) struct DemoIds {
@@ -29,6 +30,7 @@ pub(crate) struct DemoIds {
     pub(crate) quest_done_field: FieldId,
     pub(crate) emit_method: HostMethodId,
     pub(crate) add_reward_method: HostMethodId,
+    pub(crate) log_method: HostMethodId,
 }
 
 impl DemoIds {
@@ -45,6 +47,7 @@ impl DemoIds {
             quest_done_field: FieldId::new(QUEST_DONE_FIELD),
             emit_method: HostMethodId::new(EMIT_METHOD),
             add_reward_method: HostMethodId::new(ADD_REWARD_METHOD),
+            log_method: HostMethodId::new(LOG_METHOD),
         }
     }
 }

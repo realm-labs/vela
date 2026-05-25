@@ -83,6 +83,7 @@ impl DemoHostState {
         );
         adapter.insert_method_return(ids.emit_method, HostValue::Null);
         adapter.insert_method_return(ids.add_reward_method, HostValue::Null);
+        adapter.insert_method_return(ids.log_method, HostValue::Null);
 
         Self {
             ids,
@@ -135,11 +136,19 @@ impl DemoHostState {
                  patches={patch_count}",
             );
         } else {
-            println!(
-                "result={result:?} level={level:?} ctx_now={now:?} ctx_tick={tick:?} \
-                 emits={} patches={patch_count}",
-                self.adapter.method_calls().len(),
-            );
+            let emits = self.method_call_count(self.ids.emit_method);
+            let logs = self.method_call_count(self.ids.log_method);
+            if logs == 0 {
+                println!(
+                    "result={result:?} level={level:?} ctx_now={now:?} ctx_tick={tick:?} \
+                     emits={emits} patches={patch_count}",
+                );
+            } else {
+                println!(
+                    "result={result:?} level={level:?} ctx_now={now:?} ctx_tick={tick:?} \
+                     emits={emits} logs={logs} patches={patch_count}",
+                );
+            }
         }
         Ok(())
     }

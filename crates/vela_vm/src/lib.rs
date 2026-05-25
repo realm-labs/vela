@@ -6331,19 +6331,22 @@ fn main(player) {
         let now_field = FieldId::new(6);
         let tick_field = FieldId::new(7);
         let emit_method = HostMethodId::new(8);
+        let log_method = HostMethodId::new(9);
         let program = compile_program_source_with_options(
             SourceId::new(1),
             r#"
 fn main(ctx) {
     let stamp = ctx.now + ctx.tick;
     ctx.emit("player.level_checked", stamp);
+    ctx.log("info", "player.level_checked", stamp);
     return stamp;
 }
 "#,
             &CompilerOptions::new()
                 .with_host_field("now", now_field)
                 .with_host_field("tick", tick_field)
-                .with_host_method("emit", emit_method),
+                .with_host_method("emit", emit_method)
+                .with_host_method("log", log_method),
         )
         .expect("compile context source");
         let mut adapter = MockStateAdapter::new();
@@ -6353,6 +6356,7 @@ fn main(ctx) {
         );
         adapter.insert_value(HostPath::new(ctx_ref).field(tick_field), HostValue::Int(42));
         adapter.insert_method_return(emit_method, HostValue::Null);
+        adapter.insert_method_return(log_method, HostValue::Null);
         let mut tx = PatchTx::new();
         let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
 
@@ -6372,7 +6376,7 @@ fn main(ctx) {
 
         assert_eq!(result, Ok(Value::Int(1042)));
         assert!(adapter.method_calls().is_empty());
-        assert_eq!(tx.patches().len(), 1);
+        assert_eq!(tx.patches().len(), 2);
         assert_eq!(
             tx.patches()[0].op,
             PatchOp::CallHostMethod {
@@ -6383,17 +6387,39 @@ fn main(ctx) {
                 ]
             }
         );
-        tx.apply(&mut adapter).expect("apply context emit patch");
         assert_eq!(
-            adapter.method_calls(),
-            &[(
-                HostPath::new(ctx_ref),
-                emit_method,
-                vec![
+            tx.patches()[1].op,
+            PatchOp::CallHostMethod {
+                method: log_method,
+                args: vec![
+                    HostValue::String("info".into()),
                     HostValue::String("player.level_checked".into()),
                     HostValue::Int(1042)
                 ]
-            )]
+            }
+        );
+        tx.apply(&mut adapter).expect("apply context patches");
+        assert_eq!(
+            adapter.method_calls(),
+            &[
+                (
+                    HostPath::new(ctx_ref),
+                    emit_method,
+                    vec![
+                        HostValue::String("player.level_checked".into()),
+                        HostValue::Int(1042)
+                    ]
+                ),
+                (
+                    HostPath::new(ctx_ref),
+                    log_method,
+                    vec![
+                        HostValue::String("info".into()),
+                        HostValue::String("player.level_checked".into()),
+                        HostValue::Int(1042)
+                    ]
+                )
+            ]
         );
     }
 

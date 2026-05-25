@@ -54,7 +54,7 @@ fn context_event_demo_runs_through_cli() {
     assert_eq!(
         run_demo("context_event.lang"),
         "result=Int(1700000042) level=Int(9) ctx_now=Int(1700000000) \
-         ctx_tick=Int(42) emits=1 patches=1\n"
+         ctx_tick=Int(42) emits=1 logs=1 patches=2\n"
     );
 }
 

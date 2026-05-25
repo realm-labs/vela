@@ -42,6 +42,11 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
                 MethodDesc::new(ids.emit_method, "emit")
                     .effects(MethodEffectSet::event_emit())
                     .access(MethodAccess::new().reflect_callable(true)),
+            )
+            .method(
+                MethodDesc::new(ids.log_method, "log")
+                    .effects(MethodEffectSet::event_emit())
+                    .access(MethodAccess::new().reflect_callable(true)),
             ),
     );
     registry.register(
