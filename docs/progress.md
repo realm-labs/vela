@@ -1310,6 +1310,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   so embedders can register metadata-only methods and callable native method
   bodies through EngineBuilder, with tests covering a five-argument callable
   method that records PatchTx effects.
+- Extended Engine-derived compiler options so registered host schema fields
+  lower natural field reads/writes into `HostPath` segments, and registered
+  host methods remain callable on schema-derived field paths. The mapping now
+  lives in a focused Engine module instead of growing `engine.rs`.
 - Added non-mutating `set.union(other)`, `set.intersection(other)`, and
   `set.difference(other)` helpers. They preserve deterministic receiver-order
   output, work in inline and managed-heap execution, reject non-set operands,

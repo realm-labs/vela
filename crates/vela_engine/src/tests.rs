@@ -1194,8 +1194,9 @@ fn engine_compile_file_uses_engine_compiler_options() {
         &source,
         r#"
 fn main(player: Player) {
+    player.level += 1;
     player.grant_exp(7);
-    return 1;
+    return player.level;
 }
 "#,
     )
@@ -1212,6 +1213,10 @@ fn main(player: Player) {
     let program = engine.compile_file(&source).expect("compile file");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(
+        HostPath::new(host_ref).field(FieldId::new(1)),
+        HostValue::Int(10),
+    );
     let mut tx = PatchTx::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -1225,10 +1230,11 @@ fn main(player: Player) {
             &[Value::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(Value::Int(11))
     );
+    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
     assert_eq!(
-        tx.patches()[0].op,
+        tx.patches()[1].op,
         PatchOp::CallHostMethod {
             method,
             args: vec![HostValue::Int(7)]
@@ -2614,6 +2620,65 @@ fn main(player: Player) {
         PatchOp::CallHostMethod {
             method,
             args: vec![HostValue::Int(10)],
+        }
+    );
+}
+
+#[test]
+fn engine_compiler_options_lower_registered_host_field_methods() {
+    let inventory = FieldId::new(3);
+    let method = HostMethodId::new(5);
+    let engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(inventory, "inventory")),
+        )
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
+                .host_type(HostTypeId::new(2))
+                .method(MethodDesc::new(method, "add")),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    player.inventory.add("gold", 20);
+    return 1;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].path,
+        HostPath::new(host_ref).field(inventory)
+    );
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::String("gold".to_owned()), HostValue::Int(20)],
         }
     );
 }

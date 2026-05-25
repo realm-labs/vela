@@ -5,6 +5,7 @@
 mod args;
 mod builder;
 mod clock;
+mod compiler_options;
 mod context;
 mod engine;
 mod error;

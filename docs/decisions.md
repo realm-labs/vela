@@ -5749,3 +5749,29 @@ Consequences:
 - Receiver preservation matches `array.distinct()` and `map.merge()`.
 - Analysis and completion metadata expose array return TypeFacts without
   adding script-visible generics.
+
+## 2026-05-25: Engine Compiler Options Come From Schema Metadata
+
+Status: Accepted
+
+Context:
+The stable Engine API already accepts host schemas and native method metadata,
+but source compilation must also receive the corresponding host field and
+method IDs. Without this mapping, embedders can register a schema yet still
+need manual compiler options before scripts can lower natural host syntax such
+as `player.level += 1` or `player.inventory.add(...)`.
+
+Decision:
+Build `CompilerOptions` from the Engine `TypeRegistry`: host types expose type
+names, fields expose `FieldId` entries, and methods expose both typed receiver
+entries and name-based entries for schema-derived field paths whose concrete
+field result type is not yet tracked by the compiler. Keep this mapping in a
+focused Engine module.
+
+Consequences:
+- Engine-compiled source can use registered host fields without a second manual
+  compiler configuration step.
+- Host method calls on registered field paths can lower into `PatchTx` calls
+  while typed direct receiver calls still use receiver-specific method IDs.
+- This remains a compile-time metadata mapping; scripts still mutate host state
+  only through `HostPath` and `PatchTx`.

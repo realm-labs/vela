@@ -8,6 +8,7 @@ use vela_hot_reload::HotReloadPolicy;
 use vela_reflect::{ReflectPolicy, TypeRegistry};
 use vela_vm::{HostExecution, Value, Vm, VmError, VmErrorKind, VmResult};
 
+use crate::compiler_options::compiler_options_from_registry;
 use crate::{
     ContextHostNativeFunctionEntry, EngineBuilder, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry,
@@ -133,18 +134,7 @@ impl Engine {
 
     #[must_use]
     pub fn compiler_options(&self) -> CompilerOptions {
-        let mut options = CompilerOptions::new();
-        for desc in self.registry.types() {
-            options = options.with_host_type(desc.key.name.clone());
-            for method in &desc.methods {
-                options = options.with_host_method_for_type(
-                    desc.key.name.clone(),
-                    method.name.clone(),
-                    method.id,
-                );
-            }
-        }
-        options
+        compiler_options_from_registry(&self.registry)
     }
 
     #[must_use]
