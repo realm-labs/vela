@@ -29,6 +29,24 @@ pub(crate) fn type_ident(ty: &Type) -> Option<String> {
     }
 }
 
+pub(crate) fn wrapper_inner_type<'a>(ty: &'a Type, wrapper_names: &[&str]) -> Option<&'a Type> {
+    let Type::Path(path) = ty else {
+        return None;
+    };
+    let segment = path.path.segments.last()?;
+    let ident = segment.ident.to_string();
+    if !wrapper_names.iter().any(|wrapper| *wrapper == ident) {
+        return None;
+    }
+    let syn::PathArguments::AngleBracketed(args) = &segment.arguments else {
+        return None;
+    };
+    args.args.iter().find_map(|arg| match arg {
+        syn::GenericArgument::Type(ty) => Some(ty),
+        _ => None,
+    })
+}
+
 pub(crate) fn docs_from_attrs(attrs: &[Attribute]) -> Option<String> {
     let docs = attrs
         .iter()

@@ -1249,6 +1249,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   macro-generated functions can now accept copied script float values as `f32`,
   while finite script floats that overflow the Rust type report structured
   conversion errors instead of silently becoming infinity.
+- Added M14 macro signature metadata for Rust `Option<T>`. Native function and
+  native method macros now expose the copied inner value hint for nullable
+  arguments and returns, while runtime conversion still uses `null`/value
+  shapes and does not introduce script-language generics.
 
 ## Next
 

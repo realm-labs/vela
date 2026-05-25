@@ -51,6 +51,16 @@ impl Player {
         )?;
         Ok(amount)
     }
+
+    /// Previews an optional copied bonus through a callable native method.
+    #[script_method(id = 9, effect = "read_host", reflect = true)]
+    pub fn preview_bonus(
+        _receiver: &HostPath,
+        _host: &mut HostExecution<'_>,
+        bonus: Option<i64>,
+    ) -> Option<i64> {
+        bonus.map(|bonus| bonus + 1)
+    }
 }
 
 #[test]
@@ -58,7 +68,7 @@ fn script_methods_generates_native_method_metadata() {
     let owner = TypeKey::new(TypeId::new(1001), "Player");
     let descs = Player::vela_native_method_descs();
 
-    assert_eq!(descs.len(), 2);
+    assert_eq!(descs.len(), 3);
     assert_eq!(
         descs[0],
         NativeMethodDesc::new(owner.clone(), HostMethodId::new(7), "grant_exp")
@@ -84,6 +94,15 @@ fn script_methods_generates_native_method_metadata() {
                     .require_permission("player.write"),
             )
             .docs("Grants copied score through a callable native method."),
+    );
+    assert_eq!(
+        descs[2],
+        NativeMethodDesc::new(owner.clone(), HostMethodId::new(9), "preview_bonus")
+            .param("bonus", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_read())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Previews an optional copied bonus through a callable native method."),
     );
     assert_eq!(descs[0].owner, Player::vela_host_type_desc().key);
     assert_eq!(
@@ -172,6 +191,44 @@ fn script_methods_generate_callable_native_registration() {
         HostPath::new(player).field(FieldId::new(1)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+}
+
+#[test]
+fn script_methods_generate_callable_option_native_registration() {
+    let engine = Player::vela_register_native_method_fns(
+        Engine::builder()
+            .register_host_schema::<Player>()
+            .grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro callable methods");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            HostMethodId::new(9),
+            &HostPath::new(player),
+            &[Value::Null],
+            &mut host,
+        ),
+        Ok(Value::Null),
+    );
+    assert_eq!(
+        engine.call_native_method(
+            HostMethodId::new(9),
+            &HostPath::new(player),
+            &[Value::Int(4)],
+            &mut host,
+        ),
+        Ok(Value::Int(5)),
+    );
+    assert!(tx.patches().is_empty());
 }
 
 #[test]

@@ -76,6 +76,12 @@ fn scale_weight(weight: f32) -> f32 {
     weight * 1.5
 }
 
+/// Applies an optional copied bonus.
+#[script_function(id = 47, name = "game.optional_bonus", effect = "pure", reflect = true)]
+fn optional_bonus(bonus: Option<i64>) -> Option<i64> {
+    bonus.map(|bonus| bonus + 1)
+}
+
 #[test]
 fn script_function_generates_native_function_metadata() {
     assert_eq!(
@@ -130,6 +136,19 @@ fn script_function_generates_f32_signature_metadata() {
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Scales a copied encounter weight."),
+    );
+}
+
+#[test]
+fn script_function_generates_option_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_optional_bonus(),
+        NativeFunctionDesc::new("game.optional_bonus", NativeFunctionId::new(47))
+            .param("bonus", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Applies an optional copied bonus."),
     );
 }
 
@@ -296,6 +315,34 @@ fn main() {
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Float(3.0)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_option_native_with_engine() {
+    let engine = vela_register_native_function_optional_bonus(Engine::builder())
+        .build()
+        .expect("engine should build from macro option native function");
+    let root = unique_test_dir("script_function_option_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main() {
+    return game.optional_bonus(null) == null && game.optional_bonus(4) == 5;
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered option native");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Bool(true)),
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }

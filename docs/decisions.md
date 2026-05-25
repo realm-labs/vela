@@ -5221,3 +5221,28 @@ Consequences:
   the builder flag is set.
 - Stateful or permission-sensitive helpers stay out of the default VM stdlib
   path and continue to use explicit Engine builder methods.
+
+## 2026-05-25: Macro Option Signatures Expose Inner Hints
+
+Status: Accepted
+
+Context:
+M14 typed native conversion supports Rust `Option<T>` as a nullable copied
+argument or return value, but macro-generated descriptors previously reported
+`Option<T>` parameters and returns as `any`. That made reflected native
+metadata less useful for analysis and tooling even when the inner copied value
+had a precise supported hint.
+
+Decision:
+Native function and native method macros now infer the descriptor hint for
+`Option<T>` from `T`. Runtime conversion remains the existing `null`/value
+boundary, and this does not add script-language generic syntax or nullable type
+constructs to Vela.
+
+Consequences:
+- Macro-generated reflection metadata is more precise for nullable copied Rust
+  callbacks.
+- `Option<i64>` appears as an `int` hint in descriptors while still accepting
+  `null` at runtime.
+- Dynamic `Result<T, E>` descriptors keep the existing return-value inner hint
+  behavior; script-level generic types remain unsupported.

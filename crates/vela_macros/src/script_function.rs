@@ -1,12 +1,14 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    FnArg, ItemFn, LitBool, LitInt, LitStr, PatType, Result, ReturnType, Type, TypePath,
-    parse::Parser, parse2,
+    FnArg, ItemFn, LitBool, LitInt, LitStr, PatType, Result, ReturnType, Type, parse::Parser,
+    parse2,
 };
 
 use crate::attrs::{error, spanned_error};
-use crate::signature::{docs_from_attrs, param_name, reject_script_reference_param, type_ident};
+use crate::signature::{
+    docs_from_attrs, param_name, reject_script_reference_param, type_ident, wrapper_inner_type,
+};
 
 #[derive(Clone)]
 struct FunctionMeta {
@@ -299,31 +301,22 @@ fn is_host_execution_param(param: &PatType) -> bool {
 fn return_hint(output: &ReturnType) -> HintKind {
     match output {
         ReturnType::Default => HintKind::Null,
-        ReturnType::Type(_, ty) => result_inner_hint(ty).unwrap_or_else(|| hint_for_type(ty)),
+        ReturnType::Type(_, ty) => {
+            return_wrapper_inner_hint(ty).unwrap_or_else(|| hint_for_type(ty))
+        }
     }
 }
 
-fn result_inner_hint(ty: &Type) -> Option<HintKind> {
-    let Type::Path(TypePath { path, .. }) = ty else {
-        return None;
-    };
-    let segment = path.segments.last()?;
-    let ident = segment.ident.to_string();
-    if !matches!(ident.as_str(), "Result" | "VmResult") {
-        return None;
-    }
-    let syn::PathArguments::AngleBracketed(args) = &segment.arguments else {
-        return None;
-    };
-    args.args.iter().find_map(|arg| match arg {
-        syn::GenericArgument::Type(ty) => Some(hint_for_type(ty)),
-        _ => None,
-    })
+fn return_wrapper_inner_hint(ty: &Type) -> Option<HintKind> {
+    wrapper_inner_type(ty, &["Option", "Result", "VmResult"]).map(hint_for_type)
 }
 
 fn hint_for_type(ty: &Type) -> HintKind {
     if is_unit_tuple(ty) {
         return HintKind::Null;
+    }
+    if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
+        return hint_for_type(inner);
     }
     match type_ident(ty).as_deref() {
         Some("bool") => HintKind::Bool,
