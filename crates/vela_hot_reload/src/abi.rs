@@ -131,6 +131,7 @@ impl SchemaAbi {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionAbi {
     pub name: String,
+    pub event: Option<String>,
     pub effects: EffectAbi,
     pub access: AccessAbi,
     pub source_span: Option<Span>,
@@ -141,6 +142,7 @@ impl FunctionAbi {
     pub fn new(name: impl Into<String>, effects: EffectAbi, access: AccessAbi) -> Self {
         Self {
             name: name.into(),
+            event: None,
             effects,
             access,
             source_span: None,
@@ -162,10 +164,19 @@ impl FunctionAbi {
                 function.access.required_permissions().to_vec(),
             ),
         );
+        if let Some(event) = function.attrs.get("event") {
+            abi = abi.event(event);
+        }
         if let Some(source_span) = function.source_span {
             abi = abi.source_span(source_span);
         }
         abi
+    }
+
+    #[must_use]
+    pub fn event(mut self, event: impl Into<String>) -> Self {
+        self.event = Some(event.into());
+        self
     }
 
     #[must_use]
@@ -175,6 +186,16 @@ impl FunctionAbi {
     }
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
+        if self.event != next.event {
+            return Err(HotReloadError::new(
+                HotReloadErrorKind::ChangedFunctionEvent {
+                    function: self.name.clone(),
+                    old: self.event.clone(),
+                    new: next.event.clone(),
+                    source_span: next.source_span.map(Box::new),
+                },
+            ));
+        }
         if self.effects != next.effects {
             return Err(HotReloadError::new(
                 HotReloadErrorKind::ChangedFunctionEffects {

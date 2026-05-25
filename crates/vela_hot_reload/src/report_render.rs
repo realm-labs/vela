@@ -156,6 +156,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
                 .unwrap_or_else(|| "removed".to_owned());
             format!("schema hash: old={old_hash} new={new_hash}")
         }
+        HotReloadDiagnosticDetail::FunctionEventAbi { old, new } => format!(
+            "function event: old={} new={}",
+            render_optional(old),
+            render_optional(new)
+        ),
         HotReloadDiagnosticDetail::FunctionEffectAbi { old, new } => format!(
             "function effects: old=({}) new=({})",
             render_effect_abi(old),
@@ -177,6 +182,10 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_access_abi(new)
         ),
     }
+}
+
+fn render_optional(item: &Option<String>) -> &str {
+    item.as_deref().unwrap_or("<none>")
 }
 
 fn render_list(items: &[String]) -> String {

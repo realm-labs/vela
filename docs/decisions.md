@@ -6888,3 +6888,27 @@ Consequences:
   script-language generics.
 - The methods are non-mutating and keep script values inside the existing
   budgeted VM callback path.
+
+## 2026-05-26: Event Bindings Are Function ABI
+
+Status: Accepted
+
+Context:
+Hot reload already rejects function effect and reflective access ABI changes,
+but event handlers also depend on stable event routing metadata. Reflected
+function descriptors can carry an `event` attribute, and changing or removing
+that binding during reload would silently redirect gameplay events.
+
+Decision:
+Include the reflected function `event` attribute in `FunctionAbi`. Hot reload
+rejects updates that add, remove, or change an existing function event binding,
+and reports the old and new event values through the standard reload report
+detail path.
+
+Consequences:
+- Event handler routing is protected by the same safe-point ABI gate as
+  effects and access metadata.
+- Native and Engine-registered functions derive event ABI from existing
+  `FunctionDesc` attrs without adding runtime schema mutation.
+- Hosts that intentionally migrate event bindings must restart or perform an
+  explicit migration instead of relying on function-level hot reload.

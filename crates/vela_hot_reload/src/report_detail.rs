@@ -13,6 +13,10 @@ pub enum HotReloadDiagnosticDetail {
         old_hash: u64,
         new_hash: Option<u64>,
     },
+    FunctionEventAbi {
+        old: Option<String>,
+        new: Option<String>,
+    },
     FunctionEffectAbi {
         old: EffectAbi,
         new: EffectAbi,
@@ -63,6 +67,12 @@ impl HotReloadDiagnosticDetail {
                 old_hash: *old_hash,
                 new_hash: Some(*new_hash),
             }),
+            HotReloadErrorKind::ChangedFunctionEvent { old, new, .. } => {
+                Some(Self::FunctionEventAbi {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+            }
             HotReloadErrorKind::ChangedFunctionEffects { old, new, .. } => {
                 Some(Self::FunctionEffectAbi {
                     old: old.clone(),

@@ -1660,6 +1660,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `set.count`. They run predicate callbacks in deterministic receiver order,
   work in inline and managed-heap execution, return dynamic Option values for
   `find`, and expose non-generic lambda facts plus completions.
+- Strengthened M15 function hot-reload ABI checks for event handlers. Reflected
+  function `event` attrs now enter `FunctionAbi`, and updates that add, remove,
+  or change event bindings are rejected with report details before a safe-point
+  code swap can occur.
 
 ## Next
 

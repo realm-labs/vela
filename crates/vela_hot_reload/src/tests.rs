@@ -700,6 +700,84 @@ fn function_effect_and_access_abi_changes_are_rejected() {
 }
 
 #[test]
+fn function_event_abi_changes_are_rejected() {
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game.reward.grant",
+            EffectAbi::event_emit(),
+            AccessAbi::public(),
+        )
+        .event("monster.kill"),
+    );
+    let changed_event = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game.reward.grant",
+            EffectAbi::event_emit(),
+            AccessAbi::public(),
+        )
+        .event("quest.complete"),
+    );
+    let initial =
+        compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi.clone())
+            .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        changed_event,
+    )
+    .expect_err("event change should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedFunctionEvent {
+            function: "game.reward.grant".to_owned(),
+            old: Some("monster.kill".to_owned()),
+            new: Some("quest.complete".to_owned()),
+            source_span: None,
+        }
+    );
+
+    let report = HotReloadReport::rejected(ProgramVersionId(7), error);
+    assert_eq!(report.errors[0].code, "reload.function.event_changed");
+    assert_eq!(
+        report.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::FunctionEventAbi {
+            old: Some("monster.kill".to_owned()),
+            new: Some("quest.complete".to_owned()),
+        })
+    );
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| { line.text == "function event: old=monster.kill new=quest.complete" })
+    );
+
+    let removed_event = HotReloadAbi::empty().function(FunctionAbi::new(
+        "game.reward.grant",
+        EffectAbi::event_emit(),
+        AccessAbi::public(),
+    ));
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(3),
+        "fn main() { return 3; }",
+        removed_event,
+    )
+    .expect_err("removed event should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedFunctionEvent {
+            function: "game.reward.grant".to_owned(),
+            old: Some("monster.kill".to_owned()),
+            new: None,
+            source_span: None,
+        }
+    );
+}
+
+#[test]
 fn removed_function_abi_is_rejected() {
     let span = Span::new(SourceId::new(9), 10, 25);
     let old_abi = HotReloadAbi::empty().function(
@@ -931,7 +1009,8 @@ fn abi_manifest_can_be_built_from_type_registry() {
                 FunctionAccess::new()
                     .reflect_visible(true)
                     .require_permission("reward.grant"),
-            ),
+            )
+            .attr("event", "monster.kill"),
     );
 
     let abi = HotReloadAbi::from_registry(&registry);
@@ -941,4 +1020,38 @@ fn abi_manifest_can_be_built_from_type_registry() {
 
     compile_update_with_abi(&initial, SourceId::new(2), "fn main() { return 2; }", abi)
         .expect("unchanged registry ABI should be accepted");
+
+    let mut changed_registry = TypeRegistry::new();
+    changed_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+            .schema_hash(SchemaHash::new(0xfeed))
+            .method(
+                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                    .effects(MethodEffectSet::host_write())
+                    .access(
+                        MethodAccess::new()
+                            .reflect_callable(true)
+                            .require_permission("player.write"),
+                    ),
+            ),
+    );
+    changed_registry.register_function(
+        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+            .effects(FunctionEffectSet::event_emit())
+            .access(
+                FunctionAccess::new()
+                    .reflect_visible(true)
+                    .require_permission("reward.grant"),
+            )
+            .attr("event", "quest.complete"),
+    );
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(3),
+        "fn main() { return 3; }",
+        HotReloadAbi::from_registry(&changed_registry),
+    )
+    .expect_err("changed registry event binding should be rejected");
+    assert_eq!(error.code(), "reload.function.event_changed");
 }

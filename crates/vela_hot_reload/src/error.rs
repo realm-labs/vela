@@ -36,6 +36,7 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedSchema { .. } => "reload.schema.removed",
             HotReloadErrorKind::ChangedSchema { .. } => "reload.schema.changed",
             HotReloadErrorKind::RemovedFunctionAbi { .. } => "reload.function.removed_abi",
+            HotReloadErrorKind::ChangedFunctionEvent { .. } => "reload.function.event_changed",
             HotReloadErrorKind::ChangedFunctionEffects { .. } => "reload.function.effects_changed",
             HotReloadErrorKind::ChangedFunctionAccess { .. } => "reload.function.access_changed",
             HotReloadErrorKind::RemovedMethodAbi { .. } => "reload.method.removed_abi",
@@ -55,6 +56,7 @@ impl HotReloadError {
             | HotReloadErrorKind::NewFunctionDenied { function }
             | HotReloadErrorKind::RemovedFunction { function }
             | HotReloadErrorKind::RemovedFunctionAbi { function, .. }
+            | HotReloadErrorKind::ChangedFunctionEvent { function, .. }
             | HotReloadErrorKind::ChangedFunctionEffects { function, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { function, .. } => Some(function.clone()),
             HotReloadErrorKind::RemovedSchema { type_name, .. }
@@ -101,6 +103,9 @@ impl HotReloadError {
             }
             HotReloadErrorKind::RemovedFunctionAbi { function, .. } => {
                 format!("function `{function}` was removed from the hot-reload ABI")
+            }
+            HotReloadErrorKind::ChangedFunctionEvent { function, .. } => {
+                format!("function `{function}` changed event binding ABI")
             }
             HotReloadErrorKind::ChangedFunctionEffects { function, .. } => {
                 format!("function `{function}` changed effect ABI")
@@ -157,6 +162,9 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedFunctionAbi { .. } => {
                 Some("restore the function ABI entry or restart with an explicit migration".to_owned())
             }
+            HotReloadErrorKind::ChangedFunctionEvent { .. } => {
+                Some("preserve the previous event binding or restart with an explicit migration".to_owned())
+            }
             HotReloadErrorKind::RemovedMethodAbi { .. } => {
                 Some("restore the method ABI entry or restart with an explicit migration".to_owned())
             }
@@ -179,6 +187,7 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
             | HotReloadErrorKind::RemovedFunctionAbi { source_span, .. }
+            | HotReloadErrorKind::ChangedFunctionEvent { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionEffects { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { source_span, .. }
             | HotReloadErrorKind::RemovedMethodAbi { source_span, .. }
@@ -277,6 +286,12 @@ pub enum HotReloadErrorKind {
     },
     RemovedFunctionAbi {
         function: String,
+        source_span: Option<Box<Span>>,
+    },
+    ChangedFunctionEvent {
+        function: String,
+        old: Option<String>,
+        new: Option<String>,
         source_span: Option<Box<Span>>,
     },
     ChangedFunctionEffects {
