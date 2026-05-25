@@ -154,6 +154,17 @@ pub(crate) fn distinct(
     Ok(Value::Array(distinct))
 }
 
+pub(crate) fn reverse(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("reverse", args, 0)?;
+    let mut values = array_values(receiver, heap, "method reverse")?;
+    values.reverse();
+    Ok(Value::Array(values))
+}
+
 pub(crate) fn any(
     receiver: &Value,
     args: &[Value],
@@ -745,6 +756,60 @@ fn main() {
         let result = Vm::new()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array distinct should run");
+        assert_eq!(result, Value::String("daily|quest".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_reverse_method() {
+        let source = r#"
+fn main() {
+    let rewards = [
+        Reward { item_id: "gold", count: 2 },
+        Reward { item_id: "xp", count: 1 },
+    ];
+    let reversed = [1, 2, 3].reverse();
+    let reversed_rewards = rewards.reverse();
+    if reversed[0] == 3
+        && reversed[2] == 1
+        && rewards[0].item_id == "gold"
+        && reversed_rewards[0].item_id == "xp"
+    {
+        return reversed_rewards[1].count;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array reverse source should compile");
+
+        let result = Vm::new().run(&code).expect("array reverse should run");
+        assert_eq!(result, Value::Int(2));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_reverse_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily", "quest", "raid"];
+    let nested = [["daily", "quest"], ["raid"]];
+    let reversed_tags = tags.reverse();
+    let reversed_nested = nested.reverse();
+    if tags.join(",") == "daily,quest,raid"
+        && reversed_tags.join(",") == "raid,quest,daily"
+        && reversed_nested[0].join("|") == "raid"
+    {
+        return reversed_nested[1].join("|");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array reverse source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array reverse should run");
         assert_eq!(result, Value::String("daily|quest".to_owned()));
     }
 

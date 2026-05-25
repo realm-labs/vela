@@ -5729,3 +5729,23 @@ Consequences:
 - Equality behavior stays centralized with `==` and `array.contains`.
 - Analysis and completion metadata expose array return TypeFacts without
   adding script-visible generics.
+
+## 2026-05-25: Array Reverse Is Non-Mutating
+
+Status: Accepted
+
+Context:
+Gameplay scripts frequently need reverse presentation, priority, or reward
+ordering over copied script arrays. Requiring loops or host helpers for this
+common operation adds noise and risks accidental receiver mutation.
+
+Decision:
+Add `array.reverse()` as a pure script-value method. It returns a copied array
+with the element order reversed, leaves the receiver unchanged, and supports
+both inline and managed-heap execution.
+
+Consequences:
+- Scripts can reverse copied arrays without PatchTx or host-specific helpers.
+- Receiver preservation matches `array.distinct()` and `map.merge()`.
+- Analysis and completion metadata expose array return TypeFacts without
+  adding script-visible generics.

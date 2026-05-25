@@ -1,8 +1,8 @@
 use crate::TypeFact;
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
-    "len", "is_empty", "push", "pop", "first", "last", "join", "contains", "distinct", "map",
-    "filter", "find", "any", "all", "count", "sum", "group_by", "sort_by",
+    "len", "is_empty", "push", "pop", "first", "last", "join", "contains", "distinct", "reverse",
+    "map", "filter", "find", "any", "all", "count", "sum", "group_by", "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
     "len",
@@ -425,6 +425,11 @@ fn array_method_fact(
         "distinct" => Some(StdlibMethodFact::new(
             receiver,
             "distinct",
+            TypeFact::array(element.clone()),
+        )),
+        "reverse" => Some(StdlibMethodFact::new(
+            receiver,
+            "reverse",
             TypeFact::array(element.clone()),
         )),
         "map" => {
@@ -875,6 +880,12 @@ mod tests {
         assert_eq!(
             stdlib_method_fact(&array, "distinct", None)
                 .expect("distinct fact")
+                .returns,
+            TypeFact::array(TypeFact::Float)
+        );
+        assert_eq!(
+            stdlib_method_fact(&array, "reverse", None)
+                .expect("reverse fact")
                 .returns,
             TypeFact::array(TypeFact::Float)
         );
