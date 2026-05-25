@@ -483,14 +483,16 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added read-only map script methods `has`, `get`, and `get_or` for inline and
   heap-backed maps.
 - Added VM coverage proving map methods preserve dynamic map values, return
-  `null` for missing `get` keys, and keep fallback values heap-safe in managed
-  execution.
+  dynamic `Option.Some(value)`/`Option.None` for `get`, and keep fallback
+  values heap-safe in managed execution.
 - Added deterministic read-only map script methods `keys`, `values`, and
   `entries`, with `entries` returning script-visible `MapEntry` records in
   inline and managed-heap execution.
 - Added mutating collection script methods `array.push`, `array.pop`,
   `map.set`, and `map.remove`, with method dispatch writing mutated receiver
   registers back in inline and managed-heap execution.
+- Updated `map.remove` to return dynamic `Option.Some(value)` or
+  `Option.None`, matching `map.get` and the analysis-only stdlib facts.
 - Added string predicate script methods `contains`, `starts_with`, and
   `ends_with` for inline and heap-backed strings.
 - Split string script methods into a focused VM module and added gameplay
@@ -1068,6 +1070,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   metadata and stdlib method facts. Array, map, set, and string methods now
   have focused internal facts for lambda parameter hints and return facts
   without exposing generic syntax to scripts.
+- Aligned map lookup/removal runtime behavior with those facts:
+  `map.get(key)` and `map.remove(key)` now return dynamic Option values in
+  both inline and managed-heap execution.
 
 ## Next
 

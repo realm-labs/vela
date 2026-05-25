@@ -3136,13 +3136,17 @@ fn main() {
     values.push(4);
     let popped = values.pop();
     rewards.set("quest", 8);
+    let missing_get = rewards.get("missing_before");
     let removed = rewards.remove("gold");
+    let missing_remove = rewards.remove("missing_after");
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
     if empty.is_empty() && values.len() == 3 && popped == 4 && rewards.len() == 2 && ("gold").len() == 4
         && ("gold").contains("ol") && ("quest").starts_with("que") && ("quest").ends_with("st")
-        && removed == 4 && rewards.has("quest") && rewards.get("xp") == 6 && rewards.get_or("missing", 10) == 10
+        && option.unwrap_or(removed, 0) == 4
+        && option.is_none(missing_get) && option.is_none(missing_remove)
+        && rewards.has("quest") && option.unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", 10) == 10
         && keys[0] == "quest" && keys[1] == "xp"
         && amounts[0] == 8 && amounts[1] == 6
         && entries[0].key == "quest" && entries[1].value == 6 {
@@ -3154,10 +3158,10 @@ fn main() {
         )
         .expect("compile script value methods");
 
-        assert_eq!(
-            Vm::new().run_program(&program, "main", &[]),
-            Ok(Value::Int(3))
-        );
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        assert_eq!(vm.run_program(&program, "main", &[]), Ok(Value::Int(3)));
     }
 
     #[test]
@@ -4066,13 +4070,16 @@ fn main() {
     names.push("quest");
     let popped = names.pop();
     rewards.set("quest", "done");
+    let missing_get = rewards.get("missing_before");
     let removed = rewards.remove("gold");
+    let missing_remove = rewards.remove("missing_after");
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
     if names.len() == 2 && popped == "quest" && popped.contains("ue") && popped.starts_with("que")
-        && popped.ends_with("st") && removed == 4 && rewards.is_empty() == false && ("quest").len() == 5
-        && rewards.has("quest") && rewards.get("xp") == 6 && rewards.get_or("missing", "fallback") == "fallback"
+        && popped.ends_with("st") && option.unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
+        && option.is_none(missing_get) && option.is_none(missing_remove)
+        && rewards.has("quest") && option.unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", "fallback") == "fallback"
         && keys[0] == "quest" && keys[1] == "xp"
         && amounts[0] == "done" && amounts[1] == 6
         && entries[0].key == "quest" && entries[1].value == 6 {
@@ -4085,8 +4092,11 @@ fn main() {
         .expect("compile heap script value methods");
         let mut budget = ExecutionBudget::unbounded();
 
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
         assert_eq!(
-            Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+            vm.run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
             Ok(Value::Int(4))
         );
         assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -7037,13 +7047,13 @@ fn main(player) {
     if reflect.name(player) == "Player"
         && reflect.kind(player) == "host"
         && reflect.docs(player) == "A player host object."
-        && reflect.attrs(player).get("domain") == "gameplay"
+        && option.unwrap_or(reflect.attrs(player).get("domain"), "") == "gameplay"
         && reflect.has_field(player, "level")
         && !reflect.has_field(player, "mana")
         && field.name == "level"
         && field.type == "int"
         && field.docs == "Current player level."
-        && field.attrs.get("unit") == "level"
+        && option.unwrap_or(field.attrs.get("unit"), "") == "level"
         && field.writable {
         return 1;
     }
@@ -7056,6 +7066,7 @@ fn main(player) {
         let mut tx = PatchTx::new();
         let mut vm = Vm::new();
         vm.register_reflection_natives(Arc::new(reflection_registry()));
+        vm.register_standard_natives();
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
@@ -7117,8 +7128,10 @@ fn main() {
     let module = reflect.module("game.reward");
     let exports = reflect.exports("game.reward");
     let function = reflect.function("game.reward.grant");
-    if module.get("name") == "game.reward" && exports.len() == 1 && function.get("return") == "bool" {
-        return function.get("params").len();
+    if option.unwrap_or(module.get("name"), "") == "game.reward"
+        && exports.len() == 1
+        && option.unwrap_or(function.get("return"), "") == "bool" {
+        return option.unwrap_or(function.get("params"), []).len();
     }
     return 0;
 }
@@ -7129,6 +7142,7 @@ fn main() {
         let mut tx = PatchTx::new();
         let mut vm = Vm::new();
         vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
+        vm.register_standard_natives();
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
@@ -7148,7 +7162,7 @@ fn main() {
 fn main() {
     let module = reflect.module("game.reward");
     let exports = reflect.exports("game.reward");
-    return module.get("exports").len() * 10 + exports.len();
+    return option.unwrap_or(module.get("exports"), []).len() * 10 + exports.len();
 }
 "#,
         )
@@ -7156,6 +7170,7 @@ fn main() {
         let mut adapter = MockStateAdapter::new();
         let mut tx = PatchTx::new();
         let mut vm = Vm::new();
+        vm.register_standard_natives();
         vm.register_reflection_natives_with_policy(
             Arc::new(policy_module_reflection_registry()),
             reflect::ReflectPolicy::read_only(),

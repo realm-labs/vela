@@ -1425,17 +1425,16 @@ mutation do not blur together.
 
 Decision:
 Implement the first map method slice as side-effect-free `has`, `get`, and
-`get_or` dispatch in the VM `script_methods` module. Missing `get` returns
-`null`; `get_or` returns the supplied fallback. Heap-backed maps are read
-through stable heap slots, and method returns pass through the VM heap storage
-boundary before being written to registers.
+`get_or` dispatch in the VM `script_methods` module. `get` now returns dynamic
+`Option.Some(value)` or `Option.None`; `get_or` returns the supplied fallback.
+Heap-backed maps are read through stable heap slots, and method returns pass
+through the VM heap storage boundary before being written to registers.
 
 Consequences:
 - Map lookup syntax is available without introducing host mutation bypasses.
 - `get_or` can return dynamic fallback values in managed-heap execution.
-- Mutating methods such as `set`, `remove`, and collection transforms remain a
-  later stdlib/runtime slice that can define receiver mutation semantics
-  explicitly.
+- This first slice deferred mutating methods such as `set`, `remove`, and
+  collection transforms until receiver mutation semantics were explicit.
 
 ## 2026-05-24: Record Variant Patterns Match Field Subpatterns
 
@@ -4570,8 +4569,9 @@ Consequences:
   stdlib facts without growing VM dispatch code.
 - Array and map lambda helpers can expose element/key/value facts to tooling
   while scripts still write plain dynamic code.
-- Runtime behavior remains unchanged; these facts must be wired into later
-  semantic analysis before they affect diagnostics or completion.
+- The analysis crate stays separate from VM dispatch; runtime semantic
+  alignments are tracked as explicit decisions instead of being hidden inside
+  tooling metadata.
 
 ## 2026-05-25: Array Find Returns Dynamic Option
 
@@ -4596,3 +4596,26 @@ Consequences:
   `find` result directly with raw values or `null`.
 - Heap-backed execution continues to work through existing value
   materialization and root protection around callback calls.
+
+## 2026-05-25: Map Lookup And Remove Return Dynamic Option
+
+Status: Accepted
+
+Context:
+The M13 analysis facts describe `map.get` and `map.remove` as Option-returning
+operations, but runtime map methods still returned raw values or `null`. That
+made maps inconsistent with `array.find`, Option helpers, and `?`-style dynamic
+enum propagation.
+
+Decision:
+Return `Option.Some(value)` for present map entries and `Option.None` for
+missing entries from both `map.get(key)` and `map.remove(key)`. `map.get_or`
+keeps returning either the stored value or the explicit fallback.
+
+Consequences:
+- Map lookup and removal now compose with `option.unwrap_or`,
+  `option.is_some`, and future Option-flow analysis.
+- Scripts still have no generic `Map<K, V>` or `Option<T>` syntax; this uses
+  copied dynamic enum values.
+- Existing scripts that compared `map.get(key)` or `map.remove(key)` directly
+  to raw values need explicit unwrapping or matching.

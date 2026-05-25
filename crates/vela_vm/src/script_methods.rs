@@ -508,13 +508,13 @@ fn map_get(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -
     expect_arity("get", args, 1)?;
     let key = map_key(&args[0], heap)?;
     match receiver {
-        Value::Map(values) => Ok(values.get(&key).cloned().unwrap_or(Value::Null)),
+        Value::Map(values) => Ok(option_value(values.get(&key).cloned())),
         Value::HeapRef(reference) => {
             let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error("method get");
             };
-            Ok(values.get(&key).map_or(Value::Null, value_from_heap_slot))
+            Ok(option_value(values.get(&key).map(value_from_heap_slot)))
         }
         _ => type_error("method get"),
     }
@@ -578,7 +578,7 @@ fn map_remove(
     expect_arity("remove", args, 1)?;
     let key = map_key(&args[0], heap.as_deref())?;
     match receiver {
-        Value::Map(values) => Ok(values.remove(&key).unwrap_or(Value::Null)),
+        Value::Map(values) => Ok(option_value(values.remove(&key))),
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method remove");
@@ -586,9 +586,9 @@ fn map_remove(
             let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method remove");
             };
-            Ok(values
-                .remove(&key)
-                .map_or(Value::Null, |slot| value_from_heap_slot(&slot)))
+            Ok(option_value(
+                values.remove(&key).map(|slot| value_from_heap_slot(&slot)),
+            ))
         }
         _ => type_error("method remove"),
     }
@@ -679,6 +679,18 @@ fn map_entry(key: &str, value: Value) -> Value {
                 ("value".to_owned(), value),
             ],
         ),
+    }
+}
+
+fn option_value(payload: Option<Value>) -> Value {
+    let (variant, fields) = match payload {
+        Some(value) => ("Some", vec![("0".to_owned(), value)]),
+        None => ("None", Vec::new()),
+    };
+    Value::Enum {
+        enum_name: "Option".to_owned(),
+        variant: variant.to_owned(),
+        fields: ScriptFields::from_pairs(&format!("Option.{variant}"), fields),
     }
 }
 
