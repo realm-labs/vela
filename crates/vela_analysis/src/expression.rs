@@ -1,3 +1,4 @@
+mod condition_narrowing;
 mod match_narrowing;
 
 use std::collections::BTreeMap;
@@ -46,20 +47,7 @@ impl ExprFactScope {
 
     #[must_use]
     pub fn narrowed_by_condition(&self, condition: &Expr, truthy: bool) -> Self {
-        let mut narrowed = self.clone();
-        if let Some((path, expects_null)) = null_check(condition, truthy)
-            && let Some(fact) = self.path_fact(path)
-        {
-            narrowed.paths.insert(
-                path.to_vec(),
-                if expects_null {
-                    fact.only_null()
-                } else {
-                    fact.without_null()
-                },
-            );
-        }
-        narrowed
+        condition_narrowing::narrowed_by_condition(self, condition, truthy)
     }
 
     #[must_use]
@@ -145,33 +133,6 @@ fn type_fact_from_expr_impl(
         })),
         ExprKind::Block(block) => block_fact(block, scope, facts),
         ExprKind::Error => TypeFact::Unknown,
-    }
-}
-
-fn null_check(condition: &Expr, truthy: bool) -> Option<(&[String], bool)> {
-    let ExprKind::Binary { op, left, right } = &condition.kind else {
-        return None;
-    };
-    let equality_expects_null = match op {
-        BinaryOp::Equal => truthy,
-        BinaryOp::NotEqual => !truthy,
-        _ => return None,
-    };
-
-    if let Some(path) = path_if_null_check(left, right) {
-        return Some((path, equality_expects_null));
-    }
-    path_if_null_check(right, left).map(|path| (path, equality_expects_null))
-}
-
-fn path_if_null_check<'a>(path_expr: &'a Expr, null_expr: &Expr) -> Option<&'a [String]> {
-    let ExprKind::Path(path) = &path_expr.kind else {
-        return None;
-    };
-    if matches!(null_expr.kind, ExprKind::Literal(Literal::Null)) {
-        Some(path.as_slice())
-    } else {
-        None
     }
 }
 
@@ -514,6 +475,54 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[0], &scope),
             TypeFact::Union(vec![TypeFact::Int, TypeFact::host("Player")])
+        );
+    }
+
+    #[test]
+    fn option_result_predicates_narrow_branch_facts() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                if option.is_some(maybe_player) { maybe_player } else { maybe_player };
+                if !result.is_err(grant_result) { grant_result } else { grant_result };
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["maybe_player"], TypeFact::option(TypeFact::host("Player")))
+            .with_path(
+                ["grant_result"],
+                TypeFact::result(TypeFact::Int, TypeFact::String),
+            );
+        let maybe_player = vec!["maybe_player".to_owned()];
+        let grant_result = vec!["grant_result".to_owned()];
+
+        let ExprKind::If(option_if) = &expressions[0].kind else {
+            panic!("expected option if expression");
+        };
+        let then_scope = scope.narrowed_by_condition(&option_if.condition, true);
+        let else_scope = scope.narrowed_by_condition(&option_if.condition, false);
+        assert_eq!(
+            then_scope.path_fact(&maybe_player),
+            Some(&TypeFact::option_some(TypeFact::host("Player")))
+        );
+        assert_eq!(
+            else_scope.path_fact(&maybe_player),
+            Some(&TypeFact::option_none())
+        );
+
+        let ExprKind::If(result_if) = &expressions[1].kind else {
+            panic!("expected result if expression");
+        };
+        let then_scope = scope.narrowed_by_condition(&result_if.condition, true);
+        let else_scope = scope.narrowed_by_condition(&result_if.condition, false);
+        assert_eq!(
+            then_scope.path_fact(&grant_result),
+            Some(&TypeFact::result_ok(TypeFact::Int))
+        );
+        assert_eq!(
+            else_scope.path_fact(&grant_result),
+            Some(&TypeFact::result_err(TypeFact::String))
         );
     }
 

@@ -234,11 +234,10 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         }
         "option.unwrap_or" => {
             expect_len(args, 2)?;
-            let unwrapped = option_payload(&args[0]).unwrap_or(TypeFact::Any);
             Some(StdlibFunctionFact::new(
                 "option.unwrap_or",
                 args.to_vec(),
-                value_or_fallback(unwrapped, args[1].clone()),
+                option_unwrap_or_return(&args[0], args[1].clone()),
             ))
         }
         "result.ok" => {
@@ -267,11 +266,10 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         }
         "result.unwrap_or" => {
             expect_len(args, 2)?;
-            let unwrapped = result_ok_payload(&args[0]).unwrap_or(TypeFact::Any);
             Some(StdlibFunctionFact::new(
                 "result.unwrap_or",
                 args.to_vec(),
-                value_or_fallback(unwrapped, args[1].clone()),
+                result_unwrap_or_return(&args[0], args[1].clone()),
             ))
         }
         "math.max" | "math.min" => {
@@ -571,24 +569,42 @@ fn expect_len(args: &[TypeFact], expected: usize) -> Option<()> {
 }
 
 fn option_payload(value: &TypeFact) -> Option<TypeFact> {
-    let TypeFact::Option { some } = value else {
-        return None;
-    };
-    Some((**some).clone())
+    match value {
+        TypeFact::Option { some } | TypeFact::OptionSome { some } => Some((**some).clone()),
+        TypeFact::OptionNone => Some(TypeFact::Never),
+        _ => None,
+    }
+}
+
+fn option_unwrap_or_return(value: &TypeFact, fallback: TypeFact) -> TypeFact {
+    match value {
+        TypeFact::OptionSome { some } => (**some).clone(),
+        TypeFact::OptionNone => fallback,
+        _ => value_or_fallback(option_payload(value).unwrap_or(TypeFact::Any), fallback),
+    }
 }
 
 fn result_ok_payload(value: &TypeFact) -> Option<TypeFact> {
-    let TypeFact::Result { ok, .. } = value else {
-        return None;
-    };
-    Some((**ok).clone())
+    match value {
+        TypeFact::Result { ok, .. } | TypeFact::ResultOk { ok } => Some((**ok).clone()),
+        TypeFact::ResultErr { .. } => Some(TypeFact::Never),
+        _ => None,
+    }
+}
+
+fn result_unwrap_or_return(value: &TypeFact, fallback: TypeFact) -> TypeFact {
+    match value {
+        TypeFact::ResultOk { ok } => (**ok).clone(),
+        TypeFact::ResultErr { .. } => fallback,
+        _ => value_or_fallback(result_ok_payload(value).unwrap_or(TypeFact::Any), fallback),
+    }
 }
 
 fn value_or_fallback(value: TypeFact, fallback: TypeFact) -> TypeFact {
     if value == fallback {
         value
     } else {
-        TypeFact::Union(vec![value, fallback])
+        TypeFact::union([value, fallback])
     }
 }
 
@@ -713,9 +729,22 @@ mod tests {
         )
         .expect("unwrap_or fact");
         assert_eq!(unwrapped.returns, TypeFact::String);
+        let none_unwrapped = stdlib_function_fact(
+            "option.unwrap_or",
+            &[TypeFact::option_none(), TypeFact::String],
+        )
+        .expect("none unwrap_or fact");
+        assert_eq!(none_unwrapped.returns, TypeFact::String);
 
         let ok = stdlib_function_fact("result.ok", &[TypeFact::Int]).expect("ok fact");
         assert_eq!(ok.returns, TypeFact::result(TypeFact::Int, TypeFact::Any));
+
+        let narrowed_ok_unwrapped = stdlib_function_fact(
+            "result.unwrap_or",
+            &[TypeFact::result_ok(TypeFact::Int), TypeFact::Float],
+        )
+        .expect("narrowed result unwrap_or fact");
+        assert_eq!(narrowed_ok_unwrapped.returns, TypeFact::Int);
 
         let result_unwrapped = stdlib_function_fact(
             "result.unwrap_or",

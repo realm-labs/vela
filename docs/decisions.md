@@ -5016,3 +5016,28 @@ Consequences:
   stdlib gap.
 - The behavior stays analysis-only and does not affect VM matching,
   reflection permissions, or host mutation boundaries.
+
+## 2026-05-25: Option And Result Predicate Narrowing Is Analysis-Only
+
+Status: Accepted
+
+Context:
+M16 includes flow narrowing for Option/Result-style checks. Match patterns can
+now bind dynamic Option/Result payloads, but predicate helpers such as
+`option.is_some(value)` and `result.is_ok(value)` still left both branches with
+the outer `Option` or `Result` fact.
+
+Decision:
+Move condition narrowing into a focused `vela_analysis::expression` submodule
+and teach it to recognize `option.is_some`, `option.is_none`, `result.is_ok`,
+and `result.is_err`, including unary `!` inversion. Add copied `TypeFact`
+shapes for exact dynamic variants so a true branch can carry
+`Option.Some(payload)` or `Result.Ok(payload)` while the opposite branch carries
+`Option.None` or `Result.Err(error)`.
+
+Consequences:
+- Predicate narrowing remains advisory analysis metadata and does not mutate
+  runtime enum schemas or reflection type structure.
+- Payload facts stay available to standard-library analysis helpers such as
+  `unwrap_or` without introducing script-language generics.
+- Runtime matching, VM execution, and host mutation boundaries are unchanged.

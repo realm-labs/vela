@@ -23,8 +23,18 @@ pub enum TypeFact {
     Option {
         some: Box<TypeFact>,
     },
+    OptionSome {
+        some: Box<TypeFact>,
+    },
+    OptionNone,
     Result {
         ok: Box<TypeFact>,
+        err: Box<TypeFact>,
+    },
+    ResultOk {
+        ok: Box<TypeFact>,
+    },
+    ResultErr {
         err: Box<TypeFact>,
     },
     Function {
@@ -76,11 +86,29 @@ impl TypeFact {
         }
     }
 
+    pub fn option_some(some: TypeFact) -> Self {
+        Self::OptionSome {
+            some: Box::new(some),
+        }
+    }
+
+    pub fn option_none() -> Self {
+        Self::OptionNone
+    }
+
     pub fn result(ok: TypeFact, err: TypeFact) -> Self {
         Self::Result {
             ok: Box::new(ok),
             err: Box::new(err),
         }
+    }
+
+    pub fn result_ok(ok: TypeFact) -> Self {
+        Self::ResultOk { ok: Box::new(ok) }
+    }
+
+    pub fn result_err(err: TypeFact) -> Self {
+        Self::ResultErr { err: Box::new(err) }
     }
 
     pub fn function(params: Vec<TypeFact>, returns: TypeFact) -> Self {
@@ -178,9 +206,13 @@ impl TypeFact {
             }
             Self::Set { element } => format!("set({})", element.display_name()),
             Self::Option { some } => format!("Option({})", some.display_name()),
+            Self::OptionSome { some } => format!("Option.Some({})", some.display_name()),
+            Self::OptionNone => "Option.None".to_owned(),
             Self::Result { ok, err } => {
                 format!("Result({}, {})", ok.display_name(), err.display_name())
             }
+            Self::ResultOk { ok } => format!("Result.Ok({})", ok.display_name()),
+            Self::ResultErr { err } => format!("Result.Err({})", err.display_name()),
             Self::Function { params, returns } => {
                 let params = params
                     .iter()
@@ -235,6 +267,14 @@ mod tests {
         let fact = TypeFact::map(TypeFact::String, TypeFact::array(TypeFact::Int));
 
         assert_eq!(fact.display_name(), "map(string, array(int))");
+        assert_eq!(
+            TypeFact::option_some(TypeFact::Int).display_name(),
+            "Option.Some(int)"
+        );
+        assert_eq!(
+            TypeFact::result_err(TypeFact::String).display_name(),
+            "Result.Err(string)"
+        );
         assert!(!fact.display_name().contains('<'));
         assert!(!fact.display_name().contains('>'));
     }

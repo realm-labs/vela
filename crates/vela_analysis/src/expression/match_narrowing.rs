@@ -19,7 +19,7 @@ pub(super) fn narrowed_by_match_pattern(
     if let Some((enum_name, variant)) = pattern_variant(pattern, &scrutinee_fact, facts) {
         narrowed.paths.insert(
             scrutinee_path.to_vec(),
-            TypeFact::enum_type(enum_name.clone(), Some(variant.clone())),
+            scrutinee_variant_fact(&scrutinee_fact, &enum_name, &variant),
         );
         bind_variant_pattern_facts(
             &mut narrowed,
@@ -33,6 +33,25 @@ pub(super) fn narrowed_by_match_pattern(
         bind_pattern_facts(&mut narrowed, pattern, &scrutinee_fact, facts);
     }
     narrowed
+}
+
+fn scrutinee_variant_fact(scrutinee_fact: &TypeFact, enum_name: &str, variant: &str) -> TypeFact {
+    match (scrutinee_fact, enum_name.rsplit('.').next(), variant) {
+        (TypeFact::Option { some }, Some("Option"), "Some")
+        | (TypeFact::OptionSome { some }, Some("Option"), "Some") => {
+            TypeFact::option_some((**some).clone())
+        }
+        (TypeFact::Option { .. } | TypeFact::OptionNone, Some("Option"), "None") => {
+            TypeFact::option_none()
+        }
+        (TypeFact::Result { ok, .. }, Some("Result"), "Ok")
+        | (TypeFact::ResultOk { ok }, Some("Result"), "Ok") => TypeFact::result_ok((**ok).clone()),
+        (TypeFact::Result { err, .. }, Some("Result"), "Err")
+        | (TypeFact::ResultErr { err }, Some("Result"), "Err") => {
+            TypeFact::result_err((**err).clone())
+        }
+        _ => TypeFact::enum_type(enum_name, Some(variant)),
+    }
 }
 
 fn expr_path(expr: &Expr) -> Option<&[String]> {
@@ -68,10 +87,14 @@ fn pattern_path_variant(
             TypeFact::Enum { name, .. } if facts.variant_fact(name, variant).is_some() => {
                 Some((name.clone(), variant.clone()))
             }
-            TypeFact::Option { .. } if is_option_variant(variant) => {
+            TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone
+                if is_option_variant(variant) =>
+            {
                 Some(("Option".to_owned(), variant.clone()))
             }
-            TypeFact::Result { .. } if is_result_variant(variant) => {
+            TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. }
+                if is_result_variant(variant) =>
+            {
                 Some(("Result".to_owned(), variant.clone()))
             }
             _ => None,
@@ -180,12 +203,12 @@ fn dynamic_enum_variant(
     variant: &str,
 ) -> Option<(String, String)> {
     match scrutinee_fact {
-        TypeFact::Option { .. }
+        TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone
             if owner.rsplit('.').next() == Some("Option") && is_option_variant(variant) =>
         {
             Some((owner.to_owned(), variant.to_owned()))
         }
-        TypeFact::Result { .. }
+        TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. }
             if owner.rsplit('.').next() == Some("Result") && is_result_variant(variant) =>
         {
             Some((owner.to_owned(), variant.to_owned()))
@@ -217,8 +240,11 @@ fn dynamic_variant_field_fact(
     }
     match (scrutinee_fact, variant) {
         (TypeFact::Option { some }, "Some") => Some((**some).clone()),
+        (TypeFact::OptionSome { some }, "Some") => Some((**some).clone()),
         (TypeFact::Result { ok, .. }, "Ok") => Some((**ok).clone()),
         (TypeFact::Result { err, .. }, "Err") => Some((**err).clone()),
+        (TypeFact::ResultOk { ok }, "Ok") => Some((**ok).clone()),
+        (TypeFact::ResultErr { err }, "Err") => Some((**err).clone()),
         _ => None,
     }
 }

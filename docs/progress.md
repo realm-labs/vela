@@ -1140,6 +1140,12 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `Result.Err(error)` patterns now bind payload facts from
   `TypeFact::Option`/`TypeFact::Result` even without registered generic
   schemas, while preserving the no-script-generics boundary.
+- Added predicate-style Option/Result flow narrowing. `if
+  option.is_some(value)`, `option.is_none`, `result.is_ok`, and
+  `result.is_err` branches now narrow copied analysis facts to exact
+  `Option.Some`/`Option.None` and `Result.Ok`/`Result.Err` shapes, including
+  negated predicates, so stdlib facts such as `unwrap_or` can preserve branch
+  payload precision without runtime schema mutation.
 - Added first-pass VM runtime call stack metadata. `VmError` now carries
   copied script stack frames with function names and call-site spans, and nested
   script/closure call failures preserve that stack while retaining a source
