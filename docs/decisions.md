@@ -5415,3 +5415,27 @@ Consequences:
 - Hot-reload ABI and policy checks remain in `vela_hot_reload`; the Engine
   runtime only owns application and active-program replacement.
 - Existing non-hot-reload runtimes keep the same construction and call path.
+
+## 2026-05-25: Array Join Is String-Only And Deterministic
+
+Status: Accepted
+
+Context:
+M13 collection and string helpers should make gameplay scripts concise without
+adding script-language generics or implicit value formatting. Scripts often
+need to build stable event names, log labels, and UI/debug strings from string
+parts.
+
+Decision:
+Add `array.join(separator)` as a script-value method for arrays whose elements
+are strings. The separator must be a string, empty arrays return an empty
+string, and any non-string element reports a VM type error. Managed-heap
+execution materializes heap-backed string values before joining, and analysis
+facts expose the helper as `(string) -> string`.
+
+Consequences:
+- Gameplay scripts can assemble deterministic labels without host callbacks.
+- Vela does not introduce implicit `to_string` conversion or generic array
+  typing; dynamic runtime validation keeps the boundary explicit.
+- The helper remains in the focused VM array-method module and shares the
+  existing stdlib analysis/completion metadata path.

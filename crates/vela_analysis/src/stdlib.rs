@@ -1,8 +1,8 @@
 use crate::TypeFact;
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
-    "len", "is_empty", "push", "pop", "first", "last", "map", "filter", "find", "any", "all",
-    "count", "sum", "group_by", "sort_by",
+    "len", "is_empty", "push", "pop", "first", "last", "join", "map", "filter", "find", "any",
+    "all", "count", "sum", "group_by", "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
     "len",
@@ -395,6 +395,10 @@ fn array_method_fact(
             "last",
             TypeFact::option(element),
         )),
+        "join" => Some(
+            StdlibMethodFact::new(receiver, "join", TypeFact::String)
+                .with_params(vec![TypeFact::String]),
+        ),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             Some(
@@ -773,6 +777,9 @@ mod tests {
                 .returns,
             TypeFact::option(TypeFact::Float)
         );
+        let join = stdlib_method_fact(&array, "join", None).expect("join fact");
+        assert_eq!(join.params, vec![TypeFact::String]);
+        assert_eq!(join.returns, TypeFact::String);
         assert_eq!(
             stdlib_method_fact(&set, "values", None)
                 .expect("values fact")

@@ -50,6 +50,7 @@ pub(crate) fn call_method(
         "pop" => array_pop(receiver, args, heap.as_deref_mut()),
         "first" => array_methods::first(receiver, args, heap.as_deref()),
         "last" => array_methods::last(receiver, args, heap.as_deref()),
+        "join" => array_methods::join(receiver, args, heap.as_deref()),
         "map" => array_methods::map(
             receiver,
             args,

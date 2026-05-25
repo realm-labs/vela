@@ -357,6 +357,11 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::option(TypeFact::String)),
         )));
+        assert!(array.contains(&CompletionItem::new(
+            "join",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::String], TypeFact::String),
+        )));
 
         let string = member_completions(&facts, &TypeFact::String);
         assert!(string.contains(&CompletionItem::new(

@@ -105,6 +105,21 @@ pub(crate) fn last(
     ))
 }
 
+pub(crate) fn join(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("join", args, 1)?;
+    let values = array_values(receiver, heap, "method join")?;
+    let separator = string_value(&args[0], heap, "method join")?;
+    let mut parts = Vec::with_capacity(values.len());
+    for value in values {
+        parts.push(string_value(&value, heap, "method join")?.to_owned());
+    }
+    Ok(Value::String(parts.join(separator)))
+}
+
 pub(crate) fn any(
     receiver: &Value,
     args: &[Value],
@@ -305,14 +320,7 @@ impl NumericTotal {
 }
 
 fn group_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
-    match value {
-        Value::String(value) => Ok(value.clone()),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(value.clone()),
-            _ => type_error("method group_by"),
-        },
-        _ => type_error("method group_by"),
-    }
+    string_value(value, heap, "method group_by").map(str::to_owned)
 }
 
 struct SortEntry {
@@ -370,6 +378,21 @@ fn sort_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<SortKey
             _ => type_error("method sort_by"),
         },
         _ => type_error("method sort_by"),
+    }
+}
+
+fn string_value<'a>(
+    value: &'a Value,
+    heap: Option<&'a HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<&'a str> {
+    match value {
+        Value::String(value) => Ok(value),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(value),
+            _ => type_error(operation),
+        },
+        _ => type_error(operation),
     }
 }
 
@@ -579,6 +602,63 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array endpoint methods should run");
         assert_eq!(result, Value::String("wyrm".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_join_method() {
+        let source = r#"
+fn main() {
+    let path = ["quest", "stage", "done"].join(".");
+    if path == "quest.stage.done" && [].join(",") == "" {
+        return path;
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array join method should compile");
+
+        let result = Vm::new().run(&code).expect("array join method should run");
+        assert_eq!(result, Value::String("quest.stage.done".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_join_method() {
+        let source = r#"
+fn main() {
+    let tags = ["boar", "wolf", "wyrm"];
+    return tags.join("|");
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array join method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array join method should run");
+        assert_eq!(result, Value::String("boar|wolf|wyrm".to_owned()));
+    }
+
+    #[test]
+    fn array_join_rejects_non_string_values() {
+        let source = r#"
+fn main() {
+    return ["boar", 1].join(",");
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array join type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array join should reject non-string values");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method join"
+            }
+        );
     }
 
     #[test]

@@ -1281,6 +1281,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   constructed from a `ProgramVersion`, apply `HotUpdate` reports, preserve the
   active program on rejected updates, and expose hot-reload types through the
   stable Engine API.
+- Added `array.join(separator)` for deterministic string assembly over script
+  string arrays in inline and managed-heap execution, with analysis TypeFacts
+  and completion metadata.
 
 ## Next
 
