@@ -6504,3 +6504,26 @@ Consequences:
   host boundary behavior.
 - The implementation remains separate from array mapping, so collection logic
   does not accumulate dynamic enum special cases.
+
+## 2026-05-26: Engine Native Descriptors Carry Static Attrs
+
+Status: Accepted
+
+Context:
+Reflection already preserves attributes for script declarations and registered
+type/member metadata, but Engine-registered native functions and callable
+native methods could only carry docs, access, effects, and type hints. That
+left host-provided APIs unable to expose stable tags used by policy,
+documentation, or tooling workflows.
+
+Decision:
+Add static attribute maps to `NativeFunctionDesc` and `NativeMethodDesc`.
+Engine metadata injection copies those attrs into reflected `FunctionDesc` and
+`MethodDesc` records during build time.
+
+Consequences:
+- Host-registered functions and methods can expose controlled metadata tags
+  through reflection without allowing runtime schema mutation.
+- Attribute handling stays in descriptor metadata rather than in executable
+  native function closures.
+- Existing permission and effect checks remain unchanged.

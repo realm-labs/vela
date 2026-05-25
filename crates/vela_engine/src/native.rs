@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use vela_common::FunctionId;
-use vela_reflect::TypeKey;
+use vela_reflect::{AttrMap, TypeKey};
 use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{NativeCallContext, PermissionSet};
@@ -17,6 +17,7 @@ pub struct NativeFunctionDesc {
     pub effects: EffectSet,
     pub access: FunctionAccess,
     pub docs: Option<String>,
+    pub attrs: AttrMap,
 }
 
 impl NativeFunctionDesc {
@@ -30,6 +31,7 @@ impl NativeFunctionDesc {
             effects: EffectSet::default(),
             access: FunctionAccess::default(),
             docs: None,
+            attrs: AttrMap::new(),
         }
     }
 
@@ -63,6 +65,12 @@ impl NativeFunctionDesc {
     #[must_use]
     pub fn docs(mut self, docs: impl Into<String>) -> Self {
         self.docs = Some(docs.into());
+        self
+    }
+
+    #[must_use]
+    pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attrs.insert(name, value);
         self
     }
 }

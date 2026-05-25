@@ -1579,6 +1579,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   method runtime, `Option.None` and `Result.Err` pass through their dynamic
   enum shape, and expression analysis/completions expose matching non-generic
   method facts for `Option`/`Result` type facts.
+- Extended M14 Engine native metadata with explicit attributes for registered
+  native functions and callable native methods. Descriptor attrs now flow into
+  reflected `FunctionDesc` and `MethodDesc` metadata, so host-provided APIs can
+  carry the same controlled tags as script declarations without runtime schema
+  mutation.
 
 ## Next
 

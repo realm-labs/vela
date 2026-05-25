@@ -36,6 +36,9 @@ pub(crate) fn inject_host_method_metadata(
         if let Some(docs) = &desc.docs {
             method = method.docs(docs.clone());
         }
+        for (name, value) in desc.attrs.iter() {
+            method = method.attr(name, value);
+        }
         owner.methods.push(method);
     }
     Ok(())
@@ -82,6 +85,9 @@ fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
     }
     if let Some(docs) = &desc.docs {
         reflected = reflected.docs(docs.clone());
+    }
+    for (name, value) in desc.attrs.iter() {
+        reflected = reflected.attr(name, value);
     }
     reflected
 }

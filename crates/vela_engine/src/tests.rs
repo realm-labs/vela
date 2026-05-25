@@ -1404,7 +1404,9 @@ fn engine_registers_native_function_reflection_metadata() {
                         .reflect_callable(true)
                         .require_permission("game.add"),
                 )
-                .docs("Adds two integers."),
+                .docs("Adds two integers.")
+                .attr("domain", "gameplay")
+                .attr("stable", "true"),
             |_| Ok(Value::Int(0)),
         )
         .build()
@@ -1437,6 +1439,8 @@ fn engine_registers_native_function_reflection_metadata() {
         &["game.add".to_owned()]
     );
     assert_eq!(function.docs.as_deref(), Some("Adds two integers."));
+    assert_eq!(function.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(function.attrs.get("stable"), Some("true"));
 }
 
 #[test]
@@ -3168,7 +3172,9 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.grant_exp"))
-                .docs("Grant player experience."),
+                .docs("Grant player experience.")
+                .attr("domain", "gameplay")
+                .attr("effect", "reward"),
             move |receiver, args, host| {
                 let [Value::Int(amount)] = args else {
                     return Ok(Value::Null);
@@ -3201,6 +3207,8 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     assert_eq!(reflected_method.params[0].name, "amount");
     assert_eq!(reflected_method.params[0].type_hint.as_deref(), Some("int"));
     assert_eq!(reflected_method.return_type.as_deref(), Some("null"));
+    assert_eq!(reflected_method.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(reflected_method.attrs.get("effect"), Some("reward"));
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"
