@@ -1274,6 +1274,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `math.round(value)` as a deterministic numeric standard native that
   returns script `int` values for integers and finite floats, with VM,
   Engine-installed stdlib, analysis, and completion coverage.
+- Added `PermissionSet::gameplay()` to the stable Engine API. The preset grants
+  deterministic context time helpers while keeping controlled random and
+  reflection capabilities explicit opt-ins.
 
 ## Next
 

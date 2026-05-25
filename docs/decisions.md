@@ -5366,3 +5366,26 @@ Consequences:
 - Engine-installed standard natives expose the helper automatically through
   `with_standard_natives()`.
 - Analysis and completion expose `math.round` as `(int | float) -> int`.
+
+## 2026-05-25: Gameplay Permission Preset Stays Deterministic
+
+Status: Accepted
+
+Context:
+The architecture examples refer to gameplay permissions as an embedding preset,
+but the stable Engine API only allowed hosts to build permission sets manually.
+M13/M14 need common game-server scripts to access deterministic context helpers
+without implicitly granting nondeterministic or high-privilege capabilities.
+
+Decision:
+Add `PermissionSet::gameplay()`. The preset grants `ctx.time`, enabling
+Engine-installed `ctx.now()` and `ctx.tick()` when a host has configured a
+context clock. It does not grant controlled random, reflection permissions, or
+host/member-specific permissions.
+
+Consequences:
+- Embedders get a named gameplay baseline matching the architecture examples.
+- Time remains deterministic because hosts still provide the context clock
+  values.
+- Random, reflection, and host-specific mutation/read permissions remain
+  explicit policy choices.

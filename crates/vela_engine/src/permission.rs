@@ -12,6 +12,11 @@ impl PermissionSet {
     }
 
     #[must_use]
+    pub fn gameplay() -> Self {
+        Self::new().with(crate::clock::CONTEXT_TIME_PERMISSION)
+    }
+
+    #[must_use]
     pub fn with(mut self, permission: impl Into<String>) -> Self {
         self.insert(permission);
         self

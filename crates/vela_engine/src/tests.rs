@@ -15,7 +15,8 @@ use crate::{
     CONTEXT_TIME_PERMISSION, CONTROLLED_RANDOM_PERMISSION, CTX_NOW_FUNCTION_ID,
     CTX_TICK_FUNCTION_ID, CallOptions, EffectSet, Engine, EngineErrorKind, EngineSourceErrorKind,
     FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext, NativeFunctionDesc,
-    NativeFunctionId, NativeMethodDesc, Runtime, ScriptArgsExt, ScriptReflectSchema, TypeHint,
+    NativeFunctionId, NativeMethodDesc, PermissionSet, Runtime, ScriptArgsExt, ScriptReflectSchema,
+    TypeHint,
 };
 use crate::{FromScriptArg, IntoScriptArg};
 
@@ -1713,6 +1714,53 @@ fn main() {
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "ctx.now".to_owned(),
             permission: CONTEXT_TIME_PERMISSION.to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn gameplay_permissions_allow_context_time_but_not_random() {
+    let permissions = PermissionSet::gameplay();
+    assert!(permissions.contains(CONTEXT_TIME_PERMISSION));
+    assert!(!permissions.contains(CONTROLLED_RANDOM_PERMISSION));
+
+    let engine = Engine::builder()
+        .permissions(permissions)
+        .with_context_clock(1_700_000_000, 42)
+        .with_controlled_random(7)
+        .build()
+        .expect("engine should build");
+    let time_program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return ctx.now() + ctx.tick();
+}
+"#,
+    )
+    .expect("time program should compile");
+    assert_eq!(
+        engine
+            .clone()
+            .into_vm()
+            .run_program(&time_program, "main", &[]),
+        Ok(Value::Int(1_700_000_042))
+    );
+
+    let random_program = compile_program_source(
+        SourceId::new(2),
+        r#"
+fn main() {
+    return math.random(1, 6);
+}
+"#,
+    )
+    .expect("random program should compile");
+    assert!(matches!(
+        engine.into_vm().run_program(&random_program, "main", &[]),
+        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+            native: "math.random".to_owned(),
+            permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
         }
     ));
 }
