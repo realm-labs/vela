@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
@@ -540,6 +541,81 @@ fn main(player) {
         }
     );
     assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn args_macro_converts_rust_values_and_host_refs() {
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let mut map = BTreeMap::new();
+    map.insert("key", 9);
+
+    let args = crate::args![(), true, 5, 2.5_f64, "title", ["a", "b"], map, host_ref,];
+
+    assert_eq!(
+        args,
+        vec![
+            Value::Null,
+            Value::Bool(true),
+            Value::Int(5),
+            Value::Float(2.5),
+            Value::String("title".to_owned()),
+            Value::Array(vec![
+                Value::String("a".to_owned()),
+                Value::String("b".to_owned())
+            ]),
+            Value::Map([("key".to_owned(), Value::Int(9))].into()),
+            Value::HostRef(host_ref),
+        ]
+    );
+    assert_eq!(crate::args!(), Vec::<Value>::new());
+    assert_eq!(crate::host!(1, 42, 7), Value::HostRef(host_ref));
+}
+
+#[test]
+fn runtime_call_accepts_args_and_host_macros() {
+    let method = HostMethodId::new(23);
+    let engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(method, "grant_exp")),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player, amount: int) {
+    player.grant_exp(amount);
+    return amount;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = crate::Runtime::new(engine, program);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let args = crate::args![crate::host!(1, 42, 1), 12];
+
+    let result = runtime
+        .call(
+            "main",
+            &args,
+            CallOptions::gameplay(),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect("runtime call should run");
+
+    assert_eq!(result, Value::Int(12));
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(12)]
+        }
+    );
 }
 
 #[test]

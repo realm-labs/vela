@@ -4124,3 +4124,28 @@ Consequences:
   and adapter but never a Rust `&mut` host object.
 - Context-native descriptors share reflection metadata and duplicate stable-ID
   validation with existing native functions.
+
+## 2026-05-25: Embedding Argument Macros Produce Copied Values
+
+Status: Accepted
+
+Context:
+M14 requires `args!` and `host!` convenience APIs. Embedders were manually
+constructing `Vec<Value>` and `Value::HostRef(...)` for every runtime call,
+which is noisy and makes examples less representative of the intended stable
+Engine API.
+
+Decision:
+Add a focused Engine `args` module with an `IntoScriptArg` trait and exported
+`args!`/`host!` macros. `args!` converts Rust scalars, strings, arrays, maps,
+existing VM values, and `HostRef` handles into copied `Value` arguments.
+`host!(type_id, object_id, generation)` constructs a `Value::HostRef` from
+stable host IDs.
+
+Consequences:
+- Embedding examples can pass script arguments without depending on VM internals
+  for common scalar and host-ref cases.
+- The convenience API does not grant access to Rust host objects; host handles
+  remain copied external IDs and mutations still flow through `PatchTx`.
+- Broader Rust signature conversion and method macro generation remain future
+  M14 work.

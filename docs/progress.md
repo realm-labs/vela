@@ -982,6 +982,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   with the same descriptor reflection metadata and duplicate-ID validation as
   existing native functions, can charge instruction budgets explicitly, and
   still mutate host state only by recording patches.
+- Added M14 embedding convenience macros `args!` and `host!` plus
+  `IntoScriptArg` conversions for copied Rust scalar, string, array, map, VM
+  value, and `HostRef` arguments. Runtime-call tests now show hosts can build
+  script argument lists and host-ref values without exposing Rust state or
+  bypassing `PatchTx`.
 
 ## Next
 
