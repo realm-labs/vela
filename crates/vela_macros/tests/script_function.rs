@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use vela_common::{FieldId, HostObjectId, HostTypeId};
 use vela_engine::{
     EffectSet, Engine, FunctionAccess, HostRef, NativeCallContext, NativeFunctionDesc,

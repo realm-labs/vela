@@ -194,6 +194,7 @@ impl Engine {
                 method: format!("host method {}", id.get()),
             },
             source_span: None,
+            call_stack: Default::default(),
         })?;
         check_permissions(&entry.desc.name, &entry.desc.access, &self.permissions)?;
         (entry.function)(receiver, args, host)
@@ -262,6 +263,7 @@ fn check_permissions(
                 permission: permission.to_owned(),
             },
             source_span: None,
+            call_stack: Default::default(),
         });
     }
     Ok(())

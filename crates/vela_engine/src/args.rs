@@ -26,6 +26,7 @@ impl ScriptArgsExt for [Value] {
                 actual: self.len(),
             },
             source_span: None,
+            call_stack: Default::default(),
         })?;
         T::from_script_arg(value)
     }
@@ -321,6 +322,7 @@ fn type_mismatch(operation: &'static str) -> VmError {
     VmError {
         kind: VmErrorKind::TypeMismatch { operation },
         source_span: None,
+        call_stack: Default::default(),
     }
 }
 

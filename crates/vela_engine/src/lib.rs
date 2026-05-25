@@ -1,5 +1,7 @@
 //! Stable embedding API for installing schemas and native functions into Vela.
 
+#![allow(clippy::result_large_err)]
+
 mod args;
 mod builder;
 mod context;

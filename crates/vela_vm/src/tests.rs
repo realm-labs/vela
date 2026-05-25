@@ -16,8 +16,8 @@ use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
 use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
 use vela_reflect::{
     FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc,
-    MethodEffectSet, MethodParamDesc, ModuleDesc, ReflectCandidate, TraitDesc, TraitMethodDesc,
-    TypeDesc, TypeKey, TypeKind, VariantDesc,
+    MethodEffectSet, MethodParamDesc, ModuleDesc, ReflectCandidate, ReflectErrorKind, TraitDesc,
+    TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
 };
 
 #[test]
@@ -3326,6 +3326,84 @@ fn host_field_read_error_keeps_instruction_source_span() {
             action: "read"
         })
     );
+}
+
+#[test]
+fn runtime_errors_include_script_call_stack() {
+    let leaf_error_span = Span::new(SourceId::new(1), 80, 86);
+    let leaf_call_span = Span::new(SourceId::new(1), 44, 50);
+    let middle_call_span = Span::new(SourceId::new(1), 18, 26);
+    let mut program = Program::new();
+
+    let mut main = CodeObject::new("main", 1);
+    main.push_instruction(
+        Instruction::new(InstructionKind::CallFunction {
+            dst: Register(0),
+            name: "middle".to_owned(),
+            args: Vec::new(),
+        })
+        .with_span(middle_call_span),
+    );
+    main.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(0),
+    }));
+    program.insert_function(main);
+
+    let mut middle = CodeObject::new("middle", 1);
+    middle.push_instruction(
+        Instruction::new(InstructionKind::CallFunction {
+            dst: Register(0),
+            name: "leaf".to_owned(),
+            args: Vec::new(),
+        })
+        .with_span(leaf_call_span),
+    );
+    middle.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(0),
+    }));
+    program.insert_function(middle);
+
+    let mut leaf = CodeObject::new("leaf", 3);
+    let ten = leaf.push_constant(Constant::Int(10));
+    let zero = leaf.push_constant(Constant::Int(0));
+    leaf.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: ten,
+    }));
+    leaf.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: zero,
+    }));
+    leaf.push_instruction(
+        Instruction::new(InstructionKind::Div {
+            dst: Register(2),
+            lhs: Register(0),
+            rhs: Register(1),
+        })
+        .with_span(leaf_error_span),
+    );
+    leaf.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(2),
+    }));
+    program.insert_function(leaf);
+
+    let error = Vm::new()
+        .run_program(&program, "main", &[])
+        .expect_err("division by zero should fail");
+
+    assert_eq!(error.kind, VmErrorKind::DivisionByZero);
+    assert_eq!(error.source_span, Some(leaf_call_span));
+    assert_eq!(
+        error
+            .call_stack
+            .iter()
+            .map(|frame| frame.function.as_str())
+            .collect::<Vec<_>>(),
+        ["leaf", "middle", "main"]
+    );
+    assert!(error.call_stack[0].call_site.is_some());
+    assert!(error.call_stack[1].call_site.is_some());
+    assert_eq!(error.call_stack[2].call_site, None);
 }
 
 #[test]

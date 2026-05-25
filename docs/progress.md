@@ -1130,6 +1130,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `vela_analysis` now compares unguarded match patterns against copied
   `TypeRegistry` enum variants, treats wildcard/binding arms as exhaustive,
   and reports missing variants without changing runtime match semantics.
+- Added first-pass VM runtime call stack metadata. `VmError` now carries
+  copied script stack frames with function names and call-site spans, and nested
+  script/closure call failures preserve that stack while retaining a source
+  span fallback for runtime diagnostics.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

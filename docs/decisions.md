@@ -4914,3 +4914,30 @@ Consequences:
   variant metadata is unavailable.
 - Future match-pattern narrowing can reuse the same known-enum and variant
   coverage helpers.
+
+## 2026-05-25: VM Errors Carry Copied Script Call Stacks
+
+Status: Accepted
+
+Context:
+M16 requires runtime diagnostics to map errors back to source locations and
+script call frames. `VmError` already carried an optional source span for some
+host-path failures, but nested script calls lost the function path that led to
+the error.
+
+Decision:
+Add copied `VmStackFrame` metadata to `VmError`. Each `execute_call` pushes its
+function name and optional call-site span while unwinding an error. Script
+function and closure calls pass the current instruction span as the call site,
+and the VM uses that span as a fallback when the inner error has no more
+specific source span.
+
+Consequences:
+- Runtime errors can report an innermost-to-outermost script call stack without
+  retaining live frame or register references.
+- The metadata remains copied diagnostic data and does not expose mutable VM or
+  host state.
+- `VmResult` remains a value-error API for now; boxing every VM/Engine error is
+  a broader public API migration and is deferred.
+- Instruction-exact spans for every runtime operation remain a future
+  refinement; this slice establishes the stack structure and safe fallback.

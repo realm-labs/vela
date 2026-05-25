@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
 use vela_engine::{EffectSet, Engine, FunctionAccess, HostRef, NativeMethodDesc, TypeHint, Value};
 use vela_host::{HostPath, HostValue, MockStateAdapter, PatchOp, PatchTx};

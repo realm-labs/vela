@@ -320,5 +320,6 @@ fn expect_arity(args: &[Value], expected: usize) -> VmResult<()> {
             actual: args.len(),
         },
         source_span: None,
+        call_stack: Default::default(),
     })
 }

@@ -1,6 +1,9 @@
 //! Register VM for Vela bytecode.
 
+#![allow(clippy::result_large_err)]
+
 mod array_methods;
+mod error;
 pub mod heap;
 mod host_values;
 mod indexing;
@@ -18,9 +21,9 @@ mod try_propagation;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
-use std::fmt;
 use std::sync::Arc;
 
+pub use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
 use host_values::{value_from_host, value_to_host};
 pub use iteration::IteratorState;
@@ -32,8 +35,8 @@ use vela_bytecode::{
     CallArgument, CodeObject, Constant, HostPathSegment, InstructionKind, Program, Register,
 };
 use vela_common::{Span, SymbolInterner};
-use vela_host::{HostError, HostErrorKind, HostPath, HostRef, PatchTx, ScriptStateAdapter};
-use vela_reflect::{self as reflect, ReflectError, ReflectErrorKind, TypeRegistry};
+use vela_host::{HostPath, HostRef, PatchTx, ScriptStateAdapter};
+use vela_reflect::{self as reflect, TypeRegistry};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -104,6 +107,13 @@ struct ExecutionCall<'a> {
     program: Option<&'a Program>,
     captures: &'a [Value],
     args: &'a [Value],
+    call_site: Option<Span>,
+}
+
+impl ExecutionCall<'_> {
+    fn stack_frame(&self) -> VmStackFrame {
+        VmStackFrame::new(self.code.name.clone(), self.call_site)
+    }
 }
 
 impl From<&Constant> for Value {
@@ -116,87 +126,6 @@ impl From<&Constant> for Value {
             Constant::String(value) => Self::String(value.clone()),
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct VmError {
-    pub kind: VmErrorKind,
-    pub source_span: Option<Span>,
-}
-
-impl VmError {
-    fn new(kind: VmErrorKind) -> Self {
-        Self {
-            kind,
-            source_span: None,
-        }
-    }
-}
-
-impl fmt::Display for VmError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind)
-    }
-}
-
-impl std::error::Error for VmError {}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum VmErrorKind {
-    RegisterOutOfBounds {
-        register: Register,
-    },
-    ConstantOutOfBounds {
-        constant: usize,
-    },
-    InstructionOutOfBounds {
-        offset: usize,
-    },
-    TypeMismatch {
-        operation: &'static str,
-    },
-    DivisionByZero,
-    UnknownNative {
-        name: String,
-    },
-    PermissionDenied {
-        native: String,
-        permission: String,
-    },
-    UnknownFunction {
-        name: String,
-    },
-    UnknownMethod {
-        method: String,
-    },
-    ArityMismatch {
-        name: String,
-        expected: usize,
-        actual: usize,
-    },
-    Host(HostErrorKind),
-    Reflect(ReflectErrorKind),
-    UnknownRecordField {
-        type_name: String,
-        field: String,
-    },
-    UnknownEnumField {
-        enum_name: String,
-        variant: String,
-        field: String,
-    },
-    IndexOutOfBounds {
-        index: i64,
-        len: usize,
-    },
-    UnknownMapKey {
-        key: String,
-    },
-    BudgetExceeded {
-        budget: ExecutionBudgetKind,
-        limit: u64,
-    },
-    MissingReturn,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -318,23 +247,6 @@ impl ExecutionBudget {
 
     fn reserve_patch(&self, current_patch_count: usize) -> VmResult<()> {
         self.check_patch_count(current_patch_count.saturating_add(1))
-    }
-}
-
-pub type VmResult<T> = Result<T, VmError>;
-
-impl From<HostError> for VmError {
-    fn from(value: HostError) -> Self {
-        Self {
-            kind: VmErrorKind::Host(value.kind),
-            source_span: value.source_span,
-        }
-    }
-}
-
-impl From<ReflectError> for VmError {
-    fn from(value: ReflectError) -> Self {
-        Self::new(VmErrorKind::Reflect(value.kind))
     }
 }
 
@@ -718,6 +630,7 @@ impl Vm {
                 program,
                 captures: &[],
                 args,
+                call_site: None,
             },
             host,
             heap,
@@ -733,9 +646,24 @@ impl Vm {
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         if let Some(budget) = &mut budget {
-            budget.enter_call()?;
+            budget
+                .enter_call()
+                .map_err(|error| error.with_call_frame(call.stack_frame()))?;
         }
-        let result = self.execute_body(call, host, heap, budget.as_deref_mut());
+        let frame = call.stack_frame();
+        let fallback_span = call.call_site.or_else(|| {
+            call.code
+                .instructions
+                .first()
+                .and_then(|instruction| instruction.span)
+        });
+        let result = self
+            .execute_body(call, host, heap, budget.as_deref_mut())
+            .map_err(|error| {
+                error
+                    .with_source_span_if_absent(fallback_span)
+                    .with_call_frame(frame)
+            });
         if let Some(budget) = budget {
             budget.exit_call();
         }
@@ -757,6 +685,7 @@ impl Vm {
                 program,
                 captures: &closure.captures,
                 args,
+                call_site: None,
             },
             host,
             heap,
@@ -875,6 +804,7 @@ impl Vm {
                             constant: constant.0,
                         },
                         source_span: instruction.span,
+                        call_stack: Default::default(),
                     })?;
                     let value = value_from_constant(
                         constant_value,
@@ -1033,10 +963,14 @@ impl Vm {
                     let protected_root_len = heap
                         .as_deref_mut()
                         .map(|heap| heap.push_protected_roots(frame.heap_roots()));
-                    let result = self.execute(
-                        function,
-                        Some(program),
-                        &values,
+                    let result = self.execute_call(
+                        ExecutionCall {
+                            code: function,
+                            program: Some(program),
+                            captures: &[],
+                            args: &values,
+                            call_site: instruction.span,
+                        },
                         host.as_deref_mut(),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
@@ -1081,6 +1015,7 @@ impl Vm {
                             program,
                             captures: &closure.captures,
                             args: &values,
+                            call_site: instruction.span,
                         },
                         host.as_deref_mut(),
                         heap.as_deref_mut(),
@@ -1685,6 +1620,7 @@ impl CallFrame {
             .ok_or(VmError {
                 kind: VmErrorKind::RegisterOutOfBounds { register },
                 source_span: None,
+                call_stack: Default::default(),
             })?;
         *slot = value;
         Ok(())

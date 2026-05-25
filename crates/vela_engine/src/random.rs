@@ -38,12 +38,14 @@ fn math_random(args: &[Value], rng: &Mutex<SeededRandom>) -> VmResult<Value> {
             operation: "math.random",
         },
         source_span: None,
+        call_stack: Default::default(),
     })?;
     let mut rng = rng.lock().map_err(|_| VmError {
         kind: VmErrorKind::TypeMismatch {
             operation: "math.random",
         },
         source_span: None,
+        call_stack: Default::default(),
     })?;
     let offset = u128::from(rng.next_u64()) % range;
     let value = i128::from(*min)
@@ -52,12 +54,14 @@ fn math_random(args: &[Value], rng: &Mutex<SeededRandom>) -> VmResult<Value> {
                 operation: "math.random",
             },
             source_span: None,
+            call_stack: Default::default(),
         })?;
     i64::try_from(value).map(Value::Int).map_err(|_| VmError {
         kind: VmErrorKind::TypeMismatch {
             operation: "math.random",
         },
         source_span: None,
+        call_stack: Default::default(),
     })
 }
 
@@ -87,6 +91,7 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError {
         kind: VmErrorKind::TypeMismatch { operation },
         source_span: None,
+        call_stack: Default::default(),
     })
 }
 
@@ -101,5 +106,6 @@ fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
             actual: args.len(),
         },
         source_span: None,
+        call_stack: Default::default(),
     })
 }

@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
@@ -1010,6 +1011,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
                 operation: "host ref"
             },
             source_span: None,
+            ..
         })
     ));
     assert!(matches!(
@@ -1021,6 +1023,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
                 actual: 7,
             },
             source_span: None,
+            ..
         }) if name == "native argument conversion"
     ));
 }
@@ -1161,6 +1164,10 @@ fn main() {
                 limit: 4
             },
             source_span: None,
+            call_stack: Arc::from([vela_vm::VmStackFrame {
+                function: "main".to_owned(),
+                call_site: None,
+            }]),
         }
     );
     assert!(tx.patches().is_empty());
