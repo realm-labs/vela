@@ -387,6 +387,22 @@ mod tests {
         )
         .expect("err to_option fact");
         assert_eq!(err_to_option.returns, TypeFact::option_none());
+
+        let to_error_option = stdlib_function_fact(
+            "result.to_error_option",
+            &[TypeFact::result(TypeFact::Int, TypeFact::String)],
+        )
+        .expect("to_error_option fact");
+        assert_eq!(to_error_option.returns, TypeFact::option(TypeFact::String));
+        let err_to_error_option = stdlib_function_fact(
+            "result.to_error_option",
+            &[TypeFact::result_err(TypeFact::String)],
+        )
+        .expect("err to_error_option fact");
+        assert_eq!(
+            err_to_error_option.returns,
+            TypeFact::option_some(TypeFact::String)
+        );
     }
 
     #[test]
@@ -683,6 +699,28 @@ mod tests {
         )
         .expect("err to_option fact");
         assert_eq!(err_to_option.returns, TypeFact::option_none());
+
+        let maybe_to_error_option = stdlib_method_fact(
+            &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
+            "to_error_option",
+            None,
+        )
+        .expect("maybe to_error_option fact");
+        assert_eq!(
+            maybe_to_error_option.returns,
+            TypeFact::option(TypeFact::record("Error"))
+        );
+
+        let err_to_error_option = stdlib_method_fact(
+            &TypeFact::result_err(TypeFact::record("Error")),
+            "to_error_option",
+            None,
+        )
+        .expect("err to_error_option fact");
+        assert_eq!(
+            err_to_error_option.returns,
+            TypeFact::option_some(TypeFact::record("Error"))
+        );
     }
 
     #[test]
@@ -827,6 +865,12 @@ mod tests {
             result_facts.iter().any(|fact| fact.method == "to_option"
                 && fact.returns == TypeFact::option(TypeFact::Int))
         );
+        assert!(
+            result_facts
+                .iter()
+                .any(|fact| fact.method == "to_error_option"
+                    && fact.returns == TypeFact::option(TypeFact::String))
+        );
         assert!(result_facts.iter().any(|fact| {
             fact.method == "map_err"
                 && fact
@@ -862,6 +906,11 @@ mod tests {
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "result.to_option"
+                && fact.params == vec![TypeFact::result(TypeFact::Any, TypeFact::Any)]
+                && fact.returns == TypeFact::option(TypeFact::Any)
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "result.to_error_option"
                 && fact.params == vec![TypeFact::result(TypeFact::Any, TypeFact::Any)]
                 && fact.returns == TypeFact::option(TypeFact::Any)
         }));

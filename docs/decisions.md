@@ -6776,3 +6776,25 @@ Consequences:
 - Policy-hidden variant fields remain hidden in targeted variant metadata.
 - Runtime schema mutation remains unsupported; these APIs only read TypeRegistry
   metadata.
+
+## 2026-05-26: Result Error Payloads Convert To Option Values
+
+Status: Accepted
+
+Context:
+`result.to_option` converts success payloads into `Option.Some` and drops
+error payloads as `Option.None`. Scripts that need to branch on or inspect the
+error side without matching the full Result shape had no symmetric helper.
+
+Decision:
+Add `result.to_error_option(result)` and the equivalent
+`value.to_error_option()` method. `Result.Err(error)` becomes
+`Option.Some(error)`, while `Result.Ok(_)` becomes `Option.None`.
+
+Consequences:
+- Gameplay scripts can use Option-style helper chains for error inspection
+  without adding script generics.
+- The helper returns copied dynamic enum values and does not expose host
+  mutation or schema mutation.
+- Runtime support stays in the focused Option/Result stdlib modules, with
+  analysis and completion facts maintained separately.

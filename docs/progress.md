@@ -1638,6 +1638,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `reflect.has_variant(value, name)` for non-throwing enum-schema checks;
   reflected variant fields respect the same field-read policy as
   `reflect.variants`.
+- Added M13 Result error-side Option conversion. Scripts can now call
+  `result.to_error_option(value)` or `value.to_error_option()` to turn
+  `Result.Err(error)` into `Option.Some(error)` and `Result.Ok(_)` into
+  `Option.None`; runtime, managed-heap execution, analysis facts, and
+  completions all use the existing focused Option/Result modules.
 
 ## Next
 

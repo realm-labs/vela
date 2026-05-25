@@ -127,6 +127,21 @@ pub(crate) fn to_option(
     }
 }
 
+pub(crate) fn to_error_option(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("to_error_option", args, 0)?;
+    match result_variant(receiver, heap, "method to_error_option")?.as_str() {
+        "Ok" => Ok(option_value(None)),
+        "Err" => enum_payload(receiver, heap, "method to_error_option")
+            .map(Some)
+            .map(option_value),
+        _ => type_error("method to_error_option"),
+    }
+}
+
 pub(crate) fn map(
     receiver: &Value,
     args: &[Value],

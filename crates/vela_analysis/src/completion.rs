@@ -562,6 +562,11 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Int)),
         )));
+        assert!(result.contains(&CompletionItem::new(
+            "to_error_option",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::String)),
+        )));
     }
 
     #[test]
@@ -588,6 +593,14 @@ mod tests {
         )));
         assert!(completions.contains(&CompletionItem::new(
             "result.to_option",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
+                TypeFact::option(TypeFact::Any),
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "result.to_error_option",
             CompletionKind::Function,
             TypeFact::function(
                 vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],

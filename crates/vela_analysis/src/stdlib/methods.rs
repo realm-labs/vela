@@ -74,6 +74,7 @@ const RESULT_METHOD_NAMES: &[&str] = &[
     "is_err",
     "unwrap_or",
     "to_option",
+    "to_error_option",
     "map",
     "map_err",
     "and_then",
@@ -587,6 +588,11 @@ fn result_method_fact(
             "to_option",
             result_to_option_return(&ok, shape),
         )),
+        "to_error_option" => Some(StdlibMethodFact::new(
+            receiver,
+            "to_error_option",
+            result_to_error_option_return(&err, shape),
+        )),
         "map" => {
             let returns = match shape {
                 ResultShape::Maybe => TypeFact::result(mapped.clone(), err),
@@ -711,6 +717,14 @@ fn result_to_option_return(ok: &TypeFact, shape: ResultShape) -> TypeFact {
         ResultShape::Ok => TypeFact::option_some(ok.clone()),
         ResultShape::Err => TypeFact::option_none(),
         ResultShape::Maybe => TypeFact::option(ok.clone()),
+    }
+}
+
+fn result_to_error_option_return(err: &TypeFact, shape: ResultShape) -> TypeFact {
+    match shape {
+        ResultShape::Ok => TypeFact::option_none(),
+        ResultShape::Err => TypeFact::option_some(err.clone()),
+        ResultShape::Maybe => TypeFact::option(err.clone()),
     }
 }
 

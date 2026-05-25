@@ -63,6 +63,11 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::option(TypeFact::Any),
         ),
         StdlibFunctionFact::new(
+            "result.to_error_option",
+            vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
+            TypeFact::option(TypeFact::Any),
+        ),
+        StdlibFunctionFact::new(
             "math.max",
             vec![number.clone(), number.clone()],
             number.clone(),
@@ -210,6 +215,14 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 result_to_option_return(&args[0]),
             ))
         }
+        "result.to_error_option" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "result.to_error_option",
+                args.to_vec(),
+                result_to_error_option_return(&args[0]),
+            ))
+        }
         "math.max" | "math.min" => {
             expect_len(args, 2)?;
             Some(StdlibFunctionFact::new(
@@ -345,6 +358,14 @@ fn result_ok_payload(value: &TypeFact) -> Option<TypeFact> {
     }
 }
 
+fn result_err_payload(value: &TypeFact) -> Option<TypeFact> {
+    match value {
+        TypeFact::Result { err, .. } | TypeFact::ResultErr { err } => Some((**err).clone()),
+        TypeFact::ResultOk { .. } => Some(TypeFact::Never),
+        _ => None,
+    }
+}
+
 fn result_unwrap_or_return(value: &TypeFact, fallback: TypeFact) -> TypeFact {
     match value {
         TypeFact::ResultOk { ok } => (**ok).clone(),
@@ -358,6 +379,14 @@ fn result_to_option_return(value: &TypeFact) -> TypeFact {
         TypeFact::ResultOk { ok } => TypeFact::option_some((**ok).clone()),
         TypeFact::ResultErr { .. } => TypeFact::option_none(),
         _ => TypeFact::option(result_ok_payload(value).unwrap_or(TypeFact::Any)),
+    }
+}
+
+fn result_to_error_option_return(value: &TypeFact) -> TypeFact {
+    match value {
+        TypeFact::ResultOk { .. } => TypeFact::option_none(),
+        TypeFact::ResultErr { err } => TypeFact::option_some((**err).clone()),
+        _ => TypeFact::option(result_err_payload(value).unwrap_or(TypeFact::Any)),
     }
 }
 

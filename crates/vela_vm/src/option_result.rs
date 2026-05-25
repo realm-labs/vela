@@ -14,6 +14,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("result.is_err", result_is_err);
     vm.register_native("result.unwrap_or", result_unwrap_or);
     vm.register_native("result.to_option", result_to_option);
+    vm.register_native("result.to_error_option", result_to_error_option);
 }
 
 pub(crate) fn option_value(payload: Option<Value>) -> Value {
@@ -99,6 +100,17 @@ fn result_to_option(args: &[Value]) -> VmResult<Value> {
             .map(option_value),
         "Err" => Ok(option_value(None)),
         _ => type_error("result.to_option"),
+    }
+}
+
+fn result_to_error_option(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.to_error_option", args, 1)?;
+    match result_variant(&args[0], "result.to_error_option")? {
+        "Ok" => Ok(option_value(None)),
+        "Err" => enum_payload(&args[0], "result.to_error_option")
+            .map(Some)
+            .map(option_value),
+        _ => type_error("result.to_error_option"),
     }
 }
 

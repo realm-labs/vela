@@ -116,6 +116,8 @@ fn main() {
         && result.is_err(err)
         && result.is_ok(converted_ok)
         && result.is_err(converted_err)
+        && option.is_none(result.to_error_option(converted_ok))
+        && option.unwrap_or(result.to_error_option(converted_err), "ok") == "missing"
     {
         return option.unwrap_or(some, 0)
             + option.unwrap_or(none, 5)
@@ -316,6 +318,8 @@ fn main() {
         && err.is_err()
         && converted_ok.is_ok()
         && converted_err.is_err()
+        && converted_ok.to_error_option().is_none()
+        && converted_err.to_error_option().unwrap_or("ok") == "missing"
     {
         return some.unwrap_or(0)
             + none.unwrap_or(5)
@@ -428,7 +432,9 @@ fn main() {
         && result.unwrap_or(ok, "fallback") == "done"
         && result.unwrap_or(err, "fallback") == "fallback"
         && option.unwrap_or(result.to_option(converted_ok), "fallback") == "quest"
-        && option.unwrap_or(result.to_option(converted_err), "fallback") == "fallback";
+        && option.unwrap_or(result.to_option(converted_err), "fallback") == "fallback"
+        && option.is_none(result.to_error_option(converted_ok))
+        && option.unwrap_or(result.to_error_option(converted_err), "fallback") == "missing";
 }
 "#;
 
@@ -623,7 +629,9 @@ fn main() {
         && ok.unwrap_or([]).join(".") == "done"
         && err.unwrap_or(["fallback"]).join(".") == "fallback"
         && converted_ok.to_option().unwrap_or([]).join(".") == "quest.done"
-        && converted_err.to_option().unwrap_or(["fallback"]).join(".") == "fallback";
+        && converted_err.to_option().unwrap_or(["fallback"]).join(".") == "fallback"
+        && converted_ok.to_error_option().is_none()
+        && converted_err.to_error_option().unwrap_or(["fallback"]).join(".") == "missing";
 }
 "#;
 
