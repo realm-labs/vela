@@ -1656,8 +1656,12 @@ The `?` operator should support Option/Result-style propagation.
 math.max
 math.min
 math.clamp
+math.lerp
+math.distance2d
+math.distance3d
 math.floor
 math.ceil
+math.round
 math.abs
 math.random  # only with permission
 ```

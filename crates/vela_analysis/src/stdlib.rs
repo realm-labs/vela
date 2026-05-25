@@ -430,6 +430,22 @@ mod tests {
             TypeFact::Float
         );
         assert_eq!(
+            stdlib_function_fact(
+                "math.distance3d",
+                &[
+                    TypeFact::Int,
+                    TypeFact::Int,
+                    TypeFact::Int,
+                    TypeFact::Float,
+                    TypeFact::Float,
+                    TypeFact::Float,
+                ],
+            )
+            .expect("distance3d fact")
+            .returns,
+            TypeFact::Float
+        );
+        assert_eq!(
             stdlib_function_fact("math.floor", &[TypeFact::Float])
                 .expect("floor fact")
                 .returns,
@@ -523,6 +539,11 @@ mod tests {
         assert!(facts.iter().any(|fact| {
             fact.name == "math.distance2d"
                 && fact.params.len() == 4
+                && fact.returns == TypeFact::Float
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "math.distance3d"
+                && fact.params.len() == 6
                 && fact.returns == TypeFact::Float
         }));
         assert!(facts.iter().any(|fact| {

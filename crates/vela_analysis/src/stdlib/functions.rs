@@ -92,6 +92,18 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             ],
             TypeFact::Float,
         ),
+        StdlibFunctionFact::new(
+            "math.distance3d",
+            vec![
+                number.clone(),
+                number.clone(),
+                number.clone(),
+                number.clone(),
+                number.clone(),
+                number.clone(),
+            ],
+            TypeFact::Float,
+        ),
         StdlibFunctionFact::new("math.floor", vec![number.clone()], TypeFact::Int),
         StdlibFunctionFact::new("math.ceil", vec![number.clone()], TypeFact::Int),
         StdlibFunctionFact::new("math.round", vec![number.clone()], TypeFact::Int),
@@ -221,6 +233,14 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             expect_len(args, 4)?;
             Some(StdlibFunctionFact::new(
                 "math.distance2d",
+                args.to_vec(),
+                TypeFact::Float,
+            ))
+        }
+        "math.distance3d" => {
+            expect_len(args, 6)?;
+            Some(StdlibFunctionFact::new(
+                "math.distance3d",
                 args.to_vec(),
                 TypeFact::Float,
             ))
@@ -373,6 +393,7 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "math.ceil" => Some("math.ceil"),
         "math.round" => Some("math.round"),
         "math.distance2d" => Some("math.distance2d"),
+        "math.distance3d" => Some("math.distance3d"),
         "ctx.now" => Some("ctx.now"),
         "ctx.tick" => Some("ctx.tick"),
         _ => None,

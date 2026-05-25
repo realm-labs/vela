@@ -6,6 +6,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.clamp", math_clamp);
     vm.register_native("math.lerp", math_lerp);
     vm.register_native("math.distance2d", math_distance2d);
+    vm.register_native("math.distance3d", math_distance3d);
     vm.register_native("math.floor", math_floor);
     vm.register_native("math.ceil", math_ceil);
     vm.register_native("math.round", math_round);
@@ -60,6 +61,22 @@ fn math_distance2d(args: &[Value]) -> VmResult<Value> {
         Ok(Value::Float(distance))
     } else {
         type_error("math.distance2d")
+    }
+}
+
+fn math_distance3d(args: &[Value]) -> VmResult<Value> {
+    expect_arity("math.distance3d", args, 6)?;
+    let x1 = expect_finite_float(&args[0], "math.distance3d")?;
+    let y1 = expect_finite_float(&args[1], "math.distance3d")?;
+    let z1 = expect_finite_float(&args[2], "math.distance3d")?;
+    let x2 = expect_finite_float(&args[3], "math.distance3d")?;
+    let y2 = expect_finite_float(&args[4], "math.distance3d")?;
+    let z2 = expect_finite_float(&args[5], "math.distance3d")?;
+    let distance = (x2 - x1).hypot(y2 - y1).hypot(z2 - z1);
+    if distance.is_finite() {
+        Ok(Value::Float(distance))
+    } else {
+        type_error("math.distance3d")
     }
 }
 
@@ -168,6 +185,26 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_math_distance3d() {
+        let source = r#"
+fn main() {
+    let distance = math.distance3d(0, 0, 0, 2, 3, 6);
+    if distance == 7.0 && math.distance3d(-1.5, 2.0, 4.0, -1.5, 5.0, 8.0) == 5.0 {
+        return math.round(distance);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math distance3d source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("math distance3d should run");
+        assert_eq!(result, Value::Int(7));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_math_distance2d() {
         let source = r#"
 fn main() {
@@ -183,6 +220,25 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math distance2d should run");
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_math_distance3d() {
+        let source = r#"
+fn main() {
+    return math.distance3d(1, 2, 3, 4, 6, 15) == 13.0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap math distance3d source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap math distance3d should run");
         assert_eq!(result, Value::Bool(true));
     }
 
@@ -205,6 +261,29 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "math.distance2d"
+            }
+        );
+    }
+
+    #[test]
+    fn math_distance3d_rejects_non_numeric_values() {
+        let source = r#"
+fn main() {
+    return math.distance3d(0, 0, 0, 1, "y", 1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math distance3d type error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("math distance3d should reject non-numeric values");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "math.distance3d"
             }
         );
     }

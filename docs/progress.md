@@ -1417,6 +1417,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `math.distance2d(x1, y1, x2, y2)` as a deterministic gameplay range
   helper over finite script numbers. It returns a float distance, rejects
   non-numeric values, and exposes analysis TypeFacts plus completion metadata.
+- Added `math.distance3d(x1, y1, z1, x2, y2, z2)` as the matching
+  deterministic 3D gameplay range helper. It runs through VM and
+  Engine-installed standard natives, rejects non-numeric values, and exposes
+  analysis TypeFacts plus completion metadata.
 - Tightened M14 macro signature safety. Native function, context-host
   function, host function, and host method macros now reject unsafe Rust
   callbacks through a shared signature helper before generating Engine

@@ -6062,6 +6062,28 @@ Consequences:
 - Analysis and completion expose the helper as `(int | float, int | float,
   int | float, int | float) -> float`.
 
+## 2026-05-25: Math Provides 3D Distance Helper
+
+Status: Accepted
+
+Context:
+Game-server scripts also need compact three-axis distance checks for spatial
+zones, vertical range gates, and 3D encounter logic. The existing 2D helper
+covers flat-map workflows but still leaves 3D scripts repeating coordinate
+math.
+
+Decision:
+Add `math.distance3d(x1, y1, z1, x2, y2, z2)` as a pure deterministic standard
+native beside `math.distance2d`. It accepts finite script ints/floats, returns a
+script float, and reports a VM type error for non-numeric or non-finite
+inputs/results.
+
+Consequences:
+- Gameplay scripts get a 3D range primitive without introducing vector objects,
+  numeric generics, or host mutation behavior.
+- Analysis and completion expose the helper as six `(int | float)` parameters
+  returning `float`.
+
 ## 2026-05-25: Native Macros Reject Unsafe Callbacks
 
 Status: Accepted
