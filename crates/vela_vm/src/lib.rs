@@ -1761,7 +1761,11 @@ fn materialize_heap_slot(slot: &HeapSlot, heap: Option<&HeapExecution<'_>>) -> V
     }
 }
 
-fn values_equal(lhs: &Value, rhs: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool> {
+pub(crate) fn values_equal(
+    lhs: &Value,
+    rhs: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
     let lhs = materialize_value(lhs, heap)?;
     let rhs = materialize_value(rhs, heap)?;
     Ok(lhs == rhs)

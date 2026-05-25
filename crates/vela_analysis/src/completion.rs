@@ -362,6 +362,11 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(vec![TypeFact::String], TypeFact::String),
         )));
+        assert!(array.contains(&CompletionItem::new(
+            "contains",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::String], TypeFact::Bool),
+        )));
 
         let set = member_completions(&facts, &TypeFact::set(TypeFact::String));
         assert!(set.contains(&CompletionItem::new(
@@ -424,6 +429,16 @@ mod tests {
             "replace",
             CompletionKind::Method,
             TypeFact::function(vec![TypeFact::String, TypeFact::String], TypeFact::String),
+        )));
+        assert!(string.contains(&CompletionItem::new(
+            "trim_start",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::String),
+        )));
+        assert!(string.contains(&CompletionItem::new(
+            "trim_end",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::String),
         )));
         assert!(string.contains(&CompletionItem::new(
             "slice",

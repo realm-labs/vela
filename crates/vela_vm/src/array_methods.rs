@@ -7,7 +7,7 @@ use crate::heap::{GcRef, HeapValue};
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
-    value_from_heap_slot,
+    value_from_heap_slot, values_equal,
 };
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
@@ -118,6 +118,21 @@ pub(crate) fn join(
         parts.push(string_value(&value, heap, "method join")?.to_owned());
     }
     Ok(Value::String(parts.join(separator)))
+}
+
+pub(crate) fn contains(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
+    expect_arity("contains", args, 1)?;
+    let values = array_values(receiver, heap, "method contains")?;
+    for value in values {
+        if values_equal(&value, &args[0], heap)? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub(crate) fn any(
@@ -602,6 +617,59 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array endpoint methods should run");
         assert_eq!(result, Value::String("wyrm".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_contains_method() {
+        let source = r#"
+fn main() {
+    let values = [10, 20, 30];
+    let rewards = [Reward { item_id: "gold", count: 2 }];
+    let expected = Reward { item_id: "gold", count: 2 };
+    if values.contains(20)
+        && !values.contains(99)
+        && rewards.contains(expected)
+        && ![].contains("missing")
+    {
+        return 1;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array contains method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("array contains method should run");
+        assert_eq!(result, Value::Int(1));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_contains_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily", "quest", "raid"];
+    let nested = [["daily", "quest"], ["raid"]];
+    if tags.contains("quest")
+        && !tags.contains("bonus")
+        && nested.contains(["daily", "quest"])
+    {
+        return tags.join(",");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array contains method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array contains method should run");
+        assert_eq!(result, Value::String("daily,quest,raid".to_owned()));
     }
 
     #[test]

@@ -1,8 +1,8 @@
 use crate::TypeFact;
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
-    "len", "is_empty", "push", "pop", "first", "last", "join", "map", "filter", "find", "any",
-    "all", "count", "sum", "group_by", "sort_by",
+    "len", "is_empty", "push", "pop", "first", "last", "join", "contains", "map", "filter", "find",
+    "any", "all", "count", "sum", "group_by", "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
     "len",
@@ -47,6 +47,8 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "to_upper",
     "to_lower",
     "trim",
+    "trim_start",
+    "trim_end",
     "replace",
     "slice",
     "split",
@@ -415,6 +417,10 @@ fn array_method_fact(
             StdlibMethodFact::new(receiver, "join", TypeFact::String)
                 .with_params(vec![TypeFact::String]),
         ),
+        "contains" => Some(
+            StdlibMethodFact::new(receiver, "contains", TypeFact::Bool)
+                .with_params(vec![element.clone()]),
+        ),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             Some(
@@ -629,7 +635,15 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             "to_lower",
             TypeFact::String,
         )),
-        "trim" => Some(StdlibMethodFact::new(receiver, "trim", TypeFact::String)),
+        "trim" | "trim_start" | "trim_end" => Some(StdlibMethodFact::new(
+            receiver,
+            match method {
+                "trim_start" => "trim_start",
+                "trim_end" => "trim_end",
+                _ => "trim",
+            },
+            TypeFact::String,
+        )),
         "replace" => Some(
             StdlibMethodFact::new(receiver, "replace", TypeFact::String)
                 .with_params(vec![TypeFact::String, TypeFact::String]),
@@ -832,6 +846,9 @@ mod tests {
         let join = stdlib_method_fact(&array, "join", None).expect("join fact");
         assert_eq!(join.params, vec![TypeFact::String]);
         assert_eq!(join.returns, TypeFact::String);
+        let contains = stdlib_method_fact(&array, "contains", None).expect("contains fact");
+        assert_eq!(contains.params, vec![TypeFact::Float]);
+        assert_eq!(contains.returns, TypeFact::Bool);
         assert_eq!(
             stdlib_method_fact(&set, "values", None)
                 .expect("values fact")
@@ -878,6 +895,16 @@ mod tests {
         let replace = stdlib_method_fact(&TypeFact::String, "replace", None).expect("replace fact");
         assert_eq!(replace.params, vec![TypeFact::String, TypeFact::String]);
         assert_eq!(replace.returns, TypeFact::String);
+
+        let trim_start =
+            stdlib_method_fact(&TypeFact::String, "trim_start", None).expect("trim_start fact");
+        assert_eq!(trim_start.params, Vec::<TypeFact>::new());
+        assert_eq!(trim_start.returns, TypeFact::String);
+
+        let trim_end =
+            stdlib_method_fact(&TypeFact::String, "trim_end", None).expect("trim_end fact");
+        assert_eq!(trim_end.params, Vec::<TypeFact>::new());
+        assert_eq!(trim_end.returns, TypeFact::String);
 
         let slice = stdlib_method_fact(&TypeFact::String, "slice", None).expect("slice fact");
         assert_eq!(slice.params, vec![TypeFact::Int, TypeFact::Int]);

@@ -5617,3 +5617,26 @@ Consequences:
   fail through the existing set type-error path.
 - Analysis and completion metadata expose boolean TypeFacts while preserving
   the no-script-generics boundary.
+
+## 2026-05-25: Array Membership Uses VM Equality Semantics
+
+Status: Accepted
+
+Context:
+Gameplay scripts often need direct membership checks for tag lists, reward
+tables, and precomputed script collections. Requiring a lambda-based
+`array.any(|x| x == value)` for every membership check is verbose, and direct
+membership should behave consistently with the language equality operator.
+
+Decision:
+Add `array.contains(value)` as a script-value method. The method returns a
+boolean and compares each element with the existing VM equality path, including
+managed-heap materialization for strings and aggregate script values.
+
+Consequences:
+- Scripts can express common list membership checks without custom host glue or
+  callback allocation.
+- Equality behavior remains centralized in the VM instead of adding a second
+  array-specific comparison model.
+- Analysis and completion metadata expose the method with internal TypeFacts
+  while keeping script syntax free of generics.

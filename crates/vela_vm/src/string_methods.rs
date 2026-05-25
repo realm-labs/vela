@@ -121,11 +121,37 @@ pub(crate) fn trim(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
-    expect_no_args("trim", args)?;
-    string_value(receiver, heap, "method trim")
-        .map(str::trim)
-        .map(str::to_owned)
-        .map(Value::String)
+    trim_with(receiver, args, heap, "trim", "method trim", str::trim)
+}
+
+pub(crate) fn trim_start(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    trim_with(
+        receiver,
+        args,
+        heap,
+        "trim_start",
+        "method trim_start",
+        str::trim_start,
+    )
+}
+
+pub(crate) fn trim_end(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    trim_with(
+        receiver,
+        args,
+        heap,
+        "trim_end",
+        "method trim_end",
+        str::trim_end,
+    )
 }
 
 pub(crate) fn replace(
@@ -237,6 +263,21 @@ fn strip_affix<'a>(
     ))
 }
 
+fn trim_with<'a>(
+    receiver: &'a Value,
+    args: &[Value],
+    heap: Option<&'a HeapExecution<'_>>,
+    method: &str,
+    operation: &'static str,
+    trim: impl FnOnce(&'a str) -> &'a str,
+) -> VmResult<Value> {
+    expect_no_args(method, args)?;
+    string_value(receiver, heap, operation)
+        .map(trim)
+        .map(str::to_owned)
+        .map(Value::String)
+}
+
 fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
     expect_arity(method, args, 0)
 }
@@ -292,7 +333,8 @@ mod tests {
         let source = r#"
 fn main() {
     let label = "  Quest.Log ";
-    let parts = label.trim().replace(".", "_").to_lower().slice(0, 9).split("_");
+    let padded = label.trim_start().trim_end();
+    let parts = padded.replace(".", "_").to_lower().slice(0, 9).split("_");
     if parts.len() == 2
         && parts[0] == "quest"
         && parts[1] == "log"
@@ -317,7 +359,7 @@ fn main() {
         let source = r#"
 fn main() {
     let event = " Player.LevelUp ";
-    let pieces = event.trim().replace(".", "_").to_lower().slice(0, 14).split("_");
+    let pieces = event.trim_start().trim_end().replace(".", "_").to_lower().slice(0, 14).split("_");
     if pieces[0] == "player"
         && pieces[1] == "levelup"
         && pieces[1].to_upper() == "LEVELUP"

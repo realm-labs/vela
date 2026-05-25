@@ -1291,6 +1291,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `array.join(separator)` for deterministic string assembly over script
   string arrays in inline and managed-heap execution, with analysis TypeFacts
   and completion metadata.
+- Added `array.contains(value)` for direct collection membership checks using
+  the same equality semantics as `==`. It works in inline and managed-heap
+  execution, including heap-backed strings and nested aggregate values, and
+  exposes boolean analysis TypeFacts plus completion metadata.
 - Added `string.find(needle)` as a UTF-8 character-indexed string search
   helper that returns dynamic `Option.Some(index)`/`Option.None` in inline and
   managed-heap execution, with analysis TypeFacts and completion metadata.
@@ -1315,6 +1319,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   work for inline and managed-heap set values, preserve heap string identity
   through key comparisons, reject non-set operands, and expose analysis
   TypeFacts plus completion metadata.
+- Added directional string trimming helpers `string.trim_start()` and
+  `string.trim_end()` for gameplay event/tag normalization. They run in inline
+  and managed-heap execution and expose analysis TypeFacts plus completion
+  metadata.
 - Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
   script boundary. Native function and method macros now expose Result returns
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to

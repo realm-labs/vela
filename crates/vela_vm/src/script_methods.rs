@@ -35,7 +35,14 @@ pub(crate) fn call_method(
             expect_no_args(method, args)?;
             is_empty(receiver, heap.as_deref()).map(Value::Bool)
         }
-        "contains" => string_methods::contains(receiver, args, heap.as_deref()).map(Value::Bool),
+        "contains" => {
+            if string_methods::is_string(receiver, heap.as_deref()) {
+                string_methods::contains(receiver, args, heap.as_deref())
+            } else {
+                array_methods::contains(receiver, args, heap.as_deref())
+            }
+        }
+        .map(Value::Bool),
         "starts_with" => {
             string_methods::starts_with(receiver, args, heap.as_deref()).map(Value::Bool)
         }
@@ -45,6 +52,8 @@ pub(crate) fn call_method(
         "to_upper" => string_methods::to_upper(receiver, args, heap.as_deref()),
         "to_lower" => string_methods::to_lower(receiver, args, heap.as_deref()),
         "trim" => string_methods::trim(receiver, args, heap.as_deref()),
+        "trim_start" => string_methods::trim_start(receiver, args, heap.as_deref()),
+        "trim_end" => string_methods::trim_end(receiver, args, heap.as_deref()),
         "replace" => string_methods::replace(receiver, args, heap.as_deref()),
         "slice" => string_methods::slice(receiver, args, heap.as_deref()),
         "split" => string_methods::split(receiver, args, heap.as_deref()),
