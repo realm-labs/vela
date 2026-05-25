@@ -1204,6 +1204,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added zero-argument `reflect.variants()` for copied, owner-qualified
   TypeRegistry variant metadata enumeration using the same payload-field
   policy filtering as `reflect.variants(value)`.
+- Added `string.replace(old, new)` for inline and managed-heap string values,
+  with analysis stdlib facts and completion metadata for its two-string
+  replacement signature.
 
 ## Next
 

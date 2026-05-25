@@ -80,6 +80,18 @@ pub(crate) fn trim(
         .map(Value::String)
 }
 
+pub(crate) fn replace(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("replace", args, 2)?;
+    let value = string_value(receiver, heap, "method replace")?;
+    let from = string_value(&args[0], heap, "method replace")?;
+    let to = string_value(&args[1], heap, "method replace")?;
+    Ok(Value::String(value.replace(from, to)))
+}
+
 pub(crate) fn split(
     receiver: &Value,
     args: &[Value],
@@ -156,7 +168,7 @@ mod tests {
         let source = r#"
 fn main() {
     let label = "  Quest.Log ";
-    let parts = label.trim().to_lower().split(".");
+    let parts = label.trim().replace(".", "_").to_lower().split("_");
     if parts.len() == 2
         && parts[0] == "quest"
         && parts[1] == "log"
@@ -181,7 +193,7 @@ fn main() {
         let source = r#"
 fn main() {
     let event = " Player.LevelUp ";
-    let pieces = event.trim().to_lower().split(".");
+    let pieces = event.trim().replace(".", "_").to_lower().split("_");
     if pieces[0] == "player"
         && pieces[1] == "levelup"
         && pieces[1].to_upper() == "LEVELUP"

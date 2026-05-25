@@ -349,6 +349,11 @@ mod tests {
 
         let string = member_completions(&facts, &TypeFact::String);
         assert!(string.contains(&CompletionItem::new(
+            "replace",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::String, TypeFact::String], TypeFact::String),
+        )));
+        assert!(string.contains(&CompletionItem::new(
             "split",
             CompletionKind::Method,
             TypeFact::function(vec![TypeFact::String], TypeFact::array(TypeFact::String)),
