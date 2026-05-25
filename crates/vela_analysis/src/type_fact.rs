@@ -106,6 +106,26 @@ impl TypeFact {
         Self::Trait { name: name.into() }
     }
 
+    pub fn union(facts: impl IntoIterator<Item = TypeFact>) -> Self {
+        let mut merged = Vec::new();
+        for fact in facts {
+            match fact {
+                Self::Union(facts) => {
+                    for fact in facts {
+                        push_unique_fact(&mut merged, fact);
+                    }
+                }
+                fact => push_unique_fact(&mut merged, fact),
+            }
+        }
+
+        match merged.as_slice() {
+            [] => Self::Unknown,
+            [fact] => fact.clone(),
+            _ => Self::Union(merged),
+        }
+    }
+
     pub fn display_name(&self) -> String {
         match self {
             Self::Unknown => "unknown".to_owned(),
@@ -151,6 +171,12 @@ impl TypeFact {
     }
 }
 
+fn push_unique_fact(facts: &mut Vec<TypeFact>, fact: TypeFact) {
+    if !facts.contains(&fact) {
+        facts.push(fact);
+    }
+}
+
 impl fmt::Display for TypeFact {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(&self.display_name())
@@ -168,5 +194,15 @@ mod tests {
         assert_eq!(fact.display_name(), "map(string, array(int))");
         assert!(!fact.display_name().contains('<'));
         assert!(!fact.display_name().contains('>'));
+    }
+
+    #[test]
+    fn union_flattens_and_deduplicates_facts() {
+        let fact = TypeFact::union([
+            TypeFact::Int,
+            TypeFact::Union(vec![TypeFact::String, TypeFact::Int]),
+        ]);
+
+        assert_eq!(fact, TypeFact::Union(vec![TypeFact::Int, TypeFact::String]));
     }
 }

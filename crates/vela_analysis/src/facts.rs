@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_hir::{DeclarationKind, HirDeclId, HirLocalId, ModuleGraph};
+use vela_hir::{BindingResolution, DeclarationKind, HirDeclId, HirExprId, HirLocalId, ModuleGraph};
 
 use crate::TypeFact;
 use crate::hints::{declaration_schema_fact, type_fact_from_hint};
@@ -9,6 +9,7 @@ use crate::hints::{declaration_schema_fact, type_fact_from_hint};
 pub struct AnalysisFacts {
     declarations: BTreeMap<HirDeclId, TypeFact>,
     locals: BTreeMap<HirLocalId, TypeFact>,
+    expressions: BTreeMap<HirExprId, TypeFact>,
 }
 
 impl AnalysisFacts {
@@ -26,6 +27,17 @@ impl AnalysisFacts {
                     let hint = local.type_hint.as_ref()?;
                     Some((local.id, type_fact_from_hint(graph, hint)))
                 }));
+            }
+        }
+
+        for declaration in graph.declarations() {
+            let Some(bindings) = graph.bindings(declaration.id) else {
+                continue;
+            };
+            for (expression, resolution) in bindings.resolutions() {
+                if let Some(fact) = facts.fact_for_resolution(resolution).cloned() {
+                    facts.expressions.insert(expression, fact);
+                }
             }
         }
 
@@ -50,6 +62,25 @@ impl AnalysisFacts {
 
     pub fn locals(&self) -> impl Iterator<Item = (HirLocalId, &TypeFact)> {
         self.locals.iter().map(|(local, fact)| (*local, fact))
+    }
+
+    #[must_use]
+    pub fn expression(&self, expression: HirExprId) -> Option<&TypeFact> {
+        self.expressions.get(&expression)
+    }
+
+    pub fn expressions(&self) -> impl Iterator<Item = (HirExprId, &TypeFact)> {
+        self.expressions
+            .iter()
+            .map(|(expression, fact)| (*expression, fact))
+    }
+
+    fn fact_for_resolution(&self, resolution: &BindingResolution) -> Option<&TypeFact> {
+        match resolution {
+            BindingResolution::Local(local) => self.locals.get(local),
+            BindingResolution::Declaration(declaration) => self.declarations.get(declaration),
+            BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+        }
     }
 }
 
@@ -163,5 +194,61 @@ mod tests {
             facts.declaration(declaration.id),
             Some(&TypeFact::enum_type("game.QuestState", None::<String>))
         );
+    }
+
+    #[test]
+    fn analysis_facts_include_resolved_expression_facts() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game"),
+            r#"
+            const BONUS: int = 3
+            fn grant(amount: int) -> int {
+                let base: int = amount;
+                return BONUS + base;
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+
+        let grant = graph
+            .declarations()
+            .find(|declaration| declaration.name == "grant")
+            .expect("grant declaration");
+        let bindings = graph.bindings(grant.id).expect("grant bindings");
+        let facts = AnalysisFacts::from_module_graph(&graph);
+
+        let mut saw_amount = false;
+        let mut saw_base = false;
+        let mut saw_bonus = false;
+        for (expression, resolution) in bindings.resolutions() {
+            match resolution {
+                BindingResolution::Local(local) => {
+                    let local = bindings.local(*local).expect("local binding");
+                    if local.name == "amount" {
+                        saw_amount = true;
+                        assert_eq!(facts.expression(expression), Some(&TypeFact::Int));
+                    }
+                    if local.name == "base" {
+                        saw_base = true;
+                        assert_eq!(facts.expression(expression), Some(&TypeFact::Int));
+                    }
+                }
+                BindingResolution::Declaration(declaration) => {
+                    let declaration = graph.declaration(*declaration).expect("declaration");
+                    if declaration.name == "BONUS" {
+                        saw_bonus = true;
+                        assert_eq!(facts.expression(expression), Some(&TypeFact::Int));
+                    }
+                }
+                BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => {}
+            }
+        }
+
+        assert!(saw_amount);
+        assert!(saw_base);
+        assert!(saw_bonus);
     }
 }

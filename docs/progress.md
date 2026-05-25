@@ -1087,6 +1087,12 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   functions, traits, and trait methods out of `TypeRegistry` metadata for
   diagnostics/completion, resolving descriptor type hints while degrading
   missing precision to `Unknown`.
+- Added first-pass expression TypeFact inference. The analysis crate now
+  infers cheap deterministic facts for literals, arrays, maps, record
+  literals, path references, branches, matches, lambdas, stdlib function calls,
+  and stdlib collection methods with lambda parameter facts, while HIR-backed
+  `AnalysisFacts` records expression facts for resolved local and declaration
+  references.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

@@ -4668,3 +4668,27 @@ Consequences:
 - Host types and script types get distinct facts, preserving completion
   boundaries for host refs and script records/enums.
 - VM execution and hot reload ABI checks remain independent of analysis facts.
+
+## 2026-05-25: Expression TypeFacts Are Conservative
+
+Status: Accepted
+
+Context:
+M16 needs TypeFact inference for editor hints and diagnostics, but Vela remains
+a dynamic language. The analyzer should improve precision for common gameplay
+code without turning runtime execution into mandatory static typing.
+
+Decision:
+Add expression fact inference for cheap deterministic cases only: literals,
+arrays, maps, records, scoped path facts, simple branches/matches, lambdas, and
+stdlib calls with existing metadata. Unknown field/index/host/reflection calls
+continue to degrade to `Unknown` until schema-aware flow analysis can prove a
+better fact.
+
+Consequences:
+- Tooling can infer collection element facts and stdlib lambda parameter facts
+  without adding script-language generics.
+- Dynamic or schema-dependent boundaries remain valid programs and do not block
+  execution.
+- Later semantic diagnostics can build on these facts without coupling the VM
+  to analysis-only metadata.

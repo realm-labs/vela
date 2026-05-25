@@ -44,6 +44,7 @@ dependencies = [
  "vela_common",
  "vela_hir",
  "vela_reflect",
+ "vela_syntax",
 ]
 
 [[package]]
