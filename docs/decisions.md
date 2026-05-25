@@ -4965,3 +4965,29 @@ Consequences:
   embedding or common crates.
 - The conversion copies diagnostic metadata only and does not expose live VM
   frames, registers, or host state.
+
+## 2026-05-25: Match Pattern Narrowing Is Analysis-Only
+
+Status: Accepted
+
+Context:
+M16 expects flow narrowing for match arms. Exhaustiveness diagnostics already
+read copied enum variant metadata from `RegistryFacts`, but expression facts
+and member diagnostics still analyzed every arm with the outer scrutinee fact.
+That made variant payload bindings and variant-specific fields look dynamic.
+
+Decision:
+Add match-pattern scope narrowing to `vela_analysis`. `ExprFactScope` can build
+an arm-local scope from a match scrutinee, syntax pattern, and copied
+`RegistryFacts`. Enum variant patterns narrow the scrutinee to that specific
+variant, and record/tuple payload bindings receive field facts copied from the
+registered variant metadata. A registry-aware expression fact entrypoint uses
+the same arm-local scopes for match expression bodies.
+
+Consequences:
+- Member diagnostics and expression facts can reason about match arm payloads
+  without querying live VM reflection or changing runtime matching.
+- The feature remains advisory analysis metadata; it does not mutate schemas,
+  expose host state, or add script-language generics.
+- Dynamic or unregistered patterns degrade to `Unknown` binding facts instead
+  of blocking compilation or execution.

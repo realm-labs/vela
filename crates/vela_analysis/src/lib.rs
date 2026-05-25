@@ -14,7 +14,7 @@ pub use completion::{
     member_completions, module_completions, type_completions,
 };
 pub use diagnostics::{match_exhaustiveness_diagnostics, member_access_diagnostics};
-pub use expression::{ExprFactScope, type_fact_from_expr};
+pub use expression::{ExprFactScope, type_fact_from_expr, type_fact_from_expr_with_registry};
 pub use facts::AnalysisFacts;
 pub use hints::{type_fact_from_hint, type_fact_from_path};
 pub use registry::{RegistryFacts, RegistryFunctionFact, RegistryMemberFact};

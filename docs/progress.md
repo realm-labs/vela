@@ -1130,6 +1130,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `vela_analysis` now compares unguarded match patterns against copied
   `TypeRegistry` enum variants, treats wildcard/binding arms as exhaustive,
   and reports missing variants without changing runtime match semantics.
+- Added analysis-only match-pattern flow narrowing. `ExprFactScope` can now
+  narrow a matched enum scrutinee to the active variant and bind record/tuple
+  variant payload names from copied `RegistryFacts`, letting expression facts
+  and member diagnostics understand match arm bodies without changing runtime
+  match behavior.
 - Added first-pass VM runtime call stack metadata. `VmError` now carries
   copied script stack frames with function names and call-site spans, and nested
   script/closure call failures preserve that stack while retaining a source

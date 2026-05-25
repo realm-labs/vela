@@ -82,10 +82,12 @@ fn collect_member_access_diagnostics(
         ExprKind::Match(match_expr) => {
             collect_member_access_diagnostics(&match_expr.scrutinee, scope, facts, diagnostics);
             for arm in &match_expr.arms {
+                let arm_scope =
+                    scope.narrowed_by_match_pattern(&match_expr.scrutinee, &arm.pattern, facts);
                 if let Some(guard) = &arm.guard {
-                    collect_member_access_diagnostics(guard, scope, facts, diagnostics);
+                    collect_member_access_diagnostics(guard, &arm_scope, facts, diagnostics);
                 }
-                collect_member_access_diagnostics(&arm.body, scope, facts, diagnostics);
+                collect_member_access_diagnostics(&arm.body, &arm_scope, facts, diagnostics);
             }
         }
         ExprKind::Block(block) => {
@@ -437,12 +439,60 @@ mod tests {
         assert!(diagnostics[0].message.contains("missing"));
     }
 
+    #[test]
+    fn match_patterns_narrow_member_diagnostics_inside_arms() {
+        let exprs = function_exprs(
+            r#"
+            fn main(quest) {
+                match quest {
+                    QuestState.Active { quest_id } => {
+                        quest.quest_id;
+                        quest.missing;
+                        quest_id.len();
+                    }
+                    QuestState.Done => {}
+                };
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["quest"], TypeFact::enum_type("QuestState", None::<String>));
+        let facts = quest_registry_facts();
+
+        let diagnostics = member_access_diagnostics(&exprs[0], &scope, &facts);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::unknown_field")
+        );
+        assert!(diagnostics[0].message.contains("missing"));
+        assert!(diagnostics[0].message.contains("QuestState.Active"));
+    }
+
     fn registry_facts() -> RegistryFacts {
         let mut registry = TypeRegistry::new();
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int"))
                 .method(MethodDesc::new(HostMethodId::new(1), "grant_exp")),
+        );
+        RegistryFacts::from_registry(&registry)
+    }
+
+    fn quest_registry_facts() -> RegistryFacts {
+        use vela_common::VariantId;
+        use vela_reflect::{TypeKind, VariantDesc};
+
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestState"))
+                .kind(TypeKind::ScriptEnum)
+                .variant(
+                    VariantDesc::new(VariantId::new(1), "Active")
+                        .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("string")),
+                )
+                .variant(VariantDesc::new(VariantId::new(2), "Done")),
         );
         RegistryFacts::from_registry(&registry)
     }
