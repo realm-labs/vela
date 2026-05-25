@@ -115,3 +115,36 @@ where
         .into_native_return()
     }
 }
+
+impl<F, A, B, C, D, E, R> TypedNativeMethodFunction<(A, B, C, D, E)> for F
+where
+    F: for<'host> Fn(&HostPath, &mut HostExecution<'host>, A, B, C, D, E) -> R
+        + Send
+        + Sync
+        + 'static,
+    A: FromScriptArg,
+    B: FromScriptArg,
+    C: FromScriptArg,
+    D: FromScriptArg,
+    E: FromScriptArg,
+    R: IntoNativeReturn,
+{
+    fn call_method(
+        &self,
+        receiver: &HostPath,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+    ) -> VmResult<Value> {
+        expect_arity(args, 5)?;
+        (self)(
+            receiver,
+            host,
+            A::from_script_arg(&args[0])?,
+            B::from_script_arg(&args[1])?,
+            C::from_script_arg(&args[2])?,
+            D::from_script_arg(&args[3])?,
+            E::from_script_arg(&args[4])?,
+        )
+        .into_native_return()
+    }
+}

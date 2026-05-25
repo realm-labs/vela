@@ -5464,3 +5464,30 @@ Consequences:
 - Runtime indexes stay aligned with `string.slice`, avoiding byte-offset leaks.
 - The overloaded `find` name remains deterministic: string receivers search
   strings, while array receivers execute callback predicates.
+
+## 2026-05-25: Typed Native Adapters Support Five Script Arguments
+
+Status: Accepted
+
+Context:
+M14 typed native registration had reached four script arguments, but gameplay
+callbacks commonly need one host/context receiver plus four copied script
+values. Macro-generated registration should continue to use the stable Engine
+API instead of forcing hosts back to raw `&[Value]` adapters.
+
+Decision:
+Add five-argument tuple adapter implementations across the focused typed
+modules for pure functions, host functions, context-host functions, and native
+methods. Arguments still cross the boundary through copied `FromScriptArg`
+values, returns still use `IntoNativeReturn`, and host-aware variants keep
+receiving `HostExecution`, `NativeCallContext`, or `HostPath` handles instead
+of exposing Rust references to scripts.
+
+Consequences:
+- More Rust callbacks can register through typed Engine and macro APIs without
+  manual raw argument decoding.
+- Arity and type conversion errors still happen before callback bodies record
+  PatchTx operations.
+- The adapter surface grows inside the split typed modules, preserving the
+  structured implementation boundary and leaving room for later abstraction if
+  wider signatures become necessary.

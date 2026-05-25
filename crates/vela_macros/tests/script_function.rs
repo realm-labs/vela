@@ -82,6 +82,12 @@ fn optional_bonus(bonus: Option<i64>) -> Option<i64> {
     bonus.map(|bonus| bonus + 1)
 }
 
+/// Sums five copied script integers.
+#[script_function(id = 48, name = "game.sum5", effect = "pure", reflect = true)]
+fn sum5(a: i64, b: i64, c: i64, d: i64, e: i64) -> i64 {
+    a + b + c + d + e
+}
+
 #[test]
 fn script_function_generates_native_function_metadata() {
     assert_eq!(
@@ -149,6 +155,23 @@ fn script_function_generates_option_signature_metadata() {
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Applies an optional copied bonus."),
+    );
+}
+
+#[test]
+fn script_function_generates_five_arg_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_sum5(),
+        NativeFunctionDesc::new("game.sum5", NativeFunctionId::new(48))
+            .param("a", TypeHint::Int)
+            .param("b", TypeHint::Int)
+            .param("c", TypeHint::Int)
+            .param("d", TypeHint::Int)
+            .param("e", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Sums five copied script integers."),
     );
 }
 
@@ -343,6 +366,34 @@ fn main() {
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Bool(true)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_five_arg_native_with_engine() {
+    let engine = vela_register_native_function_sum5(Engine::builder())
+        .build()
+        .expect("engine should build from macro five-arg native function");
+    let root = unique_test_dir("script_function_five_arg_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main() {
+    return game.sum5(1, 2, 3, 4, 5);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered five-arg native");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(15)),
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }

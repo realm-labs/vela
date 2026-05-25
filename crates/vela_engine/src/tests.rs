@@ -147,6 +147,37 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_accept_five_script_args() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(i64, i64, i64, i64, i64), _>(
+            NativeFunctionDesc::new("game.sum5", NativeFunctionId::new(229))
+                .param("a", TypeHint::Int)
+                .param("b", TypeHint::Int)
+                .param("c", TypeHint::Int)
+                .param("d", TypeHint::Int)
+                .param("e", TypeHint::Int)
+                .returns(TypeHint::Int),
+            |a: i64, b: i64, c: i64, d: i64, e: i64| a + b + c + d + e,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.sum5(1, 2, 3, 4, 5);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(15)),
+    );
+}
+
+#[test]
 fn typed_native_functions_accept_optional_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(Option<i64>,), _>(
@@ -646,6 +677,60 @@ fn main(player) {
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
 }
 
+#[test]
+fn engine_registers_five_arg_typed_host_native_functions() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_typed_host_native_fn::<(HostRef, i64, i64, i64, i64), _>(
+            NativeFunctionDesc::new("game.typed_host_sum5_level", NativeFunctionId::new(230))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("a", TypeHint::Int)
+                .param("b", TypeHint::Int)
+                .param("c", TypeHint::Int)
+                .param("d", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            typed_host_sum5_level,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game.typed_host_sum5_level(player, 2, 3, 4, 5);
+}
+"#,
+    )
+    .expect("program should compile");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host
+        ),
+        Ok(Value::Int(14)),
+    );
+    assert_eq!(
+        tx.patches()[0].path,
+        HostPath::new(player).field(FieldId::new(1)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(14)));
+}
+
 fn typed_host_sum_level(
     host: &mut HostExecution<'_>,
     player: HostRef,
@@ -654,6 +739,23 @@ fn typed_host_sum_level(
     c: i64,
 ) -> VmResult<i64> {
     let level = a + b + c;
+    host.tx.set_path(
+        HostPath::new(player).field(FieldId::new(1)),
+        HostValue::Int(level),
+        None,
+    )?;
+    Ok(level)
+}
+
+fn typed_host_sum5_level(
+    host: &mut HostExecution<'_>,
+    player: HostRef,
+    a: i64,
+    b: i64,
+    c: i64,
+    d: i64,
+) -> VmResult<i64> {
+    let level = a + b + c + d;
     host.tx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -823,6 +925,60 @@ fn main(player) {
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(18)));
 }
 
+#[test]
+fn engine_registers_five_arg_typed_context_host_native_functions() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_typed_context_host_native_fn::<(HostRef, i64, i64, i64, i64), _>(
+            NativeFunctionDesc::new("game.typed_context_sum5_level", NativeFunctionId::new(231))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("a", TypeHint::Int)
+                .param("b", TypeHint::Int)
+                .param("c", TypeHint::Int)
+                .param("d", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            typed_context_sum5_level,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game.typed_context_sum5_level(player, 5, 6, 7, 8);
+}
+"#,
+    )
+    .expect("program should compile");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host
+        ),
+        Ok(Value::Int(26)),
+    );
+    assert_eq!(
+        tx.patches()[0].path,
+        HostPath::new(player).field(FieldId::new(1)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(26)));
+}
+
 fn typed_context_sum_level(
     ctx: &mut NativeCallContext<'_, '_>,
     player: HostRef,
@@ -832,6 +988,24 @@ fn typed_context_sum_level(
 ) -> VmResult<i64> {
     ctx.charge_instructions(1)?;
     let level = a + b + c;
+    ctx.tx().set_path(
+        HostPath::new(player).field(FieldId::new(1)),
+        HostValue::Int(level),
+        None,
+    )?;
+    Ok(level)
+}
+
+fn typed_context_sum5_level(
+    ctx: &mut NativeCallContext<'_, '_>,
+    player: HostRef,
+    a: i64,
+    b: i64,
+    c: i64,
+    d: i64,
+) -> VmResult<i64> {
+    ctx.charge_instructions(1)?;
+    let level = a + b + c + d;
     ctx.tx().set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -2628,6 +2802,59 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
     );
 }
 
+#[test]
+fn engine_registers_five_arg_typed_callable_native_methods() {
+    let method = HostMethodId::new(10);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .grant_permission("player.sum5")
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_typed_native_method_fn::<(i64, i64, i64, i64, i64), _>(
+            NativeMethodDesc::new(owner, method, "typed_sum5")
+                .param("a", TypeHint::Int)
+                .param("b", TypeHint::Int)
+                .param("c", TypeHint::Int)
+                .param("d", TypeHint::Int)
+                .param("e", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.sum5")),
+            typed_sum5,
+        )
+        .build()
+        .expect("engine should build");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            method,
+            &HostPath::new(player),
+            &[
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4),
+                Value::Int(5),
+            ],
+            &mut host,
+        ),
+        Ok(Value::Int(15))
+    );
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(15)],
+        }
+    );
+}
+
 fn typed_sum4(
     receiver: &HostPath,
     host: &mut HostExecution<'_>,
@@ -2640,6 +2867,25 @@ fn typed_sum4(
     host.tx.call_method(
         receiver.clone(),
         HostMethodId::new(9),
+        vec![HostValue::Int(total)],
+        None,
+    )?;
+    Ok(total)
+}
+
+fn typed_sum5(
+    receiver: &HostPath,
+    host: &mut HostExecution<'_>,
+    a: i64,
+    b: i64,
+    c: i64,
+    d: i64,
+    e: i64,
+) -> VmResult<i64> {
+    let total = a + b + c + d + e;
+    host.tx.call_method(
+        receiver.clone(),
+        HostMethodId::new(10),
         vec![HostValue::Int(total)],
         None,
     )?;
