@@ -11,6 +11,7 @@ mod permission;
 mod random;
 mod reload;
 mod runtime;
+mod schema;
 mod source;
 
 pub use args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
@@ -26,6 +27,7 @@ pub use native::{
 pub use permission::PermissionSet;
 pub use random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
 pub use runtime::{CallOptions, Runtime};
+pub use schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use source::{EngineSourceError, EngineSourceErrorKind};
 pub use vela_common::{HostObjectId, HostTypeId};
 pub use vela_host::HostRef;

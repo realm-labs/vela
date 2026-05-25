@@ -997,6 +997,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   generate `NativeMethodDesc` lists with stable method IDs, effect/access
   metadata, docs, receiver/context skipping, and conservative type hints while
   rejecting duplicate method IDs and Rust `self` receivers.
+- Added focused Engine schema traits plus
+  `EngineBuilder::register_host_schema::<T>()`. `ScriptHost`,
+  `ScriptReflect`, and `script_methods` macro output now implements stable
+  Engine traits for host schema and method metadata, letting embedders register
+  macro-generated host schemas without copying descriptors by hand.
 
 ## Next
 

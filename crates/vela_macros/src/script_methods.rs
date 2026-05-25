@@ -138,6 +138,12 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 methods
             }
         }
+
+        impl ::vela_engine::ScriptHostMethodMetadata for #self_ty {
+            fn script_host_method_descs() -> ::std::vec::Vec<::vela_engine::NativeMethodDesc> {
+                Self::vela_native_method_descs()
+            }
+        }
     })
 }
 

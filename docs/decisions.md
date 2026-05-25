@@ -4200,3 +4200,28 @@ Consequences:
 - Method dispatch wrappers and registration helpers remain follow-up M14 work.
 - The macro crate stays structured: host type derives and method metadata
   expansion live in separate modules.
+
+## 2026-05-25: Engine Schema Traits Bridge Macro Output
+
+Status: Accepted
+
+Context:
+M14 requires derive macros to feed a stable Engine API. The first host schema
+derive and method metadata macro generated inherent helper functions, but
+embedders still had to know those helper names and manually pass descriptors to
+`EngineBuilder::register_type`.
+
+Decision:
+Add a focused Engine `schema` module with `ScriptHostSchema`,
+`ScriptReflectSchema`, and `ScriptHostMethodMetadata` traits. Add
+`EngineBuilder::register_host_schema::<T>()` for host type registration through
+the trait boundary. Macro output now implements these traits while keeping the
+existing inherent helpers for direct inspection and tests.
+
+Consequences:
+- Engine embedding code can register derived host schemas through a stable
+  trait API instead of relying on macro-specific inherent helper names.
+- Method metadata is exposed through the same trait pattern, but callable
+  method wrappers still remain explicit follow-up M14 work.
+- The Engine crate keeps schema glue in a separate module instead of expanding
+  the builder or crate root with unrelated logic.

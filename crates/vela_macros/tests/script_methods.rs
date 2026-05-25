@@ -1,5 +1,5 @@
 use vela_common::{FieldId, HostMethodId, HostTypeId, TypeId};
-use vela_engine::{EffectSet, FunctionAccess, HostRef, NativeMethodDesc, TypeHint};
+use vela_engine::{EffectSet, Engine, FunctionAccess, HostRef, NativeMethodDesc, TypeHint, Value};
 use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 
@@ -49,6 +49,10 @@ fn script_methods_generates_native_method_metadata() {
             .docs("Grants copied experience through the host patch path."),
     );
     assert_eq!(descs[0].owner, Player::vela_host_type_desc().key);
+    assert_eq!(
+        <Player as vela_engine::ScriptHostMethodMetadata>::script_host_method_descs(),
+        descs,
+    );
 }
 
 #[test]
@@ -72,5 +76,28 @@ fn script_methods_coexists_with_host_schema_metadata() {
                     .attr("rust_name", "level")
                     .type_hint("int"),
             ),
+    );
+}
+
+#[test]
+fn script_macros_feed_engine_builder_registration() {
+    let mut descs = <Player as vela_engine::ScriptHostMethodMetadata>::script_host_method_descs();
+    let desc = descs.pop().expect("method descriptor");
+    let engine = Engine::builder()
+        .register_host_schema::<Player>()
+        .grant_permission("player.write")
+        .register_native_method_fn(desc, |_, _, _| Ok(Value::Null))
+        .build()
+        .expect("engine should build from macro metadata");
+
+    let registry = engine.registry();
+    let player = registry.type_by_name("Player").expect("registered player");
+    assert_eq!(player.fields.len(), 1);
+    assert_eq!(player.methods.len(), 1);
+    assert_eq!(player.methods[0].name, "grant_exp");
+    assert!(player.methods[0].effects.writes_host);
+    assert_eq!(
+        player.methods[0].access.required_permissions(),
+        &["player.write".to_owned()],
     );
 }

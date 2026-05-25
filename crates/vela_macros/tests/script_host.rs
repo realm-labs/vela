@@ -64,6 +64,10 @@ fn script_host_derive_generates_type_metadata() {
         desc.fields[1].access.required_permissions(),
         &["player.profile".to_owned()]
     );
+    assert_eq!(
+        <Player as vela_engine::ScriptHostSchema>::script_host_type_desc(),
+        desc,
+    );
 }
 
 #[test]
@@ -73,4 +77,8 @@ fn script_reflect_derive_generates_matching_metadata() {
 
     assert_eq!(reflect_desc, host_desc);
     assert!(reflect_desc.schema_hash.is_some());
+    assert_eq!(
+        <Player as vela_engine::ScriptReflectSchema>::script_reflect_type_desc(),
+        reflect_desc,
+    );
 }

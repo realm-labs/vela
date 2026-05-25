@@ -11,7 +11,8 @@ use vela_vm::{HostExecution, Value, VmResult};
 use crate::{
     ContextHostNativeFunctionEntry, Engine, EngineError, EngineErrorKind, EngineResult,
     HostNativeFunctionEntry, NativeCallContext, NativeFunctionDesc, NativeFunctionEntry,
-    NativeMethodDesc, NativeMethodEntry, PermissionSet, TypeHint, engine::EngineParts,
+    NativeMethodDesc, NativeMethodEntry, PermissionSet, ScriptHostSchema, TypeHint,
+    engine::EngineParts,
 };
 
 #[derive(Clone, Default)]
@@ -36,6 +37,11 @@ impl EngineBuilder {
     pub fn register_type(mut self, desc: TypeDesc) -> Self {
         self.types.push(desc);
         self
+    }
+
+    #[must_use]
+    pub fn register_host_schema<T: ScriptHostSchema>(self) -> Self {
+        self.register_type(T::script_host_type_desc())
     }
 
     #[must_use]

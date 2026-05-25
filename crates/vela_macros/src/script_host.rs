@@ -20,6 +20,25 @@ impl GeneratedMethod {
             Self::Reflect => format_ident!("vela_reflect_type_desc"),
         }
     }
+
+    fn trait_impl_tokens(self, ident: &Ident, method: &Ident) -> TokenStream {
+        match self {
+            Self::Host => quote! {
+                impl ::vela_engine::ScriptHostSchema for #ident {
+                    fn script_host_type_desc() -> ::vela_reflect::TypeDesc {
+                        Self::#method()
+                    }
+                }
+            },
+            Self::Reflect => quote! {
+                impl ::vela_engine::ScriptReflectSchema for #ident {
+                    fn script_reflect_type_desc() -> ::vela_reflect::TypeDesc {
+                        Self::#method()
+                    }
+                }
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -56,6 +75,7 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
 
     let ident = input.ident;
     let method = generated_method.ident();
+    let trait_impl = generated_method.trait_impl_tokens(&ident, &method);
     let module_tokens = module_name.map(|module| quote! { .attr("module", #module) });
     let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
     let field_tokens = fields.iter().map(field_tokens);
@@ -81,6 +101,8 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
                 desc
             }
         }
+
+        #trait_impl
     })
 }
 
