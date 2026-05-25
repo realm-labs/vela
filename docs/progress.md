@@ -1442,6 +1442,12 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   embedding shape and script-visible dynamic `Option.Some`/`Option.None`
   values produced by the standard library, without changing `Option<T>` return
   conversion or adding script-language generics.
+- Extended the game-server monster-kill demo to award inventory through a
+  natural nested host path,
+  `player.inventory.items["gold"].count += monster.reward_count`. The focused
+  CLI demo schema/state modules now include Inventory and ItemStack metadata,
+  and CLI integration coverage proves the nested keyed `HostPath` patch reaches
+  the safe-point apply path through the stable Engine/Runtime demo runner.
 
 ## Next
 

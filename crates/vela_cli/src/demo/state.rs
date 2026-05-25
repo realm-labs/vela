@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use vela_bytecode::CodeObject;
-use vela_common::{HostObjectId, HostTypeId};
+use vela_common::{HostObjectId, HostTypeId, SymbolInterner};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, ScriptStateAdapter};
 use vela_vm::Value;
 
@@ -24,6 +24,7 @@ pub(crate) struct DemoHostState {
     exp_path: HostPath,
     quest_count_path: HostPath,
     quest_done_path: HostPath,
+    inventory_gold_count_path: HostPath,
     now_path: HostPath,
     tick_path: HostPath,
     pub(crate) adapter: MockStateAdapter,
@@ -51,6 +52,13 @@ impl DemoHostState {
         let quest_count_path = HostPath::new(player).field(ids.quest_count_field);
         let quest_goal_path = HostPath::new(player).field(ids.quest_goal_field);
         let quest_done_path = HostPath::new(player).field(ids.quest_done_field);
+        let mut symbols = SymbolInterner::new();
+        let gold_key = symbols.intern("gold");
+        let inventory_gold_count_path = HostPath::new(player)
+            .field(ids.inventory_field)
+            .field(ids.items_field)
+            .key(gold_key)
+            .field(ids.count_field);
         let now_path = HostPath::new(ctx).field(ids.now_field);
         let tick_path = HostPath::new(ctx).field(ids.tick_field);
 
@@ -67,6 +75,7 @@ impl DemoHostState {
         adapter.insert_value(quest_count_path.clone(), HostValue::Int(2));
         adapter.insert_value(quest_goal_path, HostValue::Int(3));
         adapter.insert_value(quest_done_path.clone(), HostValue::Bool(false));
+        adapter.insert_value(inventory_gold_count_path.clone(), HostValue::Int(0));
         adapter.insert_value(now_path.clone(), HostValue::Int(1_700_000_000));
         adapter.insert_value(tick_path.clone(), HostValue::Int(42));
         adapter.insert_value(
@@ -95,6 +104,7 @@ impl DemoHostState {
             exp_path,
             quest_count_path,
             quest_done_path,
+            inventory_gold_count_path,
             now_path,
             tick_path,
             adapter,
@@ -128,11 +138,13 @@ impl DemoHostState {
             let exp = self.read(&self.exp_path)?;
             let quest_count = self.read(&self.quest_count_path)?;
             let quest_done = self.read(&self.quest_done_path)?;
+            let inventory_gold = self.read(&self.inventory_gold_count_path)?;
             let rewards = self.method_call_count(self.ids.add_reward_method);
             let emits = self.method_call_count(self.ids.emit_method);
             println!(
                 "result={result:?} level={level:?} exp={exp:?} quest_count={quest_count:?} \
-                 quest_done={quest_done:?} rewards={rewards} emits={emits} \
+                 quest_done={quest_done:?} inventory_gold={inventory_gold:?} \
+                 reward_calls={rewards} emits={emits} \
                  patches={patch_count}",
             );
         } else {
