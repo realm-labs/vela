@@ -36,6 +36,23 @@ impl StdlibMethodFact {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StdlibFunctionFact {
+    pub name: &'static str,
+    pub params: Vec<TypeFact>,
+    pub returns: TypeFact,
+}
+
+impl StdlibFunctionFact {
+    fn new(name: &'static str, params: Vec<TypeFact>, returns: TypeFact) -> Self {
+        Self {
+            name,
+            params,
+            returns,
+        }
+    }
+}
+
 pub fn stdlib_method_fact(
     receiver: &TypeFact,
     method: &str,
@@ -50,6 +67,133 @@ pub fn stdlib_method_fact(
         }
         TypeFact::Set { element } => set_method_fact((**element).clone(), method),
         TypeFact::String => string_method_fact(method),
+        _ => None,
+    }
+}
+
+pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunctionFact> {
+    match name {
+        "option.some" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "option.some",
+                args.to_vec(),
+                TypeFact::option(args[0].clone()),
+            ))
+        }
+        "option.none" => {
+            expect_len(args, 0)?;
+            Some(StdlibFunctionFact::new(
+                "option.none",
+                Vec::new(),
+                TypeFact::option(TypeFact::Any),
+            ))
+        }
+        "option.is_some" | "option.is_none" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                args.to_vec(),
+                TypeFact::Bool,
+            ))
+        }
+        "option.unwrap_or" => {
+            expect_len(args, 2)?;
+            let unwrapped = option_payload(&args[0]).unwrap_or(TypeFact::Any);
+            Some(StdlibFunctionFact::new(
+                "option.unwrap_or",
+                args.to_vec(),
+                value_or_fallback(unwrapped, args[1].clone()),
+            ))
+        }
+        "result.ok" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "result.ok",
+                args.to_vec(),
+                TypeFact::result(args[0].clone(), TypeFact::Any),
+            ))
+        }
+        "result.err" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "result.err",
+                args.to_vec(),
+                TypeFact::result(TypeFact::Any, args[0].clone()),
+            ))
+        }
+        "result.is_ok" | "result.is_err" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                args.to_vec(),
+                TypeFact::Bool,
+            ))
+        }
+        "result.unwrap_or" => {
+            expect_len(args, 2)?;
+            let unwrapped = result_ok_payload(&args[0]).unwrap_or(TypeFact::Any);
+            Some(StdlibFunctionFact::new(
+                "result.unwrap_or",
+                args.to_vec(),
+                value_or_fallback(unwrapped, args[1].clone()),
+            ))
+        }
+        "math.max" | "math.min" => {
+            expect_len(args, 2)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                args.to_vec(),
+                numeric_result(args),
+            ))
+        }
+        "math.clamp" => {
+            expect_len(args, 3)?;
+            Some(StdlibFunctionFact::new(
+                "math.clamp",
+                args.to_vec(),
+                numeric_result(args),
+            ))
+        }
+        "math.floor" | "math.ceil" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                canonical_function_name(name)?,
+                args.to_vec(),
+                TypeFact::Int,
+            ))
+        }
+        "math.abs" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "math.abs",
+                args.to_vec(),
+                numeric_return(&args[0]),
+            ))
+        }
+        "math.random" => {
+            expect_len(args, 2)?;
+            Some(StdlibFunctionFact::new(
+                "math.random",
+                args.to_vec(),
+                TypeFact::Int,
+            ))
+        }
+        "set.from_array" => {
+            expect_len(args, 1)?;
+            let TypeFact::Array { element } = &args[0] else {
+                return Some(StdlibFunctionFact::new(
+                    "set.from_array",
+                    args.to_vec(),
+                    TypeFact::set(TypeFact::Any),
+                ));
+            };
+            Some(StdlibFunctionFact::new(
+                "set.from_array",
+                args.to_vec(),
+                TypeFact::set((**element).clone()),
+            ))
+        }
         _ => None,
     }
 }
@@ -241,6 +385,59 @@ fn numeric_return(value: &TypeFact) -> TypeFact {
     }
 }
 
+fn canonical_function_name(name: &str) -> Option<&'static str> {
+    match name {
+        "option.is_some" => Some("option.is_some"),
+        "option.is_none" => Some("option.is_none"),
+        "result.is_ok" => Some("result.is_ok"),
+        "result.is_err" => Some("result.is_err"),
+        "math.max" => Some("math.max"),
+        "math.min" => Some("math.min"),
+        "math.floor" => Some("math.floor"),
+        "math.ceil" => Some("math.ceil"),
+        _ => None,
+    }
+}
+
+fn expect_len(args: &[TypeFact], expected: usize) -> Option<()> {
+    (args.len() == expected).then_some(())
+}
+
+fn option_payload(value: &TypeFact) -> Option<TypeFact> {
+    let TypeFact::Option { some } = value else {
+        return None;
+    };
+    Some((**some).clone())
+}
+
+fn result_ok_payload(value: &TypeFact) -> Option<TypeFact> {
+    let TypeFact::Result { ok, .. } = value else {
+        return None;
+    };
+    Some((**ok).clone())
+}
+
+fn value_or_fallback(value: TypeFact, fallback: TypeFact) -> TypeFact {
+    if value == fallback {
+        value
+    } else {
+        TypeFact::Union(vec![value, fallback])
+    }
+}
+
+fn numeric_result(values: &[TypeFact]) -> TypeFact {
+    if values.iter().all(|value| matches!(value, TypeFact::Int)) {
+        TypeFact::Int
+    } else if values
+        .iter()
+        .all(|value| matches!(value, TypeFact::Int | TypeFact::Float))
+    {
+        TypeFact::Float
+    } else {
+        TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -332,5 +529,71 @@ mod tests {
     fn unknown_or_unsupported_receiver_methods_have_no_stdlib_fact() {
         assert!(stdlib_method_fact(&TypeFact::Int, "len", None).is_none());
         assert!(stdlib_method_fact(&TypeFact::String, "map", None).is_none());
+    }
+
+    #[test]
+    fn option_and_result_functions_expose_dynamic_enum_facts() {
+        let some = stdlib_function_fact("option.some", &[TypeFact::String]).expect("some fact");
+        assert_eq!(some.returns, TypeFact::option(TypeFact::String));
+
+        let unwrapped = stdlib_function_fact(
+            "option.unwrap_or",
+            &[TypeFact::option(TypeFact::String), TypeFact::String],
+        )
+        .expect("unwrap_or fact");
+        assert_eq!(unwrapped.returns, TypeFact::String);
+
+        let ok = stdlib_function_fact("result.ok", &[TypeFact::Int]).expect("ok fact");
+        assert_eq!(ok.returns, TypeFact::result(TypeFact::Int, TypeFact::Any));
+
+        let result_unwrapped = stdlib_function_fact(
+            "result.unwrap_or",
+            &[
+                TypeFact::result(TypeFact::Int, TypeFact::String),
+                TypeFact::Float,
+            ],
+        )
+        .expect("result unwrap_or fact");
+        assert_eq!(
+            result_unwrapped.returns,
+            TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
+        );
+    }
+
+    #[test]
+    fn math_and_set_functions_expose_return_facts() {
+        assert_eq!(
+            stdlib_function_fact("math.max", &[TypeFact::Int, TypeFact::Int])
+                .expect("max fact")
+                .returns,
+            TypeFact::Int
+        );
+        assert_eq!(
+            stdlib_function_fact(
+                "math.clamp",
+                &[TypeFact::Float, TypeFact::Int, TypeFact::Float],
+            )
+            .expect("clamp fact")
+            .returns,
+            TypeFact::Float
+        );
+        assert_eq!(
+            stdlib_function_fact("math.floor", &[TypeFact::Float])
+                .expect("floor fact")
+                .returns,
+            TypeFact::Int
+        );
+        assert_eq!(
+            stdlib_function_fact("set.from_array", &[TypeFact::array(TypeFact::String)])
+                .expect("set.from_array fact")
+                .returns,
+            TypeFact::set(TypeFact::String)
+        );
+    }
+
+    #[test]
+    fn stdlib_function_facts_reject_unknown_names_and_wrong_arity() {
+        assert!(stdlib_function_fact("option.some", &[]).is_none());
+        assert!(stdlib_function_fact("game.spawn", &[TypeFact::String]).is_none());
     }
 }

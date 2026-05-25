@@ -1073,6 +1073,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Extended map stdlib analysis metadata for `map.any`, `map.all`, and
   `map.count`, matching the VM's value-predicate map helpers with value
   parameter facts and boolean/count return facts.
+- Added analysis-only stdlib function facts for dynamic Option/Result helpers,
+  math helpers, permissioned random, and `set.from_array`, so future
+  diagnostics/completion can infer return facts for namespace-style native
+  calls without exposing script generics.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.
