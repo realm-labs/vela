@@ -1170,6 +1170,12 @@ Suggested defaults:
 | GM/admin | yes | yes | yes | yes | configurable | configurable | configurable | configurable | yes |
 | test script | yes | yes | yes | yes | yes | yes | yes | configurable | yes |
 
+Field descriptors may also carry required reflection permission names. Policy
+checks filter `reflect.fields`, `reflect.field`, `reflect.has_field`, and enum
+payload field metadata by those names, and dynamic host `reflect.get` /
+`reflect.set` fail before reading or recording a patch when the active policy
+lacks a required field permission.
+
 ## Struct, Record, And Enum Memory Model
 
 ### Record
@@ -1762,6 +1768,8 @@ anonymous record.
 Field reflection records also expose the declared `type` hint when one is
 known, or `null` for unhinted/dynamic fields. These are copied documentation and
 tooling hints, not generic script types or static enforcement.
+Field access records expose copied `required_permissions` so admin/debug tools
+can explain why a field is hidden or denied under the active reflection policy.
 Method and trait-method reflection records expose copied `params`, `return`,
 and `returns` metadata. `return` matches function reflection naming, while
 `returns` is a script-accessible alias because `return` is a keyword.

@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::candidates::name_candidates;
-use crate::{FunctionDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult};
+use crate::{FieldDesc, FunctionDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ReflectPermission {
@@ -146,6 +146,7 @@ pub fn has_permission(policy: &ReflectPolicy, permission: &str) -> ReflectResult
 pub struct ReflectPolicy {
     permissions: ReflectPermissionSet,
     lookup_limit: Option<u64>,
+    field_permissions: BTreeSet<String>,
     method_permissions: BTreeSet<String>,
     function_permissions: BTreeSet<String>,
 }
@@ -156,6 +157,7 @@ impl ReflectPolicy {
         Self {
             permissions,
             lookup_limit: None,
+            field_permissions: BTreeSet::new(),
             method_permissions: BTreeSet::new(),
             function_permissions: BTreeSet::new(),
         }
@@ -180,6 +182,22 @@ impl ReflectPolicy {
     #[must_use]
     pub fn with_lookup_limit(mut self, limit: u64) -> Self {
         self.lookup_limit = Some(limit);
+        self
+    }
+
+    #[must_use]
+    pub fn with_field_permission(mut self, permission: impl Into<String>) -> Self {
+        self.field_permissions.insert(permission.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_field_permissions<'a>(
+        mut self,
+        permissions: impl IntoIterator<Item = &'a str>,
+    ) -> Self {
+        self.field_permissions
+            .extend(permissions.into_iter().map(str::to_owned));
         self
     }
 
@@ -256,6 +274,38 @@ impl ReflectPolicy {
         Ok(())
     }
 
+    pub fn require_field_read_access(
+        &self,
+        type_name: &str,
+        field: &FieldDesc,
+    ) -> ReflectResult<()> {
+        if !field.access.reflect_readable {
+            return Err(ReflectError::new(
+                ReflectErrorKind::FieldNotReflectReadable {
+                    type_name: type_name.to_owned(),
+                    field: field.name.clone(),
+                },
+            ));
+        }
+        self.require_field_permissions(type_name, field)
+    }
+
+    pub fn require_field_write_access(
+        &self,
+        type_name: &str,
+        field: &FieldDesc,
+    ) -> ReflectResult<()> {
+        if !field.access.reflect_writable {
+            return Err(ReflectError::new(
+                ReflectErrorKind::FieldNotReflectWritable {
+                    type_name: type_name.to_owned(),
+                    field: field.name.clone(),
+                },
+            ));
+        }
+        self.require_field_permissions(type_name, field)
+    }
+
     pub fn require_method_access(&self, type_name: &str, method: &MethodDesc) -> ReflectResult<()> {
         if !method.access.reflect_callable {
             return Err(ReflectError::new(
@@ -288,6 +338,22 @@ impl ReflectPolicy {
                     permission,
                 },
             ));
+        }
+        Ok(())
+    }
+
+    fn require_field_permissions(&self, type_name: &str, field: &FieldDesc) -> ReflectResult<()> {
+        if let Some(permission) = field
+            .access
+            .required_permissions()
+            .iter()
+            .find(|permission| !self.field_permissions.contains(permission.as_str()))
+        {
+            return Err(ReflectError::new(ReflectErrorKind::FieldPermissionDenied {
+                type_name: type_name.to_owned(),
+                field: field.name.clone(),
+                permission: permission.clone(),
+            }));
         }
         Ok(())
     }

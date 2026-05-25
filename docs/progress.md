@@ -934,6 +934,11 @@ permissions.
   script metadata is available, errors now report the actual script type or
   variant and related field source spans instead of falling back to anonymous
   record candidates.
+- Added per-field reflection permission metadata. `FieldAccess` can require
+  named permissions, policy-aware field and variant metadata filters enforce
+  them, copied field access records expose the required names, and VM
+  `reflect.get`/`reflect.set` deny host field access before reading or
+  recording patches when the active policy lacks a required field permission.
 
 ## Next
 

@@ -4,6 +4,7 @@ pub struct FieldAccess {
     pub writable: bool,
     pub reflect_readable: bool,
     pub reflect_writable: bool,
+    required_permissions: Vec<String>,
 }
 
 impl FieldAccess {
@@ -35,6 +36,19 @@ impl FieldAccess {
         self.reflect_writable = reflect_writable;
         self
     }
+
+    #[must_use]
+    pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
+        self.required_permissions.push(permission.into());
+        self.required_permissions.sort();
+        self.required_permissions.dedup();
+        self
+    }
+
+    #[must_use]
+    pub fn required_permissions(&self) -> &[String] {
+        &self.required_permissions
+    }
 }
 
 impl Default for FieldAccess {
@@ -44,6 +58,7 @@ impl Default for FieldAccess {
             writable: false,
             reflect_readable: true,
             reflect_writable: false,
+            required_permissions: Vec::new(),
         }
     }
 }

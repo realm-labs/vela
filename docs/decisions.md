@@ -3946,3 +3946,29 @@ Consequences:
   metadata and never adds fields or mutates type structure.
 - Host descriptors without spans and unregistered dynamic records still produce
   candidate-name diagnostics through the existing fallback.
+
+## 2026-05-25: Field Reflection Access Supports Named Permissions
+
+Status: Accepted
+
+Context:
+M12 requires gameplay reflection policies to allow approved field reads and
+method calls only. Methods and functions already carried required permission
+names, but fields only had boolean reflective readability/writability. That
+made it impossible for one policy to expose a specific sensitive field while
+hiding another field that was otherwise reflect-readable.
+
+Decision:
+Add required permission names to `FieldAccess` and track granted field
+permissions on `ReflectPolicy`. Policy-aware field metadata, enum variant
+payload metadata, and VM-installed `reflect.get`/`reflect.set` now require
+those field permissions before exposing metadata, reading host state, or
+recording host patches. Copied field access records include the required names.
+
+Consequences:
+- Gameplay and admin policies can approve individual reflective fields without
+  broadening method/function permissions.
+- Host mutation remains routed through `PatchTx`; denied writes fail before a
+  patch is recorded.
+- Reflection still only reads immutable schema metadata and controlled host
+  values, so this does not add runtime schema mutation or monkey patching.

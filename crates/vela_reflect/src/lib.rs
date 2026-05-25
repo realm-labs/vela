@@ -87,6 +87,24 @@ pub fn get(
     target: &ReflectValue,
     field: &str,
 ) -> ReflectResult<ReflectValue> {
+    get_impl(ctx, target, field, None)
+}
+
+pub fn get_with_policy(
+    ctx: &mut ReflectContext<'_>,
+    target: &ReflectValue,
+    field: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    get_impl(ctx, target, field, Some(policy))
+}
+
+fn get_impl(
+    ctx: &mut ReflectContext<'_>,
+    target: &ReflectValue,
+    field: &str,
+    policy: Option<&ReflectPolicy>,
+) -> ReflectResult<ReflectValue> {
     match target {
         ReflectValue::HostRef(host_ref) => {
             let field_desc = ctx.registry.host_field(*host_ref, field)?;
@@ -94,7 +112,9 @@ pub fn get(
                 .registry
                 .type_of_host(*host_ref)
                 .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
-            if !field_desc.access.reflect_readable {
+            if let Some(policy) = policy {
+                policy.require_field_read_access(&type_name, field_desc)?;
+            } else if !field_desc.access.reflect_readable {
                 return Err(ReflectError::new(
                     ReflectErrorKind::FieldNotReflectReadable {
                         type_name,
@@ -131,6 +151,26 @@ pub fn set(
     field: &str,
     value: ReflectValue,
 ) -> ReflectResult<ReflectValue> {
+    set_impl(ctx, target, field, value, None)
+}
+
+pub fn set_with_policy(
+    ctx: &mut ReflectContext<'_>,
+    target: &ReflectValue,
+    field: &str,
+    value: ReflectValue,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    set_impl(ctx, target, field, value, Some(policy))
+}
+
+fn set_impl(
+    ctx: &mut ReflectContext<'_>,
+    target: &ReflectValue,
+    field: &str,
+    value: ReflectValue,
+    policy: Option<&ReflectPolicy>,
+) -> ReflectResult<ReflectValue> {
     match target {
         ReflectValue::HostRef(host_ref) => {
             let field_desc = ctx.registry.host_field(*host_ref, field)?;
@@ -144,7 +184,9 @@ pub fn set(
                     field: field.to_owned(),
                 }));
             }
-            if !field_desc.access.reflect_writable {
+            if let Some(policy) = policy {
+                policy.require_field_write_access(&type_name, field_desc)?;
+            } else if !field_desc.access.reflect_writable {
                 return Err(ReflectError::new(
                     ReflectErrorKind::FieldNotReflectWritable {
                         type_name,
@@ -608,6 +650,88 @@ mod tests {
             }
         );
         assert!(ctx.tx.patches().is_empty());
+    }
+
+    #[test]
+    fn reflect_get_and_set_with_policy_require_field_permission() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "level").access(
+                        FieldAccess::new()
+                            .writable(true)
+                            .reflect_writable(true)
+                            .require_permission("player.level.reflect"),
+                    ),
+                ),
+        );
+        let adapter = adapter_with_level(HostValue::Int(9));
+        let mut tx = PatchTx::new();
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error = get_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "level",
+            &ReflectPolicy::all(),
+        )
+        .expect_err("missing field read permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldPermissionDenied {
+                type_name: "Player".to_owned(),
+                field: "level".to_owned(),
+                permission: "player.level.reflect".to_owned(),
+            }
+        );
+
+        let error = set_with_policy(
+            &mut ctx,
+            &ReflectValue::HostRef(player_ref()),
+            "level",
+            ReflectValue::Host(HostValue::Int(10)),
+            &ReflectPolicy::all(),
+        )
+        .expect_err("missing field write permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldPermissionDenied {
+                type_name: "Player".to_owned(),
+                field: "level".to_owned(),
+                permission: "player.level.reflect".to_owned(),
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
+
+        let policy = ReflectPolicy::all().with_field_permission("player.level.reflect");
+        assert_eq!(
+            get_with_policy(
+                &mut ctx,
+                &ReflectValue::HostRef(player_ref()),
+                "level",
+                &policy,
+            )
+            .expect("field read permission"),
+            ReflectValue::Host(HostValue::Int(9))
+        );
+        assert_eq!(
+            set_with_policy(
+                &mut ctx,
+                &ReflectValue::HostRef(player_ref()),
+                "level",
+                ReflectValue::Host(HostValue::Int(10)),
+                &policy,
+            )
+            .expect("field write permission"),
+            ReflectValue::Host(HostValue::Null)
+        );
+        assert_eq!(ctx.tx.patches().len(), 1);
     }
 
     #[test]

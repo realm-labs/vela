@@ -91,6 +91,11 @@ pub enum ReflectErrorKind {
         function: String,
         permission: String,
     },
+    FieldPermissionDenied {
+        type_name: String,
+        field: String,
+        permission: String,
+    },
     LookupBudgetExceeded {
         limit: u64,
     },

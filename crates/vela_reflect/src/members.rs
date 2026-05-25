@@ -51,31 +51,28 @@ pub fn field_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
     name: &str,
-    _policy: &ReflectPolicy,
+    policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     let field = find_field(desc, name)?;
-    if !field.access.reflect_readable {
-        return Err(ReflectError::new(
-            ReflectErrorKind::FieldNotReflectReadable {
-                type_name: desc.key.name.clone(),
-                field: name.to_owned(),
-            },
-        ));
-    }
+    policy.require_field_read_access(&desc.key.name, field)?;
     Ok(ReflectValue::Host(field_record(field)))
 }
 
 pub fn field_names_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
-    _policy: &ReflectPolicy,
+    policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(HostValue::Array(
         desc.fields
             .iter()
-            .filter(|field| field.access.reflect_readable)
+            .filter(|field| {
+                policy
+                    .require_field_read_access(&desc.key.name, field)
+                    .is_ok()
+            })
             .map(|field| HostValue::String(field.name.clone()))
             .collect(),
     )))
@@ -94,13 +91,15 @@ pub fn has_field_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
     name: &str,
-    _policy: &ReflectPolicy,
+    policy: &ReflectPolicy,
 ) -> ReflectResult<bool> {
     let desc = target_type(registry, target)?;
-    Ok(desc
-        .fields
-        .iter()
-        .any(|field| field.name == name && field.access.reflect_readable))
+    Ok(desc.fields.iter().any(|field| {
+        field.name == name
+            && policy
+                .require_field_read_access(&desc.key.name, field)
+                .is_ok()
+    }))
 }
 
 pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -181,7 +180,7 @@ pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult
 pub fn variants_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
-    _policy: &ReflectPolicy,
+    policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(HostValue::Array(
@@ -190,10 +189,11 @@ pub fn variants_with_policy(
             .map(|variant| {
                 variant_record_with_fields(
                     variant,
-                    variant
-                        .fields
-                        .iter()
-                        .filter(|field| field.access.reflect_readable),
+                    variant.fields.iter().filter(|field| {
+                        policy
+                            .require_field_read_access(&desc.key.name, field)
+                            .is_ok()
+                    }),
                 )
             })
             .collect(),
@@ -517,6 +517,17 @@ fn field_access_record(field: &FieldDesc) -> HostValue {
                 "reflect_writable".to_owned(),
                 HostValue::Bool(field.access.reflect_writable),
             ),
+            (
+                "required_permissions".to_owned(),
+                HostValue::Array(
+                    field
+                        .access
+                        .required_permissions()
+                        .iter()
+                        .map(|permission| HostValue::String(permission.clone()))
+                        .collect(),
+                ),
+            ),
         ]),
     }
 }
@@ -641,6 +652,7 @@ mod tests {
                     ("writable".to_owned(), HostValue::Bool(true)),
                     ("reflect_readable".to_owned(), HostValue::Bool(true)),
                     ("reflect_writable".to_owned(), HostValue::Bool(true)),
+                    ("required_permissions".to_owned(), HostValue::Array(vec![])),
                 ]),
             })
         );
@@ -1008,6 +1020,66 @@ mod tests {
         assert_eq!(
             fields.get("name"),
             Some(&HostValue::String("secret".to_owned()))
+        );
+    }
+
+    #[test]
+    fn fields_with_policy_require_field_permissions() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(601), "Player"))
+                .host_type(HostTypeId::new(6))
+                .field(FieldDesc::new(FieldId::new(1), "level"))
+                .field(
+                    FieldDesc::new(FieldId::new(2), "title").access(
+                        crate::FieldAccess::new().require_permission("player.title.inspect"),
+                    ),
+                ),
+        );
+        let target =
+            ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
+
+        let ReflectValue::Host(HostValue::Array(fields)) =
+            field_names_with_policy(&registry, &target, &ReflectPolicy::read_only())
+                .expect("field names")
+        else {
+            panic!("fields should be an array");
+        };
+        assert_eq!(fields, vec![HostValue::String("level".to_owned())]);
+        assert!(
+            !has_field_with_policy(&registry, &target, "title", &ReflectPolicy::read_only())
+                .expect("has title")
+        );
+
+        let error = field_with_policy(&registry, &target, "title", &ReflectPolicy::read_only())
+            .expect_err("field permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldPermissionDenied {
+                type_name: "Player".to_owned(),
+                field: "title".to_owned(),
+                permission: "player.title.inspect".to_owned(),
+            }
+        );
+
+        let policy = ReflectPolicy::read_only().with_field_permission("player.title.inspect");
+        let ReflectValue::Host(HostValue::Record { fields, .. }) =
+            field_with_policy(&registry, &target, "title", &policy).expect("allowed field")
+        else {
+            panic!("field metadata should be a record");
+        };
+        assert_eq!(
+            fields.get("name"),
+            Some(&HostValue::String("title".to_owned()))
+        );
+        let Some(HostValue::Record { fields: access, .. }) = fields.get("access") else {
+            panic!("field access should be a record");
+        };
+        assert_eq!(
+            access.get("required_permissions"),
+            Some(&HostValue::Array(vec![HostValue::String(
+                "player.title.inspect".to_owned()
+            )]))
         );
     }
 

@@ -429,7 +429,7 @@ impl Vm {
                 adapter,
                 tx: &mut *host.tx,
             };
-            let value = reflect::get(&mut ctx, &target, field)?;
+            let value = reflect::get_with_policy(&mut ctx, &target, field, &get_policy)?;
             value_from_reflect(value)
         });
 
@@ -452,7 +452,13 @@ impl Vm {
                 adapter,
                 tx: &mut *host.tx,
             };
-            value_from_reflect(reflect::set(&mut ctx, &target, field, value)?)
+            value_from_reflect(reflect::set_with_policy(
+                &mut ctx,
+                &target,
+                field,
+                value,
+                &set_policy,
+            )?)
         });
 
         let call_registry = Arc::clone(&registry);

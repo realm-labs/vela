@@ -6806,6 +6806,58 @@ fn main(player) {
     }
 
     #[test]
+    fn reflection_field_permissions_deny_host_field_reads_before_patch() {
+        let host_ref = player_ref(3);
+        let title_field = FieldId::new(78);
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    return reflect.get(player, "title");
+}
+"#,
+        )
+        .expect("compile field permission reflection source");
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(title_field, "title")
+                        .access(FieldAccess::new().require_permission("player.title.inspect")),
+                ),
+        );
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_value(
+            HostPath::new(host_ref).field(title_field),
+            HostValue::String("Knight".to_owned()),
+        );
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_policy(
+            Arc::new(registry),
+            reflect::ReflectPolicy::all(),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        let error = vm
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .expect_err("field permission should be denied");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::Reflect(ReflectErrorKind::FieldPermissionDenied {
+                type_name: "Player".to_owned(),
+                field: "title".to_owned(),
+                permission: "player.title.inspect".to_owned(),
+            })
+        );
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn reflection_lookup_budget_stops_after_limit() {
         let host_ref = player_ref(3);
         let program = compile_program_source(
