@@ -9,6 +9,8 @@ mod host_values;
 mod indexing;
 mod iteration;
 mod map_methods;
+mod math_stdlib;
+mod option_result;
 mod ranges;
 mod record_fields;
 mod reflection;

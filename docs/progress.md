@@ -1183,6 +1183,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `ctx.tick()`. `EngineBuilder::with_context_clock(now, tick)` registers
   deterministic no-arg natives that require `ctx.time`, expose reflection
   metadata, and have analysis TypeFacts as integer-returning context helpers.
+- Split VM standard-library implementation so Option/Result helpers and math
+  natives live in focused modules, and collection methods reuse the same
+  dynamic Option constructor for Option-style returns.
 
 ## Next
 

@@ -5,6 +5,7 @@ use vela_reflect::TypeRegistry;
 use crate::array_methods::{self, MethodRuntime};
 use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
+use crate::option_result::option_value;
 use crate::script_object::ScriptFields;
 use crate::set_methods;
 use crate::string_methods;
@@ -679,18 +680,6 @@ fn map_entry(key: &str, value: Value) -> Value {
                 ("value".to_owned(), value),
             ],
         ),
-    }
-}
-
-fn option_value(payload: Option<Value>) -> Value {
-    let (variant, fields) = match payload {
-        Some(value) => ("Some", vec![("0".to_owned(), value)]),
-        None => ("None", Vec::new()),
-    };
-    Value::Enum {
-        enum_name: "Option".to_owned(),
-        variant: variant.to_owned(),
-        fields: ScriptFields::from_pairs(&format!("Option.{variant}"), fields),
     }
 }
 
