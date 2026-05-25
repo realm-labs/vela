@@ -363,6 +363,32 @@ mod tests {
             TypeFact::function(vec![TypeFact::String], TypeFact::String),
         )));
 
+        let set = member_completions(&facts, &TypeFact::set(TypeFact::String));
+        assert!(set.contains(&CompletionItem::new(
+            "union",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::set(TypeFact::String)],
+                TypeFact::set(TypeFact::String),
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
+            "intersection",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::set(TypeFact::String)],
+                TypeFact::set(TypeFact::String),
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
+            "difference",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::set(TypeFact::String)],
+                TypeFact::set(TypeFact::String),
+            ),
+        )));
+
         let string = member_completions(&facts, &TypeFact::String);
         assert!(string.contains(&CompletionItem::new(
             "find",

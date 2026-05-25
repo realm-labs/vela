@@ -120,6 +120,62 @@ pub(crate) fn values(
     set_values(receiver, heap, "method values").map(Value::Array)
 }
 
+pub(crate) fn union(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("union", args, 1)?;
+    let mut combined = Vec::new();
+    for value in set_values(receiver, heap, "method union")? {
+        push_unique(&mut combined, value, None, "method union")?;
+    }
+    for value in set_values(&args[0], heap, "method union")? {
+        push_unique(&mut combined, value, None, "method union")?;
+    }
+    Ok(Value::Set(combined))
+}
+
+pub(crate) fn intersection(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("intersection", args, 1)?;
+    let right = set_keys(
+        &set_values(&args[0], heap, "method intersection")?,
+        "method intersection",
+    )?;
+    let mut result = Vec::new();
+    for value in set_values(receiver, heap, "method intersection")? {
+        let key = SetKey::from_value(&value, None, "method intersection")?;
+        if right.contains(&key) {
+            push_unique(&mut result, value, None, "method intersection")?;
+        }
+    }
+    Ok(Value::Set(result))
+}
+
+pub(crate) fn difference(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("difference", args, 1)?;
+    let right = set_keys(
+        &set_values(&args[0], heap, "method difference")?,
+        "method difference",
+    )?;
+    let mut result = Vec::new();
+    for value in set_values(receiver, heap, "method difference")? {
+        let key = SetKey::from_value(&value, None, "method difference")?;
+        if !right.contains(&key) {
+            push_unique(&mut result, value, None, "method difference")?;
+        }
+    }
+    Ok(Value::Set(result))
+}
+
 pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match receiver {
         Value::Set(_) => true,
@@ -166,6 +222,13 @@ fn set_values(
         }
         _ => type_error(operation),
     }
+}
+
+fn set_keys(values: &[Value], operation: &'static str) -> VmResult<Vec<SetKey>> {
+    values
+        .iter()
+        .map(|value| SetKey::from_value(value, None, operation))
+        .collect()
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -226,4 +289,90 @@ fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_bytecode::compiler::compile_function_source;
+    use vela_common::SourceId;
+
+    use crate::{ExecutionBudget, Value, Vm};
+
+    #[test]
+    fn runs_compiled_set_combination_methods() {
+        let source = r#"
+fn main() {
+    let player = set.from_array(["daily", "quest", "raid"]);
+    let event = set.from_array(["quest", "bonus", "daily"]);
+    let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
+    let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
+    let missing = player.difference(event).values().join(",");
+    if unioned == "bonus,daily,quest,raid"
+        && shared == "daily,quest"
+        && missing == "raid"
+        && player.len() == 3
+    {
+        return shared;
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set combination source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("set combination methods should run");
+        assert_eq!(result, Value::String("daily,quest".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_set_combination_methods() {
+        let source = r#"
+fn main() {
+    let base = set.from_array([1, 2, 3, 5]);
+    let bonus = set.from_array([2, 4, 5]);
+    let unioned = base.union(bonus);
+    let shared = base.intersection(bonus);
+    let only_base = base.difference(bonus);
+    return unioned.values().sum()
+        + shared.values().sum()
+        + only_base.values().sum();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set combination source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set combination methods should run");
+        assert_eq!(result, Value::Int(26));
+    }
+
+    #[test]
+    fn set_combination_methods_reject_non_set_args() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["quest"]);
+    return tags.union(["raid"]);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set combination type error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("set union should reject non-set args");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method union"
+            }
+        );
+    }
 }

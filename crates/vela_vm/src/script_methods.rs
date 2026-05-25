@@ -277,6 +277,9 @@ pub(crate) fn call_method(
                 map_values(receiver, args, heap.as_deref())
             }
         }
+        "union" => set_methods::union(receiver, args, heap.as_deref()),
+        "intersection" => set_methods::intersection(receiver, args, heap.as_deref()),
+        "difference" => set_methods::difference(receiver, args, heap.as_deref()),
         "entries" => map_entries(receiver, args, heap.as_deref()),
         _ => call_script_impl_method(
             receiver,

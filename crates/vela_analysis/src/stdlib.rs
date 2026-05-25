@@ -21,7 +21,17 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "all",
     "count",
 ];
-const SET_METHOD_NAMES: &[&str] = &["len", "is_empty", "has", "add", "remove", "values"];
+const SET_METHOD_NAMES: &[&str] = &[
+    "len",
+    "is_empty",
+    "has",
+    "add",
+    "remove",
+    "values",
+    "union",
+    "intersection",
+    "difference",
+];
 const STRING_METHOD_NAMES: &[&str] = &[
     "len",
     "is_empty",
@@ -547,8 +557,20 @@ fn set_method_fact(element: TypeFact, method: &str) -> Option<StdlibMethodFact> 
         "values" => Some(StdlibMethodFact::new(
             receiver,
             "values",
-            TypeFact::array(element),
+            TypeFact::array(element.clone()),
         )),
+        "union" | "intersection" | "difference" => Some(
+            StdlibMethodFact::new(
+                receiver,
+                match method {
+                    "union" => "union",
+                    "intersection" => "intersection",
+                    _ => "difference",
+                },
+                TypeFact::set(element.clone()),
+            )
+            .with_params(vec![TypeFact::set(element)]),
+        ),
         _ => None,
     }
 }
@@ -801,6 +823,16 @@ mod tests {
                 .returns,
             TypeFact::array(TypeFact::String)
         );
+        let union = stdlib_method_fact(&set, "union", None).expect("union fact");
+        assert_eq!(union.params, vec![TypeFact::set(TypeFact::String)]);
+        assert_eq!(union.returns, TypeFact::set(TypeFact::String));
+        let intersection =
+            stdlib_method_fact(&set, "intersection", None).expect("intersection fact");
+        assert_eq!(intersection.params, vec![TypeFact::set(TypeFact::String)]);
+        assert_eq!(intersection.returns, TypeFact::set(TypeFact::String));
+        let difference = stdlib_method_fact(&set, "difference", None).expect("difference fact");
+        assert_eq!(difference.params, vec![TypeFact::set(TypeFact::String)]);
+        assert_eq!(difference.returns, TypeFact::set(TypeFact::String));
     }
 
     #[test]

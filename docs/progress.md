@@ -1299,6 +1299,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   so embedders can register metadata-only methods and callable native method
   bodies through EngineBuilder, with tests covering a five-argument callable
   method that records PatchTx effects.
+- Added non-mutating `set.union(other)`, `set.intersection(other)`, and
+  `set.difference(other)` helpers. They preserve deterministic receiver-order
+  output, work in inline and managed-heap execution, reject non-set operands,
+  and expose analysis TypeFacts plus completion metadata.
 
 ## Next
 

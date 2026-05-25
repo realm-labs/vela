@@ -5543,3 +5543,28 @@ Consequences:
   `Option` enum shape.
 - The implementation stays inside the focused string-method VM module plus the
   existing stdlib analysis/completion metadata path.
+
+## 2026-05-25: Set Combination Methods Are Deterministic And Non-Mutating
+
+Status: Accepted
+
+Context:
+M13 requires practical set APIs for gameplay tags, quest flags, and reward
+eligibility checks. Scripts already have `set.from_array`, membership checks,
+mutation helpers, and `values()`, but combining sets still required manual
+loops or host glue.
+
+Decision:
+Add `set.union(other)`, `set.intersection(other)`, and
+`set.difference(other)` as script-value methods. Each method requires a set
+operand, returns a new set without mutating either input, and preserves
+deterministic receiver-order output. `union` then appends previously unseen
+right-hand values in right-hand order.
+
+Consequences:
+- Gameplay scripts can compose tag and flag sets without PatchTx or host
+  methods.
+- Set element restrictions remain unchanged: values must use the existing
+  scalar set key model.
+- Analysis metadata describes the methods with internal TypeFacts while script
+  syntax remains free of user-visible generics.
