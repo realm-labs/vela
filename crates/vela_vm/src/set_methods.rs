@@ -1,5 +1,6 @@
 use crate::heap::{HeapSlot, HeapValue};
 use crate::method_runtime::{MethodRuntime, call_callback};
+use crate::option_result::option_value;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
     value_to_heap_slot,
@@ -147,6 +148,95 @@ pub(crate) fn filter(
         }
     }
     Ok(Value::Set(filtered))
+}
+
+pub(crate) fn find(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("find", args, 1)?;
+    for value in set_values(receiver, runtime.heap.as_deref(), "method find")? {
+        let predicate = call_callback(
+            &mut runtime,
+            "method find",
+            &args[0],
+            std::slice::from_ref(&value),
+            &[],
+        )?;
+        if is_truthy(&predicate) {
+            return Ok(option_value(Some(value)));
+        }
+    }
+    Ok(option_value(None))
+}
+
+pub(crate) fn any(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    expect_arity("any", args, 1)?;
+    for value in set_values(receiver, runtime.heap.as_deref(), "method any")? {
+        let predicate = call_callback(
+            &mut runtime,
+            "method any",
+            &args[0],
+            std::slice::from_ref(&value),
+            &[],
+        )?;
+        if is_truthy(&predicate) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+pub(crate) fn all(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<bool> {
+    expect_arity("all", args, 1)?;
+    for value in set_values(receiver, runtime.heap.as_deref(), "method all")? {
+        let predicate = call_callback(
+            &mut runtime,
+            "method all",
+            &args[0],
+            std::slice::from_ref(&value),
+            &[],
+        )?;
+        if !is_truthy(&predicate) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+pub(crate) fn count(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<i64> {
+    expect_arity("count", args, 1)?;
+    let mut count = 0_i64;
+    for value in set_values(receiver, runtime.heap.as_deref(), "method count")? {
+        let predicate = call_callback(
+            &mut runtime,
+            "method count",
+            &args[0],
+            std::slice::from_ref(&value),
+            &[],
+        )?;
+        if is_truthy(&predicate) {
+            count = count.checked_add(1).ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "method count",
+                })
+            })?;
+        }
+    }
+    Ok(count)
 }
 
 pub(crate) fn union(
@@ -560,6 +650,57 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set filter should run");
         assert_eq!(result, Value::Int(23));
+    }
+
+    #[test]
+    fn runs_compiled_set_higher_order_predicates() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["daily", "quest", "raid"]);
+    let found = tags.find(|tag| tag.starts_with("q"));
+    if tags.any(|tag| tag == "raid")
+        && tags.all(|tag| tag.len() >= 4)
+        && tags.count(|tag| tag.contains("a")) == 2
+    {
+        return found.unwrap_or("");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set higher-order source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("set higher-order methods should run");
+        assert_eq!(result, Value::String("quest".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_set_higher_order_predicates() {
+        let source = r#"
+fn main() {
+    let ids = set.from_array([2, 4, 6, 9]);
+    let first_large = ids.find(|id| id > 5).unwrap_or(0);
+    if ids.any(|id| id == 9)
+        && !ids.all(|id| id % 2 == 0)
+        && ids.count(|id| id % 2 == 0) == 3
+    {
+        return first_large + ids.values().sum();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set higher-order source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set higher-order methods should run");
+        assert_eq!(result, Value::Int(27));
     }
 
     #[test]

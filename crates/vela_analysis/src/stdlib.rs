@@ -240,6 +240,30 @@ mod tests {
             vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)]
         );
         assert_eq!(set_filter.returns, TypeFact::set(TypeFact::String));
+        let set_find = stdlib_method_fact(&set, "find", None).expect("set find fact");
+        assert_eq!(
+            set_find.params,
+            vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)]
+        );
+        assert_eq!(set_find.returns, TypeFact::option(TypeFact::String));
+        let set_any = stdlib_method_fact(&set, "any", None).expect("set any fact");
+        assert_eq!(
+            set_any.params,
+            vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)]
+        );
+        assert_eq!(set_any.returns, TypeFact::Bool);
+        let set_all = stdlib_method_fact(&set, "all", None).expect("set all fact");
+        assert_eq!(
+            set_all.params,
+            vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)]
+        );
+        assert_eq!(set_all.returns, TypeFact::Bool);
+        let set_count = stdlib_method_fact(&set, "count", None).expect("set count fact");
+        assert_eq!(
+            set_count.params,
+            vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)]
+        );
+        assert_eq!(set_count.returns, TypeFact::Int);
         let union = stdlib_method_fact(&set, "union", None).expect("union fact");
         assert_eq!(union.params, vec![TypeFact::set(TypeFact::String)]);
         assert_eq!(union.returns, TypeFact::set(TypeFact::String));
@@ -463,6 +487,34 @@ mod tests {
             vec![TypeFact::String]
         );
         assert_eq!(filter.returns, receiver);
+
+        let found = stdlib_method_fact(&receiver, "find", None).expect("find fact");
+        assert_eq!(
+            found.lambda.expect("find lambda").params,
+            vec![TypeFact::String]
+        );
+        assert_eq!(found.returns, TypeFact::option(TypeFact::String));
+
+        let any = stdlib_method_fact(&receiver, "any", None).expect("any fact");
+        assert_eq!(
+            any.lambda.expect("any lambda").params,
+            vec![TypeFact::String]
+        );
+        assert_eq!(any.returns, TypeFact::Bool);
+
+        let all = stdlib_method_fact(&receiver, "all", None).expect("all fact");
+        assert_eq!(
+            all.lambda.expect("all lambda").params,
+            vec![TypeFact::String]
+        );
+        assert_eq!(all.returns, TypeFact::Bool);
+
+        let count = stdlib_method_fact(&receiver, "count", None).expect("count fact");
+        assert_eq!(
+            count.lambda.expect("count lambda").params,
+            vec![TypeFact::String]
+        );
+        assert_eq!(count.returns, TypeFact::Int);
     }
 
     #[test]

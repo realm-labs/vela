@@ -437,6 +437,38 @@ mod tests {
             ),
         )));
         assert!(set.contains(&CompletionItem::new(
+            "find",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)],
+                TypeFact::option(TypeFact::String),
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
+            "any",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)],
+                TypeFact::Bool,
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
+            "all",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)],
+                TypeFact::Bool,
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
+            "count",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(vec![TypeFact::String], TypeFact::Bool)],
+                TypeFact::Int,
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
             "union",
             CompletionKind::Method,
             TypeFact::function(

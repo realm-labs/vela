@@ -241,6 +241,19 @@ pub(crate) fn call_method(
         "find" => {
             if string_methods::is_string(receiver, heap.as_deref()) {
                 string_methods::find(receiver, args, heap.as_deref())
+            } else if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::find(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
             } else if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::find(
                     receiver,
@@ -270,7 +283,20 @@ pub(crate) fn call_method(
             }
         }
         "any" => {
-            if map_methods::is_map(receiver, heap.as_deref()) {
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::any(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::any(
                     receiver,
                     args,
@@ -300,7 +326,20 @@ pub(crate) fn call_method(
         }
         .map(Value::Bool),
         "all" => {
-            if map_methods::is_map(receiver, heap.as_deref()) {
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::all(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::all(
                     receiver,
                     args,
@@ -330,7 +369,20 @@ pub(crate) fn call_method(
         }
         .map(Value::Bool),
         "count" => {
-            if map_methods::is_map(receiver, heap.as_deref()) {
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::count(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::count(
                     receiver,
                     args,

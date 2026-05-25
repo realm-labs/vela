@@ -6866,3 +6866,25 @@ Consequences:
 - Runtime support stays in `set_methods`; dispatch, analysis facts, and
   completions are wired through their existing focused modules without adding
   script-language generics.
+
+## 2026-05-26: Set Predicate Helpers Use Dynamic Option
+
+Status: Accepted
+
+Context:
+Arrays and maps already expose `find`, `any`, `all`, and `count` helpers.
+Set-based tag and requirement workflows needed the same predicate APIs without
+forcing scripts to convert sets to arrays first.
+
+Decision:
+Add `set.find(predicate)`, `set.any(predicate)`, `set.all(predicate)`, and
+`set.count(predicate)`. Predicate callbacks receive copied set elements in
+deterministic receiver order. `find` returns `Option.Some(value)` for the first
+truthy match and `Option.None` when no element matches.
+
+Consequences:
+- Set predicates now align with array and map higher-order collection helpers.
+- Scripts keep Option-style propagation and branching for set lookups without
+  script-language generics.
+- The methods are non-mutating and keep script values inside the existing
+  budgeted VM callback path.

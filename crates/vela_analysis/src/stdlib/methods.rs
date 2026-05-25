@@ -31,6 +31,10 @@ const SET_METHOD_NAMES: &[&str] = &[
     "remove",
     "values",
     "filter",
+    "find",
+    "any",
+    "all",
+    "count",
     "union",
     "intersection",
     "difference",
@@ -378,6 +382,22 @@ fn set_method_fact(
         )),
         "filter" => Some(
             StdlibMethodFact::new(receiver, "filter", TypeFact::set(element.clone()))
+                .with_lambda(vec![element], TypeFact::Bool),
+        ),
+        "find" => Some(
+            StdlibMethodFact::new(receiver, "find", TypeFact::option(element.clone()))
+                .with_lambda(vec![element], TypeFact::Bool),
+        ),
+        "any" => Some(
+            StdlibMethodFact::new(receiver, "any", TypeFact::Bool)
+                .with_lambda(vec![element], TypeFact::Bool),
+        ),
+        "all" => Some(
+            StdlibMethodFact::new(receiver, "all", TypeFact::Bool)
+                .with_lambda(vec![element], TypeFact::Bool),
+        ),
+        "count" => Some(
+            StdlibMethodFact::new(receiver, "count", TypeFact::Int)
                 .with_lambda(vec![element], TypeFact::Bool),
         ),
         "union" | "intersection" | "difference" | "symmetric_difference" => Some(

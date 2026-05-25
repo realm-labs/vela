@@ -1656,6 +1656,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   requirement filtering. It invokes callback predicates in receiver order,
   preserves scalar set semantics in inline and managed-heap execution, rejects
   non-callback arguments, and exposes lambda parameter facts plus completions.
+- Added M13 set higher-order predicates `set.find`, `set.any`, `set.all`, and
+  `set.count`. They run predicate callbacks in deterministic receiver order,
+  work in inline and managed-heap execution, return dynamic Option values for
+  `find`, and expose non-generic lambda facts plus completions.
 
 ## Next
 
