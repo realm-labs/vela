@@ -1,5 +1,6 @@
 //! Analysis-only facts for diagnostics, completion, and stdlib metadata.
 
+mod completion;
 mod expression;
 mod facts;
 mod hints;
@@ -7,6 +8,9 @@ mod registry;
 mod stdlib;
 mod type_fact;
 
+pub use completion::{
+    CompletionItem, CompletionKind, global_completions, member_completions, type_completions,
+};
 pub use expression::{ExprFactScope, type_fact_from_expr};
 pub use facts::AnalysisFacts;
 pub use hints::{type_fact_from_hint, type_fact_from_path};

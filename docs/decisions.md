@@ -4692,3 +4692,28 @@ Consequences:
   execution.
 - Later semantic diagnostics can build on these facts without coupling the VM
   to analysis-only metadata.
+
+## 2026-05-25: Completion Data Is Derived From Copied Facts
+
+Status: Accepted
+
+Context:
+M16 requires completion fixtures for bindings, fields, methods, variants, and
+standard APIs. Reflection metadata already exposes much of that surface, but
+editor-oriented completion must not call runtime reflection APIs or mutate the
+TypeRegistry.
+
+Decision:
+Build completion items in `vela_analysis` from copied `RegistryFacts` and
+`TypeFact` receiver facts. Member completion resolves fields and methods for
+host/script record facts, variants for enum facts, variant fields for narrowed
+enum variants, and trait methods for trait facts. Global completion exposes
+registered type, trait, and function facts.
+
+Consequences:
+- Future tooling can request completions without depending on VM execution or
+  reflection permissions.
+- Completion stays conservative at dynamic boundaries because unsupported
+  receiver facts return no items instead of guessing.
+- TypeRegistry remains read-only and runtime schema structure is not
+  monkey-patched by tooling.

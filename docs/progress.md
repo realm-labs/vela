@@ -1093,6 +1093,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   and stdlib collection methods with lambda parameter facts, while HIR-backed
   `AnalysisFacts` records expression facts for resolved local and declaration
   references.
+- Added completion data helpers over analysis facts. `vela_analysis` can now
+  produce copied completion items for TypeRegistry-backed fields, methods,
+  enum variants, functions, types, and traits from `TypeFact` receivers without
+  querying or mutating runtime reflection state.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

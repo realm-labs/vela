@@ -139,6 +139,10 @@ impl RegistryFacts {
         self.traits.get(name)
     }
 
+    pub fn traits(&self) -> impl Iterator<Item = (&str, &TypeFact)> {
+        self.traits.iter().map(|(name, fact)| (name.as_str(), fact))
+    }
+
     #[must_use]
     pub fn field_fact(&self, owner: &str, field: &str) -> Option<&TypeFact> {
         self.fields.get(&(owner.to_owned(), field.to_owned()))
@@ -153,6 +157,12 @@ impl RegistryFacts {
     #[must_use]
     pub fn variant_fact(&self, owner: &str, variant: &str) -> Option<&TypeFact> {
         self.variants.get(&(owner.to_owned(), variant.to_owned()))
+    }
+
+    pub fn variants(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
+        self.variants
+            .iter()
+            .map(|((owner, name), fact)| RegistryMemberFact::new(owner, name, fact.clone()))
     }
 
     #[must_use]
@@ -170,6 +180,12 @@ impl RegistryFacts {
     pub fn trait_method_fact(&self, trait_name: &str, method: &str) -> Option<&TypeFact> {
         self.trait_methods
             .get(&(trait_name.to_owned(), method.to_owned()))
+    }
+
+    pub fn trait_methods(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
+        self.trait_methods
+            .iter()
+            .map(|((owner, name), fact)| RegistryMemberFact::new(owner, name, fact.clone()))
     }
 
     #[must_use]
