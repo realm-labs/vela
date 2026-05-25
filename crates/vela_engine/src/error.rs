@@ -55,6 +55,24 @@ pub enum EngineErrorKind {
         variant: String,
         name: String,
     },
+    DuplicateTraitId {
+        type_name: String,
+        id: u32,
+    },
+    DuplicateTraitName {
+        type_name: String,
+        name: String,
+    },
+    DuplicateTraitMethodId {
+        type_name: String,
+        trait_name: String,
+        id: u32,
+    },
+    DuplicateTraitMethodName {
+        type_name: String,
+        trait_name: String,
+        name: String,
+    },
     DuplicateHostMethodId {
         id: u32,
     },
@@ -118,6 +136,38 @@ impl fmt::Display for EngineError {
                 write!(
                     formatter,
                     "duplicate variant field name {name} on {type_name}.{variant}"
+                )
+            }
+            EngineErrorKind::DuplicateTraitId { type_name, id } => {
+                write!(
+                    formatter,
+                    "duplicate implemented trait id {id} on type {type_name}"
+                )
+            }
+            EngineErrorKind::DuplicateTraitName { type_name, name } => {
+                write!(
+                    formatter,
+                    "duplicate implemented trait name {name} on type {type_name}"
+                )
+            }
+            EngineErrorKind::DuplicateTraitMethodId {
+                type_name,
+                trait_name,
+                id,
+            } => {
+                write!(
+                    formatter,
+                    "duplicate trait method id {id} on {type_name}.{trait_name}"
+                )
+            }
+            EngineErrorKind::DuplicateTraitMethodName {
+                type_name,
+                trait_name,
+                name,
+            } => {
+                write!(
+                    formatter,
+                    "duplicate trait method name {name} on {type_name}.{trait_name}"
                 )
             }
             EngineErrorKind::DuplicateHostMethodId { id } => {

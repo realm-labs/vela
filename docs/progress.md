@@ -1461,6 +1461,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `#[script_methods]` now rejects duplicate script-visible method names during
   expansion, complementing duplicate method ID checks before generated method
   metadata reaches Engine registration.
+- Extended M14 explicit Engine schema validation to trait metadata. Registered
+  `TypeDesc` trait implementations now reject duplicate trait IDs/names and
+  duplicate trait method IDs/names before entering the `TypeRegistry`, keeping
+  reflected trait metadata stable for permissions, dispatch, and hot reload.
 
 ## Next
 

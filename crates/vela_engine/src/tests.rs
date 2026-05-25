@@ -1,12 +1,14 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
+use vela_common::{
+    FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TraitId, TypeId, VariantId,
+};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
 use vela_reflect::{
     FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission,
-    ReflectPermissionSet, SchemaHash, TypeDesc, TypeKey, VariantDesc,
+    ReflectPermissionSet, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, VariantDesc,
 };
 use vela_vm::{ExecutionBudgetKind, VmError, VmResult};
 use vela_vm::{HostExecution, Value, VmErrorKind};
@@ -3632,6 +3634,88 @@ fn engine_rejects_duplicate_variant_field_names() {
 }
 
 #[test]
+fn engine_rejects_duplicate_trait_ids() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .trait_impl(trait_desc_with_id(TraitId::new(1), "Damageable"))
+                .trait_impl(trait_desc_with_id(TraitId::new(1), "Rewardable")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateTraitId {
+            type_name: "Player".to_owned(),
+            id: 1,
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_trait_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .trait_impl(trait_desc_with_id(TraitId::new(1), "Damageable"))
+                .trait_impl(trait_desc_with_id(TraitId::new(2), "Damageable")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateTraitName {
+            type_name: "Player".to_owned(),
+            name: "Damageable".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_trait_method_ids() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
+                trait_desc_with_id(TraitId::new(1), "Damageable")
+                    .method(TraitMethodDesc::new(MethodId::new(1), "damage"))
+                    .method(TraitMethodDesc::new(MethodId::new(1), "heal")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateTraitMethodId {
+            type_name: "Player".to_owned(),
+            trait_name: "Damageable".to_owned(),
+            id: 1,
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_trait_method_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
+                trait_desc_with_id(TraitId::new(1), "Damageable")
+                    .method(TraitMethodDesc::new(MethodId::new(1), "damage"))
+                    .method(TraitMethodDesc::new(MethodId::new(2), "damage")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateTraitMethodName {
+            type_name: "Player".to_owned(),
+            trait_name: "Damageable".to_owned(),
+            name: "damage".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_host_method_names() {
     let result = Engine::builder()
         .register_type(
@@ -3696,6 +3780,12 @@ fn player_type(type_id: TypeId, host_type_id: HostTypeId) -> TypeDesc {
     TypeDesc::new(TypeKey::new(type_id, "Player"))
         .host_type(host_type_id)
         .field(FieldDesc::new(FieldId::new(1), "level").writable(true))
+}
+
+fn trait_desc_with_id(id: TraitId, name: &str) -> TraitDesc {
+    let mut desc = TraitDesc::new(name);
+    desc.id = id;
+    desc
 }
 
 fn unique_test_dir(name: &str) -> std::path::PathBuf {
