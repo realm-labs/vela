@@ -257,10 +257,11 @@ fn render_schema_abi(schema: &crate::SchemaAbi) -> String {
         .map(crate::SchemaKindAbi::as_str)
         .unwrap_or("unknown");
     format!(
-        "kind={kind} hash={} fields=[{}] variants=[{}]",
+        "kind={kind} hash={} fields=[{}] variants=[{}] traits=[{}]",
         schema.hash,
         render_schema_field_abi_list(&schema.fields),
-        render_schema_variant_abi_list(&schema.variants)
+        render_schema_variant_abi_list(&schema.variants),
+        render_schema_trait_impl_abi_list(&schema.trait_impls)
     )
 }
 
@@ -298,6 +299,26 @@ fn render_schema_variant_abi(variant: &crate::SchemaVariantAbi) -> String {
         variant.name,
         variant.id,
         render_schema_field_abi_list(&variant.fields)
+    )
+}
+
+fn render_schema_trait_impl_abi_list(traits: &[crate::SchemaTraitImplAbi]) -> String {
+    if traits.is_empty() {
+        return "<none>".to_owned();
+    }
+    traits
+        .iter()
+        .map(render_schema_trait_impl_abi)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_schema_trait_impl_abi(trait_impl: &crate::SchemaTraitImplAbi) -> String {
+    format!(
+        "{}#{}({})",
+        trait_impl.name,
+        trait_impl.id,
+        render_trait_method_abi_list(&trait_impl.methods)
     )
 }
 

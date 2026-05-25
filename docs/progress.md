@@ -1695,6 +1695,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   hot reload accepts reordered members and appended defaulted fields while
   rejecting required field additions and changed existing members with
   structured report details.
+- Extended the focused M15 schema ABI manifest to include type-level trait
+  implementations. Reload compatibility now preserves existing trait impl
+  metadata even when the schema hash is unchanged, allows added impls, and
+  rejects removed or changed impl metadata with the existing structured schema
+  ABI diagnostics.
 
 ## Next
 

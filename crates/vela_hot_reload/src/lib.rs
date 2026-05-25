@@ -30,6 +30,7 @@ pub use report::{HotReloadDiagnostic, HotReloadReport};
 pub use report_detail::HotReloadDiagnosticDetail;
 pub use report_render::{HotReloadReportLine, HotReloadReportLineKind};
 pub use runtime::HotReloadRuntime;
+pub use schema_abi::SchemaTraitImplAbi;
 pub use schema_abi::{FieldAccessAbi, SchemaAbi, SchemaFieldAbi, SchemaKindAbi, SchemaVariantAbi};
 pub use symbol::{FunctionSymbolId, ProgramVersionId};
 pub use version::{HotUpdate, ProgramVersion};

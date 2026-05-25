@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
-use vela_reflect::{FieldAccess, FieldDesc, SchemaHash, TypeDesc, TypeKind, VariantDesc};
+use vela_reflect::{
+    FieldAccess, FieldDesc, SchemaHash, TraitDesc, TypeDesc, TypeKind, VariantDesc,
+};
 
-use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult, TraitMethodAbi};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchemaAbi {
@@ -12,6 +14,7 @@ pub struct SchemaAbi {
     pub kind: Option<SchemaKindAbi>,
     pub fields: Vec<SchemaFieldAbi>,
     pub variants: Vec<SchemaVariantAbi>,
+    pub trait_impls: Vec<SchemaTraitImplAbi>,
     pub source_span: Option<Span>,
 }
 
@@ -24,6 +27,7 @@ impl SchemaAbi {
             kind: None,
             fields: Vec::new(),
             variants: Vec::new(),
+            trait_impls: Vec::new(),
             source_span: None,
         }
     }
@@ -38,6 +42,9 @@ impl SchemaAbi {
         }
         for variant in &type_desc.variants {
             abi = abi.variant(SchemaVariantAbi::from_variant(variant));
+        }
+        for trait_desc in &type_desc.traits {
+            abi = abi.trait_impl(SchemaTraitImplAbi::from_trait(trait_desc));
         }
         if let Some(source_span) = type_desc.source_span {
             abi = abi.source_span(source_span);
@@ -64,6 +71,12 @@ impl SchemaAbi {
     }
 
     #[must_use]
+    pub fn trait_impl(mut self, trait_impl: SchemaTraitImplAbi) -> Self {
+        self.trait_impls.push(trait_impl);
+        self
+    }
+
+    #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
         self
@@ -71,13 +84,14 @@ impl SchemaAbi {
 
     #[must_use]
     pub fn has_member_abi(&self) -> bool {
-        !self.fields.is_empty() || !self.variants.is_empty()
+        !self.fields.is_empty() || !self.variants.is_empty() || !self.trait_impls.is_empty()
     }
 
     pub(crate) fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
         let compatible = self.kind == next.kind
             && fields_compatible(&self.fields, &next.fields)
-            && variants_compatible(&self.variants, &next.variants);
+            && variants_compatible(&self.variants, &next.variants)
+            && trait_impls_compatible(&self.trait_impls, &next.trait_impls);
         if compatible {
             return Ok(());
         }
@@ -87,6 +101,39 @@ impl SchemaAbi {
             new: Box::new(next.clone()),
             source_span: next.source_span.map(Box::new),
         }))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SchemaTraitImplAbi {
+    pub id: u32,
+    pub name: String,
+    pub methods: Vec<TraitMethodAbi>,
+}
+
+impl SchemaTraitImplAbi {
+    #[must_use]
+    pub fn new(id: u32, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            methods: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn from_trait(trait_desc: &TraitDesc) -> Self {
+        let mut abi = Self::new(trait_desc.id.get(), trait_desc.name.clone());
+        for method in &trait_desc.methods {
+            abi = abi.method(TraitMethodAbi::from_method(method));
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn method(mut self, method: TraitMethodAbi) -> Self {
+        self.methods.push(method);
+        self
     }
 }
 
@@ -290,5 +337,17 @@ fn variants_compatible(old: &[SchemaVariantAbi], new: &[SchemaVariantAbi]) -> bo
                 old_variant.id == new_variant.id
                     && fields_compatible(&old_variant.fields, &new_variant.fields)
             })
+    })
+}
+
+fn trait_impls_compatible(old: &[SchemaTraitImplAbi], new: &[SchemaTraitImplAbi]) -> bool {
+    let new_traits = new
+        .iter()
+        .map(|trait_impl| (trait_impl.name.as_str(), trait_impl))
+        .collect::<BTreeMap<_, _>>();
+    old.iter().all(|old_trait| {
+        new_traits
+            .get(old_trait.name.as_str())
+            .is_some_and(|new_trait| *new_trait == old_trait)
     })
 }

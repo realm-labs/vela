@@ -7081,3 +7081,27 @@ Consequences:
   reloads.
 - Schema compatibility logic stays isolated from function, method, trait, and
   module ABI code.
+
+## 2026-05-26: Type Trait Implementations Are Schema ABI
+
+Status: Accepted
+
+Context:
+`TypeDesc.traits` controls `reflect.traits`, `reflect.implements`, and
+script/host trait dispatch expectations. This metadata can change without a
+schema hash change because it is capability metadata rather than a field or
+variant layout change.
+
+Decision:
+Record type-level trait implementations in the focused schema ABI manifest.
+Compatibility checks preserve existing trait implementation IDs, names, and
+method metadata even when the schema hash is unchanged. Adding a new trait
+implementation is compatible; removing or changing an existing implementation
+is rejected with the structured schema ABI diagnostic.
+
+Consequences:
+- Reloads cannot silently remove a type capability that existing scripts or
+  reflection tooling may depend on.
+- Hosts can add new capabilities without breaking existing callers.
+- Trait implementation ABI remains part of schema compatibility while trait
+  descriptor ABI continues to validate standalone trait definitions.

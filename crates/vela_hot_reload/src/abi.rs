@@ -86,11 +86,11 @@ impl HotReloadAbi {
                     source_span: old_schema.source_span.map(Box::new),
                 }));
             };
+            if old_schema.has_member_abi() || new_schema.has_member_abi() {
+                old_schema.ensure_compatible(new_schema)?;
+                continue;
+            }
             if old_schema.hash != new_schema.hash {
-                if old_schema.has_member_abi() && new_schema.has_member_abi() {
-                    old_schema.ensure_compatible(new_schema)?;
-                    continue;
-                }
                 return Err(HotReloadError::new(HotReloadErrorKind::ChangedSchema {
                     type_name: type_name.clone(),
                     old_hash: old_schema.hash,
