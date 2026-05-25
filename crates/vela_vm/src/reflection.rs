@@ -327,6 +327,12 @@ impl Vm {
                 &methods_budget,
                 reflect::ReflectPermission::ReadTypeInfo,
             )?;
+            if args.is_empty() {
+                return value_from_reflect(reflect::method_metadata_list_with_policy(
+                    &methods_registry,
+                    &methods_policy,
+                ));
+            }
             expect_arity("reflect.methods", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.methods")?;
             check_host_ref_inspection(&methods_policy, &target)?;

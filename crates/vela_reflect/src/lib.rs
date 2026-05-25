@@ -18,12 +18,13 @@ pub use access::{FieldAccess, FunctionAccess, FunctionEffectSet, MethodAccess, M
 pub use candidates::ReflectCandidate;
 pub use error::{ReflectError, ReflectErrorKind, ReflectResult};
 pub use members::{
-    all_traits as trait_metadata_list, attrs as attrs_metadata, docs as docs_metadata,
-    field as field_metadata, field_names_with_policy,
-    field_with_policy as field_metadata_with_policy, has_field, has_field_with_policy, has_method,
-    has_method_with_policy, kind as kind_metadata, methods, methods_with_policy,
-    name as name_metadata, trait_by_name as trait_metadata_by_name, traits as trait_metadata,
-    variant, variant_is, variants as variant_metadata,
+    all_methods as method_metadata_list,
+    all_methods_with_policy as method_metadata_list_with_policy, all_traits as trait_metadata_list,
+    attrs as attrs_metadata, docs as docs_metadata, field as field_metadata,
+    field_names_with_policy, field_with_policy as field_metadata_with_policy, has_field,
+    has_field_with_policy, has_method, has_method_with_policy, kind as kind_metadata, methods,
+    methods_with_policy, name as name_metadata, trait_by_name as trait_metadata_by_name,
+    traits as trait_metadata, variant, variant_is, variants as variant_metadata,
     variants_with_policy as variant_metadata_with_policy,
 };
 pub use modules::{

@@ -1195,6 +1195,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added zero-argument `reflect.traits()` for copied TypeRegistry trait
   metadata enumeration while preserving `reflect.traits(value)` for
   value-implemented trait metadata.
+- Added zero-argument `reflect.methods()` for copied, owner-qualified
+  TypeRegistry method metadata enumeration using the same policy filtering as
+  `reflect.methods(value)`.
 
 ## Next
 

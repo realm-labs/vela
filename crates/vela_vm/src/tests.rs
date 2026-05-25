@@ -4707,11 +4707,15 @@ fn compiled_source_reflects_methods_traits_and_variants() {
         r#"
 fn main(player) {
     let methods = reflect.methods(player);
+    let all_methods = reflect.methods();
     let traits = reflect.traits(player);
     let quest = QuestProgress.Active { count: 1 };
     let variants = reflect.variants(quest);
     if reflect.has_method(player, "grant_exp")
         && methods.len() == 1
+        && all_methods.len() == 1
+        && all_methods[0].owner == "Player"
+        && all_methods[0].name == "grant_exp"
         && methods[0].returns == "bool"
         && methods[0].params[0].name == "amount"
         && methods[0].params[0].type == "int"
@@ -4953,11 +4957,12 @@ fn compiled_source_reflect_methods_respect_method_policy() {
         r#"
 fn main(player) {
     let methods = reflect.methods(player);
+    let all_methods = reflect.methods();
     if reflect.has_method(player, "visible")
         && !reflect.has_method(player, "hidden")
         && !reflect.has_method(player, "private")
         && !reflect.has_method(player, "admin") {
-        return methods.len();
+        return methods.len() * 10 + all_methods.len();
     }
     return 0;
 }
@@ -4983,7 +4988,7 @@ fn main(player) {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
-        Ok(Value::Int(1))
+        Ok(Value::Int(11))
     );
 }
 

@@ -124,6 +124,33 @@ pub fn methods_with_policy(
     )))
 }
 
+pub fn all_methods(registry: &TypeRegistry) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .types()
+            .flat_map(|desc| {
+                desc.methods
+                    .iter()
+                    .map(|method| method_record_with_owner(&desc.key.name, method))
+            })
+            .collect(),
+    ))
+}
+
+pub fn all_methods_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .types()
+            .flat_map(|desc| {
+                desc.methods
+                    .iter()
+                    .filter(|method| policy.require_method_access(&desc.key.name, method).is_ok())
+                    .map(|method| method_record_with_owner(&desc.key.name, method))
+            })
+            .collect(),
+    ))
+}
+
 pub fn has_method(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -310,6 +337,17 @@ fn variant_candidates(desc: &TypeDesc, variant: &str) -> Vec<crate::ReflectCandi
 }
 
 fn method_record(method: &MethodDesc) -> HostValue {
+    method_record_from_fields(method_record_fields(method))
+}
+
+fn method_record_with_owner(type_name: &str, method: &MethodDesc) -> HostValue {
+    let mut fields = BTreeMap::new();
+    fields.insert("owner".to_owned(), HostValue::String(type_name.to_owned()));
+    fields.extend(method_record_fields(method));
+    method_record_from_fields(fields)
+}
+
+fn method_record_fields(method: &MethodDesc) -> BTreeMap<String, HostValue> {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
@@ -340,6 +378,10 @@ fn method_record(method: &MethodDesc) -> HostValue {
     fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&method.attrs));
     fields.insert("source_span".to_owned(), span_value(method.source_span));
+    fields
+}
+
+fn method_record_from_fields(fields: BTreeMap<String, HostValue>) -> HostValue {
     HostValue::Record {
         type_name: "ReflectMethod".to_owned(),
         fields,
@@ -782,6 +824,25 @@ mod tests {
             fields.get("source_span"),
             Some(&span_value(Some(Span::new(SourceId::new(8), 60, 80))))
         );
+        let ReflectValue::Host(HostValue::Array(all_methods)) = all_methods(&registry) else {
+            panic!("method list should be an array");
+        };
+        assert_eq!(all_methods.len(), 1);
+        let HostValue::Record {
+            fields: method_list_item,
+            ..
+        } = &all_methods[0]
+        else {
+            panic!("method list item should be a record");
+        };
+        assert_eq!(
+            method_list_item.get("owner"),
+            Some(&HostValue::String("Player".to_owned()))
+        );
+        assert_eq!(
+            method_list_item.get("name"),
+            Some(&HostValue::String("grant_exp".to_owned()))
+        );
 
         let ReflectValue::Host(HostValue::Array(traits)) =
             traits(&registry, &ReflectValue::HostRef(player_ref())).expect("traits")
@@ -973,12 +1034,33 @@ mod tests {
         else {
             panic!("methods should be an array");
         };
+        let ReflectValue::Host(HostValue::Array(policy_all_methods)) =
+            all_methods_with_policy(&registry, &ReflectPolicy::read_only())
+        else {
+            panic!("all methods should be an array");
+        };
         assert_eq!(policy_methods.len(), 1);
+        assert_eq!(policy_all_methods.len(), 1);
         let HostValue::Record { fields, .. } = &policy_methods[0] else {
             panic!("method metadata should be a record");
         };
         assert_eq!(
             fields.get("name"),
+            Some(&HostValue::String("visible".to_owned()))
+        );
+        let HostValue::Record {
+            fields: all_method_fields,
+            ..
+        } = &policy_all_methods[0]
+        else {
+            panic!("all method metadata should be a record");
+        };
+        assert_eq!(
+            all_method_fields.get("owner"),
+            Some(&HostValue::String("Player".to_owned()))
+        );
+        assert_eq!(
+            all_method_fields.get("name"),
             Some(&HostValue::String("visible".to_owned()))
         );
         assert!(
