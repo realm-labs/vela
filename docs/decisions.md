@@ -6041,3 +6041,23 @@ Consequences:
 - Negative counts fail through the VM type-error path instead of wrapping.
 - The helper does not add implicit string formatting, numeric generics, or host
   mutation behavior.
+
+## 2026-05-25: Math Provides 2D Distance Helper
+
+Status: Accepted
+
+Context:
+Game-server scripts often need distance checks for spawn ranges, aggro radius,
+quest areas, and reward proximity. Without a vector type in the current dynamic
+stdlib, scripts must repeat coordinate arithmetic and square-root logic by hand.
+
+Decision:
+Add `math.distance2d(x1, y1, x2, y2)` as a pure deterministic standard native.
+It accepts finite script ints/floats, returns a script float, and reports a VM
+type error for non-numeric or non-finite inputs/results.
+
+Consequences:
+- Gameplay scripts get a common range primitive without introducing vector
+  objects, numeric generics, or host mutation behavior.
+- Analysis and completion expose the helper as `(int | float, int | float,
+  int | float, int | float) -> float`.

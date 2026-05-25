@@ -1414,6 +1414,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `string.repeat(count)` for deterministic gameplay label and diagnostic
   text assembly. It works in inline and managed-heap execution, rejects
   negative counts, and exposes analysis TypeFacts plus completion metadata.
+- Added `math.distance2d(x1, y1, x2, y2)` as a deterministic gameplay range
+  helper over finite script numbers. It returns a float distance, rejects
+  non-numeric values, and exposes analysis TypeFacts plus completion metadata.
 
 ## Next
 
