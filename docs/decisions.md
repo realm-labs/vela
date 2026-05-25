@@ -5389,3 +5389,29 @@ Consequences:
   values.
 - Random, reflection, and host-specific mutation/read permissions remain
   explicit policy choices.
+
+## 2026-05-25: Engine Runtime Owns Basic Hot Reload Application
+
+Status: Accepted
+
+Context:
+`Engine` already compiles initial hot-reload versions and checked updates with
+Engine-derived compiler options, ABI metadata, and policy. Hosts still had to
+pair those helpers with `vela_hot_reload::HotReloadRuntime` manually before
+they could apply an accepted update to the program used by `Runtime::call`.
+
+Decision:
+`Runtime` can now be constructed with
+`Runtime::from_hot_reload_version(engine, version)`. Such runtimes keep an
+internal hot-reload runtime, expose the current `ProgramVersion`, and apply
+`HotUpdate` or `HotReloadResult<HotUpdate>` values to update the active program
+used by subsequent calls. Rejected updates return their report and leave the
+current program unchanged. Plain `Runtime::new` values reject hot-update
+application with a structured Engine error.
+
+Consequences:
+- Embedders can stay on the stable `vela_engine` API for the common compile,
+  apply, and call loop.
+- Hot-reload ABI and policy checks remain in `vela_hot_reload`; the Engine
+  runtime only owns application and active-program replacement.
+- Existing non-hot-reload runtimes keep the same construction and call path.

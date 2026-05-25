@@ -1277,6 +1277,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `PermissionSet::gameplay()` to the stable Engine API. The preset grants
   deterministic context time helpers while keeping controlled random and
   reflection capabilities explicit opt-ins.
+- Added Engine-owned hot-reload runtime application. `Runtime` can now be
+  constructed from a `ProgramVersion`, apply `HotUpdate` reports, preserve the
+  active program on rejected updates, and expose hot-reload types through the
+  stable Engine API.
 
 ## Next
 

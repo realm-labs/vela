@@ -42,7 +42,9 @@ pub use typed::{
 };
 pub use vela_common::{FieldId, HostObjectId, HostTypeId};
 pub use vela_host::{HostPath, HostRef};
-pub use vela_hot_reload::HotReloadPolicy;
+pub use vela_hot_reload::{
+    HotReloadPolicy, HotReloadReport, HotReloadResult, HotUpdate, ProgramVersion,
+};
 pub use vela_reflect::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 pub use vela_vm::Value;
 

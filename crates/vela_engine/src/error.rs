@@ -22,6 +22,7 @@ pub enum EngineErrorKind {
     DuplicateHostMethodId { id: u32 },
     DuplicateHostMethodName { name: String },
     UnknownNativeMethodOwner { name: String },
+    RuntimeNotHotReloadEnabled,
 }
 
 pub type EngineResult<T> = Result<T, EngineError>;
@@ -50,6 +51,12 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::UnknownNativeMethodOwner { name } => {
                 write!(formatter, "unknown native method owner type {name}")
+            }
+            EngineErrorKind::RuntimeNotHotReloadEnabled => {
+                write!(
+                    formatter,
+                    "runtime was not created from a hot reload version"
+                )
             }
         }
     }
