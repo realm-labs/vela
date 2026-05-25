@@ -5010,6 +5010,7 @@ fn compiled_source_reflects_methods_traits_and_variants() {
         r#"
 fn main(player) {
     let methods = reflect.methods(player);
+    let method = reflect.method(player, "grant_exp");
     let all_methods = reflect.methods();
     let traits = reflect.traits(player);
     let quest = QuestProgress.Active { count: 1 };
@@ -5020,9 +5021,12 @@ fn main(player) {
         && all_methods.len() == 1
         && all_methods[0].owner == "Player"
         && all_methods[0].name == "grant_exp"
+        && method.name == "grant_exp"
+        && method.attrs["effect"] == "write"
         && methods[0].returns == "bool"
         && methods[0].params[0].name == "amount"
         && methods[0].params[0].type == "int"
+        && method.params[0].name == "amount"
         && traits.len() == 1
         && variants.len() == 2
         && all_variants.len() == 2
@@ -5268,11 +5272,13 @@ fn compiled_source_reflect_methods_respect_method_policy() {
         r#"
 fn main(player) {
     let methods = reflect.methods(player);
+    let visible = reflect.method(player, "visible");
     let all_methods = reflect.methods();
     if reflect.has_method(player, "visible")
         && !reflect.has_method(player, "hidden")
         && !reflect.has_method(player, "private")
-        && !reflect.has_method(player, "admin") {
+        && !reflect.has_method(player, "admin")
+        && visible.name == "visible" {
         return methods.len() * 10 + all_methods.len();
     }
     return 0;
@@ -5301,6 +5307,39 @@ fn main(player) {
         vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Ok(Value::Int(11))
     );
+}
+
+#[test]
+fn compiled_source_reflect_method_reports_unknown_method_candidates() {
+    let host_ref = player_ref(3);
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return reflect.method(player, "grant_xp");
+}
+"#,
+    )
+    .expect("compile unknown method reflection source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(member_reflection_registry()));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
+            type_name: "Player".to_owned(),
+            method: "grant_xp".to_owned(),
+            candidates: vec!["grant_exp".to_owned()],
+            related: vec![ReflectCandidate::new("grant_exp", None)],
+        })
+    ));
+    assert!(tx.patches().is_empty());
 }
 
 #[test]

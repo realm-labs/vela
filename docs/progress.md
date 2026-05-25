@@ -1621,6 +1621,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   host structs and script-exposed fields, emit those attrs into generated
   `TypeDesc`/`FieldDesc` values, and include them in the derived schema hash
   without allowing runtime schema mutation.
+- Added M12 singular method metadata lookup. Scripts can now call
+  `reflect.method(target, name)` to retrieve one copied method descriptor with
+  the same access policy enforcement as `reflect.methods`, and unknown method
+  names report ranked candidates without mutating reflected type structure.
 
 ## Next
 

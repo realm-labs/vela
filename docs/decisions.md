@@ -6681,3 +6681,27 @@ Consequences:
   but cannot mutate type or field structure at runtime.
 - Schema hashes change when derived attr metadata changes, preserving hot
   reload ABI sensitivity for macro-generated host schemas.
+
+## 2026-05-26: Reflection Exposes Singular Method Metadata Lookup
+
+Status: Accepted
+
+Context:
+Reflection already exposes `reflect.field(target, name)` for targeted field
+metadata and `reflect.methods(target)` for filtered method lists. Scripts that
+need one method descriptor had to list and scan methods themselves, which made
+policy failures and typo diagnostics less direct than field metadata lookup.
+
+Decision:
+Add `reflect.method(target, name)` as a read-only metadata query. The VM bridge
+requires `ReadTypeInfo`, enforces host-ref inspection policy for host targets,
+and delegates to the same method access policy used by `reflect.methods` and
+`reflect.has_method`. Unknown names return ranked method candidates.
+
+Consequences:
+- Tooling and gameplay scripts can inspect a specific method descriptor without
+  enumerating all visible methods.
+- The returned value is copied descriptor metadata; scripts still cannot mutate
+  type structure or monkey patch methods at runtime.
+- Method policy remains centralized in `vela_reflect`, with the VM native only
+  handling argument conversion, permissions, and budget checks.

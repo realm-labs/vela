@@ -349,6 +349,27 @@ impl Vm {
             )?)
         });
 
+        let method_registry = Arc::clone(&registry);
+        let method_policy = policy.clone();
+        let method_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.method", move |args, _host| {
+            check_reflect_policy(
+                &method_policy,
+                &method_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.method", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.method")?;
+            check_host_ref_inspection(&method_policy, &target)?;
+            let method_name = expect_string(&args[1], "reflect.method")?;
+            value_from_reflect(reflect::method_metadata_with_policy(
+                &method_registry,
+                &target,
+                method_name,
+                &method_policy,
+            )?)
+        });
+
         let has_method_registry = Arc::clone(&registry);
         let has_method_policy = policy.clone();
         let has_method_budget = Arc::clone(&lookup_budget);

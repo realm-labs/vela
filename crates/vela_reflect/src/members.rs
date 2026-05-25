@@ -140,6 +140,28 @@ pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<
     )))
 }
 
+pub fn method(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    let method = find_method(desc, name)?;
+    Ok(ReflectValue::Host(method_record(method)))
+}
+
+pub fn method_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    let method = find_method(desc, name)?;
+    policy.require_method_access(&desc.key.name, method)?;
+    Ok(ReflectValue::Host(method_record(method)))
+}
+
 pub fn methods_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -383,12 +405,36 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
         })
 }
 
+fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a MethodDesc> {
+    desc.methods
+        .iter()
+        .find(|candidate| candidate.name == method)
+        .ok_or_else(|| {
+            let related = method_candidates(desc, method);
+            ReflectError::new(ReflectErrorKind::UnknownMethod {
+                type_name: desc.key.name.clone(),
+                method: method.to_owned(),
+                candidates: candidate_names(&related),
+                related,
+            })
+        })
+}
+
 fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::ReflectCandidate> {
     ranked_candidates(
         field,
         desc.fields
             .iter()
             .map(|field| (field.name.as_str(), field.source_span)),
+    )
+}
+
+fn method_candidates(desc: &TypeDesc, method: &str) -> Vec<crate::ReflectCandidate> {
+    ranked_candidates(
+        method,
+        desc.methods
+            .iter()
+            .map(|method| (method.name.as_str(), method.source_span)),
     )
 }
 
@@ -968,6 +1014,39 @@ mod tests {
             method_list_item.get("name"),
             Some(&HostValue::String("grant_exp".to_owned()))
         );
+        let ReflectValue::Host(HostValue::Record {
+            fields: single_method,
+            ..
+        }) = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
+            .expect("method metadata")
+        else {
+            panic!("single method metadata should be a record");
+        };
+        assert_eq!(
+            single_method.get("name"),
+            Some(&HostValue::String("grant_exp".to_owned()))
+        );
+        assert_eq!(
+            single_method.get("attrs"),
+            Some(&HostValue::Map(BTreeMap::from([(
+                "effect".to_owned(),
+                HostValue::String("write".to_owned())
+            )])))
+        );
+        let unknown = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_xp")
+            .expect_err("unknown method");
+        assert_eq!(
+            unknown.kind,
+            ReflectErrorKind::UnknownMethod {
+                type_name: "Player".to_owned(),
+                method: "grant_xp".to_owned(),
+                candidates: vec!["grant_exp".to_owned()],
+                related: vec![crate::ReflectCandidate::new(
+                    "grant_exp",
+                    Some(Span::new(SourceId::new(8), 60, 80))
+                )],
+            }
+        );
 
         let ReflectValue::Host(HostValue::Array(traits)) =
             traits(&registry, &ReflectValue::HostRef(player_ref())).expect("traits")
@@ -1192,6 +1271,18 @@ mod tests {
             fields.get("name"),
             Some(&HostValue::String("visible".to_owned()))
         );
+        let ReflectValue::Host(HostValue::Record {
+            fields: method_fields,
+            ..
+        }) = method_with_policy(&registry, &target, "visible", &ReflectPolicy::read_only())
+            .expect("visible method")
+        else {
+            panic!("method metadata should be a record");
+        };
+        assert_eq!(
+            method_fields.get("name"),
+            Some(&HostValue::String("visible".to_owned()))
+        );
         let HostValue::Record {
             fields: all_method_fields,
             ..
@@ -1219,6 +1310,9 @@ mod tests {
             !has_method_with_policy(&registry, &target, "admin", &ReflectPolicy::read_only())
                 .expect("has admin")
         );
+        assert!(
+            method_with_policy(&registry, &target, "admin", &ReflectPolicy::read_only()).is_err()
+        );
 
         let admin_policy = ReflectPolicy::new(
             crate::ReflectPermissionSet::read_only().with(crate::ReflectPermission::AccessPrivate),
@@ -1236,6 +1330,17 @@ mod tests {
         );
         assert!(
             has_method_with_policy(&registry, &target, "admin", &admin_policy).expect("has admin")
+        );
+        let ReflectValue::Host(HostValue::Record {
+            fields: admin_fields,
+            ..
+        }) = method_with_policy(&registry, &target, "admin", &admin_policy).expect("admin method")
+        else {
+            panic!("admin method metadata should be a record");
+        };
+        assert_eq!(
+            admin_fields.get("name"),
+            Some(&HostValue::String("admin".to_owned()))
         );
     }
 
