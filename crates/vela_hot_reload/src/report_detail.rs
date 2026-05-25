@@ -35,7 +35,10 @@ impl HotReloadDiagnosticDetail {
     #[must_use]
     pub fn from_error(error: &HotReloadError) -> Option<Self> {
         match &error.kind {
-            HotReloadErrorKind::Compile(_) | HotReloadErrorKind::NewFunctionDenied { .. } => None,
+            HotReloadErrorKind::Compile(_)
+            | HotReloadErrorKind::NewFunctionDenied { .. }
+            | HotReloadErrorKind::RemovedFunctionAbi { .. }
+            | HotReloadErrorKind::RemovedMethodAbi { .. } => None,
             HotReloadErrorKind::DeletedFunctionParameters { old, new, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { old, new, .. } => {
                 Some(Self::FunctionParameterList {

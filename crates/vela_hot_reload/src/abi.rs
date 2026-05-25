@@ -79,14 +79,23 @@ impl HotReloadAbi {
 
         for (function, old_function) in &self.functions {
             let Some(new_function) = next.functions.get(function) else {
-                continue;
+                return Err(HotReloadError::new(
+                    HotReloadErrorKind::RemovedFunctionAbi {
+                        function: function.clone(),
+                        source_span: old_function.source_span.map(Box::new),
+                    },
+                ));
             };
             old_function.ensure_compatible(new_function)?;
         }
 
         for ((type_name, method), old_method) in &self.methods {
             let Some(new_method) = next.methods.get(&(type_name.clone(), method.clone())) else {
-                continue;
+                return Err(HotReloadError::new(HotReloadErrorKind::RemovedMethodAbi {
+                    type_name: type_name.clone(),
+                    method: method.clone(),
+                    source_span: old_method.source_span.map(Box::new),
+                }));
             };
             old_method.ensure_compatible(new_method)?;
         }

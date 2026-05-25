@@ -1220,6 +1220,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Split EngineBuilder reflection metadata injection and duplicate validation
   into focused private modules, keeping the Engine registration path structured
   instead of growing builder orchestration into a single implementation file.
+- Completed hot-reload ABI removal checks for registered function and method
+  metadata. Reload updates now reject missing ABI entries with explicit
+  diagnostics, source spans, and repair hints instead of silently accepting
+  removed reflective callable surfaces.
 
 ## Next
 

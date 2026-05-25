@@ -651,6 +651,44 @@ fn function_effect_and_access_abi_changes_are_rejected() {
 }
 
 #[test]
+fn removed_function_abi_is_rejected() {
+    let span = Span::new(SourceId::new(9), 10, 25);
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game.reward.grant",
+            EffectAbi::host_read(),
+            AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
+        )
+        .source_span(span),
+    );
+    let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
+        .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        HotReloadAbi::empty(),
+    )
+    .expect_err("removed function ABI should fail");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::RemovedFunctionAbi {
+            function: "game.reward.grant".to_owned(),
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(3), error);
+    assert_eq!(report.errors[0].code, "reload.function.removed_abi");
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the function ABI entry or restart with an explicit migration")
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
+}
+
+#[test]
 fn method_effect_and_access_abi_changes_are_rejected() {
     let old_abi = HotReloadAbi::empty().method(MethodAbi::new(
         "Player",
@@ -709,6 +747,46 @@ fn method_effect_and_access_abi_changes_are_rejected() {
             source_span: None,
         }
     );
+}
+
+#[test]
+fn removed_method_abi_is_rejected() {
+    let span = Span::new(SourceId::new(9), 30, 45);
+    let old_abi = HotReloadAbi::empty().method(
+        MethodAbi::new(
+            "Player",
+            "grant_exp",
+            EffectAbi::host_write(),
+            AccessAbi::new(true, true, vec!["player.write".to_owned()]),
+        )
+        .source_span(span),
+    );
+    let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
+        .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        HotReloadAbi::empty(),
+    )
+    .expect_err("removed method ABI should fail");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::RemovedMethodAbi {
+            type_name: "Player".to_owned(),
+            method: "grant_exp".to_owned(),
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(3), error);
+    assert_eq!(report.errors[0].code, "reload.method.removed_abi");
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the method ABI entry or restart with an explicit migration")
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
 }
 
 #[test]
