@@ -1,6 +1,6 @@
 #![allow(clippy::result_large_err)]
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_common::{FieldId, HostObjectId, HostTypeId};
 use vela_engine::{
@@ -61,6 +61,17 @@ fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmRes
 /// Counts copied unique labels from a script set.
 #[script_function(id = 44, name = "game.count_labels", effect = "pure", reflect = true)]
 fn count_labels(labels: BTreeSet<String>) -> i64 {
+    i64::try_from(labels.len()).expect("label count fits i64")
+}
+
+/// Counts copied unordered labels from a script set.
+#[script_function(
+    id = 51,
+    name = "game.count_unordered_labels",
+    effect = "pure",
+    reflect = true
+)]
+fn count_unordered_labels(labels: HashSet<String>) -> i64 {
     i64::try_from(labels.len()).expect("label count fits i64")
 }
 
@@ -135,6 +146,19 @@ fn script_function_generates_set_signature_metadata() {
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Counts copied unique labels from a script set."),
+    );
+}
+
+#[test]
+fn script_function_generates_hash_set_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_count_unordered_labels(),
+        NativeFunctionDesc::new("game.count_unordered_labels", NativeFunctionId::new(51))
+            .param("labels", TypeHint::Set)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Counts copied unordered labels from a script set."),
     );
 }
 
@@ -305,6 +329,42 @@ fn main(labels) {
     let program = engine
         .compile_file(&source)
         .expect("source should compile with macro registered set native");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Set(vec![
+                Value::String("raid".to_owned()),
+                Value::String("pvp".to_owned()),
+                Value::String("raid".to_owned()),
+            ])],
+        ),
+        Ok(Value::Int(2)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_hash_set_native_with_engine() {
+    let engine = vela_register_native_function_count_unordered_labels(Engine::builder())
+        .build()
+        .expect("engine should build from macro unordered set native function");
+    let root = unique_test_dir("script_function_hash_set_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(labels) {
+    return game.count_unordered_labels(labels);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered unordered set native");
 
     assert_eq!(
         engine.into_vm().run_program(

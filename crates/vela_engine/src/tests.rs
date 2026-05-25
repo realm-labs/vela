@@ -311,6 +311,46 @@ fn main(tags) {
 }
 
 #[test]
+fn typed_native_functions_accept_hash_set_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(HashSet<String>,), _>(
+            NativeFunctionDesc::new("game.count_unordered_tags", NativeFunctionId::new(235))
+                .param("tags", TypeHint::Set)
+                .returns(TypeHint::Int),
+            |tags: HashSet<String>| i64::try_from(tags.len()).expect("set length fits i64"),
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game.unordered_reward_tags", NativeFunctionId::new(236))
+                .returns(TypeHint::Set),
+            || HashSet::from(["daily".to_owned(), "quest".to_owned()]),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(tags) {
+    return game.count_unordered_tags(tags) + game.unordered_reward_tags().len();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Set(vec![
+                Value::String("fire".to_owned()),
+                Value::String("ice".to_owned()),
+                Value::String("fire".to_owned()),
+            ])],
+        ),
+        Ok(Value::Int(4)),
+    );
+}
+
+#[test]
 fn typed_native_functions_accept_hash_map_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(HashMap<String, i64>,), _>(
