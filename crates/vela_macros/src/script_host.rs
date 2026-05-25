@@ -280,6 +280,24 @@ mod tests {
     }
 
     #[test]
+    fn infers_fixed_array_field_type_hints() {
+        let tokens = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct SpawnTable {
+                    #[script(get, id = 1)]
+                    weights: [i64; 3],
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect("fixed array host schema should expand")
+        .to_string();
+
+        assert!(tokens.contains("type_hint (\"array\")"));
+    }
+
+    #[test]
     fn rejects_generic_host_schemas() {
         let error = expand_result(
             quote! {

@@ -93,6 +93,7 @@ fn unsupported_integer_type(ty: &Type) -> Option<String> {
             })
         }
         Type::Tuple(tuple) => tuple.elems.iter().find_map(unsupported_integer_type),
+        Type::Array(array) => unsupported_integer_type(&array.elem),
         Type::Reference(reference) => unsupported_integer_type(&reference.elem),
         _ => None,
     }

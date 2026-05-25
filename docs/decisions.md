@@ -6148,3 +6148,29 @@ Consequences:
 - Macro diagnostics remain explicit for unsupported callback shapes.
 - Host integrations that need FFI must wrap that FFI behind a normal safe Rust
   function before exposing it to scripts.
+
+## 2026-05-25: Rust Fixed Arrays Convert As Script Arrays
+
+Status: Accepted
+
+Context:
+M14 typed native registration already accepted copied dynamic arrays through
+`Vec<T>`, and `IntoScriptArg` could emit fixed Rust arrays as script arrays.
+Callbacks still could not receive `[T; N]`, and macro metadata treated Rust
+array parameters as `any` instead of the script array value category.
+
+Decision:
+Implement `FromScriptArg` for `[T; N]` with exact-length validation and copied
+element conversion. Native function and native method macros now infer
+`TypeHint::Array` for Rust array parameters and returns, host schema derives
+infer `type = "array"` for exposed fixed-array fields, and unsupported integer
+signature validation descends into array element types.
+
+Consequences:
+- Embedders can use fixed-size copied Rust arrays for small coordinate,
+  weight, and config tuples without exposing references or adding
+  script-language generics.
+- Array length mismatches fail during argument conversion before any host patch
+  can be recorded.
+- Macro metadata now matches the dynamic script value category for fixed-array
+  signatures.

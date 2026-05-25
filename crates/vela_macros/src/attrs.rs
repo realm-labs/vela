@@ -105,6 +105,9 @@ fn path_name(path: &syn::Path, expected: &str) -> bool {
 }
 
 pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
+    if matches!(ty, Type::Array(_)) {
+        return Some("array".to_owned());
+    }
     let Type::Path(path) = ty else {
         return None;
     };

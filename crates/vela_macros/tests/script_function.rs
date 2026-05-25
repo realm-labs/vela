@@ -75,6 +75,23 @@ fn count_unordered_labels(labels: HashSet<String>) -> i64 {
     i64::try_from(labels.len()).expect("label count fits i64")
 }
 
+/// Sums a copied fixed weight array.
+#[script_function(id = 52, name = "game.sum_weights", effect = "pure", reflect = true)]
+fn sum_weights(weights: [i64; 3]) -> i64 {
+    weights.iter().sum()
+}
+
+/// Returns a copied fixed weight array.
+#[script_function(
+    id = 53,
+    name = "game.default_weights",
+    effect = "pure",
+    reflect = true
+)]
+fn default_weights() -> [i64; 3] {
+    [2, 4, 6]
+}
+
 /// Sums copied score values from a script map.
 #[script_function(id = 45, name = "game.score_total", effect = "pure", reflect = true)]
 fn score_total(scores: HashMap<String, i64>) -> i64 {
@@ -165,6 +182,27 @@ fn script_function_generates_hash_set_signature_metadata() {
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Counts copied unordered labels from a script set."),
+    );
+}
+
+#[test]
+fn script_function_generates_fixed_array_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_sum_weights(),
+        NativeFunctionDesc::new("game.sum_weights", NativeFunctionId::new(52))
+            .param("weights", TypeHint::Array)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Sums a copied fixed weight array."),
+    );
+    assert_eq!(
+        vela_native_function_desc_default_weights(),
+        NativeFunctionDesc::new("game.default_weights", NativeFunctionId::new(53))
+            .returns(TypeHint::Array)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Returns a copied fixed weight array."),
     );
 }
 
@@ -383,6 +421,44 @@ fn main(labels) {
             ])],
         ),
         Ok(Value::Int(2)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_fixed_array_native_with_engine() {
+    let engine = vela_register_native_function_default_weights(
+        vela_register_native_function_sum_weights(Engine::builder()),
+    )
+    .build()
+    .expect("engine should build from macro fixed-array native functions");
+    let root = unique_test_dir("script_function_fixed_array_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(weights) {
+    return game.sum_weights(weights) + game.default_weights().sum();
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered fixed-array natives");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Array(vec![
+                Value::Int(3),
+                Value::Int(5),
+                Value::Int(7),
+            ])],
+        ),
+        Ok(Value::Int(27)),
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }

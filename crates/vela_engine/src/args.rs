@@ -308,6 +308,29 @@ where
     }
 }
 
+impl<T, const N: usize> FromScriptArg for [T; N]
+where
+    T: FromScriptArg,
+{
+    const TYPE_NAME: &'static str = "array";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        let Value::Array(values) = value else {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        };
+        if values.len() != N {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        }
+        let converted = values
+            .iter()
+            .map(T::from_script_arg)
+            .collect::<VmResult<Vec<_>>>()?;
+        converted
+            .try_into()
+            .map_err(|_| type_mismatch(Self::TYPE_NAME))
+    }
+}
+
 impl<K, T> IntoScriptArg for BTreeMap<K, T>
 where
     K: Into<String> + Ord,

@@ -1432,6 +1432,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Tightened the same M14 macro signature boundary for non-Rust ABI callbacks.
   Native function, context-host function, host function, and host method macros
   now reject `extern` signatures before generating typed Engine registrations.
+- Added M14 Rust fixed-array signature conversion. Typed Engine natives can
+  accept copied `[T; N]` arguments from script arrays with exact-length
+  validation, macro-generated function/method metadata reports Rust arrays as
+  script arrays, host schema derives infer array field hints, and unsupported
+  integer widths are rejected even when nested inside array signatures.
 
 ## Next
 

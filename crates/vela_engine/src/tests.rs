@@ -383,6 +383,46 @@ fn main(tags) {
 }
 
 #[test]
+fn typed_native_functions_accept_fixed_array_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<([i64; 3],), _>(
+            NativeFunctionDesc::new("game.sum_weights", NativeFunctionId::new(237))
+                .param("weights", TypeHint::Array)
+                .returns(TypeHint::Int),
+            |weights: [i64; 3]| weights.iter().sum::<i64>(),
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game.default_weights", NativeFunctionId::new(238))
+                .returns(TypeHint::Array),
+            || [2_i64, 4, 6],
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(weights) {
+    return game.sum_weights(weights) + game.default_weights().sum();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Array(vec![
+                Value::Int(3),
+                Value::Int(5),
+                Value::Int(7),
+            ])],
+        ),
+        Ok(Value::Int(27)),
+    );
+}
+
+#[test]
 fn typed_native_functions_accept_hash_map_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(HashMap<String, i64>,), _>(
@@ -1962,6 +2002,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
     assert_eq!(args.required::<f32>(2), Ok(2.5_f32));
     assert_eq!(args.required::<String>(3), Ok("title".to_owned()));
     assert_eq!(args.required::<Vec<i64>>(4), Ok(vec![1, 2, 3]));
+    assert_eq!(args.required::<[i64; 3]>(4), Ok([1, 2, 3]));
     assert_eq!(
         args.required::<BTreeMap<String, String>>(5),
         Ok(BTreeMap::from([("key".to_owned(), "value".to_owned())]))
@@ -1986,6 +2027,14 @@ fn script_arg_conversions_extract_owned_rust_values() {
         f32::from_script_arg(&Value::Float(f64::MAX)),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "float" },
+            source_span: None,
+            ..
+        })
+    ));
+    assert!(matches!(
+        args.required::<[i64; 2]>(4),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch { operation: "array" },
             source_span: None,
             ..
         })

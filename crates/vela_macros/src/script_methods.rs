@@ -332,6 +332,9 @@ fn hint_for_type(ty: &Type) -> HintKind {
     if is_unit_tuple(ty) {
         return HintKind::Null;
     }
+    if matches!(ty, Type::Array(_)) {
+        return HintKind::Array;
+    }
     if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
         return hint_for_type(inner);
     }
@@ -630,6 +633,19 @@ mod tests {
     }
 
     #[test]
+    fn rejects_unsupported_integer_parameters_inside_arrays() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1)]
+                pub fn grant(player: HostRef, amounts: [usize; 2]) {}
+            }
+        })
+        .expect_err("unsupported array integer parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("usize"));
+    }
+
+    #[test]
     fn rejects_unsupported_integer_returns() {
         let error = expand_result(quote! {
             impl Player {
@@ -642,5 +658,21 @@ mod tests {
         .expect_err("unsupported integer return should fail macro expansion");
 
         assert!(error.to_string().contains("isize"));
+    }
+
+    #[test]
+    fn infers_fixed_array_signature_hints() {
+        let tokens = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1)]
+                pub fn weights(player: HostRef, values: [i64; 3]) -> [i64; 3] {
+                    values
+                }
+            }
+        })
+        .expect("fixed array method should expand")
+        .to_string();
+
+        assert!(tokens.contains("TypeHint :: Array"));
     }
 }
