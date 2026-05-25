@@ -1659,6 +1659,7 @@ math.clamp
 math.lerp
 math.distance2d
 math.distance3d
+math.pow
 math.floor
 math.ceil
 math.round

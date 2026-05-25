@@ -1421,6 +1421,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   deterministic 3D gameplay range helper. It runs through VM and
   Engine-installed standard natives, rejects non-numeric values, and exposes
   analysis TypeFacts plus completion metadata.
+- Added `math.pow(base, exponent)` as a deterministic numeric helper for
+  scaling formulas. Non-negative integer powers preserve integer results when
+  they fit, other finite numeric powers return floats, invalid inputs/results
+  are rejected, and analysis/completion expose non-generic numeric facts.
 - Tightened M14 macro signature safety. Native function, context-host
   function, host function, and host method macros now reject unsafe Rust
   callbacks through a shared signature helper before generating Engine

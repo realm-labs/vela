@@ -7,6 +7,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.lerp", math_lerp);
     vm.register_native("math.distance2d", math_distance2d);
     vm.register_native("math.distance3d", math_distance3d);
+    vm.register_native("math.pow", math_pow);
     vm.register_native("math.floor", math_floor);
     vm.register_native("math.ceil", math_ceil);
     vm.register_native("math.round", math_round);
@@ -77,6 +78,38 @@ fn math_distance3d(args: &[Value]) -> VmResult<Value> {
         Ok(Value::Float(distance))
     } else {
         type_error("math.distance3d")
+    }
+}
+
+fn math_pow(args: &[Value]) -> VmResult<Value> {
+    expect_arity("math.pow", args, 2)?;
+    if let (Value::Int(base), Value::Int(exponent)) = (&args[0], &args[1]) {
+        if *exponent < 0 {
+            return numeric_pow(args);
+        }
+        let exponent = u32::try_from(*exponent).map_err(|_| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "math.pow",
+            })
+        })?;
+        return base.checked_pow(exponent).map(Value::Int).ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "math.pow",
+            })
+        });
+    }
+
+    numeric_pow(args)
+}
+
+fn numeric_pow(args: &[Value]) -> VmResult<Value> {
+    let base = expect_finite_float(&args[0], "math.pow")?;
+    let exponent = expect_finite_float(&args[1], "math.pow")?;
+    let value = base.powf(exponent);
+    if value.is_finite() {
+        Ok(Value::Float(value))
+    } else {
+        type_error("math.pow")
     }
 }
 
@@ -205,6 +238,25 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_math_pow() {
+        let source = r#"
+fn main() {
+    if math.pow(2, 10) == 1024 && math.pow(9, 0.5) == 3.0 {
+        return math.pow(2, 3);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math pow source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("math pow should run");
+        assert_eq!(result, Value::Int(8));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_math_distance2d() {
         let source = r#"
 fn main() {
@@ -243,6 +295,25 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_math_pow() {
+        let source = r#"
+fn main() {
+    return math.pow(16, 0.5) == 4.0 && math.pow(3, 4) == 81;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap math pow source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap math pow should run");
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
     fn math_distance2d_rejects_non_numeric_values() {
         let source = r#"
 fn main() {
@@ -261,6 +332,52 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "math.distance2d"
+            }
+        );
+    }
+
+    #[test]
+    fn math_pow_rejects_non_numeric_values() {
+        let source = r#"
+fn main() {
+    return math.pow("xp", 2);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math pow type error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("math pow should reject non-numeric values");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "math.pow"
+            }
+        );
+    }
+
+    #[test]
+    fn math_pow_rejects_non_finite_results() {
+        let source = r#"
+fn main() {
+    return math.pow(0, -1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math pow non-finite source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("math pow should reject non-finite results");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "math.pow"
             }
         );
     }

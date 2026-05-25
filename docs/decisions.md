@@ -6084,6 +6084,29 @@ Consequences:
 - Analysis and completion expose the helper as six `(int | float)` parameters
   returning `float`.
 
+## 2026-05-25: Math Provides Power Helper
+
+Status: Accepted
+
+Context:
+Gameplay scripts often need compact scaling formulas for level curves,
+drop-rate weights, damage falloff, and cost growth. Without a standard power
+helper, scripts must either repeat multiplication loops or rely on custom host
+natives for simple deterministic formulas.
+
+Decision:
+Add `math.pow(base, exponent)` as a pure standard native. Non-negative integer
+exponents over integer bases preserve script integer results when the checked
+power fits; other finite numeric inputs return finite script floats. Invalid
+inputs, overflowed integer powers, and non-finite float results report a VM
+type error.
+
+Consequences:
+- Gameplay scripts can express common scaling formulas without custom native
+  glue or script-visible numeric generics.
+- Analysis and completion expose the helper as `(int | float, int | float) ->
+  int | float`, reflecting the dynamic runtime return boundary.
+
 ## 2026-05-25: Native Macros Reject Unsafe Callbacks
 
 Status: Accepted

@@ -20,10 +20,12 @@ fn main() {
     let clamped = math.clamp(15, 1, 10);
     let rounded = math.floor(3.9) + math.ceil(2.1);
     let midpoint = math.floor(math.lerp(10, 20, 0.5));
+    let powered = math.pow(2, 3);
     return math.max(clamped, math.abs(-4))
         + math.min(rounded, 10)
         + math.round(2.5)
-        + midpoint;
+        + midpoint
+        + powered;
 }
 "#;
 
@@ -33,7 +35,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math stdlib source should run");
-        assert_eq!(result, crate::Value::Int(34));
+        assert_eq!(result, crate::Value::Int(42));
     }
 
     #[test]
@@ -45,6 +47,7 @@ fn main() {
     return bounded == 3.0
         && math.abs(-2.5) == 2.5
         && math.lerp(2.0, 10.0, 0.25) == 4.0
+        && math.pow(16, 0.5) == 4.0
         && math.round(2.5) == 3
         && math.round(-2.5) == -3;
 }

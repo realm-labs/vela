@@ -559,6 +559,7 @@ mod tests {
             fn main() {
                 option.unwrap_or(maybe, 10);
                 set.from_array(names);
+                math.pow(2, 3);
             }
             "#,
         );
@@ -570,6 +571,10 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[1], &scope),
             TypeFact::set(TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[2], &scope),
+            TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
         );
     }
 

@@ -599,6 +599,12 @@ mod tests {
                 TypeFact::Float
             ),
         )));
+        let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
+        assert!(completions.contains(&CompletionItem::new(
+            "math.pow",
+            CompletionKind::Function,
+            TypeFact::function(vec![number.clone(), number.clone()], number),
+        )));
         assert!(completions.contains(&CompletionItem::new(
             "math.round",
             CompletionKind::Function,
