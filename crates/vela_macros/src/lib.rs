@@ -3,6 +3,7 @@
 mod attrs;
 mod hash;
 mod script_host;
+mod script_methods;
 
 use proc_macro::TokenStream;
 
@@ -14,4 +15,14 @@ pub fn derive_script_host(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(ScriptReflect, attributes(script))]
 pub fn derive_script_reflect(input: TokenStream) -> TokenStream {
     script_host::expand(input.into(), script_host::GeneratedMethod::Reflect).into()
+}
+
+#[proc_macro_attribute]
+pub fn script_methods(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    script_methods::expand(input.into()).into()
+}
+
+#[proc_macro_attribute]
+pub fn script_method(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    script_methods::expand_standalone_method(input.into()).into()
 }

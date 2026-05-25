@@ -13,6 +13,7 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
+vela_engine = { path = "../vela_engine" }
 vela_common = { path = "../vela_common" }
 vela_reflect = { path = "../vela_reflect" }
 

@@ -108,6 +108,7 @@ dependencies = [
  "quote",
  "syn",
  "vela_common",
+ "vela_engine",
  "vela_reflect",
 ]
 

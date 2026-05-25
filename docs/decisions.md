@@ -4173,3 +4173,30 @@ Consequences:
   external handle.
 - Richer generated function wrappers and typed method macros can build on this
   trait without changing the VM call ABI.
+
+## 2026-05-25: Host Method Macros Generate Metadata First
+
+Status: Accepted
+
+Context:
+M14 requires Rust host method macros, but full generated dispatch wrappers need
+more signature coverage and adapter integration. The next useful slice is stable
+method metadata that can flow into Engine registration and reflection without
+changing host mutation boundaries.
+
+Decision:
+Add `#[script_methods]` and nested `#[script_method(...)]` in a dedicated
+`vela_macros::script_methods` module. The macro preserves the original inherent
+impl, strips nested method attributes, and generates
+`vela_native_method_descs()` returning `NativeMethodDesc` values. It skips a
+`NativeCallContext` parameter and the first `HostRef` receiver parameter,
+normalizes leading underscores from script-visible parameter names, infers
+conservative `TypeHint` values, records docs/effects/permissions, rejects
+duplicate stable method IDs, and rejects Rust `self` receivers.
+
+Consequences:
+- Host method metadata can be authored next to Rust impls while scripts still
+  never receive real Rust `&mut` references.
+- Method dispatch wrappers and registration helpers remain follow-up M14 work.
+- The macro crate stays structured: host type derives and method metadata
+  expansion live in separate modules.

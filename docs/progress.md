@@ -992,6 +992,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   integer, float, string, array, map, VM value, and `HostRef` arguments with
   structured VM arity/type errors, while keeping host object access behind
   external handles and `PatchTx`.
+- Added first-pass `#[script_methods]` and `#[script_method]` host method
+  metadata macros in a focused macro module. Annotated inherent impl blocks now
+  generate `NativeMethodDesc` lists with stable method IDs, effect/access
+  metadata, docs, receiver/context skipping, and conservative type hints while
+  rejecting duplicate method IDs and Rust `self` receivers.
 
 ## Next
 
