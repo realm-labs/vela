@@ -9,8 +9,9 @@ use vela_reflect::{
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
 use crate::{
-    CONTROLLED_RANDOM_PERMISSION, EffectSet, Engine, EngineErrorKind, FunctionAccess,
-    MATH_RANDOM_FUNCTION_ID, NativeFunctionDesc, NativeFunctionId, NativeMethodDesc, TypeHint,
+    CONTROLLED_RANDOM_PERMISSION, EffectSet, Engine, EngineErrorKind, EngineSourceErrorKind,
+    FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeFunctionDesc, NativeFunctionId,
+    NativeMethodDesc, TypeHint,
 };
 
 #[test]
@@ -96,6 +97,119 @@ fn engine_registers_native_function_reflection_metadata() {
         &["game.add".to_owned()]
     );
     assert_eq!(function.docs.as_deref(), Some("Adds two integers."));
+}
+
+#[test]
+fn engine_compile_file_uses_engine_compiler_options() {
+    let root = unique_test_dir("compile_file");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(player: Player) {
+    player.grant_exp(7);
+    return 1;
+}
+"#,
+    )
+    .expect("write source file");
+    let method = HostMethodId::new(77);
+    let engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(method, "grant_exp")),
+        )
+        .build()
+        .expect("engine should build");
+
+    let program = engine.compile_file(&source).expect("compile file");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(7)]
+        }
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn engine_compile_dir_loads_lang_modules_deterministically() {
+    let root = unique_test_dir("compile_dir");
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    std::fs::write(
+        game_dir.join("main.lang"),
+        r#"
+use game.reward.grant
+
+fn main() {
+    return grant() + game.config.BONUS;
+}
+"#,
+    )
+    .expect("write main module");
+    std::fs::write(
+        game_dir.join("reward.lang"),
+        r#"
+pub fn grant() {
+    return 4;
+}
+"#,
+    )
+    .expect("write reward module");
+    std::fs::write(
+        game_dir.join("config.lang"),
+        r#"
+pub const BONUS: int = 6;
+"#,
+    )
+    .expect("write config module");
+    std::fs::write(root.join("ignored.txt"), "fn main() { return 99; }")
+        .expect("write ignored file");
+    let engine = Engine::builder().build().expect("engine should build");
+
+    let program = engine.compile_dir(&root).expect("compile dir");
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&program, "game.main.main", &[]),
+        Ok(Value::Int(10))
+    );
+    assert!(program.function("ignored.main").is_none());
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn engine_compile_file_reports_io_errors() {
+    let root = unique_test_dir("missing_file");
+    let path = root.join("missing.lang");
+    let engine = Engine::builder().build().expect("engine should build");
+
+    let error = engine
+        .compile_file(&path)
+        .expect_err("missing source file should fail");
+
+    assert!(matches!(error.kind, EngineSourceErrorKind::Io { .. }));
 }
 
 #[test]
@@ -1006,4 +1120,17 @@ fn player_type(type_id: TypeId, host_type_id: HostTypeId) -> TypeDesc {
     TypeDesc::new(TypeKey::new(type_id, "Player"))
         .host_type(host_type_id)
         .field(FieldDesc::new(FieldId::new(1), "level").writable(true))
+}
+
+fn unique_test_dir(name: &str) -> std::path::PathBuf {
+    let mut path = std::env::temp_dir();
+    path.push(format!(
+        "vela_engine_{name}_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time after epoch")
+            .as_nanos()
+    ));
+    path
 }

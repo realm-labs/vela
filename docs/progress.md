@@ -502,6 +502,11 @@ M12/M13 reflection and standard-library completion.
   `math.random(min, max)`. The seeded native is deterministic per Engine,
   carries stable reflection metadata, and fails before execution unless the
   host grants `std.random`.
+- Added Engine source-loading APIs `compile_file` and `compile_dir`.
+  `compile_file` uses Engine-derived compiler options for a single source
+  file, while `compile_dir` recursively loads `.lang` files, derives module
+  paths from relative file paths, assigns deterministic source IDs, and
+  compiles the resulting module graph.
 - Added array higher-order script methods `map`, `filter`, `find`, `any`,
   `all`, and `count` backed by script closures, preserving VM budgets, host
   context, and managed-heap roots during callback execution.

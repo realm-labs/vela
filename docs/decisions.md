@@ -4020,3 +4020,28 @@ Consequences:
 - Replays and tests can use a fixed seed for deterministic random sequences.
 - Script heap values still do not own host or native state; the RNG state lives
   inside the Engine-installed native closure.
+
+## 2026-05-25: Engine Directory Compilation Uses Path-Derived Modules
+
+Status: Accepted
+
+Context:
+M14 requires Engine-level `compile_file` and `compile_dir` APIs. The compiler
+already accepts `ModuleSource` values for multi-module programs, but embedders
+needed to manually read files, assign source IDs, derive module paths, and pass
+Engine-derived host compiler options.
+
+Decision:
+Add focused Engine source-loading APIs. `compile_file(path)` compiles one file
+as a normal single-source program. `compile_dir(root)` recursively loads
+`.lang` files, sorts paths for deterministic `SourceId` allocation, derives
+module paths from relative paths with the file stem as the final segment, and
+compiles with the Engine's registered host schema/method options.
+
+Consequences:
+- Hosts get a stable filesystem entrypoint without duplicating compiler-option
+  wiring.
+- Multi-module source layout is predictable: `game/reward.lang` becomes
+  `game.reward`.
+- Source loading remains separate from `engine.rs`, keeping filesystem concerns
+  out of the core Engine install/call API.

@@ -8,6 +8,7 @@ mod native;
 mod permission;
 mod random;
 mod reload;
+mod source;
 
 pub use builder::EngineBuilder;
 pub use engine::Engine;
@@ -19,6 +20,7 @@ pub use native::{
 };
 pub use permission::PermissionSet;
 pub use random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
+pub use source::{EngineSourceError, EngineSourceErrorKind};
 pub use vela_hot_reload::HotReloadPolicy;
 pub use vela_reflect::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 
