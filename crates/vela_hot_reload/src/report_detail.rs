@@ -1,5 +1,5 @@
 use crate::{
-    AccessAbi, EffectAbi, HotReloadError, HotReloadErrorKind, ModuleExportAbi, ParamAbi,
+    AccessAbi, EffectAbi, HotReloadError, HotReloadErrorKind, ModuleExportAbi, ParamAbi, SchemaAbi,
     TraitMethodAbi,
 };
 
@@ -23,6 +23,10 @@ pub enum HotReloadDiagnosticDetail {
     SchemaHash {
         old_hash: u64,
         new_hash: Option<u64>,
+    },
+    SchemaMemberAbi {
+        old: Box<SchemaAbi>,
+        new: Box<SchemaAbi>,
     },
     FunctionEventAbi {
         old: Option<String>,
@@ -107,6 +111,10 @@ impl HotReloadDiagnosticDetail {
             } => Some(Self::SchemaHash {
                 old_hash: *old_hash,
                 new_hash: Some(*new_hash),
+            }),
+            HotReloadErrorKind::ChangedSchemaAbi { old, new, .. } => Some(Self::SchemaMemberAbi {
+                old: old.clone(),
+                new: new.clone(),
             }),
             HotReloadErrorKind::ChangedFunctionEvent { old, new, .. } => {
                 Some(Self::FunctionEventAbi {

@@ -7056,3 +7056,28 @@ Consequences:
   monkey patching.
 - Module ABI structs live in a focused hot-reload module instead of growing the
   crate root or mixing export logic into unrelated reload code.
+
+## 2026-05-26: Registry Schema Members Are Hot-Reload ABI
+
+Status: Accepted
+
+Context:
+Hot reload previously rejected schema hash drift as a single coarse failure.
+M15 requires schema diffs for fields, variants, methods, and traits, plus
+compatible schema additions where defaults can preserve existing callers.
+
+Decision:
+Registry-derived schema manifests now record type kind, fields, variants, field
+access, type hints, stable IDs, and defaultability in a focused schema ABI
+module. Hash-only manifests remain strict. When member ABI is available, hot
+reload allows member reordering and appended defaulted fields, rejects required
+field additions, and rejects changed or removed existing fields and variant
+payload fields.
+
+Consequences:
+- Compatible schema additions can pass a safe-point reload without forcing an
+  explicit restart solely because the schema hash changed.
+- Existing compiled and reflective member contracts remain stable across
+  reloads.
+- Schema compatibility logic stays isolated from function, method, trait, and
+  module ABI code.

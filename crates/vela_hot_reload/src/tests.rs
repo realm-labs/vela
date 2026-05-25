@@ -1,9 +1,9 @@
 use super::*;
-use vela_common::{FunctionId, HostMethodId, MethodId, SourceId, Span, TypeId};
+use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, SourceId, Span, TypeId, VariantId};
 use vela_reflect::{
-    FunctionAccess, FunctionDesc, FunctionEffectSet, FunctionParamDesc, MethodAccess, MethodDesc,
-    MethodEffectSet, MethodParamDesc, ModuleDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
-    TypeKey, TypeRegistry,
+    FieldDesc, FunctionAccess, FunctionDesc, FunctionEffectSet, FunctionParamDesc, MethodAccess,
+    MethodDesc, MethodEffectSet, MethodParamDesc, ModuleDesc, SchemaHash, TraitDesc,
+    TraitMethodDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
 use vela_vm::{Value, Vm};
 
@@ -641,6 +641,111 @@ fn removed_schema_abi_is_rejected() {
             old_hash: 0x1111,
             source_span: None,
         }
+    );
+}
+
+#[test]
+fn registry_schema_abi_accepts_defaulted_field_additions() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x1111))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int")),
+    );
+
+    let mut new_registry = TypeRegistry::new();
+    new_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x2222))
+            .field(
+                FieldDesc::new(FieldId::new(3), "rarity")
+                    .type_hint("string")
+                    .defaulted(true),
+            )
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int"))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string")),
+    );
+
+    HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&new_registry))
+        .expect("defaulted field additions and reordering should be compatible");
+}
+
+#[test]
+fn registry_schema_abi_rejects_required_field_additions() {
+    let span = Span::new(SourceId::new(19), 20, 80);
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x1111))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string")),
+    );
+
+    let mut new_registry = TypeRegistry::new();
+    new_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x2222))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int"))
+            .source_span(span),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&new_registry))
+        .expect_err("required field addition should fail");
+    assert_eq!(error.code(), "reload.schema.abi_changed");
+    assert_eq!(error.source_span(), Some(span));
+    let report = HotReloadReport::rejected(ProgramVersionId(19), error);
+    assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
+    assert!(matches!(
+        report.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::SchemaMemberAbi { .. })
+    ));
+    assert!(report.render_lines().iter().any(|line| {
+        line.text
+            .contains("schema ABI: old=(kind=script_struct hash=4369 fields=[item_id#1:string]")
+    }));
+}
+
+#[test]
+fn registry_schema_abi_rejects_existing_member_changes() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .schema_hash(SchemaHash::new(0xaaaa))
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Active")
+                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("int")),
+            ),
+    );
+
+    let mut new_registry = TypeRegistry::new();
+    new_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .schema_hash(SchemaHash::new(0xbbbb))
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Active")
+                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("float")),
+            ),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&new_registry))
+        .expect_err("existing variant field type change should fail");
+    assert_eq!(error.code(), "reload.schema.abi_changed");
+    let report = HotReloadReport::rejected(ProgramVersionId(20), error);
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| line.text.contains("variants=[Active#1(count#1:int)]"))
     );
 }
 

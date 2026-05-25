@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 
 use vela_common::Span;
 use vela_reflect::{
-    FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc,
-    TraitMethodDesc, TypeRegistry,
+    FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc,
+    TypeRegistry,
 };
 
-use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult, ModuleAbi};
+use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult, ModuleAbi, SchemaAbi};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct HotReloadAbi {
@@ -27,11 +27,7 @@ impl HotReloadAbi {
     pub fn from_registry(registry: &TypeRegistry) -> Self {
         let mut manifest = Self::empty();
         for type_desc in registry.types() {
-            if let Some(schema_hash) = type_desc.schema_hash {
-                let mut schema = SchemaAbi::new(type_desc.key.name.clone(), schema_hash);
-                if let Some(source_span) = type_desc.source_span {
-                    schema = schema.source_span(source_span);
-                }
+            if let Some(schema) = SchemaAbi::from_type(type_desc) {
                 manifest = manifest.schema(schema);
             }
             for method in &type_desc.methods {
@@ -91,6 +87,10 @@ impl HotReloadAbi {
                 }));
             };
             if old_schema.hash != new_schema.hash {
+                if old_schema.has_member_abi() && new_schema.has_member_abi() {
+                    old_schema.ensure_compatible(new_schema)?;
+                    continue;
+                }
                 return Err(HotReloadError::new(HotReloadErrorKind::ChangedSchema {
                     type_name: type_name.clone(),
                     old_hash: old_schema.hash,
@@ -144,30 +144,6 @@ impl HotReloadAbi {
         }
 
         Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SchemaAbi {
-    pub type_name: String,
-    pub hash: u64,
-    pub source_span: Option<Span>,
-}
-
-impl SchemaAbi {
-    #[must_use]
-    pub fn new(type_name: impl Into<String>, hash: SchemaHash) -> Self {
-        Self {
-            type_name: type_name.into(),
-            hash: hash.get(),
-            source_span: None,
-        }
-    }
-
-    #[must_use]
-    pub fn source_span(mut self, source_span: Span) -> Self {
-        self.source_span = Some(source_span);
-        self
     }
 }
 

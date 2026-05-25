@@ -1689,6 +1689,12 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   exports now enter a focused module ABI manifest; hot reload rejects removed
   modules and removed or changed existing module exports while allowing
   appended exports, with structured diagnostics and report details.
+- Strengthened M15 schema ABI checks beyond hash-only comparisons for
+  registry-derived schemas. `TypeDesc` kind, field metadata, variant metadata,
+  field access, and defaultability now enter a focused schema ABI manifest;
+  hot reload accepts reordered members and appended defaulted fields while
+  rejecting required field additions and changed existing members with
+  structured report details.
 
 ## Next
 

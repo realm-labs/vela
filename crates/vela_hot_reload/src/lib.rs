@@ -10,12 +10,12 @@ mod report;
 mod report_detail;
 mod report_render;
 mod runtime;
+mod schema_abi;
 mod symbol;
 mod version;
 
 pub use abi::{
-    AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi, ParamAbi, SchemaAbi, TraitAbi,
-    TraitMethodAbi,
+    AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi, ParamAbi, TraitAbi, TraitMethodAbi,
 };
 pub use compile::{
     compile_initial, compile_initial_with_abi, compile_initial_with_abi_and_options,
@@ -30,6 +30,7 @@ pub use report::{HotReloadDiagnostic, HotReloadReport};
 pub use report_detail::HotReloadDiagnosticDetail;
 pub use report_render::{HotReloadReportLine, HotReloadReportLineKind};
 pub use runtime::HotReloadRuntime;
+pub use schema_abi::{FieldAccessAbi, SchemaAbi, SchemaFieldAbi, SchemaKindAbi, SchemaVariantAbi};
 pub use symbol::{FunctionSymbolId, ProgramVersionId};
 pub use version::{HotUpdate, ProgramVersion};
 

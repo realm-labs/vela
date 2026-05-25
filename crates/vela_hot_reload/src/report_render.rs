@@ -166,6 +166,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
                 .unwrap_or_else(|| "removed".to_owned());
             format!("schema hash: old={old_hash} new={new_hash}")
         }
+        HotReloadDiagnosticDetail::SchemaMemberAbi { old, new } => format!(
+            "schema ABI: old=({}) new=({})",
+            render_schema_abi(old),
+            render_schema_abi(new)
+        ),
         HotReloadDiagnosticDetail::FunctionEventAbi { old, new } => format!(
             "function event: old={} new={}",
             render_optional(old),
@@ -244,6 +249,56 @@ fn render_param_abi(param: &crate::ParamAbi) -> String {
     } else {
         format!("{}:{type_hint}", param.name)
     }
+}
+
+fn render_schema_abi(schema: &crate::SchemaAbi) -> String {
+    let kind = schema
+        .kind
+        .map(crate::SchemaKindAbi::as_str)
+        .unwrap_or("unknown");
+    format!(
+        "kind={kind} hash={} fields=[{}] variants=[{}]",
+        schema.hash,
+        render_schema_field_abi_list(&schema.fields),
+        render_schema_variant_abi_list(&schema.variants)
+    )
+}
+
+fn render_schema_field_abi_list(fields: &[crate::SchemaFieldAbi]) -> String {
+    if fields.is_empty() {
+        return "<none>".to_owned();
+    }
+    fields
+        .iter()
+        .map(render_schema_field_abi)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_schema_field_abi(field: &crate::SchemaFieldAbi) -> String {
+    let type_hint = field.type_hint.as_deref().unwrap_or("Any");
+    let default = if field.has_default { "=default" } else { "" };
+    format!("{}#{}:{type_hint}{default}", field.name, field.id)
+}
+
+fn render_schema_variant_abi_list(variants: &[crate::SchemaVariantAbi]) -> String {
+    if variants.is_empty() {
+        return "<none>".to_owned();
+    }
+    variants
+        .iter()
+        .map(render_schema_variant_abi)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_schema_variant_abi(variant: &crate::SchemaVariantAbi) -> String {
+    format!(
+        "{}#{}({})",
+        variant.name,
+        variant.id,
+        render_schema_field_abi_list(&variant.fields)
+    )
 }
 
 fn render_trait_method_abi_list(methods: &[crate::TraitMethodAbi]) -> String {

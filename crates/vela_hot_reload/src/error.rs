@@ -3,7 +3,7 @@ use std::fmt;
 use vela_bytecode::compiler::{CompileError, CompileErrorKind};
 use vela_common::{Diagnostic, Label, Span};
 
-use crate::{AccessAbi, EffectAbi, ModuleExportAbi, ParamAbi, TraitMethodAbi};
+use crate::{AccessAbi, EffectAbi, ModuleExportAbi, ParamAbi, SchemaAbi, TraitMethodAbi};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadError {
@@ -41,6 +41,7 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedFunction { .. } => "reload.function.removed",
             HotReloadErrorKind::RemovedSchema { .. } => "reload.schema.removed",
             HotReloadErrorKind::ChangedSchema { .. } => "reload.schema.changed",
+            HotReloadErrorKind::ChangedSchemaAbi { .. } => "reload.schema.abi_changed",
             HotReloadErrorKind::RemovedFunctionAbi { .. } => "reload.function.removed_abi",
             HotReloadErrorKind::ChangedFunctionEvent { .. } => "reload.function.event_changed",
             HotReloadErrorKind::ChangedFunctionEffects { .. } => "reload.function.effects_changed",
@@ -76,7 +77,8 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedFunctionEffects { function, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { function, .. } => Some(function.clone()),
             HotReloadErrorKind::RemovedSchema { type_name, .. }
-            | HotReloadErrorKind::ChangedSchema { type_name, .. } => Some(type_name.clone()),
+            | HotReloadErrorKind::ChangedSchema { type_name, .. }
+            | HotReloadErrorKind::ChangedSchemaAbi { type_name, .. } => Some(type_name.clone()),
             HotReloadErrorKind::RemovedMethodAbi {
                 type_name, method, ..
             }
@@ -132,6 +134,9 @@ impl HotReloadError {
             }
             HotReloadErrorKind::ChangedSchema { type_name, .. } => {
                 format!("schema `{type_name}` changed incompatibly")
+            }
+            HotReloadErrorKind::ChangedSchemaAbi { type_name, .. } => {
+                format!("schema `{type_name}` changed member ABI incompatibly")
             }
             HotReloadErrorKind::RemovedFunctionAbi { function, .. } => {
                 format!("function `{function}` was removed from the hot-reload ABI")
@@ -219,6 +224,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedSchema { .. } => {
                 Some("keep the existing schema hash stable or restart with an explicit migration".to_owned())
             }
+            HotReloadErrorKind::ChangedSchemaAbi { .. } => {
+                Some("preserve existing schema members, or add only defaulted fields during reload".to_owned())
+            }
             HotReloadErrorKind::RemovedFunctionAbi { .. } => {
                 Some("restore the function ABI entry or restart with an explicit migration".to_owned())
             }
@@ -264,6 +272,7 @@ impl HotReloadError {
                 .and_then(|diagnostics| diagnostics.iter().find_map(|diagnostic| diagnostic.span)),
             HotReloadErrorKind::RemovedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
+            | HotReloadErrorKind::ChangedSchemaAbi { source_span, .. }
             | HotReloadErrorKind::RemovedFunctionAbi { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionParameterAbi { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionReturnAbi { source_span, .. }
@@ -384,6 +393,12 @@ pub enum HotReloadErrorKind {
         type_name: String,
         old_hash: u64,
         new_hash: u64,
+        source_span: Option<Box<Span>>,
+    },
+    ChangedSchemaAbi {
+        type_name: String,
+        old: Box<SchemaAbi>,
+        new: Box<SchemaAbi>,
         source_span: Option<Box<Span>>,
     },
     RemovedFunctionAbi {

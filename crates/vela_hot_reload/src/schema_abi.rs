@@ -1,0 +1,294 @@
+use std::collections::BTreeMap;
+
+use vela_common::Span;
+use vela_reflect::{FieldAccess, FieldDesc, SchemaHash, TypeDesc, TypeKind, VariantDesc};
+
+use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SchemaAbi {
+    pub type_name: String,
+    pub hash: u64,
+    pub kind: Option<SchemaKindAbi>,
+    pub fields: Vec<SchemaFieldAbi>,
+    pub variants: Vec<SchemaVariantAbi>,
+    pub source_span: Option<Span>,
+}
+
+impl SchemaAbi {
+    #[must_use]
+    pub fn new(type_name: impl Into<String>, hash: SchemaHash) -> Self {
+        Self {
+            type_name: type_name.into(),
+            hash: hash.get(),
+            kind: None,
+            fields: Vec::new(),
+            variants: Vec::new(),
+            source_span: None,
+        }
+    }
+
+    #[must_use]
+    pub fn from_type(type_desc: &TypeDesc) -> Option<Self> {
+        let schema_hash = type_desc.schema_hash?;
+        let mut abi = Self::new(type_desc.key.name.clone(), schema_hash)
+            .kind(SchemaKindAbi::from_type_kind(type_desc.kind));
+        for field in &type_desc.fields {
+            abi = abi.field(SchemaFieldAbi::from_field(field));
+        }
+        for variant in &type_desc.variants {
+            abi = abi.variant(SchemaVariantAbi::from_variant(variant));
+        }
+        if let Some(source_span) = type_desc.source_span {
+            abi = abi.source_span(source_span);
+        }
+        Some(abi)
+    }
+
+    #[must_use]
+    pub fn kind(mut self, kind: SchemaKindAbi) -> Self {
+        self.kind = Some(kind);
+        self
+    }
+
+    #[must_use]
+    pub fn field(mut self, field: SchemaFieldAbi) -> Self {
+        self.fields.push(field);
+        self
+    }
+
+    #[must_use]
+    pub fn variant(mut self, variant: SchemaVariantAbi) -> Self {
+        self.variants.push(variant);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
+    }
+
+    #[must_use]
+    pub fn has_member_abi(&self) -> bool {
+        !self.fields.is_empty() || !self.variants.is_empty()
+    }
+
+    pub(crate) fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
+        let compatible = self.kind == next.kind
+            && fields_compatible(&self.fields, &next.fields)
+            && variants_compatible(&self.variants, &next.variants);
+        if compatible {
+            return Ok(());
+        }
+        Err(HotReloadError::new(HotReloadErrorKind::ChangedSchemaAbi {
+            type_name: self.type_name.clone(),
+            old: Box::new(self.clone()),
+            new: Box::new(next.clone()),
+            source_span: next.source_span.map(Box::new),
+        }))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SchemaKindAbi {
+    Host,
+    ScriptStruct,
+    ScriptEnum,
+}
+
+impl SchemaKindAbi {
+    #[must_use]
+    pub const fn from_type_kind(kind: TypeKind) -> Self {
+        match kind {
+            TypeKind::Host => Self::Host,
+            TypeKind::ScriptStruct => Self::ScriptStruct,
+            TypeKind::ScriptEnum => Self::ScriptEnum,
+        }
+    }
+
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Host => "host",
+            Self::ScriptStruct => "script_struct",
+            Self::ScriptEnum => "script_enum",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SchemaFieldAbi {
+    pub id: u32,
+    pub name: String,
+    pub type_hint: Option<String>,
+    pub has_default: bool,
+    pub writable: bool,
+    pub access: FieldAccessAbi,
+}
+
+impl SchemaFieldAbi {
+    #[must_use]
+    pub fn new(id: u32, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            type_hint: None,
+            has_default: false,
+            writable: false,
+            access: FieldAccessAbi::default(),
+        }
+    }
+
+    #[must_use]
+    pub fn from_field(field: &FieldDesc) -> Self {
+        let mut abi = Self::new(field.id.get(), field.name.clone())
+            .defaulted(field.has_default)
+            .writable(field.writable)
+            .access(FieldAccessAbi::from_access(&field.access));
+        if let Some(type_hint) = &field.type_hint {
+            abi = abi.type_hint(type_hint.clone());
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn type_hint(mut self, type_hint: impl Into<String>) -> Self {
+        self.type_hint = Some(type_hint.into());
+        self
+    }
+
+    #[must_use]
+    pub fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
+        self
+    }
+
+    #[must_use]
+    pub fn writable(mut self, writable: bool) -> Self {
+        self.writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub fn access(mut self, access: FieldAccessAbi) -> Self {
+        self.access = access;
+        self
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SchemaVariantAbi {
+    pub id: u32,
+    pub name: String,
+    pub fields: Vec<SchemaFieldAbi>,
+}
+
+impl SchemaVariantAbi {
+    #[must_use]
+    pub fn new(id: u32, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            fields: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn from_variant(variant: &VariantDesc) -> Self {
+        let mut abi = Self::new(variant.id.get(), variant.name.clone());
+        for field in &variant.fields {
+            abi = abi.field(SchemaFieldAbi::from_field(field));
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn field(mut self, field: SchemaFieldAbi) -> Self {
+        self.fields.push(field);
+        self
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldAccessAbi {
+    pub readable: bool,
+    pub writable: bool,
+    pub reflect_readable: bool,
+    pub reflect_writable: bool,
+    pub required_permissions: Vec<String>,
+}
+
+impl FieldAccessAbi {
+    #[must_use]
+    pub fn from_access(access: &FieldAccess) -> Self {
+        Self::new(
+            access.readable,
+            access.writable,
+            access.reflect_readable,
+            access.reflect_writable,
+            access.required_permissions().to_vec(),
+        )
+    }
+
+    #[must_use]
+    pub fn new(
+        readable: bool,
+        writable: bool,
+        reflect_readable: bool,
+        reflect_writable: bool,
+        mut required_permissions: Vec<String>,
+    ) -> Self {
+        required_permissions.sort();
+        required_permissions.dedup();
+        Self {
+            readable,
+            writable,
+            reflect_readable,
+            reflect_writable,
+            required_permissions,
+        }
+    }
+}
+
+impl Default for FieldAccessAbi {
+    fn default() -> Self {
+        Self::new(true, false, true, false, Vec::new())
+    }
+}
+
+fn fields_compatible(old: &[SchemaFieldAbi], new: &[SchemaFieldAbi]) -> bool {
+    let new_fields = new
+        .iter()
+        .map(|field| (field.name.as_str(), field))
+        .collect::<BTreeMap<_, _>>();
+    let old_fields = old
+        .iter()
+        .map(|field| field.name.as_str())
+        .collect::<Vec<_>>();
+    let existing_compatible = old.iter().all(|old_field| {
+        new_fields
+            .get(old_field.name.as_str())
+            .is_some_and(|new_field| *new_field == old_field)
+    });
+    let additions_defaulted = new
+        .iter()
+        .filter(|field| !old_fields.contains(&field.name.as_str()))
+        .all(|field| field.has_default);
+    existing_compatible && additions_defaulted
+}
+
+fn variants_compatible(old: &[SchemaVariantAbi], new: &[SchemaVariantAbi]) -> bool {
+    let new_variants = new
+        .iter()
+        .map(|variant| (variant.name.as_str(), variant))
+        .collect::<BTreeMap<_, _>>();
+    old.iter().all(|old_variant| {
+        new_variants
+            .get(old_variant.name.as_str())
+            .is_some_and(|new_variant| {
+                old_variant.id == new_variant.id
+                    && fields_compatible(&old_variant.fields, &new_variant.fields)
+            })
+    })
+}
