@@ -1553,6 +1553,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   reference return types before generating Engine registrations, while keeping
   the explicit `NativeCallContext`, `HostExecution`, and `HostPath` boundary
   parameters available.
+- Completed the first host-provided iterable slice for M9. `IteratorState` now
+  exposes a copied-value constructor for native callbacks, and `for-in` accepts
+  native-returned `Value::Iterator` values in inline and managed-heap execution
+  without storing iterator state in the script heap.
 
 ## Next
 

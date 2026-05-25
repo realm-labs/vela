@@ -14,6 +14,11 @@ enum IteratorKind {
 }
 
 impl IteratorState {
+    #[must_use]
+    pub fn from_values(values: Vec<Value>) -> Self {
+        Self::new(values)
+    }
+
     fn new(values: Vec<Value>) -> Self {
         Self {
             kind: IteratorKind::Values { values, next: 0 },
@@ -56,6 +61,7 @@ pub(crate) fn make_iterator(
         Value::Map(values) => Ok(IteratorState::new(values.values().cloned().collect())),
         Value::Set(values) => Ok(IteratorState::new(values.clone())),
         Value::Range(range) => Ok(IteratorState::range(range.cursor())),
+        Value::Iterator(iterator) => Ok(iterator.clone()),
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -85,7 +91,6 @@ pub(crate) fn make_iterator(
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::Closure(_)
-        | Value::Iterator(_)
         | Value::HostRef(_)
         | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "for in",

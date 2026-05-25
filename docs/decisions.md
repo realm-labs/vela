@@ -6355,3 +6355,29 @@ Consequences:
   supported dynamic result shapes instead of borrowed data.
 - The allowed host mutation boundary remains explicit through context,
   host-execution, host-path, and PatchTx APIs.
+
+## 2026-05-26: Native Iterators Are Copied Value Iterators
+
+Status: Accepted
+
+Context:
+M9 acceptance requires `for-in` loops to work over host-provided iterables.
+The VM already had an internal `Value::Iterator` used by `IterInit`/`IterNext`,
+but native functions could not construct a supported iterator value for script
+`for-in` loops because `IteratorState` had no public copied-value constructor
+and `IterInit` rejected existing iterator values.
+
+Decision:
+Expose `IteratorState::from_values(Vec<Value>)` for native callbacks and allow
+`iteration::make_iterator` to clone an existing `Value::Iterator` as a fresh
+loop iterator. The iterator state stores copied script `Value`s and traces any
+contained heap references when held in registers, but it is not a heap slot and
+cannot own Rust host state.
+
+Consequences:
+- Native callbacks can return bounded, copied iterables that scripts consume
+  with ordinary `for value in native.iterable()` syntax.
+- Managed-heap execution can iterate those copied values without adding host
+  objects to the script GC.
+- Stateful or lazy Rust-backed iterators remain outside the MVP until they can
+  be modeled with explicit budgets and host-boundary rules.

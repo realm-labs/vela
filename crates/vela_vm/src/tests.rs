@@ -601,6 +601,34 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_for_in_over_native_iterator() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for value in game.values() {
+        total += value;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("compile native iterator for-in source");
+    let mut vm = Vm::new();
+    vm.register_native("game.values", |_| {
+        Ok(Value::Iterator(IteratorState::from_values(vec![
+            Value::Int(2),
+            Value::Int(3),
+            Value::Int(5),
+        ])))
+    });
+
+    assert_eq!(vm.run(&code), Ok(Value::Int(10)));
+}
+
+#[test]
 fn runs_compiled_range_for_in_source() {
     let code = compile_function_source(
         SourceId::new(1),
@@ -1584,6 +1612,38 @@ fn last_name() {
             .run_program_with_managed_heap_and_budget(&program, "last_name", &[], &mut budget)
             .expect("run heap for-in string"),
         Value::String("xp".into())
+    );
+    assert_eq!(budget.memory_bytes_allocated(), 0);
+}
+
+#[test]
+fn managed_heap_execution_runs_native_iterator_for_in_source() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let names = [];
+    for value in game.names() {
+        names.push(value.to_upper());
+    }
+    return names.join(",");
+}
+"#,
+    )
+    .expect("compile heap native iterator for-in source");
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    vm.register_native("game.names", |_| {
+        Ok(Value::Iterator(IteratorState::from_values(vec![
+            Value::String("gold".to_owned()),
+            Value::String("xp".to_owned()),
+        ])))
+    });
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        vm.run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+        Ok(Value::String("GOLD,XP".to_owned()))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
