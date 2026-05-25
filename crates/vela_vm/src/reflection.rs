@@ -111,6 +111,23 @@ impl Vm {
             )?)
         });
 
+        let has_type_registry = Arc::clone(&registry);
+        let has_type_policy = policy.clone();
+        let has_type_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.has_type", move |args, _host| {
+            check_reflect_policy(
+                &has_type_policy,
+                &has_type_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.has_type", args, 1)?;
+            let type_name = expect_string(&args[0], "reflect.has_type")?;
+            Ok(Value::Bool(reflect::has_type(
+                &has_type_registry,
+                type_name,
+            )))
+        });
+
         let name_registry = Arc::clone(&registry);
         let name_policy = policy.clone();
         let name_budget = Arc::clone(&lookup_budget);
@@ -460,6 +477,23 @@ impl Vm {
                 &trait_registry,
                 trait_name,
             )?)
+        });
+
+        let has_trait_registry = Arc::clone(&registry);
+        let has_trait_policy = policy.clone();
+        let has_trait_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.has_trait", move |args, _host| {
+            check_reflect_policy(
+                &has_trait_policy,
+                &has_trait_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.has_trait", args, 1)?;
+            let trait_name = expect_string(&args[0], "reflect.has_trait")?;
+            Ok(Value::Bool(reflect::has_trait(
+                &has_trait_registry,
+                trait_name,
+            )))
         });
 
         let variants_registry = Arc::clone(&registry);

@@ -26,7 +26,7 @@ pub use members::{
     all_variants_with_policy as variant_metadata_list_with_policy, attrs as attrs_metadata,
     docs as docs_metadata, field as field_metadata, field_names_with_policy,
     field_with_policy as field_metadata_with_policy, has_field, has_field_with_policy, has_method,
-    has_method_with_policy, kind as kind_metadata, method as method_metadata,
+    has_method_with_policy, has_trait, kind as kind_metadata, method as method_metadata,
     method_with_policy as method_metadata_with_policy, methods, methods_with_policy,
     name as name_metadata, trait_by_name as trait_metadata_by_name, traits as trait_metadata,
     variant, variant_is, variants as variant_metadata,
@@ -50,7 +50,9 @@ pub use registry::{
     AttrMap, FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc,
     TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
-pub use types::{type_by_name as type_metadata_by_name, type_names as type_metadata_names};
+pub use types::{
+    has_type, type_by_name as type_metadata_by_name, type_names as type_metadata_names,
+};
 pub use value::{
     ReflectContext, ReflectValue, call, call_with_policy, fields, get, get_with_policy, implements,
     set, set_with_policy, type_of,

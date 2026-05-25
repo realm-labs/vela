@@ -5082,6 +5082,8 @@ fn main() {
     let traits = reflect.traits();
     let trait_info = reflect.trait_info("Damageable");
     if traits.len() == 1
+        && reflect.has_trait("Damageable")
+        && !reflect.has_trait("Damagable")
         && traits[0].name == "Damageable"
         && trait_info.name == "Damageable"
         && trait_info.methods[0].name == "damage" {
@@ -5116,6 +5118,8 @@ fn main() {
     let names = reflect.types();
     let player = reflect.type_info("Player");
     if names.len() == 1
+        && reflect.has_type("Player")
+        && !reflect.has_type("Plyer")
         && names[0] == "Player"
         && player.kind == "host"
         && player.field_count == 2

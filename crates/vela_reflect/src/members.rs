@@ -266,6 +266,10 @@ pub fn trait_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<Refle
     Ok(ReflectValue::Host(trait_record(desc)))
 }
 
+pub fn has_trait(registry: &TypeRegistry, name: &str) -> bool {
+    registry.trait_metadata_by_name(name).is_some()
+}
+
 pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(HostValue::Array(
@@ -1054,6 +1058,8 @@ mod tests {
             panic!("traits should be an array");
         };
         assert_eq!(traits.len(), 1);
+        assert!(has_trait(&registry, "Damageable"));
+        assert!(!has_trait(&registry, "Trackable"));
 
         let target = ReflectValue::ScriptEnum {
             enum_name: "QuestProgress".to_owned(),
@@ -1196,6 +1202,9 @@ mod tests {
             panic!("trait method params should be an array");
         };
         assert_eq!(params.len(), 1);
+        assert!(has_trait(&registry, "Damageable"));
+        assert!(has_trait(&registry, "Trackable"));
+        assert!(!has_trait(&registry, "Damagable"));
 
         let error = trait_by_name(&registry, "Damagable").expect_err("unknown trait");
         assert_eq!(

@@ -6730,3 +6730,26 @@ Consequences:
   that cannot inspect them.
 - Runtime schema structure remains immutable; these helpers only query copied
   TypeRegistry metadata.
+
+## 2026-05-26: Type And Trait Reflection Provide Presence Guards
+
+Status: Accepted
+
+Context:
+Type and trait reflection exposed list queries and throwing metadata lookups,
+but scripts had no direct way to branch on optional type or trait names before
+calling `reflect.type_info` or `reflect.trait_info`.
+
+Decision:
+Add `reflect.has_type(name)` and `reflect.has_trait(name)` as read-only
+presence checks over registered TypeRegistry metadata. These helpers require
+the same type-info read permission at the VM boundary as the rest of metadata
+reflection.
+
+Consequences:
+- Admin/debug scripts can use normal boolean control flow for optional type and
+  trait metadata.
+- Unknown type and trait diagnostics remain available through the existing
+  throwing lookup APIs when detailed candidates are needed.
+- The helpers only query static registry metadata and do not allow runtime
+  schema mutation.

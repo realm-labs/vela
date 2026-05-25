@@ -1629,6 +1629,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `reflect.has_module(name)` and `reflect.has_function(name)` for non-throwing
   reflection guards, with function checks respecting the same visibility,
   privacy, and permission rules as `reflect.function` and `reflect.functions`.
+- Added M12 type/trait presence guards. Scripts can now call
+  `reflect.has_type(name)` and `reflect.has_trait(name)` before performing
+  throwing metadata lookups with `reflect.type_info` or `reflect.trait_info`,
+  preserving schema-safe read-only reflection behavior.
 
 ## Next
 

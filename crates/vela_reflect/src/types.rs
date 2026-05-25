@@ -34,6 +34,10 @@ pub fn type_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<Reflec
     Ok(ReflectValue::Host(type_record(desc)))
 }
 
+pub fn has_type(registry: &TypeRegistry, name: &str) -> bool {
+    registry.type_by_name(name).is_some()
+}
+
 fn type_record(desc: &TypeDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert(
@@ -104,6 +108,10 @@ mod tests {
             TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
                 .variant(VariantDesc::new(VariantId::new(1), "Active")),
         );
+
+        assert!(has_type(&registry, "Player"));
+        assert!(has_type(&registry, "QuestProgress"));
+        assert!(!has_type(&registry, "Monster"));
 
         let ReflectValue::Host(HostValue::Array(names)) = type_names(&registry) else {
             panic!("type names should be an array");
