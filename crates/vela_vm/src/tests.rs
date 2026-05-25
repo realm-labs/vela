@@ -4629,10 +4629,13 @@ fn compiled_source_reflects_modules_functions_and_exports() {
         r#"
 fn main() {
     let module = reflect.module("game.reward");
+    let modules = reflect.modules();
     let exports = reflect.exports("game.reward");
     let function = reflect.function("game.reward.grant");
     let functions = reflect.functions();
     if option.unwrap_or(module.get("name"), "") == "game.reward"
+        && modules.len() == 1
+        && modules[0].name == "game.reward"
         && exports.len() == 1
         && functions.len() == 1
         && functions[0].name == "game.reward.grant"
@@ -4667,11 +4670,13 @@ fn compiled_source_reflect_exports_respect_function_policy() {
         r#"
 fn main() {
     let module = reflect.module("game.reward");
+    let modules = reflect.modules();
     let exports = reflect.exports("game.reward");
     let functions = reflect.functions();
     return option.unwrap_or(module.get("exports"), []).len() * 100
         + exports.len() * 10
-        + functions.len();
+        + functions.len()
+        + modules[0].exports.len() * 1000;
 }
 "#,
     )
@@ -4691,7 +4696,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(111))
+        Ok(Value::Int(1111))
     );
 }
 

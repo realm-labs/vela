@@ -1189,6 +1189,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added script-visible `reflect.functions()` over copied TypeRegistry function
   metadata. The query returns policy-filtered function records, matching
   `reflect.function` and module export visibility rules.
+- Added script-visible `reflect.modules()` over copied TypeRegistry module
+  metadata. Listed module records include policy-filtered exports, matching
+  `reflect.module` and `reflect.exports`.
 
 ## Next
 

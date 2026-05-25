@@ -270,6 +270,12 @@ pub fn module(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue
     Ok(module_record(desc))
 }
 
+pub fn modules(registry: &TypeRegistry) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry.modules().map(module_record_host).collect(),
+    ))
+}
+
 pub fn module_with_policy(
     registry: &TypeRegistry,
     name: &str,
@@ -286,6 +292,20 @@ pub fn module_with_policy(
     Ok(module_record_with_exports(
         desc,
         visible_export_names(registry, desc, policy),
+    ))
+}
+
+pub fn modules_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .modules()
+            .map(|module| {
+                module_record_host_with_exports(
+                    module,
+                    visible_export_names(registry, module, policy),
+                )
+            })
+            .collect(),
     ))
 }
 
@@ -394,6 +414,10 @@ fn module_record(desc: &ModuleDesc) -> ReflectValue {
     module_record_with_exports(desc, desc.exports.iter().map(|export| export.name.clone()))
 }
 
+fn module_record_host(desc: &ModuleDesc) -> HostValue {
+    module_record_host_with_exports(desc, desc.exports.iter().map(|export| export.name.clone()))
+}
+
 fn module_record_with_exports(
     desc: &ModuleDesc,
     exports: impl IntoIterator<Item = String>,
@@ -418,6 +442,24 @@ fn module_record_with_exports(
         ReflectValue::Host(span_value(desc.source_span)),
     );
     ReflectValue::Record(fields)
+}
+
+fn module_record_host_with_exports(
+    desc: &ModuleDesc,
+    exports: impl IntoIterator<Item = String>,
+) -> HostValue {
+    let mut fields = BTreeMap::new();
+    fields.insert("name".to_owned(), HostValue::String(desc.name.clone()));
+    fields.insert(
+        "exports".to_owned(),
+        HostValue::Array(exports.into_iter().map(HostValue::String).collect()),
+    );
+    fields.insert("attrs".to_owned(), attrs_value(&desc.attrs));
+    fields.insert("source_span".to_owned(), span_value(desc.source_span));
+    HostValue::Record {
+        type_name: "ReflectModule".to_owned(),
+        fields,
+    }
 }
 
 fn visible_export_names(
@@ -774,6 +816,22 @@ fn helper() {
                 "game.reward.grant".into()
             )]))
         );
+        let ReflectValue::Host(HostValue::Array(modules)) = modules(&registry) else {
+            panic!("module list should be an array");
+        };
+        assert_eq!(modules.len(), 1);
+        let HostValue::Record {
+            type_name,
+            fields: module_list_item,
+        } = &modules[0]
+        else {
+            panic!("module list item should be a record");
+        };
+        assert_eq!(type_name, "ReflectModule");
+        assert_eq!(
+            module_list_item.get("name"),
+            Some(&HostValue::String("game.reward".into()))
+        );
         let ReflectValue::Host(HostValue::Array(functions)) = functions(&registry) else {
             panic!("function list should be an array");
         };
@@ -983,6 +1041,10 @@ fn helper() {
                 HostValue::String("game.reward.admin".to_owned()),
             ]))
         );
+        let ReflectValue::Host(HostValue::Array(raw_modules)) = modules(&registry) else {
+            panic!("raw module list should be an array");
+        };
+        assert_eq!(raw_modules.len(), 1);
         let ReflectValue::Host(HostValue::Array(raw_functions)) = functions(&registry) else {
             panic!("raw function list should be an array");
         };
@@ -1000,6 +1062,24 @@ fn helper() {
             panic!("policy function list should be an array");
         };
         assert_eq!(policy_functions.len(), 1);
+        let ReflectValue::Host(HostValue::Array(policy_modules)) =
+            modules_with_policy(&registry, &ReflectPolicy::read_only())
+        else {
+            panic!("policy module list should be an array");
+        };
+        let HostValue::Record {
+            fields: policy_module,
+            ..
+        } = &policy_modules[0]
+        else {
+            panic!("policy module list item should be a record");
+        };
+        assert_eq!(
+            policy_module.get("exports"),
+            Some(&HostValue::Array(vec![HostValue::String(
+                "game.reward.grant".to_owned()
+            )]))
+        );
 
         let ReflectValue::Record(module) =
             module_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())

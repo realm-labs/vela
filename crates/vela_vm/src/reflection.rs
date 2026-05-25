@@ -250,6 +250,22 @@ impl Vm {
             )?)
         });
 
+        let modules_registry = Arc::clone(&registry);
+        let modules_policy = policy.clone();
+        let modules_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.modules", move |args, _host| {
+            check_reflect_policy(
+                &modules_policy,
+                &modules_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.modules", args, 0)?;
+            value_from_reflect(reflect::module_metadata_list_with_policy(
+                &modules_registry,
+                &modules_policy,
+            ))
+        });
+
         let exports_registry = Arc::clone(&registry);
         let exports_policy = policy.clone();
         let exports_budget = Arc::clone(&lookup_budget);
