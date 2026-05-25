@@ -4,8 +4,14 @@ use crate::{Value, Vm, VmError, VmErrorKind, VmResult, expect_arity};
 pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("option.some", option_some);
     vm.register_native("option.none", option_none);
+    vm.register_native("option.is_some", option_is_some);
+    vm.register_native("option.is_none", option_is_none);
+    vm.register_native("option.unwrap_or", option_unwrap_or);
     vm.register_native("result.ok", result_ok);
     vm.register_native("result.err", result_err);
+    vm.register_native("result.is_ok", result_is_ok);
+    vm.register_native("result.is_err", result_is_err);
+    vm.register_native("result.unwrap_or", result_unwrap_or);
     vm.register_native("math.max", math_max);
     vm.register_native("math.min", math_min);
     vm.register_native("math.clamp", math_clamp);
@@ -25,6 +31,25 @@ fn option_none(args: &[Value]) -> VmResult<Value> {
     Ok(enum_value("Option", "None", None))
 }
 
+fn option_is_some(args: &[Value]) -> VmResult<Value> {
+    expect_arity("option.is_some", args, 1)?;
+    option_variant(&args[0], "option.is_some").map(|variant| Value::Bool(variant == "Some"))
+}
+
+fn option_is_none(args: &[Value]) -> VmResult<Value> {
+    expect_arity("option.is_none", args, 1)?;
+    option_variant(&args[0], "option.is_none").map(|variant| Value::Bool(variant == "None"))
+}
+
+fn option_unwrap_or(args: &[Value]) -> VmResult<Value> {
+    expect_arity("option.unwrap_or", args, 2)?;
+    match option_variant(&args[0], "option.unwrap_or")? {
+        "Some" => enum_payload(&args[0], "option.unwrap_or"),
+        "None" => Ok(args[1].clone()),
+        _ => type_error("option.unwrap_or"),
+    }
+}
+
 fn result_ok(args: &[Value]) -> VmResult<Value> {
     expect_arity("result.ok", args, 1)?;
     Ok(enum_value("Result", "Ok", Some(args[0].clone())))
@@ -33,6 +58,25 @@ fn result_ok(args: &[Value]) -> VmResult<Value> {
 fn result_err(args: &[Value]) -> VmResult<Value> {
     expect_arity("result.err", args, 1)?;
     Ok(enum_value("Result", "Err", Some(args[0].clone())))
+}
+
+fn result_is_ok(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.is_ok", args, 1)?;
+    result_variant(&args[0], "result.is_ok").map(|variant| Value::Bool(variant == "Ok"))
+}
+
+fn result_is_err(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.is_err", args, 1)?;
+    result_variant(&args[0], "result.is_err").map(|variant| Value::Bool(variant == "Err"))
+}
+
+fn result_unwrap_or(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.unwrap_or", args, 2)?;
+    match result_variant(&args[0], "result.unwrap_or")? {
+        "Ok" => enum_payload(&args[0], "result.unwrap_or"),
+        "Err" => Ok(args[1].clone()),
+        _ => type_error("result.unwrap_or"),
+    }
 }
 
 fn enum_value(enum_name: &str, variant: &str, payload: Option<Value>) -> Value {
@@ -44,6 +88,43 @@ fn enum_value(enum_name: &str, variant: &str, payload: Option<Value>) -> Value {
         variant: variant.to_owned(),
         fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
     }
+}
+
+fn option_variant<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a str> {
+    let (enum_name, variant) =
+        enum_tag(value).ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+    if enum_name == "Option" || enum_name.rsplit('.').next() == Some("Option") {
+        return Ok(variant);
+    }
+    type_error(operation)
+}
+
+fn result_variant<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a str> {
+    let (enum_name, variant) =
+        enum_tag(value).ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+    if enum_name == "Result" || enum_name.rsplit('.').next() == Some("Result") {
+        return Ok(variant);
+    }
+    type_error(operation)
+}
+
+fn enum_tag(value: &Value) -> Option<(&str, &str)> {
+    match value {
+        Value::Enum {
+            enum_name, variant, ..
+        } => Some((enum_name.as_str(), variant.as_str())),
+        _ => None,
+    }
+}
+
+fn enum_payload(value: &Value, operation: &'static str) -> VmResult<Value> {
+    let Value::Enum { fields, .. } = value else {
+        return type_error(operation);
+    };
+    fields
+        .get("0")
+        .cloned()
+        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
 fn math_max(args: &[Value]) -> VmResult<Value> {
@@ -227,6 +308,40 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_option_result_standard_helper_natives() {
+        let source = r#"
+fn main() {
+    let some = option.some(4);
+    let none = option.none();
+    let ok = result.ok(9);
+    let err = result.err("missing");
+
+    if option.is_some(some)
+        && option.is_none(none)
+        && result.is_ok(ok)
+        && result.is_err(err)
+    {
+        return option.unwrap_or(some, 0)
+            + option.unwrap_or(none, 5)
+            + result.unwrap_or(ok, 0)
+            + result.unwrap_or(err, 7);
+    }
+    return 0;
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option/result helper stdlib source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option/result helper stdlib source should run");
+        assert_eq!(result, crate::Value::Int(25));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_result_standard_natives_with_try() {
         let source = r#"
 fn checked(value) {
@@ -257,6 +372,62 @@ fn main() {
                 enum_name: "Result".to_owned(),
                 variant: "Err".to_owned(),
                 fields: [("0".to_owned(), crate::Value::String("bad".to_owned()))].into()
+            }
+        );
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_option_result_standard_helper_natives() {
+        let source = r#"
+fn main() {
+    let some = option.some("quest");
+    let none = option.none();
+    let ok = result.ok("done");
+    let err = result.err("blocked");
+
+    return option.is_some(some)
+        && option.is_none(none)
+        && result.is_ok(ok)
+        && result.is_err(err)
+        && option.unwrap_or(some, "fallback") == "quest"
+        && option.unwrap_or(none, "fallback") == "fallback"
+        && result.unwrap_or(ok, "fallback") == "done"
+        && result.unwrap_or(err, "fallback") == "fallback";
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap option/result helper stdlib source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap option/result helper stdlib source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
+    fn option_result_helpers_reject_wrong_dynamic_shapes() {
+        let source = r#"
+fn main() {
+    return option.unwrap_or(result.ok(1), 0);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option/result helper type-error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run_program(&program, "main", &[])
+            .expect_err("option helper should reject Result values");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "option.unwrap_or"
             }
         );
     }

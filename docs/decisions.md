@@ -4524,3 +4524,27 @@ Consequences:
 - Scripts do not receive file handles, log sinks, or Rust references.
 - The demo can prove logging workflows without adding ambient side effects to
   the script VM.
+
+## 2026-05-25: Option And Result Helpers Stay Dynamic
+
+Status: Accepted
+
+Context:
+Vela already represents script-visible Option and Result values as dynamic enum
+values and lowers `?` propagation over those shapes. M13 still needs common
+helpers that make scripts readable without introducing `Option<T>` or
+`Result<T, E>` syntax.
+
+Decision:
+Add stdlib natives for `option.is_some`, `option.is_none`,
+`option.unwrap_or`, `result.is_ok`, `result.is_err`, and `result.unwrap_or`.
+They inspect only the existing dynamic enum name, variant, and tuple payload
+field `"0"` and report VM type errors for mismatched or malformed shapes.
+
+Consequences:
+- Script authors get common fallback and predicate helpers while the language
+  keeps its no-generics boundary.
+- The helpers interoperate with existing `?` propagation because they use the
+  same dynamic enum representation.
+- Heap-backed execution continues to work through native-call materialization;
+  no new heap object ownership model is introduced.
