@@ -207,6 +207,9 @@ mod tests {
                 .returns,
             TypeFact::option(TypeFact::Float)
         );
+        let remove_at = stdlib_method_fact(&array, "remove_at", None).expect("remove_at fact");
+        assert_eq!(remove_at.params, vec![TypeFact::Int]);
+        assert_eq!(remove_at.returns, TypeFact::option(TypeFact::Float));
         let join = stdlib_method_fact(&array, "join", None).expect("join fact");
         assert_eq!(join.params, vec![TypeFact::String]);
         assert_eq!(join.returns, TypeFact::String);

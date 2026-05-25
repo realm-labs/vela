@@ -72,6 +72,7 @@ pub(crate) fn call_method(
         "pop" => array_pop(receiver, args, heap.as_deref_mut()),
         "first" => array_methods::first(receiver, args, heap.as_deref()),
         "last" => array_methods::last(receiver, args, heap.as_deref()),
+        "remove_at" => array_methods::remove_at(receiver, args, heap.as_deref_mut()),
         "join" => array_methods::join(receiver, args, heap.as_deref()),
         "index_of" => array_methods::index_of(receiver, args, heap.as_deref()),
         "distinct" => array_methods::distinct(receiver, args, heap.as_deref()),

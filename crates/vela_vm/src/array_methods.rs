@@ -94,6 +94,37 @@ pub(crate) fn last(
     ))
 }
 
+pub(crate) fn remove_at(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("remove_at", args, 1)?;
+    let index = index_value(&args[0], "method remove_at")?;
+    match receiver {
+        Value::Array(values) => {
+            if index >= values.len() {
+                return Ok(option_value("None", None));
+            }
+            Ok(option_value("Some", Some(values.remove(index))))
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method remove_at");
+            };
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method remove_at");
+            };
+            if index >= values.len() {
+                return Ok(option_value("None", None));
+            }
+            let value = value_from_heap_slot(&values.remove(index));
+            Ok(option_value("Some", Some(value)))
+        }
+        _ => type_error("method remove_at"),
+    }
+}
+
 pub(crate) fn join(
     receiver: &Value,
     args: &[Value],
@@ -666,6 +697,61 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array endpoint methods should run");
         assert_eq!(result, Value::String("wyrm".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_remove_at_method() {
+        let source = r#"
+fn main() {
+    let values = [10, 20, 30];
+    let removed = values.remove_at(1);
+    let missing = values.remove_at(5);
+    if option.unwrap_or(removed, 0) == 20
+        && option.unwrap_or(missing, 99) == 99
+        && values.len() == 2
+        && values[0] == 10
+        && values[1] == 30
+    {
+        return values[1];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array remove_at method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("array remove_at method should run");
+        assert_eq!(result, Value::Int(30));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_remove_at_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily", "quest", "raid"];
+    let removed = tags.remove_at(0);
+    let missing = tags.remove_at(9);
+    if option.unwrap_or(removed, "missing") == "daily"
+        && option.unwrap_or(missing, "none") == "none"
+        && tags.join("|") == "quest|raid"
+    {
+        return tags[0];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array remove_at method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array remove_at method should run");
+        assert_eq!(result, Value::String("quest".to_owned()));
     }
 
     #[test]

@@ -1,8 +1,27 @@
 use crate::{TypeFact, stdlib::StdlibMethodFact};
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
-    "len", "is_empty", "push", "pop", "first", "last", "join", "contains", "index_of", "distinct",
-    "reverse", "slice", "map", "filter", "find", "any", "all", "count", "sum", "group_by",
+    "len",
+    "is_empty",
+    "push",
+    "pop",
+    "first",
+    "last",
+    "remove_at",
+    "join",
+    "contains",
+    "index_of",
+    "distinct",
+    "reverse",
+    "slice",
+    "map",
+    "filter",
+    "find",
+    "any",
+    "all",
+    "count",
+    "sum",
+    "group_by",
     "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
@@ -191,8 +210,12 @@ fn array_method_fact(
         "last" => Some(StdlibMethodFact::new(
             receiver,
             "last",
-            TypeFact::option(element),
+            TypeFact::option(element.clone()),
         )),
+        "remove_at" => Some(
+            StdlibMethodFact::new(receiver, "remove_at", TypeFact::option(element.clone()))
+                .with_params(vec![TypeFact::Int]),
+        ),
         "join" => Some(
             StdlibMethodFact::new(receiver, "join", TypeFact::String)
                 .with_params(vec![TypeFact::String]),
