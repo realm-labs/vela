@@ -55,6 +55,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "slice",
     "split",
     "parse_int",
+    "parse_float",
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -686,6 +687,11 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             "parse_int",
             TypeFact::option(TypeFact::Int),
         )),
+        "parse_float" => Some(StdlibMethodFact::new(
+            receiver,
+            "parse_float",
+            TypeFact::option(TypeFact::Float),
+        )),
         _ => None,
     }
 }
@@ -983,6 +989,11 @@ mod tests {
             stdlib_method_fact(&TypeFact::String, "parse_int", None).expect("parse_int fact");
         assert_eq!(parse_int.params, Vec::<TypeFact>::new());
         assert_eq!(parse_int.returns, TypeFact::option(TypeFact::Int));
+
+        let parse_float =
+            stdlib_method_fact(&TypeFact::String, "parse_float", None).expect("parse_float fact");
+        assert_eq!(parse_float.params, Vec::<TypeFact>::new());
+        assert_eq!(parse_float.returns, TypeFact::option(TypeFact::Float));
     }
 
     #[test]

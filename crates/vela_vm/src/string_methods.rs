@@ -217,6 +217,22 @@ pub(crate) fn parse_int(
     Ok(option_value(value.parse::<i64>().ok().map(Value::Int)))
 }
 
+pub(crate) fn parse_float(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("parse_float", args)?;
+    let value = string_value(receiver, heap, "method parse_float")?;
+    Ok(option_value(
+        value
+            .parse::<f64>()
+            .ok()
+            .filter(|value| value.is_finite())
+            .map(Value::Float),
+    ))
+}
+
 pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match value {
         Value::String(_) => true,
@@ -624,5 +640,53 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string parse_int should run");
         assert_eq!(result, Value::Int(12));
+    }
+
+    #[test]
+    fn string_parse_float_returns_finite_options() {
+        let source = r#"
+fn main() {
+    let rate = "1.25".parse_float();
+    let exponent = "2.5e1".parse_float();
+    let invalid = "rate:1.25".parse_float();
+    let infinite = "1e309".parse_float();
+    if option.unwrap_or(rate, 0.0) == 1.25
+        && option.unwrap_or(exponent, 0.0) == 25.0
+        && option.is_none(invalid)
+        && option.is_none(infinite)
+    {
+        return option.unwrap_or("-0.5".parse_float(), 1.0);
+    }
+    return 1.0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string parse_float source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("string parse_float should run");
+        assert_eq!(result, Value::Float(-0.5));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_parse_float() {
+        let source = r#"
+fn main() {
+    let raw = " 3.5 ";
+    let parsed = raw.trim().parse_float();
+    return math.floor(option.unwrap_or(parsed, -1.0));
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string parse_float source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string parse_float should run");
+        assert_eq!(result, Value::Int(3));
     }
 }

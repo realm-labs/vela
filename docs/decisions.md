@@ -5622,6 +5622,31 @@ Consequences:
   receivers still report VM type errors.
 - The helper does not add numeric generics or implicit string coercions.
 
+## 2026-05-25: String Parse Float Rejects Non-Finite Results
+
+Status: Accepted
+
+Context:
+Gameplay config and diagnostics often store decimal tuning values as text.
+Vela already rejects non-finite numeric values in deterministic math helpers,
+so string parsing should not introduce `NaN` or infinity into scripts through a
+different path.
+
+Decision:
+Add `string.parse_float()` as a no-argument script-value method. It parses the
+entire string as a script `float` (`f64`), returns `Option.Some(value)` only for
+finite parsed values, and returns `Option.None` for invalid, `NaN`, or
+infinite inputs. Scripts can call `trim()` before parsing when they want to
+accept surrounding whitespace explicitly.
+
+Consequences:
+- Gameplay scripts can parse decimal text with the existing dynamic Option
+  helpers and `?` propagation.
+- Non-finite numbers stay outside the normal script value path used by stdlib
+  math helpers.
+- The helper does not add float-specific generics or implicit numeric
+  coercions.
+
 ## 2026-05-25: Set Relationship Predicates Use Existing Scalar Keys
 
 Status: Accepted

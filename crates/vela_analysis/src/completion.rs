@@ -506,6 +506,11 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Int)),
         )));
+        assert!(string.contains(&CompletionItem::new(
+            "parse_float",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Float)),
+        )));
     }
 
     #[test]

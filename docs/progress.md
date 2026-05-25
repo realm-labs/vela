@@ -501,6 +501,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `string.parse_int()` for deterministic text-to-int parsing. It returns
   dynamic `Option.Some(int)` on valid `i64` input and `Option.None` for invalid
   or out-of-range strings in inline and managed-heap execution.
+- Added `string.parse_float()` for deterministic finite text-to-float parsing.
+  It returns dynamic `Option.Some(float)` for finite `f64` input and
+  `Option.None` for invalid or non-finite strings in inline and managed-heap
+  execution.
 - Added VM standard native registration for `math.max`, `math.min`,
   `math.clamp`, `math.floor`, `math.ceil`, and `math.abs`, with source-level
   inline and managed-heap execution coverage.
@@ -1350,6 +1354,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `string.parse_int()` for gameplay/config text parsing. It returns
   dynamic `Option.Some(int)` or `Option.None`, composes with
   `option.unwrap_or`, works in managed-heap execution, and exposes analysis
+  TypeFacts plus completion metadata.
+- Added `string.parse_float()` for gameplay/config numeric text parsing. It
+  accepts finite `f64` input, returns dynamic `Option.Some(float)` or
+  `Option.None`, works in managed-heap execution, and exposes analysis
   TypeFacts plus completion metadata.
 - Extended `map.any`, `map.all`, and `map.count` to support key-aware
   `(key, value)` callbacks while preserving one-argument value predicates.
