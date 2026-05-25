@@ -119,3 +119,32 @@ where
         .into_native_return()
     }
 }
+
+impl<F, A, B, C, D, E, G, R> TypedContextHostNativeFunction<(A, B, C, D, E, G)> for F
+where
+    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>, A, B, C, D, E, G) -> R
+        + Send
+        + Sync
+        + 'static,
+    A: FromScriptArg,
+    B: FromScriptArg,
+    C: FromScriptArg,
+    D: FromScriptArg,
+    E: FromScriptArg,
+    G: FromScriptArg,
+    R: IntoNativeReturn,
+{
+    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+        expect_arity(args, 6)?;
+        (self)(
+            ctx,
+            A::from_script_arg(&args[0])?,
+            B::from_script_arg(&args[1])?,
+            C::from_script_arg(&args[2])?,
+            D::from_script_arg(&args[3])?,
+            E::from_script_arg(&args[4])?,
+            G::from_script_arg(&args[5])?,
+        )
+        .into_native_return()
+    }
+}

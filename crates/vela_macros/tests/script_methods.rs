@@ -87,6 +87,33 @@ impl Player {
         Ok(total)
     }
 
+    /// Sums six copied method values through a callable native method.
+    #[allow(clippy::too_many_arguments)]
+    #[script_method(
+        id = 12,
+        effect = "write_host",
+        permission = "player.write",
+        reflect = true
+    )]
+    pub fn sum6_score(
+        receiver: &HostPath,
+        host: &mut HostExecution<'_>,
+        a: i64,
+        b: i64,
+        c: i64,
+        d: i64,
+        e: i64,
+        f: i64,
+    ) -> VmResult<i64> {
+        let total = a + b + c + d + e + f;
+        host.tx.set_path(
+            receiver.clone().field(FieldId::new(1)),
+            HostValue::Int(total),
+            None,
+        )?;
+        Ok(total)
+    }
+
     /// Previews a dynamic copied Result through a callable native method.
     #[script_method(id = 11, effect = "read_host", reflect = true)]
     pub fn checked_preview(
@@ -107,7 +134,7 @@ fn script_methods_generates_native_method_metadata() {
     let owner = TypeKey::new(TypeId::new(1001), "Player");
     let descs = Player::vela_native_method_descs();
 
-    assert_eq!(descs.len(), 5);
+    assert_eq!(descs.len(), 6);
     assert_eq!(
         descs[0],
         NativeMethodDesc::new(owner.clone(), HostMethodId::new(7), "grant_exp")
@@ -162,6 +189,24 @@ fn script_methods_generates_native_method_metadata() {
     );
     assert_eq!(
         descs[4],
+        NativeMethodDesc::new(owner.clone(), HostMethodId::new(12), "sum6_score")
+            .param("a", TypeHint::Int)
+            .param("b", TypeHint::Int)
+            .param("c", TypeHint::Int)
+            .param("d", TypeHint::Int)
+            .param("e", TypeHint::Int)
+            .param("f", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Sums six copied method values through a callable native method."),
+    );
+    assert_eq!(
+        descs[5],
         NativeMethodDesc::new(owner.clone(), HostMethodId::new(11), "checked_preview")
             .param("ok", TypeHint::Bool)
             .returns(TypeHint::Any)
@@ -270,9 +315,10 @@ fn script_methods_feed_stable_engine_registration_api() {
     let player_type = registry
         .type_by_name("Player")
         .expect("registered player type");
-    assert_eq!(player_type.methods.len(), 5);
+    assert_eq!(player_type.methods.len(), 6);
     assert_eq!(player_type.methods[0].name, "grant_exp");
     assert_eq!(player_type.methods[3].name, "sum_score");
+    assert_eq!(player_type.methods[4].name, "sum6_score");
 
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
@@ -297,11 +343,33 @@ fn script_methods_feed_stable_engine_registration_api() {
         ),
         Ok(Value::Int(15)),
     );
+
+    assert_eq!(
+        engine.call_native_method(
+            HostMethodId::new(12),
+            &HostPath::new(player),
+            &[
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+                Value::Int(4),
+                Value::Int(5),
+                Value::Int(6),
+            ],
+            &mut host,
+        ),
+        Ok(Value::Int(21)),
+    );
     assert_eq!(
         tx.patches()[0].path,
         HostPath::new(player).field(FieldId::new(1)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(15)));
+    assert_eq!(
+        tx.patches()[1].path,
+        HostPath::new(player).field(FieldId::new(1)),
+    );
+    assert_eq!(tx.patches()[1].op, PatchOp::Set(HostValue::Int(21)));
 }
 
 #[test]

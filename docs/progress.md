@@ -1305,6 +1305,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Extended M14 typed native signature conversion to five script arguments for
   pure, host, context-host, and native method callbacks, with Engine and macro
   tests proving copied conversions and PatchTx host effects.
+- Extended M14 typed native signature conversion to six script arguments for
+  pure, host, context-host, and native method callbacks. Engine and macro
+  tests now prove copied six-argument conversion and PatchTx host effects
+  without exposing Rust references to scripts.
 - Added `EngineBuilder::register_host_methods::<T>()` as the stable M14 host
   method registration path. `#[script_methods]` now implements the trait hook
   so embedders can register metadata-only methods and callable native method

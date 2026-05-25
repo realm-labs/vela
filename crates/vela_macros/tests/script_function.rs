@@ -112,6 +112,12 @@ fn sum5(a: i64, b: i64, c: i64, d: i64, e: i64) -> i64 {
     a + b + c + d + e
 }
 
+/// Sums six copied script integers.
+#[script_function(id = 50, name = "game.sum6", effect = "pure", reflect = true)]
+fn sum6(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64) -> i64 {
+    a + b + c + d + e + f
+}
+
 /// Returns a dynamic copied Result bonus.
 #[script_function(id = 49, name = "game.checked_bonus", effect = "pure", reflect = true)]
 fn checked_bonus(ok: bool) -> std::result::Result<i64, String> {
@@ -538,6 +544,34 @@ fn main() {
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(15)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_six_arg_native_with_engine() {
+    let engine = vela_register_native_function_sum6(Engine::builder())
+        .build()
+        .expect("engine should build from macro six-arg native function");
+    let root = unique_test_dir("script_function_six_arg_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main() {
+    return game.sum6(1, 2, 3, 4, 5, 6);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered six-arg native");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(21)),
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }

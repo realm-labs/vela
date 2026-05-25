@@ -5799,3 +5799,28 @@ Consequences:
   mutable references.
 - The demo registry setup remains isolated in `demo/registry.rs` rather than
   growing `demo.rs`.
+
+## 2026-05-25: Typed Native Arity Extends To Six Script Arguments
+
+Status: Accepted
+
+Context:
+The stable Engine API supports copied Rust callback signatures for pure,
+host, context-host, and native method callbacks. Five script arguments covered
+many gameplay helpers, but embedders still need a little more room for
+configuration-heavy game logic without dropping to raw `&[Value]` handling.
+
+Decision:
+Extend typed callback adapters to six script-visible arguments for pure
+natives, host natives, context-host natives, and native methods. Macro-generated
+registrations use the same typed Engine traits, so six-argument generated
+functions and methods are covered without a separate macro-only path.
+
+Consequences:
+- Rust hosts can keep using copied, typed callback signatures for broader
+  native helpers.
+- Host-touching callbacks still receive only `HostExecution`,
+  `NativeCallContext`, `HostPath`, `HostRef`, and copied values; scripts do not
+  receive Rust mutable references.
+- The implementation stays split across the existing typed adapter modules
+  rather than centralizing unrelated callback shapes.
