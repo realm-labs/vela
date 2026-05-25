@@ -20,7 +20,7 @@ use crate::{
     CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID, CallOptions, EffectSet, Engine, EngineErrorKind,
     EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext,
     NativeFunctionDesc, NativeFunctionId, NativeMethodDesc, PermissionSet, Runtime, ScriptArgsExt,
-    ScriptHostMethodMetadata, ScriptReflectSchema, TypeHint,
+    ScriptHostMethodMetadata, ScriptReflectSchema, TypeHint, context_host_type_desc,
 };
 use crate::{FromScriptArg, IntoScriptArg};
 
@@ -2480,6 +2480,8 @@ fn engine_context_host_schema_registers_metadata() {
         .with_context_host_schema()
         .build()
         .expect("engine should build");
+    let direct_desc = context_host_type_desc();
+    assert_eq!(direct_desc.key.id, CONTEXT_TYPE_ID);
 
     let registry = engine.registry();
     let context = registry

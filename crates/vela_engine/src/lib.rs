@@ -28,7 +28,7 @@ pub use clock::{CONTEXT_TIME_PERMISSION, CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_
 pub use context::NativeCallContext;
 pub use context_schema::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
-    CONTEXT_TICK_FIELD_ID, CONTEXT_TYPE_ID,
+    CONTEXT_TICK_FIELD_ID, CONTEXT_TYPE_ID, context_host_type_desc,
 };
 pub use engine::Engine;
 pub use error::{EngineError, EngineErrorKind, EngineResult};

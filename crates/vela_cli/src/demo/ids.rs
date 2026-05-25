@@ -1,12 +1,14 @@
 use vela_common::{FieldId, HostMethodId};
+use vela_engine::{
+    CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
+    CONTEXT_TICK_FIELD_ID,
+};
 
 pub(crate) const PLAYER_TYPE: u32 = 1;
-pub(crate) const CTX_TYPE: u32 = 2;
+pub(crate) const CTX_TYPE: u32 = CONTEXT_HOST_TYPE_ID.get();
 pub(crate) const MONSTER_TYPE: u32 = 3;
 
 const LEVEL_FIELD: u32 = 2;
-const NOW_FIELD: u32 = 3;
-const TICK_FIELD: u32 = 4;
 const EXP_FIELD: u32 = 6;
 const ID_FIELD: u32 = 7;
 const REWARD_COUNT_FIELD: u32 = 8;
@@ -16,9 +18,7 @@ const QUEST_DONE_FIELD: u32 = 12;
 const INVENTORY_FIELD: u32 = 14;
 const ITEMS_FIELD: u32 = 15;
 const COUNT_FIELD: u32 = 16;
-const EMIT_METHOD: u32 = 5;
 const ADD_REWARD_METHOD: u32 = 9;
-const LOG_METHOD: u32 = 13;
 
 #[derive(Clone, Copy)]
 pub(crate) struct DemoIds {
@@ -43,8 +43,8 @@ impl DemoIds {
     pub(crate) fn new() -> Self {
         Self {
             level_field: FieldId::new(LEVEL_FIELD),
-            now_field: FieldId::new(NOW_FIELD),
-            tick_field: FieldId::new(TICK_FIELD),
+            now_field: CONTEXT_NOW_FIELD_ID,
+            tick_field: CONTEXT_TICK_FIELD_ID,
             exp_field: FieldId::new(EXP_FIELD),
             id_field: FieldId::new(ID_FIELD),
             reward_count_field: FieldId::new(REWARD_COUNT_FIELD),
@@ -54,9 +54,9 @@ impl DemoIds {
             inventory_field: FieldId::new(INVENTORY_FIELD),
             items_field: FieldId::new(ITEMS_FIELD),
             count_field: FieldId::new(COUNT_FIELD),
-            emit_method: HostMethodId::new(EMIT_METHOD),
+            emit_method: CONTEXT_EMIT_METHOD_ID,
             add_reward_method: HostMethodId::new(ADD_REWARD_METHOD),
-            log_method: HostMethodId::new(LOG_METHOD),
+            log_method: CONTEXT_LOG_METHOD_ID,
         }
     }
 }

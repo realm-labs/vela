@@ -1,11 +1,11 @@
 use vela_common::{HostTypeId, TypeId};
-use vela_engine::{Engine, EngineResult};
+use vela_engine::{Engine, EngineResult, context_host_type_desc};
 use vela_reflect::{
     FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPolicy, SchemaHash, TraitDesc,
     TypeDesc, TypeKey, TypeRegistry,
 };
 
-use super::ids::{CTX_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
+use super::ids::{DemoIds, MONSTER_TYPE, PLAYER_TYPE};
 
 pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
     let registry = demo_type_registry(ids);
@@ -38,23 +38,7 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
             )
             .trait_impl(TraitDesc::new("Damageable")),
     );
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(101), "Context"))
-            .schema_hash(SchemaHash::new(0x1000_0000_0000_0002))
-            .host_type(HostTypeId::new(CTX_TYPE))
-            .field(FieldDesc::new(ids.now_field, "now"))
-            .field(FieldDesc::new(ids.tick_field, "tick"))
-            .method(
-                MethodDesc::new(ids.emit_method, "emit")
-                    .effects(MethodEffectSet::event_emit())
-                    .access(MethodAccess::new().reflect_callable(true)),
-            )
-            .method(
-                MethodDesc::new(ids.log_method, "log")
-                    .effects(MethodEffectSet::event_emit())
-                    .access(MethodAccess::new().reflect_callable(true)),
-            ),
-    );
+    registry.register(context_host_type_desc());
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(102), "Monster"))
             .schema_hash(SchemaHash::new(0x1000_0000_0000_0003))

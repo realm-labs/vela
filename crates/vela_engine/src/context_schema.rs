@@ -11,7 +11,8 @@ pub const CONTEXT_TICK_FIELD_ID: FieldId = FieldId::new(0xff00_1003);
 pub const CONTEXT_EMIT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_1004);
 pub const CONTEXT_LOG_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_1005);
 
-pub(crate) fn context_host_type_desc() -> TypeDesc {
+#[must_use]
+pub fn context_host_type_desc() -> TypeDesc {
     TypeDesc::new(TypeKey::new(CONTEXT_TYPE_ID, "Context"))
         .schema_hash(SchemaHash::new(0xff00_1000_0000_0001))
         .host_type(CONTEXT_HOST_TYPE_ID)

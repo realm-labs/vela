@@ -1528,6 +1528,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `ctx.log`; compiler options lower those workflows to HostRef/HostPath
   operations and event/log calls remain PatchTx patches applied at host safe
   points.
+- Reused the standard Engine `Context` schema in the game-server demo. The
+  demo now uses the exported context `TypeDesc`, field IDs, host type ID, and
+  method IDs for context time, event, and log workflows instead of maintaining
+  parallel local context metadata.
 
 ## Next
 
