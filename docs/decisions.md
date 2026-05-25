@@ -6655,3 +6655,29 @@ Consequences:
   schema or monkey patch reflected structure at runtime.
 - The parser is shared between function and method macros, keeping metadata
   syntax consistent across M14 embedding paths.
+
+## 2026-05-26: Host Schema Derives Emit Static Descriptor Attrs
+
+Status: Accepted
+
+Context:
+Manual host schema registration can attach static attributes to `TypeDesc` and
+`FieldDesc` metadata, and reflection exposes those tags under controlled read
+permissions. Derived `ScriptHost` and `ScriptReflect` schemas only exposed
+fixed metadata such as docs, permissions, type hints, and `rust_name`, leaving
+the low-boilerplate host-schema path less expressive than explicit
+registration.
+
+Decision:
+Allow `#[script(...)]` on host structs and script-exposed fields to accept
+repeated `attr = "key=value"` entries. `ScriptHost` and `ScriptReflect` emit
+those values as static `TypeDesc` and `FieldDesc` attrs and include them in the
+derived schema hash input.
+
+Consequences:
+- Derived host schemas can carry the same controlled reflection tags as manual
+  Engine schema registration.
+- Attribute metadata remains static; scripts can inspect it through reflection
+  but cannot mutate type or field structure at runtime.
+- Schema hashes change when derived attr metadata changes, preserving hot
+  reload ABI sensitivity for macro-generated host schemas.

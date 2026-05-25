@@ -1616,6 +1616,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `option_result_methods` implementation, and analysis/completion facts plus
   branch narrowing understand the method predicate forms without adding script
   generics.
+- Extended M14 host schema derives with static descriptor attrs. `ScriptHost`
+  and `ScriptReflect` now accept repeated `attr = "key=value"` metadata on
+  host structs and script-exposed fields, emit those attrs into generated
+  `TypeDesc`/`FieldDesc` values, and include them in the derived schema hash
+  without allowing runtime schema mutation.
 
 ## Next
 

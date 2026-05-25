@@ -11,6 +11,7 @@ pub(crate) struct ScriptAttrs {
     pub(crate) host_id: Option<u32>,
     pub(crate) module: Option<String>,
     pub(crate) docs: Option<String>,
+    pub(crate) attrs: Vec<(String, String)>,
     pub(crate) get: bool,
     pub(crate) set: bool,
     pub(crate) type_hint: Option<String>,
@@ -65,6 +66,10 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
                 parsed.module = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "docs") {
                 parsed.docs = Some(value.parse::<LitStr>()?.value());
+            } else if path_name(&meta.path, "attr") {
+                parsed
+                    .attrs
+                    .push(parse_key_value_attr(value.parse::<LitStr>()?, "script")?);
             } else if path_name(&meta.path, "hint") || path_name(&meta.path, "type") {
                 parsed.type_hint = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "permission") {

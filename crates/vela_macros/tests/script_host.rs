@@ -9,10 +9,18 @@ use vela_reflect::{FieldAccess, FieldDesc, TypeDesc, TypeKey, TypeKind};
     name = "Player",
     id = 1001,
     module = "game.player",
-    docs = "Player host schema."
+    docs = "Player host schema.",
+    attr = "domain=gameplay"
 )]
 struct Player {
-    #[script(get, set, id = 1, hint = "int", docs = "Current level.")]
+    #[script(
+        get,
+        set,
+        id = 1,
+        hint = "int",
+        docs = "Current level.",
+        attr = "unit=level"
+    )]
     level: u32,
     #[script(get, id = 2, name = "display_name", permission = "player.profile")]
     name: String,
@@ -48,6 +56,7 @@ fn script_host_derive_generates_type_metadata() {
         .schema_hash(desc.schema_hash.expect("schema hash should be generated"))
         .host_type(HostTypeId::new(1001))
         .attr("module", "game.player")
+        .attr("domain", "gameplay")
         .docs("Player host schema.")
         .field(
             FieldDesc::new(FieldId::new(1), "level")
@@ -59,6 +68,7 @@ fn script_host_derive_generates_type_metadata() {
                         .reflect_writable(true),
                 )
                 .attr("rust_name", "level")
+                .attr("unit", "level")
                 .type_hint("int")
                 .docs("Current level."),
         )
@@ -80,6 +90,8 @@ fn script_host_derive_generates_type_metadata() {
     assert_eq!(desc.kind, TypeKind::Host);
     assert_eq!(desc.host_type_id, Some(HostTypeId::new(1001)));
     assert_eq!(desc.attrs.get("module"), Some("game.player"));
+    assert_eq!(desc.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(desc.fields[0].attrs.get("unit"), Some("level"));
     assert_eq!(desc.fields.len(), 2);
     assert_eq!(
         desc.fields[1].access.required_permissions(),

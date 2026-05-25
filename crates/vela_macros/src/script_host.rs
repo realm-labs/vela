@@ -50,6 +50,7 @@ struct FieldMeta {
     writable: bool,
     type_hint: Option<String>,
     docs: Option<String>,
+    attrs: Vec<(String, String)>,
     permissions: Vec<String>,
 }
 
@@ -76,14 +77,20 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let type_name = attrs.name.unwrap_or_else(|| input.ident.to_string());
     let module_name = attrs.module;
     let docs = attrs.docs;
+    let type_attrs = attrs.attrs;
     let fields = collect_fields(&input)?;
-    let schema_hash = schema_hash(&type_name, module_name.as_deref(), &fields);
+    let schema_hash = schema_hash(&type_name, module_name.as_deref(), &type_attrs, &fields);
 
     let ident = input.ident;
     let method = generated_method.ident();
     let trait_impl = generated_method.trait_impl_tokens(&ident, &method);
     let module_tokens = module_name.map(|module| quote! { .attr("module", #module) });
     let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
+    let type_attr_tokens = type_attrs.iter().map(|(name, value)| {
+        quote! {
+            desc = desc.attr(#name, #value);
+        }
+    });
     let field_tokens = fields.iter().map(field_tokens);
     let field_helper_tokens = match generated_method {
         GeneratedMethod::Host => {
@@ -108,6 +115,7 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
                 .host_type(::vela_common::HostTypeId::new(#host_id))
                 #module_tokens
                 #docs_tokens;
+                #(#type_attr_tokens)*
                 #(
                     desc = desc.field(#field_tokens);
                 )*
@@ -167,6 +175,7 @@ fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
             writable: attrs.set,
             type_hint: attrs.type_hint.or_else(|| inferred_type_hint(&field.ty)),
             docs: attrs.docs,
+            attrs: attrs.attrs,
             permissions: attrs.permissions,
         });
     }
@@ -189,6 +198,11 @@ fn field_tokens(field: &FieldMeta) -> TokenStream {
         .as_ref()
         .map(|hint| quote! { .type_hint(#hint) });
     let docs_tokens = field.docs.as_ref().map(|docs| quote! { .docs(#docs) });
+    let attr_tokens = field.attrs.iter().map(|(name, value)| {
+        quote! {
+            .attr(#name, #value)
+        }
+    });
 
     quote! {
         ::vela_reflect::FieldDesc::new(::vela_common::FieldId::new(#id), #script_name)
@@ -201,6 +215,7 @@ fn field_tokens(field: &FieldMeta) -> TokenStream {
                     #(#permission_tokens)*
             )
             .attr("rust_name", #rust_name)
+            #(#attr_tokens)*
             #hint_tokens
             #docs_tokens
     }
@@ -230,11 +245,20 @@ fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
     }
 }
 
-fn schema_hash(type_name: &str, module_name: Option<&str>, fields: &[FieldMeta]) -> u64 {
+fn schema_hash(
+    type_name: &str,
+    module_name: Option<&str>,
+    attrs: &[(String, String)],
+    fields: &[FieldMeta],
+) -> u64 {
     let mut hasher = StableHasher::new();
     hasher.write_str(type_name);
     if let Some(module_name) = module_name {
         hasher.write_str(module_name);
+    }
+    for (name, value) in attrs {
+        hasher.write_str(name);
+        hasher.write_str(value);
     }
     let mut fields = fields.iter().collect::<Vec<_>>();
     fields.sort_by_key(|field| (field.id, field.script_name.as_str()));
@@ -244,6 +268,10 @@ fn schema_hash(type_name: &str, module_name: Option<&str>, fields: &[FieldMeta])
         hasher.write_bool(field.readable);
         hasher.write_bool(field.writable);
         hasher.write_str(field.type_hint.as_deref().unwrap_or(""));
+        for (name, value) in &field.attrs {
+            hasher.write_str(name);
+            hasher.write_str(value);
+        }
         for permission in &field.permissions {
             hasher.write_str(permission);
         }
@@ -309,6 +337,27 @@ mod tests {
         .expect_err("missing type ID should fail macro expansion");
 
         assert!(error.to_string().contains("requires #[script(id = N)]"));
+    }
+
+    #[test]
+    fn rejects_malformed_static_attrs() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100, attr = "gameplay")]
+                struct Player {
+                    #[script(get, id = 1)]
+                    level: u32,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("malformed attrs should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script attr metadata must use `key=value`")
+        );
     }
 
     #[test]
