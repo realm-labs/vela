@@ -33,6 +33,7 @@ const SET_METHOD_NAMES: &[&str] = &[
     "union",
     "intersection",
     "difference",
+    "symmetric_difference",
     "is_subset",
     "is_superset",
     "is_disjoint",
@@ -370,13 +371,14 @@ fn set_method_fact(element: TypeFact, method: &str) -> Option<StdlibMethodFact> 
             "values",
             TypeFact::array(element.clone()),
         )),
-        "union" | "intersection" | "difference" => Some(
+        "union" | "intersection" | "difference" | "symmetric_difference" => Some(
             StdlibMethodFact::new(
                 receiver,
                 match method {
                     "union" => "union",
                     "intersection" => "intersection",
-                    _ => "difference",
+                    "difference" => "difference",
+                    _ => "symmetric_difference",
                 },
                 TypeFact::set(element.clone()),
             )

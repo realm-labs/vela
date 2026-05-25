@@ -1648,6 +1648,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   dynamic Option/Result values, with inline and managed-heap execution,
   non-nested type errors, analysis facts, and completions covered without
   adding script-language generics.
+- Added M13 `set.symmetric_difference(other)` as a deterministic, non-mutating
+  gameplay tag-delta helper. It preserves receiver-only values before
+  argument-only values, works in inline and managed-heap execution, rejects
+  non-set operands, and is exposed through analysis facts and completions.
 
 ## Next
 

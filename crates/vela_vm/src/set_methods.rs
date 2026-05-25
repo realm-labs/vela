@@ -178,6 +178,31 @@ pub(crate) fn difference(
     Ok(Value::Set(result))
 }
 
+pub(crate) fn symmetric_difference(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("symmetric_difference", args, 1)?;
+    let left_values = set_values(receiver, heap, "method symmetric_difference")?;
+    let right_values = set_values(&args[0], heap, "method symmetric_difference")?;
+    let left_keys = set_keys(&left_values, heap, "method symmetric_difference")?;
+    let right_keys = set_keys(&right_values, heap, "method symmetric_difference")?;
+
+    let mut result = Vec::new();
+    for (value, key) in left_values.into_iter().zip(left_keys.iter()) {
+        if !right_keys.contains(key) {
+            push_unique(&mut result, value, heap, "method symmetric_difference")?;
+        }
+    }
+    for (value, key) in right_values.into_iter().zip(right_keys.iter()) {
+        if !left_keys.contains(key) {
+            push_unique(&mut result, value, heap, "method symmetric_difference")?;
+        }
+    }
+    Ok(Value::Set(result))
+}
+
 pub(crate) fn is_subset(
     receiver: &Value,
     args: &[Value],
@@ -367,10 +392,12 @@ fn main() {
     let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
     let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
     let missing = player.difference(event).values().join(",");
+    let changed = player.symmetric_difference(event).values().sort_by(|tag| tag).join(",");
     let required = set.from_array(["daily", "quest"]);
     if unioned == "bonus,daily,quest,raid"
         && shared == "daily,quest"
         && missing == "raid"
+        && changed == "bonus,raid"
         && required.is_subset(player)
         && player.is_superset(required)
         && player.is_disjoint(set.from_array(["bonus"]))
@@ -399,6 +426,7 @@ fn main() {
     let unioned = base.union(bonus);
     let shared = base.intersection(bonus);
     let only_base = base.difference(bonus);
+    let changed = base.symmetric_difference(bonus);
     let required = set.from_array([1, 3]);
     let excluded = set.from_array([9]);
     if !required.is_subset(base) || !base.is_superset(required) || !base.is_disjoint(excluded) {
@@ -406,7 +434,8 @@ fn main() {
     }
     return unioned.values().sum()
         + shared.values().sum()
-        + only_base.values().sum();
+        + only_base.values().sum()
+        + changed.values().sum();
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -418,7 +447,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set combination methods should run");
-        assert_eq!(result, Value::Int(26));
+        assert_eq!(result, Value::Int(34));
     }
 
     #[test]
@@ -431,12 +460,14 @@ fn main() {
     let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
     let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
     let missing = player.difference(required).values().sort_by(|tag| tag).join(",");
+    let changed = player.symmetric_difference(event).values().sort_by(|tag| tag).join(",");
     if required.is_subset(player)
         && player.is_superset(required)
         && player.is_disjoint(set.from_array(["bonus"]))
         && unioned == "bonus,daily,quest,raid"
         && shared == "quest"
         && missing == "raid"
+        && changed == "bonus,daily,raid"
     {
         return unioned;
     }
@@ -475,6 +506,25 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "method union"
+            }
+        );
+
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["quest"]);
+    return tags.symmetric_difference(["quest"]);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set symmetric_difference type error source should compile");
+
+        let error = vm
+            .run(&code)
+            .expect_err("set symmetric_difference should reject non-set args");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method symmetric_difference"
             }
         );
 

@@ -6822,3 +6822,24 @@ Consequences:
   shape is nested or dynamic enough to be plausible.
 - The helpers return copied script values and do not add script-language
   generics, host mutation, or runtime schema mutation.
+
+## 2026-05-26: Set Symmetric Difference Uses Receiver Order
+
+Status: Accepted
+
+Context:
+Gameplay tag and reward-delta logic often needs values that changed between
+two sets. Scripts could express this through `union`, `intersection`, and
+`difference`, but doing so was verbose and duplicated set traversal.
+
+Decision:
+Add `set.symmetric_difference(other)` as a non-mutating script-value method.
+The result preserves deterministic order by yielding receiver-only values
+first, followed by argument-only values, and it keeps the existing scalar set
+element restrictions.
+
+Consequences:
+- Scripts can express tag deltas and eligibility changes directly.
+- The method remains deterministic and returns copied script set values.
+- Analysis and completion facts expose the helper without adding script
+  generics or changing set storage.

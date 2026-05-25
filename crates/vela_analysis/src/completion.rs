@@ -453,6 +453,14 @@ mod tests {
             ),
         )));
         assert!(set.contains(&CompletionItem::new(
+            "symmetric_difference",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::set(TypeFact::String)],
+                TypeFact::set(TypeFact::String),
+            ),
+        )));
+        assert!(set.contains(&CompletionItem::new(
             "is_subset",
             CompletionKind::Method,
             TypeFact::function(vec![TypeFact::set(TypeFact::String)], TypeFact::Bool),

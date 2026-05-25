@@ -244,6 +244,16 @@ mod tests {
         let difference = stdlib_method_fact(&set, "difference", None).expect("difference fact");
         assert_eq!(difference.params, vec![TypeFact::set(TypeFact::String)]);
         assert_eq!(difference.returns, TypeFact::set(TypeFact::String));
+        let symmetric_difference =
+            stdlib_method_fact(&set, "symmetric_difference", None).expect("symmetric fact");
+        assert_eq!(
+            symmetric_difference.params,
+            vec![TypeFact::set(TypeFact::String)]
+        );
+        assert_eq!(
+            symmetric_difference.returns,
+            TypeFact::set(TypeFact::String)
+        );
         let subset = stdlib_method_fact(&set, "is_subset", None).expect("is_subset fact");
         assert_eq!(subset.params, vec![TypeFact::set(TypeFact::String)]);
         assert_eq!(subset.returns, TypeFact::Bool);
