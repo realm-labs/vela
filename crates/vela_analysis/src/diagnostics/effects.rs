@@ -1,7 +1,9 @@
 use vela_common::Diagnostic;
 use vela_syntax::{ElseBranch, Expr, ExprKind, Stmt, StmtKind};
 
-use crate::{ExprFactScope, RegistryEffectFact, RegistryFacts, TypeFact, type_fact_from_expr};
+use crate::{
+    ExprFactScope, RegistryEffectFact, RegistryFacts, TypeFact, type_fact_from_expr_with_registry,
+};
 
 #[cfg(test)]
 mod tests;
@@ -85,31 +87,13 @@ fn collect_effect_diagnostics(
                 );
             }
             if let Some(else_branch) = &if_expr.else_branch {
-                match else_branch {
-                    ElseBranch::If(if_expr) => {
-                        collect_effect_diagnostics(
-                            &Expr {
-                                kind: ExprKind::If(if_expr.clone()),
-                                span: if_expr.condition.span,
-                            },
-                            &else_scope,
-                            facts,
-                            allowed,
-                            diagnostics,
-                        );
-                    }
-                    ElseBranch::Block(block) => {
-                        for statement in &block.statements {
-                            collect_statement_effect_diagnostics(
-                                statement,
-                                &else_scope,
-                                facts,
-                                allowed,
-                                diagnostics,
-                            );
-                        }
-                    }
-                }
+                collect_else_effect_diagnostics(
+                    else_branch,
+                    &else_scope,
+                    facts,
+                    allowed,
+                    diagnostics,
+                );
             }
         }
         ExprKind::Match(match_expr) => {
@@ -129,6 +113,32 @@ fn collect_effect_diagnostics(
             }
         }
         ExprKind::Literal(_) | ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Error => {}
+    }
+}
+
+fn collect_else_effect_diagnostics(
+    else_branch: &ElseBranch,
+    scope: &ExprFactScope,
+    facts: &RegistryFacts,
+    allowed: &RegistryEffectFact,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    match else_branch {
+        ElseBranch::If(if_expr) => collect_effect_diagnostics(
+            &Expr {
+                kind: ExprKind::If(if_expr.clone()),
+                span: if_expr.condition.span,
+            },
+            scope,
+            facts,
+            allowed,
+            diagnostics,
+        ),
+        ElseBranch::Block(block) => {
+            for statement in &block.statements {
+                collect_statement_effect_diagnostics(statement, scope, facts, allowed, diagnostics);
+            }
+        }
     }
 }
 
@@ -173,28 +183,29 @@ fn diagnose_call_effect(
     allowed: &RegistryEffectFact,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
-    let Some((label, effects)) = call_effect(callee, scope, facts) else {
+    let Some((label, effect)) = call_effect(callee, scope, facts) else {
         return;
     };
-    let denied = effects.denied_by(allowed);
+    let denied = effect.denied_by(allowed);
     if denied.is_empty() {
         return;
     }
 
     diagnostics.push(
         Diagnostic::error(format!(
-            "call to `{label}` performs disallowed effects: {}",
+            "`{label}` uses denied effect{}: {}",
+            if denied.len() == 1 { "" } else { "s" },
             denied.join(", ")
         ))
         .with_code("analysis::disallowed_effect")
         .with_span(expr.span)
         .with_label(
             expr.span,
-            format!("call effects: {}", effects.display_name()),
+            format!("allowed effects: {}", allowed.display_name()),
         )
         .with_label(
             expr.span,
-            format!("allowed effects: {}", allowed.display_name()),
+            format!("call effects: {}", effect.display_name()),
         ),
     );
 }
@@ -205,35 +216,34 @@ fn call_effect<'a>(
     facts: &'a RegistryFacts,
 ) -> Option<(String, &'a RegistryEffectFact)> {
     match &callee.kind {
-        ExprKind::Path(path) => {
-            let full_name = path.join(".");
-            if let Some(effects) = facts.function_effect_fact(&full_name) {
-                return Some((full_name, effects));
-            }
-            let (method, receiver_path) = path.split_last()?;
-            if receiver_path.is_empty() {
-                return None;
-            }
-            let receiver = type_fact_from_expr(
-                &Expr {
-                    kind: ExprKind::Path(receiver_path.to_vec()),
-                    span: callee.span,
-                },
-                scope,
-            );
-            receiver_method_effect(&receiver, method, facts)
-                .map(|effects| (format!("{}.{}", receiver.display_name(), method), effects))
-        }
+        ExprKind::Path(path) => path_call_effect(path, scope, facts),
         ExprKind::Field { base, name } => {
-            let receiver = type_fact_from_expr(base, scope);
-            receiver_method_effect(&receiver, name, facts)
-                .map(|effects| (format!("{}.{}", receiver.display_name(), name), effects))
+            let receiver = type_fact_from_expr_with_registry(base, scope, facts);
+            receiver_effect(&receiver, name, facts).map(|effect| (name.clone(), effect))
         }
         _ => None,
     }
 }
 
-fn receiver_method_effect<'a>(
+fn path_call_effect<'a>(
+    path: &[String],
+    scope: &ExprFactScope,
+    facts: &'a RegistryFacts,
+) -> Option<(String, &'a RegistryEffectFact)> {
+    let function_name = path.join(".");
+    if let Some(effect) = facts.function_effect_fact(&function_name) {
+        return Some((function_name, effect));
+    }
+
+    let (method, receiver_path) = path.split_last()?;
+    if receiver_path.is_empty() {
+        return None;
+    }
+    let receiver = scope.path_fact(receiver_path)?;
+    receiver_effect(receiver, method, facts).map(|effect| (path.join("."), effect))
+}
+
+fn receiver_effect<'a>(
     receiver: &TypeFact,
     method: &str,
     facts: &'a RegistryFacts,
@@ -242,6 +252,10 @@ fn receiver_method_effect<'a>(
         TypeFact::Host { name } | TypeFact::Record { name } => {
             facts.method_effect_fact(name, method)
         }
+        TypeFact::Enum {
+            name,
+            variant: Some(variant),
+        } => facts.method_effect_fact(&format!("{name}.{variant}"), method),
         TypeFact::Trait { name } => facts.trait_method_effect_fact(name, method),
         _ => None,
     }
