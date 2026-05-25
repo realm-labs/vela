@@ -1258,6 +1258,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   and `usize` anywhere in script-visible parameters or returns, including
   wrapper types, matching the Engine typed conversion boundary before
   generated registration code reaches Rust type-checking.
+- Added M14 `ScriptHost` field helper generation. Host schema derives now
+  generate per-field stable `FieldId` accessors and `HostPath` constructors
+  for exposed fields through the stable Engine API, giving embedders a safe
+  path-building surface without exposing Rust references or bypassing
+  `PatchTx`.
 
 ## Next
 

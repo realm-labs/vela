@@ -79,6 +79,13 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let module_tokens = module_name.map(|module| quote! { .attr("module", #module) });
     let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
     let field_tokens = fields.iter().map(field_tokens);
+    let field_helper_tokens = match generated_method {
+        GeneratedMethod::Host => {
+            let helpers = fields.iter().map(field_helper_tokens);
+            quote! { #(#helpers)* }
+        }
+        GeneratedMethod::Reflect => quote! {},
+    };
 
     Ok(quote! {
         impl #ident {
@@ -100,6 +107,8 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
                 )*
                 desc
             }
+
+            #field_helper_tokens
         }
 
         #trait_impl
@@ -183,6 +192,24 @@ fn field_tokens(field: &FieldMeta) -> TokenStream {
             .attr("rust_name", #rust_name)
             #hint_tokens
             #docs_tokens
+    }
+}
+
+fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
+    let id = field.id;
+    let field_id_ident = format_ident!("vela_field_id_{}", field.rust_name);
+    let field_path_ident = format_ident!("vela_field_path_{}", field.rust_name);
+
+    quote! {
+        #[must_use]
+        pub const fn #field_id_ident() -> ::vela_engine::FieldId {
+            ::vela_engine::FieldId::new(#id)
+        }
+
+        #[must_use]
+        pub fn #field_path_ident(host_ref: ::vela_engine::HostRef) -> ::vela_engine::HostPath {
+            ::vela_engine::HostPath::new(host_ref).field(Self::#field_id_ident())
+        }
     }
 }
 

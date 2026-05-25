@@ -5271,3 +5271,29 @@ Consequences:
 - Macro metadata stays aligned with the VM `i64` script integer boundary.
 - The language still has one dynamic `int` type and does not add numeric
   generics or unsigned script integer types.
+
+## 2026-05-25: ScriptHost Derives Generate HostPath Helpers
+
+Status: Accepted
+
+Context:
+M14 requires host derive macros to reduce embedding boilerplate and generate
+field accessors. `ScriptHost` already emitted stable field metadata, but host
+native code still had to repeat `FieldId` values manually when constructing
+`HostPath` values for `PatchTx` operations. That duplication made it easier for
+descriptor metadata and native patch paths to drift.
+
+Decision:
+`ScriptHost` derives now generate per-field `vela_field_id_<field>()` and
+`vela_field_path_<field>(HostRef)` helpers for exposed fields. The helpers
+return stable `FieldId` and `HostPath` values through `vela_engine` re-exports.
+`ScriptReflect` does not generate these helpers, avoiding duplicate inherent
+methods when both derives are used on the same type.
+
+Consequences:
+- Host code can build patch paths from macro-generated schema IDs instead of
+  hand-copying field constants.
+- The helpers remain within the HostRef/HostPath/PatchTx model and do not
+  expose `&mut` access to Rust host state.
+- The stable Engine API now re-exports `FieldId` and `HostPath` alongside
+  existing host embedding types.

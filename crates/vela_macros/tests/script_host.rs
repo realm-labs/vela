@@ -1,4 +1,5 @@
-use vela_common::{FieldId, HostTypeId, TypeId};
+use vela_common::{FieldId, HostObjectId, HostTypeId, TypeId};
+use vela_engine::{HostPath, HostRef};
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::{FieldAccess, FieldDesc, TypeDesc, TypeKey, TypeKind};
 
@@ -67,6 +68,22 @@ fn script_host_derive_generates_type_metadata() {
     assert_eq!(
         <Player as vela_engine::ScriptHostSchema>::script_host_type_desc(),
         desc,
+    );
+}
+
+#[test]
+fn script_host_derive_generates_field_helpers() {
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 3);
+
+    assert_eq!(Player::vela_field_id_level(), FieldId::new(1));
+    assert_eq!(Player::vela_field_id_name(), FieldId::new(2));
+    assert_eq!(
+        Player::vela_field_path_level(player),
+        HostPath::new(player).field(FieldId::new(1)),
+    );
+    assert_eq!(
+        Player::vela_field_path_name(player),
+        HostPath::new(player).field(FieldId::new(2)),
     );
 }
 

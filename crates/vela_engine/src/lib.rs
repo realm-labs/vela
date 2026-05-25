@@ -40,8 +40,8 @@ pub use typed::{
     IntoNativeReturn, TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
     TypedNativeMethodFunction,
 };
-pub use vela_common::{HostObjectId, HostTypeId};
-pub use vela_host::HostRef;
+pub use vela_common::{FieldId, HostObjectId, HostTypeId};
+pub use vela_host::{HostPath, HostRef};
 pub use vela_hot_reload::HotReloadPolicy;
 pub use vela_reflect::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 pub use vela_vm::Value;
