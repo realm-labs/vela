@@ -1114,6 +1114,14 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   module and parent namespace completion items as copied `TypeFact::Module`
   values derived from module paths in the `ModuleGraph`, keeping module
   completion independent from runtime reflection queries.
+- Added a focused source-aware diagnostic renderer in `vela_common`. Existing
+  `Diagnostic` values can now render stable line/column output with primary
+  spans, related labels, and fallback source offsets, with snapshot-style tests
+  covering the formatting boundary for future tooling.
+- Added an analysis diagnostics module for unknown member accesses. Given
+  copied expression facts plus `TypeRegistry` facts, `vela_analysis` can now
+  report unknown fields and methods for precise receivers with candidate
+  labels while degrading cleanly for dynamic `Unknown` receivers.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

@@ -4813,3 +4813,54 @@ Consequences:
 - Parent namespace completions can support import and qualified-path tooling.
 - `TypeFact::Module` remains tooling metadata and does not introduce a new
   script runtime value category.
+
+## 2026-05-25: Diagnostics Render Through vela_common
+
+Status: Accepted
+
+Context:
+M16 requires diagnostic rendering snapshots and source-aware output, while
+parser, HIR, hot reload, and future tooling already share the `Diagnostic`
+model from `vela_common`. Keeping rendering ad hoc in each consumer would make
+messages harder to stabilize and would spread source-span formatting across
+crates.
+
+Decision:
+Add a focused `diagnostic_render` module to `vela_common`. The renderer accepts
+copied `DiagnosticSource` inputs and existing `Diagnostic` values, then returns
+stable text lines with severity/code headers, source line/column locations,
+primary spans, related labels, and deterministic offset fallbacks when source
+text is unavailable.
+
+Consequences:
+- Parser, HIR, hot reload, CLI, and future tooling can share one rendering
+  boundary without changing the diagnostic data model.
+- Snapshot-style tests can lock down formatting without coupling diagnostics to
+  VM or reflection internals.
+- The renderer remains read-only formatting logic and does not add recovery,
+  fix-it, or LSP behavior.
+
+## 2026-05-25: Member Diagnostics Use Analysis Facts
+
+Status: Accepted
+
+Context:
+M16 calls for semantic diagnostics for unresolved fields and methods, but those
+checks should not query live VM reflection or require static typing. The
+analysis crate already owns copied `TypeFact` and `RegistryFacts` data for
+completion and expression inference.
+
+Decision:
+Add a focused diagnostics module to `vela_analysis` that walks syntax
+expressions with an `ExprFactScope` and copied `RegistryFacts`. Unknown field
+and method diagnostics are emitted only for precise receiver facts such as
+host, record, enum variant, collection, string, set, and trait facts. Dynamic
+or unknown receivers degrade without diagnostics. Candidate labels are derived
+from the same member-completion facts used by tooling.
+
+Consequences:
+- Field and method diagnostics share the completion/type-fact boundary instead
+  of duplicating registry lookup logic.
+- Dynamic script values remain permissive and degrade cleanly.
+- The checks stay analysis-only and do not grant reflection access or mutate
+  runtime schema state.
