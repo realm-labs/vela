@@ -1192,6 +1192,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added script-visible `reflect.modules()` over copied TypeRegistry module
   metadata. Listed module records include policy-filtered exports, matching
   `reflect.module` and `reflect.exports`.
+- Added zero-argument `reflect.traits()` for copied TypeRegistry trait
+  metadata enumeration while preserving `reflect.traits(value)` for
+  value-implemented trait metadata.
 
 ## Next
 

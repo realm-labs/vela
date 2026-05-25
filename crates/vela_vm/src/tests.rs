@@ -4752,8 +4752,12 @@ fn compiled_source_reflects_registered_trait_metadata() {
         SourceId::new(1),
         r#"
 fn main() {
+    let traits = reflect.traits();
     let trait_info = reflect.trait_info("Damageable");
-    if trait_info.name == "Damageable" && trait_info.methods[0].name == "damage" {
+    if traits.len() == 1
+        && traits[0].name == "Damageable"
+        && trait_info.name == "Damageable"
+        && trait_info.methods[0].name == "damage" {
         return trait_info.methods.len();
     }
     return 0;

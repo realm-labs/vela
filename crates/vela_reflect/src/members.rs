@@ -152,6 +152,22 @@ pub fn traits(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<R
     )))
 }
 
+pub fn all_traits(registry: &TypeRegistry) -> ReflectValue {
+    let mut traits = BTreeMap::new();
+    for desc in registry.traits() {
+        traits.insert(desc.name.clone(), desc);
+    }
+    for desc in registry
+        .types()
+        .flat_map(|type_desc| type_desc.traits.iter())
+    {
+        traits.entry(desc.name.clone()).or_insert(desc);
+    }
+    ReflectValue::Host(HostValue::Array(
+        traits.into_values().map(trait_record).collect(),
+    ))
+}
+
 pub fn trait_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.trait_metadata_by_name(name).ok_or_else(|| {
         let candidates = registry.known_trait_candidates();
@@ -834,7 +850,28 @@ mod tests {
 
     #[test]
     fn trait_query_returns_metadata_and_unknown_trait_candidates() {
-        let registry = registry();
+        let mut registry = registry();
+        registry.register_trait(TraitDesc::new("Trackable").source_span(Span::new(
+            SourceId::new(9),
+            10,
+            30,
+        )));
+
+        let ReflectValue::Host(HostValue::Array(traits)) = all_traits(&registry) else {
+            panic!("trait list should be an array");
+        };
+        assert_eq!(traits.len(), 2);
+        let HostValue::Record {
+            fields: first_trait,
+            ..
+        } = &traits[0]
+        else {
+            panic!("trait list item should be a record");
+        };
+        assert_eq!(
+            first_trait.get("name"),
+            Some(&HostValue::String("Damageable".to_owned()))
+        );
 
         let ReflectValue::Host(HostValue::Record { fields, .. }) =
             trait_by_name(&registry, "Damageable").expect("trait metadata")
@@ -881,11 +918,17 @@ mod tests {
             error.kind,
             ReflectErrorKind::UnknownTrait {
                 trait_name: "Damagable".to_owned(),
-                candidates: vec!["Damageable".to_owned()],
-                related: vec![crate::ReflectCandidate::new(
-                    "Damageable",
-                    Some(Span::new(SourceId::new(8), 20, 40))
-                )],
+                candidates: vec!["Damageable".to_owned(), "Trackable".to_owned()],
+                related: vec![
+                    crate::ReflectCandidate::new(
+                        "Damageable",
+                        Some(Span::new(SourceId::new(8), 20, 40))
+                    ),
+                    crate::ReflectCandidate::new(
+                        "Trackable",
+                        Some(Span::new(SourceId::new(9), 10, 30))
+                    ),
+                ],
             }
         );
     }

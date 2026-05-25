@@ -367,6 +367,9 @@ impl Vm {
                 &traits_budget,
                 reflect::ReflectPermission::ReadTypeInfo,
             )?;
+            if args.is_empty() {
+                return value_from_reflect(reflect::trait_metadata_list(&traits_registry));
+            }
             expect_arity("reflect.traits", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.traits")?;
             check_host_ref_inspection(&traits_policy, &target)?;
