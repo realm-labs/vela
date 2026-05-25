@@ -15,7 +15,8 @@ pub use completion::{
     member_completions, module_completions, type_completions,
 };
 pub use diagnostics::{
-    match_exhaustiveness_diagnostics, match_pattern_diagnostics, member_access_diagnostics,
+    effect_diagnostics, match_exhaustiveness_diagnostics, match_pattern_diagnostics,
+    member_access_diagnostics,
 };
 pub use expression::{ExprFactScope, type_fact_from_expr, type_fact_from_expr_with_registry};
 pub use facts::AnalysisFacts;
@@ -24,7 +25,7 @@ pub use hover::{
     HoverInfo, HoverKind, field_hover, function_hover, method_hover, module_hover, trait_hover,
     trait_method_hover, type_hover, variant_hover,
 };
-pub use registry::{RegistryFacts, RegistryFunctionFact, RegistryMemberFact};
+pub use registry::{RegistryEffectFact, RegistryFacts, RegistryFunctionFact, RegistryMemberFact};
 pub use stdlib::{
     LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts,
     stdlib_function_fact, stdlib_method_fact, stdlib_method_facts,

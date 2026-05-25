@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use vela_reflect::{FunctionDesc, MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry};
+use vela_reflect::{
+    FunctionDesc, FunctionEffectSet, MethodDesc, MethodEffectSet, TraitMethodDesc, TypeDesc,
+    TypeKind, TypeRegistry,
+};
 
 use crate::TypeFact;
 
@@ -37,6 +40,85 @@ impl RegistryFunctionFact {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RegistryEffectFact {
+    pub reads_host: bool,
+    pub writes_host: bool,
+    pub emits_events: bool,
+}
+
+impl RegistryEffectFact {
+    #[must_use]
+    pub const fn pure() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn host_read() -> Self {
+        Self {
+            reads_host: true,
+            writes_host: false,
+            emits_events: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn host_write() -> Self {
+        Self {
+            reads_host: true,
+            writes_host: true,
+            emits_events: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn event_emit() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: true,
+        }
+    }
+
+    #[must_use]
+    pub fn denied_by(&self, allowed: &Self) -> Vec<&'static str> {
+        let mut denied = Vec::new();
+        if self.reads_host && !allowed.reads_host {
+            denied.push("reads_host");
+        }
+        if self.writes_host && !allowed.writes_host {
+            denied.push("writes_host");
+        }
+        if self.emits_events && !allowed.emits_events {
+            denied.push("emits_events");
+        }
+        denied
+    }
+
+    #[must_use]
+    pub fn display_name(&self) -> String {
+        let mut effects = Vec::new();
+        if self.reads_host {
+            effects.push("reads_host");
+        }
+        if self.writes_host {
+            effects.push("writes_host");
+        }
+        if self.emits_events {
+            effects.push("emits_events");
+        }
+        if effects.is_empty() {
+            "pure".to_owned()
+        } else {
+            effects.join(", ")
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RegistryFacts {
     types: BTreeMap<String, TypeFact>,
     traits: BTreeMap<String, TypeFact>,
@@ -45,6 +127,9 @@ pub struct RegistryFacts {
     methods: BTreeMap<(String, String), TypeFact>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
     functions: BTreeMap<String, TypeFact>,
+    method_effects: BTreeMap<(String, String), RegistryEffectFact>,
+    trait_method_effects: BTreeMap<(String, String), RegistryEffectFact>,
+    function_effects: BTreeMap<String, RegistryEffectFact>,
 }
 
 impl RegistryFacts {
@@ -70,6 +155,10 @@ impl RegistryFacts {
                 facts.methods.insert(
                     (desc.key.name.clone(), method.name.clone()),
                     method_desc_fact(registry, method),
+                );
+                facts.method_effects.insert(
+                    (desc.key.name.clone(), method.name.clone()),
+                    method_effect_fact(&method.effects),
                 );
             }
 
@@ -105,6 +194,10 @@ impl RegistryFacts {
                 function.name.clone(),
                 function_desc_fact(registry, function),
             );
+            facts.function_effects.insert(
+                function.name.clone(),
+                function_effect_fact(&function.effects),
+            );
         }
 
         for trait_desc in registry.traits() {
@@ -116,6 +209,10 @@ impl RegistryFacts {
                 facts.trait_methods.insert(
                     (trait_desc.name.clone(), method.name.clone()),
                     trait_method_desc_fact(registry, method),
+                );
+                facts.trait_method_effects.insert(
+                    (trait_desc.name.clone(), method.name.clone()),
+                    RegistryEffectFact::pure(),
                 );
             }
         }
@@ -183,6 +280,12 @@ impl RegistryFacts {
         self.methods.get(&(owner.to_owned(), method.to_owned()))
     }
 
+    #[must_use]
+    pub fn method_effect_fact(&self, owner: &str, method: &str) -> Option<&RegistryEffectFact> {
+        self.method_effects
+            .get(&(owner.to_owned(), method.to_owned()))
+    }
+
     pub fn methods(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
         self.methods
             .iter()
@@ -192,6 +295,16 @@ impl RegistryFacts {
     #[must_use]
     pub fn trait_method_fact(&self, trait_name: &str, method: &str) -> Option<&TypeFact> {
         self.trait_methods
+            .get(&(trait_name.to_owned(), method.to_owned()))
+    }
+
+    #[must_use]
+    pub fn trait_method_effect_fact(
+        &self,
+        trait_name: &str,
+        method: &str,
+    ) -> Option<&RegistryEffectFact> {
+        self.trait_method_effects
             .get(&(trait_name.to_owned(), method.to_owned()))
     }
 
@@ -206,10 +319,31 @@ impl RegistryFacts {
         self.functions.get(name)
     }
 
+    #[must_use]
+    pub fn function_effect_fact(&self, name: &str) -> Option<&RegistryEffectFact> {
+        self.function_effects.get(name)
+    }
+
     pub fn functions(&self) -> impl Iterator<Item = RegistryFunctionFact> + '_ {
         self.functions
             .iter()
             .map(|(name, fact)| RegistryFunctionFact::new(name, fact.clone()))
+    }
+}
+
+fn function_effect_fact(effects: &FunctionEffectSet) -> RegistryEffectFact {
+    RegistryEffectFact {
+        reads_host: effects.reads_host,
+        writes_host: effects.writes_host,
+        emits_events: effects.emits_events,
+    }
+}
+
+fn method_effect_fact(effects: &MethodEffectSet) -> RegistryEffectFact {
+    RegistryEffectFact {
+        reads_host: effects.reads_host,
+        writes_host: effects.writes_host,
+        emits_events: effects.emits_events,
     }
 }
 
@@ -315,6 +449,10 @@ fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
                 facts.trait_methods.insert(
                     (trait_desc.name.clone(), method.name.clone()),
                     trait_method_desc_fact(registry, method),
+                );
+                facts.trait_method_effects.insert(
+                    (trait_desc.name.clone(), method.name.clone()),
+                    RegistryEffectFact::pure(),
                 );
             }
         }

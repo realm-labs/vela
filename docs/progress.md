@@ -1131,6 +1131,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   dynamic Option, and dynamic Result scrutinees now report misspelled
   `match` variants with ranked candidate labels while unknown or dynamic
   scrutinees still degrade without blocking execution.
+- Added analysis effect diagnostics. `RegistryFacts` now carries copied
+  function and method effect summaries, and callers can ask `vela_analysis` to
+  report host-read, host-write, or event-emission calls that exceed a provided
+  allowed-effect set while unknown calls still degrade without blocking
+  execution.
 - Added first-pass analysis flow narrowing for null checks. `TypeFact` can now
   remove or select `null` from union facts, and `ExprFactScope` applies that
   narrowing to `if value == null` / `if value != null` branches so expression

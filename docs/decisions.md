@@ -5092,3 +5092,29 @@ Consequences:
 - Diagnostics remain analysis-only and do not mutate TypeRegistry, reflection
   metadata, VM matching, or script enum structure.
 - Dynamic boundaries continue to degrade without blocking execution.
+
+## 2026-05-25: Effect Diagnostics Use Caller-Provided Allowances
+
+Status: Accepted
+
+Context:
+M16 calls for semantic diagnostics for effects. TypeRegistry function and method
+metadata already records whether calls read host state, write host state, or
+emit events, but `vela_analysis` only copied call signatures. Tooling could not
+ask whether an expression is too effectful for a pure or restricted context.
+
+Decision:
+Copy function and method effect summaries into `RegistryFacts` as
+`RegistryEffectFact`. Add `effect_diagnostics` that walks expressions and
+reports `analysis::disallowed_effect` only when a resolved registry function or
+method performs effects outside a caller-provided allowed-effect set. Unknown
+calls, dynamic receivers, and unsupported callee shapes do not produce an
+effect diagnostic.
+
+Consequences:
+- Pure contexts, tooling fixtures, and future code actions can flag host-write
+  or event-emitting calls without changing compiler or VM semantics.
+- Effect diagnostics remain advisory analysis data copied from TypeRegistry;
+  they do not mutate reflection metadata or enforce runtime permissions.
+- Dynamic boundaries keep degrading cleanly instead of requiring full static
+  effect inference.
