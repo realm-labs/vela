@@ -1515,6 +1515,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   diagnostics for unknown names, duplicate arguments, positional-after-named
   ordering, too many arguments, and missing required parameters instead of
   generic unsupported-syntax errors.
+- Improved M12 reflection error reporting through the VM diagnostic boundary.
+  Reflection runtime failures now keep stable `reflect::*` diagnostic codes,
+  human-readable messages, ranked candidate names, and related schema source
+  labels instead of being flattened into generic VM reflection errors.
 
 ## Next
 

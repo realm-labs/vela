@@ -45,6 +45,12 @@ impl VmError {
             diagnostic = diagnostic.with_span(span).with_label(span, "runtime error");
         }
 
+        if let VmErrorKind::Reflect(kind) = &self.kind {
+            for (span, message) in kind.related_labels() {
+                diagnostic = diagnostic.with_label(span, message);
+            }
+        }
+
         for frame in self.call_stack.iter() {
             if let Some(call_site) = frame.call_site {
                 diagnostic = diagnostic
@@ -150,7 +156,7 @@ impl VmErrorKind {
             Self::UnknownMethod { .. } => "vm::unknown_method",
             Self::ArityMismatch { .. } => "vm::arity_mismatch",
             Self::Host(_) => "vm::host_error",
-            Self::Reflect(_) => "vm::reflect_error",
+            Self::Reflect(kind) => kind.code(),
             Self::UnknownRecordField { .. } => "vm::unknown_record_field",
             Self::UnknownEnumField { .. } => "vm::unknown_enum_field",
             Self::IndexOutOfBounds { .. } => "vm::index_out_of_bounds",
@@ -189,7 +195,7 @@ impl VmErrorKind {
                 format!("`{name}` expected {expected} arguments but got {actual}")
             }
             Self::Host(kind) => format!("host error: {kind:?}"),
-            Self::Reflect(kind) => format!("reflection error: {kind:?}"),
+            Self::Reflect(kind) => kind.message(),
             Self::UnknownRecordField { type_name, field } => {
                 format!("unknown field `{field}` for record `{type_name}`")
             }
@@ -235,6 +241,7 @@ mod tests {
     use std::sync::Arc;
 
     use vela_common::{DiagnosticSource, SourceId, Span, render_diagnostic};
+    use vela_reflect::{ReflectCandidate, ReflectErrorKind};
 
     use super::{VmError, VmErrorKind, VmStackFrame};
 
@@ -307,5 +314,48 @@ fn leaf() {
             "`reward.grant` expected 2 arguments but got 1"
         );
         assert!(diagnostic.labels.is_empty());
+    }
+
+    #[test]
+    fn diagnostic_preserves_reflection_error_candidates() {
+        let call_span = Span::new(SourceId::new(1), 12, 39);
+        let field_span = Span::new(SourceId::new(2), 16, 21);
+        let error = VmError {
+            kind: VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
+                type_name: "Player".to_owned(),
+                field: "leve".to_owned(),
+                candidates: vec!["level".to_owned()],
+                related: vec![ReflectCandidate::new("level", Some(field_span))],
+            }),
+            source_span: Some(call_span),
+            call_stack: Default::default(),
+        };
+
+        let diagnostic = error.to_diagnostic();
+
+        assert_eq!(diagnostic.code.as_deref(), Some("reflect::unknown_field"));
+        assert_eq!(
+            diagnostic.message,
+            "unknown reflected field `leve` on `Player`; candidates: level"
+        );
+        assert_eq!(diagnostic.span, Some(call_span));
+        assert!(diagnostic.labels.iter().any(|label| {
+            label.span == field_span && label.message == "candidate `level` is declared here"
+        }));
+
+        let rendered = render_diagnostic(
+            &diagnostic,
+            [
+                DiagnosticSource::new(
+                    SourceId::new(1),
+                    "script.lang",
+                    "fn main() { reflect.get(player, \"leve\") }",
+                ),
+                DiagnosticSource::new(SourceId::new(2), "schema.lang", "struct Player { level }"),
+            ],
+        )
+        .join("\n");
+        assert!(rendered.contains("error[reflect::unknown_field]"));
+        assert!(rendered.contains("candidate `level` is declared here"));
     }
 }
