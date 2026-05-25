@@ -47,6 +47,8 @@ pub(crate) fn call_method(
         "split" => string_methods::split(receiver, args, heap.as_deref()),
         "push" => array_push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "pop" => array_pop(receiver, args, heap.as_deref_mut()),
+        "first" => array_methods::first(receiver, args, heap.as_deref()),
+        "last" => array_methods::last(receiver, args, heap.as_deref()),
         "map" => array_methods::map(
             receiver,
             args,

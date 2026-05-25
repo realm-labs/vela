@@ -79,6 +79,32 @@ pub(crate) fn find(
     Ok(option_value("None", None))
 }
 
+pub(crate) fn first(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("first", args, 0)?;
+    let values = array_values(receiver, heap, "method first")?;
+    Ok(values.first().cloned().map_or_else(
+        || option_value("None", None),
+        |value| option_value("Some", Some(value)),
+    ))
+}
+
+pub(crate) fn last(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("last", args, 0)?;
+    let values = array_values(receiver, heap, "method last")?;
+    Ok(values.last().cloned().map_or_else(
+        || option_value("None", None),
+        |value| option_value("Some", Some(value)),
+    ))
+}
+
 pub(crate) fn any(
     receiver: &Value,
     args: &[Value],
@@ -500,6 +526,59 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array higher-order methods should run");
         assert_eq!(result, Value::Int(2));
+    }
+
+    #[test]
+    fn runs_compiled_array_endpoint_methods() {
+        let source = r#"
+fn main() {
+    let values = [10, 20, 30];
+    let empty = [];
+    if option.unwrap_or(values.first(), 0) == 10
+        && option.unwrap_or(values.last(), 0) == 30
+        && option.unwrap_or(empty.first(), 7) == 7
+        && option.unwrap_or(empty.last(), 9) == 9
+    {
+        return 1;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array endpoint methods should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("array endpoint methods should run");
+        assert_eq!(result, Value::Int(1));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_endpoint_methods() {
+        let source = r#"
+fn main() {
+    let names = ["boar", "wolf", "wyrm"];
+    let empty = [];
+    if option.unwrap_or(names.first(), "missing") == "boar"
+        && option.unwrap_or(names.last(), "missing") == "wyrm"
+        && option.unwrap_or(empty.first(), "empty") == "empty"
+        && option.unwrap_or(empty.last(), "empty") == "empty"
+    {
+        return option.unwrap_or(names.last(), "missing");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array endpoint methods should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array endpoint methods should run");
+        assert_eq!(result, Value::String("wyrm".to_owned()));
     }
 
     #[test]

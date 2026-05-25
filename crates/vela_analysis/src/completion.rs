@@ -346,6 +346,17 @@ mod tests {
                 TypeFact::map(TypeFact::String, TypeFact::Int),
             ),
         )));
+        let array = member_completions(&facts, &TypeFact::array(TypeFact::String));
+        assert!(array.contains(&CompletionItem::new(
+            "first",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::String)),
+        )));
+        assert!(array.contains(&CompletionItem::new(
+            "last",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::String)),
+        )));
 
         let string = member_completions(&facts, &TypeFact::String);
         assert!(string.contains(&CompletionItem::new(

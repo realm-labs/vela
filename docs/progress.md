@@ -1211,6 +1211,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   metadata filters, alongside existing method permission propagation, so
   script-visible reflection lists match the Engine permission set without
   exposing ungranted schema members.
+- Added Option-returning `array.first()` and `array.last()` endpoint helpers
+  for inline and managed-heap arrays, with no-script-generics analysis facts
+  and completion metadata.
 
 ## Next
 

@@ -1,8 +1,8 @@
 use crate::TypeFact;
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
-    "len", "is_empty", "push", "pop", "map", "filter", "find", "any", "all", "count", "sum",
-    "group_by", "sort_by",
+    "len", "is_empty", "push", "pop", "first", "last", "map", "filter", "find", "any", "all",
+    "count", "sum", "group_by", "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
     "len",
@@ -368,6 +368,16 @@ fn array_method_fact(
         "pop" => Some(StdlibMethodFact::new(
             receiver,
             "pop",
+            TypeFact::option(element.clone()),
+        )),
+        "first" => Some(StdlibMethodFact::new(
+            receiver,
+            "first",
+            TypeFact::option(element.clone()),
+        )),
+        "last" => Some(StdlibMethodFact::new(
+            receiver,
+            "last",
             TypeFact::option(element),
         )),
         "map" => {
@@ -728,6 +738,18 @@ mod tests {
         assert_eq!(
             stdlib_method_fact(&array, "pop", None)
                 .expect("pop fact")
+                .returns,
+            TypeFact::option(TypeFact::Float)
+        );
+        assert_eq!(
+            stdlib_method_fact(&array, "first", None)
+                .expect("first fact")
+                .returns,
+            TypeFact::option(TypeFact::Float)
+        );
+        assert_eq!(
+            stdlib_method_fact(&array, "last", None)
+                .expect("last fact")
                 .returns,
             TypeFact::option(TypeFact::Float)
         );
