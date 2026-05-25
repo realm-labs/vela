@@ -1,4 +1,7 @@
-use crate::{AccessAbi, EffectAbi, HotReloadError, HotReloadErrorKind, ParamAbi, TraitMethodAbi};
+use crate::{
+    AccessAbi, EffectAbi, HotReloadError, HotReloadErrorKind, ModuleExportAbi, ParamAbi,
+    TraitMethodAbi,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HotReloadDiagnosticDetail {
@@ -53,6 +56,10 @@ pub enum HotReloadDiagnosticDetail {
         old: Vec<TraitMethodAbi>,
         new: Vec<TraitMethodAbi>,
     },
+    ModuleExportAbiList {
+        old: Vec<ModuleExportAbi>,
+        new: Vec<ModuleExportAbi>,
+    },
 }
 
 impl HotReloadDiagnosticDetail {
@@ -64,7 +71,8 @@ impl HotReloadDiagnosticDetail {
             | HotReloadErrorKind::RemovedFunction { .. }
             | HotReloadErrorKind::RemovedFunctionAbi { .. }
             | HotReloadErrorKind::RemovedMethodAbi { .. }
-            | HotReloadErrorKind::RemovedTraitAbi { .. } => None,
+            | HotReloadErrorKind::RemovedTraitAbi { .. }
+            | HotReloadErrorKind::RemovedModuleAbi { .. } => None,
             HotReloadErrorKind::DeletedFunctionParameters { old, new, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { old, new, .. } => {
                 Some(Self::FunctionParameterList {
@@ -144,6 +152,12 @@ impl HotReloadDiagnosticDetail {
             }
             HotReloadErrorKind::ChangedTraitAbi { old, new, .. } => {
                 Some(Self::TraitMethodAbiList {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+            }
+            HotReloadErrorKind::ChangedModuleAbi { old, new, .. } => {
+                Some(Self::ModuleExportAbiList {
                     old: old.clone(),
                     new: new.clone(),
                 })

@@ -7033,3 +7033,26 @@ Consequences:
   trait mutation.
 - Reports expose old/new trait method ABI so hosts can surface targeted repair
   guidance.
+
+## 2026-05-26: Reflected Module Exports Are Hot-Reload ABI
+
+Status: Accepted
+
+Context:
+`TypeRegistry` exposes modules and their exported functions through reflection.
+Hot reload checked callable descriptors and trait metadata, but a module could
+drop or retarget an existing export without being reported as an ABI change.
+
+Decision:
+Record registered module exports in a dedicated module ABI manifest. Hot reload
+rejects removed modules and removed or changed existing exports. Appended
+exports remain compatible because they do not invalidate existing reflective
+lookups or already compiled callers.
+
+Consequences:
+- Module reflection cannot silently lose or retarget an existing export across
+  a safe-point reload.
+- The rule remains metadata-only and does not allow runtime module mutation or
+  monkey patching.
+- Module ABI structs live in a focused hot-reload module instead of growing the
+  crate root or mixing export logic into unrelated reload code.

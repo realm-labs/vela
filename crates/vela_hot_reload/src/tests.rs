@@ -2,8 +2,8 @@ use super::*;
 use vela_common::{FunctionId, HostMethodId, MethodId, SourceId, Span, TypeId};
 use vela_reflect::{
     FunctionAccess, FunctionDesc, FunctionEffectSet, FunctionParamDesc, MethodAccess, MethodDesc,
-    MethodEffectSet, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
-    TypeRegistry,
+    MethodEffectSet, MethodParamDesc, ModuleDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
+    TypeKey, TypeRegistry,
 };
 use vela_vm::{Value, Vm};
 
@@ -1329,6 +1329,111 @@ fn removed_trait_abi_is_rejected() {
         Some("restore the trait ABI entry or restart with an explicit migration")
     );
     assert_eq!(report.errors[0].source_span, Some(span));
+}
+
+#[test]
+fn module_export_abi_changes_are_rejected() {
+    let span = Span::new(SourceId::new(17), 40, 80);
+    let old_abi = HotReloadAbi::empty().module(
+        ModuleAbi::new("game.reward").export(ModuleExportAbi::function("grant_reward", 11)),
+    );
+    let removed_export =
+        HotReloadAbi::empty().module(ModuleAbi::new("game.reward").source_span(span));
+
+    let error = old_abi
+        .ensure_compatible_update(&removed_export)
+        .expect_err("removed module export should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedModuleAbi {
+            module: "game.reward".to_owned(),
+            old: vec![ModuleExportAbi::function("grant_reward", 11)],
+            new: vec![],
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(17), error);
+    assert_eq!(report.errors[0].code, "reload.module.changed_abi");
+    assert_eq!(
+        report.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::ModuleExportAbiList {
+            old: vec![ModuleExportAbi::function("grant_reward", 11)],
+            new: vec![],
+        })
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
+    assert!(report.render_lines().iter().any(|line| {
+        line.text == "module export ABI: old=(grant_reward:function#11) new=(<none>)"
+    }));
+
+    let changed_export = HotReloadAbi::empty().module(
+        ModuleAbi::new("game.reward")
+            .export(ModuleExportAbi::function("grant_reward", 12))
+            .source_span(span),
+    );
+    let error = old_abi
+        .ensure_compatible_update(&changed_export)
+        .expect_err("changed module export target should fail");
+    assert_eq!(error.code(), "reload.module.changed_abi");
+
+    let appended_export = HotReloadAbi::empty().module(
+        ModuleAbi::new("game.reward")
+            .export(ModuleExportAbi::function("grant_reward", 11))
+            .export(ModuleExportAbi::function("grant_bonus", 12)),
+    );
+    old_abi
+        .ensure_compatible_update(&appended_export)
+        .expect("added module exports should be accepted");
+}
+
+#[test]
+fn removed_module_abi_is_rejected() {
+    let span = Span::new(SourceId::new(18), 5, 25);
+    let old_abi = HotReloadAbi::empty().module(ModuleAbi::new("game.reward").source_span(span));
+
+    let error = old_abi
+        .ensure_compatible_update(&HotReloadAbi::empty())
+        .expect_err("removed module ABI should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::RemovedModuleAbi {
+            module: "game.reward".to_owned(),
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(18), error);
+    assert_eq!(report.errors[0].code, "reload.module.removed_abi");
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the module ABI entry or restart with an explicit migration")
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
+}
+
+#[test]
+fn module_abi_manifest_can_be_built_from_type_registry() {
+    let mut registry = TypeRegistry::new();
+    registry.register_module(ModuleDesc::new("game.reward"));
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(77), "grant_reward").module("game.reward"),
+    );
+
+    let abi = HotReloadAbi::from_registry(&registry);
+    let expected = HotReloadAbi::empty()
+        .function(FunctionAbi::new(
+            "grant_reward",
+            EffectAbi::pure(),
+            AccessAbi::public(),
+        ))
+        .module(
+            ModuleAbi::new("game.reward").export(ModuleExportAbi::function("grant_reward", 77)),
+        );
+
+    abi.ensure_compatible_update(&expected)
+        .expect("registry module ABI should match expected manifest");
+    expected
+        .ensure_compatible_update(&abi)
+        .expect("expected module ABI should match registry manifest");
 }
 
 #[test]

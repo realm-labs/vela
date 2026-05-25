@@ -206,6 +206,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_trait_method_abi_list(old),
             render_trait_method_abi_list(new)
         ),
+        HotReloadDiagnosticDetail::ModuleExportAbiList { old, new } => format!(
+            "module export ABI: old=({}) new=({})",
+            render_module_export_abi_list(old),
+            render_module_export_abi_list(new)
+        ),
     }
 }
 
@@ -263,6 +268,25 @@ fn render_trait_method_abi(method: &crate::TraitMethodAbi) -> String {
     } else {
         format!("{}#{}({params})->{return_type}", method.name, method.id)
     }
+}
+
+fn render_module_export_abi_list(exports: &[crate::ModuleExportAbi]) -> String {
+    if exports.is_empty() {
+        return "<none>".to_owned();
+    }
+    exports
+        .iter()
+        .map(render_module_export_abi)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_module_export_abi(export: &crate::ModuleExportAbi) -> String {
+    let function = export
+        .function
+        .map(|function| function.to_string())
+        .unwrap_or_else(|| "<none>".to_owned());
+    format!("{}:{}#{function}", export.name, export.kind.as_str())
 }
 
 fn render_effect_abi(effect: &EffectAbi) -> String {

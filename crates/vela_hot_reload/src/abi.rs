@@ -6,7 +6,7 @@ use vela_reflect::{
     TraitMethodDesc, TypeRegistry,
 };
 
-use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult, ModuleAbi};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct HotReloadAbi {
@@ -14,6 +14,7 @@ pub struct HotReloadAbi {
     functions: BTreeMap<String, FunctionAbi>,
     methods: BTreeMap<(String, String), MethodAbi>,
     traits: BTreeMap<String, TraitAbi>,
+    modules: BTreeMap<String, ModuleAbi>,
 }
 
 impl HotReloadAbi {
@@ -43,6 +44,9 @@ impl HotReloadAbi {
         for trait_desc in registry.traits() {
             manifest = manifest.trait_abi(TraitAbi::from_trait(trait_desc));
         }
+        for module in registry.modules() {
+            manifest = manifest.module(ModuleAbi::from_module(module));
+        }
         manifest
     }
 
@@ -68,6 +72,12 @@ impl HotReloadAbi {
     #[must_use]
     pub fn trait_abi(mut self, trait_abi: TraitAbi) -> Self {
         self.traits.insert(trait_abi.name.clone(), trait_abi);
+        self
+    }
+
+    #[must_use]
+    pub fn module(mut self, module: ModuleAbi) -> Self {
+        self.modules.insert(module.name.clone(), module);
         self
     }
 
@@ -121,6 +131,16 @@ impl HotReloadAbi {
                 }));
             };
             old_trait.ensure_compatible(new_trait)?;
+        }
+
+        for (module, old_module) in &self.modules {
+            let Some(new_module) = next.modules.get(module) else {
+                return Err(HotReloadError::new(HotReloadErrorKind::RemovedModuleAbi {
+                    module: module.clone(),
+                    source_span: old_module.source_span.map(Box::new),
+                }));
+            };
+            old_module.ensure_compatible(new_module)?;
         }
 
         Ok(())

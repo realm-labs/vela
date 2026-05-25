@@ -1685,6 +1685,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   enter `TraitAbi`; hot reload rejects removed traits, changed existing trait
   method ABI, and new required trait methods while allowing reordered methods
   and appended defaulted methods.
+- Strengthened M15 reflected module ABI checks. Registered `ModuleDesc`
+  exports now enter a focused module ABI manifest; hot reload rejects removed
+  modules and removed or changed existing module exports while allowing
+  appended exports, with structured diagnostics and report details.
 
 ## Next
 
