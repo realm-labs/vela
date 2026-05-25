@@ -280,6 +280,9 @@ pub(crate) fn call_method(
         "union" => set_methods::union(receiver, args, heap.as_deref()),
         "intersection" => set_methods::intersection(receiver, args, heap.as_deref()),
         "difference" => set_methods::difference(receiver, args, heap.as_deref()),
+        "is_subset" => set_methods::is_subset(receiver, args, heap.as_deref()).map(Value::Bool),
+        "is_superset" => set_methods::is_superset(receiver, args, heap.as_deref()).map(Value::Bool),
+        "is_disjoint" => set_methods::is_disjoint(receiver, args, heap.as_deref()).map(Value::Bool),
         "entries" => map_entries(receiver, args, heap.as_deref()),
         _ => call_script_impl_method(
             receiver,

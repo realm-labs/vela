@@ -388,6 +388,21 @@ mod tests {
                 TypeFact::set(TypeFact::String),
             ),
         )));
+        assert!(set.contains(&CompletionItem::new(
+            "is_subset",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::set(TypeFact::String)], TypeFact::Bool),
+        )));
+        assert!(set.contains(&CompletionItem::new(
+            "is_superset",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::set(TypeFact::String)], TypeFact::Bool),
+        )));
+        assert!(set.contains(&CompletionItem::new(
+            "is_disjoint",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::set(TypeFact::String)], TypeFact::Bool),
+        )));
 
         let string = member_completions(&facts, &TypeFact::String);
         assert!(string.contains(&CompletionItem::new(

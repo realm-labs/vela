@@ -31,6 +31,9 @@ const SET_METHOD_NAMES: &[&str] = &[
     "union",
     "intersection",
     "difference",
+    "is_subset",
+    "is_superset",
+    "is_disjoint",
 ];
 const STRING_METHOD_NAMES: &[&str] = &[
     "len",
@@ -571,6 +574,18 @@ fn set_method_fact(element: TypeFact, method: &str) -> Option<StdlibMethodFact> 
             )
             .with_params(vec![TypeFact::set(element)]),
         ),
+        "is_subset" | "is_superset" | "is_disjoint" => Some(
+            StdlibMethodFact::new(
+                receiver,
+                match method {
+                    "is_subset" => "is_subset",
+                    "is_superset" => "is_superset",
+                    _ => "is_disjoint",
+                },
+                TypeFact::Bool,
+            )
+            .with_params(vec![TypeFact::set(element)]),
+        ),
         _ => None,
     }
 }
@@ -833,6 +848,15 @@ mod tests {
         let difference = stdlib_method_fact(&set, "difference", None).expect("difference fact");
         assert_eq!(difference.params, vec![TypeFact::set(TypeFact::String)]);
         assert_eq!(difference.returns, TypeFact::set(TypeFact::String));
+        let subset = stdlib_method_fact(&set, "is_subset", None).expect("is_subset fact");
+        assert_eq!(subset.params, vec![TypeFact::set(TypeFact::String)]);
+        assert_eq!(subset.returns, TypeFact::Bool);
+        let superset = stdlib_method_fact(&set, "is_superset", None).expect("is_superset fact");
+        assert_eq!(superset.params, vec![TypeFact::set(TypeFact::String)]);
+        assert_eq!(superset.returns, TypeFact::Bool);
+        let disjoint = stdlib_method_fact(&set, "is_disjoint", None).expect("is_disjoint fact");
+        assert_eq!(disjoint.params, vec![TypeFact::set(TypeFact::String)]);
+        assert_eq!(disjoint.returns, TypeFact::Bool);
     }
 
     #[test]

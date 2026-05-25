@@ -1303,6 +1303,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `set.difference(other)` helpers. They preserve deterministic receiver-order
   output, work in inline and managed-heap execution, reject non-set operands,
   and expose analysis TypeFacts plus completion metadata.
+- Added set predicate helpers `set.is_subset(other)`, `set.is_superset(other)`,
+  and `set.is_disjoint(other)` for gameplay tag and requirement checks. They
+  work for inline and managed-heap set values, preserve heap string identity
+  through key comparisons, reject non-set operands, and expose analysis
+  TypeFacts plus completion metadata.
 - Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
   script boundary. Native function and method macros now expose Result returns
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to

@@ -128,10 +128,10 @@ pub(crate) fn union(
     expect_arity("union", args, 1)?;
     let mut combined = Vec::new();
     for value in set_values(receiver, heap, "method union")? {
-        push_unique(&mut combined, value, None, "method union")?;
+        push_unique(&mut combined, value, heap, "method union")?;
     }
     for value in set_values(&args[0], heap, "method union")? {
-        push_unique(&mut combined, value, None, "method union")?;
+        push_unique(&mut combined, value, heap, "method union")?;
     }
     Ok(Value::Set(combined))
 }
@@ -144,13 +144,14 @@ pub(crate) fn intersection(
     expect_arity("intersection", args, 1)?;
     let right = set_keys(
         &set_values(&args[0], heap, "method intersection")?,
+        heap,
         "method intersection",
     )?;
     let mut result = Vec::new();
     for value in set_values(receiver, heap, "method intersection")? {
-        let key = SetKey::from_value(&value, None, "method intersection")?;
+        let key = SetKey::from_value(&value, heap, "method intersection")?;
         if right.contains(&key) {
-            push_unique(&mut result, value, None, "method intersection")?;
+            push_unique(&mut result, value, heap, "method intersection")?;
         }
     }
     Ok(Value::Set(result))
@@ -164,16 +165,55 @@ pub(crate) fn difference(
     expect_arity("difference", args, 1)?;
     let right = set_keys(
         &set_values(&args[0], heap, "method difference")?,
+        heap,
         "method difference",
     )?;
     let mut result = Vec::new();
     for value in set_values(receiver, heap, "method difference")? {
-        let key = SetKey::from_value(&value, None, "method difference")?;
+        let key = SetKey::from_value(&value, heap, "method difference")?;
         if !right.contains(&key) {
-            push_unique(&mut result, value, None, "method difference")?;
+            push_unique(&mut result, value, heap, "method difference")?;
         }
     }
     Ok(Value::Set(result))
+}
+
+pub(crate) fn is_subset(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
+    expect_arity("is_subset", args, 1)?;
+    set_contains_all(receiver, &args[0], heap, "method is_subset")
+}
+
+pub(crate) fn is_superset(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
+    expect_arity("is_superset", args, 1)?;
+    set_contains_all(&args[0], receiver, heap, "method is_superset")
+}
+
+pub(crate) fn is_disjoint(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
+    expect_arity("is_disjoint", args, 1)?;
+    let right = set_keys(
+        &set_values(&args[0], heap, "method is_disjoint")?,
+        heap,
+        "method is_disjoint",
+    )?;
+    for value in set_values(receiver, heap, "method is_disjoint")? {
+        let key = SetKey::from_value(&value, heap, "method is_disjoint")?;
+        if right.contains(&key) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
@@ -187,6 +227,22 @@ pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool
         }
         _ => false,
     }
+}
+
+fn set_contains_all(
+    subset: &Value,
+    superset: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<bool> {
+    let superset = set_keys(&set_values(superset, heap, operation)?, heap, operation)?;
+    for value in set_values(subset, heap, operation)? {
+        let key = SetKey::from_value(&value, heap, operation)?;
+        if !superset.contains(&key) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn push_unique(
@@ -224,10 +280,14 @@ fn set_values(
     }
 }
 
-fn set_keys(values: &[Value], operation: &'static str) -> VmResult<Vec<SetKey>> {
+fn set_keys(
+    values: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Vec<SetKey>> {
     values
         .iter()
-        .map(|value| SetKey::from_value(value, None, operation))
+        .map(|value| SetKey::from_value(value, heap, operation))
         .collect()
 }
 
@@ -307,9 +367,13 @@ fn main() {
     let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
     let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
     let missing = player.difference(event).values().join(",");
+    let required = set.from_array(["daily", "quest"]);
     if unioned == "bonus,daily,quest,raid"
         && shared == "daily,quest"
         && missing == "raid"
+        && required.is_subset(player)
+        && player.is_superset(required)
+        && player.is_disjoint(set.from_array(["bonus"]))
         && player.len() == 3
     {
         return shared;
@@ -335,6 +399,11 @@ fn main() {
     let unioned = base.union(bonus);
     let shared = base.intersection(bonus);
     let only_base = base.difference(bonus);
+    let required = set.from_array([1, 3]);
+    let excluded = set.from_array([9]);
+    if !required.is_subset(base) || !base.is_superset(required) || !base.is_disjoint(excluded) {
+        return -1;
+    }
     return unioned.values().sum()
         + shared.values().sum()
         + only_base.values().sum();
@@ -350,6 +419,40 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set combination methods should run");
         assert_eq!(result, Value::Int(26));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_set_predicates() {
+        let source = r#"
+fn main() {
+    let player = set.from_array(["daily", "quest", "raid"]);
+    let required = set.from_array(["daily", "quest"]);
+    let event = set.from_array(["quest", "bonus"]);
+    let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
+    let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
+    let missing = player.difference(required).values().sort_by(|tag| tag).join(",");
+    if required.is_subset(player)
+        && player.is_superset(required)
+        && player.is_disjoint(set.from_array(["bonus"]))
+        && unioned == "bonus,daily,quest,raid"
+        && shared == "quest"
+        && missing == "raid"
+    {
+        return unioned;
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string set predicate source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string set predicates should run");
+        assert_eq!(result, Value::String("bonus,daily,quest,raid".to_owned()));
     }
 
     #[test]
@@ -372,6 +475,25 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "method union"
+            }
+        );
+
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["quest"]);
+    return tags.is_subset(["quest"]);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set predicate type error source should compile");
+
+        let error = vm
+            .run(&code)
+            .expect_err("set predicate should reject non-set args");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method is_subset"
             }
         );
     }

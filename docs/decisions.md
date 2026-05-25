@@ -5593,3 +5593,27 @@ Consequences:
   `result.unwrap_or`, and `?` without adding script-language generics.
 - Macro-generated registration remains on the stable typed Engine API and does
   not expose Rust references or mutable host state.
+
+## 2026-05-25: Set Relationship Predicates Use Existing Scalar Keys
+
+Status: Accepted
+
+Context:
+Gameplay scripts commonly need tag and requirement checks such as "does this
+player have every required flag?" or "does this reward exclude any current
+state?". These checks should not require scripts to allocate temporary
+intersections or call back into host-specific helpers.
+
+Decision:
+Add `set.is_subset(other)`, `set.is_superset(other)`, and
+`set.is_disjoint(other)` as script-value methods. Each method requires a set
+operand, returns a boolean, and uses the existing scalar set key model for
+membership comparisons in inline and managed-heap execution.
+
+Consequences:
+- Scripts get deterministic tag/requirement checks without PatchTx or host
+  mutation.
+- Set element restrictions remain unchanged; non-scalar set operands still
+  fail through the existing set type-error path.
+- Analysis and completion metadata expose boolean TypeFacts while preserving
+  the no-script-generics boundary.
