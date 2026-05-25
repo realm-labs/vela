@@ -1698,6 +1698,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   sets add missing scalar values deterministically, both work in inline and
   managed-heap execution, and both expose non-generic analysis/completion
   facts.
+- Added M13 `array.sort()` as a deterministic, non-mutating scalar sort helper.
+  It preserves the source array, supports numeric and string arrays in inline
+  and managed-heap execution, rejects mixed scalar domains, and exposes
+  non-generic analysis/completion facts.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new

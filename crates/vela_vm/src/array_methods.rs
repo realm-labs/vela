@@ -300,6 +300,16 @@ pub(crate) fn reverse(
     Ok(Value::Array(values))
 }
 
+pub(crate) fn sort(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("sort", args, 0)?;
+    let values = array_values(receiver, heap, "method sort")?;
+    sort_values_by_key(values, heap, "method sort", |value, _| Ok(value.clone()))
+}
+
 pub(crate) fn slice(
     receiver: &Value,
     args: &[Value],
@@ -455,7 +465,7 @@ pub(crate) fn sort_by(
             value.clone(),
             &protected,
         )?;
-        let key = sort_key(&key_value, runtime.heap.as_deref())?;
+        let key = sort_key(&key_value, runtime.heap.as_deref(), "method sort_by")?;
         if let Some(expected) = key_kind {
             if key.kind() != expected {
                 return type_error("method sort_by");
@@ -469,6 +479,37 @@ pub(crate) fn sort_by(
             index: entries.len(),
         });
     }
+    sort_entries(entries)
+}
+
+fn sort_values_by_key(
+    values: Vec<Value>,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+    mut key_fn: impl FnMut(&Value, &[SortEntry]) -> VmResult<Value>,
+) -> VmResult<Value> {
+    let mut entries = Vec::<SortEntry>::with_capacity(values.len());
+    let mut key_kind = None;
+    for value in values {
+        let key_value = key_fn(&value, &entries)?;
+        let key = sort_key(&key_value, heap, operation)?;
+        if let Some(expected) = key_kind {
+            if key.kind() != expected {
+                return type_error(operation);
+            }
+        } else {
+            key_kind = Some(key.kind());
+        }
+        entries.push(SortEntry {
+            key,
+            value,
+            index: entries.len(),
+        });
+    }
+    sort_entries(entries)
+}
+
+fn sort_entries(mut entries: Vec<SortEntry>) -> VmResult<Value> {
     entries.sort_by(|left, right| {
         left.key
             .compare(&right.key)
@@ -569,16 +610,20 @@ impl SortKey {
     }
 }
 
-fn sort_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<SortKey> {
+fn sort_key(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<SortKey> {
     match value {
         Value::Int(value) => Ok(SortKey::Int(*value)),
         Value::Float(value) if value.is_finite() => Ok(SortKey::Float(*value)),
         Value::String(value) => Ok(SortKey::String(value.clone())),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
-            _ => type_error("method sort_by"),
+            _ => type_error(operation),
         },
-        _ => type_error("method sort_by"),
+        _ => type_error(operation),
     }
 }
 
@@ -1552,6 +1597,30 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_array_sort_method() {
+        let source = r#"
+fn main() {
+    let values = [4, 1, 3, 1];
+    let sorted = values.sort();
+    if sorted[0] == 1
+        && sorted[1] == 1
+        && sorted[2] == 3
+        && sorted[3] == 4
+        && values[0] == 4
+    {
+        return sorted[2];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array sort method should compile");
+
+        let result = Vm::new().run(&code).expect("array sort method should run");
+        assert_eq!(result, Value::Int(3));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_array_sort_by_method() {
         let source = r#"
 fn main() {
@@ -1578,6 +1647,32 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_array_sort_method() {
+        let source = r#"
+fn main() {
+    let names = ["wyrm", "boar", "bat", "wolf"];
+    let sorted = names.sort();
+    if sorted[0] == "bat"
+        && sorted[1] == "boar"
+        && sorted[2] == "wolf"
+        && sorted[3] == "wyrm"
+    {
+        return sorted[2];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array sort method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array sort method should run");
+        assert_eq!(result, Value::String("wolf".to_owned()));
+    }
+
+    #[test]
     fn array_sort_by_rejects_mixed_key_domains() {
         let source = r#"
 fn main() {
@@ -1594,6 +1689,27 @@ fn main() {
             error.kind,
             VmErrorKind::TypeMismatch {
                 operation: "method sort_by"
+            }
+        );
+    }
+
+    #[test]
+    fn array_sort_rejects_mixed_scalar_domains() {
+        let source = r#"
+fn main() {
+    return [1, "two"].sort();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array sort type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array sort should reject mixed scalar domains");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method sort"
             }
         );
     }

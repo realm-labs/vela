@@ -25,6 +25,7 @@ const ARRAY_METHOD_NAMES: &[&str] = &[
     "count",
     "sum",
     "group_by",
+    "sort",
     "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
@@ -300,6 +301,11 @@ fn array_method_fact(
             )
             .with_lambda(vec![element], TypeFact::String),
         ),
+        "sort" => Some(StdlibMethodFact::new(
+            receiver,
+            "sort",
+            TypeFact::array(element.clone()),
+        )),
         "sort_by" => Some(
             StdlibMethodFact::new(receiver, "sort_by", TypeFact::array(element.clone()))
                 .with_lambda(vec![element], TypeFact::Any),

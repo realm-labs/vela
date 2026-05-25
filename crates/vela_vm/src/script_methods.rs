@@ -89,6 +89,7 @@ pub(crate) fn call_method(
         "index_of" => array_methods::index_of(receiver, args, heap.as_deref()),
         "distinct" => array_methods::distinct(receiver, args, heap.as_deref()),
         "reverse" => array_methods::reverse(receiver, args, heap.as_deref()),
+        "sort" => array_methods::sort(receiver, args, heap.as_deref()),
         "is_some" => option_result_methods::is_some(receiver, args, heap.as_deref()),
         "is_none" => option_result_methods::is_none(receiver, args, heap.as_deref()),
         "is_ok" => option_result_methods::is_ok(receiver, args, heap.as_deref()),
