@@ -991,6 +991,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   root into a focused value module. Public re-exports remain stable while
   host-ref reads, script-value writes, reflective host calls, and dynamic
   implements checks no longer add more logic to `lib.rs`.
+- Split VM-side reflection value conversion into a focused
+  `reflection_values` module. Script `Value` to copied `ReflectValue`
+  translation now stays near reflection native registration instead of growing
+  the VM crate root, while preserving the controlled host-ref and script-value
+  reflection boundary.
 
 ### M14: Engine, Native Functions, And Rust Host Macros
 

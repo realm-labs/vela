@@ -18,6 +18,7 @@ mod option_result_methods;
 mod ranges;
 mod record_fields;
 mod reflection;
+mod reflection_values;
 mod script_methods;
 mod script_object;
 mod set_methods;
@@ -36,6 +37,7 @@ pub use heap_execution::HeapExecution;
 use host_values::{value_from_host, value_to_host};
 pub use iteration::IteratorState;
 pub use ranges::RangeValue;
+pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 use script_methods::{call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
@@ -44,7 +46,9 @@ use vela_bytecode::{
 };
 use vela_common::{Span, SymbolInterner};
 use vela_host::{HostPath, HostRef, PatchTx, ScriptStateAdapter};
-use vela_reflect::{self as reflect, TypeRegistry};
+#[cfg(test)]
+use vela_reflect as reflect;
+use vela_reflect::TypeRegistry;
 
 pub use budget::{ExecutionBudget, ExecutionBudgetKind};
 pub use value::{ClosureValue, Value};
@@ -2037,97 +2041,6 @@ fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureVal
     match value {
         Value::Closure(closure) => Ok(closure.clone()),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect::ReflectValue> {
-    match value {
-        Value::HostRef(host_ref) => Ok(reflect::ReflectValue::HostRef(*host_ref)),
-        Value::Map(values) => {
-            let values = values
-                .iter()
-                .map(|(key, value)| Ok((key.clone(), value_to_reflect(value, operation)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            Ok(reflect::ReflectValue::Record(values))
-        }
-        Value::Record {
-            type_name,
-            fields: values,
-        } => {
-            let values = values
-                .iter()
-                .map(|(key, value)| Ok((key.to_owned(), value_to_reflect(value, operation)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            Ok(reflect::ReflectValue::ScriptRecord {
-                type_name: type_name.clone(),
-                fields: values,
-            })
-        }
-        Value::Enum {
-            enum_name,
-            variant,
-            fields: values,
-        } => {
-            let values = values
-                .iter()
-                .map(|(key, value)| Ok((key.to_owned(), value_to_reflect(value, operation)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            Ok(reflect::ReflectValue::ScriptEnum {
-                enum_name: enum_name.clone(),
-                variant: variant.clone(),
-                fields: values,
-            })
-        }
-        Value::Array(_)
-        | Value::Set(_)
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::PathProxy(_)
-        | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-        Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-        Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-        Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
-            reflect::ReflectValue::Host(value_to_host(value, operation, None)?),
-        ),
-    }
-}
-
-fn value_from_reflect(value: reflect::ReflectValue) -> VmResult<Value> {
-    match value {
-        reflect::ReflectValue::Host(value) => Ok(value_from_host(value)),
-        reflect::ReflectValue::HostRef(host_ref) => Ok(Value::HostRef(host_ref)),
-        reflect::ReflectValue::Record(values) => {
-            let values = values
-                .into_iter()
-                .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            Ok(Value::Map(values))
-        }
-        reflect::ReflectValue::ScriptRecord { type_name, fields } => {
-            let fields = fields
-                .into_iter()
-                .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            Ok(Value::Record {
-                fields: ScriptFields::from_pairs(&type_name, fields),
-                type_name,
-            })
-        }
-        reflect::ReflectValue::ScriptEnum {
-            enum_name,
-            variant,
-            fields,
-        } => {
-            let fields = fields
-                .into_iter()
-                .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            Ok(Value::Enum {
-                fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
-                enum_name,
-                variant,
-            })
-        }
     }
 }
 
