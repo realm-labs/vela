@@ -1017,6 +1017,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   can now receive `NativeCallContext` plus typed copied arguments for arities
   0-3, charge budgets, and record `PatchTx` writes while conversion failures
   still happen before any patch is recorded.
+- Added `EngineBuilder::register_typed_host_native_fn` for the existing
+  `HostExecution` native path. Host-native callbacks can now use typed copied
+  arguments for arities 0-3 while still writing only through `PatchTx`, and
+  conversion errors are covered before any transaction patch is recorded.
 
 ## Next
 

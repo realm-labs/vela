@@ -30,7 +30,9 @@ pub use random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
 pub use runtime::{CallOptions, Runtime};
 pub use schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use source::{EngineSourceError, EngineSourceErrorKind};
-pub use typed::{IntoNativeReturn, TypedContextHostNativeFunction, TypedNativeFunction};
+pub use typed::{
+    IntoNativeReturn, TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
+};
 pub use vela_common::{HostObjectId, HostTypeId};
 pub use vela_host::HostRef;
 pub use vela_hot_reload::HotReloadPolicy;

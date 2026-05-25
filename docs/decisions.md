@@ -4303,3 +4303,27 @@ Consequences:
 - A failed argument conversion leaves the transaction unchanged.
 - Generated method wrappers can reuse this adapter shape later without changing
   the VM native call ABI.
+
+## 2026-05-25: Typed Host Natives Reuse HostExecution Safely
+
+Status: Accepted
+
+Context:
+The older host-native Engine path receives `HostExecution` directly rather than
+the richer `NativeCallContext`. It is still useful for embedders that only need
+the adapter/transaction pair, but it had no typed registration helper.
+
+Decision:
+Add `TypedHostNativeFunction` in the focused Engine `typed` module and expose
+`EngineBuilder::register_typed_host_native_fn`. The adapter accepts
+`HostExecution` followed by 0-3 copied typed arguments, reuses `FromScriptArg`
+and `IntoNativeReturn`, and preserves the existing permission gate installed by
+`Engine::install`.
+
+Consequences:
+- Hosts can register simple PatchTx-writing native callbacks without manual
+  `Value` destructuring.
+- Conversion failures happen before the callback runs, so failed typed
+  conversion cannot record patches.
+- Context-native registration remains the preferred path when callbacks need
+  Engine metadata, permission inspection, or budget charging.

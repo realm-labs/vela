@@ -1,4 +1,4 @@
-use vela_vm::{Value, VmError, VmErrorKind, VmResult};
+use vela_vm::{HostExecution, Value, VmError, VmErrorKind, VmResult};
 
 use crate::{FromScriptArg, IntoScriptArg, NativeCallContext};
 
@@ -30,6 +30,10 @@ pub trait TypedNativeFunction<Args>: Send + Sync + 'static {
 
 pub trait TypedContextHostNativeFunction<Args>: Send + Sync + 'static {
     fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value>;
+}
+
+pub trait TypedHostNativeFunction<Args>: Send + Sync + 'static {
+    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value>;
 }
 
 impl<F, R> TypedNativeFunction<()> for F
@@ -143,6 +147,67 @@ where
         expect_arity(args, 3)?;
         (self)(
             ctx,
+            A::from_script_arg(&args[0])?,
+            B::from_script_arg(&args[1])?,
+            C::from_script_arg(&args[2])?,
+        )
+        .into_native_return()
+    }
+}
+
+impl<F, R> TypedHostNativeFunction<()> for F
+where
+    F: for<'host> Fn(&mut HostExecution<'host>) -> R + Send + Sync + 'static,
+    R: IntoNativeReturn,
+{
+    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+        expect_arity(args, 0)?;
+        (self)(host).into_native_return()
+    }
+}
+
+impl<F, A, R> TypedHostNativeFunction<(A,)> for F
+where
+    F: for<'host> Fn(&mut HostExecution<'host>, A) -> R + Send + Sync + 'static,
+    A: FromScriptArg,
+    R: IntoNativeReturn,
+{
+    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+        expect_arity(args, 1)?;
+        (self)(host, A::from_script_arg(&args[0])?).into_native_return()
+    }
+}
+
+impl<F, A, B, R> TypedHostNativeFunction<(A, B)> for F
+where
+    F: for<'host> Fn(&mut HostExecution<'host>, A, B) -> R + Send + Sync + 'static,
+    A: FromScriptArg,
+    B: FromScriptArg,
+    R: IntoNativeReturn,
+{
+    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+        expect_arity(args, 2)?;
+        (self)(
+            host,
+            A::from_script_arg(&args[0])?,
+            B::from_script_arg(&args[1])?,
+        )
+        .into_native_return()
+    }
+}
+
+impl<F, A, B, C, R> TypedHostNativeFunction<(A, B, C)> for F
+where
+    F: for<'host> Fn(&mut HostExecution<'host>, A, B, C) -> R + Send + Sync + 'static,
+    A: FromScriptArg,
+    B: FromScriptArg,
+    C: FromScriptArg,
+    R: IntoNativeReturn,
+{
+    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+        expect_arity(args, 3)?;
+        (self)(
+            host,
             A::from_script_arg(&args[0])?,
             B::from_script_arg(&args[1])?,
             C::from_script_arg(&args[2])?,
