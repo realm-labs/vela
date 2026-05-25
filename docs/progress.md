@@ -987,6 +987,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   value, and `HostRef` arguments. Runtime-call tests now show hosts can build
   script argument lists and host-ref values without exposing Rust state or
   bypassing `PatchTx`.
+- Added initial Rust signature conversion rules through `FromScriptArg` and
+  `ScriptArgsExt`. Host-native callbacks can now extract copied Rust bool,
+  integer, float, string, array, map, VM value, and `HostRef` arguments with
+  structured VM arity/type errors, while keeping host object access behind
+  external handles and `PatchTx`.
 
 ## Next
 

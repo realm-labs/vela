@@ -13,7 +13,7 @@ mod reload;
 mod runtime;
 mod source;
 
-pub use args::IntoScriptArg;
+pub use args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 pub use builder::EngineBuilder;
 pub use context::NativeCallContext;
 pub use engine::Engine;

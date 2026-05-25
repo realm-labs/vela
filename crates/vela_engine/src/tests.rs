@@ -13,7 +13,7 @@ use vela_vm::{HostExecution, Value, VmErrorKind};
 use crate::{
     CONTROLLED_RANDOM_PERMISSION, CallOptions, EffectSet, Engine, EngineErrorKind,
     EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeFunctionDesc,
-    NativeFunctionId, NativeMethodDesc, TypeHint,
+    NativeFunctionId, NativeMethodDesc, ScriptArgsExt, TypeHint,
 };
 
 #[test]
@@ -495,12 +495,11 @@ fn context_host_native_can_charge_execution_budget_before_patching() {
                 .access(FunctionAccess::public()),
             |args, ctx| {
                 ctx.charge_instructions(100)?;
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
-                };
+                let player = args.required::<HostRef>(0)?;
+                let level = args.required::<i64>(1)?;
                 ctx.tx().set_path(
-                    HostPath::new(*player).field(FieldId::new(1)),
-                    HostValue::Int(*level),
+                    HostPath::new(player).field(FieldId::new(1)),
+                    HostValue::Int(level),
                     None,
                 )?;
                 Ok(Value::Null)
@@ -569,6 +568,52 @@ fn args_macro_converts_rust_values_and_host_refs() {
     );
     assert_eq!(crate::args!(), Vec::<Value>::new());
     assert_eq!(crate::host!(1, 42, 7), Value::HostRef(host_ref));
+}
+
+#[test]
+fn script_arg_conversions_extract_owned_rust_values() {
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let args = crate::args![
+        true,
+        5,
+        2.5_f64,
+        "title",
+        [1, 2, 3],
+        BTreeMap::from([("key", "value")]),
+        host_ref,
+    ];
+
+    assert!(args.required::<bool>(0).expect("bool arg"));
+    assert_eq!(args.required::<i64>(1), Ok(5));
+    assert_eq!(args.required::<f64>(2), Ok(2.5));
+    assert_eq!(args.required::<String>(3), Ok("title".to_owned()));
+    assert_eq!(args.required::<Vec<i64>>(4), Ok(vec![1, 2, 3]));
+    assert_eq!(
+        args.required::<BTreeMap<String, String>>(5),
+        Ok(BTreeMap::from([("key".to_owned(), "value".to_owned())]))
+    );
+    assert_eq!(args.required::<HostRef>(6), Ok(host_ref));
+
+    assert!(matches!(
+        args.required::<HostRef>(1),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch {
+                operation: "host ref"
+            },
+            source_span: None,
+        })
+    ));
+    assert!(matches!(
+        args.required::<i64>(9),
+        Err(VmError {
+            kind: VmErrorKind::ArityMismatch {
+                name,
+                expected: 10,
+                actual: 7,
+            },
+            source_span: None,
+        }) if name == "native argument conversion"
+    ));
 }
 
 #[test]

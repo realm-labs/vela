@@ -4149,3 +4149,27 @@ Consequences:
   remain copied external IDs and mutations still flow through `PatchTx`.
 - Broader Rust signature conversion and method macro generation remain future
   M14 work.
+
+## 2026-05-25: Native Argument Conversion Returns Owned Values
+
+Status: Accepted
+
+Context:
+M14 requires Rust signature conversion rules. Native callbacks were manually
+destructuring `Value` slices, which duplicates type checks and makes it too
+easy for embedding examples to mix conversion logic with host mutation logic.
+
+Decision:
+Extend the Engine argument module with `FromScriptArg` and `ScriptArgsExt`.
+The first conversion set extracts owned or copied Rust values for bools,
+integers, floats, strings, arrays, maps, VM `Value`, and `HostRef`. Missing
+arguments report `ArityMismatch`, and incompatible dynamic values report
+`TypeMismatch`.
+
+Consequences:
+- Context/native callbacks can express argument conversion independently from
+  patch recording and adapter access.
+- Conversions still never expose Rust host objects; `HostRef` remains a copied
+  external handle.
+- Richer generated function wrappers and typed method macros can build on this
+  trait without changing the VM call ABI.
