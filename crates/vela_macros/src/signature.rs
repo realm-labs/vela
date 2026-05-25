@@ -1,4 +1,4 @@
-use syn::{Attribute, Pat, PatType, Result, Type, spanned::Spanned};
+use syn::{Attribute, Generics, Pat, PatType, Result, Type, spanned::Spanned};
 
 const UNSUPPORTED_SCRIPT_INTEGER_TYPES: &[&str] = &["i128", "isize", "u64", "u128", "usize"];
 
@@ -10,6 +10,17 @@ pub(crate) fn reject_script_reference_param(param: &PatType) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+pub(crate) fn reject_generic_signature(generics: &Generics, context: &str) -> Result<()> {
+    if generics.params.is_empty() && generics.where_clause.is_none() {
+        return Ok(());
+    }
+
+    Err(syn::Error::new(
+        generics.span(),
+        format!("{context} does not support generic parameters or where clauses"),
+    ))
 }
 
 pub(crate) fn reject_unsupported_integer_type(ty: &Type) -> Result<()> {

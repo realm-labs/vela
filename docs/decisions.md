@@ -5996,3 +5996,28 @@ Consequences:
   `map.entries()` and does not introduce script-language generics.
 - The helper works only on copied script maps and does not cross the host
   mutation boundary.
+
+## 2026-05-25: Native Macros Reject Where Clauses
+
+Status: Accepted
+
+Context:
+M14 native macros generate stable Engine registration code from Rust function
+and method signatures. The macros already reject explicit generic parameters,
+but Rust where-clauses can still express generic or specialization-like bounds
+that have no script-language equivalent and can make generated helpers fail
+later with less actionable errors.
+
+Decision:
+Reject where-clauses in the shared macro signature validation path. Apply the
+same rule to `#[script_function]`, `#[script_context_function]`,
+`#[script_host_function]`, `#[script_methods]` impl blocks, and individual
+`#[script_method]` signatures.
+
+Consequences:
+- The embedding boundary remains aligned with the no script-generics language
+  constraint.
+- Macro users get an immediate diagnostic before Engine registration tokens are
+  generated.
+- Future support for explicit Rust-side specialization would need a separate
+  design instead of appearing accidentally through macro input.

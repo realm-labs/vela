@@ -9,8 +9,8 @@ use syn::{
 
 use crate::attrs::{error, spanned_error};
 use crate::signature::{
-    docs_from_attrs, param_name, reject_script_reference_param, reject_unsupported_integer_type,
-    type_ident, wrapper_inner_type,
+    docs_from_attrs, param_name, reject_generic_signature, reject_script_reference_param,
+    reject_unsupported_integer_type, type_ident, wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -95,12 +95,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             "#[script_methods] only supports inherent impl blocks",
         ));
     }
-    if !item.generics.params.is_empty() {
-        return Err(spanned_error(
-            &item.generics,
-            "#[script_methods] does not support generic impl blocks",
-        ));
-    }
+    reject_generic_signature(&item.generics, "#[script_methods]")?;
 
     let mut seen_ids = BTreeSet::new();
     let mut methods = Vec::new();
@@ -232,12 +227,7 @@ fn method_meta(
     id: u32,
     docs: Option<String>,
 ) -> Result<MethodMeta> {
-    if !method.sig.generics.params.is_empty() {
-        return Err(spanned_error(
-            &method.sig.generics,
-            "#[script_method] does not support generic methods",
-        ));
-    }
+    reject_generic_signature(&method.sig.generics, "#[script_method]")?;
     if method.sig.asyncness.is_some() {
         return Err(spanned_error(
             &method.sig.asyncness,
@@ -538,6 +528,39 @@ mod tests {
         .expect_err("self receiver should fail macro expansion");
 
         assert!(error.to_string().contains("HostRef receiver parameters"));
+    }
+
+    #[test]
+    fn rejects_impl_where_clauses() {
+        let error = expand_result(quote! {
+            impl Player
+            where
+                Player: Clone,
+            {
+                #[script_method(id = 1)]
+                pub fn grant(player: HostRef, amount: i64) {}
+            }
+        })
+        .expect_err("impl where clause should fail macro expansion");
+
+        assert!(error.to_string().contains("where clauses"));
+    }
+
+    #[test]
+    fn rejects_method_where_clauses() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1)]
+                pub fn grant(player: HostRef, amount: i64)
+                where
+                    i64: Copy,
+                {
+                }
+            }
+        })
+        .expect_err("method where clause should fail macro expansion");
+
+        assert!(error.to_string().contains("where clauses"));
     }
 
     #[test]

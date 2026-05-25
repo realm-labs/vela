@@ -7,8 +7,8 @@ use syn::{
 
 use crate::attrs::{error, spanned_error};
 use crate::signature::{
-    docs_from_attrs, param_name, reject_script_reference_param, reject_unsupported_integer_type,
-    type_ident, wrapper_inner_type,
+    docs_from_attrs, param_name, reject_generic_signature, reject_script_reference_param,
+    reject_unsupported_integer_type, type_ident, wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -92,12 +92,7 @@ pub(crate) fn expand_host(attr: TokenStream, input: TokenStream) -> TokenStream 
 
 fn expand_result(attr: TokenStream, input: TokenStream, mode: FunctionMode) -> Result<TokenStream> {
     let item = parse2::<ItemFn>(input)?;
-    if !item.sig.generics.params.is_empty() {
-        return Err(spanned_error(
-            &item.sig.generics,
-            &format!("{} does not support generic functions", mode.attr_name()),
-        ));
-    }
+    reject_generic_signature(&item.sig.generics, mode.attr_name())?;
     if item.sig.asyncness.is_some() {
         return Err(spanned_error(
             &item.sig.asyncness,
@@ -502,7 +497,26 @@ mod tests {
         )
         .expect_err("generic function should fail macro expansion");
 
-        assert!(error.to_string().contains("generic functions"));
+        assert!(error.to_string().contains("generic parameters"));
+    }
+
+    #[test]
+    fn rejects_function_where_clauses() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn grant(amount: i64) -> i64
+                where
+                    i64: Copy,
+                {
+                    amount
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("function where clause should fail macro expansion");
+
+        assert!(error.to_string().contains("where clauses"));
     }
 
     #[test]

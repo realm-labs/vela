@@ -1407,6 +1407,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to
   expose the successful copied value hint, with macro tests proving generated
   registrations return dynamic `Result.Ok`/`Result.Err` values.
+- Tightened M14 macro generic-bound validation. Native function, context-host
+  function, host function, and host method macros now reject Rust where-clauses
+  through a shared signature helper instead of allowing hidden generic
+  constraints to reach generated Engine registration code.
 
 ## Next
 
