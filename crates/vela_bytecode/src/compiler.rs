@@ -1,5 +1,6 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
+mod call_args;
 mod control_flow;
 mod field_slots;
 mod host_paths;
@@ -31,6 +32,7 @@ use crate::{
     CallArgument, CodeObject, Constant, HostPathSegment, Instruction, InstructionKind,
     InstructionOffset, Program, Register,
 };
+use call_args::resolve_script_call_arguments;
 use control_flow::LoopContext;
 use field_slots::ScriptFieldSlots;
 use host_paths::{HostPath, HostPathPart, HostPathRoot, host_field_path, host_field_path_parts};
@@ -1303,7 +1305,7 @@ impl<'ast> Compiler<'ast> {
 
                 let dst = self.alloc_register()?;
                 if let Some((declaration, name)) = self.script_function_call(callee) {
-                    let args = self.compile_script_call_args(declaration, args)?;
+                    let args = self.compile_script_call_args(declaration, args, callee.span)?;
                     self.emit(InstructionKind::CallFunction { dst, name, args });
                 } else if self.local_callee(callee).is_some()
                     || !matches!(callee.kind, ExprKind::Path(_))
@@ -1430,6 +1432,7 @@ impl<'ast> Compiler<'ast> {
         &mut self,
         declaration: HirDeclId,
         args: &[Argument],
+        call_span: Span,
     ) -> CompileResult<Vec<CallArgument>> {
         let params = self
             .facts
@@ -1437,57 +1440,21 @@ impl<'ast> Compiler<'ast> {
             .get(&declaration)
             .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("script call")))?
             .clone();
-        let mut slots = vec![None; params.len()];
-        let mut next_positional = 0_usize;
-        let mut seen_named = false;
-
-        for arg in args {
-            let index = if let Some(name) = &arg.name {
-                seen_named = true;
-                params
-                    .iter()
-                    .position(|param| param.name == *name)
-                    .ok_or_else(|| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "unknown named argument",
-                        ))
-                    })?
-            } else {
-                if seen_named {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "positional argument after named argument",
-                    )));
-                }
-                let index = next_positional;
-                next_positional = next_positional.saturating_add(1);
-                if index >= params.len() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "too many arguments",
-                    )));
-                }
-                index
-            };
-
-            if slots[index].is_some() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "duplicate argument",
-                )));
-            }
-            slots[index] = Some(CallArgument::Register(self.compile_expr(&arg.value)?));
-        }
+        let slots =
+            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
+                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+            })?;
 
         slots
             .into_iter()
             .zip(params)
             .map(|(slot, param)| {
                 if let Some(arg) = slot {
-                    Ok(arg)
+                    self.compile_expr(&arg.value).map(CallArgument::Register)
                 } else if param.default_value_span.is_some() {
                     Ok(CallArgument::Missing)
                 } else {
-                    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing required argument",
-                    )))
+                    unreachable!("call argument resolver rejects missing required arguments")
                 }
             })
             .collect()
@@ -4512,6 +4479,99 @@ fn main() {
             InstructionKind::CallFunction { args, .. }
                 if args.len() == 3 && matches!(args[1], CallArgument::Missing)
         )));
+    }
+
+    #[test]
+    fn compiler_reports_script_call_argument_diagnostics() {
+        let unknown = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn grant(base, amount = 10) {
+    return base + amount;
+}
+
+fn main() {
+    return grant(amunt = 2, base = 1);
+}
+"#,
+        )
+        .expect_err("unknown named argument should fail");
+        let duplicate = compile_program_source(
+            SourceId::new(2),
+            r#"
+fn grant(base, amount = 10) {
+    return base + amount;
+}
+
+fn main() {
+    return grant(1, base = 2);
+}
+"#,
+        )
+        .expect_err("duplicate argument should fail");
+        let positional_after_named = compile_program_source(
+            SourceId::new(3),
+            r#"
+fn grant(base, amount = 10) {
+    return base + amount;
+}
+
+fn main() {
+    return grant(amount = 2, 1);
+}
+"#,
+        )
+        .expect_err("positional argument after named argument should fail");
+        let too_many = compile_program_source(
+            SourceId::new(4),
+            r#"
+fn grant(base) {
+    return base;
+}
+
+fn main() {
+    return grant(1, 2);
+}
+"#,
+        )
+        .expect_err("too many arguments should fail");
+        let missing = compile_program_source(
+            SourceId::new(5),
+            r#"
+fn grant(base, amount = 10) {
+    return base + amount;
+}
+
+fn main() {
+    return grant();
+}
+"#,
+        )
+        .expect_err("missing required argument should fail");
+
+        assert_eq!(
+            semantic_diagnostic_codes(unknown),
+            ["compiler::unknown_named_argument"]
+        );
+        assert_eq!(
+            semantic_diagnostic_codes(duplicate),
+            ["compiler::duplicate_argument"]
+        );
+        assert_eq!(
+            semantic_diagnostic_codes(positional_after_named),
+            [
+                "compiler::positional_after_named_argument",
+                "compiler::missing_required_argument"
+            ]
+        );
+        assert_eq!(
+            semantic_diagnostic_codes(too_many),
+            ["compiler::too_many_arguments"]
+        );
+        assert_eq!(
+            semantic_diagnostic_codes(missing),
+            ["compiler::missing_required_argument"]
+        );
     }
 
     #[test]

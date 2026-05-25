@@ -1510,6 +1510,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   operands or returned values and still exit the active function correctly,
   instead of being rejected after bytecode emission had already produced
   returns.
+- Tightened M9 script-call argument validation for named and defaulted
+  parameters. Invalid script calls now report source-spanned semantic
+  diagnostics for unknown names, duplicate arguments, positional-after-named
+  ordering, too many arguments, and missing required parameters instead of
+  generic unsupported-syntax errors.
 
 ## Next
 
