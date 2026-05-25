@@ -1077,6 +1077,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   math helpers, permissioned random, and `set.from_array`, so future
   diagnostics/completion can infer return facts for namespace-style native
   calls without exposing script generics.
+- Added HIR-backed analysis fact collection. `vela_analysis` now resolves
+  public type hints into internal `TypeFact` values, records function
+  signature and local binding facts from `ModuleGraph`, qualifies script
+  record/enum/trait schema facts, and degrades ambiguous or unresolved hints to
+  `Unknown` without adding script-language generics.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

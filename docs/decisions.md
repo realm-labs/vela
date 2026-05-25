@@ -4619,3 +4619,28 @@ Consequences:
   copied dynamic enum values.
 - Existing scripts that compared `map.get(key)` or `map.remove(key)` directly
   to raw values need explicit unwrapping or matching.
+
+## 2026-05-25: Type Hints Resolve To Internal TypeFacts
+
+Status: Accepted
+
+Context:
+M13 needs TypeFact inference for diagnostics, completion, and hover. Public
+script type hints intentionally remain lightweight and non-generic, while the
+analysis layer needs richer internal facts for collection elements, dynamic
+Option/Result helpers, functions, and script schemas.
+
+Decision:
+Resolve HIR type hints inside `vela_analysis` into internal `TypeFact` values.
+Builtin collection hints become collection facts with `Unknown` element/key/value
+facts, function hints become a function fact with unknown signature details, and
+script struct/enum/trait hints resolve to qualified schema facts when
+unambiguous. Ambiguous or unresolved hints degrade to `Unknown`.
+
+Consequences:
+- Public syntax remains free of generics while analysis can still carry
+  collection and schema facts for tools.
+- Completion and diagnostics can distinguish "unknown" from explicit `any` at
+  dynamic boundaries.
+- The analysis crate now depends on HIR metadata, but bytecode and VM execution
+  remain independent of this tooling layer.

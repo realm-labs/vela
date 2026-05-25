@@ -2,6 +2,8 @@ use std::fmt;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TypeFact {
+    Unknown,
+    Never,
     Any,
     Null,
     Bool,
@@ -37,6 +39,9 @@ pub enum TypeFact {
         variant: Option<String>,
     },
     Host {
+        name: String,
+    },
+    Trait {
         name: String,
     },
     Union(Vec<TypeFact>),
@@ -97,8 +102,14 @@ impl TypeFact {
         Self::Host { name: name.into() }
     }
 
+    pub fn trait_type(name: impl Into<String>) -> Self {
+        Self::Trait { name: name.into() }
+    }
+
     pub fn display_name(&self) -> String {
         match self {
+            Self::Unknown => "unknown".to_owned(),
+            Self::Never => "never".to_owned(),
             Self::Any => "any".to_owned(),
             Self::Null => "null".to_owned(),
             Self::Bool => "bool".to_owned(),
@@ -122,7 +133,7 @@ impl TypeFact {
                     .join(", ");
                 format!("fn({params}) -> {}", returns.display_name())
             }
-            Self::Record { name } | Self::Host { name } => name.clone(),
+            Self::Record { name } | Self::Host { name } | Self::Trait { name } => name.clone(),
             Self::Enum {
                 name,
                 variant: Some(variant),
