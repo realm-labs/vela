@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{CodeObject, Constant};
-use vela_host::HostRef;
+use vela_host::{HostRef, PathProxy};
 
 use crate::heap::GcRef;
 use crate::iteration::IteratorState;
@@ -33,6 +33,7 @@ pub enum Value {
     Range(RangeValue),
     HeapRef(GcRef),
     HostRef(HostRef),
+    PathProxy(PathProxy),
     Iterator(IteratorState),
 }
 
@@ -62,7 +63,8 @@ impl Value {
             | Self::Float(_)
             | Self::String(_)
             | Self::Range(_)
-            | Self::HostRef(_) => {}
+            | Self::HostRef(_)
+            | Self::PathProxy(_) => {}
         }
     }
 }

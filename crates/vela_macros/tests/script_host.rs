@@ -1,5 +1,5 @@
 use vela_common::{FieldId, HostObjectId, HostTypeId, TypeId};
-use vela_engine::{HostPath, HostRef};
+use vela_engine::{HostPath, HostRef, PathProxy};
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::{FieldAccess, FieldDesc, TypeDesc, TypeKey, TypeKind};
 
@@ -104,6 +104,14 @@ fn script_host_derive_generates_field_helpers() {
     assert_eq!(
         Player::vela_field_path_name(player),
         HostPath::new(player).field(FieldId::new(2)),
+    );
+    assert_eq!(
+        Player::vela_field_proxy_level(player),
+        PathProxy::new(HostPath::new(player).field(FieldId::new(1))),
+    );
+    assert_eq!(
+        Player::vela_field_proxy_name(player),
+        PathProxy::new(HostPath::new(player).field(FieldId::new(2))),
     );
 }
 

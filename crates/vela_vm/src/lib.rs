@@ -1551,11 +1551,13 @@ pub(crate) fn value_to_heap_slot(
             };
             Ok(HeapSlot::Ref(reference))
         }
-        Value::Range(_) | Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
-            Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "heap slot",
-            }))
-        }
+        Value::Range(_)
+        | Value::Closure(_)
+        | Value::Iterator(_)
+        | Value::PathProxy(_)
+        | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "heap slot",
+        })),
     }
 }
 
@@ -1632,7 +1634,8 @@ fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
         | Value::Float(_)
         | Value::String(_)
         | Value::Range(_)
-        | Value::HostRef(_) => Ok(value.clone()),
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => Ok(value.clone()),
         Value::Iterator(_) | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "materialize",
         })),
@@ -1722,6 +1725,7 @@ fn store_value_in_heap_if_needed(
         | Value::Float(_)
         | Value::HeapRef(_)
         | Value::HostRef(_)
+        | Value::PathProxy(_)
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_) => Ok(value),
@@ -2073,9 +2077,12 @@ fn value_to_reflect(value: &Value, operation: &'static str) -> VmResult<reflect:
                 fields: values,
             })
         }
-        Value::Array(_) | Value::Set(_) | Value::Range(_) | Value::Closure(_) | Value::Missing => {
-            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
-        }
+        Value::Array(_)
+        | Value::Set(_)
+        | Value::Range(_)
+        | Value::Closure(_)
+        | Value::PathProxy(_)
+        | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::HeapRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
@@ -2140,7 +2147,8 @@ fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a 
         | Value::Closure(_)
         | Value::HeapRef(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 

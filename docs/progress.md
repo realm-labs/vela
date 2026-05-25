@@ -1535,6 +1535,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Split VM script `Value` and closure definitions into a focused value module,
   keeping the crate root centered on VM API wiring and execution dispatch while
   preserving the public `vela_vm::Value` re-export.
+- Added a focused host `PathProxy` abstraction over `HostPath`. Proxy reads and
+  mutations require an explicit `PatchTx` and state adapter, VM values can carry
+  copied proxies without tracing host state, Engine argument conversion accepts
+  them, and `ScriptHost` derives now generate per-field proxy helpers alongside
+  existing `HostPath` helpers.
 
 ## Next
 

@@ -6250,3 +6250,30 @@ Consequences:
   schema surface as `EngineBuilder`.
 - Hosts that need custom context schemas can keep registering their own type
   metadata instead of opting into the helper.
+
+## 2026-05-26: PathProxy Wraps HostPath And Requires PatchTx
+
+Status: Accepted
+
+Context:
+M11 and the architecture call out `PathProxy` as the script-visible value
+category for host paths, but current execution only built raw `HostPath` values
+inside bytecode dispatch. Embedders also need a stable helper surface that
+keeps host path manipulation inside the HostRef/HostPath/PatchTx model.
+
+Decision:
+Add `vela_host::PathProxy` as a copied wrapper around `HostPath`. It can extend
+paths by field, index, or key, but reads and mutations require an explicit
+state adapter and `PatchTx`; no Rust host object or `&mut` reference is stored
+inside the proxy. The VM can carry `Value::PathProxy`, Engine argument
+conversion can pass proxies to typed natives, and `ScriptHost` derives generate
+per-field proxy helpers next to existing field ID and `HostPath` helpers.
+
+Consequences:
+- Hosts can build and pass path proxies through the stable API without
+  bypassing `PatchTx`.
+- Proxy operations record Set/Add/Sub/Push/Remove/CallHostMethod patches or
+  read through transaction overlays, matching existing host path semantics.
+- Path proxies are copied external handles, not script heap ownership of Rust
+  state; storing them in heap aggregate values remains rejected until the heap
+  slot model has an explicit proxy slot.

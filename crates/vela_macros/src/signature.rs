@@ -6,7 +6,7 @@ pub(crate) fn reject_script_reference_param(param: &PatType) -> Result<()> {
     if matches!(param.ty.as_ref(), Type::Reference(_)) {
         return Err(syn::Error::new(
             param.span(),
-            "script-visible parameters cannot use Rust references; pass copied values, HostRef, or HostPath",
+            "script-visible parameters cannot use Rust references; pass copied values, HostRef, HostPath, or PathProxy",
         ));
     }
     Ok(())

@@ -5,6 +5,7 @@ mod error;
 mod mock;
 mod patch;
 mod path;
+mod proxy;
 mod tx;
 mod value;
 
@@ -13,6 +14,7 @@ pub use error::{HostError, HostErrorKind, HostResult};
 pub use mock::MockStateAdapter;
 pub use patch::{Patch, PatchOp};
 pub use path::{HostPath, HostRef, PathSegment};
+pub use proxy::PathProxy;
 pub use tx::{HostObjectSnapshot, PatchTx};
 pub use value::HostValue;
 

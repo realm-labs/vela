@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
-use vela_host::HostRef;
+use vela_host::{HostRef, PathProxy};
 use vela_vm::{Value, VmError, VmErrorKind, VmResult};
 
 pub trait IntoScriptArg {
@@ -73,6 +73,29 @@ impl FromScriptArg for HostRef {
 impl IntoScriptArg for &HostRef {
     fn into_script_arg(self) -> Value {
         Value::HostRef(*self)
+    }
+}
+
+impl IntoScriptArg for PathProxy {
+    fn into_script_arg(self) -> Value {
+        Value::PathProxy(self)
+    }
+}
+
+impl FromScriptArg for PathProxy {
+    const TYPE_NAME: &'static str = "path proxy";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        match value {
+            Value::PathProxy(proxy) => Ok(proxy.clone()),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
+impl IntoScriptArg for &PathProxy {
+    fn into_script_arg(self) -> Value {
+        Value::PathProxy(self.clone())
     }
 }
 

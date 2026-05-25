@@ -4,7 +4,7 @@ use vela_bytecode::compiler::{compile_program_source, compile_program_source_wit
 use vela_common::{
     FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TraitId, TypeId, VariantId,
 };
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
+use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx, PathProxy};
 use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
 use vela_reflect::{
     FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc,
@@ -1977,6 +1977,7 @@ fn main(player) {
 #[test]
 fn args_macro_converts_rust_values_and_host_refs() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(9)));
     let mut map = BTreeMap::new();
     map.insert("key", 9);
     let mut hash_map = HashMap::new();
@@ -1992,6 +1993,7 @@ fn args_macro_converts_rust_values_and_host_refs() {
         map,
         hash_map,
         host_ref,
+        proxy.clone(),
     ];
 
     assert_eq!(
@@ -2009,6 +2011,7 @@ fn args_macro_converts_rust_values_and_host_refs() {
             Value::Map([("key".to_owned(), Value::Int(9))].into()),
             Value::Map([("hash".to_owned(), Value::Int(11))].into()),
             Value::HostRef(host_ref),
+            Value::PathProxy(proxy),
         ]
     );
     assert_eq!(crate::args!(), Vec::<Value>::new());
@@ -2018,6 +2021,7 @@ fn args_macro_converts_rust_values_and_host_refs() {
 #[test]
 fn script_arg_conversions_extract_owned_rust_values() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(9)));
     let args = crate::args![
         true,
         5,
@@ -2027,6 +2031,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
         BTreeMap::from([("key", "value")]),
         HashMap::from([("hash", "map")]),
         host_ref,
+        proxy.clone(),
     ];
 
     assert!(args.required::<bool>(0).expect("bool arg"));
@@ -2045,6 +2050,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
         Ok(HashMap::from([("hash".to_owned(), "map".to_owned())]))
     );
     assert_eq!(args.required::<HostRef>(7), Ok(host_ref));
+    assert_eq!(args.required::<PathProxy>(8), Ok(proxy));
 
     assert!(matches!(
         args.required::<HostRef>(1),
@@ -2078,7 +2084,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
             kind: VmErrorKind::ArityMismatch {
                 name,
                 expected: 10,
-                actual: 8,
+                actual: 9,
             },
             source_span: None,
             ..

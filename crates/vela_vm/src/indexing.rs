@@ -69,7 +69,8 @@ pub(crate) fn get_index(
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "index",
         })),
     }
@@ -134,7 +135,8 @@ pub(crate) fn set_index(
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "index assignment",
         })),
     }
@@ -211,7 +213,8 @@ fn array_index(index: &Value) -> VmResult<usize> {
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "array index",
         })),
     }
@@ -239,7 +242,8 @@ fn map_key(index: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> 
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "map key",
         })),
     }

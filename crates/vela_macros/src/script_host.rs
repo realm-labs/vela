@@ -210,6 +210,7 @@ fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
     let id = field.id;
     let field_id_ident = format_ident!("vela_field_id_{}", field.rust_name);
     let field_path_ident = format_ident!("vela_field_path_{}", field.rust_name);
+    let field_proxy_ident = format_ident!("vela_field_proxy_{}", field.rust_name);
 
     quote! {
         #[must_use]
@@ -220,6 +221,11 @@ fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
         #[must_use]
         pub fn #field_path_ident(host_ref: ::vela_engine::HostRef) -> ::vela_engine::HostPath {
             ::vela_engine::HostPath::new(host_ref).field(Self::#field_id_ident())
+        }
+
+        #[must_use]
+        pub fn #field_proxy_ident(host_ref: ::vela_engine::HostRef) -> ::vela_engine::PathProxy {
+            ::vela_engine::PathProxy::new(Self::#field_path_ident(host_ref))
         }
     }
 }

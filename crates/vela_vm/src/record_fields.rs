@@ -73,7 +73,8 @@ pub(crate) fn set_record_field_value(
         | Value::Closure(_)
         | Value::Range(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => type_error("record field assignment"),
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => type_error("record field assignment"),
     }
 }
 
@@ -151,7 +152,8 @@ pub(crate) fn set_record_slot_value(
         | Value::Closure(_)
         | Value::Range(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => type_error("record slot assignment"),
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => type_error("record slot assignment"),
     }
 }
 

@@ -86,7 +86,8 @@ pub(crate) fn make_iterator(
         | Value::Enum { .. }
         | Value::Closure(_)
         | Value::Iterator(_)
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "for in",
         })),
     }

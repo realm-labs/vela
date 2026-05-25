@@ -47,7 +47,7 @@ pub use typed::{
     TypedNativeMethodFunction,
 };
 pub use vela_common::{FieldId, HostObjectId, HostTypeId};
-pub use vela_host::{HostPath, HostRef};
+pub use vela_host::{HostPath, HostRef, PathProxy};
 pub use vela_hot_reload::{
     HotReloadPolicy, HotReloadReport, HotReloadResult, HotUpdate, ProgramVersion,
 };

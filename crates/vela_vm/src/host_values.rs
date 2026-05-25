@@ -140,6 +140,7 @@ pub(crate) fn value_to_host(
         | Value::Range(_)
         | Value::Closure(_)
         | Value::Iterator(_)
+        | Value::PathProxy(_)
         | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
