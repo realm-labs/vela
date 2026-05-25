@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 vela_hir = { path = "../vela_hir" }
+vela_reflect = { path = "../vela_reflect" }
 
 [dev-dependencies]
 vela_common = { path = "../vela_common" }

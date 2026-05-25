@@ -43,6 +43,7 @@ version = "0.1.0"
 dependencies = [
  "vela_common",
  "vela_hir",
+ "vela_reflect",
 ]
 
 [[package]]

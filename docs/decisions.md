@@ -4644,3 +4644,27 @@ Consequences:
   dynamic boundaries.
 - The analysis crate now depends on HIR metadata, but bytecode and VM execution
   remain independent of this tooling layer.
+
+## 2026-05-25: TypeRegistry Facts Are Copied For Analysis
+
+Status: Accepted
+
+Context:
+Reflection metadata already covers host and script schemas, fields, methods,
+traits, variants, modules, and functions. M16 needs TypeFacts for completion and
+diagnostics from the same registry data, but analysis must not gain authority to
+modify runtime schema structure.
+
+Decision:
+Expose read-only TypeRegistry trait iteration and add a `vela_analysis`
+registry fact collector. The collector copies descriptor metadata into
+`TypeFact` values for types, fields, methods, variants, functions, traits, and
+trait methods. Descriptor type hints resolve through the registered schema
+surface; unresolved hints degrade to `Unknown`.
+
+Consequences:
+- Tooling can reuse registered host/script schemas for facts without querying
+  reflection at runtime or mutating registry structure.
+- Host types and script types get distinct facts, preserving completion
+  boundaries for host refs and script records/enums.
+- VM execution and hot reload ABI checks remain independent of analysis facts.

@@ -578,6 +578,10 @@ impl TypeRegistry {
         self.functions_by_id.values()
     }
 
+    pub fn traits(&self) -> impl Iterator<Item = &TraitDesc> {
+        self.traits_by_name.values()
+    }
+
     #[must_use]
     pub fn module_by_name(&self, name: &str) -> Option<&ModuleDesc> {
         self.modules_by_name.get(name)

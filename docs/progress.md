@@ -1082,6 +1082,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   signature and local binding facts from `ModuleGraph`, qualifies script
   record/enum/trait schema facts, and degrades ambiguous or unresolved hints to
   `Unknown` without adding script-language generics.
+- Added TypeRegistry-backed analysis facts. `vela_analysis` can now copy
+  host/script type facts, reflected fields, enum variants, methods, registered
+  functions, traits, and trait methods out of `TypeRegistry` metadata for
+  diagnostics/completion, resolving descriptor type hints while degrading
+  missing precision to `Unknown`.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.
