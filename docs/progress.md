@@ -1002,6 +1002,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `ScriptReflect`, and `script_methods` macro output now implements stable
   Engine traits for host schema and method metadata, letting embedders register
   macro-generated host schemas without copying descriptors by hand.
+- Added `EngineBuilder::register_host_method_desc` and
+  `register_host_method_metadata::<T>()` for deferred host methods. Macro
+  generated method metadata can now populate the Engine registry/compiler
+  options without a dummy native callback, and a macro integration test proves
+  `player.grant_exp(5)` compiles to a `PatchTx` host-method patch.
 
 ## Next
 

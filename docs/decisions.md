@@ -4225,3 +4225,30 @@ Consequences:
   method wrappers still remain explicit follow-up M14 work.
 - The Engine crate keeps schema glue in a separate module instead of expanding
   the builder or crate root with unrelated logic.
+
+## 2026-05-25: Host Method Metadata Can Register Without Callbacks
+
+Status: Accepted
+
+Context:
+The common host method path for Vela is deferred mutation: scripts call a host
+method, the VM records a `PatchTx` method-call patch, and the host adapter
+applies it at a safe point. That path needs stable method metadata for
+compilation and reflection, but it does not require an Engine-native Rust
+callback at script execution time.
+
+Decision:
+Add `EngineBuilder::register_host_method_desc` and
+`EngineBuilder::register_host_method_metadata::<T>()`. These helpers inject
+`NativeMethodDesc` metadata into the registered owner type during Engine build,
+using the same validation and reflected `MethodDesc` conversion as callable
+native methods. Callable native method registration remains available for hosts
+that explicitly want `Engine::call_native_method`.
+
+Consequences:
+- Macro-generated `#[script_methods]` metadata can drive script compilation and
+  reflective method metadata without dummy callbacks.
+- Script calls still mutate host state only by recording `PatchTx` patches; no
+  Rust host object or `&mut` reference is exposed to scripts.
+- Duplicate method IDs/names and unknown owner types continue to fail through
+  existing Engine build validation.

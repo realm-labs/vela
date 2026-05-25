@@ -1,7 +1,9 @@
-use vela_common::{FieldId, HostMethodId, HostTypeId, TypeId};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
 use vela_engine::{EffectSet, Engine, FunctionAccess, HostRef, NativeMethodDesc, TypeHint, Value};
+use vela_host::{HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::{FieldDesc, TypeDesc, TypeKey, TypeKind};
+use vela_vm::HostExecution;
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
@@ -100,4 +102,65 @@ fn script_macros_feed_engine_builder_registration() {
         player.methods[0].access.required_permissions(),
         &["player.write".to_owned()],
     );
+}
+
+#[test]
+fn script_method_metadata_compiles_to_patch_tx_calls() {
+    let engine = Engine::builder()
+        .register_host_schema::<Player>()
+        .register_host_method_metadata::<Player>()
+        .build()
+        .expect("engine should build from macro metadata");
+    let root = unique_test_dir("script_method_metadata");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(player: Player) {
+    player.grant_exp(5);
+    return 1;
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine.compile_file(&source).expect("compile source");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host
+        ),
+        Ok(Value::Int(1)),
+    );
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method: HostMethodId::new(7),
+            args: vec![HostValue::Int(5)],
+        },
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+fn unique_test_dir(name: &str) -> std::path::PathBuf {
+    let mut path = std::env::temp_dir();
+    path.push(format!(
+        "vela_macros_{name}_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    path
 }

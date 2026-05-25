@@ -11,8 +11,8 @@ use vela_vm::{HostExecution, Value, VmResult};
 use crate::{
     ContextHostNativeFunctionEntry, Engine, EngineError, EngineErrorKind, EngineResult,
     HostNativeFunctionEntry, NativeCallContext, NativeFunctionDesc, NativeFunctionEntry,
-    NativeMethodDesc, NativeMethodEntry, PermissionSet, ScriptHostSchema, TypeHint,
-    engine::EngineParts,
+    NativeMethodDesc, NativeMethodEntry, PermissionSet, ScriptHostMethodMetadata, ScriptHostSchema,
+    TypeHint, engine::EngineParts,
 };
 
 #[derive(Clone, Default)]
@@ -21,6 +21,7 @@ pub struct EngineBuilder {
     native_functions: Vec<NativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
+    host_method_metadata: Vec<NativeMethodDesc>,
     native_methods: Vec<NativeMethodEntry>,
     permissions: PermissionSet,
     reflection_policy: Option<ReflectPolicy>,
@@ -42,6 +43,19 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_host_schema<T: ScriptHostSchema>(self) -> Self {
         self.register_type(T::script_host_type_desc())
+    }
+
+    #[must_use]
+    pub fn register_host_method_desc(mut self, desc: NativeMethodDesc) -> Self {
+        self.host_method_metadata.push(desc);
+        self
+    }
+
+    #[must_use]
+    pub fn register_host_method_metadata<T: ScriptHostMethodMetadata>(mut self) -> Self {
+        self.host_method_metadata
+            .extend(T::script_host_method_descs());
+        self
     }
 
     #[must_use]
@@ -159,7 +173,7 @@ impl EngineBuilder {
 
     pub fn build(self) -> EngineResult<Engine> {
         let mut types = self.types;
-        inject_native_method_metadata(&mut types, &self.native_methods)?;
+        inject_host_method_metadata(&mut types, &self.host_method_metadata, &self.native_methods)?;
         validate_types(&types)?;
         validate_native_functions(
             &self.native_functions,
@@ -191,26 +205,30 @@ impl EngineBuilder {
     }
 }
 
-fn inject_native_method_metadata(
+fn inject_host_method_metadata(
     types: &mut [TypeDesc],
+    host_method_metadata: &[NativeMethodDesc],
     native_methods: &[NativeMethodEntry],
 ) -> EngineResult<()> {
-    for entry in native_methods {
-        let owner = find_type_mut(types, &entry.desc.owner).ok_or_else(|| {
+    for desc in host_method_metadata
+        .iter()
+        .chain(native_methods.iter().map(|entry| &entry.desc))
+    {
+        let owner = find_type_mut(types, &desc.owner).ok_or_else(|| {
             EngineError::new(EngineErrorKind::UnknownNativeMethodOwner {
-                name: entry.desc.owner.name.clone(),
+                name: desc.owner.name.clone(),
             })
         })?;
-        let mut method = MethodDesc::new(entry.desc.id, entry.desc.name.clone())
-            .return_type(type_hint_display(&entry.desc.returns))
-            .effects(reflect_effects(&entry.desc.effects))
-            .access(reflect_access(&entry.desc.access));
-        for param in &entry.desc.params {
+        let mut method = MethodDesc::new(desc.id, desc.name.clone())
+            .return_type(type_hint_display(&desc.returns))
+            .effects(reflect_effects(&desc.effects))
+            .access(reflect_access(&desc.access));
+        for param in &desc.params {
             method = method.param(
                 MethodParamDesc::new(param.name.clone()).type_hint(type_hint_display(&param.hint)),
             );
         }
-        if let Some(docs) = &entry.desc.docs {
+        if let Some(docs) = &desc.docs {
             method = method.docs(docs.clone());
         }
         owner.methods.push(method);
