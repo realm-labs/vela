@@ -102,7 +102,7 @@ fn result_to_option(args: &[Value]) -> VmResult<Value> {
     }
 }
 
-fn result_value(variant: &str, payload: Value) -> Value {
+pub(crate) fn result_value(variant: &str, payload: Value) -> Value {
     enum_value("Result", variant, vec![("0".to_owned(), payload)])
 }
 

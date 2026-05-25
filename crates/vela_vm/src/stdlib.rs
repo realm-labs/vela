@@ -140,6 +140,37 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_option_result_map_methods() {
+        let source = r#"
+fn main() {
+    let some = option.some(4).map(|value| value + 1);
+    let none = option.none().map(|value| value + 1);
+    let ok = result.ok("xp").map(|value| value.len());
+    let err = result.err("blocked").map(|value| value.len());
+
+    if option.unwrap_or(some, 0) == 5
+        && option.is_none(none)
+        && result.unwrap_or(ok, 0) == 2
+        && result.unwrap_or(err, 9) == 9
+    {
+        return 1;
+    }
+    return 0;
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option/result map source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option/result map source should run");
+        assert_eq!(result, crate::Value::Int(1));
+    }
+
+    #[test]
     fn runs_compiled_option_ok_or_with_try_propagation() {
         let source = r#"
 fn checked(raw) {
@@ -241,6 +272,34 @@ fn main() {
         let result = vm
             .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
             .expect("heap option/result helper stdlib source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_option_result_map_methods() {
+        let source = r#"
+fn main() {
+    let some = option.some("quest").map(|value| value.to_upper());
+    let none = option.none().map(|value| value.to_upper());
+    let ok = result.ok(["a", "b"]).map(|values| values.join("."));
+    let err = result.err("blocked").map(|value| value.to_upper());
+
+    return option.unwrap_or(some, "") == "QUEST"
+        && option.is_none(none)
+        && result.unwrap_or(ok, "") == "a.b"
+        && result.unwrap_or(err, "fallback") == "fallback";
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap option/result map source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap option/result map source should run");
         assert_eq!(result, crate::Value::Bool(true));
     }
 

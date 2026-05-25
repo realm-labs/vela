@@ -1574,6 +1574,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   accepts value-only callbacks in addition to `(key, value)` callbacks, and
   expression analysis infers value facts for single-argument map callbacks
   while preserving key/value facts for two-argument callbacks.
+- Added Option/Result `.map` value methods for M13 propagation convenience.
+  `Option.Some` and `Result.Ok` invoke script callbacks through the existing
+  method runtime, `Option.None` and `Result.Err` pass through their dynamic
+  enum shape, and expression analysis/completions expose matching non-generic
+  method facts for `Option`/`Result` type facts.
 
 ## Next
 

@@ -14,6 +14,7 @@ mod map_methods;
 mod math_stdlib;
 mod method_runtime;
 mod option_result;
+mod option_result_methods;
 mod ranges;
 mod record_fields;
 mod reflection;

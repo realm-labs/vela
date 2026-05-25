@@ -59,6 +59,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "parse_float",
     "parse_bool",
 ];
+const OPTION_RESULT_METHOD_NAMES: &[&str] = &["map"];
 
 pub(super) fn method_fact(
     receiver: &TypeFact,
@@ -74,6 +75,36 @@ pub(super) fn method_fact(
         }
         TypeFact::Set { element } => set_method_fact((**element).clone(), method),
         TypeFact::String => string_method_fact(method),
+        TypeFact::Option { some } => {
+            option_method_fact((**some).clone(), OptionShape::Maybe, method, lambda_return)
+        }
+        TypeFact::OptionSome { some } => {
+            option_method_fact((**some).clone(), OptionShape::Some, method, lambda_return)
+        }
+        TypeFact::OptionNone => {
+            option_method_fact(TypeFact::Never, OptionShape::None, method, lambda_return)
+        }
+        TypeFact::Result { ok, err } => result_method_fact(
+            (**ok).clone(),
+            (**err).clone(),
+            ResultShape::Maybe,
+            method,
+            lambda_return,
+        ),
+        TypeFact::ResultOk { ok } => result_method_fact(
+            (**ok).clone(),
+            TypeFact::Any,
+            ResultShape::Ok,
+            method,
+            lambda_return,
+        ),
+        TypeFact::ResultErr { err } => result_method_fact(
+            TypeFact::Never,
+            (**err).clone(),
+            ResultShape::Err,
+            method,
+            lambda_return,
+        ),
         _ => None,
     }
 }
@@ -94,6 +125,12 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
         TypeFact::Map { .. } => MAP_METHOD_NAMES,
         TypeFact::Set { .. } => SET_METHOD_NAMES,
         TypeFact::String => STRING_METHOD_NAMES,
+        TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. } => OPTION_RESULT_METHOD_NAMES,
         _ => &[],
     }
 }
@@ -420,6 +457,67 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
         )),
         _ => None,
     }
+}
+
+#[derive(Clone, Copy)]
+enum OptionShape {
+    Maybe,
+    Some,
+    None,
+}
+
+fn option_method_fact(
+    some: TypeFact,
+    shape: OptionShape,
+    method: &str,
+    lambda_return: Option<&TypeFact>,
+) -> Option<StdlibMethodFact> {
+    if method != "map" {
+        return None;
+    }
+    let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
+    let receiver = match shape {
+        OptionShape::Maybe => TypeFact::option(some.clone()),
+        OptionShape::Some => TypeFact::option_some(some.clone()),
+        OptionShape::None => TypeFact::option_none(),
+    };
+    let returns = match shape {
+        OptionShape::Maybe => TypeFact::option(mapped.clone()),
+        OptionShape::Some => TypeFact::option_some(mapped.clone()),
+        OptionShape::None => TypeFact::option_none(),
+    };
+    Some(StdlibMethodFact::new(receiver, "map", returns).with_lambda(vec![some], mapped))
+}
+
+#[derive(Clone, Copy)]
+enum ResultShape {
+    Maybe,
+    Ok,
+    Err,
+}
+
+fn result_method_fact(
+    ok: TypeFact,
+    err: TypeFact,
+    shape: ResultShape,
+    method: &str,
+    lambda_return: Option<&TypeFact>,
+) -> Option<StdlibMethodFact> {
+    if method != "map" {
+        return None;
+    }
+    let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
+    let receiver = match shape {
+        ResultShape::Maybe => TypeFact::result(ok.clone(), err.clone()),
+        ResultShape::Ok => TypeFact::result_ok(ok.clone()),
+        ResultShape::Err => TypeFact::result_err(err.clone()),
+    };
+    let returns = match shape {
+        ResultShape::Maybe => TypeFact::result(mapped.clone(), err),
+        ResultShape::Ok => TypeFact::result_ok(mapped.clone()),
+        ResultShape::Err => TypeFact::result_err(err),
+    };
+    Some(StdlibMethodFact::new(receiver, "map", returns).with_lambda(vec![ok], mapped))
 }
 
 fn numeric_return(value: &TypeFact) -> TypeFact {

@@ -7,6 +7,7 @@ use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
+use crate::option_result_methods;
 use crate::set_methods;
 use crate::string_methods;
 use crate::{
@@ -74,18 +75,35 @@ pub(crate) fn call_method(
         "join" => array_methods::join(receiver, args, heap.as_deref()),
         "distinct" => array_methods::distinct(receiver, args, heap.as_deref()),
         "reverse" => array_methods::reverse(receiver, args, heap.as_deref()),
-        "map" => array_methods::map(
-            receiver,
-            args,
-            MethodRuntime {
-                vm,
-                program,
-                host,
-                heap: heap.as_deref_mut(),
-                budget: budget.as_deref_mut(),
-                caller_roots: &caller_roots,
-            },
-        ),
+        "map" => {
+            if option_result_methods::is_option_or_result(receiver, heap.as_deref()) {
+                option_result_methods::map(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else {
+                array_methods::map(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            }
+        }
         "filter" => {
             if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::filter(

@@ -390,6 +390,64 @@ mod tests {
     }
 
     #[test]
+    fn option_and_result_map_methods_expose_dynamic_enum_facts() {
+        let maybe = stdlib_method_fact(
+            &TypeFact::option(TypeFact::Int),
+            "map",
+            Some(&TypeFact::String),
+        )
+        .expect("option map fact");
+        assert_eq!(maybe.returns, TypeFact::option(TypeFact::String));
+        assert_eq!(
+            maybe.lambda.expect("option map lambda").params,
+            vec![TypeFact::Int]
+        );
+
+        let some = stdlib_method_fact(
+            &TypeFact::option_some(TypeFact::Int),
+            "map",
+            Some(&TypeFact::String),
+        )
+        .expect("some map fact");
+        assert_eq!(some.returns, TypeFact::option_some(TypeFact::String));
+
+        let none = stdlib_method_fact(&TypeFact::option_none(), "map", Some(&TypeFact::String))
+            .expect("none map fact");
+        assert_eq!(none.returns, TypeFact::option_none());
+
+        let result = stdlib_method_fact(
+            &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
+            "map",
+            Some(&TypeFact::String),
+        )
+        .expect("result map fact");
+        assert_eq!(
+            result.returns,
+            TypeFact::result(TypeFact::String, TypeFact::record("Error"))
+        );
+        assert_eq!(
+            result.lambda.expect("result map lambda").params,
+            vec![TypeFact::Int]
+        );
+
+        let ok = stdlib_method_fact(
+            &TypeFact::result_ok(TypeFact::Int),
+            "map",
+            Some(&TypeFact::String),
+        )
+        .expect("ok map fact");
+        assert_eq!(ok.returns, TypeFact::result_ok(TypeFact::String));
+
+        let err = stdlib_method_fact(
+            &TypeFact::result_err(TypeFact::record("Error")),
+            "map",
+            Some(&TypeFact::String),
+        )
+        .expect("err map fact");
+        assert_eq!(err.returns, TypeFact::result_err(TypeFact::record("Error")));
+    }
+
+    #[test]
     fn math_and_set_functions_expose_return_facts() {
         assert_eq!(
             stdlib_function_fact("math.max", &[TypeFact::Int, TypeFact::Int])
@@ -504,6 +562,14 @@ mod tests {
                     .lambda
                     .as_ref()
                     .is_some_and(|lambda| lambda.params == vec![TypeFact::String, TypeFact::Int])
+        }));
+        let option_facts = stdlib_method_facts(&TypeFact::option(TypeFact::Int), None);
+        assert!(option_facts.iter().any(|fact| {
+            fact.method == "map"
+                && fact
+                    .lambda
+                    .as_ref()
+                    .is_some_and(|lambda| lambda.params == vec![TypeFact::Int])
         }));
         assert!(
             stdlib_method_facts(

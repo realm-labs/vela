@@ -605,6 +605,48 @@ mod tests {
     }
 
     #[test]
+    fn infers_option_result_map_method_facts() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                maybe.map(|value| value);
+                some.map(|value| value);
+                none.map(|value| value);
+                grant.map(|value| value);
+                failed.map(|value| value);
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["maybe"], TypeFact::option(TypeFact::Int))
+            .with_path(["some"], TypeFact::option_some(TypeFact::String))
+            .with_path(["none"], TypeFact::option_none())
+            .with_path(["grant"], TypeFact::result(TypeFact::String, TypeFact::Int))
+            .with_path(["failed"], TypeFact::result_err(TypeFact::record("Error")));
+
+        assert_eq!(
+            type_fact_from_expr(&expressions[0], &scope),
+            TypeFact::option(TypeFact::Int)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[1], &scope),
+            TypeFact::option_some(TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[2], &scope),
+            TypeFact::option_none()
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[3], &scope),
+            TypeFact::result(TypeFact::String, TypeFact::Int)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[4], &scope),
+            TypeFact::result_err(TypeFact::record("Error"))
+        );
+    }
+
+    #[test]
     fn infers_stdlib_function_facts() {
         let expressions = function_exprs(
             r#"

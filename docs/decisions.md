@@ -6478,3 +6478,29 @@ Consequences:
   key.
 - Existing key-aware map callbacks keep their behavior and analysis facts.
 - No script generics or host state mutation paths are introduced.
+
+## 2026-05-26: Option And Result Map Are Value Methods
+
+Status: Accepted
+
+Context:
+M13 standard-library work needs practical Option/Result-style propagation.
+The runtime already had dynamic enum constructors, predicates, unwrap helpers,
+and `?` propagation, but transforming successful payloads still required
+manual branching or unwrap/re-wrap logic.
+
+Decision:
+Implement `.map(callback)` as a script value method for dynamic `Option` and
+`Result` enum values. `Option.Some` and `Result.Ok` call the callback through
+the same budgeted method runtime used by collection helpers. `Option.None` and
+`Result.Err` preserve their dynamic enum shape without invoking the callback.
+Analysis exposes non-generic method facts for `Option`, `Option.Some`,
+`Option.None`, `Result`, `Result.Ok`, and `Result.Err`.
+
+Consequences:
+- Scripts can transform successful Option/Result payloads without adding
+  script-language generics.
+- Closure execution keeps the existing instruction, call-depth, heap-root, and
+  host boundary behavior.
+- The implementation remains separate from array mapping, so collection logic
+  does not accumulate dynamic enum special cases.
