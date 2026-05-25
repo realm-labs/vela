@@ -3,6 +3,7 @@
 mod access;
 mod candidates;
 mod error;
+mod error_diagnostics;
 mod members;
 mod metadata;
 mod modules;
