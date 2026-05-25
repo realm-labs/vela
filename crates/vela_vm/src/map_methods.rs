@@ -124,6 +124,31 @@ pub(crate) fn remove(
     }
 }
 
+pub(crate) fn clear(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("clear", args, 0)?;
+    match receiver {
+        Value::Map(values) => {
+            values.clear();
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method clear");
+            };
+            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method clear");
+            };
+            values.clear();
+            Ok(Value::Null)
+        }
+        _ => type_error("method clear"),
+    }
+}
+
 pub(crate) fn keys(
     receiver: &Value,
     args: &[Value],
@@ -626,5 +651,48 @@ fn main() {
                 operation: "method merge"
             }
         );
+    }
+
+    #[test]
+    fn runs_compiled_map_clear_method() {
+        let source = r#"
+fn main() {
+    let rewards = {"gold": 4, "xp": 6};
+    rewards.clear();
+    rewards.set("quest", 8);
+    if rewards.len() == 1 && rewards["quest"] == 8 {
+        return rewards.get_or("gold", 99);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map clear method should compile");
+
+        let result = Vm::new().run(&code).expect("map clear method should run");
+        assert_eq!(result, Value::Int(99));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_map_clear_method() {
+        let source = r#"
+fn main() {
+    let quests = {"daily": "done", "raid": "active"};
+    quests.clear();
+    quests.set("boss", "ready");
+    if quests.len() == 1 && quests["boss"] == "ready" {
+        return quests.keys().join("|");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap map clear method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap map clear method should run");
+        assert_eq!(result, Value::String("boss".to_owned()));
     }
 }

@@ -7,6 +7,7 @@ const ARRAY_METHOD_NAMES: &[&str] = &[
     "pop",
     "insert",
     "extend",
+    "clear",
     "first",
     "last",
     "remove_at",
@@ -34,6 +35,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "get_or",
     "set",
     "remove",
+    "clear",
     "keys",
     "values",
     "entries",
@@ -51,6 +53,7 @@ const SET_METHOD_NAMES: &[&str] = &[
     "has",
     "add",
     "remove",
+    "clear",
     "values",
     "map",
     "filter",
@@ -212,6 +215,7 @@ fn array_method_fact(
             StdlibMethodFact::new(receiver, "extend", TypeFact::Null)
                 .with_params(vec![TypeFact::array(element.clone())]),
         ),
+        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::Null)),
         "first" => Some(StdlibMethodFact::new(
             receiver,
             "first",
@@ -331,6 +335,7 @@ fn map_method_fact(
             StdlibMethodFact::new(receiver, "remove", TypeFact::option(value.clone()))
                 .with_params(vec![key.clone()]),
         ),
+        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::Null)),
         "keys" => Some(StdlibMethodFact::new(
             receiver,
             "keys",
@@ -414,6 +419,7 @@ fn set_method_fact(
             StdlibMethodFact::new(receiver, "remove", TypeFact::Bool)
                 .with_params(vec![element.clone()]),
         ),
+        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::Null)),
         "values" => Some(StdlibMethodFact::new(
             receiver,
             "values",

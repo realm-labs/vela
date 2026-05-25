@@ -1690,6 +1690,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   values from another dynamic array, rejects non-array arguments, works in
   inline and managed-heap execution, and exposes non-generic
   analysis/completion facts.
+- Added M13 collection `.clear()` for script-owned arrays, maps, and sets. It
+  empties the receiver in inline and managed-heap execution without touching
+  host state, and exposes non-generic analysis/completion facts.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new

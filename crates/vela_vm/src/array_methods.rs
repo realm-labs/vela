@@ -195,6 +195,31 @@ pub(crate) fn extend(
     }
 }
 
+pub(crate) fn clear(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("clear", args, 0)?;
+    match receiver {
+        Value::Array(values) => {
+            values.clear();
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method clear");
+            };
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method clear");
+            };
+            values.clear();
+            Ok(Value::Null)
+        }
+        _ => type_error("method clear"),
+    }
+}
+
 pub(crate) fn join(
     receiver: &Value,
     args: &[Value],
@@ -964,6 +989,53 @@ fn main() {
             .run(&code)
             .expect_err("array extend should reject non-array args");
         assert!(matches!(error.kind, VmErrorKind::TypeMismatch { .. }));
+    }
+
+    #[test]
+    fn runs_compiled_array_clear_method() {
+        let source = r#"
+fn main() {
+    let values = [10, 20, 30];
+    values.clear();
+    values.push(40);
+    if values.len() == 1 && values[0] == 40 {
+        return values[0];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array clear method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("array clear method should run");
+        assert_eq!(result, Value::Int(40));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_clear_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily", "quest"];
+    tags.clear();
+    tags.push("raid");
+    if tags.len() == 1 {
+        return tags[0];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array clear method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array clear method should run");
+        assert_eq!(result, Value::String("raid".to_owned()));
     }
 
     #[test]

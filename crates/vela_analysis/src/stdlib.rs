@@ -184,6 +184,12 @@ mod tests {
             TypeFact::array(TypeFact::String)
         );
         assert_eq!(
+            stdlib_method_fact(&map, "clear", None)
+                .expect("map clear fact")
+                .returns,
+            TypeFact::Null
+        );
+        assert_eq!(
             stdlib_method_fact(&array, "sum", None)
                 .expect("sum fact")
                 .returns,
@@ -216,6 +222,12 @@ mod tests {
         let extend = stdlib_method_fact(&array, "extend", None).expect("extend fact");
         assert_eq!(extend.params, vec![TypeFact::array(TypeFact::Float)]);
         assert_eq!(extend.returns, TypeFact::Null);
+        assert_eq!(
+            stdlib_method_fact(&array, "clear", None)
+                .expect("array clear fact")
+                .returns,
+            TypeFact::Null
+        );
         let join = stdlib_method_fact(&array, "join", None).expect("join fact");
         assert_eq!(join.params, vec![TypeFact::String]);
         assert_eq!(join.returns, TypeFact::String);
@@ -245,6 +257,12 @@ mod tests {
                 .expect("values fact")
                 .returns,
             TypeFact::array(TypeFact::String)
+        );
+        assert_eq!(
+            stdlib_method_fact(&set, "clear", None)
+                .expect("set clear fact")
+                .returns,
+            TypeFact::Null
         );
         let set_map = stdlib_method_fact(&set, "map", Some(&TypeFact::Int)).expect("set map fact");
         assert_eq!(

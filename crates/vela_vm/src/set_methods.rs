@@ -113,6 +113,31 @@ pub(crate) fn remove(
     }
 }
 
+pub(crate) fn clear(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("clear", args, 0)?;
+    match receiver {
+        Value::Set(values) => {
+            values.clear();
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method clear");
+            };
+            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method clear");
+            };
+            values.clear();
+            Ok(Value::Null)
+        }
+        _ => type_error("method clear"),
+    }
+}
+
 pub(crate) fn values(
     receiver: &Value,
     args: &[Value],
@@ -857,5 +882,54 @@ fn main() {
                 operation: "method is_subset"
             }
         );
+    }
+
+    #[test]
+    fn runs_compiled_set_clear_method() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["daily", "quest"]);
+    tags.clear();
+    tags.add("raid");
+    if tags.len() == 1 && tags.has("raid") {
+        let values = tags.values();
+        return values[0];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set clear method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("set clear method should run");
+        assert_eq!(result, Value::String("raid".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_set_clear_method() {
+        let source = r#"
+fn main() {
+    let ids = set.from_array([2, 4, 6]);
+    ids.clear();
+    ids.add(9);
+    if ids.len() == 1 && ids.has(9) {
+        let values = ids.values();
+        return values[0];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set clear method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set clear method should run");
+        assert_eq!(result, Value::Int(9));
     }
 }

@@ -500,6 +500,15 @@ pub(crate) fn call_method(
                 map_methods::remove(receiver, args, heap.as_deref_mut())
             }
         }
+        "clear" => {
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::clear(receiver, args, heap.as_deref_mut())
+            } else if map_methods::is_map(receiver, heap.as_deref()) {
+                map_methods::clear(receiver, args, heap.as_deref_mut())
+            } else {
+                array_methods::clear(receiver, args, heap.as_deref_mut())
+            }
+        }
         "keys" => map_methods::keys(receiver, args, heap.as_deref()),
         "values" => {
             if set_methods::is_set(receiver, heap.as_deref()) {
