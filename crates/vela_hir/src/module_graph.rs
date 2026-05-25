@@ -354,6 +354,8 @@ impl ModuleGraph {
             }
         }
 
+        self.validate_import_bindings(&hir_module);
+
         for (declaration, function) in function_declarations {
             self.bind_function_body(&hir_module, declaration, &function);
         }
@@ -508,6 +510,39 @@ impl ModuleGraph {
 
         self.declarations.insert(id, declaration);
         id
+    }
+
+    fn validate_import_bindings(&mut self, module: &HirModule) {
+        let mut imported_names = BTreeMap::new();
+        for import in &module.imports {
+            let Some(name) = import_binding_name(import) else {
+                continue;
+            };
+            if let Some(previous_span) = imported_names.insert(name.clone(), import.span) {
+                self.diagnostics.push(
+                    Diagnostic::error(format!("duplicate import `{name}`"))
+                        .with_code("hir::duplicate_import")
+                        .with_span(import.span)
+                        .with_label(previous_span, "previous import is here")
+                        .with_label(import.span, "duplicate import is here"),
+                );
+            }
+            if let Some(declaration) = module
+                .declarations
+                .get(&name)
+                .and_then(|declaration| self.declarations.get(&declaration))
+            {
+                self.diagnostics.push(
+                    Diagnostic::error(format!(
+                        "import `{name}` conflicts with a local declaration"
+                    ))
+                    .with_code("hir::import_conflict")
+                    .with_span(import.span)
+                    .with_label(declaration.span, "local declaration is here")
+                    .with_label(import.span, "conflicting import is here"),
+                );
+            }
+        }
     }
 
     fn bind_function_body(
@@ -1067,6 +1102,60 @@ fn grant(amount, amount) {
         assert!(duplicate.labels[0].message.contains("previous"));
         assert!(duplicate.labels[1].message.contains("duplicate"));
         assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
+    }
+
+    #[test]
+    fn duplicate_import_aliases_report_both_spans() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+        graph.add_source(source(2, "game.config", "pub const BONUS = 2"));
+        graph.add_source(source(
+            3,
+            "game.main",
+            r#"
+use game.reward.grant as reward
+use game.config.BONUS as reward
+
+fn main() { return reward; }
+"#,
+        ));
+
+        let duplicate = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_import"))
+            .expect("duplicate import diagnostic");
+
+        assert_eq!(duplicate.labels.len(), 2);
+        assert!(duplicate.labels[0].message.contains("previous"));
+        assert!(duplicate.labels[1].message.contains("duplicate"));
+        assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
+    }
+
+    #[test]
+    fn imports_conflicting_with_declarations_report_both_spans() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+        graph.add_source(source(
+            2,
+            "game.main",
+            r#"
+use game.reward.grant
+
+fn grant() { return 2; }
+"#,
+        ));
+
+        let conflict = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::import_conflict"))
+            .expect("import conflict diagnostic");
+
+        assert_eq!(conflict.labels.len(), 2);
+        assert!(conflict.labels[0].message.contains("local declaration"));
+        assert!(conflict.labels[1].message.contains("conflicting import"));
+        assert_ne!(conflict.labels[0].span, conflict.labels[1].span);
     }
 
     #[test]

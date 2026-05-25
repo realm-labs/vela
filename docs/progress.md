@@ -1478,6 +1478,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   compiler now rejects those semantic diagnostics before register allocation,
   and lambda parameter HIR lookup uses parameter spans instead of whole-lambda
   spans.
+- Added HIR import-name stability diagnostics. Duplicate import aliases and
+  imports that conflict with local declarations now report both source spans,
+  and the bytecode compiler rejects those semantic diagnostics before code
+  generation instead of letting import binding maps silently choose one name.
 
 ## Next
 

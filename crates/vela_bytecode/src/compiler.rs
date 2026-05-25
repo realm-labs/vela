@@ -3127,6 +3127,76 @@ fn secret() {
     }
 
     #[test]
+    fn compiler_rejects_duplicate_imports_before_codegen() {
+        let error = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.reward"),
+                "pub fn grant() { return 1; }",
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.config"),
+                "pub const BONUS = 2",
+            ),
+            ModuleSource::new(
+                SourceId::new(3),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.grant as reward
+use game.config.BONUS as reward
+
+fn main() {
+    return reward;
+}
+"#,
+            ),
+        ])
+        .expect_err("duplicate import should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_import"))
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_import_conflicts_before_codegen() {
+        let error = compile_module_sources(&[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_dotted("game.reward"),
+                "pub fn grant() { return 1; }",
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_dotted("game.main"),
+                r#"
+use game.reward.grant
+
+fn grant() {
+    return 2;
+}
+"#,
+            ),
+        ])
+        .expect_err("import conflict should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::import_conflict"))
+        );
+    }
+
+    #[test]
     fn compiler_keeps_valid_program_bytecode_equivalent_after_hir_gate() {
         let program = compile_program_source(
             SourceId::new(1),
