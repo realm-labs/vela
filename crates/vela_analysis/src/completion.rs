@@ -346,6 +346,28 @@ mod tests {
                 TypeFact::map(TypeFact::String, TypeFact::Int),
             ),
         )));
+        assert!(map.contains(&CompletionItem::new(
+            "any",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(
+                    vec![TypeFact::String, TypeFact::Int],
+                    TypeFact::Bool,
+                )],
+                TypeFact::Bool,
+            ),
+        )));
+        assert!(map.contains(&CompletionItem::new(
+            "count",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(
+                    vec![TypeFact::String, TypeFact::Int],
+                    TypeFact::Bool,
+                )],
+                TypeFact::Int,
+            ),
+        )));
         let array = member_completions(&facts, &TypeFact::array(TypeFact::String));
         assert!(array.contains(&CompletionItem::new(
             "first",

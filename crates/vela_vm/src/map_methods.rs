@@ -57,8 +57,9 @@ pub(crate) fn any(
 ) -> VmResult<bool> {
     expect_arity("any", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
-    for (_, value) in entries {
-        let predicate = call_callback(&mut runtime, "method any", &args[0], vec![value], &[])?;
+    for (key, value) in entries {
+        let predicate_args = map_predicate_args(&args[0], key, value, "method any")?;
+        let predicate = call_callback(&mut runtime, "method any", &args[0], predicate_args, &[])?;
         if is_truthy(&predicate) {
             return Ok(true);
         }
@@ -73,8 +74,9 @@ pub(crate) fn all(
 ) -> VmResult<bool> {
     expect_arity("all", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
-    for (_, value) in entries {
-        let predicate = call_callback(&mut runtime, "method all", &args[0], vec![value], &[])?;
+    for (key, value) in entries {
+        let predicate_args = map_predicate_args(&args[0], key, value, "method all")?;
+        let predicate = call_callback(&mut runtime, "method all", &args[0], predicate_args, &[])?;
         if !is_truthy(&predicate) {
             return Ok(false);
         }
@@ -90,8 +92,9 @@ pub(crate) fn count(
     expect_arity("count", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
     let mut count = 0_i64;
-    for (_, value) in entries {
-        let predicate = call_callback(&mut runtime, "method count", &args[0], vec![value], &[])?;
+    for (key, value) in entries {
+        let predicate_args = map_predicate_args(&args[0], key, value, "method count")?;
+        let predicate = call_callback(&mut runtime, "method count", &args[0], predicate_args, &[])?;
         if is_truthy(&predicate) {
             count = count.checked_add(1).ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
@@ -176,6 +179,22 @@ fn call_callback(
     result
 }
 
+fn map_predicate_args(
+    callback: &Value,
+    key: String,
+    value: Value,
+    operation: &'static str,
+) -> VmResult<Vec<Value>> {
+    let Value::Closure(closure) = callback else {
+        return type_error(operation);
+    };
+    match closure.code.params.len() {
+        0 => Ok(Vec::new()),
+        1 => Ok(vec![value]),
+        _ => Ok(vec![Value::String(key), value]),
+    }
+}
+
 fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
@@ -211,8 +230,9 @@ fn main() {
     let filtered = rewards.filter(|key, value| key.contains("o") && value == 4);
     if doubled["gold"] == 8 && doubled["quest"] == 16
         && filtered.len() == 1 && filtered["gold"] == 4
+        && rewards.any(|value| value == 6)
     {
-        return rewards.count(|value| value > 4);
+        return rewards.count(|key, value| key.len() >= 2 && value > 4);
     }
     return 0;
 }
@@ -235,8 +255,10 @@ fn main() {
     let done = quests.filter(|key, value| key.starts_with("w") && value == "done");
     if lengths["wolf"] == 6 && lengths["boar"] == 4
         && done.len() == 1 && done["wyrm"] == "done"
+        && quests.count(|key, value| key.starts_with("w") && value.len() >= 4) == 2
     {
-        return quests.any(|value| value == "active") && quests.all(|value| value.len() >= 4);
+        return quests.any(|key, value| key == "wolf" && value == "active")
+            && quests.all(|key, value| key.len() >= 4 && value.len() >= 4);
     }
     return false;
 }

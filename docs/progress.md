@@ -1323,6 +1323,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `string.trim_end()` for gameplay event/tag normalization. They run in inline
   and managed-heap execution and expose analysis TypeFacts plus completion
   metadata.
+- Extended `map.any`, `map.all`, and `map.count` to support key-aware
+  `(key, value)` callbacks while preserving one-argument value predicates.
+  Analysis TypeFacts and completion metadata now advertise the key/value
+  callback shape.
 - Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
   script boundary. Native function and method macros now expose Result returns
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to

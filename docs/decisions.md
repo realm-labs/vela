@@ -5640,3 +5640,48 @@ Consequences:
   array-specific comparison model.
 - Analysis and completion metadata expose the method with internal TypeFacts
   while keeping script syntax free of generics.
+
+## 2026-05-25: Directional String Trimming Mirrors Existing Trim
+
+Status: Accepted
+
+Context:
+Gameplay event names, tags, and admin-entered identifiers often need only
+leading or trailing whitespace normalized. Scripts already had `trim()`, but
+using it for directional cleanup can remove meaningful whitespace from the
+opposite side and forces awkward slicing workarounds.
+
+Decision:
+Add `string.trim_start()` and `string.trim_end()` as no-argument string
+methods. Both return copied script strings, work in inline and managed-heap
+execution, and share the same helper path as `trim()`.
+
+Consequences:
+- Scripts can normalize identifiers and text fields without byte-index
+  manipulation or host-specific helpers.
+- The helpers are pure script-value methods and do not cross the PatchTx host
+  mutation boundary.
+- Analysis and completion metadata expose string return TypeFacts without
+  adding script-visible generics.
+
+## 2026-05-25: Map Predicates Prefer Key-Aware Callbacks
+
+Status: Accepted
+
+Context:
+`map.filter` already receives `(key, value)` callbacks, but `map.any`,
+`map.all`, and `map.count` only received values. Gameplay scripts often need to
+test both the map key and value when checking quest states, reward buckets, or
+tagged counters.
+
+Decision:
+Expose `map.any`, `map.all`, and `map.count` as key-aware predicate helpers
+that pass `(key, value)` to two-argument callbacks. To preserve existing
+scripts, one-argument callbacks continue to receive only the value.
+
+Consequences:
+- Map predicate helpers now match `map.filter` when scripts need key context.
+- Existing value-only predicates remain runnable under the strict closure arity
+  rules.
+- Analysis and completion metadata advertise the richer key/value callback
+  shape without adding script-visible generics.
