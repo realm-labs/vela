@@ -1482,6 +1482,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   imports that conflict with local declarations now report both source spans,
   and the bytecode compiler rejects those semantic diagnostics before code
   generation instead of letting import binding maps silently choose one name.
+- Added HIR script schema member stability diagnostics. Duplicate struct
+  fields, enum variants, enum payload fields, trait methods, and impl methods
+  now report source spans and are rejected before bytecode generation can build
+  ambiguous field slots, reflection metadata, or hot-reload ABI manifests.
 
 ## Next
 

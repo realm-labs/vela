@@ -4,7 +4,8 @@ mod schema_diagnostics;
 
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::{
-    Block, FunctionItem, ItemKind, Param, SourceFile, TraitMethod, Visibility, parse_source,
+    Block, EnumItem, EnumVariantFields, FunctionItem, ImplItem, ItemKind, Param, SourceFile,
+    StructItem, TraitItem, TraitMethod, Visibility, parse_source,
 };
 
 use crate::attributes::{HirAttribute, attrs_from_syntax};
@@ -261,6 +262,7 @@ impl ModuleGraph {
                         item.visibility.clone(),
                         item.span,
                     );
+                    self.validate_struct_shape(record);
                     self.struct_shapes.insert(
                         declaration,
                         StructShape {
@@ -282,6 +284,7 @@ impl ModuleGraph {
                         item.visibility.clone(),
                         item.span,
                     );
+                    self.validate_enum_shape(enumeration);
                     self.enum_shapes
                         .insert(declaration, EnumShape::from_syntax(enumeration));
                     self.declaration_attrs
@@ -305,6 +308,7 @@ impl ModuleGraph {
                                 .map(|body| (self.next_node_id(), body.span))
                         })
                         .collect::<Vec<_>>();
+                    self.validate_trait_shape(trait_item);
                     self.trait_shapes.insert(
                         declaration,
                         TraitShape::from_syntax(trait_item, default_method_nodes.clone()),
@@ -335,6 +339,7 @@ impl ModuleGraph {
                         .iter()
                         .map(|method| (self.next_node_id(), method.function.body.span))
                         .collect::<Vec<_>>();
+                    self.validate_impl_shape(impl_item);
                     self.impl_metadata.insert(
                         declaration,
                         ImplMetadata::from_syntax(impl_item, method_nodes.clone()),
@@ -540,6 +545,93 @@ impl ModuleGraph {
                     .with_span(import.span)
                     .with_label(declaration.span, "local declaration is here")
                     .with_label(import.span, "conflicting import is here"),
+                );
+            }
+        }
+    }
+
+    fn validate_struct_shape(&mut self, item: &StructItem) {
+        self.validate_member_names(
+            &item.fields,
+            |field| (&field.name, field.span),
+            "field",
+            "hir::duplicate_field",
+        );
+    }
+
+    fn validate_enum_shape(&mut self, item: &EnumItem) {
+        self.validate_member_names(
+            &item.variants,
+            |variant| (&variant.name, variant.span),
+            "variant",
+            "hir::duplicate_variant",
+        );
+        for variant in &item.variants {
+            match &variant.fields {
+                EnumVariantFields::Unit => {}
+                EnumVariantFields::Tuple(params) => {
+                    self.validate_member_names(
+                        params,
+                        |param| (&param.name, param.span),
+                        "variant field",
+                        "hir::duplicate_variant_field",
+                    );
+                }
+                EnumVariantFields::Record(fields) => {
+                    self.validate_member_names(
+                        fields,
+                        |field| (&field.name, field.span),
+                        "variant field",
+                        "hir::duplicate_variant_field",
+                    );
+                }
+            }
+        }
+    }
+
+    fn validate_trait_shape(&mut self, item: &TraitItem) {
+        self.validate_member_names(
+            &item.methods,
+            |method| (&method.name, method.span),
+            "trait method",
+            "hir::duplicate_trait_method",
+        );
+        for method in &item.methods {
+            self.validate_member_names(
+                &method.params,
+                |param| (&param.name, param.span),
+                "parameter",
+                "hir::duplicate_parameter",
+            );
+        }
+    }
+
+    fn validate_impl_shape(&mut self, item: &ImplItem) {
+        self.validate_member_names(
+            &item.methods,
+            |method| (&method.function.name, method.function.body.span),
+            "impl method",
+            "hir::duplicate_impl_method",
+        );
+    }
+
+    fn validate_member_names<T>(
+        &mut self,
+        members: &[T],
+        member_name: impl Fn(&T) -> (&String, Span),
+        label: &str,
+        code: &'static str,
+    ) {
+        let mut names = BTreeMap::new();
+        for member in members {
+            let (name, span) = member_name(member);
+            if let Some(previous_span) = names.insert(name.clone(), span) {
+                self.diagnostics.push(
+                    Diagnostic::error(format!("duplicate {label} `{name}`"))
+                        .with_code(code)
+                        .with_span(span)
+                        .with_label(previous_span, format!("previous {label} is here"))
+                        .with_label(span, format!("duplicate {label} is here")),
                 );
             }
         }
@@ -1156,6 +1248,110 @@ fn grant() { return 2; }
         assert!(conflict.labels[0].message.contains("local declaration"));
         assert!(conflict.labels[1].message.contains("conflicting import"));
         assert_ne!(conflict.labels[0].span, conflict.labels[1].span);
+    }
+
+    #[test]
+    fn duplicate_struct_fields_report_both_spans() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.reward",
+            r#"
+struct Reward {
+    count: int,
+    count: string
+}
+"#,
+        ));
+
+        let duplicate = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_field"))
+            .expect("duplicate field diagnostic");
+
+        assert_eq!(duplicate.labels.len(), 2);
+        assert!(duplicate.labels[0].message.contains("previous"));
+        assert!(duplicate.labels[1].message.contains("duplicate"));
+        assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
+    }
+
+    #[test]
+    fn duplicate_enum_variants_and_fields_report_both_spans() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.quest",
+            r#"
+enum QuestProgress {
+    Active { count: int, count: string },
+    Active
+}
+"#,
+        ));
+
+        let duplicate_variant = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_variant"))
+            .expect("duplicate variant diagnostic");
+        let duplicate_field = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_variant_field"))
+            .expect("duplicate variant field diagnostic");
+
+        assert_eq!(duplicate_variant.labels.len(), 2);
+        assert_eq!(duplicate_field.labels.len(), 2);
+        assert_ne!(
+            duplicate_variant.labels[0].span,
+            duplicate_variant.labels[1].span
+        );
+        assert_ne!(
+            duplicate_field.labels[0].span,
+            duplicate_field.labels[1].span
+        );
+    }
+
+    #[test]
+    fn duplicate_trait_and_impl_methods_report_both_spans() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(source(
+            1,
+            "game.player",
+            r#"
+struct Player { level: int }
+
+trait Rewardable {
+    fn reward(self, amount);
+    fn reward(self, bonus);
+}
+
+impl Rewardable for Player {
+    fn reward(self, amount) { return amount; }
+    fn reward(self, bonus) { return bonus; }
+}
+"#,
+        ));
+
+        let duplicate_trait = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_trait_method"))
+            .expect("duplicate trait method diagnostic");
+        let duplicate_impl = graph
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_impl_method"))
+            .expect("duplicate impl method diagnostic");
+
+        assert_eq!(duplicate_trait.labels.len(), 2);
+        assert_eq!(duplicate_impl.labels.len(), 2);
+        assert_ne!(
+            duplicate_trait.labels[0].span,
+            duplicate_trait.labels[1].span
+        );
+        assert_ne!(duplicate_impl.labels[0].span, duplicate_impl.labels[1].span);
     }
 
     #[test]

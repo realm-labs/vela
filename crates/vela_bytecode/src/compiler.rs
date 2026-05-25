@@ -3034,6 +3034,51 @@ fn main(amount, amount) {
     }
 
     #[test]
+    fn compiler_rejects_duplicate_schema_members_from_hir() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    count: int,
+    count: string
+}
+
+enum QuestProgress {
+    Active { quest_id: int, quest_id: string },
+    Active
+}
+
+trait Rewardable {
+    fn reward(self, amount);
+    fn reward(self, bonus);
+}
+
+fn main() {
+    return 1;
+}
+"#,
+        )
+        .expect_err("duplicate schema members should fail before bytecode generation");
+
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        for code in [
+            "hir::duplicate_field",
+            "hir::duplicate_variant",
+            "hir::duplicate_variant_field",
+            "hir::duplicate_trait_method",
+        ] {
+            assert!(
+                diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.code.as_deref() == Some(code)),
+                "missing diagnostic {code}: {diagnostics:?}"
+            );
+        }
+    }
+
+    #[test]
     fn compiler_rejects_unresolved_names_from_hir_with_candidates() {
         let error = compile_function_source(
             SourceId::new(1),
