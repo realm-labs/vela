@@ -1114,6 +1114,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   module and parent namespace completion items as copied `TypeFact::Module`
   values derived from module paths in the `ModuleGraph`, keeping module
   completion independent from runtime reflection queries.
+- Added TypeRegistry-backed hover helpers. `vela_analysis` now returns copied
+  hover records for types, fields, methods, functions, traits, trait methods,
+  variants, and modules, including docs, attrs, source spans, origin, effects,
+  access, permissions, and `TypeFact` metadata without exposing mutable
+  reflection state.
 - Added a focused source-aware diagnostic renderer in `vela_common`. Existing
   `Diagnostic` values can now render stable line/column output with primary
   spans, related labels, and fallback source offsets, with snapshot-style tests

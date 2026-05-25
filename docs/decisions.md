@@ -5041,3 +5041,29 @@ Consequences:
 - Payload facts stay available to standard-library analysis helpers such as
   `unwrap_or` without introducing script-language generics.
 - Runtime matching, VM execution, and host mutation boundaries are unchanged.
+
+## 2026-05-25: Hover Metadata Is Copied From The Registry
+
+Status: Accepted
+
+Context:
+M16 tooling needs hover data for types, fields, methods, functions, traits,
+variants, and modules. The reflection registry already owns docs, attributes,
+source spans, declaration origins, effect sets, access flags, permissions, and
+schema facts, but hover queries must not become a back door for runtime schema
+mutation.
+
+Decision:
+Add `vela_analysis::hover` as a focused analysis module that builds immutable
+`HoverInfo` records from `TypeRegistry` and copied `RegistryFacts`. Hovers
+carry the display label, item kind, `TypeFact`, optional docs, detail text,
+attributes, and source span. They do not return live registry descriptors or
+any write handle.
+
+Consequences:
+- Future editor tooling can show docs, origin, effects, permissions, and source
+  locations without querying runtime reflection from scripts.
+- The TypeRegistry remains authoritative for schema metadata, but hover output
+  is copied analysis data and cannot monkey patch type structure.
+- Hover support stays separate from completion and diagnostics modules, keeping
+  M16 tooling code modular.
