@@ -4327,3 +4327,28 @@ Consequences:
   conversion cannot record patches.
 - Context-native registration remains the preferred path when callbacks need
   Engine metadata, permission inspection, or budget charging.
+
+## 2026-05-25: Rust Option Conversion Maps To Dynamic Null
+
+Status: Accepted
+
+Context:
+M14 typed native registration needs practical Rust signature conversion for
+common embedding shapes. Scripts intentionally do not support generics, while
+the runtime already has a dynamic `null` value and separate dynamic enum-based
+Option/Result conveniences for script code.
+
+Decision:
+Implement `IntoScriptArg` and `FromScriptArg` for Rust `Option<T>` in the
+focused Engine argument conversion module. `None` maps to `Value::Null`;
+`Some(value)` delegates to the inner copied `T` conversion. Incoming
+`Value::Null` becomes `None`; any other value is converted through `T` and
+wrapped in `Some`.
+
+Consequences:
+- Rust native callbacks can use idiomatic `Option<T>` without introducing
+  script-language generics or changing dynamic script semantics.
+- Type errors for non-null values remain the inner copied type's error, which
+  keeps diagnostics consistent with the existing conversion traits.
+- Script-level `Option.Some`/`Option.None` enum helpers remain distinct from
+  Rust embedding `Option<T>` conversion.

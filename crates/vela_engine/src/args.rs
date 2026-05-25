@@ -179,6 +179,32 @@ impl FromScriptArg for String {
     }
 }
 
+impl<T> IntoScriptArg for Option<T>
+where
+    T: IntoScriptArg,
+{
+    fn into_script_arg(self) -> Value {
+        match self {
+            Some(value) => value.into_script_arg(),
+            None => Value::Null,
+        }
+    }
+}
+
+impl<T> FromScriptArg for Option<T>
+where
+    T: FromScriptArg,
+{
+    const TYPE_NAME: &'static str = "option";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        match value {
+            Value::Null => Ok(None),
+            value => T::from_script_arg(value).map(Some),
+        }
+    }
+}
+
 impl<T> IntoScriptArg for Vec<T>
 where
     T: IntoScriptArg,

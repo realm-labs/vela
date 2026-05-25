@@ -1021,6 +1021,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `HostExecution` native path. Host-native callbacks can now use typed copied
   arguments for arities 0-3 while still writing only through `PatchTx`, and
   conversion errors are covered before any transaction patch is recorded.
+- Added `Option<T>` support to Engine script argument conversion. Rust typed
+  native callbacks can now accept `Option<T>` from dynamic `null`/value inputs
+  and return optional copied values back as `null` or the inner script value,
+  without adding script-language generics.
 
 ## Next
 

@@ -15,6 +15,7 @@ use crate::{
     EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext,
     NativeFunctionDesc, NativeFunctionId, NativeMethodDesc, ScriptArgsExt, TypeHint,
 };
+use crate::{FromScriptArg, IntoScriptArg};
 
 #[test]
 fn engine_installs_registered_native_functions_into_vm() {
@@ -86,6 +87,33 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_accept_optional_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(Option<i64>,), _>(
+            NativeFunctionDesc::new("game.option_bonus", NativeFunctionId::new(108))
+                .param("bonus", TypeHint::Any)
+                .returns(TypeHint::Int),
+            |bonus: Option<i64>| bonus.unwrap_or(7),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.option_bonus(null) + game.option_bonus(5);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(12)),
+    );
+}
+
+#[test]
 fn typed_native_functions_report_arity_and_type_errors() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64), _>(
@@ -111,6 +139,28 @@ fn typed_native_functions_report_arity_and_type_errors() {
     ));
     assert!(matches!(
         (function.function)(&[Value::String("x".to_owned()), Value::Int(1)]),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch { operation: "int" },
+            ..
+        })
+    ));
+}
+
+#[test]
+fn script_arg_conversions_support_optional_values() {
+    assert_eq!(Option::<i64>::from_script_arg(&Value::Null), Ok(None));
+    assert_eq!(Option::<i64>::from_script_arg(&Value::Int(3)), Ok(Some(3)));
+    assert_eq!(
+        Some("reward").into_script_arg(),
+        Value::String("reward".to_owned())
+    );
+    assert_eq!(Option::<i64>::None.into_script_arg(), Value::Null);
+    assert_eq!(
+        crate::args![Some(2_i64), Option::<i64>::None],
+        vec![Value::Int(2), Value::Null],
+    );
+    assert!(matches!(
+        Option::<i64>::from_script_arg(&Value::String("bad".to_owned())),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "int" },
             ..
