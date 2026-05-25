@@ -501,6 +501,11 @@ mod tests {
             CompletionKind::Method,
             TypeFact::function(vec![TypeFact::String], TypeFact::array(TypeFact::String)),
         )));
+        assert!(string.contains(&CompletionItem::new(
+            "parse_int",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Int)),
+        )));
     }
 
     #[test]

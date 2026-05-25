@@ -54,6 +54,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "replace",
     "slice",
     "split",
+    "parse_int",
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -680,6 +681,11 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             StdlibMethodFact::new(receiver, "split", TypeFact::array(TypeFact::String))
                 .with_params(vec![TypeFact::String]),
         ),
+        "parse_int" => Some(StdlibMethodFact::new(
+            receiver,
+            "parse_int",
+            TypeFact::option(TypeFact::Int),
+        )),
         _ => None,
     }
 }
@@ -972,6 +978,11 @@ mod tests {
         let split = stdlib_method_fact(&TypeFact::String, "split", None).expect("split fact");
         assert_eq!(split.params, vec![TypeFact::String]);
         assert_eq!(split.returns, TypeFact::array(TypeFact::String));
+
+        let parse_int =
+            stdlib_method_fact(&TypeFact::String, "parse_int", None).expect("parse_int fact");
+        assert_eq!(parse_int.params, Vec::<TypeFact>::new());
+        assert_eq!(parse_int.returns, TypeFact::option(TypeFact::Int));
     }
 
     #[test]

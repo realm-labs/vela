@@ -207,6 +207,16 @@ pub(crate) fn split(
     ))
 }
 
+pub(crate) fn parse_int(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("parse_int", args)?;
+    let value = string_value(receiver, heap, "method parse_int")?;
+    Ok(option_value(value.parse::<i64>().ok().map(Value::Int)))
+}
+
 pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match value {
         Value::String(_) => true,
@@ -566,5 +576,53 @@ fn main() {
                 operation: "method strip_prefix"
             }
         );
+    }
+
+    #[test]
+    fn string_parse_int_returns_options() {
+        let source = r#"
+fn main() {
+    let level = "42".parse_int();
+    let negative = "-7".parse_int();
+    let invalid = "level-42".parse_int();
+    let overflow = "9223372036854775808".parse_int();
+    if option.unwrap_or(level, 0) == 42
+        && option.unwrap_or(negative, 0) == -7
+        && option.is_none(invalid)
+        && option.is_none(overflow)
+    {
+        return option.unwrap_or("0".parse_int(), -1);
+    }
+    return -1;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string parse_int source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("string parse_int should run");
+        assert_eq!(result, Value::Int(0));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_parse_int() {
+        let source = r#"
+fn main() {
+    let raw = " 12 ";
+    let parsed = raw.trim().parse_int();
+    return option.unwrap_or(parsed, -1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string parse_int source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string parse_int should run");
+        assert_eq!(result, Value::Int(12));
     }
 }

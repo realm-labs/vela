@@ -5597,6 +5597,31 @@ Consequences:
 - Macro-generated registration remains on the stable typed Engine API and does
   not expose Rust references or mutable host state.
 
+## 2026-05-25: String Parse Int Returns Dynamic Option Values
+
+Status: Accepted
+
+Context:
+M13 string helpers cover event and tag normalization, but gameplay scripts also
+need to consume numeric text from config keys, labels, and diagnostics without
+falling back to host glue. Text parsing commonly fails for expected data
+quality reasons, so treating an invalid numeric string as an exception-like VM
+error would make scripts noisy and less compatible with Option-style flow.
+
+Decision:
+Add `string.parse_int()` as a no-argument script-value method. It parses the
+entire string as a signed script `int` (`i64`), returns
+`Option.Some(value)` on success, and returns `Option.None` for invalid or
+out-of-range strings. Scripts can use existing `trim()` when they want to
+accept surrounding whitespace explicitly.
+
+Consequences:
+- Gameplay and tooling scripts can parse numeric text with `?`,
+  `option.unwrap_or`, and match patterns instead of custom native functions.
+- Invalid text remains ordinary dynamic control flow while non-string
+  receivers still report VM type errors.
+- The helper does not add numeric generics or implicit string coercions.
+
 ## 2026-05-25: Set Relationship Predicates Use Existing Scalar Keys
 
 Status: Accepted

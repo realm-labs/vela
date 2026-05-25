@@ -498,6 +498,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Split string script methods into a focused VM module and added gameplay
   string utilities `trim`, `to_lower`, `to_upper`, and `split` with inline and
   managed-heap execution coverage.
+- Added `string.parse_int()` for deterministic text-to-int parsing. It returns
+  dynamic `Option.Some(int)` on valid `i64` input and `Option.None` for invalid
+  or out-of-range strings in inline and managed-heap execution.
 - Added VM standard native registration for `math.max`, `math.min`,
   `math.clamp`, `math.floor`, `math.ceil`, and `math.abs`, with source-level
   inline and managed-heap execution coverage.
@@ -1344,6 +1347,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `string.trim_end()` for gameplay event/tag normalization. They run in inline
   and managed-heap execution and expose analysis TypeFacts plus completion
   metadata.
+- Added `string.parse_int()` for gameplay/config text parsing. It returns
+  dynamic `Option.Some(int)` or `Option.None`, composes with
+  `option.unwrap_or`, works in managed-heap execution, and exposes analysis
+  TypeFacts plus completion metadata.
 - Extended `map.any`, `map.all`, and `map.count` to support key-aware
   `(key, value)` callbacks while preserving one-argument value predicates.
   Analysis TypeFacts and completion metadata now advertise the key/value
