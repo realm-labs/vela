@@ -171,6 +171,34 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_result_map_err_method() {
+        let source = r#"
+fn main() {
+    let ok = result.ok(4).map_err(|error| error.to_upper());
+    let err = result.err("blocked").map_err(|error| error.to_upper());
+
+    if result.unwrap_or(ok, 0) == 4 && result.is_err(err) {
+        return match err {
+            Result.Err(reason) => reason == "BLOCKED",
+            _ => false,
+        };
+    }
+    return false;
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("result map_err source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("result map_err source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
     fn runs_compiled_option_ok_or_with_try_propagation() {
         let source = r#"
 fn checked(raw) {
@@ -300,6 +328,35 @@ fn main() {
         let result = vm
             .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
             .expect("heap option/result map source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_result_map_err_method() {
+        let source = r#"
+fn main() {
+    let ok = result.ok(["a", "b"]).map_err(|errors| errors.join("."));
+    let err = result.err(["bad", "level"]).map_err(|errors| errors.join("."));
+
+    if result.unwrap_or(ok, []).join(".") == "a.b" && result.is_err(err) {
+        return match err {
+            Result.Err(reason) => reason == "bad.level",
+            _ => false,
+        };
+    }
+    return false;
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap result map_err source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap result map_err source should run");
         assert_eq!(result, crate::Value::Bool(true));
     }
 

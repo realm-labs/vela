@@ -6527,3 +6527,27 @@ Consequences:
 - Attribute handling stays in descriptor metadata rather than in executable
   native function closures.
 - Existing permission and effect checks remain unchanged.
+
+## 2026-05-26: Result Map Err Handles Error-Side Propagation
+
+Status: Accepted
+
+Context:
+Result `.map` handles successful payload transforms, but gameplay scripts also
+need concise error normalization before `?`, logging, or fallback handling.
+Doing that with `match` works but makes simple parse/config workflows noisy.
+
+Decision:
+Add `.map_err(callback)` as a Result-only value method. `Result.Err` invokes
+the callback through the existing budgeted method runtime and rewraps the
+mapped error. `Result.Ok` preserves the success payload and does not invoke the
+callback. Analysis exposes non-generic method facts for general `Result`,
+`Result.Ok`, and `Result.Err` shapes.
+
+Consequences:
+- Scripts can normalize dynamic Result errors without script-language
+  generics.
+- Callback execution keeps the same heap-root, budget, and host-boundary
+  behavior as collection and Option/Result `.map`.
+- Option values do not gain an error-side method; unsupported receivers keep a
+  normal dynamic method type error.

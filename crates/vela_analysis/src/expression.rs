@@ -614,6 +614,9 @@ mod tests {
                 none.map(|value| value);
                 grant.map(|value| value);
                 failed.map(|value| value);
+                grant.map_err(|error| error);
+                failed.map_err(|error| error);
+                ok.map_err(|error| error);
             }
             "#,
         );
@@ -622,7 +625,8 @@ mod tests {
             .with_path(["some"], TypeFact::option_some(TypeFact::String))
             .with_path(["none"], TypeFact::option_none())
             .with_path(["grant"], TypeFact::result(TypeFact::String, TypeFact::Int))
-            .with_path(["failed"], TypeFact::result_err(TypeFact::record("Error")));
+            .with_path(["failed"], TypeFact::result_err(TypeFact::record("Error")))
+            .with_path(["ok"], TypeFact::result_ok(TypeFact::String));
 
         assert_eq!(
             type_fact_from_expr(&expressions[0], &scope),
@@ -643,6 +647,18 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[4], &scope),
             TypeFact::result_err(TypeFact::record("Error"))
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[5], &scope),
+            TypeFact::result(TypeFact::String, TypeFact::Int)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[6], &scope),
+            TypeFact::result_err(TypeFact::record("Error"))
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[7], &scope),
+            TypeFact::result_ok(TypeFact::String)
         );
     }
 

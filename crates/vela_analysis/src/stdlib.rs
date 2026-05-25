@@ -445,6 +445,37 @@ mod tests {
         )
         .expect("err map fact");
         assert_eq!(err.returns, TypeFact::result_err(TypeFact::record("Error")));
+
+        let mapped_error = stdlib_method_fact(
+            &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
+            "map_err",
+            Some(&TypeFact::String),
+        )
+        .expect("result map_err fact");
+        assert_eq!(
+            mapped_error.returns,
+            TypeFact::result(TypeFact::Int, TypeFact::String)
+        );
+        assert_eq!(
+            mapped_error.lambda.expect("map_err lambda").params,
+            vec![TypeFact::record("Error")]
+        );
+
+        let ok_error = stdlib_method_fact(
+            &TypeFact::result_ok(TypeFact::Int),
+            "map_err",
+            Some(&TypeFact::String),
+        )
+        .expect("ok map_err fact");
+        assert_eq!(ok_error.returns, TypeFact::result_ok(TypeFact::Int));
+
+        let err_error = stdlib_method_fact(
+            &TypeFact::result_err(TypeFact::record("Error")),
+            "map_err",
+            Some(&TypeFact::String),
+        )
+        .expect("err map_err fact");
+        assert_eq!(err_error.returns, TypeFact::result_err(TypeFact::String));
     }
 
     #[test]
@@ -570,6 +601,15 @@ mod tests {
                     .lambda
                     .as_ref()
                     .is_some_and(|lambda| lambda.params == vec![TypeFact::Int])
+        }));
+        let result_facts =
+            stdlib_method_facts(&TypeFact::result(TypeFact::Int, TypeFact::String), None);
+        assert!(result_facts.iter().any(|fact| {
+            fact.method == "map_err"
+                && fact
+                    .lambda
+                    .as_ref()
+                    .is_some_and(|lambda| lambda.params == vec![TypeFact::String])
         }));
         assert!(
             stdlib_method_facts(

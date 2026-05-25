@@ -59,7 +59,8 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "parse_float",
     "parse_bool",
 ];
-const OPTION_RESULT_METHOD_NAMES: &[&str] = &["map"];
+const OPTION_METHOD_NAMES: &[&str] = &["map"];
+const RESULT_METHOD_NAMES: &[&str] = &["map", "map_err"];
 
 pub(super) fn method_fact(
     receiver: &TypeFact,
@@ -125,12 +126,12 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
         TypeFact::Map { .. } => MAP_METHOD_NAMES,
         TypeFact::Set { .. } => SET_METHOD_NAMES,
         TypeFact::String => STRING_METHOD_NAMES,
-        TypeFact::Option { .. }
-        | TypeFact::OptionSome { .. }
-        | TypeFact::OptionNone
-        | TypeFact::Result { .. }
-        | TypeFact::ResultOk { .. }
-        | TypeFact::ResultErr { .. } => OPTION_RESULT_METHOD_NAMES,
+        TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
+            OPTION_METHOD_NAMES
+        }
+        TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
+            RESULT_METHOD_NAMES
+        }
         _ => &[],
     }
 }
@@ -503,21 +504,31 @@ fn result_method_fact(
     method: &str,
     lambda_return: Option<&TypeFact>,
 ) -> Option<StdlibMethodFact> {
-    if method != "map" {
-        return None;
-    }
     let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
     let receiver = match shape {
         ResultShape::Maybe => TypeFact::result(ok.clone(), err.clone()),
         ResultShape::Ok => TypeFact::result_ok(ok.clone()),
         ResultShape::Err => TypeFact::result_err(err.clone()),
     };
-    let returns = match shape {
-        ResultShape::Maybe => TypeFact::result(mapped.clone(), err),
-        ResultShape::Ok => TypeFact::result_ok(mapped.clone()),
-        ResultShape::Err => TypeFact::result_err(err),
-    };
-    Some(StdlibMethodFact::new(receiver, "map", returns).with_lambda(vec![ok], mapped))
+    match method {
+        "map" => {
+            let returns = match shape {
+                ResultShape::Maybe => TypeFact::result(mapped.clone(), err),
+                ResultShape::Ok => TypeFact::result_ok(mapped.clone()),
+                ResultShape::Err => TypeFact::result_err(err),
+            };
+            Some(StdlibMethodFact::new(receiver, "map", returns).with_lambda(vec![ok], mapped))
+        }
+        "map_err" => {
+            let returns = match shape {
+                ResultShape::Maybe => TypeFact::result(ok, mapped.clone()),
+                ResultShape::Ok => TypeFact::result_ok(ok),
+                ResultShape::Err => TypeFact::result_err(mapped.clone()),
+            };
+            Some(StdlibMethodFact::new(receiver, "map_err", returns).with_lambda(vec![err], mapped))
+        }
+        _ => None,
+    }
 }
 
 fn numeric_return(value: &TypeFact) -> TypeFact {

@@ -1584,6 +1584,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   reflected `FunctionDesc` and `MethodDesc` metadata, so host-provided APIs can
   carry the same controlled tags as script declarations without runtime schema
   mutation.
+- Added Result `.map_err` as an M13 error-side propagation convenience.
+  `Result.Err` invokes the callback through the existing method runtime,
+  `Result.Ok` preserves the success payload, and analysis/completions expose
+  matching non-generic facts for general, narrowed-Ok, and narrowed-Err result
+  shapes.
 
 ## Next
 

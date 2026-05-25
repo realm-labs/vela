@@ -104,6 +104,26 @@ pub(crate) fn call_method(
                 )
             }
         }
+        "map_err" => {
+            if option_result_methods::is_result(receiver, heap.as_deref()) {
+                option_result_methods::map_err(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "method map_err",
+                }))
+            }
+        }
         "filter" => {
             if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::filter(

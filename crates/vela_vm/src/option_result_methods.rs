@@ -7,6 +7,10 @@ pub(crate) fn is_option_or_result(receiver: &Value, heap: Option<&HeapExecution<
     enum_tag(receiver, heap).is_some_and(|tag| tag.is_option() || tag.is_result())
 }
 
+pub(crate) fn is_result(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
+    enum_tag(receiver, heap).is_some_and(|tag| tag.is_result())
+}
+
 pub(crate) fn map(
     receiver: &Value,
     args: &[Value],
@@ -46,6 +50,38 @@ pub(crate) fn map(
         (EnumKind::Result, "Err") => enum_payload(receiver, runtime.heap.as_deref(), "method map")
             .map(|payload| result_value("Err", payload)),
         _ => type_error("method map"),
+    }
+}
+
+pub(crate) fn map_err(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("map_err", args, 1)?;
+    let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method map_err",
+        })
+    })?;
+
+    match (tag.kind, tag.variant.as_str()) {
+        (EnumKind::Result, "Ok") => {
+            enum_payload(receiver, runtime.heap.as_deref(), "method map_err")
+                .map(|payload| result_value("Ok", payload))
+        }
+        (EnumKind::Result, "Err") => {
+            let payload = enum_payload(receiver, runtime.heap.as_deref(), "method map_err")?;
+            let mapped = call_callback(
+                &mut runtime,
+                "method map_err",
+                &args[0],
+                &[payload],
+                std::slice::from_ref(receiver),
+            )?;
+            Ok(result_value("Err", mapped))
+        }
+        _ => type_error("method map_err"),
     }
 }
 
