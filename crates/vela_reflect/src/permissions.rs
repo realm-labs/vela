@@ -342,7 +342,11 @@ impl ReflectPolicy {
         Ok(())
     }
 
-    fn require_field_permissions(&self, type_name: &str, field: &FieldDesc) -> ReflectResult<()> {
+    pub fn require_field_permissions(
+        &self,
+        type_name: &str,
+        field: &FieldDesc,
+    ) -> ReflectResult<()> {
         if let Some(permission) = field
             .access
             .required_permissions()

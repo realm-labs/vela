@@ -939,6 +939,11 @@ permissions.
   them, copied field access records expose the required names, and VM
   `reflect.get`/`reflect.set` deny host field access before reading or
   recording patches when the active policy lacks a required field permission.
+- Extended dynamic script-value reflection to honor registered field
+  permissions. Policy-aware `reflect.get` and copy-returning `reflect.set` on
+  script records and enum payloads now consult script schema field metadata
+  when available, while unregistered dynamic records keep the existing
+  schema-free behavior.
 
 ## Next
 

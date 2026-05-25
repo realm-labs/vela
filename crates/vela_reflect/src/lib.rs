@@ -42,8 +42,8 @@ pub use registry::{
 };
 pub use types::{type_by_name as type_metadata_by_name, type_names as type_metadata_names};
 use value_access::{
-    get_record_field, record_unknown_field, script_enum_unknown_field, script_record_unknown_field,
-    set_record_field,
+    get_record_field, record_unknown_field, script_enum_field, script_enum_unknown_field,
+    script_record_field, script_record_unknown_field, set_record_field,
 };
 use vela_host::{HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter};
 
@@ -131,16 +131,30 @@ fn get_impl(
         ReflectValue::Record(record) => {
             get_record_field(field, record, || record_unknown_field(field, record))
         }
-        ReflectValue::ScriptRecord { type_name, fields } => get_record_field(field, fields, || {
-            script_record_unknown_field(ctx.registry, type_name, field, fields)
-        }),
+        ReflectValue::ScriptRecord { type_name, fields } => {
+            if let Some(policy) = policy
+                && let Some(field_desc) = script_record_field(ctx.registry, type_name, field)
+            {
+                policy.require_field_read_access(type_name, field_desc)?;
+            }
+            get_record_field(field, fields, || {
+                script_record_unknown_field(ctx.registry, type_name, field, fields)
+            })
+        }
         ReflectValue::ScriptEnum {
             enum_name,
             variant,
             fields,
-        } => get_record_field(field, fields, || {
-            script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
-        }),
+        } => {
+            if let Some(policy) = policy
+                && let Some(field_desc) = script_enum_field(ctx.registry, enum_name, variant, field)
+            {
+                policy.require_field_read_access(&format!("{enum_name}.{variant}"), field_desc)?;
+            }
+            get_record_field(field, fields, || {
+                script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
+            })
+        }
         ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
@@ -208,23 +222,37 @@ fn set_impl(
             value,
             || record_unknown_field(field, fields),
         )?)),
-        ReflectValue::ScriptRecord { type_name, fields } => Ok(ReflectValue::ScriptRecord {
-            type_name: type_name.clone(),
-            fields: set_record_field(field, fields, value, || {
-                script_record_unknown_field(ctx.registry, type_name, field, fields)
-            })?,
-        }),
+        ReflectValue::ScriptRecord { type_name, fields } => {
+            if let Some(policy) = policy
+                && let Some(field_desc) = script_record_field(ctx.registry, type_name, field)
+            {
+                policy.require_field_permissions(type_name, field_desc)?;
+            }
+            Ok(ReflectValue::ScriptRecord {
+                type_name: type_name.clone(),
+                fields: set_record_field(field, fields, value, || {
+                    script_record_unknown_field(ctx.registry, type_name, field, fields)
+                })?,
+            })
+        }
         ReflectValue::ScriptEnum {
             enum_name,
             variant,
             fields,
-        } => Ok(ReflectValue::ScriptEnum {
-            enum_name: enum_name.clone(),
-            variant: variant.clone(),
-            fields: set_record_field(field, fields, value, || {
-                script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
-            })?,
-        }),
+        } => {
+            if let Some(policy) = policy
+                && let Some(field_desc) = script_enum_field(ctx.registry, enum_name, variant, field)
+            {
+                policy.require_field_permissions(&format!("{enum_name}.{variant}"), field_desc)?;
+            }
+            Ok(ReflectValue::ScriptEnum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields: set_record_field(field, fields, value, || {
+                    script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
+                })?,
+            })
+        }
         ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
@@ -732,6 +760,85 @@ mod tests {
             ReflectValue::Host(HostValue::Null)
         );
         assert_eq!(ctx.tx.patches().len(), 1);
+    }
+
+    #[test]
+    fn reflect_get_and_set_with_policy_require_script_field_permission() {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(200), "Player"))
+                .kind(TypeKind::ScriptStruct)
+                .field(
+                    FieldDesc::new(FieldId::new(2), "level")
+                        .access(FieldAccess::new().require_permission("player.level.reflect")),
+                ),
+        );
+        let adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut fields = BTreeMap::new();
+        fields.insert("level".to_owned(), ReflectValue::Host(HostValue::Int(7)));
+        let record = ReflectValue::ScriptRecord {
+            type_name: "Player".to_owned(),
+            fields,
+        };
+        let mut ctx = ReflectContext {
+            registry: &registry,
+            adapter: &adapter,
+            tx: &mut tx,
+        };
+
+        let error = get_with_policy(&mut ctx, &record, "level", &ReflectPolicy::all())
+            .expect_err("missing script field read permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldPermissionDenied {
+                type_name: "Player".to_owned(),
+                field: "level".to_owned(),
+                permission: "player.level.reflect".to_owned(),
+            }
+        );
+
+        let error = set_with_policy(
+            &mut ctx,
+            &record,
+            "level",
+            ReflectValue::Host(HostValue::Int(10)),
+            &ReflectPolicy::all(),
+        )
+        .expect_err("missing script field write permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldPermissionDenied {
+                type_name: "Player".to_owned(),
+                field: "level".to_owned(),
+                permission: "player.level.reflect".to_owned(),
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
+
+        let policy = ReflectPolicy::all().with_field_permission("player.level.reflect");
+        assert_eq!(
+            get_with_policy(&mut ctx, &record, "level", &policy).expect("script field read"),
+            ReflectValue::Host(HostValue::Int(7))
+        );
+        assert_eq!(
+            set_with_policy(
+                &mut ctx,
+                &record,
+                "level",
+                ReflectValue::Host(HostValue::Int(10)),
+                &policy,
+            )
+            .expect("script field write"),
+            ReflectValue::ScriptRecord {
+                type_name: "Player".to_owned(),
+                fields: BTreeMap::from([(
+                    "level".to_owned(),
+                    ReflectValue::Host(HostValue::Int(10)),
+                )]),
+            }
+        );
+        assert!(ctx.tx.patches().is_empty());
     }
 
     #[test]

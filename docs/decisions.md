@@ -3972,3 +3972,28 @@ Consequences:
   patch is recorded.
 - Reflection still only reads immutable schema metadata and controlled host
   values, so this does not add runtime schema mutation or monkey patching.
+
+## 2026-05-25: Script Value Reflection Honors Field Permissions
+
+Status: Accepted
+
+Context:
+Field permission metadata was enforced for host-ref reflection and field
+metadata queries, but dynamic `reflect.get` and copy-returning `reflect.set` on
+script records and enum payloads could still bypass required field permission
+names when the registry knew the script schema.
+
+Decision:
+For policy-aware script record and enum payload reflection, resolve the target
+field through registered script type metadata when available. `reflect.get`
+requires normal field read access, and `reflect.set` requires the field's named
+permissions before returning an updated copy. Unregistered dynamic records keep
+their schema-free behavior.
+
+Consequences:
+- Script values and host refs now use the same named field permission metadata
+  where schemas exist.
+- `reflect.set` for script values remains copy-returning and cannot add fields
+  or mutate type structure.
+- Dynamic records without registry metadata remain useful for generic copied
+  reflection data.

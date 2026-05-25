@@ -1172,9 +1172,12 @@ Suggested defaults:
 
 Field descriptors may also carry required reflection permission names. Policy
 checks filter `reflect.fields`, `reflect.field`, `reflect.has_field`, and enum
-payload field metadata by those names, and dynamic host `reflect.get` /
-`reflect.set` fail before reading or recording a patch when the active policy
-lacks a required field permission.
+payload field metadata by those names. Dynamic `reflect.get` / `reflect.set`
+on host refs fail before reading or recording a patch when the active policy
+lacks a required field permission. Dynamic script record and enum payload
+reflection uses the same permission metadata when the registry knows the script
+field, while `reflect.set` still returns an updated copied value rather than
+mutating type structure.
 
 ## Struct, Record, And Enum Memory Model
 

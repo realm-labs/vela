@@ -7572,6 +7572,52 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflect_get_script_record_respects_field_permission() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Player { level: int }
+
+fn main() {
+    let player = Player { level: 7 };
+    return reflect.get(player, "level");
+}
+"#,
+        )
+        .expect("compile script record field permission source");
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(200), "Player"))
+                .kind(TypeKind::ScriptStruct)
+                .field(
+                    FieldDesc::new(FieldId::new(2), "level")
+                        .access(FieldAccess::new().require_permission("player.level.inspect")),
+                ),
+        );
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives_with_policy(
+            Arc::new(registry),
+            reflect::ReflectPolicy::all(),
+        );
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::FieldPermissionDenied {
+                type_name: "Player".to_owned(),
+                field: "level".to_owned(),
+                permission: "player.level.inspect".to_owned(),
+            })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn heap_execution_reflection_fields_returns_heap_metadata_array() {
         let host_ref = player_ref(3);
         let program = compile_program_source(

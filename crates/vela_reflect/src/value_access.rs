@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::candidates::{candidate_names, name_candidates, ranked_candidates};
-use crate::{ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry};
+use crate::{FieldDesc, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry};
 
 pub(crate) fn get_record_field(
     field: &str,
@@ -58,6 +58,18 @@ pub(crate) fn script_record_unknown_field(
     record_unknown_field_with_type(type_name, field, record)
 }
 
+pub(crate) fn script_record_field<'a>(
+    registry: &'a TypeRegistry,
+    type_name: &str,
+    field: &str,
+) -> Option<&'a FieldDesc> {
+    registry
+        .type_by_name(type_name)?
+        .fields
+        .iter()
+        .find(|candidate| candidate.name == field)
+}
+
 pub(crate) fn script_enum_unknown_field(
     registry: &TypeRegistry,
     enum_name: &str,
@@ -86,6 +98,22 @@ pub(crate) fn script_enum_unknown_field(
         };
     }
     record_unknown_field_with_type(&format!("{enum_name}.{variant}"), field, record)
+}
+
+pub(crate) fn script_enum_field<'a>(
+    registry: &'a TypeRegistry,
+    enum_name: &str,
+    variant: &str,
+    field: &str,
+) -> Option<&'a FieldDesc> {
+    registry
+        .type_by_name(enum_name)?
+        .variants
+        .iter()
+        .find(|candidate| candidate.name == variant)?
+        .fields
+        .iter()
+        .find(|candidate| candidate.name == field)
 }
 
 fn record_unknown_field_with_type(
