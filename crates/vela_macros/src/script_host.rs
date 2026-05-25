@@ -62,6 +62,12 @@ pub(crate) fn expand(input: TokenStream, generated_method: GeneratedMethod) -> T
 
 fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Result<TokenStream> {
     let input = parse2::<DeriveInput>(input)?;
+    if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
+        return Err(spanned_error(
+            &input.generics,
+            "ScriptHost and ScriptReflect do not support generic host schemas",
+        ));
+    }
     let attrs = parse_script_attrs(&input.attrs)?;
     let type_id = attrs
         .id
@@ -271,5 +277,29 @@ mod tests {
         .expect_err("missing type ID should fail macro expansion");
 
         assert!(error.to_string().contains("requires #[script(id = N)]"));
+    }
+
+    #[test]
+    fn rejects_generic_host_schemas() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Inventory<T>
+                where
+                    T: Clone,
+                {
+                    #[script(get, id = 1)]
+                    items: Vec<T>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("generic host schema should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("do not support generic host schemas")
+        );
     }
 }

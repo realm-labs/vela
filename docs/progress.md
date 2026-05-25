@@ -1294,6 +1294,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   for exposed fields through the stable Engine API, giving embedders a safe
   path-building surface without exposing Rust references or bypassing
   `PatchTx`.
+- Tightened M14 host schema derive validation. `ScriptHost` and
+  `ScriptReflect` now reject generic Rust host schema types with an explicit
+  macro diagnostic instead of allowing generated code to fail later, preserving
+  the no script-generics boundary at the embedding layer.
 - Added `EngineBuilder::register_reflect_schema::<T>()` for
   `ScriptReflectSchema` output. Reflect-only derived schemas can now enter the
   Engine `TypeRegistry` through the same stable builder surface as host

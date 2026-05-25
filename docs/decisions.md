@@ -5327,6 +5327,29 @@ Consequences:
 - The stable Engine API now re-exports `FieldId` and `HostPath` alongside
   existing host embedding types.
 
+## 2026-05-25: Host Schema Derives Reject Generics
+
+Status: Accepted
+
+Context:
+The script language has no generic type syntax, and reflected host schemas
+need stable concrete type, field, and schema IDs. A generic Rust struct derived
+with `ScriptHost` or `ScriptReflect` would not map cleanly to one
+script-visible schema without extra specialization policy, and previously
+failed only through incidental generated-code errors.
+
+Decision:
+Reject generic Rust host schema derives explicitly in the shared
+`ScriptHost`/`ScriptReflect` expansion path. The macro now reports that
+generic host schemas are unsupported before descriptor or trait-impl tokens are
+generated.
+
+Consequences:
+- Embedders get an actionable macro diagnostic at the schema boundary.
+- The derive path stays aligned with Vela's no script-generics constraint.
+- Future support for multiple concrete schema specializations would require an
+  explicit design instead of falling out of Rust generics accidentally.
+
 ## 2026-05-25: Engine Registers Reflect-Only Schemas
 
 Status: Accepted
