@@ -4,7 +4,204 @@ use crate::heap::HeapValue;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::option_result::option_value;
 use crate::script_object::ScriptFields;
-use crate::{Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::string_methods;
+use crate::{
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
+    value_to_heap_slot,
+};
+
+pub(crate) fn has(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
+    expect_arity("has", args, 1)?;
+    let key = map_key(&args[0], heap)?;
+    match receiver {
+        Value::Map(values) => Ok(values.contains_key(&key)),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method has");
+            };
+            Ok(values.contains_key(&key))
+        }
+        _ => type_error("method has"),
+    }
+}
+
+pub(crate) fn get(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("get", args, 1)?;
+    let key = map_key(&args[0], heap)?;
+    match receiver {
+        Value::Map(values) => Ok(option_value(values.get(&key).cloned())),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method get");
+            };
+            Ok(option_value(values.get(&key).map(value_from_heap_slot)))
+        }
+        _ => type_error("method get"),
+    }
+}
+
+pub(crate) fn get_or(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("get_or", args, 2)?;
+    let key = map_key(&args[0], heap)?;
+    match receiver {
+        Value::Map(values) => Ok(values.get(&key).cloned().unwrap_or_else(|| args[1].clone())),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method get_or");
+            };
+            Ok(values
+                .get(&key)
+                .map_or_else(|| args[1].clone(), value_from_heap_slot))
+        }
+        _ => type_error("method get_or"),
+    }
+}
+
+pub(crate) fn set(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("set", args, 2)?;
+    let key = map_key(&args[0], heap.as_deref())?;
+    match receiver {
+        Value::Map(values) => {
+            values.insert(key, args[1].clone());
+            Ok(args[1].clone())
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method set");
+            };
+            let slot = value_to_heap_slot(&args[1], heap, budget)?;
+            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method set");
+            };
+            values.insert(key, slot);
+            Ok(args[1].clone())
+        }
+        _ => type_error("method set"),
+    }
+}
+
+pub(crate) fn remove(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("remove", args, 1)?;
+    let key = map_key(&args[0], heap.as_deref())?;
+    match receiver {
+        Value::Map(values) => Ok(option_value(values.remove(&key))),
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method remove");
+            };
+            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method remove");
+            };
+            Ok(option_value(
+                values.remove(&key).map(|slot| value_from_heap_slot(&slot)),
+            ))
+        }
+        _ => type_error("method remove"),
+    }
+}
+
+pub(crate) fn keys(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("keys", args)?;
+    match receiver {
+        Value::Map(values) => Ok(Value::Array(
+            values
+                .keys()
+                .map(|key| Value::String(key.clone()))
+                .collect(),
+        )),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method keys");
+            };
+            Ok(Value::Array(
+                values
+                    .keys()
+                    .map(|key| Value::String(key.clone()))
+                    .collect(),
+            ))
+        }
+        _ => type_error("method keys"),
+    }
+}
+
+pub(crate) fn values(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("values", args)?;
+    match receiver {
+        Value::Map(values) => Ok(Value::Array(values.values().cloned().collect())),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method values");
+            };
+            Ok(Value::Array(
+                values.values().map(value_from_heap_slot).collect(),
+            ))
+        }
+        _ => type_error("method values"),
+    }
+}
+
+pub(crate) fn entries(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("entries", args)?;
+    match receiver {
+        Value::Map(values) => Ok(Value::Array(
+            values
+                .iter()
+                .map(|(key, value)| map_entry(key, value.clone()))
+                .collect(),
+        )),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method entries");
+            };
+            Ok(Value::Array(
+                values
+                    .iter()
+                    .map(|(key, value)| map_entry(key, value_from_heap_slot(value)))
+                    .collect(),
+            ))
+        }
+        _ => type_error("method entries"),
+    }
+}
 
 pub(crate) fn map_values(
     receiver: &Value,
@@ -218,6 +415,14 @@ fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
         expected,
         actual: args.len(),
     }))
+}
+
+fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
+    expect_arity(method, args, 0)
+}
+
+fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
+    string_methods::string_value(value, heap, "map key").map(str::to_owned)
 }
 
 fn is_truthy(value: &Value) -> bool {

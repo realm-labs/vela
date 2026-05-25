@@ -7,7 +7,6 @@ use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
-use crate::script_object::ScriptFields;
 use crate::set_methods;
 use crate::string_methods;
 use crate::{
@@ -280,27 +279,27 @@ pub(crate) fn call_method(
             if set_methods::is_set(receiver, heap.as_deref()) {
                 set_methods::has(receiver, args, heap.as_deref())
             } else {
-                map_has(receiver, args, heap.as_deref())
+                map_methods::has(receiver, args, heap.as_deref())
             }
         }
         .map(Value::Bool),
-        "get" => map_get(receiver, args, heap.as_deref()),
-        "get_or" => map_get_or(receiver, args, heap.as_deref()),
+        "get" => map_methods::get(receiver, args, heap.as_deref()),
+        "get_or" => map_methods::get_or(receiver, args, heap.as_deref()),
         "add" => set_methods::add(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
-        "set" => map_set(receiver, args, heap.as_deref_mut(), budget),
+        "set" => map_methods::set(receiver, args, heap.as_deref_mut(), budget),
         "remove" => {
             if set_methods::is_set(receiver, heap.as_deref()) {
                 set_methods::remove(receiver, args, heap.as_deref_mut())
             } else {
-                map_remove(receiver, args, heap.as_deref_mut())
+                map_methods::remove(receiver, args, heap.as_deref_mut())
             }
         }
-        "keys" => map_keys(receiver, args, heap.as_deref()),
+        "keys" => map_methods::keys(receiver, args, heap.as_deref()),
         "values" => {
             if set_methods::is_set(receiver, heap.as_deref()) {
                 set_methods::values(receiver, args, heap.as_deref())
             } else {
-                map_values(receiver, args, heap.as_deref())
+                map_methods::values(receiver, args, heap.as_deref())
             }
         }
         "union" => set_methods::union(receiver, args, heap.as_deref()),
@@ -309,7 +308,7 @@ pub(crate) fn call_method(
         "is_subset" => set_methods::is_subset(receiver, args, heap.as_deref()).map(Value::Bool),
         "is_superset" => set_methods::is_superset(receiver, args, heap.as_deref()).map(Value::Bool),
         "is_disjoint" => set_methods::is_disjoint(receiver, args, heap.as_deref()).map(Value::Bool),
-        "entries" => map_entries(receiver, args, heap.as_deref()),
+        "entries" => map_methods::entries(receiver, args, heap.as_deref()),
         _ => call_script_impl_method(
             receiver,
             ScriptMethodLookup::Name(method),
@@ -534,200 +533,6 @@ fn array_pop(
     }
 }
 
-fn map_has(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<bool> {
-    expect_arity("has", args, 1)?;
-    let key = map_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(values.contains_key(&key)),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method has");
-            };
-            Ok(values.contains_key(&key))
-        }
-        _ => type_error("method has"),
-    }
-}
-
-fn map_get(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
-    expect_arity("get", args, 1)?;
-    let key = map_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(option_value(values.get(&key).cloned())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method get");
-            };
-            Ok(option_value(values.get(&key).map(value_from_heap_slot)))
-        }
-        _ => type_error("method get"),
-    }
-}
-
-fn map_get_or(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("get_or", args, 2)?;
-    let key = map_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(values.get(&key).cloned().unwrap_or_else(|| args[1].clone())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method get_or");
-            };
-            Ok(values
-                .get(&key)
-                .map_or_else(|| args[1].clone(), value_from_heap_slot))
-        }
-        _ => type_error("method get_or"),
-    }
-}
-
-fn map_set(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    expect_arity("set", args, 2)?;
-    let key = map_key(&args[0], heap.as_deref())?;
-    match receiver {
-        Value::Map(values) => {
-            values.insert(key, args[1].clone());
-            Ok(args[1].clone())
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method set");
-            };
-            let slot = value_to_heap_slot(&args[1], heap, budget)?;
-            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method set");
-            };
-            values.insert(key, slot);
-            Ok(args[1].clone())
-        }
-        _ => type_error("method set"),
-    }
-}
-
-fn map_remove(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("remove", args, 1)?;
-    let key = map_key(&args[0], heap.as_deref())?;
-    match receiver {
-        Value::Map(values) => Ok(option_value(values.remove(&key))),
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method remove");
-            };
-            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method remove");
-            };
-            Ok(option_value(
-                values.remove(&key).map(|slot| value_from_heap_slot(&slot)),
-            ))
-        }
-        _ => type_error("method remove"),
-    }
-}
-
-fn map_keys(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
-    expect_no_args("keys", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(
-            values
-                .keys()
-                .map(|key| Value::String(key.clone()))
-                .collect(),
-        )),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method keys");
-            };
-            Ok(Value::Array(
-                values
-                    .keys()
-                    .map(|key| Value::String(key.clone()))
-                    .collect(),
-            ))
-        }
-        _ => type_error("method keys"),
-    }
-}
-
-fn map_values(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_no_args("values", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(values.values().cloned().collect())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method values");
-            };
-            Ok(Value::Array(
-                values.values().map(value_from_heap_slot).collect(),
-            ))
-        }
-        _ => type_error("method values"),
-    }
-}
-
-fn map_entries(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_no_args("entries", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(
-            values
-                .iter()
-                .map(|(key, value)| map_entry(key, value.clone()))
-                .collect(),
-        )),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method entries");
-            };
-            Ok(Value::Array(
-                values
-                    .iter()
-                    .map(|(key, value)| map_entry(key, value_from_heap_slot(value)))
-                    .collect(),
-            ))
-        }
-        _ => type_error("method entries"),
-    }
-}
-
-fn map_entry(key: &str, value: Value) -> Value {
-    Value::Record {
-        type_name: "MapEntry".to_owned(),
-        fields: ScriptFields::from_pairs(
-            "MapEntry",
-            [
-                ("key".to_owned(), Value::String(key.to_owned())),
-                ("value".to_owned(), value),
-            ],
-        ),
-    }
-}
-
 fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
     expect_arity(method, args, 0)
 }
@@ -741,10 +546,6 @@ fn expect_arity(method: &str, args: &[Value], expected: usize) -> VmResult<()> {
         expected,
         actual: args.len(),
     }))
-}
-
-fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
-    string_methods::string_value(value, heap, "map key").map(str::to_owned)
 }
 
 fn usize_to_i64(value: usize, operation: &'static str) -> VmResult<i64> {

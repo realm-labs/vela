@@ -530,6 +530,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Split shared higher-order method callback execution into a focused VM
   `method_runtime` module, so array and map stdlib modules no longer own each
   other's heap-root and budget plumbing.
+- Moved the remaining map script-value method bodies (`has`, `get`, `get_or`,
+  `set`, `remove`, `keys`, `values`, and `entries`) into the focused
+  `map_methods` VM module, leaving `script_methods` as receiver dispatch glue.
 - Added `array.sum` for direct numeric totals and callback-transformed numeric
   totals, preserving integer results until a float participates and returning
   `0` for empty arrays.
