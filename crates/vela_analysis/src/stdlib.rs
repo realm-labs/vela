@@ -354,7 +354,11 @@ fn array_method_fact(
             StdlibMethodFact::new(receiver, "push", TypeFact::Null)
                 .with_params(vec![element.clone()]),
         ),
-        "pop" => Some(StdlibMethodFact::new(receiver, "pop", element)),
+        "pop" => Some(StdlibMethodFact::new(
+            receiver,
+            "pop",
+            TypeFact::option(element),
+        )),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             Some(
@@ -703,6 +707,12 @@ mod tests {
                 .expect("sum fact")
                 .returns,
             TypeFact::Float
+        );
+        assert_eq!(
+            stdlib_method_fact(&array, "pop", None)
+                .expect("pop fact")
+                .returns,
+            TypeFact::option(TypeFact::Float)
         );
         assert_eq!(
             stdlib_method_fact(&set, "values", None)

@@ -1175,6 +1175,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.
+- Aligned `array.pop()` with the same Option-style collection boundary. It now
+  returns dynamic `Option.Some(value)` or `Option.None` in inline and
+  managed-heap execution, and analysis stdlib facts expose the Option return
+  shape without adding script-visible generics.
 
 ## Next
 

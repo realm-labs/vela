@@ -472,7 +472,7 @@ fn array_pop(
 ) -> VmResult<Value> {
     expect_no_args("pop", args)?;
     match receiver {
-        Value::Array(values) => Ok(values.pop().unwrap_or(Value::Null)),
+        Value::Array(values) => Ok(option_value(values.pop())),
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method pop");
@@ -480,9 +480,9 @@ fn array_pop(
             let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method pop");
             };
-            Ok(values
-                .pop()
-                .map_or(Value::Null, |slot| value_from_heap_slot(&slot)))
+            Ok(option_value(
+                values.pop().map(|slot| value_from_heap_slot(&slot)),
+            ))
         }
         _ => type_error("method pop"),
     }

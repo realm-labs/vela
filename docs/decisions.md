@@ -5142,3 +5142,28 @@ Consequences:
   reflection values rather than mutable descriptor or Rust state handles.
 - Future M12 reflection work can extend value access without adding more logic
   to the crate root.
+
+## 2026-05-25: Array Pop Returns Dynamic Option
+
+Status: Accepted
+
+Context:
+M13 standard-library conveniences should compose with Option/Result-style
+propagation. `array.find`, `map.get`, and `map.remove` already return dynamic
+`Option.Some`/`Option.None`, but `array.pop()` still returned a raw value or
+`null` for an empty array. That forced scripts and analysis facts to treat one
+fallible collection operation differently from the rest.
+
+Decision:
+Return `Option.Some(value)` from `array.pop()` when a value is removed and
+`Option.None` when the array is empty, in both inline and managed-heap
+execution. Update `vela_analysis` stdlib facts so `pop` returns an internal
+`TypeFact::Option` of the element type without introducing script generic
+syntax.
+
+Consequences:
+- Fallible collection APIs now share one dynamic Option boundary.
+- Scripts can use `option.unwrap_or`, `?`, or `match Option.*` with pop
+  results instead of comparing against `null`.
+- This is a runtime behavior change for scripts that expected raw `pop`
+  values; the new behavior is consistent with the M13 Option-style contract.

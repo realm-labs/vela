@@ -634,6 +634,7 @@ fn main() {
     let empty = [];
     values.push(4);
     let popped = values.pop();
+    let missing_pop = empty.pop();
     rewards.set("quest", 8);
     let missing_get = rewards.get("missing_before");
     let removed = rewards.remove("gold");
@@ -641,8 +642,9 @@ fn main() {
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
-    if empty.is_empty() && values.len() == 3 && popped == 4 && rewards.len() == 2 && ("gold").len() == 4
+    if empty.is_empty() && values.len() == 3 && option.unwrap_or(popped, 0) == 4 && rewards.len() == 2 && ("gold").len() == 4
         && ("gold").contains("ol") && ("quest").starts_with("que") && ("quest").ends_with("st")
+        && option.is_none(missing_pop)
         && option.unwrap_or(removed, 0) == 4
         && option.is_none(missing_get) && option.is_none(missing_remove)
         && rewards.has("quest") && option.unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", 10) == 10
@@ -1565,9 +1567,11 @@ fn managed_heap_execution_runs_script_value_methods() {
             r#"
 fn main() {
     let names = ["gold", "xp"];
+    let empty = [];
     let rewards = {"gold": 4, "xp": 6};
     names.push("quest");
     let popped = names.pop();
+    let missing_pop = empty.pop();
     rewards.set("quest", "done");
     let missing_get = rewards.get("missing_before");
     let removed = rewards.remove("gold");
@@ -1575,8 +1579,9 @@ fn main() {
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
-    if names.len() == 2 && popped == "quest" && popped.contains("ue") && popped.starts_with("que")
-        && popped.ends_with("st") && option.unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
+    let popped_name = option.unwrap_or(popped, "");
+    if names.len() == 2 && popped_name == "quest" && popped_name.contains("ue") && popped_name.starts_with("que")
+        && popped_name.ends_with("st") && option.is_none(missing_pop) && option.unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
         && option.is_none(missing_get) && option.is_none(missing_remove)
         && rewards.has("quest") && option.unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", "fallback") == "fallback"
         && keys[0] == "quest" && keys[1] == "xp"
