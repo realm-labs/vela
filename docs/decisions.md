@@ -7008,3 +7008,28 @@ Consequences:
   generics, or runtime schema mutation.
 - Hosts that intentionally migrate callable return shapes must restart or use
   an explicit migration path.
+
+## 2026-05-26: Reflected Trait Methods Are Hot-Reload ABI
+
+Status: Accepted
+
+Context:
+`TypeRegistry` exposes script and host trait metadata through reflection, and
+trait method IDs participate in script method dispatch and completion facts.
+Hot reload checked schemas, functions, and methods, but registered trait
+method shape could drift independently of the ABI manifest.
+
+Decision:
+Record registered trait method IDs, names, parameter metadata, return hints,
+and default-method status in `TraitAbi`. Hot reload rejects removed traits,
+removed or changed existing trait methods, and appended required trait methods.
+Appended defaulted trait methods remain compatible, and method reordering is
+allowed because trait method IDs/names are stable metadata.
+
+Consequences:
+- Trait reflection and dispatch metadata cannot silently change across a
+  safe-point reload.
+- The rule remains descriptor-only and does not add script generics or runtime
+  trait mutation.
+- Reports expose old/new trait method ABI so hosts can surface targeted repair
+  guidance.

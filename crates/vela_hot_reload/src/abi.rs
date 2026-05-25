@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use vela_common::Span;
 use vela_reflect::{
-    FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, SchemaHash, TypeRegistry,
+    FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc,
+    TraitMethodDesc, TypeRegistry,
 };
 
 use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
@@ -12,6 +13,7 @@ pub struct HotReloadAbi {
     schemas: BTreeMap<String, SchemaAbi>,
     functions: BTreeMap<String, FunctionAbi>,
     methods: BTreeMap<(String, String), MethodAbi>,
+    traits: BTreeMap<String, TraitAbi>,
 }
 
 impl HotReloadAbi {
@@ -38,6 +40,9 @@ impl HotReloadAbi {
         for function in registry.functions() {
             manifest = manifest.function(FunctionAbi::from_function(function));
         }
+        for trait_desc in registry.traits() {
+            manifest = manifest.trait_abi(TraitAbi::from_trait(trait_desc));
+        }
         manifest
     }
 
@@ -57,6 +62,12 @@ impl HotReloadAbi {
     pub fn method(mut self, method: MethodAbi) -> Self {
         self.methods
             .insert((method.type_name.clone(), method.name.clone()), method);
+        self
+    }
+
+    #[must_use]
+    pub fn trait_abi(mut self, trait_abi: TraitAbi) -> Self {
+        self.traits.insert(trait_abi.name.clone(), trait_abi);
         self
     }
 
@@ -100,6 +111,16 @@ impl HotReloadAbi {
                 }));
             };
             old_method.ensure_compatible(new_method)?;
+        }
+
+        for (trait_name, old_trait) in &self.traits {
+            let Some(new_trait) = next.traits.get(trait_name) else {
+                return Err(HotReloadError::new(HotReloadErrorKind::RemovedTraitAbi {
+                    trait_name: trait_name.clone(),
+                    source_span: old_trait.source_span.map(Box::new),
+                }));
+            };
+            old_trait.ensure_compatible(new_trait)?;
         }
 
         Ok(())
@@ -511,6 +532,132 @@ fn ensure_method_params_compatible(
     }
 
     Ok(())
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraitAbi {
+    pub name: String,
+    pub methods: Vec<TraitMethodAbi>,
+    pub source_span: Option<Span>,
+}
+
+impl TraitAbi {
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            methods: Vec::new(),
+            source_span: None,
+        }
+    }
+
+    #[must_use]
+    pub fn from_trait(trait_desc: &TraitDesc) -> Self {
+        let mut abi = Self::new(trait_desc.name.clone());
+        for method in &trait_desc.methods {
+            abi = abi.method(TraitMethodAbi::from_method(method));
+        }
+        if let Some(source_span) = trait_desc.source_span {
+            abi = abi.source_span(source_span);
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn method(mut self, method: TraitMethodAbi) -> Self {
+        self.methods.push(method);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
+    }
+
+    fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
+        let next_methods = next
+            .methods
+            .iter()
+            .map(|method| (method.name.as_str(), method))
+            .collect::<BTreeMap<_, _>>();
+        let changed_existing = self.methods.iter().any(|old| {
+            next_methods
+                .get(old.name.as_str())
+                .is_none_or(|new| *new != old)
+        });
+        let old_methods = self
+            .methods
+            .iter()
+            .map(|method| method.name.as_str())
+            .collect::<Vec<_>>();
+        let added_required = next
+            .methods
+            .iter()
+            .filter(|method| !old_methods.contains(&method.name.as_str()))
+            .any(|method| !method.has_default);
+        if changed_existing || added_required {
+            return Err(HotReloadError::new(HotReloadErrorKind::ChangedTraitAbi {
+                trait_name: self.name.clone(),
+                old: self.methods.clone(),
+                new: next.methods.clone(),
+                source_span: next.source_span.map(Box::new),
+            }));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraitMethodAbi {
+    pub id: u32,
+    pub name: String,
+    pub params: Vec<ParamAbi>,
+    pub return_type: Option<String>,
+    pub has_default: bool,
+}
+
+impl TraitMethodAbi {
+    #[must_use]
+    pub fn new(id: u32, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            params: Vec::new(),
+            return_type: None,
+            has_default: false,
+        }
+    }
+
+    #[must_use]
+    pub fn from_method(method: &TraitMethodDesc) -> Self {
+        let mut abi = Self::new(method.id.get(), method.name.clone()).defaulted(method.has_default);
+        for param in &method.params {
+            abi = abi.param(ParamAbi::from_method_param(param));
+        }
+        if let Some(return_type) = &method.return_type {
+            abi = abi.return_type(return_type.clone());
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn param(mut self, param: ParamAbi) -> Self {
+        self.params.push(param);
+        self
+    }
+
+    #[must_use]
+    pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
+        self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[must_use]
+    pub fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

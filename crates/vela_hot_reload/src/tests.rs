@@ -1,8 +1,9 @@
 use super::*;
-use vela_common::{FunctionId, HostMethodId, SourceId, Span, TypeId};
+use vela_common::{FunctionId, HostMethodId, MethodId, SourceId, Span, TypeId};
 use vela_reflect::{
     FunctionAccess, FunctionDesc, FunctionEffectSet, FunctionParamDesc, MethodAccess, MethodDesc,
-    MethodEffectSet, MethodParamDesc, SchemaHash, TypeDesc, TypeKey, TypeRegistry,
+    MethodEffectSet, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+    TypeRegistry,
 };
 use vela_vm::{Value, Vm};
 
@@ -1207,6 +1208,130 @@ fn method_descriptor_return_abi_changes_are_rejected() {
 }
 
 #[test]
+fn trait_descriptor_abi_changes_are_rejected() {
+    let span = Span::new(SourceId::new(15), 100, 140);
+    let old_abi = HotReloadAbi::empty().trait_abi(
+        TraitAbi::new("Damageable").method(
+            TraitMethodAbi::new(1, "damage")
+                .param(ParamAbi::new("amount").type_hint("int"))
+                .return_type("int"),
+        ),
+    );
+    let changed_return = HotReloadAbi::empty().trait_abi(
+        TraitAbi::new("Damageable")
+            .method(
+                TraitMethodAbi::new(1, "damage")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("float"),
+            )
+            .source_span(span),
+    );
+
+    let error = old_abi
+        .ensure_compatible_update(&changed_return)
+        .expect_err("trait method return ABI change should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedTraitAbi {
+            trait_name: "Damageable".to_owned(),
+            old: vec![
+                TraitMethodAbi::new(1, "damage")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("int"),
+            ],
+            new: vec![
+                TraitMethodAbi::new(1, "damage")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("float"),
+            ],
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(15), error);
+    assert_eq!(report.errors[0].code, "reload.trait.changed_abi");
+    assert_eq!(
+        report.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::TraitMethodAbiList {
+            old: vec![
+                TraitMethodAbi::new(1, "damage")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("int"),
+            ],
+            new: vec![
+                TraitMethodAbi::new(1, "damage")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("float"),
+            ],
+        })
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
+    assert!(report.render_lines().iter().any(|line| {
+        line.text
+            == "trait method ABI: old=(damage#1(amount:int)->int) new=(damage#1(amount:int)->float)"
+    }));
+
+    let added_required = HotReloadAbi::empty().trait_abi(
+        TraitAbi::new("Damageable")
+            .method(
+                TraitMethodAbi::new(1, "damage")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("int"),
+            )
+            .method(
+                TraitMethodAbi::new(2, "heal")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("int"),
+            ),
+    );
+    let error = old_abi
+        .ensure_compatible_update(&added_required)
+        .expect_err("added required trait method should fail");
+    assert_eq!(error.code(), "reload.trait.changed_abi");
+
+    let added_defaulted = HotReloadAbi::empty().trait_abi(
+        TraitAbi::new("Damageable")
+            .method(
+                TraitMethodAbi::new(1, "damage")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("int"),
+            )
+            .method(
+                TraitMethodAbi::new(2, "heal")
+                    .param(ParamAbi::new("amount").type_hint("int"))
+                    .return_type("int")
+                    .defaulted(true),
+            ),
+    );
+    old_abi
+        .ensure_compatible_update(&added_defaulted)
+        .expect("added defaulted trait method should be accepted");
+}
+
+#[test]
+fn removed_trait_abi_is_rejected() {
+    let span = Span::new(SourceId::new(16), 5, 25);
+    let old_abi = HotReloadAbi::empty().trait_abi(TraitAbi::new("Damageable").source_span(span));
+
+    let error = old_abi
+        .ensure_compatible_update(&HotReloadAbi::empty())
+        .expect_err("removed trait ABI should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::RemovedTraitAbi {
+            trait_name: "Damageable".to_owned(),
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(16), error);
+    assert_eq!(report.errors[0].code, "reload.trait.removed_abi");
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the trait ABI entry or restart with an explicit migration")
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
+}
+
+#[test]
 fn removed_method_abi_is_rejected() {
     let span = Span::new(SourceId::new(9), 30, 45);
     let old_abi = HotReloadAbi::empty().method(
@@ -1315,6 +1440,51 @@ fn registry_abi_rejections_carry_new_declaration_spans() {
         .ensure_compatible_update(&new_abi)
         .expect_err("method effect change should fail");
     assert_eq!(error.source_span(), Some(method_span));
+}
+
+#[test]
+fn trait_abi_manifest_can_be_built_from_type_registry() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register_trait(
+        TraitDesc::new("Damageable").method(
+            TraitMethodDesc::new(MethodId::new(1), "damage")
+                .param(MethodParamDesc::new("amount").type_hint("int"))
+                .return_type("int"),
+        ),
+    );
+
+    let mut reordered_registry = TypeRegistry::new();
+    reordered_registry.register_trait(
+        TraitDesc::new("Damageable")
+            .method(
+                TraitMethodDesc::new(MethodId::new(2), "heal")
+                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .return_type("int")
+                    .defaulted(true),
+            )
+            .method(
+                TraitMethodDesc::new(MethodId::new(1), "damage")
+                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .return_type("int"),
+            ),
+    );
+
+    HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&reordered_registry))
+        .expect("reordered trait methods plus defaulted additions should be accepted");
+
+    let mut changed_registry = TypeRegistry::new();
+    changed_registry.register_trait(
+        TraitDesc::new("Damageable").method(
+            TraitMethodDesc::new(MethodId::new(1), "damage")
+                .param(MethodParamDesc::new("amount").type_hint("float"))
+                .return_type("int"),
+        ),
+    );
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&changed_registry))
+        .expect_err("changed registry trait method ABI should be rejected");
+    assert_eq!(error.code(), "reload.trait.changed_abi");
 }
 
 #[test]

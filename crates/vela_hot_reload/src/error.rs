@@ -3,7 +3,7 @@ use std::fmt;
 use vela_bytecode::compiler::{CompileError, CompileErrorKind};
 use vela_common::{Diagnostic, Label, Span};
 
-use crate::{AccessAbi, EffectAbi, ParamAbi};
+use crate::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadError {
@@ -52,6 +52,8 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedMethodReturnAbi { .. } => "reload.method.return_abi_changed",
             HotReloadErrorKind::ChangedMethodEffects { .. } => "reload.method.effects_changed",
             HotReloadErrorKind::ChangedMethodAccess { .. } => "reload.method.access_changed",
+            HotReloadErrorKind::RemovedTraitAbi { .. } => "reload.trait.removed_abi",
+            HotReloadErrorKind::ChangedTraitAbi { .. } => "reload.trait.changed_abi",
         }
     }
 
@@ -88,6 +90,8 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedMethodAccess {
                 type_name, method, ..
             } => Some(format!("{type_name}.{method}")),
+            HotReloadErrorKind::RemovedTraitAbi { trait_name, .. }
+            | HotReloadErrorKind::ChangedTraitAbi { trait_name, .. } => Some(trait_name.clone()),
         }
     }
 
@@ -162,6 +166,12 @@ impl HotReloadError {
             } => {
                 format!("method `{type_name}.{method}` changed reflective access ABI")
             }
+            HotReloadErrorKind::RemovedTraitAbi { trait_name, .. } => {
+                format!("trait `{trait_name}` was removed from the hot-reload ABI")
+            }
+            HotReloadErrorKind::ChangedTraitAbi { trait_name, .. } => {
+                format!("trait `{trait_name}` changed method ABI")
+            }
         }
     }
 
@@ -208,6 +218,9 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedMethodAbi { .. } => {
                 Some("restore the method ABI entry or restart with an explicit migration".to_owned())
             }
+            HotReloadErrorKind::RemovedTraitAbi { .. } => {
+                Some("restore the trait ABI entry or restart with an explicit migration".to_owned())
+            }
             HotReloadErrorKind::ChangedMethodParameterAbi { .. } => {
                 Some("preserve existing method parameter names, order, type hints, and defaults".to_owned())
             }
@@ -221,6 +234,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedFunctionAccess { .. }
             | HotReloadErrorKind::ChangedMethodAccess { .. } => {
                 Some("preserve reflective access metadata or require host approval before reloading".to_owned())
+            }
+            HotReloadErrorKind::ChangedTraitAbi { .. } => {
+                Some("preserve existing trait method IDs, names, parameters, return hints, and default status".to_owned())
             }
         }
     }
@@ -243,6 +259,10 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedMethodReturnAbi { source_span, .. }
             | HotReloadErrorKind::ChangedMethodEffects { source_span, .. }
             | HotReloadErrorKind::ChangedMethodAccess { source_span, .. } => {
+                source_span.as_deref().copied()
+            }
+            HotReloadErrorKind::RemovedTraitAbi { source_span, .. }
+            | HotReloadErrorKind::ChangedTraitAbi { source_span, .. } => {
                 source_span.as_deref().copied()
             }
             HotReloadErrorKind::DeletedFunctionParameters { .. }
@@ -399,6 +419,16 @@ pub enum HotReloadErrorKind {
         method: String,
         old: AccessAbi,
         new: AccessAbi,
+        source_span: Option<Box<Span>>,
+    },
+    RemovedTraitAbi {
+        trait_name: String,
+        source_span: Option<Box<Span>>,
+    },
+    ChangedTraitAbi {
+        trait_name: String,
+        old: Vec<TraitMethodAbi>,
+        new: Vec<TraitMethodAbi>,
         source_span: Option<Box<Span>>,
     },
 }

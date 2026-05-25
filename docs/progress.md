@@ -1680,6 +1680,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `FunctionDesc` and `MethodDesc` return type hints now enter
   `FunctionAbi`/`MethodAbi`, and hot reload rejects added, removed, or changed
   return hints with structured report details before a safe-point code swap.
+- Strengthened M15 trait descriptor ABI checks. Registered `TraitDesc` method
+  IDs, names, parameter metadata, return hints, and default-method status now
+  enter `TraitAbi`; hot reload rejects removed traits, changed existing trait
+  method ABI, and new required trait methods while allowing reordered methods
+  and appended defaulted methods.
 
 ## Next
 

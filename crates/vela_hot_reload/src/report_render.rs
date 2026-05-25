@@ -201,6 +201,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_access_abi(old),
             render_access_abi(new)
         ),
+        HotReloadDiagnosticDetail::TraitMethodAbiList { old, new } => format!(
+            "trait method ABI: old=({}) new=({})",
+            render_trait_method_abi_list(old),
+            render_trait_method_abi_list(new)
+        ),
     }
 }
 
@@ -233,6 +238,30 @@ fn render_param_abi(param: &crate::ParamAbi) -> String {
         format!("{}:{type_hint}=default", param.name)
     } else {
         format!("{}:{type_hint}", param.name)
+    }
+}
+
+fn render_trait_method_abi_list(methods: &[crate::TraitMethodAbi]) -> String {
+    if methods.is_empty() {
+        return "<none>".to_owned();
+    }
+    methods
+        .iter()
+        .map(render_trait_method_abi)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_trait_method_abi(method: &crate::TraitMethodAbi) -> String {
+    let params = render_param_abi_list(&method.params);
+    let return_type = method.return_type.as_deref().unwrap_or("Any");
+    if method.has_default {
+        format!(
+            "{}#{}({params})->{return_type}=default",
+            method.name, method.id
+        )
+    } else {
+        format!("{}#{}({params})->{return_type}", method.name, method.id)
     }
 }
 

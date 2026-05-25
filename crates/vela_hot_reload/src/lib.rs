@@ -12,7 +12,10 @@ mod runtime;
 mod symbol;
 mod version;
 
-pub use abi::{AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi, ParamAbi, SchemaAbi};
+pub use abi::{
+    AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi, ParamAbi, SchemaAbi, TraitAbi,
+    TraitMethodAbi,
+};
 pub use compile::{
     compile_initial, compile_initial_with_abi, compile_initial_with_abi_and_options,
     compile_initial_with_options, compile_update, compile_update_with_abi,
