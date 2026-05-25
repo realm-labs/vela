@@ -633,6 +633,26 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_statement_attributes_as_metadata() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    #[trace("setup")]
+    let total = 1;
+    #[audit]
+    total += 2;
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("compile statement attributes");
+
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(3)));
+}
+
+#[test]
 fn runs_compiled_for_in_over_native_iterator() {
     let code = compile_function_source(
         SourceId::new(1),

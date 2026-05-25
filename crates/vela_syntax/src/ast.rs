@@ -147,6 +147,7 @@ pub struct Block {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Stmt {
+    pub attrs: Vec<Attribute>,
     pub kind: StmtKind,
     pub span: Span,
 }

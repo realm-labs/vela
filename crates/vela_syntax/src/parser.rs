@@ -308,8 +308,11 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> Option<Stmt> {
-        self.parse_attributes();
-        let start = self.current().span.start;
+        let attrs = self.parse_attributes();
+        let start = attrs
+            .first()
+            .map(|attr| attr.span.start)
+            .unwrap_or(self.current().span.start);
 
         let kind = if self.eat_keyword(Keyword::Let).is_some() {
             self.parse_let_statement()
@@ -335,6 +338,7 @@ impl Parser {
         self.eat_symbol(Symbol::Semicolon);
         let end = self.previous_span().end;
         Some(Stmt {
+            attrs,
             kind,
             span: Span::new(self.current().span.source, start, end),
         })
@@ -1812,6 +1816,40 @@ fn main(rewards) {
         assert_eq!(fields.len(), 1);
         assert_eq!(fields[0].name, "amount");
         assert!(fields[0].pattern.is_none());
+    }
+
+    #[test]
+    fn parses_statement_attributes() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+fn main(rewards) {
+    #[trace("reward")]
+    let total = 0;
+    #[audit]
+    for reward in rewards {
+        total += reward;
+    }
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Function(function) = &parsed.items[0].kind else {
+            panic!("expected function item");
+        };
+
+        let let_stmt = &function.body.statements[0];
+        assert_eq!(let_stmt.attrs.len(), 1);
+        assert_eq!(let_stmt.attrs[0].path, ["trace"]);
+        assert_eq!(let_stmt.attrs[0].value.as_deref(), Some("reward"));
+        assert!(matches!(let_stmt.kind, StmtKind::Let { .. }));
+
+        let for_stmt = &function.body.statements[1];
+        assert_eq!(for_stmt.attrs.len(), 1);
+        assert_eq!(for_stmt.attrs[0].path, ["audit"]);
+        assert_eq!(for_stmt.attrs[0].value, None);
+        assert!(matches!(for_stmt.kind, StmtKind::For { .. }));
     }
 
     #[test]

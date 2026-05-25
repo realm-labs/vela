@@ -6431,3 +6431,25 @@ Consequences:
   style pattern-loop semantics.
 - The VM instruction set remains unchanged, and host mutation boundaries are
   unaffected.
+
+## 2026-05-26: Statement Attributes Are Preserved Metadata
+
+Status: Accepted
+
+Context:
+The grammar allows attributes before statements, but the parser consumed those
+attributes and discarded them. No statement-level runtime policy has been
+defined yet, so giving them immediate behavior would create semantics ahead of
+the architecture contract.
+
+Decision:
+Store statement attributes on syntax `Stmt` nodes and keep them inert through
+HIR lowering, bytecode compilation, and VM execution until a specific
+statement-level feature assigns meaning to them.
+
+Consequences:
+- The syntax layer no longer loses source metadata that future analysis,
+  tooling, or policy checks may need.
+- Existing script execution remains unchanged for attributed statements.
+- Reflection continues to expose declaration and member attributes only; no
+  runtime statement reflection API is introduced.

@@ -1566,6 +1566,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `LocalBindingKind::For`, and bytecode reuses match-pattern checks so
   nonmatching iterator values are skipped while matching enum payload fields
   are bound for the loop body.
+- Preserved statement attributes from the planned grammar instead of dropping
+  them during parsing. `Stmt` nodes now carry copied attribute metadata and
+  attributed statements continue through HIR, bytecode, and VM execution as
+  inert metadata until specific statement-level policies are defined.
 
 ## Next
 
