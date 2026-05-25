@@ -5,7 +5,8 @@ use crate::heap::HeapValue;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::script_object::ScriptFields;
 use crate::{
-    HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot, values_equal,
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
+    value_to_heap_slot, values_equal,
 };
 
 pub(crate) fn map(
@@ -122,6 +123,44 @@ pub(crate) fn remove_at(
             Ok(option_value("Some", Some(value)))
         }
         _ => type_error("method remove_at"),
+    }
+}
+
+pub(crate) fn insert(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("insert", args, 2)?;
+    let index = index_value(&args[0], "method insert")?;
+    match receiver {
+        Value::Array(values) => {
+            if index > values.len() {
+                return Err(index_out_of_bounds(index, values.len()));
+            }
+            values.insert(index, args[1].clone());
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method insert");
+            };
+            let len = match heap.heap.get(*reference) {
+                Some(HeapValue::Array(values)) => values.len(),
+                _ => return type_error("method insert"),
+            };
+            if index > len {
+                return Err(index_out_of_bounds(index, len));
+            }
+            let slot = value_to_heap_slot(&args[1], heap, budget)?;
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method insert");
+            };
+            values.insert(index, slot);
+            Ok(Value::Null)
+        }
+        _ => type_error("method insert"),
     }
 }
 
@@ -752,6 +791,76 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array remove_at method should run");
         assert_eq!(result, Value::String("quest".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_array_insert_method() {
+        let source = r#"
+fn main() {
+    let values = [10, 30];
+    values.insert(1, 20);
+    values.insert(3, 40);
+    if values.len() == 4
+        && values[0] == 10
+        && values[1] == 20
+        && values[2] == 30
+        && values[3] == 40
+    {
+        return values[1];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array insert method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("array insert method should run");
+        assert_eq!(result, Value::Int(20));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_insert_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily", "raid"];
+    tags.insert(1, "quest");
+    tags.insert(tags.len(), "boss");
+    if tags.join("|") == "daily|quest|raid|boss" {
+        return tags[1];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array insert method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array insert method should run");
+        assert_eq!(result, Value::String("quest".to_owned()));
+    }
+
+    #[test]
+    fn array_insert_rejects_out_of_bounds_indexes() {
+        let source = r#"
+fn main() {
+    let values = [10];
+    values.insert(2, 20);
+    return values.len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array insert error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array insert should reject sparse indexes");
+        assert!(matches!(error.kind, VmErrorKind::IndexOutOfBounds { .. }));
     }
 
     #[test]

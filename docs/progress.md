@@ -1682,6 +1682,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   removes and returns a dynamic `Option.Some(value)` when the index exists,
   returns `Option.None` for out-of-range indexes, works in inline and
   managed-heap execution, and exposes non-generic analysis/completion facts.
+- Added M13 `array.insert(index, value)` for script-owned array mutation. It
+  inserts at existing positions or appends at `len`, rejects sparse
+  out-of-bounds indexes, works in inline and managed-heap execution, and
+  exposes non-generic analysis/completion facts.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new

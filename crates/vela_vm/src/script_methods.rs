@@ -70,6 +70,9 @@ pub(crate) fn call_method(
         "parse_bool" => string_methods::parse_bool(receiver, args, heap.as_deref()),
         "push" => array_push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "pop" => array_pop(receiver, args, heap.as_deref_mut()),
+        "insert" => {
+            array_methods::insert(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
+        }
         "first" => array_methods::first(receiver, args, heap.as_deref()),
         "last" => array_methods::last(receiver, args, heap.as_deref()),
         "remove_at" => array_methods::remove_at(receiver, args, heap.as_deref_mut()),

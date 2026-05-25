@@ -5,6 +5,7 @@ const ARRAY_METHOD_NAMES: &[&str] = &[
     "is_empty",
     "push",
     "pop",
+    "insert",
     "first",
     "last",
     "remove_at",
@@ -202,6 +203,10 @@ fn array_method_fact(
             "pop",
             TypeFact::option(element.clone()),
         )),
+        "insert" => Some(
+            StdlibMethodFact::new(receiver, "insert", TypeFact::Null)
+                .with_params(vec![TypeFact::Int, element.clone()]),
+        ),
         "first" => Some(StdlibMethodFact::new(
             receiver,
             "first",
