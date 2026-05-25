@@ -5118,3 +5118,27 @@ Consequences:
   they do not mutate reflection metadata or enforce runtime permissions.
 - Dynamic boundaries keep degrading cleanly instead of requiring full static
   effect inference.
+
+## 2026-05-25: Reflection Value Access Lives Outside The Crate Root
+
+Status: Accepted
+
+Context:
+M12 reflection has grown from simple type queries into host-ref reads,
+script-value copied writes, reflective host calls, trait checks, permissions,
+and schema-backed diagnostics. Keeping that logic in `vela_reflect::lib.rs`
+made the crate root harder to review and conflicted with the repository rule
+that growing subsystems should be split by responsibility.
+
+Decision:
+Move `ReflectValue`, `ReflectContext`, `type_of`, `fields`, `get`, `set`,
+`call`, and `implements` into a focused `value` module. Keep the crate root as
+the public re-export surface so existing embedders and VM code keep using the
+same `vela_reflect::*` API names.
+
+Consequences:
+- Controlled reflection behavior and public API compatibility are unchanged.
+- Host mutation remains behind `PatchTx`, and scripts still receive copied
+  reflection values rather than mutable descriptor or Rust state handles.
+- Future M12 reflection work can extend value access without adding more logic
+  to the crate root.

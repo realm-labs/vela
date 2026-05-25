@@ -967,6 +967,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   script records and enum payloads now consult script schema field metadata
   when available, while unregistered dynamic records keep the existing
   schema-free behavior.
+- Split the controlled reflection value API out of the `vela_reflect` crate
+  root into a focused value module. Public re-exports remain stable while
+  host-ref reads, script-value writes, reflective host calls, and dynamic
+  implements checks no longer add more logic to `lib.rs`.
 
 ### M14: Engine, Native Functions, And Rust Host Macros
 
