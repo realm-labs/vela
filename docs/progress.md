@@ -1042,6 +1042,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `EngineBuilder::register_typed_context_host_native_fn`, skips the context
   parameter in reflected script metadata, and tests prove callbacks can charge
   budget and record `PatchTx` writes without exposing Rust references.
+- Added `#[script_host_function]` for host-native Rust functions that receive
+  `HostExecution`. Macro-generated registration uses
+  `EngineBuilder::register_typed_host_native_fn`, skips the host boundary
+  parameter in reflected script metadata, and tests prove callbacks record
+  `PatchTx` writes through the typed Engine API.
 
 ## Next
 

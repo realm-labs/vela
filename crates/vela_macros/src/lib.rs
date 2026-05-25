@@ -37,3 +37,8 @@ pub fn script_function(attr: TokenStream, input: TokenStream) -> TokenStream {
 pub fn script_context_function(attr: TokenStream, input: TokenStream) -> TokenStream {
     script_function::expand_context(attr.into(), input.into()).into()
 }
+
+#[proc_macro_attribute]
+pub fn script_host_function(attr: TokenStream, input: TokenStream) -> TokenStream {
+    script_function::expand_host(attr.into(), input.into()).into()
+}

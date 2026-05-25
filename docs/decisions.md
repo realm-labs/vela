@@ -4450,5 +4450,28 @@ Consequences:
   keeping host mutation inside `NativeCallContext`/`PatchTx`.
 - Scripts still see only copied arguments and return values; no real Rust
   references are exposed.
-- HostExecution-only and callable method wrapper macros remain separate
-  follow-up slices.
+- Callable method wrapper macros remain a separate follow-up slice.
+
+## 2026-05-25: Host Function Macro Uses HostExecution Boundary
+
+Status: Accepted
+
+Context:
+Some embedders need a lighter host-native callback than `NativeCallContext`
+when they only need `HostExecution` access to the state adapter and `PatchTx`.
+The Engine already exposes `register_typed_host_native_fn` for this boundary,
+but macro-authored functions still required hand-written registration helpers.
+
+Decision:
+Add `#[script_host_function]` as a third native function attribute macro. The
+first Rust parameter must be `HostExecution`; it is omitted from script-visible
+parameter metadata and from the copied argument tuple. The generated
+EngineBuilder helper registers through `register_typed_host_native_fn`.
+
+Consequences:
+- Macro-authored host natives can record patches through `HostExecution` while
+  preserving the no-`&mut` script boundary.
+- The macro remains separate from `#[script_context_function]` so functions
+  that need budget or permission access must opt into `NativeCallContext`.
+- Scripts still see copied arguments and return values only; host state remains
+  behind `HostRef`, `HostPath`, and `PatchTx`.

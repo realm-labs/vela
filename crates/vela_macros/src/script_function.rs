@@ -23,6 +23,7 @@ struct FunctionMeta {
 enum FunctionMode {
     Pure,
     Context,
+    Host,
 }
 
 #[derive(Clone)]
@@ -73,6 +74,13 @@ pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
 
 pub(crate) fn expand_context(attr: TokenStream, input: TokenStream) -> TokenStream {
     match expand_result(attr, input, FunctionMode::Context) {
+        Ok(tokens) => tokens,
+        Err(error) => error.to_compile_error(),
+    }
+}
+
+pub(crate) fn expand_host(attr: TokenStream, input: TokenStream) -> TokenStream {
+    match expand_result(attr, input, FunctionMode::Host) {
         Ok(tokens) => tokens,
         Err(error) => error.to_compile_error(),
     }
@@ -131,6 +139,7 @@ impl FunctionMode {
         match self {
             Self::Pure => "#[script_function]",
             Self::Context => "#[script_context_function]",
+            Self::Host => "#[script_host_function]",
         }
     }
 
@@ -138,6 +147,23 @@ impl FunctionMode {
         match self {
             Self::Pure => format_ident!("vela_register_native_function_{}", fn_ident),
             Self::Context => format_ident!("vela_register_context_native_function_{}", fn_ident),
+            Self::Host => format_ident!("vela_register_host_native_function_{}", fn_ident),
+        }
+    }
+
+    fn first_parameter_name(self) -> &'static str {
+        match self {
+            Self::Pure => "",
+            Self::Context => "NativeCallContext",
+            Self::Host => "HostExecution",
+        }
+    }
+
+    fn is_boundary_param(self, param: &PatType) -> bool {
+        match self {
+            Self::Pure => false,
+            Self::Context => is_context_param(param),
+            Self::Host => is_host_execution_param(param),
         }
     }
 }
@@ -193,23 +219,31 @@ fn function_meta(
 ) -> Result<FunctionMeta> {
     let mut params = Vec::new();
     let mut inputs = item.sig.inputs.iter();
-    if let FunctionMode::Context = mode {
+    if matches!(mode, FunctionMode::Context | FunctionMode::Host) {
         let Some(input) = inputs.next() else {
             return Err(error(
                 item.sig.ident.span(),
-                "#[script_context_function] requires a NativeCallContext first parameter",
+                &format!(
+                    "{} requires a {} first parameter",
+                    mode.attr_name(),
+                    mode.first_parameter_name()
+                ),
             ));
         };
         let FnArg::Typed(param) = input else {
             return Err(spanned_error(
                 input,
-                "script context functions cannot use Rust self receivers",
+                &format!("{} cannot use Rust self receivers", mode.attr_name()),
             ));
         };
-        if !is_context_param(param) {
+        if !mode.is_boundary_param(param) {
             return Err(spanned_error(
                 input,
-                "#[script_context_function] first parameter must be NativeCallContext",
+                &format!(
+                    "{} first parameter must be {}",
+                    mode.attr_name(),
+                    mode.first_parameter_name()
+                ),
             ));
         }
     }
@@ -225,6 +259,12 @@ fn function_meta(
             return Err(spanned_error(
                 input,
                 "use #[script_context_function] for NativeCallContext callbacks",
+            ));
+        }
+        if matches!(mode, FunctionMode::Pure) && is_host_execution_param(param) {
+            return Err(spanned_error(
+                input,
+                "use #[script_host_function] for HostExecution callbacks",
             ));
         }
         params.push(ParamMeta {
@@ -248,6 +288,10 @@ fn function_meta(
 
 fn is_context_param(param: &PatType) -> bool {
     type_ident(&param.ty).is_some_and(|ident| ident == "NativeCallContext")
+}
+
+fn is_host_execution_param(param: &PatType) -> bool {
+    type_ident(&param.ty).is_some_and(|ident| ident == "HostExecution")
 }
 
 fn param_name(param: &PatType) -> String {
@@ -409,6 +453,14 @@ fn register_tokens(
                 )
             }
         }
+        FunctionMode::Host => {
+            quote! {
+                builder.register_typed_host_native_fn::<#args_tuple, _>(
+                    #desc_name(),
+                    #fn_ident,
+                )
+            }
+        }
     }
 }
 
@@ -506,5 +558,21 @@ mod tests {
         .expect_err("missing context parameter should fail macro expansion");
 
         assert!(error.to_string().contains("NativeCallContext"));
+    }
+
+    #[test]
+    fn rejects_host_functions_without_host_execution_param() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn write_host(amount: i64) -> bool {
+                    amount > 0
+                }
+            },
+            FunctionMode::Host,
+        )
+        .expect_err("missing host execution parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("HostExecution"));
     }
 }

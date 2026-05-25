@@ -4,7 +4,7 @@ use vela_engine::{
     NativeFunctionId, TypeHint, Value,
 };
 use vela_host::{HostPath, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_macros::{script_context_function, script_function};
+use vela_macros::{script_context_function, script_function, script_host_function};
 use vela_vm::{HostExecution, VmResult};
 
 /// Grants a copied bonus amount.
@@ -35,6 +35,23 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
         None,
     )?;
     Ok(ctx.has_permission("player.write"))
+}
+
+/// Sets a copied player score through host execution.
+#[script_host_function(
+    id = 43,
+    name = "game.set_score",
+    effect = "write_host",
+    reflect = true,
+    permission = "player.write"
+)]
+fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
+    host.tx.set_path(
+        HostPath::new(player).field(FieldId::new(2)),
+        HostValue::Int(score),
+        None,
+    )?;
+    Ok(score)
 }
 
 #[test]
@@ -70,6 +87,24 @@ fn script_context_function_generates_native_function_metadata() {
                     .require_permission("player.write"),
             )
             .docs("Sets a copied player level through PatchTx."),
+    );
+}
+
+#[test]
+fn script_host_function_generates_native_function_metadata() {
+    assert_eq!(
+        vela_native_function_desc_set_score(),
+        NativeFunctionDesc::new("game.set_score", NativeFunctionId::new(43))
+            .param("player", TypeHint::Any)
+            .param("score", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Sets a copied player score through host execution."),
     );
 }
 
@@ -142,6 +177,49 @@ fn main(player) {
         Ok(Value::Bool(true)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_host_function_registers_typed_native_with_engine() {
+    let engine = vela_register_host_native_function_set_score(
+        Engine::builder().grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro host native function");
+    let root = unique_test_dir("script_host_function_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(player) {
+    return game.set_score(player, 12);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered host native");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host,
+        ),
+        Ok(Value::Int(12)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(12)));
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
