@@ -199,6 +199,7 @@ pub fn stdlib_function_completion_facts() -> Vec<StdlibFunctionFact> {
         ),
         StdlibFunctionFact::new("math.floor", vec![number.clone()], TypeFact::Int),
         StdlibFunctionFact::new("math.ceil", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math.round", vec![number.clone()], TypeFact::Int),
         StdlibFunctionFact::new("math.abs", vec![number.clone()], number),
         StdlibFunctionFact::new(
             "math.random",
@@ -305,7 +306,7 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::Float,
             ))
         }
-        "math.floor" | "math.ceil" => {
+        "math.floor" | "math.ceil" | "math.round" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
@@ -607,6 +608,7 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "math.min" => Some("math.min"),
         "math.floor" => Some("math.floor"),
         "math.ceil" => Some("math.ceil"),
+        "math.round" => Some("math.round"),
         "ctx.now" => Some("ctx.now"),
         "ctx.tick" => Some("ctx.tick"),
         _ => None,
@@ -875,6 +877,12 @@ mod tests {
             TypeFact::Int
         );
         assert_eq!(
+            stdlib_function_fact("math.round", &[TypeFact::Float])
+                .expect("round fact")
+                .returns,
+            TypeFact::Int
+        );
+        assert_eq!(
             stdlib_function_fact("set.from_array", &[TypeFact::array(TypeFact::String)])
                 .expect("set.from_array fact")
                 .returns,
@@ -941,6 +949,9 @@ mod tests {
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.lerp" && fact.params.len() == 3 && fact.returns == TypeFact::Float
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "math.round" && fact.params.len() == 1 && fact.returns == TypeFact::Int
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "set.from_array" && fact.returns == TypeFact::set(TypeFact::Any)

@@ -22,6 +22,7 @@ fn main() {
     let midpoint = math.floor(math.lerp(10, 20, 0.5));
     return math.max(clamped, math.abs(-4))
         + math.min(rounded, 10)
+        + math.round(2.5)
         + midpoint;
 }
 "#;
@@ -32,7 +33,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math stdlib source should run");
-        assert_eq!(result, crate::Value::Int(31));
+        assert_eq!(result, crate::Value::Int(34));
     }
 
     #[test]
@@ -43,7 +44,9 @@ fn main() {
     let bounded = math.clamp(value, 2.0, 3.0);
     return bounded == 3.0
         && math.abs(-2.5) == 2.5
-        && math.lerp(2.0, 10.0, 0.25) == 4.0;
+        && math.lerp(2.0, 10.0, 0.25) == 4.0
+        && math.round(2.5) == 3
+        && math.round(-2.5) == -3;
 }
 "#;
 

@@ -403,6 +403,14 @@ mod tests {
                 TypeFact::Float
             ),
         )));
+        assert!(completions.contains(&CompletionItem::new(
+            "math.round",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])],
+                TypeFact::Int
+            ),
+        )));
     }
 
     #[test]

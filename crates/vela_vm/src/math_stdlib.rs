@@ -7,6 +7,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.lerp", math_lerp);
     vm.register_native("math.floor", math_floor);
     vm.register_native("math.ceil", math_ceil);
+    vm.register_native("math.round", math_round);
     vm.register_native("math.abs", math_abs);
 }
 
@@ -62,6 +63,15 @@ fn math_ceil(args: &[Value]) -> VmResult<Value> {
         Value::Int(value) => Ok(Value::Int(*value)),
         Value::Float(value) => float_to_int(value.ceil(), "math.ceil").map(Value::Int),
         _ => type_error("math.ceil"),
+    }
+}
+
+fn math_round(args: &[Value]) -> VmResult<Value> {
+    expect_arity("math.round", args, 1)?;
+    match &args[0] {
+        Value::Int(value) => Ok(Value::Int(*value)),
+        Value::Float(value) => float_to_int(value.round(), "math.round").map(Value::Int),
+        _ => type_error("math.round"),
     }
 }
 

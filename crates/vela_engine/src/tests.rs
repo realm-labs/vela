@@ -294,7 +294,7 @@ fn engine_builder_installs_standard_natives_into_runtime() {
 fn main() {
     let tags = set.from_array(["fire", "ice", "fire"]);
     let midpoint = math.floor(math.lerp(10, 20, 0.5));
-    return tags.len() + option.unwrap_or(option.some(midpoint), 0);
+    return tags.len() + option.unwrap_or(option.some(midpoint), 0) + math.round(1.5);
 }
 "#,
     )
@@ -304,7 +304,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     let result = runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
-    assert_eq!(result, Ok(Value::Int(17)),);
+    assert_eq!(result, Ok(Value::Int(19)),);
 }
 
 #[test]

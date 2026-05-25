@@ -1271,6 +1271,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `string.slice(start, end)` as a UTF-8 safe character-indexed string
   helper with inline and managed-heap runtime coverage, analysis stdlib facts,
   and completion metadata.
+- Added `math.round(value)` as a deterministic numeric standard native that
+  returns script `int` values for integers and finite floats, with VM,
+  Engine-installed stdlib, analysis, and completion coverage.
 
 ## Next
 

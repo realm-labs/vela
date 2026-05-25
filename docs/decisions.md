@@ -5343,3 +5343,26 @@ Consequences:
   processing to the MVP.
 - Analysis and completion expose the helper as `(int, int) -> string` without
   adding script generics.
+
+## 2026-05-25: Math Round Returns Script Ints
+
+Status: Accepted
+
+Context:
+M13 math helpers need deterministic numeric behavior for gameplay logic. The
+existing `math.floor` and `math.ceil` helpers already convert finite floats to
+script `int` values and preserve integer inputs.
+
+Decision:
+`math.round(value)` is a pure standard native that accepts script ints and
+finite floats, returns a script `int`, and uses Rust's `f64::round` behavior for
+float inputs. Halfway cases round away from zero. Non-numeric, non-finite, or
+out-of-range values report VM type errors through the same conversion boundary
+as `math.floor` and `math.ceil`.
+
+Consequences:
+- Scripts get a common integer rounding helper without adding numeric
+  overloads or script generics.
+- Engine-installed standard natives expose the helper automatically through
+  `with_standard_natives()`.
+- Analysis and completion expose `math.round` as `(int | float) -> int`.
