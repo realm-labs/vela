@@ -5,8 +5,8 @@ use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Typ
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
 use vela_reflect::{
-    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission, ReflectPermissionSet,
-    SchemaHash, TypeDesc, TypeKey,
+    FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission,
+    ReflectPermissionSet, SchemaHash, TypeDesc, TypeKey,
 };
 use vela_vm::{ExecutionBudgetKind, VmError, VmResult};
 use vela_vm::{HostExecution, Value, VmErrorKind};
@@ -1468,6 +1468,115 @@ fn main(player) {
             permission: ReflectPermission::WriteValueFields
         })
     ));
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn engine_granted_permissions_unlock_reflection_metadata_lists() {
+    let engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(FieldId::new(1), "secret_level")
+                        .access(FieldAccess::new().require_permission("player.inspect")),
+                ),
+        )
+        .register_native_fn(
+            NativeFunctionDesc::new("game.secret_bonus", NativeFunctionId::new(77))
+                .returns(TypeHint::Int)
+                .access(
+                    FunctionAccess::public()
+                        .reflect_callable(true)
+                        .require_permission("game.inspect"),
+                ),
+            |_| Ok(Value::Int(5)),
+        )
+        .grant_permission("player.inspect")
+        .grant_permission("game.inspect")
+        .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let fields = reflect.fields();
+    let functions = reflect.functions();
+    if fields.len() == 1
+        && fields[0].owner == "Player"
+        && fields[0].name == "secret_level"
+        && functions.len() == 1
+        && functions[0].name == "game.secret_bonus" {
+        return 1;
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Int(1))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn engine_missing_permissions_hide_reflection_metadata_lists() {
+    let engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(FieldId::new(1), "secret_level")
+                        .access(FieldAccess::new().require_permission("player.inspect")),
+                ),
+        )
+        .register_native_fn(
+            NativeFunctionDesc::new("game.secret_bonus", NativeFunctionId::new(77))
+                .returns(TypeHint::Int)
+                .access(
+                    FunctionAccess::public()
+                        .reflect_callable(true)
+                        .require_permission("game.inspect"),
+                ),
+            |_| Ok(Value::Int(5)),
+        )
+        .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return reflect.fields().len() + reflect.functions().len();
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Int(0))
+    );
     assert!(tx.patches().is_empty());
 }
 

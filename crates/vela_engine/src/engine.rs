@@ -204,7 +204,9 @@ impl Engine {
         if let Some(policy) = &self.reflection_policy {
             let policy = policy
                 .clone()
+                .with_field_permissions(self.permissions.iter())
                 .with_method_permissions(self.permissions.iter());
+            let policy = policy.with_function_permissions(self.permissions.iter());
             vm.register_reflection_natives_with_policy(Arc::clone(&self.registry), policy.clone());
         } else {
             vm.register_type_registry(Arc::clone(&self.registry));

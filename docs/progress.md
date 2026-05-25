@@ -1207,6 +1207,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `string.replace(old, new)` for inline and managed-heap string values,
   with analysis stdlib facts and completion metadata for its two-string
   replacement signature.
+- Propagated Engine-granted permissions into reflection field and function
+  metadata filters, alongside existing method permission propagation, so
+  script-visible reflection lists match the Engine permission set without
+  exposing ungranted schema members.
 
 ## Next
 
