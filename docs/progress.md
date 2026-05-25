@@ -1263,6 +1263,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   for exposed fields through the stable Engine API, giving embedders a safe
   path-building surface without exposing Rust references or bypassing
   `PatchTx`.
+- Added `EngineBuilder::register_reflect_schema::<T>()` for
+  `ScriptReflectSchema` output. Reflect-only derived schemas can now enter the
+  Engine `TypeRegistry` through the same stable builder surface as host
+  schemas, without requiring embedders to copy generated `TypeDesc` values by
+  hand.
 
 ## Next
 

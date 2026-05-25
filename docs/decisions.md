@@ -5297,3 +5297,27 @@ Consequences:
   expose `&mut` access to Rust host state.
 - The stable Engine API now re-exports `FieldId` and `HostPath` alongside
   existing host embedding types.
+
+## 2026-05-25: Engine Registers Reflect-Only Schemas
+
+Status: Accepted
+
+Context:
+`ScriptReflect` derive output already implements `ScriptReflectSchema`, but
+`EngineBuilder` only had a convenience method for `ScriptHostSchema`. Embedders
+could still call `register_type(T::script_reflect_type_desc())`, but that
+forced generated reflection schema registration through a lower-level API than
+host schemas.
+
+Decision:
+Add `EngineBuilder::register_reflect_schema::<T>()`, which registers
+`T::script_reflect_type_desc()` into the Engine `TypeRegistry`. The method is
+metadata-only and does not add host mutation or native dispatch behavior.
+
+Consequences:
+- `ScriptHost` and `ScriptReflect` macro output now both have stable Engine
+  builder registration paths.
+- Reflect-only schemas can participate in reflection, analysis facts, and
+  hot-reload ABI manifests without hand-copying `TypeDesc` values.
+- Host mutation remains behind registered host schemas, host refs, host paths,
+  and patch transactions.

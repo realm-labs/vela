@@ -6,8 +6,8 @@ use crate::{
     ContextHostNativeFunctionEntry, Engine, EngineResult, HostNativeFunctionEntry,
     NativeCallContext, NativeFunctionDesc, NativeFunctionEntry, NativeMethodDesc,
     NativeMethodEntry, PermissionSet, ScriptHostMethodMetadata, ScriptHostSchema,
-    TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
-    TypedNativeMethodFunction, engine::EngineParts, metadata, validation,
+    ScriptReflectSchema, TypedContextHostNativeFunction, TypedHostNativeFunction,
+    TypedNativeFunction, TypedNativeMethodFunction, engine::EngineParts, metadata, validation,
 };
 
 #[derive(Clone, Default)]
@@ -39,6 +39,11 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_host_schema<T: ScriptHostSchema>(self) -> Self {
         self.register_type(T::script_host_type_desc())
+    }
+
+    #[must_use]
+    pub fn register_reflect_schema<T: ScriptReflectSchema>(self) -> Self {
+        self.register_type(T::script_reflect_type_desc())
     }
 
     #[must_use]

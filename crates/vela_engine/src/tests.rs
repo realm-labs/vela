@@ -15,9 +15,20 @@ use crate::{
     CONTEXT_TIME_PERMISSION, CONTROLLED_RANDOM_PERMISSION, CTX_NOW_FUNCTION_ID,
     CTX_TICK_FUNCTION_ID, CallOptions, EffectSet, Engine, EngineErrorKind, EngineSourceErrorKind,
     FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext, NativeFunctionDesc,
-    NativeFunctionId, NativeMethodDesc, Runtime, ScriptArgsExt, TypeHint,
+    NativeFunctionId, NativeMethodDesc, Runtime, ScriptArgsExt, ScriptReflectSchema, TypeHint,
 };
 use crate::{FromScriptArg, IntoScriptArg};
+
+struct ReflectOnlyPlayer;
+
+impl ScriptReflectSchema for ReflectOnlyPlayer {
+    fn script_reflect_type_desc() -> TypeDesc {
+        TypeDesc::new(TypeKey::new(TypeId::new(9901), "ReflectOnlyPlayer"))
+            .kind(vela_reflect::TypeKind::Host)
+            .host_type(HostTypeId::new(9901))
+            .field(FieldDesc::new(FieldId::new(1), "level"))
+    }
+}
 
 #[test]
 fn engine_installs_registered_native_functions_into_vm() {
@@ -53,6 +64,22 @@ fn main() {
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(5))
     );
+}
+
+#[test]
+fn engine_builder_registers_reflect_schema_metadata() {
+    let engine = Engine::builder()
+        .register_reflect_schema::<ReflectOnlyPlayer>()
+        .build()
+        .expect("engine should build with reflect schema");
+
+    let registry = engine.registry();
+    let reflected = registry
+        .type_by_name("ReflectOnlyPlayer")
+        .expect("reflect schema should be registered");
+    assert_eq!(reflected.key.id, TypeId::new(9901));
+    assert_eq!(reflected.host_type_id, Some(HostTypeId::new(9901)));
+    assert_eq!(reflected.fields[0].name, "level");
 }
 
 #[test]
