@@ -1122,6 +1122,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   copied expression facts plus `TypeRegistry` facts, `vela_analysis` can now
   report unknown fields and methods for precise receivers with candidate
   labels while degrading cleanly for dynamic `Unknown` receivers.
+- Added first-pass analysis flow narrowing for null checks. `TypeFact` can now
+  remove or select `null` from union facts, and `ExprFactScope` applies that
+  narrowing to `if value == null` / `if value != null` branches so expression
+  facts and member diagnostics use the branch-local receiver fact.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

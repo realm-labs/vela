@@ -4864,3 +4864,28 @@ Consequences:
 - Dynamic script values remain permissive and degrade cleanly.
 - The checks stay analysis-only and do not grant reflection access or mutate
   runtime schema state.
+
+## 2026-05-25: Null Flow Narrowing Is Analysis-Only
+
+Status: Accepted
+
+Context:
+M16 requires flow narrowing for conditions, but Vela remains dynamically typed
+and the runtime should not gain static enforcement. Null checks are the smallest
+useful narrowing primitive for gameplay scripts because optional host or script
+values commonly appear as `TypeFact::Union([Null, T])`.
+
+Decision:
+Add `TypeFact` helpers that remove or select `null` from copied facts, and let
+`ExprFactScope` produce branch-local scopes for simple `value == null` and
+`value != null` conditions. Expression fact inference and member diagnostics
+use these narrowed scopes when traversing `if` branches. Unknown and explicit
+dynamic `Any` facts still degrade without blocking execution.
+
+Consequences:
+- Branch-local completions and diagnostics can use a non-null receiver after a
+  guard such as `if player != null`.
+- Narrowing remains advisory analysis data and does not change bytecode,
+  runtime values, reflection permissions, or host mutation behavior.
+- Option/Result and match-pattern narrowing can build on the same scoped-fact
+  approach later without introducing script-language generics.

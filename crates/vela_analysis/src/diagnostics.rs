@@ -107,17 +107,19 @@ fn collect_if_expr_diagnostics(
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     collect_member_access_diagnostics(&if_expr.condition, scope, facts, diagnostics);
+    let then_scope = scope.narrowed_by_condition(&if_expr.condition, true);
+    let else_scope = scope.narrowed_by_condition(&if_expr.condition, false);
     for statement in &if_expr.then_branch.statements {
-        collect_statement_diagnostics(statement, scope, facts, diagnostics);
+        collect_statement_diagnostics(statement, &then_scope, facts, diagnostics);
     }
     if let Some(else_branch) = &if_expr.else_branch {
         match else_branch {
             vela_syntax::ElseBranch::If(if_expr) => {
-                collect_if_expr_diagnostics(if_expr, scope, facts, diagnostics);
+                collect_if_expr_diagnostics(if_expr, &else_scope, facts, diagnostics);
             }
             vela_syntax::ElseBranch::Block(block) => {
                 for statement in &block.statements {
-                    collect_statement_diagnostics(statement, scope, facts, diagnostics);
+                    collect_statement_diagnostics(statement, &else_scope, facts, diagnostics);
                 }
             }
         }
@@ -406,6 +408,33 @@ mod tests {
 
         assert!(member_access_diagnostics(&exprs[0], &scope, &facts).is_empty());
         assert!(member_access_diagnostics(&exprs[1], &scope, &facts).is_empty());
+    }
+
+    #[test]
+    fn null_checks_narrow_member_diagnostics_inside_branches() {
+        let exprs = function_exprs(
+            r#"
+            fn main(player) {
+                if player != null {
+                    player.missing;
+                }
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new().with_path(
+            ["player"],
+            TypeFact::Union(vec![TypeFact::Null, TypeFact::host("Player")]),
+        );
+        let facts = registry_facts();
+
+        let diagnostics = member_access_diagnostics(&exprs[0], &scope, &facts);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::unknown_field")
+        );
+        assert!(diagnostics[0].message.contains("missing"));
     }
 
     fn registry_facts() -> RegistryFacts {

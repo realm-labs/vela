@@ -40,6 +40,24 @@ impl ExprFactScope {
     pub fn path_fact(&self, path: &[String]) -> Option<&TypeFact> {
         self.paths.get(path)
     }
+
+    #[must_use]
+    pub fn narrowed_by_condition(&self, condition: &Expr, truthy: bool) -> Self {
+        let mut narrowed = self.clone();
+        if let Some((path, expects_null)) = null_check(condition, truthy)
+            && let Some(fact) = self.path_fact(path)
+        {
+            narrowed.paths.insert(
+                path.to_vec(),
+                if expects_null {
+                    fact.only_null()
+                } else {
+                    fact.without_null()
+                },
+            );
+        }
+        narrowed
+    }
 }
 
 pub fn type_fact_from_expr(expr: &Expr, scope: &ExprFactScope) -> TypeFact {
@@ -73,13 +91,7 @@ pub fn type_fact_from_expr(expr: &Expr, scope: &ExprFactScope) -> TypeFact {
         }
         ExprKind::Record { path, .. } => TypeFact::record(path.join(".")),
         ExprKind::Lambda { params, body } => lambda_fact(params, body, scope, None),
-        ExprKind::If(if_expr) => {
-            let mut facts = vec![block_fact(&if_expr.then_branch, scope)];
-            if let Some(else_branch) = &if_expr.else_branch {
-                facts.push(else_branch_fact(else_branch, scope));
-            }
-            TypeFact::union(facts)
-        }
+        ExprKind::If(if_expr) => if_expr_fact(if_expr, scope),
         ExprKind::Match(match_expr) => TypeFact::union(
             match_expr
                 .arms
@@ -88,6 +100,33 @@ pub fn type_fact_from_expr(expr: &Expr, scope: &ExprFactScope) -> TypeFact {
         ),
         ExprKind::Block(block) => block_fact(block, scope),
         ExprKind::Error => TypeFact::Unknown,
+    }
+}
+
+fn null_check(condition: &Expr, truthy: bool) -> Option<(&[String], bool)> {
+    let ExprKind::Binary { op, left, right } = &condition.kind else {
+        return None;
+    };
+    let equality_expects_null = match op {
+        BinaryOp::Equal => truthy,
+        BinaryOp::NotEqual => !truthy,
+        _ => return None,
+    };
+
+    if let Some(path) = path_if_null_check(left, right) {
+        return Some((path, equality_expects_null));
+    }
+    path_if_null_check(right, left).map(|path| (path, equality_expects_null))
+}
+
+fn path_if_null_check<'a>(path_expr: &'a Expr, null_expr: &Expr) -> Option<&'a [String]> {
+    let ExprKind::Path(path) = &path_expr.kind else {
+        return None;
+    };
+    if matches!(null_expr.kind, ExprKind::Literal(Literal::Null)) {
+        Some(path.as_slice())
+    } else {
+        None
     }
 }
 
@@ -252,15 +291,19 @@ fn block_fact(block: &Block, scope: &ExprFactScope) -> TypeFact {
         .unwrap_or(TypeFact::Null)
 }
 
+fn if_expr_fact(if_expr: &vela_syntax::IfExpr, scope: &ExprFactScope) -> TypeFact {
+    let then_scope = scope.narrowed_by_condition(&if_expr.condition, true);
+    let else_scope = scope.narrowed_by_condition(&if_expr.condition, false);
+    let mut facts = vec![block_fact(&if_expr.then_branch, &then_scope)];
+    if let Some(else_branch) = &if_expr.else_branch {
+        facts.push(else_branch_fact(else_branch, &else_scope));
+    }
+    TypeFact::union(facts)
+}
+
 fn else_branch_fact(else_branch: &ElseBranch, scope: &ExprFactScope) -> TypeFact {
     match else_branch {
-        ElseBranch::If(if_expr) => {
-            let mut facts = vec![block_fact(&if_expr.then_branch, scope)];
-            if let Some(else_branch) = &if_expr.else_branch {
-                facts.push(else_branch_fact(else_branch, scope));
-            }
-            TypeFact::union(facts)
-        }
+        ElseBranch::If(if_expr) => if_expr_fact(if_expr, scope),
         ElseBranch::Block(block) => block_fact(block, scope),
     }
 }
@@ -344,6 +387,26 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[0], &scope),
             TypeFact::Union(vec![TypeFact::Int, TypeFact::String])
+        );
+    }
+
+    #[test]
+    fn narrows_null_checked_branch_facts() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                if player == null { 0 } else { player };
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new().with_path(
+            ["player"],
+            TypeFact::Union(vec![TypeFact::Null, TypeFact::host("Player")]),
+        );
+
+        assert_eq!(
+            type_fact_from_expr(&expressions[0], &scope),
+            TypeFact::Union(vec![TypeFact::Int, TypeFact::host("Player")])
         );
     }
 

@@ -115,21 +115,50 @@ impl TypeFact {
 
     pub fn union(facts: impl IntoIterator<Item = TypeFact>) -> Self {
         let mut merged = Vec::new();
+        let mut saw_never = false;
         for fact in facts {
             match fact {
                 Self::Union(facts) => {
                     for fact in facts {
-                        push_unique_fact(&mut merged, fact);
+                        push_unique_fact(&mut merged, fact, &mut saw_never);
                     }
                 }
-                fact => push_unique_fact(&mut merged, fact),
+                fact => push_unique_fact(&mut merged, fact, &mut saw_never),
             }
         }
 
         match merged.as_slice() {
+            [] if saw_never => Self::Never,
             [] => Self::Unknown,
             [fact] => fact.clone(),
             _ => Self::Union(merged),
+        }
+    }
+
+    pub fn without_null(&self) -> Self {
+        match self {
+            Self::Null => Self::Never,
+            Self::Union(facts) => {
+                let narrowed = facts
+                    .iter()
+                    .filter(|fact| !matches!(fact, Self::Null))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                if narrowed.is_empty() {
+                    Self::Never
+                } else {
+                    Self::union(narrowed)
+                }
+            }
+            fact => fact.clone(),
+        }
+    }
+
+    pub fn only_null(&self) -> Self {
+        match self {
+            Self::Null | Self::Unknown | Self::Any => Self::Null,
+            Self::Union(facts) if facts.iter().any(|fact| matches!(fact, Self::Null)) => Self::Null,
+            _ => Self::Never,
         }
     }
 
@@ -181,7 +210,11 @@ impl TypeFact {
     }
 }
 
-fn push_unique_fact(facts: &mut Vec<TypeFact>, fact: TypeFact) {
+fn push_unique_fact(facts: &mut Vec<TypeFact>, fact: TypeFact, saw_never: &mut bool) {
+    if matches!(fact, TypeFact::Never) {
+        *saw_never = true;
+        return;
+    }
     if !facts.contains(&fact) {
         facts.push(fact);
     }
@@ -214,6 +247,16 @@ mod tests {
         ]);
 
         assert_eq!(fact, TypeFact::Union(vec![TypeFact::Int, TypeFact::String]));
+    }
+
+    #[test]
+    fn null_narrowing_removes_or_selects_null_from_unions() {
+        let fact = TypeFact::Union(vec![TypeFact::Null, TypeFact::host("Player")]);
+
+        assert_eq!(fact.without_null(), TypeFact::host("Player"));
+        assert_eq!(fact.only_null(), TypeFact::Null);
+        assert_eq!(TypeFact::Null.without_null(), TypeFact::Never);
+        assert_eq!(TypeFact::Int.only_null(), TypeFact::Never);
     }
 
     #[test]
