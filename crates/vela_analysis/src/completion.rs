@@ -1,4 +1,4 @@
-use vela_hir::{HirDeclId, ModuleGraph};
+use vela_hir::{DeclarationKind, HirDeclId, ModuleGraph};
 
 use crate::{
     AnalysisFacts, RegistryFacts, TypeFact, stdlib_function_completion_facts, stdlib_method_facts,
@@ -7,6 +7,7 @@ use crate::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompletionKind {
     Binding,
+    Const,
     Field,
     Method,
     Variant,
@@ -71,6 +72,24 @@ pub fn type_completions(facts: &RegistryFacts) -> Vec<CompletionItem> {
     completions
 }
 
+pub fn declaration_completions(graph: &ModuleGraph, facts: &AnalysisFacts) -> Vec<CompletionItem> {
+    graph
+        .declarations()
+        .filter_map(|declaration| {
+            let kind = completion_kind_for_declaration(declaration.kind)?;
+            let fact = facts
+                .declaration(declaration.id)
+                .cloned()
+                .unwrap_or(TypeFact::Unknown);
+            Some(CompletionItem::new(
+                qualified_declaration_label(graph, declaration.id),
+                kind,
+                fact,
+            ))
+        })
+        .collect()
+}
+
 pub fn local_completions(
     graph: &ModuleGraph,
     facts: &AnalysisFacts,
@@ -86,6 +105,31 @@ pub fn local_completions(
             CompletionItem::new(local.name.clone(), CompletionKind::Binding, fact)
         })
         .collect()
+}
+
+fn completion_kind_for_declaration(kind: DeclarationKind) -> Option<CompletionKind> {
+    match kind {
+        DeclarationKind::Const => Some(CompletionKind::Const),
+        DeclarationKind::Function => Some(CompletionKind::Function),
+        DeclarationKind::Struct | DeclarationKind::Enum => Some(CompletionKind::Type),
+        DeclarationKind::Trait => Some(CompletionKind::Trait),
+        DeclarationKind::Impl => None,
+    }
+}
+
+fn qualified_declaration_label(graph: &ModuleGraph, declaration: HirDeclId) -> String {
+    let Some(declaration) = graph.declaration(declaration) else {
+        return String::new();
+    };
+    let Some(module_path) = graph.module_path(declaration.module) else {
+        return declaration.name.clone();
+    };
+    let module = module_path.join();
+    if module.is_empty() {
+        declaration.name.clone()
+    } else {
+        format!("{module}.{}", declaration.name)
+    }
 }
 
 fn owner_member_completions(facts: &RegistryFacts, owner: &str) -> Vec<CompletionItem> {
@@ -355,6 +399,84 @@ mod tests {
             CompletionKind::Binding,
             TypeFact::String,
         )));
+    }
+
+    #[test]
+    fn declaration_completions_include_script_declarations() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.player"),
+            r#"
+            pub struct Player { level: int }
+            pub enum QuestState { Active { quest_id: string }, Done }
+            pub trait Damageable {
+                fn damage(self, amount: int) -> bool;
+            }
+            pub const START_LEVEL: int = 1
+            pub fn grant(player: Player, amount: int) -> bool {
+                return amount > 0;
+            }
+            impl Damageable for Player {
+                fn damage(self, amount: int) -> bool {
+                    return amount > 0;
+                }
+            }
+            "#,
+        ));
+        graph.add_source(ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_dotted("game.reward"),
+            r#"
+            pub fn grant(amount: int) -> int {
+                return amount + 1;
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+        let facts = AnalysisFacts::from_module_graph(&graph);
+
+        let completions = declaration_completions(&graph, &facts);
+
+        assert!(completions.contains(&CompletionItem::new(
+            "game.player.Player",
+            CompletionKind::Type,
+            TypeFact::record("game.player.Player"),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "game.player.QuestState",
+            CompletionKind::Type,
+            TypeFact::enum_type("game.player.QuestState", None::<String>),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "game.player.Damageable",
+            CompletionKind::Trait,
+            TypeFact::trait_type("game.player.Damageable"),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "game.player.START_LEVEL",
+            CompletionKind::Const,
+            TypeFact::Int,
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "game.player.grant",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::record("game.player.Player"), TypeFact::Int],
+                TypeFact::Bool,
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "game.reward.grant",
+            CompletionKind::Function,
+            TypeFact::function(vec![TypeFact::Int], TypeFact::Int),
+        )));
+        assert!(
+            completions
+                .iter()
+                .all(|completion| completion.label != "game.player.Damageable.Player")
+        );
     }
 
     fn registry_facts() -> RegistryFacts {

@@ -9,8 +9,8 @@ mod stdlib;
 mod type_fact;
 
 pub use completion::{
-    CompletionItem, CompletionKind, global_completions, local_completions, member_completions,
-    type_completions,
+    CompletionItem, CompletionKind, declaration_completions, global_completions, local_completions,
+    member_completions, type_completions,
 };
 pub use expression::{ExprFactScope, type_fact_from_expr};
 pub use facts::AnalysisFacts;

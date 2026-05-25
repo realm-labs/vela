@@ -1106,6 +1106,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   combine `ModuleGraph` binding names with copied `AnalysisFacts` to produce
   current-function parameter, `let`, loop, lambda, and pattern binding
   completions, falling back to `Unknown` for untyped dynamic locals.
+- Added HIR-backed declaration completion helpers. Script consts, functions,
+  structs, enums, and traits now produce qualified completion items from
+  `ModuleGraph` declaration names plus copied `AnalysisFacts`, while impl
+  blocks remain metadata and are skipped as completion labels.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

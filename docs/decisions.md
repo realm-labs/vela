@@ -4765,3 +4765,28 @@ Consequences:
 - Untyped dynamic locals remain valid and complete as `Unknown`.
 - Later cursor-aware completion can refine visibility without changing the
   copied-fact boundary.
+
+## 2026-05-25: Declaration Completion Uses Qualified HIR Labels
+
+Status: Accepted
+
+Context:
+Script-level completion needs top-level declarations as well as locals and
+registry-backed host/schema data. `AnalysisFacts` has stable declaration IDs and
+facts, while `ModuleGraph` owns declaration names, modules, and declaration
+kinds.
+
+Decision:
+Expose declaration completion from `vela_analysis` by combining `ModuleGraph`
+declarations with copied `AnalysisFacts`. Labels are module-qualified to avoid
+collisions across modules. Consts, functions, structs, enums, and traits are
+included; impl declarations are skipped because they are metadata and dispatch
+surfaces rather than callable or nameable values by themselves.
+
+Consequences:
+- Script declaration completions use the same copied-fact boundary as locals,
+  registry facts, and stdlib facts.
+- Multi-module projects can complete same-named functions without losing the
+  module qualifier.
+- Completion remains analysis-only and does not query or mutate runtime
+  reflection state.
