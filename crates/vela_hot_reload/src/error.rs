@@ -43,6 +43,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedFunctionEffects { .. } => "reload.function.effects_changed",
             HotReloadErrorKind::ChangedFunctionAccess { .. } => "reload.function.access_changed",
             HotReloadErrorKind::RemovedMethodAbi { .. } => "reload.method.removed_abi",
+            HotReloadErrorKind::ChangedMethodParameterAbi { .. } => {
+                "reload.method.parameter_abi_changed"
+            }
             HotReloadErrorKind::ChangedMethodEffects { .. } => "reload.method.effects_changed",
             HotReloadErrorKind::ChangedMethodAccess { .. } => "reload.method.access_changed",
         }
@@ -66,6 +69,9 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedSchema { type_name, .. }
             | HotReloadErrorKind::ChangedSchema { type_name, .. } => Some(type_name.clone()),
             HotReloadErrorKind::RemovedMethodAbi {
+                type_name, method, ..
+            }
+            | HotReloadErrorKind::ChangedMethodParameterAbi {
                 type_name, method, ..
             }
             | HotReloadErrorKind::ChangedMethodEffects {
@@ -125,6 +131,11 @@ impl HotReloadError {
             } => {
                 format!("method `{type_name}.{method}` was removed from the hot-reload ABI")
             }
+            HotReloadErrorKind::ChangedMethodParameterAbi {
+                type_name, method, ..
+            } => {
+                format!("method `{type_name}.{method}` changed parameter ABI")
+            }
             HotReloadErrorKind::ChangedMethodEffects {
                 type_name, method, ..
             } => {
@@ -178,6 +189,9 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedMethodAbi { .. } => {
                 Some("restore the method ABI entry or restart with an explicit migration".to_owned())
             }
+            HotReloadErrorKind::ChangedMethodParameterAbi { .. } => {
+                Some("preserve existing method parameter names, order, type hints, and defaults".to_owned())
+            }
             HotReloadErrorKind::ChangedFunctionEffects { .. }
             | HotReloadErrorKind::ChangedMethodEffects { .. } => {
                 Some("preserve the previous effect set or require host approval before reloading".to_owned())
@@ -202,6 +216,7 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedFunctionEffects { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { source_span, .. }
             | HotReloadErrorKind::RemovedMethodAbi { source_span, .. }
+            | HotReloadErrorKind::ChangedMethodParameterAbi { source_span, .. }
             | HotReloadErrorKind::ChangedMethodEffects { source_span, .. }
             | HotReloadErrorKind::ChangedMethodAccess { source_span, .. } => {
                 source_span.as_deref().copied()
@@ -326,6 +341,13 @@ pub enum HotReloadErrorKind {
     RemovedMethodAbi {
         type_name: String,
         method: String,
+        source_span: Option<Box<Span>>,
+    },
+    ChangedMethodParameterAbi {
+        type_name: String,
+        method: String,
+        old: Vec<ParamAbi>,
+        new: Vec<ParamAbi>,
         source_span: Option<Box<Span>>,
     },
     ChangedMethodEffects {

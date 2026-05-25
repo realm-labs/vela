@@ -181,6 +181,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_effect_abi(old),
             render_effect_abi(new)
         ),
+        HotReloadDiagnosticDetail::MethodParameterAbiList { old, new } => format!(
+            "method parameter ABI: old=({}) new=({})",
+            render_param_abi_list(old),
+            render_param_abi_list(new)
+        ),
         HotReloadDiagnosticDetail::MethodAccessAbi { old, new } => format!(
             "method access: old=({}) new=({})",
             render_access_abi(old),

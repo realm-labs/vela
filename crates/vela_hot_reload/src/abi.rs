@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
-use vela_reflect::{FunctionDesc, FunctionParamDesc, MethodDesc, SchemaHash, TypeRegistry};
+use vela_reflect::{
+    FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, SchemaHash, TypeRegistry,
+};
 
 use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 
@@ -259,6 +261,15 @@ impl ParamAbi {
     }
 
     #[must_use]
+    pub fn from_method_param(param: &MethodParamDesc) -> Self {
+        let mut abi = Self::new(param.name.clone()).defaulted(param.has_default);
+        if let Some(type_hint) = &param.type_hint {
+            abi = abi.type_hint(type_hint.clone());
+        }
+        abi
+    }
+
+    #[must_use]
     pub fn type_hint(mut self, type_hint: impl Into<String>) -> Self {
         self.type_hint = Some(type_hint.into());
         self
@@ -328,6 +339,7 @@ fn param_names(params: &[ParamAbi]) -> Vec<String> {
 pub struct MethodAbi {
     pub type_name: String,
     pub name: String,
+    pub params: Vec<ParamAbi>,
     pub effects: EffectAbi,
     pub access: AccessAbi,
     pub source_span: Option<Span>,
@@ -344,6 +356,7 @@ impl MethodAbi {
         Self {
             type_name: type_name.into(),
             name: name.into(),
+            params: Vec::new(),
             effects,
             access,
             source_span: None,
@@ -366,10 +379,19 @@ impl MethodAbi {
                 method.access.required_permissions().to_vec(),
             ),
         );
+        for param in &method.params {
+            abi = abi.param(ParamAbi::from_method_param(param));
+        }
         if let Some(source_span) = method.source_span {
             abi = abi.source_span(source_span);
         }
         abi
+    }
+
+    #[must_use]
+    pub fn param(mut self, param: ParamAbi) -> Self {
+        self.params.push(param);
+        self
     }
 
     #[must_use]
@@ -379,6 +401,7 @@ impl MethodAbi {
     }
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
+        ensure_method_params_compatible(self, next)?;
         if self.effects != next.effects {
             return Err(HotReloadError::new(
                 HotReloadErrorKind::ChangedMethodEffects {
@@ -403,6 +426,48 @@ impl MethodAbi {
         }
         Ok(())
     }
+}
+
+fn ensure_method_params_compatible(
+    old_method: &MethodAbi,
+    new_method: &MethodAbi,
+) -> HotReloadResult<()> {
+    let changed_existing = new_method.params.len() < old_method.params.len()
+        || old_method
+            .params
+            .iter()
+            .zip(&new_method.params)
+            .any(|(old, new)| old != new);
+    if changed_existing {
+        return Err(HotReloadError::new(
+            HotReloadErrorKind::ChangedMethodParameterAbi {
+                type_name: old_method.type_name.clone(),
+                method: old_method.name.clone(),
+                old: old_method.params.clone(),
+                new: new_method.params.clone(),
+                source_span: new_method.source_span.map(Box::new),
+            },
+        ));
+    }
+
+    let added_required = new_method
+        .params
+        .iter()
+        .skip(old_method.params.len())
+        .any(|param| !param.has_default);
+    if added_required {
+        return Err(HotReloadError::new(
+            HotReloadErrorKind::ChangedMethodParameterAbi {
+                type_name: old_method.type_name.clone(),
+                method: old_method.name.clone(),
+                old: old_method.params.clone(),
+                new: new_method.params.clone(),
+                source_span: new_method.source_span.map(Box::new),
+            },
+        ));
+    }
+
+    Ok(())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

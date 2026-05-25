@@ -33,6 +33,10 @@ pub enum HotReloadDiagnosticDetail {
         old: EffectAbi,
         new: EffectAbi,
     },
+    MethodParameterAbiList {
+        old: Vec<ParamAbi>,
+        new: Vec<ParamAbi>,
+    },
     MethodAccessAbi {
         old: AccessAbi,
         new: AccessAbi,
@@ -97,6 +101,12 @@ impl HotReloadDiagnosticDetail {
             }
             HotReloadErrorKind::ChangedMethodEffects { old, new, .. } => {
                 Some(Self::MethodEffectAbi {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+            }
+            HotReloadErrorKind::ChangedMethodParameterAbi { old, new, .. } => {
+                Some(Self::MethodParameterAbiList {
                     old: old.clone(),
                     new: new.clone(),
                 })

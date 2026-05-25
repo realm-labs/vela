@@ -6959,3 +6959,27 @@ Consequences:
 - The check remains metadata-only and does not expose Rust references or mutate
   runtime reflection structure.
 - Reports can show old and new descriptor parameter ABI for repair guidance.
+
+## 2026-05-26: Method Descriptor Parameters Are Hot-Reload ABI
+
+Status: Accepted
+
+Context:
+Callable native methods and host methods expose stable `MethodDesc` parameter
+metadata through reflection and Engine registration. Hot reload already checked
+method effect and access ABI, but parameter metadata could drift without being
+reported.
+
+Decision:
+Record reflected/native method parameter name, type hint, and defaulted status
+in `MethodAbi`. Hot reload rejects deleted method parameters, changed existing
+parameter ABI, and appended required method parameters. Appended defaulted
+method descriptor parameters remain compatible.
+
+Consequences:
+- Reflective and compiler-specialized method calls cannot silently observe
+  changed host method descriptor shapes after a safe-point reload.
+- The rule remains metadata-only and does not expose Rust references or mutate
+  runtime reflection structure.
+- Reports show old and new method parameter ABI alongside existing method
+  effect/access details.
