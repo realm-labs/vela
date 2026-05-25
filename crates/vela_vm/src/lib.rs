@@ -23,6 +23,7 @@ mod set_methods;
 mod stdlib;
 mod string_methods;
 mod try_propagation;
+mod value;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
@@ -45,70 +46,7 @@ use vela_host::{HostPath, HostRef, PatchTx, ScriptStateAdapter};
 use vela_reflect::{self as reflect, TypeRegistry};
 
 pub use budget::{ExecutionBudget, ExecutionBudgetKind};
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Value {
-    Missing,
-    Null,
-    Bool(bool),
-    Int(i64),
-    Float(f64),
-    String(String),
-    Array(Vec<Value>),
-    Map(BTreeMap<String, Value>),
-    Set(Vec<Value>),
-    Record {
-        type_name: String,
-        fields: ScriptFields<Value>,
-    },
-    Enum {
-        enum_name: String,
-        variant: String,
-        fields: ScriptFields<Value>,
-    },
-    Closure(ClosureValue),
-    Range(RangeValue),
-    HeapRef(GcRef),
-    HostRef(HostRef),
-    Iterator(IteratorState),
-}
-
-impl Value {
-    pub fn trace_heap_refs(&self, refs: &mut Vec<GcRef>) {
-        match self {
-            Self::HeapRef(reference) => refs.push(*reference),
-            Self::Array(values) => values.iter().for_each(|value| value.trace_heap_refs(refs)),
-            Self::Set(values) => values.iter().for_each(|value| value.trace_heap_refs(refs)),
-            Self::Map(values) => values
-                .values()
-                .for_each(|value| value.trace_heap_refs(refs)),
-            Self::Record { fields, .. } | Self::Enum { fields, .. } => {
-                fields
-                    .values()
-                    .for_each(|value| value.trace_heap_refs(refs));
-            }
-            Self::Closure(closure) => closure
-                .captures
-                .iter()
-                .for_each(|value| value.trace_heap_refs(refs)),
-            Self::Iterator(iterator) => iterator.trace_heap_refs(refs),
-            Self::Null
-            | Self::Missing
-            | Self::Bool(_)
-            | Self::Int(_)
-            | Self::Float(_)
-            | Self::String(_)
-            | Self::Range(_)
-            | Self::HostRef(_) => {}
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ClosureValue {
-    code: Arc<CodeObject>,
-    captures: Vec<Value>,
-}
+pub use value::{ClosureValue, Value};
 
 struct ExecutionCall<'a> {
     code: &'a CodeObject,
@@ -121,18 +59,6 @@ struct ExecutionCall<'a> {
 impl ExecutionCall<'_> {
     fn stack_frame(&self) -> VmStackFrame {
         VmStackFrame::new(self.code.name.clone(), self.call_site)
-    }
-}
-
-impl From<&Constant> for Value {
-    fn from(value: &Constant) -> Self {
-        match value {
-            Constant::Null => Self::Null,
-            Constant::Bool(value) => Self::Bool(*value),
-            Constant::Int(value) => Self::Int(*value),
-            Constant::Float(value) => Self::Float(*value),
-            Constant::String(value) => Self::String(value.clone()),
-        }
     }
 }
 

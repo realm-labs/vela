@@ -1532,6 +1532,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   demo now uses the exported context `TypeDesc`, field IDs, host type ID, and
   method IDs for context time, event, and log workflows instead of maintaining
   parallel local context metadata.
+- Split VM script `Value` and closure definitions into a focused value module,
+  keeping the crate root centered on VM API wiring and execution dispatch while
+  preserving the public `vela_vm::Value` re-export.
 
 ## Next
 
