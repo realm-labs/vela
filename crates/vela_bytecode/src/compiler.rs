@@ -1339,14 +1339,8 @@ impl<'ast> Compiler<'ast> {
             }
             ExprKind::Block(block) => {
                 let dst = self.alloc_register()?;
-                let returned = self.compile_block_value_to(block, dst)?;
-                if returned {
-                    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "return inside block expression",
-                    )))
-                } else {
-                    Ok(dst)
-                }
+                self.compile_block_value_to(block, dst)?;
+                Ok(dst)
             }
             ExprKind::Array(items) => {
                 let elements = items
@@ -1416,14 +1410,8 @@ impl<'ast> Compiler<'ast> {
             }
             ExprKind::If(if_expr) => {
                 let dst = self.alloc_register()?;
-                let returned = self.compile_if_value_to(if_expr, dst)?;
-                if returned {
-                    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "returning if expression",
-                    )))
-                } else {
-                    Ok(dst)
-                }
+                self.compile_if_value_to(if_expr, dst)?;
+                Ok(dst)
             }
             ExprKind::Assign { .. } => self.compile_assignment(expr),
             ExprKind::SelfValue => self.local_register_at_span(expr.span, "self"),
@@ -1432,14 +1420,8 @@ impl<'ast> Compiler<'ast> {
             ))),
             ExprKind::Match(match_expr) => {
                 let dst = self.alloc_register()?;
-                let returned = self.compile_match_value_to(match_expr, dst)?;
-                if returned {
-                    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "returning match expression",
-                    )))
-                } else {
-                    Ok(dst)
-                }
+                self.compile_match_value_to(match_expr, dst)?;
+                Ok(dst)
             }
         }
     }
@@ -5193,6 +5175,39 @@ fn main() {
             "main",
         )
         .expect("returning block initializer should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::Return { .. }))
+        );
+    }
+
+    #[test]
+    fn compiler_lowers_returning_expression_operands() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main(kind) {
+    log({
+        return 7;
+    });
+    if kind == "if" {
+        return if true {
+            return 1;
+        } else {
+            return 2;
+        };
+    }
+    return match kind {
+        "match" => { return 3; },
+        _ => { return 4; },
+    };
+}
+"#,
+            "main",
+        )
+        .expect("returning expression operands should compile");
 
         assert!(
             code.instructions

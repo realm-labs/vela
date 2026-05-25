@@ -1184,6 +1184,58 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_returning_expression_operands() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn block_arg() {
+    log({
+        return 7;
+    });
+    return 0;
+}
+
+fn if_value(flag) {
+    return if flag {
+        return 1;
+    } else {
+        return 2;
+    };
+}
+
+fn match_value(value) {
+    return match value {
+        1 => { return 10; },
+        _ => { return 11; },
+    };
+}
+"#,
+    )
+    .expect("compile returning expression operands");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "block_arg", &[]),
+        Ok(Value::Int(7))
+    );
+    assert_eq!(
+        Vm::new().run_program(&program, "if_value", &[Value::Bool(true)]),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(
+        Vm::new().run_program(&program, "if_value", &[Value::Bool(false)]),
+        Ok(Value::Int(2))
+    );
+    assert_eq!(
+        Vm::new().run_program(&program, "match_value", &[Value::Int(1)]),
+        Ok(Value::Int(10))
+    );
+    assert_eq!(
+        Vm::new().run_program(&program, "match_value", &[Value::Int(9)]),
+        Ok(Value::Int(11))
+    );
+}
+
+#[test]
 fn runs_compiled_returning_if_and_match_initializers() {
     let program = compile_program_source(
         SourceId::new(1),

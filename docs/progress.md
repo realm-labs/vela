@@ -1505,6 +1505,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Struct fields, enum variants, and record variant fields can now appear on
   adjacent lines without commas instead of the parser treating the following
   member as trailing text.
+- Extended M9 return lowering through direct expression contexts. Block, if,
+  and match expressions that return on all reachable paths can now appear as
+  operands or returned values and still exit the active function correctly,
+  instead of being rejected after bytecode emission had already produced
+  returns.
 
 ## Next
 
