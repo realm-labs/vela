@@ -5491,3 +5491,29 @@ Consequences:
 - The adapter surface grows inside the split typed modules, preserving the
   structured implementation boundary and leaving room for later abstraction if
   wider signatures become necessary.
+
+## 2026-05-25: String Affix Stripping Returns Dynamic Option Values
+
+Status: Accepted
+
+Context:
+M13 string helpers need to support common game-server event, quest, and tag
+normalization without forcing scripts to combine boolean prefix checks,
+character indexes, and slicing manually. Prefix/suffix stripping can fail, so
+returning a fallback string directly would hide control flow from Option-style
+propagation.
+
+Decision:
+Add `string.strip_prefix(prefix)` and `string.strip_suffix(suffix)` as
+script-value methods. Both require string affixes, return
+`Option.Some(stripped)` when the affix is present, and return `Option.None`
+when it is missing. The stripped value is copied as a script string in inline
+and managed-heap execution.
+
+Consequences:
+- Scripts can normalize identifiers with `?`, `option.unwrap_or`, and existing
+  string helpers without byte-index manipulation.
+- The API preserves the no-generics boundary by using the existing dynamic
+  `Option` enum shape.
+- The implementation stays inside the focused string-method VM module plus the
+  existing stdlib analysis/completion metadata path.

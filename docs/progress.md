@@ -1287,6 +1287,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added `string.find(needle)` as a UTF-8 character-indexed string search
   helper that returns dynamic `Option.Some(index)`/`Option.None` in inline and
   managed-heap execution, with analysis TypeFacts and completion metadata.
+- Added `string.strip_prefix(prefix)` and `string.strip_suffix(suffix)` for
+  gameplay event/tag normalization. Both helpers return dynamic
+  `Option.Some(stripped)`/`Option.None` in inline and managed-heap execution,
+  with analysis TypeFacts and completion metadata.
 - Extended M14 typed native signature conversion to five script arguments for
   pure, host, context-host, and native method callbacks, with Engine and macro
   tests proving copied conversions and PatchTx host effects.

@@ -64,6 +64,36 @@ pub(crate) fn find(
     ))))
 }
 
+pub(crate) fn strip_prefix(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    strip_affix(
+        receiver,
+        args,
+        heap,
+        "strip_prefix",
+        "method strip_prefix",
+        str::strip_prefix,
+    )
+}
+
+pub(crate) fn strip_suffix(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    strip_affix(
+        receiver,
+        args,
+        heap,
+        "strip_suffix",
+        "method strip_suffix",
+        str::strip_suffix,
+    )
+}
+
 pub(crate) fn to_upper(
     receiver: &Value,
     args: &[Value],
@@ -189,6 +219,22 @@ fn predicate(
     let receiver = string_value(receiver, heap, operation)?;
     let needle = string_value(&args[0], heap, operation)?;
     Ok(predicate(receiver, needle))
+}
+
+fn strip_affix<'a>(
+    receiver: &'a Value,
+    args: &'a [Value],
+    heap: Option<&'a HeapExecution<'_>>,
+    method: &str,
+    operation: &'static str,
+    strip: impl FnOnce(&'a str, &'a str) -> Option<&'a str>,
+) -> VmResult<Value> {
+    expect_arity(method, args, 1)?;
+    let value = string_value(receiver, heap, operation)?;
+    let affix = string_value(&args[0], heap, operation)?;
+    Ok(option_value(
+        strip(value, affix).map(|stripped| Value::String(stripped.to_owned())),
+    ))
 }
 
 fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
@@ -409,6 +455,73 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "method find"
+            }
+        );
+    }
+
+    #[test]
+    fn string_strip_affixes_return_options() {
+        let source = r#"
+fn main() {
+    let event = "quest.reward.done";
+    let body = event.strip_prefix("quest.");
+    let reward = option.unwrap_or(body, "").strip_suffix(".done");
+    let missing = event.strip_prefix("player.");
+    if option.unwrap_or(reward, "") == "reward"
+        && option.is_none(missing)
+    {
+        return option.unwrap_or("奖励.done".strip_suffix(".done"), "");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string strip affix source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("string strip affix should run");
+        assert_eq!(result, Value::String("奖励".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_strip_affixes() {
+        let source = r#"
+fn main() {
+    let event = "monster.wolf.alpha";
+    let body = event.strip_prefix("monster.");
+    return option.unwrap_or(option.unwrap_or(body, "").strip_suffix(".alpha"), "missing");
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string strip affix source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string strip affix should run");
+        assert_eq!(result, Value::String("wolf".to_owned()));
+    }
+
+    #[test]
+    fn string_strip_affixes_reject_non_string_affixes() {
+        let source = r#"
+fn main() {
+    return "quest.reward".strip_prefix(1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string strip affix type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("string strip affix should reject non-string affixes");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method strip_prefix"
             }
         );
     }

@@ -29,6 +29,8 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "find",
     "starts_with",
     "ends_with",
+    "strip_prefix",
+    "strip_suffix",
     "to_upper",
     "to_lower",
     "trim",
@@ -572,6 +574,14 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             StdlibMethodFact::new(receiver, "ends_with", TypeFact::Bool)
                 .with_params(vec![TypeFact::String]),
         ),
+        "strip_prefix" => Some(
+            StdlibMethodFact::new(receiver, "strip_prefix", TypeFact::option(TypeFact::String))
+                .with_params(vec![TypeFact::String]),
+        ),
+        "strip_suffix" => Some(
+            StdlibMethodFact::new(receiver, "strip_suffix", TypeFact::option(TypeFact::String))
+                .with_params(vec![TypeFact::String]),
+        ),
         "to_upper" => Some(StdlibMethodFact::new(
             receiver,
             "to_upper",
@@ -798,6 +808,16 @@ mod tests {
         let find = stdlib_method_fact(&TypeFact::String, "find", None).expect("find fact");
         assert_eq!(find.params, vec![TypeFact::String]);
         assert_eq!(find.returns, TypeFact::option(TypeFact::Int));
+
+        let strip_prefix =
+            stdlib_method_fact(&TypeFact::String, "strip_prefix", None).expect("prefix fact");
+        assert_eq!(strip_prefix.params, vec![TypeFact::String]);
+        assert_eq!(strip_prefix.returns, TypeFact::option(TypeFact::String));
+
+        let strip_suffix =
+            stdlib_method_fact(&TypeFact::String, "strip_suffix", None).expect("suffix fact");
+        assert_eq!(strip_suffix.params, vec![TypeFact::String]);
+        assert_eq!(strip_suffix.returns, TypeFact::option(TypeFact::String));
 
         let replace = stdlib_method_fact(&TypeFact::String, "replace", None).expect("replace fact");
         assert_eq!(replace.params, vec![TypeFact::String, TypeFact::String]);

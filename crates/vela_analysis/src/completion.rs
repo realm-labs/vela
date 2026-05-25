@@ -370,6 +370,16 @@ mod tests {
             TypeFact::function(vec![TypeFact::String], TypeFact::option(TypeFact::Int)),
         )));
         assert!(string.contains(&CompletionItem::new(
+            "strip_prefix",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::String], TypeFact::option(TypeFact::String)),
+        )));
+        assert!(string.contains(&CompletionItem::new(
+            "strip_suffix",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::String], TypeFact::option(TypeFact::String)),
+        )));
+        assert!(string.contains(&CompletionItem::new(
             "replace",
             CompletionKind::Method,
             TypeFact::function(vec![TypeFact::String, TypeFact::String], TypeFact::String),

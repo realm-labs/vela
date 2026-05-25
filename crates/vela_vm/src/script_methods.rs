@@ -40,6 +40,8 @@ pub(crate) fn call_method(
             string_methods::starts_with(receiver, args, heap.as_deref()).map(Value::Bool)
         }
         "ends_with" => string_methods::ends_with(receiver, args, heap.as_deref()).map(Value::Bool),
+        "strip_prefix" => string_methods::strip_prefix(receiver, args, heap.as_deref()),
+        "strip_suffix" => string_methods::strip_suffix(receiver, args, heap.as_deref()),
         "to_upper" => string_methods::to_upper(receiver, args, heap.as_deref()),
         "to_lower" => string_methods::to_lower(receiver, args, heap.as_deref()),
         "trim" => string_methods::trim(receiver, args, heap.as_deref()),
