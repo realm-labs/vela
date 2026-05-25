@@ -4741,3 +4741,27 @@ Consequences:
 - Callable signatures can appear in completion without adding script-language
   generics.
 - Runtime execution remains unchanged; these facts are advisory tooling data.
+
+## 2026-05-25: Binding Completion Combines HIR Names With Analysis Facts
+
+Status: Accepted
+
+Context:
+Completion needs local binding names for parameters, `let` bindings, loop
+bindings, lambda parameters, and pattern locals. `AnalysisFacts` intentionally
+stores copied facts by stable HIR IDs, not source names, while `ModuleGraph`
+owns the binding maps and lexical names.
+
+Decision:
+Expose local binding completion through `vela_analysis` by passing both the
+`ModuleGraph` and copied `AnalysisFacts` for a function declaration. The helper
+uses HIR binding names, attaches available `TypeFact` values, and reports
+`Unknown` for dynamic locals without type facts. It does not query runtime
+reflection or attempt cursor-sensitive scope filtering yet.
+
+Consequences:
+- Tooling can surface function-scope binding completions without coupling to
+  bytecode or VM execution.
+- Untyped dynamic locals remain valid and complete as `Unknown`.
+- Later cursor-aware completion can refine visibility without changing the
+  copied-fact boundary.

@@ -1,7 +1,12 @@
-use crate::{RegistryFacts, TypeFact, stdlib_function_completion_facts, stdlib_method_facts};
+use vela_hir::{HirDeclId, ModuleGraph};
+
+use crate::{
+    AnalysisFacts, RegistryFacts, TypeFact, stdlib_function_completion_facts, stdlib_method_facts,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompletionKind {
+    Binding,
     Field,
     Method,
     Variant,
@@ -64,6 +69,23 @@ pub fn type_completions(facts: &RegistryFacts) -> Vec<CompletionItem> {
             .map(|(name, fact)| CompletionItem::new(name, CompletionKind::Trait, fact.clone())),
     );
     completions
+}
+
+pub fn local_completions(
+    graph: &ModuleGraph,
+    facts: &AnalysisFacts,
+    declaration: HirDeclId,
+) -> Vec<CompletionItem> {
+    let Some(bindings) = graph.bindings(declaration) else {
+        return Vec::new();
+    };
+    bindings
+        .locals()
+        .map(|local| {
+            let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
+            CompletionItem::new(local.name.clone(), CompletionKind::Binding, fact)
+        })
+        .collect()
 }
 
 fn owner_member_completions(facts: &RegistryFacts, owner: &str) -> Vec<CompletionItem> {
@@ -138,7 +160,8 @@ fn stdlib_function_completions() -> Vec<CompletionItem> {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, TypeId, VariantId};
+    use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, SourceId, TypeId, VariantId};
+    use vela_hir::{ModulePath, ModuleSource};
     use vela_reflect::{
         FieldDesc, FunctionDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc,
         TypeKey, TypeKind, TypeRegistry, VariantDesc,
@@ -275,6 +298,62 @@ mod tests {
             "math.random",
             CompletionKind::Function,
             TypeFact::function(vec![TypeFact::Int, TypeFact::Int], TypeFact::Int),
+        )));
+    }
+
+    #[test]
+    fn local_completions_include_function_scope_bindings() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game"),
+            r#"
+            struct Player { level: int }
+            fn grant(player: Player, amount: int) -> bool {
+                let rewards: map = {};
+                let inferred = 10;
+                for reward in [] {
+                    let amount: string = reward;
+                }
+                return amount > 0;
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+        let declaration = graph
+            .declarations()
+            .find(|declaration| declaration.name == "grant")
+            .expect("grant declaration")
+            .id;
+        let facts = AnalysisFacts::from_module_graph(&graph);
+
+        let completions = local_completions(&graph, &facts, declaration);
+
+        assert!(completions.contains(&CompletionItem::new(
+            "player",
+            CompletionKind::Binding,
+            TypeFact::record("game.Player"),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "rewards",
+            CompletionKind::Binding,
+            TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "inferred",
+            CompletionKind::Binding,
+            TypeFact::Unknown,
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "amount",
+            CompletionKind::Binding,
+            TypeFact::Int,
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "amount",
+            CompletionKind::Binding,
+            TypeFact::String,
         )));
     }
 

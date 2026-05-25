@@ -1102,6 +1102,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   function facts for lambda-taking methods, and global completions include
   Option/Result, math, random, and set helper functions without adding
   script-visible generics.
+- Added HIR-backed local binding completion helpers. `vela_analysis` can now
+  combine `ModuleGraph` binding names with copied `AnalysisFacts` to produce
+  current-function parameter, `let`, loop, lambda, and pattern binding
+  completions, falling back to `Unknown` for untyped dynamic locals.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.
