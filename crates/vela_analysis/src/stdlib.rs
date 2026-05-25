@@ -189,6 +189,12 @@ mod tests {
                 .returns,
             TypeFact::Null
         );
+        let map_extend = stdlib_method_fact(&map, "extend", None).expect("map extend fact");
+        assert_eq!(
+            map_extend.params,
+            vec![TypeFact::map(TypeFact::String, TypeFact::Int)]
+        );
+        assert_eq!(map_extend.returns, TypeFact::Null);
         assert_eq!(
             stdlib_method_fact(&array, "sum", None)
                 .expect("sum fact")
@@ -264,6 +270,9 @@ mod tests {
                 .returns,
             TypeFact::Null
         );
+        let set_extend = stdlib_method_fact(&set, "extend", None).expect("set extend fact");
+        assert_eq!(set_extend.params, vec![TypeFact::set(TypeFact::String)]);
+        assert_eq!(set_extend.returns, TypeFact::Null);
         let set_map = stdlib_method_fact(&set, "map", Some(&TypeFact::Int)).expect("set map fact");
         assert_eq!(
             set_map.params,

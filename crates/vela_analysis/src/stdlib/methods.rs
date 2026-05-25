@@ -35,6 +35,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "get_or",
     "set",
     "remove",
+    "extend",
     "clear",
     "keys",
     "values",
@@ -53,6 +54,7 @@ const SET_METHOD_NAMES: &[&str] = &[
     "has",
     "add",
     "remove",
+    "extend",
     "clear",
     "values",
     "map",
@@ -335,6 +337,10 @@ fn map_method_fact(
             StdlibMethodFact::new(receiver, "remove", TypeFact::option(value.clone()))
                 .with_params(vec![key.clone()]),
         ),
+        "extend" => Some(
+            StdlibMethodFact::new(receiver, "extend", TypeFact::Null)
+                .with_params(vec![TypeFact::map(key.clone(), value.clone())]),
+        ),
         "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::Null)),
         "keys" => Some(StdlibMethodFact::new(
             receiver,
@@ -418,6 +424,10 @@ fn set_method_fact(
         "remove" => Some(
             StdlibMethodFact::new(receiver, "remove", TypeFact::Bool)
                 .with_params(vec![element.clone()]),
+        ),
+        "extend" => Some(
+            StdlibMethodFact::new(receiver, "extend", TypeFact::Null)
+                .with_params(vec![TypeFact::set(element.clone())]),
         ),
         "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::Null)),
         "values" => Some(StdlibMethodFact::new(

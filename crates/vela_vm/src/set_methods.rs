@@ -138,6 +138,51 @@ pub(crate) fn clear(
     }
 }
 
+pub(crate) fn extend(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("extend", args, 1)?;
+    let extension = set_values(&args[0], heap.as_deref(), "method extend")?;
+    match receiver {
+        Value::Set(values) => {
+            for value in extension {
+                push_unique(values, value, None, "method extend")?;
+            }
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method extend");
+            };
+            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
+                return type_error("method extend");
+            };
+            let mut keys = values
+                .iter()
+                .map(|slot| slot_key(slot, &*heap))
+                .collect::<VmResult<Vec<_>>>()?;
+            let mut slots = Vec::new();
+            for value in extension {
+                let key = SetKey::from_value(&value, Some(&*heap), "method extend")?;
+                if keys.contains(&key) {
+                    continue;
+                }
+                keys.push(key);
+                slots.push(value_to_heap_slot(&value, heap, budget.as_deref_mut())?);
+            }
+            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method extend");
+            };
+            values.extend(slots);
+            Ok(Value::Null)
+        }
+        _ => type_error("method extend"),
+    }
+}
+
 pub(crate) fn values(
     receiver: &Value,
     args: &[Value],
@@ -931,5 +976,76 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set clear method should run");
         assert_eq!(result, Value::Int(9));
+    }
+
+    #[test]
+    fn runs_compiled_set_extend_method() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["daily", "quest"]);
+    tags.extend(set.from_array(["quest", "raid"]));
+    if tags.len() == 3 && tags.has("daily") && tags.has("quest") && tags.has("raid") {
+        return tags.values().join("|");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set extend method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("set extend method should run");
+        assert_eq!(result, Value::String("daily|quest|raid".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_set_extend_method() {
+        let source = r#"
+fn main() {
+    let ids = set.from_array([2, 4]);
+    let more = set.from_array([4, 6, 8]);
+    ids.extend(more);
+    if ids.len() == 4 && ids.has(8) {
+        return ids.values().sum();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set extend method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set extend method should run");
+        assert_eq!(result, Value::Int(20));
+    }
+
+    #[test]
+    fn set_extend_rejects_non_set_arguments() {
+        let source = r#"
+fn main() {
+    let tags = set.from_array(["quest"]);
+    tags.extend(["raid"]);
+    return tags.len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("set extend error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("set extend should reject non-set args");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method extend"
+            }
+        );
     }
 }

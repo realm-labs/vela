@@ -1693,6 +1693,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added M13 collection `.clear()` for script-owned arrays, maps, and sets. It
   empties the receiver in inline and managed-heap execution without touching
   host state, and exposes non-generic analysis/completion facts.
+- Extended M13 collection batching with `map.extend(other)` and
+  `set.extend(other)`. Maps overwrite existing keys from the extension map,
+  sets add missing scalar values deterministically, both work in inline and
+  managed-heap execution, and both expose non-generic analysis/completion
+  facts.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new

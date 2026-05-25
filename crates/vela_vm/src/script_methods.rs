@@ -74,7 +74,13 @@ pub(crate) fn call_method(
             array_methods::insert(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
         }
         "extend" => {
-            array_methods::extend(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
+            if set_methods::is_set(receiver, heap.as_deref()) {
+                set_methods::extend(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
+            } else if map_methods::is_map(receiver, heap.as_deref()) {
+                map_methods::extend(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
+            } else {
+                array_methods::extend(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
+            }
         }
         "first" => array_methods::first(receiver, args, heap.as_deref()),
         "last" => array_methods::last(receiver, args, heap.as_deref()),

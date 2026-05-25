@@ -149,6 +149,40 @@ pub(crate) fn clear(
     }
 }
 
+pub(crate) fn extend(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("extend", args, 1)?;
+    let entries = map_entries(&args[0], heap.as_deref(), "method extend")?;
+    match receiver {
+        Value::Map(values) => {
+            values.extend(entries);
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method extend");
+            };
+            let mut slots = Vec::with_capacity(entries.len());
+            for (key, value) in entries {
+                slots.push((
+                    key,
+                    value_to_heap_slot(&value, heap, budget.as_deref_mut())?,
+                ));
+            }
+            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method extend");
+            };
+            values.extend(slots);
+            Ok(Value::Null)
+        }
+        _ => type_error("method extend"),
+    }
+}
+
 pub(crate) fn keys(
     receiver: &Value,
     args: &[Value],
@@ -694,5 +728,78 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map clear method should run");
         assert_eq!(result, Value::String("boss".to_owned()));
+    }
+
+    #[test]
+    fn runs_compiled_map_extend_method() {
+        let source = r#"
+fn main() {
+    let rewards = {"gold": 4, "xp": 6};
+    rewards.extend({"xp": 10, "quest": 8});
+    if rewards.len() == 3
+        && rewards["gold"] == 4
+        && rewards["xp"] == 10
+        && rewards["quest"] == 8
+    {
+        return rewards.keys().join(",");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map extend method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("map extend method should run");
+        assert_eq!(result, Value::String("gold,quest,xp".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_map_extend_method() {
+        let source = r#"
+fn main() {
+    let quests = {"daily": "done"};
+    let patch = {"raid": "active", "daily": "claimed"};
+    quests.extend(patch);
+    if quests.len() == 2 && quests["daily"] == "claimed" {
+        return quests.values().join("|");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap map extend method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap map extend method should run");
+        assert_eq!(result, Value::String("claimed|active".to_owned()));
+    }
+
+    #[test]
+    fn map_extend_rejects_non_map_arguments() {
+        let source = r#"
+fn main() {
+    let rewards = {"gold": 4};
+    rewards.extend(["xp"]);
+    return rewards.len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map extend error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("map extend should reject non-map args");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method extend"
+            }
+        );
     }
 }
