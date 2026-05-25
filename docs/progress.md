@@ -1548,6 +1548,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   while preserving existing one-argument value callbacks. Runtime behavior now
   matches the richer map lambda shape exposed by M13 analysis facts and works in
   both inline and managed-heap execution.
+- Tightened M14 macro signature safety for script-visible Rust references.
+  Native function and method macros now reject nested reference parameters and
+  reference return types before generating Engine registrations, while keeping
+  the explicit `NativeCallContext`, `HostExecution`, and `HostPath` boundary
+  parameters available.
 
 ## Next
 

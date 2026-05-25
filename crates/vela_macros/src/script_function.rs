@@ -8,8 +8,8 @@ use syn::{
 use crate::attrs::{error, spanned_error};
 use crate::signature::{
     docs_from_attrs, param_name, reject_extern_signature, reject_generic_signature,
-    reject_script_reference_param, reject_unsafe_signature, reject_unsupported_integer_type,
-    type_ident, wrapper_inner_type,
+    reject_script_reference_param, reject_script_reference_return, reject_unsafe_signature,
+    reject_unsupported_integer_type, type_ident, wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -294,7 +294,10 @@ fn function_meta(
 fn reject_return_type(output: &ReturnType) -> Result<()> {
     match output {
         ReturnType::Default => Ok(()),
-        ReturnType::Type(_, ty) => reject_unsupported_integer_type(ty),
+        ReturnType::Type(_, ty) => {
+            reject_script_reference_return(ty)?;
+            reject_unsupported_integer_type(ty)
+        }
     }
 }
 
@@ -604,6 +607,44 @@ mod tests {
             error
                 .to_string()
                 .contains("script-visible parameters cannot use Rust references")
+        );
+    }
+
+    #[test]
+    fn rejects_nested_script_visible_rust_reference_parameters() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn grant(names: Option<&str>) {}
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("nested script-visible Rust references should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script-visible parameters cannot use Rust references")
+        );
+    }
+
+    #[test]
+    fn rejects_script_visible_rust_reference_returns() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn label() -> Option<&'static str> {
+                    Some("gold")
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("script-visible Rust reference returns should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script-visible returns cannot use Rust references")
         );
     }
 

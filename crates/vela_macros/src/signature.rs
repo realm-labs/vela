@@ -3,10 +3,20 @@ use syn::{Attribute, Generics, Pat, PatType, Result, Signature, Type, spanned::S
 const UNSUPPORTED_SCRIPT_INTEGER_TYPES: &[&str] = &["i128", "isize", "u64", "u128", "usize"];
 
 pub(crate) fn reject_script_reference_param(param: &PatType) -> Result<()> {
-    if matches!(param.ty.as_ref(), Type::Reference(_)) {
+    if contains_reference_type(&param.ty) {
         return Err(syn::Error::new(
             param.span(),
             "script-visible parameters cannot use Rust references; pass copied values, HostRef, HostPath, or PathProxy",
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn reject_script_reference_return(ty: &Type) -> Result<()> {
+    if contains_reference_type(ty) {
+        return Err(syn::Error::new(
+            ty.span(),
+            "script-visible returns cannot use Rust references; return copied values, HostRef, HostPath, or PathProxy",
         ));
     }
     Ok(())
@@ -96,6 +106,27 @@ fn unsupported_integer_type(ty: &Type) -> Option<String> {
         Type::Array(array) => unsupported_integer_type(&array.elem),
         Type::Reference(reference) => unsupported_integer_type(&reference.elem),
         _ => None,
+    }
+}
+
+fn contains_reference_type(ty: &Type) -> bool {
+    match ty {
+        Type::Reference(_) => true,
+        Type::Path(path) => {
+            let Some(segment) = path.path.segments.last() else {
+                return false;
+            };
+            let syn::PathArguments::AngleBracketed(args) = &segment.arguments else {
+                return false;
+            };
+            args.args.iter().any(|arg| match arg {
+                syn::GenericArgument::Type(ty) => contains_reference_type(ty),
+                _ => false,
+            })
+        }
+        Type::Tuple(tuple) => tuple.elems.iter().any(contains_reference_type),
+        Type::Array(array) => contains_reference_type(&array.elem),
+        _ => false,
     }
 }
 

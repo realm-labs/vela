@@ -6326,3 +6326,32 @@ Consequences:
   without first materializing entries.
 - Analysis and completion metadata now match the richer runtime callback shape.
 - Existing one-argument `map_values(|value| ...)` scripts continue to run.
+
+## 2026-05-26: Macro Native Signatures Reject Script-Visible References
+
+Status: Accepted
+
+Context:
+M14 macros generate stable Engine registrations for native functions and host
+methods. The macros already rejected direct Rust reference parameters for
+script-visible arguments, but nested reference parameters such as
+`Option<&str>` and reference return types could reach generated registration
+code. That weakens the embedding boundary even if Rust type checking later
+rejects some generated wrappers.
+
+Decision:
+Use the shared macro signature helper to reject Rust references recursively in
+all script-visible parameter types and in all return types for
+`#[script_function]`, `#[script_context_function]`, `#[script_host_function]`,
+and `#[script_methods]`. The explicit boundary parameters
+`&mut NativeCallContext`, `&mut HostExecution`, and `&HostPath` remain allowed
+because they are consumed by macro registration plumbing and are not exposed as
+script arguments or return values.
+
+Consequences:
+- Macro diagnostics now fail before generated Engine code can expose or depend
+  on Rust references at the script boundary.
+- Hosts must return copied values, `HostRef`, `HostPath`, `PathProxy`, or
+  supported dynamic result shapes instead of borrowed data.
+- The allowed host mutation boundary remains explicit through context,
+  host-execution, host-path, and PatchTx APIs.
