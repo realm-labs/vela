@@ -1668,6 +1668,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   transform. Callback results are deduplicated through the existing scalar set
   element rules, work in inline and managed-heap execution, and expose
   non-generic analysis/completion facts for transformed element shapes.
+- Strengthened M15 function descriptor ABI checks. Reflected/native
+  `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
+  deleted parameters, changed parameter names/order/type/default ABI, and new
+  required parameters, while appended defaulted parameters remain compatible.
 
 ## Next
 

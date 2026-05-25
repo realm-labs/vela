@@ -1,10 +1,14 @@
-use crate::{AccessAbi, EffectAbi, HotReloadError, HotReloadErrorKind};
+use crate::{AccessAbi, EffectAbi, HotReloadError, HotReloadErrorKind, ParamAbi};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HotReloadDiagnosticDetail {
     FunctionParameterList {
         old: Vec<String>,
         new: Vec<String>,
+    },
+    FunctionParameterAbiList {
+        old: Vec<ParamAbi>,
+        new: Vec<ParamAbi>,
     },
     AddedFunctionParameters {
         added: Vec<String>,
@@ -47,6 +51,12 @@ impl HotReloadDiagnosticDetail {
             HotReloadErrorKind::DeletedFunctionParameters { old, new, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { old, new, .. } => {
                 Some(Self::FunctionParameterList {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+            }
+            HotReloadErrorKind::ChangedFunctionParameterAbi { old, new, .. } => {
+                Some(Self::FunctionParameterAbiList {
                     old: old.clone(),
                     new: new.clone(),
                 })

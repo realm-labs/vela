@@ -3,7 +3,7 @@ use std::fmt;
 use vela_bytecode::compiler::{CompileError, CompileErrorKind};
 use vela_common::{Diagnostic, Label, Span};
 
-use crate::{AccessAbi, EffectAbi};
+use crate::{AccessAbi, EffectAbi, ParamAbi};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadError {
@@ -24,6 +24,9 @@ impl HotReloadError {
             }
             HotReloadErrorKind::ChangedFunctionParameters { .. } => {
                 "reload.function.changed_parameters"
+            }
+            HotReloadErrorKind::ChangedFunctionParameterAbi { .. } => {
+                "reload.function.parameter_abi_changed"
             }
             HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. } => {
                 "reload.function.required_added_parameters"
@@ -51,6 +54,7 @@ impl HotReloadError {
             HotReloadErrorKind::Compile(_) => None,
             HotReloadErrorKind::DeletedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { function, .. }
+            | HotReloadErrorKind::ChangedFunctionParameterAbi { function, .. }
             | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, .. }
             | HotReloadErrorKind::AddedFunctionParametersDenied { function, .. }
             | HotReloadErrorKind::NewFunctionDenied { function }
@@ -82,6 +86,9 @@ impl HotReloadError {
             }
             HotReloadErrorKind::ChangedFunctionParameters { function, .. } => {
                 format!("function `{function}` changed existing parameter names or order")
+            }
+            HotReloadErrorKind::ChangedFunctionParameterAbi { function, .. } => {
+                format!("function `{function}` changed parameter ABI")
             }
             HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, .. } => {
                 format!("function `{function}` added required parameters")
@@ -141,6 +148,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedFunctionParameters { .. } => {
                 Some("preserve existing parameter names and order".to_owned())
             }
+            HotReloadErrorKind::ChangedFunctionParameterAbi { .. } => {
+                Some("preserve existing parameter names, order, type hints, and defaults".to_owned())
+            }
             HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. } => {
                 Some("give every appended parameter a default value".to_owned())
             }
@@ -187,6 +197,7 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
             | HotReloadErrorKind::RemovedFunctionAbi { source_span, .. }
+            | HotReloadErrorKind::ChangedFunctionParameterAbi { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionEvent { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionEffects { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { source_span, .. }
@@ -258,6 +269,12 @@ pub enum HotReloadErrorKind {
         function: String,
         old: Vec<String>,
         new: Vec<String>,
+    },
+    ChangedFunctionParameterAbi {
+        function: String,
+        old: Vec<ParamAbi>,
+        new: Vec<ParamAbi>,
+        source_span: Option<Box<Span>>,
     },
     AddedFunctionParametersWithoutDefaults {
         function: String,

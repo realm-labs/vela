@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
-use vela_reflect::{FunctionDesc, MethodDesc, SchemaHash, TypeRegistry};
+use vela_reflect::{FunctionDesc, FunctionParamDesc, MethodDesc, SchemaHash, TypeRegistry};
 
 use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 
@@ -131,6 +131,7 @@ impl SchemaAbi {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionAbi {
     pub name: String,
+    pub params: Vec<ParamAbi>,
     pub event: Option<String>,
     pub effects: EffectAbi,
     pub access: AccessAbi,
@@ -142,6 +143,7 @@ impl FunctionAbi {
     pub fn new(name: impl Into<String>, effects: EffectAbi, access: AccessAbi) -> Self {
         Self {
             name: name.into(),
+            params: Vec::new(),
             event: None,
             effects,
             access,
@@ -167,6 +169,9 @@ impl FunctionAbi {
         if let Some(event) = function.attrs.get("event") {
             abi = abi.event(event);
         }
+        for param in &function.params {
+            abi = abi.param(ParamAbi::from_function_param(param));
+        }
         if let Some(source_span) = function.source_span {
             abi = abi.source_span(source_span);
         }
@@ -180,12 +185,19 @@ impl FunctionAbi {
     }
 
     #[must_use]
+    pub fn param(mut self, param: ParamAbi) -> Self {
+        self.params.push(param);
+        self
+    }
+
+    #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
         self
     }
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
+        ensure_function_params_compatible(self, next)?;
         if self.event != next.event {
             return Err(HotReloadError::new(
                 HotReloadErrorKind::ChangedFunctionEvent {
@@ -218,6 +230,98 @@ impl FunctionAbi {
         }
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParamAbi {
+    pub name: String,
+    pub type_hint: Option<String>,
+    pub has_default: bool,
+}
+
+impl ParamAbi {
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            type_hint: None,
+            has_default: false,
+        }
+    }
+
+    #[must_use]
+    pub fn from_function_param(param: &FunctionParamDesc) -> Self {
+        let mut abi = Self::new(param.name.clone()).defaulted(param.has_default);
+        if let Some(type_hint) = &param.type_hint {
+            abi = abi.type_hint(type_hint.clone());
+        }
+        abi
+    }
+
+    #[must_use]
+    pub fn type_hint(mut self, type_hint: impl Into<String>) -> Self {
+        self.type_hint = Some(type_hint.into());
+        self
+    }
+
+    #[must_use]
+    pub fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
+        self
+    }
+}
+
+fn ensure_function_params_compatible(
+    old_function: &FunctionAbi,
+    new_function: &FunctionAbi,
+) -> HotReloadResult<()> {
+    if new_function.params.len() < old_function.params.len() {
+        return Err(HotReloadError::new(
+            HotReloadErrorKind::DeletedFunctionParameters {
+                function: old_function.name.clone(),
+                old: param_names(&old_function.params),
+                new: param_names(&new_function.params),
+            },
+        ));
+    }
+
+    let changed = old_function
+        .params
+        .iter()
+        .zip(&new_function.params)
+        .any(|(old, new)| old != new);
+    if changed {
+        return Err(HotReloadError::new(
+            HotReloadErrorKind::ChangedFunctionParameterAbi {
+                function: old_function.name.clone(),
+                old: old_function.params.clone(),
+                new: new_function.params.clone(),
+                source_span: new_function.source_span.map(Box::new),
+            },
+        ));
+    }
+
+    let added_required = new_function
+        .params
+        .iter()
+        .skip(old_function.params.len())
+        .filter(|param| !param.has_default)
+        .map(|param| param.name.clone())
+        .collect::<Vec<_>>();
+    if !added_required.is_empty() {
+        return Err(HotReloadError::new(
+            HotReloadErrorKind::AddedFunctionParametersWithoutDefaults {
+                function: old_function.name.clone(),
+                added: added_required,
+            },
+        ));
+    }
+
+    Ok(())
+}
+
+fn param_names(params: &[ParamAbi]) -> Vec<String> {
+    params.iter().map(|param| param.name.clone()).collect()
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -147,6 +147,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_list(old),
             render_list(new)
         ),
+        HotReloadDiagnosticDetail::FunctionParameterAbiList { old, new } => format!(
+            "parameter ABI: old=({}) new=({})",
+            render_param_abi_list(old),
+            render_param_abi_list(new)
+        ),
         HotReloadDiagnosticDetail::AddedFunctionParameters { added } => {
             format!("added required parameters: {}", render_list(added))
         }
@@ -193,6 +198,26 @@ fn render_list(items: &[String]) -> String {
         "<none>".to_owned()
     } else {
         items.join(", ")
+    }
+}
+
+fn render_param_abi_list(params: &[crate::ParamAbi]) -> String {
+    if params.is_empty() {
+        return "<none>".to_owned();
+    }
+    params
+        .iter()
+        .map(render_param_abi)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_param_abi(param: &crate::ParamAbi) -> String {
+    let type_hint = param.type_hint.as_deref().unwrap_or("Any");
+    if param.has_default {
+        format!("{}:{type_hint}=default", param.name)
+    } else {
+        format!("{}:{type_hint}", param.name)
     }
 }
 

@@ -6934,3 +6934,28 @@ Consequences:
   extending set equality to aggregate values.
 - Analysis and completion facts model the transformed element shape without
   adding script-language generics.
+
+## 2026-05-26: Function Descriptor Parameters Are Hot-Reload ABI
+
+Status: Accepted
+
+Context:
+Hot reload already checked script function parameter prefixes and reflected
+function effect, access, and event metadata. Native and host-registered
+functions also expose stable `FunctionDesc` parameter metadata through the
+Engine and reflection APIs, but that descriptor shape was not part of
+`FunctionAbi`.
+
+Decision:
+Record reflected/native function parameter name, type hint, and defaulted
+status in `FunctionAbi`. Hot reload rejects deleted parameters, changed
+existing parameter ABI, and appended required parameters. Appended defaulted
+descriptor parameters remain compatible, matching the script-function reload
+rule.
+
+Consequences:
+- Native descriptor changes cannot silently alter script call ABI during a
+  safe-point code swap.
+- The check remains metadata-only and does not expose Rust references or mutate
+  runtime reflection structure.
+- Reports can show old and new descriptor parameter ABI for repair guidance.
