@@ -1135,6 +1135,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   variant payload names from copied `RegistryFacts`, letting expression facts
   and member diagnostics understand match arm bodies without changing runtime
   match behavior.
+- Extended match-pattern flow narrowing to dynamic Option/Result values.
+  `Option.Some(value)`, `Option.None`, `Result.Ok(value)`, and
+  `Result.Err(error)` patterns now bind payload facts from
+  `TypeFact::Option`/`TypeFact::Result` even without registered generic
+  schemas, while preserving the no-script-generics boundary.
 - Added first-pass VM runtime call stack metadata. `VmError` now carries
   copied script stack frames with function names and call-site spans, and nested
   script/closure call failures preserve that stack while retaining a source

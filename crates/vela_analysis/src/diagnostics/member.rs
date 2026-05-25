@@ -470,6 +470,33 @@ mod tests {
         assert!(diagnostics[0].message.contains("QuestState.Active"));
     }
 
+    #[test]
+    fn option_match_patterns_narrow_payload_member_diagnostics() {
+        let exprs = function_exprs(
+            r#"
+            fn main(maybe_player) {
+                match maybe_player {
+                    Option.Some(player) => player.missing,
+                    Option.None => null,
+                };
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["maybe_player"], TypeFact::option(TypeFact::host("Player")));
+        let facts = registry_facts();
+
+        let diagnostics = member_access_diagnostics(&exprs[0], &scope, &facts);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::unknown_field")
+        );
+        assert!(diagnostics[0].message.contains("Player"));
+        assert!(diagnostics[0].message.contains("missing"));
+    }
+
     fn registry_facts() -> RegistryFacts {
         let mut registry = TypeRegistry::new();
         registry.register(

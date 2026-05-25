@@ -4991,3 +4991,28 @@ Consequences:
   expose host state, or add script-language generics.
 - Dynamic or unregistered patterns degrade to `Unknown` binding facts instead
   of blocking compilation or execution.
+
+## 2026-05-25: Option And Result Match Narrowing Uses Dynamic Shapes
+
+Status: Accepted
+
+Context:
+M16 calls for Option/Result-style flow checks. Runtime `?` propagation and
+stdlib helpers already use dynamic enum shapes named `Option.Some`,
+`Option.None`, `Result.Ok`, and `Result.Err`, but analysis match narrowing only
+understood enum variants copied from `TypeRegistry`.
+
+Decision:
+Teach `vela_analysis` match narrowing to recognize dynamic Option and Result
+patterns when the scrutinee has `TypeFact::Option` or `TypeFact::Result`.
+Tuple payload binding field `"0"` receives the corresponding `some`, `ok`, or
+`err` fact. This does not require registered generic schemas and does not
+introduce `Option<T>` or `Result<T, E>` script syntax.
+
+Consequences:
+- Match arms over stdlib Option/Result values get useful payload facts for
+  member diagnostics and expression inference.
+- Registered schema metadata still wins when present; dynamic shapes fill the
+  stdlib gap.
+- The behavior stays analysis-only and does not affect VM matching,
+  reflection permissions, or host mutation boundaries.

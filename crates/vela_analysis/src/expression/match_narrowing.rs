@@ -21,7 +21,14 @@ pub(super) fn narrowed_by_match_pattern(
             scrutinee_path.to_vec(),
             TypeFact::enum_type(enum_name.clone(), Some(variant.clone())),
         );
-        bind_variant_pattern_facts(&mut narrowed, pattern, &enum_name, &variant, facts);
+        bind_variant_pattern_facts(
+            &mut narrowed,
+            pattern,
+            &scrutinee_fact,
+            &enum_name,
+            &variant,
+            facts,
+        );
     } else {
         bind_pattern_facts(&mut narrowed, pattern, &scrutinee_fact, facts);
     }
@@ -61,6 +68,12 @@ fn pattern_path_variant(
             TypeFact::Enum { name, .. } if facts.variant_fact(name, variant).is_some() => {
                 Some((name.clone(), variant.clone()))
             }
+            TypeFact::Option { .. } if is_option_variant(variant) => {
+                Some(("Option".to_owned(), variant.clone()))
+            }
+            TypeFact::Result { .. } if is_result_variant(variant) => {
+                Some(("Result".to_owned(), variant.clone()))
+            }
             _ => None,
         };
     }
@@ -68,7 +81,8 @@ fn pattern_path_variant(
     let owner = owner_path.join(".");
     facts
         .variant_fact(&owner, variant)
-        .map(|_| (owner, variant.clone()))
+        .map(|_| (owner.clone(), variant.clone()))
+        .or_else(|| dynamic_enum_variant(scrutinee_fact, &owner, variant))
 }
 
 fn bind_pattern_facts(
@@ -92,6 +106,7 @@ fn bind_pattern_facts(
 fn bind_variant_pattern_facts(
     scope: &mut ExprFactScope,
     pattern: &Pattern,
+    scrutinee_fact: &TypeFact,
     enum_name: &str,
     variant: &str,
     facts: &RegistryFacts,
@@ -99,10 +114,20 @@ fn bind_variant_pattern_facts(
     let owner = format!("{enum_name}.{variant}");
     match pattern {
         Pattern::TupleVariant { fields, .. } => {
-            bind_tuple_fields(scope, fields, Some(&owner), facts);
+            bind_tuple_fields(
+                scope,
+                fields,
+                Some((&owner, scrutinee_fact, variant)),
+                facts,
+            );
         }
         Pattern::RecordVariant { fields, .. } => {
-            bind_record_fields(scope, fields, Some(&owner), facts);
+            bind_record_fields(
+                scope,
+                fields,
+                Some((&owner, scrutinee_fact, variant)),
+                facts,
+            );
         }
         Pattern::Binding(name) => {
             scope.insert_path(
@@ -117,12 +142,14 @@ fn bind_variant_pattern_facts(
 fn bind_tuple_fields(
     scope: &mut ExprFactScope,
     fields: &[Pattern],
-    owner: Option<&str>,
+    owner: Option<(&str, &TypeFact, &str)>,
     facts: &RegistryFacts,
 ) {
     for (index, pattern) in fields.iter().enumerate() {
         let fact = owner
-            .and_then(|owner| facts.field_fact(owner, &index.to_string()).cloned())
+            .and_then(|(owner, scrutinee_fact, variant)| {
+                variant_field_fact(owner, scrutinee_fact, variant, &index.to_string(), facts)
+            })
             .unwrap_or(TypeFact::Unknown);
         bind_pattern_facts(scope, pattern, &fact, facts);
     }
@@ -131,16 +158,75 @@ fn bind_tuple_fields(
 fn bind_record_fields(
     scope: &mut ExprFactScope,
     fields: &[RecordPatternField],
-    owner: Option<&str>,
+    owner: Option<(&str, &TypeFact, &str)>,
     facts: &RegistryFacts,
 ) {
     for field in fields {
         let fact = owner
-            .and_then(|owner| facts.field_fact(owner, &field.name).cloned())
+            .and_then(|(owner, scrutinee_fact, variant)| {
+                variant_field_fact(owner, scrutinee_fact, variant, &field.name, facts)
+            })
             .unwrap_or(TypeFact::Unknown);
         match &field.pattern {
             Some(pattern) => bind_pattern_facts(scope, pattern, &fact, facts),
             None => scope.insert_path([field.name.clone()], fact),
         }
     }
+}
+
+fn dynamic_enum_variant(
+    scrutinee_fact: &TypeFact,
+    owner: &str,
+    variant: &str,
+) -> Option<(String, String)> {
+    match scrutinee_fact {
+        TypeFact::Option { .. }
+            if owner.rsplit('.').next() == Some("Option") && is_option_variant(variant) =>
+        {
+            Some((owner.to_owned(), variant.to_owned()))
+        }
+        TypeFact::Result { .. }
+            if owner.rsplit('.').next() == Some("Result") && is_result_variant(variant) =>
+        {
+            Some((owner.to_owned(), variant.to_owned()))
+        }
+        _ => None,
+    }
+}
+
+fn variant_field_fact(
+    owner: &str,
+    scrutinee_fact: &TypeFact,
+    variant: &str,
+    field: &str,
+    facts: &RegistryFacts,
+) -> Option<TypeFact> {
+    facts
+        .field_fact(owner, field)
+        .cloned()
+        .or_else(|| dynamic_variant_field_fact(scrutinee_fact, variant, field))
+}
+
+fn dynamic_variant_field_fact(
+    scrutinee_fact: &TypeFact,
+    variant: &str,
+    field: &str,
+) -> Option<TypeFact> {
+    if field != "0" {
+        return None;
+    }
+    match (scrutinee_fact, variant) {
+        (TypeFact::Option { some }, "Some") => Some((**some).clone()),
+        (TypeFact::Result { ok, .. }, "Ok") => Some((**ok).clone()),
+        (TypeFact::Result { err, .. }, "Err") => Some((**err).clone()),
+        _ => None,
+    }
+}
+
+fn is_option_variant(variant: &str) -> bool {
+    matches!(variant, "Some" | "None")
+}
+
+fn is_result_variant(variant: &str) -> bool {
+    matches!(variant, "Ok" | "Err")
 }

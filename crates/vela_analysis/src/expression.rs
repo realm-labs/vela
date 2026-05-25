@@ -608,6 +608,52 @@ mod tests {
         );
     }
 
+    #[test]
+    fn option_match_patterns_bind_dynamic_payload_facts() {
+        let expressions = function_exprs(
+            r#"
+            fn main(maybe_player) {
+                match maybe_player {
+                    Option.Some(player) => player.level,
+                    Option.None => 0,
+                };
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["maybe_player"], TypeFact::option(TypeFact::host("Player")));
+        let facts = player_registry_facts();
+
+        assert_eq!(
+            type_fact_from_expr_with_registry(&expressions[0], &scope, &facts),
+            TypeFact::Int
+        );
+    }
+
+    #[test]
+    fn result_match_patterns_bind_dynamic_payload_facts() {
+        let expressions = function_exprs(
+            r#"
+            fn main(grant_result) {
+                match grant_result {
+                    Result.Ok(player) => player.level,
+                    Result.Err(reason) => reason.len(),
+                };
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new().with_path(
+            ["grant_result"],
+            TypeFact::result(TypeFact::host("Player"), TypeFact::String),
+        );
+        let facts = player_registry_facts();
+
+        assert_eq!(
+            type_fact_from_expr_with_registry(&expressions[0], &scope, &facts),
+            TypeFact::Int
+        );
+    }
+
     fn quest_registry_facts() -> RegistryFacts {
         let mut registry = TypeRegistry::new();
         registry.register(
@@ -618,6 +664,15 @@ mod tests {
                         .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("string")),
                 )
                 .variant(VariantDesc::new(VariantId::new(2), "Done")),
+        );
+        RegistryFacts::from_registry(&registry)
+    }
+
+    fn player_registry_facts() -> RegistryFacts {
+        let mut registry = TypeRegistry::new();
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Player"))
+                .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int")),
         );
         RegistryFacts::from_registry(&registry)
     }
