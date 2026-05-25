@@ -516,6 +516,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added array higher-order script methods `map`, `filter`, `find`, `any`,
   `all`, and `count` backed by script closures, preserving VM budgets, host
   context, and managed-heap roots during callback execution.
+- Updated `array.find` to return dynamic `Option.Some(value)` or
+  `Option.None` instead of `null`, aligning runtime behavior with
+  Option-style propagation and the analysis-only stdlib facts.
 - Added map higher-order script methods `map_values` and `filter`, plus
   value-predicate `any`, `all`, and `count`, with receiver-category dispatch
   shared with array methods in inline and managed-heap execution.
@@ -1061,6 +1064,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `result.unwrap_or`. These operate on the existing dynamic enum value shapes,
   reject mismatched shapes with VM type errors, and run in both inline and
   managed-heap execution without adding script-language generics.
+- Added the first `vela_analysis` crate slice for analysis-only `TypeFact`
+  metadata and stdlib method facts. Array, map, set, and string methods now
+  have focused internal facts for lambda parameter hints and return facts
+  without exposing generic syntax to scripts.
 
 ## Next
 

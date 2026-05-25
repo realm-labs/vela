@@ -4548,3 +4548,51 @@ Consequences:
   same dynamic enum representation.
 - Heap-backed execution continues to work through native-call materialization;
   no new heap object ownership model is introduced.
+
+## 2026-05-25: Stdlib TypeFacts Are Analysis-Only Metadata
+
+Status: Accepted
+
+Context:
+M13 requires standard-library metadata for `TypeFacts` and lambda parameter
+hints. The runtime already supports collection helpers, but placing analysis
+metadata in the VM would mix execution behavior with future diagnostics and
+completion logic.
+
+Decision:
+Add a focused `vela_analysis` crate with copied `TypeFact` values and stdlib
+method facts. Collection and string facts describe receiver categories, lambda
+parameter facts, and return facts for tooling. These facts are internal
+analysis data only and do not add script-language generic syntax.
+
+Consequences:
+- Future diagnostics, completion, and LSP-adjacent work has a stable home for
+  stdlib facts without growing VM dispatch code.
+- Array and map lambda helpers can expose element/key/value facts to tooling
+  while scripts still write plain dynamic code.
+- Runtime behavior remains unchanged; these facts must be wired into later
+  semantic analysis before they affect diagnostics or completion.
+
+## 2026-05-25: Array Find Returns Dynamic Option
+
+Status: Accepted
+
+Context:
+The standard-library architecture specifies that `arr.find(|x| predicate)`
+returns an Option-like enum containing the matched element. The runtime had
+kept an older convenience behavior that returned the raw element or `null`,
+which did not compose with `?` propagation or the dynamic Option helpers.
+
+Decision:
+Change `arr.find` to return `Option.Some(value)` for the first matching value
+and `Option.None` when no value matches. This uses the existing dynamic enum
+representation with tuple payload field `"0"` and does not add script-language
+generic syntax.
+
+Consequences:
+- Collection helpers now align with Option/Result propagation and
+  `option.unwrap_or`/predicate helpers.
+- Scripts must unwrap or match the returned Option instead of comparing the
+  `find` result directly with raw values or `null`.
+- Heap-backed execution continues to work through existing value
+  materialization and root protection around callback calls.

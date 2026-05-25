@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use vela_bytecode::Program;
 
 use crate::heap::{GcRef, HeapValue};
+use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
     value_from_heap_slot,
@@ -72,10 +73,10 @@ pub(crate) fn find(
         let predicate =
             call_unary_callback(&mut runtime, "method find", &args[0], value.clone(), &[])?;
         if is_truthy(&predicate) {
-            return Ok(value);
+            return Ok(option_value("Some", Some(value)));
         }
     }
-    Ok(Value::Null)
+    Ok(option_value("None", None))
 }
 
 pub(crate) fn any(
@@ -414,6 +415,17 @@ fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
 }
 
+fn option_value(variant: &str, payload: Option<Value>) -> Value {
+    let fields = payload
+        .map(|payload| vec![("0".to_owned(), payload)])
+        .unwrap_or_default();
+    Value::Enum {
+        enum_name: "Option".to_owned(),
+        variant: variant.to_owned(),
+        fields: ScriptFields::from_pairs(&format!("Option.{variant}"), fields),
+    }
+}
+
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
@@ -436,7 +448,8 @@ fn main() {
     let missing = values.find(|value| value > 10);
     let count = values.count(|value| value > 1);
     if doubled[2] == 6 && evens[0] == 2 && evens[1] == 4
-        && first_large == 3 && missing == null
+        && option.unwrap_or(first_large, 0) == 3
+        && option.unwrap_or(missing, 9) == 9
         && values.any(|value| value == 4)
         && values.all(|value| value > 0)
     {
@@ -447,8 +460,10 @@ fn main() {
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("array higher-order methods should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
 
-        let result = Vm::new()
+        let result = vm
             .run(&code)
             .expect("array higher-order methods should run");
         assert_eq!(result, Value::Int(3));
@@ -462,9 +477,11 @@ fn main() {
     let lengths = names.map(|name| name.len());
     let matches = names.filter(|name| name.starts_with("w"));
     let found = names.find(|name| name.contains("yr"));
+    let missing = names.find(|name| name == "dragon");
     if lengths[0] == 4 && lengths[2] == 4
         && matches.len() == 2 && matches[1] == "wyrm"
-        && found == "wyrm"
+        && option.unwrap_or(found, "missing") == "wyrm"
+        && option.unwrap_or(missing, "missing") == "missing"
         && names.any(|name| name.ends_with("f"))
         && names.all(|name| name.len() == 4)
     {
@@ -476,8 +493,10 @@ fn main() {
         let code = compile_function_source(SourceId::new(1), source, "main")
             .expect("heap array higher-order methods should compile");
         let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
 
-        let result = Vm::new()
+        let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap array higher-order methods should run");
         assert_eq!(result, Value::Int(2));

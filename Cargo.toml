@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/vela_analysis",
     "crates/vela_bytecode",
     "crates/vela_cli",
     "crates/vela_common",
