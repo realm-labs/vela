@@ -7,6 +7,7 @@ mod lambdas;
 mod methods;
 mod operators;
 mod patterns;
+mod schema_defaults;
 mod script_impls;
 mod script_types;
 mod value_flow;
@@ -40,6 +41,7 @@ use patterns::{
     enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
     record_pattern_field_match, tuple_variant_field_name,
 };
+use schema_defaults::{SchemaFieldDefault, ScriptSchemaDefaults, source_schema_defaults};
 use script_types::{
     ScriptTypeFact, ScriptTypeFlow, expression_script_fact, expression_script_type,
     type_hint_script_type,
@@ -134,6 +136,7 @@ struct CompilerFacts {
     script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
     script_method_ids: BTreeMap<(String, String), MethodId>,
     script_field_slots: ScriptFieldSlots,
+    schema_defaults: ScriptSchemaDefaults,
     type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
@@ -176,11 +179,13 @@ pub fn compile_function_source_with_options(
     let type_symbols = semantic.type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
         script_method_ids: BTreeMap::new(),
         script_field_slots,
+        schema_defaults,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -210,11 +215,13 @@ pub fn compile_program_source_with_options(
     let type_symbols = semantic.type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
         script_method_ids,
         script_field_slots,
+        schema_defaults,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -258,11 +265,13 @@ pub fn compile_module_sources_with_options(
     let type_symbols = semantic.type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
         script_method_ids,
         script_field_slots,
+        schema_defaults,
         type_symbols,
         const_values,
         options: options.clone(),
@@ -441,6 +450,43 @@ impl SemanticSource {
         ScriptFieldSlots::from_graph(&self.graph, type_symbols)
     }
 
+    fn schema_defaults(
+        &self,
+        type_symbols: &BTreeMap<HirDeclId, String>,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> ScriptSchemaDefaults {
+        source_schema_defaults(
+            &self.parsed,
+            &self.graph,
+            self.module,
+            type_symbols,
+            self.const_values_by_name(const_values),
+        )
+    }
+
+    fn const_values_by_name(
+        &self,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> BTreeMap<String, Constant> {
+        let mut values = BTreeMap::new();
+        let Some(declarations) = self.graph.module(self.module) else {
+            return values;
+        };
+        for item in &self.parsed.items {
+            let ItemKind::Const(item) = &item.kind else {
+                continue;
+            };
+            let Some(declaration) = declarations.get(&item.name) else {
+                continue;
+            };
+            let Some(value) = const_values.get(&declaration).cloned() else {
+                continue;
+            };
+            values.insert(item.name.clone(), value);
+        }
+        values
+    }
+
     fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
         let mut values_by_declaration = BTreeMap::new();
         let mut values_by_name = BTreeMap::new();
@@ -558,6 +604,54 @@ impl SemanticModules {
 
     fn script_field_slots(&self, type_symbols: &BTreeMap<HirDeclId, String>) -> ScriptFieldSlots {
         ScriptFieldSlots::from_graph(&self.graph, type_symbols)
+    }
+
+    fn schema_defaults(
+        &self,
+        type_symbols: &BTreeMap<HirDeclId, String>,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> ScriptSchemaDefaults {
+        let mut defaults = ScriptSchemaDefaults::default();
+        for module in &self.modules {
+            let Some(parsed) = self.parsed.get(module) else {
+                continue;
+            };
+            defaults.merge(source_schema_defaults(
+                parsed,
+                &self.graph,
+                *module,
+                type_symbols,
+                self.const_values_by_name(*module, const_values),
+            ));
+        }
+        defaults
+    }
+
+    fn const_values_by_name(
+        &self,
+        module: ModuleId,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> BTreeMap<String, Constant> {
+        let mut values = self.imported_const_values(module, const_values);
+        let Some(parsed) = self.parsed.get(&module) else {
+            return values;
+        };
+        let Some(declarations) = self.graph.module(module) else {
+            return values;
+        };
+        for item in &parsed.items {
+            let ItemKind::Const(item) = &item.kind else {
+                continue;
+            };
+            let Some(declaration) = declarations.get(&item.name) else {
+                continue;
+            };
+            let Some(value) = const_values.get(&declaration).cloned() else {
+                continue;
+            };
+            values.insert(item.name.clone(), value);
+        }
+        values
     }
 
     fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
@@ -1103,23 +1197,7 @@ impl<'ast> Compiler<'ast> {
             }
             ExprKind::Call { callee, args } => {
                 if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
-                    let fields = args
-                        .iter()
-                        .enumerate()
-                        .map(|(index, arg)| {
-                            if arg.name.is_some() {
-                                return Err(CompileError::new(
-                                    CompileErrorKind::UnsupportedSyntax(
-                                        "named tuple variant argument",
-                                    ),
-                                ));
-                            }
-                            Ok((
-                                tuple_variant_field_name(index),
-                                self.compile_expr(&arg.value)?,
-                            ))
-                        })
-                        .collect::<CompileResult<Vec<_>>>()?;
+                    let fields = self.compile_tuple_variant_fields(&enum_name, &variant, args)?;
                     let dst = self.alloc_register()?;
                     self.emit(InstructionKind::MakeEnum {
                         dst,
@@ -1285,13 +1363,11 @@ impl<'ast> Compiler<'ast> {
                 Ok(dst)
             }
             ExprKind::Record { path, fields } => {
-                let fields = fields
-                    .iter()
-                    .map(|field| self.compile_record_field(field))
-                    .collect::<CompileResult<Vec<_>>>()?;
                 let dst = self.alloc_register()?;
                 if let Some((enum_name, variant)) = enum_variant_path(path) {
                     let enum_name = self.type_symbol_at_span(expr.span).unwrap_or(enum_name);
+                    let defaults = self.enum_default_fields(&enum_name, &variant);
+                    let fields = self.compile_record_fields(fields, defaults)?;
                     self.emit(InstructionKind::MakeEnum {
                         dst,
                         enum_name,
@@ -1302,6 +1378,8 @@ impl<'ast> Compiler<'ast> {
                     let type_name = self
                         .type_symbol_at_span(expr.span)
                         .unwrap_or_else(|| path.join("."));
+                    let defaults = self.record_default_fields(&type_name);
+                    let fields = self.compile_record_fields(fields, defaults)?;
                     self.emit(InstructionKind::MakeRecord {
                         dst,
                         type_name,
@@ -2655,6 +2733,45 @@ impl<'ast> Compiler<'ast> {
         Ok((key, value))
     }
 
+    fn compile_tuple_variant_fields(
+        &mut self,
+        enum_name: &str,
+        variant: &str,
+        args: &[Argument],
+    ) -> CompileResult<Vec<(String, Register)>> {
+        let mut fields = Vec::new();
+        let mut explicit_names = BTreeSet::new();
+        for (index, arg) in args.iter().enumerate() {
+            if arg.name.is_some() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "named tuple variant argument",
+                )));
+            }
+            let name = tuple_variant_field_name(index);
+            let value = self.compile_expr(&arg.value)?;
+            explicit_names.insert(name.clone());
+            fields.push((name, value));
+        }
+        let defaults = self.enum_default_fields(enum_name, variant);
+        self.compile_schema_default_fields(&mut fields, &explicit_names, defaults)?;
+        Ok(fields)
+    }
+
+    fn compile_record_fields(
+        &mut self,
+        fields: &[vela_syntax::RecordField],
+        defaults: Vec<SchemaFieldDefault>,
+    ) -> CompileResult<Vec<(String, Register)>> {
+        let mut compiled = Vec::new();
+        let mut explicit_names = BTreeSet::new();
+        for field in fields {
+            explicit_names.insert(field.name.clone());
+            compiled.push(self.compile_record_field(field)?);
+        }
+        self.compile_schema_default_fields(&mut compiled, &explicit_names, defaults)?;
+        Ok(compiled)
+    }
+
     fn compile_record_field(
         &mut self,
         field: &vela_syntax::RecordField,
@@ -2665,6 +2782,46 @@ impl<'ast> Compiler<'ast> {
             self.local_register_at_span(field.span, &field.name)?
         };
         Ok((field.name.clone(), value))
+    }
+
+    fn compile_schema_default_fields(
+        &mut self,
+        fields: &mut Vec<(String, Register)>,
+        explicit_names: &BTreeSet<String>,
+        defaults: Vec<SchemaFieldDefault>,
+    ) -> CompileResult<()> {
+        for default in defaults {
+            if explicit_names.contains(&default.name) {
+                continue;
+            }
+            let value = self.compile_schema_field_default(&default)?;
+            fields.push((default.name, value));
+        }
+        Ok(())
+    }
+
+    fn compile_schema_field_default(
+        &mut self,
+        default: &SchemaFieldDefault,
+    ) -> CompileResult<Register> {
+        if let Some(value) = evaluate_const_expr(&default.value, &default.constants)? {
+            return self.emit_constant(value);
+        }
+        self.compile_expr(&default.value)
+    }
+
+    fn record_default_fields(&self, type_name: &str) -> Vec<SchemaFieldDefault> {
+        self.facts
+            .schema_defaults
+            .record(type_name)
+            .map_or_else(Vec::new, <[SchemaFieldDefault]>::to_vec)
+    }
+
+    fn enum_default_fields(&self, type_name: &str, variant: &str) -> Vec<SchemaFieldDefault> {
+        self.facts
+            .schema_defaults
+            .enum_variant(type_name, variant)
+            .map_or_else(Vec::new, <[SchemaFieldDefault]>::to_vec)
     }
 
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {

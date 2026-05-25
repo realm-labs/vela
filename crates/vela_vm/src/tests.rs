@@ -2120,6 +2120,42 @@ pub enum Damage { Physical }
 }
 
 #[test]
+fn runs_cross_module_imported_constructor_defaults() {
+    let program = compile_module_sources(&[
+        ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.main"),
+            r#"
+use game.reward.Reward as Prize
+
+fn main() {
+    let reward = Prize {};
+    return reward.count + reward.item_id.len();
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_dotted("game.reward"),
+            r#"
+pub const BASE_COUNT = 5
+
+pub struct Reward {
+    item_id: string = "gold",
+    count: int = BASE_COUNT + 2,
+}
+"#,
+        ),
+    ])
+    .expect("compile imported constructor defaults");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "game.main.main", &[]),
+        Ok(Value::Int(11))
+    );
+}
+
+#[test]
 fn runs_compiled_cross_module_imported_match_patterns() {
     let program = compile_module_sources(&[
         ModuleSource::new(
@@ -2733,6 +2769,33 @@ fn main() {
 }
 
 #[test]
+fn runs_schema_field_defaults_for_record_constructors() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+const BASE_COUNT = 2
+
+struct Reward {
+    item_id: string = "gold",
+    count: int = BASE_COUNT + 3,
+}
+
+fn main() {
+    let explicit = Reward { count: 7 };
+    let default_count = Reward { item_id: "xp" };
+    return explicit.item_id.len() + explicit.count + default_count.count;
+}
+"#,
+    )
+    .expect("compile defaulted record constructor");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "main", &[]),
+        Ok(Value::Int(16))
+    );
+}
+
+#[test]
 fn record_constructors_use_stable_slot_shapes() {
     let first = compile_function_source(
         SourceId::new(1),
@@ -2901,6 +2964,39 @@ fn main() {
             variant: "Physical".into(),
             fields: ScriptFields::from_pairs("Damage.Physical", fields),
         })
+    );
+}
+
+#[test]
+fn runs_schema_field_defaults_for_enum_constructors() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum Damage {
+    Physical { amount: int = 7, element: string = "slash" },
+    Magical(amount: int = 3, element: string = "arcane"),
+}
+
+fn main() {
+    let physical = Damage.Physical { amount: 5 };
+    let magical = Damage.Magical();
+    let physical_score = match physical {
+        Damage.Physical { amount, element } => amount + element.len(),
+        _ => 0,
+    };
+    let magical_score = match magical {
+        Damage.Magical(amount, element) => amount + element.len(),
+        _ => 0,
+    };
+    return physical_score + magical_score;
+}
+"#,
+    )
+    .expect("compile defaulted enum constructors");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "main", &[]),
+        Ok(Value::Int(19))
     );
 }
 

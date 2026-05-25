@@ -1491,6 +1491,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   HIR keeps their source spans, and reflected script field metadata reports
   whether a field is defaulted without changing script type layout or exposing
   runtime schema mutation.
+- Made schema field defaults executable for known script constructors. The
+  bytecode compiler now fills omitted script struct fields plus enum record and
+  tuple payload fields from declaration defaults, including pure const
+  expressions and imported module constructors, while preserving the existing
+  dynamic record path for undeclared shapes.
 
 ## Next
 
