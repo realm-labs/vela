@@ -78,6 +78,7 @@ pub struct StructField {
     pub name: String,
     pub span: Span,
     pub type_hint: Option<TypeHint>,
+    pub default_value: Option<Expr>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

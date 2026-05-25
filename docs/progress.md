@@ -1486,6 +1486,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   fields, enum variants, enum payload fields, trait methods, and impl methods
   now report source spans and are rejected before bytecode generation can build
   ambiguous field slots, reflection metadata, or hot-reload ABI manifests.
+- Preserved schema field default metadata from the planned grammar. Struct
+  fields and enum record/tuple payload fields now parse default expressions,
+  HIR keeps their source spans, and reflected script field metadata reports
+  whether a field is defaulted without changing script type layout or exposing
+  runtime schema mutation.
 
 ## Next
 

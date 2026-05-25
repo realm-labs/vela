@@ -2287,6 +2287,43 @@ enum QuestProgress {
     }
 
     #[test]
+    fn lowers_schema_field_default_metadata() {
+        let mut graph = ModuleGraph::new();
+        let module = graph.add_source(source(
+            1,
+            "game.quest",
+            r#"
+struct Reward {
+    item_id: string = "gold",
+    count: int = 1,
+}
+
+enum QuestProgress {
+    Active { quest_id: string, count: int = 0 },
+}
+"#,
+        ));
+        let declarations = graph.module(module).expect("module declarations");
+        let reward = declarations.get("Reward").expect("Reward declaration");
+        let progress = declarations
+            .get("QuestProgress")
+            .expect("QuestProgress declaration");
+
+        assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+        let reward_shape = graph.struct_shape(reward).expect("Reward shape");
+        assert!(reward_shape.fields[0].default_value_span.is_some());
+        assert!(reward_shape.fields[1].default_value_span.is_some());
+
+        let progress_shape = graph.enum_shape(progress).expect("Progress shape");
+        let crate::EnumVariantFieldsHint::Record(fields) = &progress_shape.variants[0].fields
+        else {
+            panic!("expected record fields");
+        };
+        assert!(fields[0].default_value_span.is_none());
+        assert!(fields[1].default_value_span.is_some());
+    }
+
+    #[test]
     fn lowers_impl_metadata_and_method_bindings() {
         let mut graph = ModuleGraph::new();
         let module = graph.add_source(source(

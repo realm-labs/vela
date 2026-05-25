@@ -646,6 +646,7 @@ fn field_record_fields(field: &FieldDesc) -> BTreeMap<String, HostValue> {
             .map_or(HostValue::Null, |hint| HostValue::String(hint.clone())),
     );
     fields.insert("writable".to_owned(), HostValue::Bool(field.writable));
+    fields.insert("defaulted".to_owned(), HostValue::Bool(field.has_default));
     fields.insert("access".to_owned(), field_access_record(field));
     fields.insert("docs".to_owned(), docs_value(field.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&field.attrs));

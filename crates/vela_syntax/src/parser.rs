@@ -1049,17 +1049,28 @@ impl Parser {
             let attrs = self.parse_attributes();
             if let Some((name, name_span)) = self.eat_ident_with_span() {
                 let type_hint = self.parse_type_annotation();
+                let default_value = if self.eat_symbol(Symbol::Equal).is_some() {
+                    Some(self.parse_expression())
+                } else {
+                    None
+                };
                 let span_start = attrs
                     .first()
                     .map_or(name_span.start, |attr| attr.span.start);
-                let end = type_hint
-                    .as_ref()
-                    .map_or(name_span.end, |hint| hint.span.end);
+                let end = default_value.as_ref().map_or_else(
+                    || {
+                        type_hint
+                            .as_ref()
+                            .map_or(name_span.end, |hint| hint.span.end)
+                    },
+                    |value| value.span.end,
+                );
                 fields.push(StructField {
                     attrs,
                     name,
                     span: Span::new(name_span.source, span_start, end),
                     type_hint,
+                    default_value,
                 });
                 self.skip_member_tail();
             } else {
@@ -1987,6 +1998,53 @@ enum QuestProgress {
             panic!("expected tuple variant fields");
         };
         assert_eq!(param_names(fields), ["quest_id"]);
+    }
+
+    #[test]
+    fn parses_struct_and_record_variant_field_defaults() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+struct Reward {
+    item_id: string = "gold",
+    count: int = 1,
+}
+
+enum QuestProgress {
+    Active { quest_id: string, count: int = 0 },
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Struct(record) = &parsed.items[0].kind else {
+            panic!("expected struct item");
+        };
+        assert!(matches!(
+            record.fields[0]
+                .default_value
+                .as_ref()
+                .map(|expr| &expr.kind),
+            Some(ExprKind::Literal(Literal::String(value))) if value == "gold"
+        ));
+        assert!(matches!(
+            record.fields[1]
+                .default_value
+                .as_ref()
+                .map(|expr| &expr.kind),
+            Some(ExprKind::Literal(Literal::Int(value))) if value == "1"
+        ));
+
+        let ItemKind::Enum(enumeration) = &parsed.items[1].kind else {
+            panic!("expected enum item");
+        };
+        let EnumVariantFields::Record(fields) = &enumeration.variants[0].fields else {
+            panic!("expected record variant fields");
+        };
+        assert!(matches!(
+            fields[1].default_value.as_ref().map(|expr| &expr.kind),
+            Some(ExprKind::Literal(Literal::Int(value))) if value == "0"
+        ));
     }
 
     #[test]

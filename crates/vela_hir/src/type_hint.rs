@@ -74,6 +74,7 @@ pub struct StructFieldHint {
     pub name: String,
     pub span: Span,
     pub type_hint: Option<HirTypeHint>,
+    pub default_value_span: Option<Span>,
 }
 
 impl StructFieldHint {
@@ -84,6 +85,7 @@ impl StructFieldHint {
             name: field.name.clone(),
             span: field.span,
             type_hint: field.type_hint.as_ref().map(HirTypeHint::from_syntax),
+            default_value_span: field.default_value.as_ref().map(|value| value.span),
         }
     }
 }

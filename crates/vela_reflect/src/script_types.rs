@@ -27,6 +27,7 @@ impl TypeRegistry {
                                         stable_field_id(&type_name, &field.name),
                                         field.name.clone(),
                                     )
+                                    .defaulted(field.default_value_span.is_some())
                                     .source_span(field.span),
                                     &field.type_hint,
                                 ),
@@ -59,17 +60,18 @@ impl TypeRegistry {
                                         .source_span(variant.span),
                                         &variant.attrs,
                                     ),
-                                    |desc, (field_name, field_attrs, field_span, type_hint)| {
+                                    |desc, field| {
                                         desc.field(apply_field_attrs(
                                             apply_field_type_hint_display(
                                                 FieldDesc::new(
-                                                    stable_field_id(&variant_owner, &field_name),
-                                                    field_name,
+                                                    stable_field_id(&variant_owner, &field.name),
+                                                    field.name,
                                                 )
-                                                .source_span(field_span),
-                                                &type_hint,
+                                                .defaulted(field.has_default)
+                                                .source_span(field.span),
+                                                &field.type_hint,
                                             ),
-                                            &field_attrs,
+                                            &field.attrs,
                                         ))
                                     },
                                 );
@@ -197,38 +199,42 @@ fn apply_trait_method_signature(
     desc
 }
 
-fn enum_variant_fields(
-    fields: &EnumVariantFieldsHint,
-) -> Vec<(String, Vec<vela_hir::HirAttribute>, Span, String)> {
+struct VariantFieldMetadata {
+    name: String,
+    attrs: Vec<vela_hir::HirAttribute>,
+    span: Span,
+    type_hint: String,
+    has_default: bool,
+}
+
+fn enum_variant_fields(fields: &EnumVariantFieldsHint) -> Vec<VariantFieldMetadata> {
     match fields {
         EnumVariantFieldsHint::Unit => Vec::new(),
         EnumVariantFieldsHint::Tuple(fields) => fields
             .iter()
             .enumerate()
-            .map(|(index, field)| {
-                (
-                    index.to_string(),
-                    Vec::new(),
-                    field.span,
-                    field
-                        .type_hint
-                        .as_ref()
-                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
-                )
+            .map(|(index, field)| VariantFieldMetadata {
+                name: index.to_string(),
+                attrs: Vec::new(),
+                span: field.span,
+                type_hint: field
+                    .type_hint
+                    .as_ref()
+                    .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                has_default: field.default_value_span.is_some(),
             })
             .collect(),
         EnumVariantFieldsHint::Record(fields) => fields
             .iter()
-            .map(|field| {
-                (
-                    field.name.clone(),
-                    field.attrs.clone(),
-                    field.span,
-                    field
-                        .type_hint
-                        .as_ref()
-                        .map_or_else(String::new, vela_hir::HirTypeHint::display),
-                )
+            .map(|field| VariantFieldMetadata {
+                name: field.name.clone(),
+                attrs: field.attrs.clone(),
+                span: field.span,
+                type_hint: field
+                    .type_hint
+                    .as_ref()
+                    .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                has_default: field.default_value_span.is_some(),
             })
             .collect(),
     }
@@ -296,11 +302,11 @@ fn enum_variant_signature(type_name: &str, variant: &vela_hir::EnumVariantHint) 
     let variant_owner = enum_variant_owner(type_name, &variant.name);
     let mut fields = enum_variant_fields(&variant.fields)
         .into_iter()
-        .map(|(field_name, _, _, type_hint)| {
+        .map(|field| {
             (
-                stable_field_id(&variant_owner, &field_name).get(),
-                field_name,
-                type_hint,
+                stable_field_id(&variant_owner, &field.name).get(),
+                field.name,
+                field.type_hint,
             )
         })
         .collect::<Vec<_>>();
@@ -389,14 +395,14 @@ mod tests {
 #[domain("gameplay")]
 struct Reward {
     #[doc("Reward count.")]
-    count: int,
-    item_id: string,
+    count: int = 1,
+    item_id: string = "gold",
 }
 
 enum QuestProgress {
     None,
     #[active]
-    Active { quest_id: string, count: int },
+    Active { quest_id: string, count: int = 0 },
     Finished(quest_id: string),
 }
 "#,
@@ -445,6 +451,7 @@ enum QuestProgress {
             .find(|field| field.name == "count")
             .expect("count field");
         assert_eq!(count_field.type_hint.as_deref(), Some("int"));
+        assert!(count_field.has_default);
         assert_eq!(
             count_field.source_span.map(|span| span.source),
             Some(SourceId::new(1))
@@ -482,6 +489,13 @@ enum QuestProgress {
                 .find(|field| field.name == "quest_id")
                 .and_then(|field| field.type_hint.as_deref()),
             Some("string")
+        );
+        assert!(
+            active
+                .fields
+                .iter()
+                .find(|field| field.name == "count")
+                .is_some_and(|field| field.has_default)
         );
         assert_eq!(
             active
