@@ -20,6 +20,10 @@ pub enum EngineErrorKind {
     DuplicateNativeFunctionName {
         name: String,
     },
+    DuplicateNativeFunctionParamName {
+        function: String,
+        name: String,
+    },
     DuplicateTypeId {
         id: u32,
     },
@@ -79,6 +83,17 @@ pub enum EngineErrorKind {
     DuplicateHostMethodName {
         name: String,
     },
+    DuplicateHostMethodParamName {
+        type_name: String,
+        method: String,
+        name: String,
+    },
+    DuplicateTraitMethodParamName {
+        type_name: String,
+        trait_name: String,
+        method: String,
+        name: String,
+    },
     UnknownNativeMethodOwner {
         name: String,
     },
@@ -95,6 +110,12 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DuplicateNativeFunctionName { name } => {
                 write!(formatter, "duplicate native function name {name}")
+            }
+            EngineErrorKind::DuplicateNativeFunctionParamName { function, name } => {
+                write!(
+                    formatter,
+                    "duplicate parameter name {name} on native function {function}"
+                )
             }
             EngineErrorKind::DuplicateTypeId { id } => write!(formatter, "duplicate type id {id}"),
             EngineErrorKind::DuplicateTypeName { name } => {
@@ -175,6 +196,27 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DuplicateHostMethodName { name } => {
                 write!(formatter, "duplicate host method name {name}")
+            }
+            EngineErrorKind::DuplicateHostMethodParamName {
+                type_name,
+                method,
+                name,
+            } => {
+                write!(
+                    formatter,
+                    "duplicate parameter name {name} on host method {type_name}.{method}"
+                )
+            }
+            EngineErrorKind::DuplicateTraitMethodParamName {
+                type_name,
+                trait_name,
+                method,
+                name,
+            } => {
+                write!(
+                    formatter,
+                    "duplicate parameter name {name} on trait method {type_name}.{trait_name}.{method}"
+                )
             }
             EngineErrorKind::UnknownNativeMethodOwner { name } => {
                 write!(formatter, "unknown native method owner type {name}")

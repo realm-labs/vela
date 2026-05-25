@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use vela_reflect::TypeDesc;
+use vela_reflect::{MethodParamDesc, TypeDesc};
 
 use crate::{
     ContextHostNativeFunctionEntry, EngineError, EngineErrorKind, EngineResult,
@@ -48,6 +48,11 @@ pub(crate) fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
                     name: method.name.clone(),
                 }));
             }
+            validate_host_method_params(
+                desc.key.name.as_str(),
+                method.name.as_str(),
+                &method.params,
+            )?;
         }
     }
 
@@ -166,6 +171,54 @@ fn validate_trait_methods(
                 },
             ));
         }
+        validate_trait_method_params(
+            type_name,
+            trait_desc.name.as_str(),
+            method.name.as_str(),
+            &method.params,
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_host_method_params(
+    type_name: &str,
+    method: &str,
+    params: &[MethodParamDesc],
+) -> EngineResult<()> {
+    let mut names = BTreeSet::new();
+    for param in params {
+        if !names.insert(param.name.as_str()) {
+            return Err(EngineError::new(
+                EngineErrorKind::DuplicateHostMethodParamName {
+                    type_name: type_name.to_owned(),
+                    method: method.to_owned(),
+                    name: param.name.clone(),
+                },
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_trait_method_params(
+    type_name: &str,
+    trait_name: &str,
+    method: &str,
+    params: &[MethodParamDesc],
+) -> EngineResult<()> {
+    let mut names = BTreeSet::new();
+    for param in params {
+        if !names.insert(param.name.as_str()) {
+            return Err(EngineError::new(
+                EngineErrorKind::DuplicateTraitMethodParamName {
+                    type_name: type_name.to_owned(),
+                    trait_name: trait_name.to_owned(),
+                    method: method.to_owned(),
+                    name: param.name.clone(),
+                },
+            ));
+        }
     }
     Ok(())
 }
@@ -196,7 +249,23 @@ pub(crate) fn validate_native_functions(
                 },
             ));
         }
+        validate_native_function_params(desc)?;
     }
 
+    Ok(())
+}
+
+fn validate_native_function_params(desc: &crate::NativeFunctionDesc) -> EngineResult<()> {
+    let mut names = BTreeSet::new();
+    for param in &desc.params {
+        if !names.insert(param.name.as_str()) {
+            return Err(EngineError::new(
+                EngineErrorKind::DuplicateNativeFunctionParamName {
+                    function: desc.name.clone(),
+                    name: param.name.clone(),
+                },
+            ));
+        }
+    }
     Ok(())
 }

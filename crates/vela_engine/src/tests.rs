@@ -7,8 +7,9 @@ use vela_common::{
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
 use vela_reflect::{
-    FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission,
-    ReflectPermissionSet, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey, VariantDesc,
+    FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc,
+    ReflectPermission, ReflectPermissionSet, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
+    TypeKey, VariantDesc,
 };
 use vela_vm::{ExecutionBudgetKind, VmError, VmResult};
 use vela_vm::{HostExecution, Value, VmErrorKind};
@@ -3497,6 +3498,26 @@ fn engine_rejects_duplicate_context_host_native_ids() {
 }
 
 #[test]
+fn engine_rejects_duplicate_native_function_param_names() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.grant_reward", NativeFunctionId::new(31))
+                .param("amount", TypeHint::Int)
+                .param("amount", TypeHint::String),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionParamName {
+            function: "game.grant_reward".to_owned(),
+            name: "amount".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_type_names() {
     let result = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
@@ -3716,6 +3737,31 @@ fn engine_rejects_duplicate_trait_method_names() {
 }
 
 #[test]
+fn engine_rejects_duplicate_trait_method_param_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
+                trait_desc_with_id(TraitId::new(1), "Damageable").method(
+                    TraitMethodDesc::new(MethodId::new(1), "damage")
+                        .param(MethodParamDesc::new("amount"))
+                        .param(MethodParamDesc::new("amount")),
+                ),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateTraitMethodParamName {
+            type_name: "Player".to_owned(),
+            trait_name: "Damageable".to_owned(),
+            method: "damage".to_owned(),
+            name: "amount".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_host_method_names() {
     let result = Engine::builder()
         .register_type(
@@ -3729,6 +3775,50 @@ fn engine_rejects_duplicate_host_method_names() {
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodName {
             name: "grant_exp".to_owned()
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_host_method_param_names() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1)).method(
+                MethodDesc::new(HostMethodId::new(1), "grant_exp")
+                    .param(MethodParamDesc::new("amount"))
+                    .param(MethodParamDesc::new("amount")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodParamName {
+            type_name: "Player".to_owned(),
+            method: "grant_exp".to_owned(),
+            name: "amount".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_native_method_param_names() {
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let result = Engine::builder()
+        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_host_method_desc(
+            NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp")
+                .param("amount", TypeHint::Int)
+                .param("amount", TypeHint::String),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodParamName {
+            type_name: "Player".to_owned(),
+            method: "grant_exp".to_owned(),
+            name: "amount".to_owned(),
         }
     ));
 }

@@ -1469,6 +1469,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `ScriptHost` and `ScriptReflect` schema hashes now sort fields by stable
   field ID/name before hashing, so equivalent macro-generated schemas survive
   Rust field reordering while still changing for member or metadata changes.
+- Tightened M14 explicit Engine metadata validation for parameter names.
+  Registered native functions, host methods, injected native method
+  descriptors, and trait method metadata now reject duplicate reflected
+  parameter names before entering `TypeRegistry` or hot-reload ABI metadata.
 
 ## Next
 
