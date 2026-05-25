@@ -1,7 +1,11 @@
+use vela_common::{FieldId, HostObjectId, HostTypeId};
 use vela_engine::{
-    EffectSet, Engine, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint, Value,
+    EffectSet, Engine, FunctionAccess, HostRef, NativeCallContext, NativeFunctionDesc,
+    NativeFunctionId, TypeHint, Value,
 };
-use vela_macros::script_function;
+use vela_host::{HostPath, HostValue, MockStateAdapter, PatchOp, PatchTx};
+use vela_macros::{script_context_function, script_function};
+use vela_vm::{HostExecution, VmResult};
 
 /// Grants a copied bonus amount.
 #[script_function(
@@ -13,6 +17,24 @@ use vela_macros::script_function;
 )]
 fn grant_bonus(amount: i64, multiplier: i64) -> i64 {
     amount * multiplier
+}
+
+/// Sets a copied player level through PatchTx.
+#[script_context_function(
+    id = 42,
+    name = "game.set_level",
+    effect = "write_host",
+    reflect = true,
+    permission = "player.write"
+)]
+fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<bool> {
+    ctx.charge_instructions(3)?;
+    ctx.tx().set_path(
+        HostPath::new(player).field(FieldId::new(1)),
+        HostValue::Int(level),
+        None,
+    )?;
+    Ok(ctx.has_permission("player.write"))
 }
 
 #[test]
@@ -30,6 +52,24 @@ fn script_function_generates_native_function_metadata() {
                     .require_permission("bonus.read"),
             )
             .docs("Grants a copied bonus amount."),
+    );
+}
+
+#[test]
+fn script_context_function_generates_native_function_metadata() {
+    assert_eq!(
+        vela_native_function_desc_set_level(),
+        NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(42))
+            .param("player", TypeHint::Any)
+            .param("level", TypeHint::Int)
+            .returns(TypeHint::Bool)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Sets a copied player level through PatchTx."),
     );
 }
 
@@ -59,6 +99,49 @@ fn main() {
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(42)),
     );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_context_function_registers_typed_native_with_engine() {
+    let engine = vela_register_context_native_function_set_level(
+        Engine::builder().grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro context native function");
+    let root = unique_test_dir("script_context_function_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(player) {
+    return game.set_level(player, 9);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered context native");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host,
+        ),
+        Ok(Value::Bool(true)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 

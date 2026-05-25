@@ -1037,6 +1037,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Annotated functions now generate stable `NativeFunctionDesc` metadata plus an
   EngineBuilder registration helper that uses the typed native function API,
   with tests proving macro-generated natives compile and execute from scripts.
+- Added `#[script_context_function]` for host-aware native Rust functions that
+  receive `NativeCallContext`. Macro-generated registration uses
+  `EngineBuilder::register_typed_context_host_native_fn`, skips the context
+  parameter in reflected script metadata, and tests prove callbacks can charge
+  budget and record `PatchTx` writes without exposing Rust references.
 
 ## Next
 

@@ -4428,3 +4428,27 @@ Consequences:
   permission checks.
 - This first macro covers pure native functions only; context/host-native
   macro wrappers remain separate follow-up work.
+
+## 2026-05-25: Context Function Macro Uses NativeCallContext Boundary
+
+Status: Accepted
+
+Context:
+Pure `#[script_function]` registration is not enough for host-aware native
+callbacks that need permissions, budgets, adapters, and `PatchTx`. The Engine
+already exposes `register_typed_context_host_native_fn` for that safe boundary.
+
+Decision:
+Add `#[script_context_function]` as a second native function attribute macro.
+The first Rust parameter must be `NativeCallContext`; it is omitted from
+script-visible parameter metadata and from the copied argument tuple. The
+generated EngineBuilder helper registers through
+`register_typed_context_host_native_fn`.
+
+Consequences:
+- Macro-authored host-aware natives can charge budget and record patches while
+  keeping host mutation inside `NativeCallContext`/`PatchTx`.
+- Scripts still see only copied arguments and return values; no real Rust
+  references are exposed.
+- HostExecution-only and callable method wrapper macros remain separate
+  follow-up slices.

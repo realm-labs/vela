@@ -19,6 +19,12 @@ struct FunctionMeta {
     returns: HintKind,
 }
 
+#[derive(Clone, Copy)]
+enum FunctionMode {
+    Pure,
+    Context,
+}
+
 #[derive(Clone)]
 struct ParamMeta {
     name: String,
@@ -59,24 +65,31 @@ struct ScriptFunctionAttrs {
 }
 
 pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
-    match expand_result(attr, input) {
+    match expand_result(attr, input, FunctionMode::Pure) {
         Ok(tokens) => tokens,
         Err(error) => error.to_compile_error(),
     }
 }
 
-fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
+pub(crate) fn expand_context(attr: TokenStream, input: TokenStream) -> TokenStream {
+    match expand_result(attr, input, FunctionMode::Context) {
+        Ok(tokens) => tokens,
+        Err(error) => error.to_compile_error(),
+    }
+}
+
+fn expand_result(attr: TokenStream, input: TokenStream, mode: FunctionMode) -> Result<TokenStream> {
     let item = parse2::<ItemFn>(input)?;
     if !item.sig.generics.params.is_empty() {
         return Err(spanned_error(
             &item.sig.generics,
-            "#[script_function] does not support generic functions",
+            &format!("{} does not support generic functions", mode.attr_name()),
         ));
     }
     if item.sig.asyncness.is_some() {
         return Err(spanned_error(
             &item.sig.asyncness,
-            "#[script_function] does not support async functions",
+            &format!("{} does not support async functions", mode.attr_name()),
         ));
     }
 
@@ -84,16 +97,17 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let id = attrs.id.ok_or_else(|| {
         error(
             item.sig.ident.span(),
-            "script functions require #[script_function(id = N)]",
+            &format!("script functions require {}(id = N)", mode.attr_name()),
         )
     })?;
     let docs = attrs.docs.clone().or_else(|| docs_from_attrs(&item.attrs));
-    let meta = function_meta(&item, attrs, id, docs)?;
+    let meta = function_meta(&item, attrs, id, docs, mode)?;
     let fn_ident = item.sig.ident.clone();
     let desc_name = format_ident!("vela_native_function_desc_{}", fn_ident);
-    let register_name = format_ident!("vela_register_native_function_{}", fn_ident);
+    let register_name = mode.register_helper_ident(&fn_ident);
     let desc_tokens = desc_tokens(&meta);
     let args_tuple = args_tuple_tokens(&meta.params);
+    let register_tokens = register_tokens(mode, &args_tuple, &desc_name, &fn_ident);
 
     Ok(quote! {
         #item
@@ -107,9 +121,25 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         pub fn #register_name(
             builder: ::vela_engine::EngineBuilder,
         ) -> ::vela_engine::EngineBuilder {
-            builder.register_typed_native_fn::<#args_tuple, _>(#desc_name(), #fn_ident)
+            #register_tokens
         }
     })
+}
+
+impl FunctionMode {
+    fn attr_name(self) -> &'static str {
+        match self {
+            Self::Pure => "#[script_function]",
+            Self::Context => "#[script_context_function]",
+        }
+    }
+
+    fn register_helper_ident(self, fn_ident: &syn::Ident) -> syn::Ident {
+        match self {
+            Self::Pure => format_ident!("vela_register_native_function_{}", fn_ident),
+            Self::Context => format_ident!("vela_register_context_native_function_{}", fn_ident),
+        }
+    }
 }
 
 fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFunctionAttrs> {
@@ -159,15 +189,44 @@ fn function_meta(
     attrs: ScriptFunctionAttrs,
     id: u64,
     docs: Option<String>,
+    mode: FunctionMode,
 ) -> Result<FunctionMeta> {
     let mut params = Vec::new();
-    for input in &item.sig.inputs {
+    let mut inputs = item.sig.inputs.iter();
+    if let FunctionMode::Context = mode {
+        let Some(input) = inputs.next() else {
+            return Err(error(
+                item.sig.ident.span(),
+                "#[script_context_function] requires a NativeCallContext first parameter",
+            ));
+        };
+        let FnArg::Typed(param) = input else {
+            return Err(spanned_error(
+                input,
+                "script context functions cannot use Rust self receivers",
+            ));
+        };
+        if !is_context_param(param) {
+            return Err(spanned_error(
+                input,
+                "#[script_context_function] first parameter must be NativeCallContext",
+            ));
+        }
+    }
+
+    for input in inputs {
         let FnArg::Typed(param) = input else {
             return Err(spanned_error(
                 input,
                 "script functions cannot use Rust self receivers",
             ));
         };
+        if matches!(mode, FunctionMode::Pure) && is_context_param(param) {
+            return Err(spanned_error(
+                input,
+                "use #[script_context_function] for NativeCallContext callbacks",
+            ));
+        }
         params.push(ParamMeta {
             name: param_name(param),
             ty: param.ty.as_ref().clone(),
@@ -185,6 +244,10 @@ fn function_meta(
         params,
         returns: return_hint(&item.sig.output),
     })
+}
+
+fn is_context_param(param: &PatType) -> bool {
+    type_ident(&param.ty).is_some_and(|ident| ident == "NativeCallContext")
 }
 
 fn param_name(param: &PatType) -> String {
@@ -328,6 +391,27 @@ fn args_tuple_tokens(params: &[ParamMeta]) -> TokenStream {
     }
 }
 
+fn register_tokens(
+    mode: FunctionMode,
+    args_tuple: &TokenStream,
+    desc_name: &syn::Ident,
+    fn_ident: &syn::Ident,
+) -> TokenStream {
+    match mode {
+        FunctionMode::Pure => {
+            quote! { builder.register_typed_native_fn::<#args_tuple, _>(#desc_name(), #fn_ident) }
+        }
+        FunctionMode::Context => {
+            quote! {
+                builder.register_typed_context_host_native_fn::<#args_tuple, _>(
+                    #desc_name(),
+                    #fn_ident,
+                )
+            }
+        }
+    }
+}
+
 fn effect_tokens(effect: FunctionEffect) -> TokenStream {
     match effect {
         FunctionEffect::Pure => quote! { ::vela_engine::EffectSet::pure() },
@@ -374,7 +458,7 @@ fn access_tokens(function: &FunctionMeta) -> TokenStream {
 mod tests {
     use quote::quote;
 
-    use super::expand_result;
+    use super::{FunctionMode, expand_result};
 
     #[test]
     fn rejects_missing_function_id() {
@@ -385,6 +469,7 @@ mod tests {
                     amount
                 }
             },
+            FunctionMode::Pure,
         )
         .expect_err("missing function id should fail macro expansion");
 
@@ -400,9 +485,26 @@ mod tests {
                     value
                 }
             },
+            FunctionMode::Pure,
         )
         .expect_err("generic function should fail macro expansion");
 
         assert!(error.to_string().contains("generic functions"));
+    }
+
+    #[test]
+    fn rejects_context_functions_without_context_param() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn emit_event(amount: i64) -> bool {
+                    amount > 0
+                }
+            },
+            FunctionMode::Context,
+        )
+        .expect_err("missing context parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("NativeCallContext"));
     }
 }
