@@ -541,6 +541,22 @@ mod tests {
             ),
         )));
         assert!(completions.contains(&CompletionItem::new(
+            "option.ok_or",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
+                TypeFact::result(TypeFact::Any, TypeFact::Any),
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "result.to_option",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
+                TypeFact::option(TypeFact::Any),
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
             "math.random",
             CompletionKind::Function,
             TypeFact::function(vec![TypeFact::Int, TypeFact::Int], TypeFact::Int),

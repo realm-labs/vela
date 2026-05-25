@@ -4551,6 +4551,32 @@ Consequences:
 - Heap-backed execution continues to work through native-call materialization;
   no new heap object ownership model is introduced.
 
+## 2026-05-25: Option Result Conversions Stay Dynamic
+
+Status: Accepted
+
+Context:
+Vela scripts now receive dynamic `Option` values from collection and string
+helpers, while `?` can propagate either `Option.None` or `Result.Err`.
+Gameplay scripts need a direct way to attach an error payload to a missing
+Option and a way to discard Result errors when only success presence matters,
+without adding generic `Option<T>` or `Result<T, E>` syntax.
+
+Decision:
+Add stdlib natives `option.ok_or(option, err)` and
+`result.to_option(result)`. `option.ok_or` converts `Option.Some(value)` into
+`Result.Ok(value)` and `Option.None` into `Result.Err(err)`.
+`result.to_option` converts `Result.Ok(value)` into `Option.Some(value)` and
+`Result.Err(_)` into `Option.None`.
+
+Consequences:
+- Scripts can move between Option-style parsing/lookup and Result-style
+  error propagation without host glue.
+- The helpers use the same dynamic enum representation as constructors,
+  predicates, `unwrap_or`, and `?`.
+- Analysis and completion metadata expose internal TypeFacts without
+  introducing script-language generics.
+
 ## 2026-05-25: Stdlib TypeFacts Are Analysis-Only Metadata
 
 Status: Accepted

@@ -7,11 +7,13 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("option.is_some", option_is_some);
     vm.register_native("option.is_none", option_is_none);
     vm.register_native("option.unwrap_or", option_unwrap_or);
+    vm.register_native("option.ok_or", option_ok_or);
     vm.register_native("result.ok", result_ok);
     vm.register_native("result.err", result_err);
     vm.register_native("result.is_ok", result_is_ok);
     vm.register_native("result.is_err", result_is_err);
     vm.register_native("result.unwrap_or", result_unwrap_or);
+    vm.register_native("result.to_option", result_to_option);
 }
 
 pub(crate) fn option_value(payload: Option<Value>) -> Value {
@@ -51,6 +53,15 @@ fn option_unwrap_or(args: &[Value]) -> VmResult<Value> {
     }
 }
 
+fn option_ok_or(args: &[Value]) -> VmResult<Value> {
+    expect_arity("option.ok_or", args, 2)?;
+    match option_variant(&args[0], "option.ok_or")? {
+        "Some" => enum_payload(&args[0], "option.ok_or").map(|payload| result_value("Ok", payload)),
+        "None" => Ok(result_value("Err", args[1].clone())),
+        _ => type_error("option.ok_or"),
+    }
+}
+
 fn result_ok(args: &[Value]) -> VmResult<Value> {
     expect_arity("result.ok", args, 1)?;
     Ok(result_value("Ok", args[0].clone()))
@@ -77,6 +88,17 @@ fn result_unwrap_or(args: &[Value]) -> VmResult<Value> {
         "Ok" => enum_payload(&args[0], "result.unwrap_or"),
         "Err" => Ok(args[1].clone()),
         _ => type_error("result.unwrap_or"),
+    }
+}
+
+fn result_to_option(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.to_option", args, 1)?;
+    match result_variant(&args[0], "result.to_option")? {
+        "Ok" => enum_payload(&args[0], "result.to_option")
+            .map(Some)
+            .map(option_value),
+        "Err" => Ok(option_value(None)),
+        _ => type_error("result.to_option"),
     }
 }
 

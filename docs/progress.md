@@ -1090,6 +1090,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `result.unwrap_or`. These operate on the existing dynamic enum value shapes,
   reject mismatched shapes with VM type errors, and run in both inline and
   managed-heap execution without adding script-language generics.
+- Added Option/Result conversion helpers `option.ok_or(option, err)` and
+  `result.to_option(result)`. They use the existing dynamic enum shapes,
+  compose with `?` propagation, work in managed-heap execution, and expose
+  analysis TypeFacts plus completion metadata.
 - Added the first `vela_analysis` crate slice for analysis-only `TypeFact`
   metadata and stdlib method facts. Array, map, set, and string methods now
   have focused internal facts for lambda parameter hints and return facts
@@ -1390,6 +1394,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   array slicing. It preserves the receiver, supports inline and managed-heap
   execution, reports out-of-bounds indexes through the VM error path, and
   exposes analysis TypeFacts plus completion metadata.
+- Added Option/Result conversion helpers `option.ok_or(option, err)` and
+  `result.to_option(result)` for propagation-oriented control flow. They use
+  the existing dynamic enum shapes, compose with `?`, work in managed-heap
+  execution, and expose analysis TypeFacts plus completion metadata.
 - Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
   script boundary. Native function and method macros now expose Result returns
   as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to

@@ -104,16 +104,22 @@ fn main() {
     let none = option.none();
     let ok = result.ok(9);
     let err = result.err("missing");
+    let converted_ok = option.ok_or(some, "missing");
+    let converted_err = option.ok_or(none, "missing");
 
     if option.is_some(some)
         && option.is_none(none)
         && result.is_ok(ok)
         && result.is_err(err)
+        && result.is_ok(converted_ok)
+        && result.is_err(converted_err)
     {
         return option.unwrap_or(some, 0)
             + option.unwrap_or(none, 5)
             + result.unwrap_or(ok, 0)
-            + result.unwrap_or(err, 7);
+            + result.unwrap_or(err, 7)
+            + option.unwrap_or(result.to_option(converted_ok), 0)
+            + option.unwrap_or(result.to_option(converted_err), 11);
     }
     return 0;
 }
@@ -127,7 +133,39 @@ fn main() {
         let result = vm
             .run_program(&program, "main", &[])
             .expect("option/result helper stdlib source should run");
-        assert_eq!(result, crate::Value::Int(25));
+        assert_eq!(result, crate::Value::Int(40));
+    }
+
+    #[test]
+    fn runs_compiled_option_ok_or_with_try_propagation() {
+        let source = r#"
+fn checked(raw) {
+    let value = option.ok_or(raw.parse_int(), "bad level")?;
+    return result.ok(value + 1);
+}
+
+fn main() {
+    let ok = checked("41");
+    let err = checked("forty-one");
+    if result.unwrap_or(ok, 0) == 42
+        && result.is_err(err)
+        && option.is_none(result.to_option(err))
+    {
+        return option.unwrap_or(result.to_option(ok), 0);
+    }
+    return 0;
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option ok_or stdlib source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option ok_or stdlib source should run");
+        assert_eq!(result, crate::Value::Int(42));
     }
 
     #[test]
@@ -173,15 +211,21 @@ fn main() {
     let none = option.none();
     let ok = result.ok("done");
     let err = result.err("blocked");
+    let converted_ok = option.ok_or(some, "missing");
+    let converted_err = option.ok_or(none, "missing");
 
     return option.is_some(some)
         && option.is_none(none)
         && result.is_ok(ok)
         && result.is_err(err)
+        && result.is_ok(converted_ok)
+        && result.is_err(converted_err)
         && option.unwrap_or(some, "fallback") == "quest"
         && option.unwrap_or(none, "fallback") == "fallback"
         && result.unwrap_or(ok, "fallback") == "done"
-        && result.unwrap_or(err, "fallback") == "fallback";
+        && result.unwrap_or(err, "fallback") == "fallback"
+        && option.unwrap_or(result.to_option(converted_ok), "fallback") == "quest"
+        && option.unwrap_or(result.to_option(converted_err), "fallback") == "fallback";
 }
 "#;
 

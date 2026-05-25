@@ -173,6 +173,11 @@ pub fn stdlib_function_completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Any,
         ),
         StdlibFunctionFact::new(
+            "option.ok_or",
+            vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
+            TypeFact::result(TypeFact::Any, TypeFact::Any),
+        ),
+        StdlibFunctionFact::new(
             "result.ok",
             vec![TypeFact::Any],
             TypeFact::result(TypeFact::Any, TypeFact::Any),
@@ -199,6 +204,11 @@ pub fn stdlib_function_completion_facts() -> Vec<StdlibFunctionFact> {
                 TypeFact::Any,
             ],
             TypeFact::Any,
+        ),
+        StdlibFunctionFact::new(
+            "result.to_option",
+            vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
+            TypeFact::option(TypeFact::Any),
         ),
         StdlibFunctionFact::new(
             "math.max",
@@ -273,6 +283,14 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 option_unwrap_or_return(&args[0], args[1].clone()),
             ))
         }
+        "option.ok_or" => {
+            expect_len(args, 2)?;
+            Some(StdlibFunctionFact::new(
+                "option.ok_or",
+                args.to_vec(),
+                option_ok_or_return(&args[0], args[1].clone()),
+            ))
+        }
         "result.ok" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
@@ -303,6 +321,14 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 "result.unwrap_or",
                 args.to_vec(),
                 result_unwrap_or_return(&args[0], args[1].clone()),
+            ))
+        }
+        "result.to_option" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "result.to_option",
+                args.to_vec(),
+                result_to_option_return(&args[0]),
             ))
         }
         "math.max" | "math.min" => {
@@ -751,6 +777,14 @@ fn option_unwrap_or_return(value: &TypeFact, fallback: TypeFact) -> TypeFact {
     }
 }
 
+fn option_ok_or_return(value: &TypeFact, err: TypeFact) -> TypeFact {
+    match value {
+        TypeFact::OptionSome { some } => TypeFact::result_ok((**some).clone()),
+        TypeFact::OptionNone => TypeFact::result_err(err),
+        _ => TypeFact::result(option_payload(value).unwrap_or(TypeFact::Any), err),
+    }
+}
+
 fn result_ok_payload(value: &TypeFact) -> Option<TypeFact> {
     match value {
         TypeFact::Result { ok, .. } | TypeFact::ResultOk { ok } => Some((**ok).clone()),
@@ -764,6 +798,14 @@ fn result_unwrap_or_return(value: &TypeFact, fallback: TypeFact) -> TypeFact {
         TypeFact::ResultOk { ok } => (**ok).clone(),
         TypeFact::ResultErr { .. } => fallback,
         _ => value_or_fallback(result_ok_payload(value).unwrap_or(TypeFact::Any), fallback),
+    }
+}
+
+fn result_to_option_return(value: &TypeFact) -> TypeFact {
+    match value {
+        TypeFact::ResultOk { ok } => TypeFact::option_some((**ok).clone()),
+        TypeFact::ResultErr { .. } => TypeFact::option_none(),
+        _ => TypeFact::option(result_ok_payload(value).unwrap_or(TypeFact::Any)),
     }
 }
 
@@ -1037,6 +1079,22 @@ mod tests {
         )
         .expect("none unwrap_or fact");
         assert_eq!(none_unwrapped.returns, TypeFact::String);
+        let ok_or = stdlib_function_fact(
+            "option.ok_or",
+            &[
+                TypeFact::option(TypeFact::String),
+                TypeFact::record("ParseError"),
+            ],
+        )
+        .expect("ok_or fact");
+        assert_eq!(
+            ok_or.returns,
+            TypeFact::result(TypeFact::String, TypeFact::record("ParseError"))
+        );
+        let none_ok_or =
+            stdlib_function_fact("option.ok_or", &[TypeFact::option_none(), TypeFact::String])
+                .expect("none ok_or fact");
+        assert_eq!(none_ok_or.returns, TypeFact::result_err(TypeFact::String));
 
         let ok = stdlib_function_fact("result.ok", &[TypeFact::Int]).expect("ok fact");
         assert_eq!(ok.returns, TypeFact::result(TypeFact::Int, TypeFact::Any));
@@ -1060,6 +1118,18 @@ mod tests {
             result_unwrapped.returns,
             TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
         );
+        let to_option = stdlib_function_fact(
+            "result.to_option",
+            &[TypeFact::result(TypeFact::Int, TypeFact::String)],
+        )
+        .expect("to_option fact");
+        assert_eq!(to_option.returns, TypeFact::option(TypeFact::Int));
+        let err_to_option = stdlib_function_fact(
+            "result.to_option",
+            &[TypeFact::result_err(TypeFact::String)],
+        )
+        .expect("err to_option fact");
+        assert_eq!(err_to_option.returns, TypeFact::option_none());
     }
 
     #[test]
@@ -1161,6 +1231,16 @@ mod tests {
             fact.name == "option.unwrap_or"
                 && fact.params == vec![TypeFact::option(TypeFact::Any), TypeFact::Any]
                 && fact.returns == TypeFact::Any
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "option.ok_or"
+                && fact.params == vec![TypeFact::option(TypeFact::Any), TypeFact::Any]
+                && fact.returns == TypeFact::result(TypeFact::Any, TypeFact::Any)
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "result.to_option"
+                && fact.params == vec![TypeFact::result(TypeFact::Any, TypeFact::Any)]
+                && fact.returns == TypeFact::option(TypeFact::Any)
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.clamp" && fact.params.len() == 3 && fact.returns == number_fact()
