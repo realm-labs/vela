@@ -3,8 +3,10 @@
 #![allow(clippy::result_large_err)]
 
 mod array_methods;
+mod budget;
 mod error;
 pub mod heap;
+mod heap_execution;
 mod host_values;
 mod indexing;
 mod iteration;
@@ -26,7 +28,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 pub use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
-use heap::{GcBudget, GcRef, GcStepStats, HeapSlot, HeapValue, ScriptHeap};
+use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
+pub use heap_execution::HeapExecution;
 use host_values::{value_from_host, value_to_host};
 pub use iteration::IteratorState;
 pub use ranges::RangeValue;
@@ -39,6 +42,8 @@ use vela_bytecode::{
 use vela_common::{Span, SymbolInterner};
 use vela_host::{HostPath, HostRef, PatchTx, ScriptStateAdapter};
 use vela_reflect::{self as reflect, TypeRegistry};
+
+pub use budget::{ExecutionBudget, ExecutionBudgetKind};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -130,128 +135,6 @@ impl From<&Constant> for Value {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ExecutionBudgetKind {
-    Instructions,
-    MemoryBytes,
-    CallDepth,
-    Patches,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ExecutionBudget {
-    pub instruction_limit: u64,
-    pub memory_limit_bytes: usize,
-    pub max_call_depth: usize,
-    pub max_patches: usize,
-    instructions_executed: u64,
-    memory_bytes_allocated: usize,
-    current_call_depth: usize,
-}
-
-impl ExecutionBudget {
-    #[must_use]
-    pub fn new(
-        instruction_limit: u64,
-        memory_limit_bytes: usize,
-        max_call_depth: usize,
-        max_patches: usize,
-    ) -> Self {
-        Self {
-            instruction_limit,
-            memory_limit_bytes,
-            max_call_depth,
-            max_patches,
-            instructions_executed: 0,
-            memory_bytes_allocated: 0,
-            current_call_depth: 0,
-        }
-    }
-
-    #[must_use]
-    pub fn unbounded() -> Self {
-        Self::new(u64::MAX, usize::MAX, usize::MAX, usize::MAX)
-    }
-
-    #[must_use]
-    pub fn instructions_executed(&self) -> u64 {
-        self.instructions_executed
-    }
-
-    #[must_use]
-    pub fn memory_bytes_allocated(&self) -> usize {
-        self.memory_bytes_allocated
-    }
-
-    #[must_use]
-    pub fn current_call_depth(&self) -> usize {
-        self.current_call_depth
-    }
-
-    pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {
-        let next = self.instructions_executed.saturating_add(instructions);
-        if next > self.instruction_limit {
-            return Err(VmError::new(VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::Instructions,
-                limit: self.instruction_limit,
-            }));
-        }
-        self.instructions_executed = next;
-        Ok(())
-    }
-
-    fn charge_instruction(&mut self) -> VmResult<()> {
-        self.charge_instructions(1)?;
-        Ok(())
-    }
-
-    pub(crate) fn charge_memory(&mut self, bytes: usize) -> VmResult<()> {
-        let next = self.memory_bytes_allocated.saturating_add(bytes);
-        if next > self.memory_limit_bytes {
-            return Err(VmError::new(VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::MemoryBytes,
-                limit: u64::try_from(self.memory_limit_bytes).unwrap_or(u64::MAX),
-            }));
-        }
-        self.memory_bytes_allocated = next;
-        Ok(())
-    }
-
-    pub(crate) fn release_memory(&mut self, bytes: usize) {
-        self.memory_bytes_allocated = self.memory_bytes_allocated.saturating_sub(bytes);
-    }
-
-    fn enter_call(&mut self) -> VmResult<()> {
-        if self.current_call_depth >= self.max_call_depth {
-            return Err(VmError::new(VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::CallDepth,
-                limit: u64::try_from(self.max_call_depth).unwrap_or(u64::MAX),
-            }));
-        }
-        self.current_call_depth = self.current_call_depth.saturating_add(1);
-        Ok(())
-    }
-
-    fn exit_call(&mut self) {
-        self.current_call_depth = self.current_call_depth.saturating_sub(1);
-    }
-
-    fn check_patch_count(&self, patch_count: usize) -> VmResult<()> {
-        if patch_count > self.max_patches {
-            Err(VmError::new(VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::Patches,
-                limit: u64::try_from(self.max_patches).unwrap_or(u64::MAX),
-            }))
-        } else {
-            Ok(())
-        }
-    }
-
-    fn reserve_patch(&self, current_patch_count: usize) -> VmResult<()> {
-        self.check_patch_count(current_patch_count.saturating_add(1))
-    }
-}
-
 pub type NativeFunction = Arc<dyn Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static>;
 pub type HostNativeFunction = Arc<
     dyn for<'host, 'budget> Fn(
@@ -275,67 +158,6 @@ pub struct Vm {
 pub struct HostExecution<'host> {
     pub adapter: &'host mut dyn ScriptStateAdapter,
     pub tx: &'host mut PatchTx,
-}
-
-pub struct HeapExecution<'heap> {
-    pub heap: &'heap mut ScriptHeap,
-    protected_roots: Vec<GcRef>,
-    safe_point_gc_budget: GcBudget,
-    gc_in_progress: bool,
-    last_gc_step: Option<GcStepStats>,
-}
-
-impl<'heap> HeapExecution<'heap> {
-    #[must_use]
-    pub fn new(heap: &'heap mut ScriptHeap) -> Self {
-        let max_pause_micros = heap.gc_config().max_pause_micros;
-        Self {
-            heap,
-            protected_roots: Vec::new(),
-            safe_point_gc_budget: GcBudget::micros(max_pause_micros),
-            gc_in_progress: false,
-            last_gc_step: None,
-        }
-    }
-
-    #[must_use]
-    pub fn with_safe_point_gc_budget(mut self, budget: GcBudget) -> Self {
-        self.safe_point_gc_budget = budget;
-        self
-    }
-
-    #[must_use]
-    pub fn last_gc_step(&self) -> Option<&GcStepStats> {
-        self.last_gc_step.as_ref()
-    }
-
-    fn push_protected_roots(&mut self, roots: Vec<GcRef>) -> usize {
-        let previous_len = self.protected_roots.len();
-        self.protected_roots.extend(roots);
-        previous_len
-    }
-
-    fn truncate_protected_roots(&mut self, len: usize) {
-        self.protected_roots.truncate(len);
-    }
-
-    fn collect_at_safe_point(
-        &mut self,
-        frame_roots: Vec<GcRef>,
-        budget: Option<&mut ExecutionBudget>,
-    ) {
-        if !self.gc_in_progress && !self.heap.should_collect() {
-            return;
-        }
-
-        let mut roots = self.protected_roots.clone();
-        roots.extend(frame_roots);
-        let stats = self
-            .heap
-            .step_gc_with_budget(&roots, self.safe_point_gc_budget, budget);
-        self.gc_in_progress = !stats.complete;
-        self.last_gc_step = Some(stats);
-    }
 }
 
 impl Vm {

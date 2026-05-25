@@ -1,5 +1,5 @@
 use super::*;
-use crate::heap::{HeapValue, ScriptHeap};
+use crate::heap::{GcBudget, HeapValue, ScriptHeap};
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
