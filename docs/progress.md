@@ -1523,6 +1523,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Structured attribute arguments with named values, paths, arrays, maps, and
   literals are now normalized through syntax, preserved in HIR, and exposed
   through reflected script metadata without changing runtime schema structure.
+- Added an M13/M14 Engine context host schema helper. Embedders can opt into
+  stable `Context` metadata for `ctx.now`, `ctx.tick`, `ctx.emit`, and
+  `ctx.log`; compiler options lower those workflows to HostRef/HostPath
+  operations and event/log calls remain PatchTx patches applied at host safe
+  points.
 
 ## Next
 

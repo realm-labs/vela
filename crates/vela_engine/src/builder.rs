@@ -125,6 +125,11 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    pub fn with_context_host_schema(self) -> Self {
+        self.register_type(crate::context_schema::context_host_type_desc())
+    }
+
+    #[must_use]
     pub const fn with_standard_natives(mut self) -> Self {
         self.standard_natives = true;
         self

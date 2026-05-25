@@ -6222,3 +6222,27 @@ Consequences:
   structures.
 - Rich typed attribute values can be added later without breaking current
   copied metadata.
+
+## 2026-05-26: Engine Context Host Schema Is An Opt-In Metadata Helper
+
+Status: Accepted
+
+Context:
+M13 requires context time, event emit, and logging helpers, and M14 requires
+stable Engine embedding APIs. The demo already models `ctx.now`/`ctx.tick` as
+host reads and `ctx.emit`/`ctx.log` as deferred host method patches, but
+embedders still needed to hand-write equivalent context metadata.
+
+Decision:
+Add `EngineBuilder::with_context_host_schema()`, which registers a standard
+host `Context` type with read-only `now`/`tick` fields and reflect-callable
+`emit`/`log` methods. The helper only installs schema metadata and compiler
+options; hosts still provide a `HostRef`, adapter values, and safe-point patch
+application.
+
+Consequences:
+- Context workflows can be embedded through the stable Engine API without
+  exposing Rust references or VM-owned I/O.
+- Event and log calls continue to enter `PatchTx` as host method patches.
+- Hosts that need custom context schemas can keep registering their own type
+  metadata instead of opting into the helper.
