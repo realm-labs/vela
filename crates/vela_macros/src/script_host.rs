@@ -230,6 +230,8 @@ fn schema_hash(type_name: &str, module_name: Option<&str>, fields: &[FieldMeta])
     if let Some(module_name) = module_name {
         hasher.write_str(module_name);
     }
+    let mut fields = fields.iter().collect::<Vec<_>>();
+    fields.sort_by_key(|field| (field.id, field.script_name.as_str()));
     for field in fields {
         hasher.write_u32(field.id);
         hasher.write_str(&field.script_name);

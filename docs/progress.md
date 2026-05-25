@@ -1465,6 +1465,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `TypeDesc` trait implementations now reject duplicate trait IDs/names and
   duplicate trait method IDs/names before entering the `TypeRegistry`, keeping
   reflected trait metadata stable for permissions, dispatch, and hot reload.
+- Made M14 host schema derive hashes order-independent for exposed fields.
+  `ScriptHost` and `ScriptReflect` schema hashes now sort fields by stable
+  field ID/name before hashing, so equivalent macro-generated schemas survive
+  Rust field reordering while still changing for member or metadata changes.
 
 ## Next
 

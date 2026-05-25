@@ -20,6 +20,26 @@ struct Player {
     internal_revision: u64,
 }
 
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(name = "RewardConfig", id = 2001, module = "game.reward")]
+struct RewardConfigA {
+    #[script(get, id = 1, hint = "string")]
+    item_id: String,
+    #[script(get, id = 2, hint = "int")]
+    count: i64,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(name = "RewardConfig", id = 2001, module = "game.reward")]
+struct RewardConfigB {
+    #[script(get, id = 2, hint = "int")]
+    count: i64,
+    #[script(get, id = 1, hint = "string")]
+    item_id: String,
+}
+
 #[test]
 fn script_host_derive_generates_type_metadata() {
     let desc = Player::vela_host_type_desc();
@@ -98,4 +118,13 @@ fn script_reflect_derive_generates_matching_metadata() {
         <Player as vela_engine::ScriptReflectSchema>::script_reflect_type_desc(),
         reflect_desc,
     );
+}
+
+#[test]
+fn script_host_schema_hash_survives_field_reordering() {
+    let first = RewardConfigA::vela_host_type_desc();
+    let second = RewardConfigB::vela_host_type_desc();
+
+    assert_eq!(first.schema_hash, second.schema_hash);
+    assert_ne!(first.fields, second.fields);
 }
