@@ -25,6 +25,7 @@ pub struct Engine {
     permissions: PermissionSet,
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
+    standard_natives: bool,
 }
 
 pub(crate) struct EngineParts {
@@ -36,6 +37,7 @@ pub(crate) struct EngineParts {
     pub(crate) permissions: PermissionSet,
     pub(crate) reflection_policy: Option<ReflectPolicy>,
     pub(crate) hot_reload_policy: HotReloadPolicy,
+    pub(crate) standard_natives: bool,
 }
 
 impl Engine {
@@ -88,6 +90,7 @@ impl Engine {
             permissions: parts.permissions,
             reflection_policy: parts.reflection_policy,
             hot_reload_policy: parts.hot_reload_policy,
+            standard_natives: parts.standard_natives,
         }
     }
 
@@ -201,6 +204,9 @@ impl Engine {
     }
 
     pub fn install(&self, vm: &mut Vm) {
+        if self.standard_natives {
+            vm.register_standard_natives();
+        }
         if let Some(policy) = &self.reflection_policy {
             let policy = policy
                 .clone()

@@ -1237,6 +1237,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added M14 Rust set signature conversion for `BTreeSet<T>` and `HashSet<T>`.
   Typed Engine natives and macro-generated native functions can now accept and
   return copied script set values through the existing `Value::Set` boundary.
+- Added `EngineBuilder::with_standard_natives()` so embedded runtimes can opt
+  into deterministic VM standard natives through the stable Engine API.
+  Runtime coverage now proves Engine-installed math, set, and Option helpers
+  execute together under `Runtime::call`.
 
 ## Next
 

@@ -5194,3 +5194,30 @@ Consequences:
   `ctx.time`; denied calls fail before native execution.
 - The existing host-field demo path remains valid for host-specific contexts,
   while the Engine helper provides a standard permission-aware API.
+
+## 2026-05-25: Engine Standard Natives Are Explicitly Opt-In
+
+Status: Accepted
+
+Context:
+M13 standard-library helpers live in the VM behind `register_standard_natives`,
+but embedded hosts usually construct VMs through `Engine::into_vm` or
+`Runtime::call`. Without an Engine-level hook, scripts run through the stable
+Engine API could see registered host natives and reflection but miss
+deterministic stdlib helpers such as `math.lerp`, `set.from_array`, and
+`option.unwrap_or`.
+
+Decision:
+Add `EngineBuilder::with_standard_natives()`. The flag causes `Engine::install`
+to call `Vm::register_standard_natives()` before installing Engine-registered
+natives, reflection, host natives, and context natives. Controlled random and
+context clock helpers remain separate Engine opt-ins because they are
+permissioned or stateful host-provided APIs.
+
+Consequences:
+- Embedders can enable deterministic stdlib helpers through the same stable
+  Engine API used for schemas and native functions.
+- `Runtime::call` and `Engine::into_vm` now share the same stdlib behavior when
+  the builder flag is set.
+- Stateful or permission-sensitive helpers stay out of the default VM stdlib
+  path and continue to use explicit Engine builder methods.

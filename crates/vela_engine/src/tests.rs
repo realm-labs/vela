@@ -15,7 +15,7 @@ use crate::{
     CONTEXT_TIME_PERMISSION, CONTROLLED_RANDOM_PERMISSION, CTX_NOW_FUNCTION_ID,
     CTX_TICK_FUNCTION_ID, CallOptions, EffectSet, Engine, EngineErrorKind, EngineSourceErrorKind,
     FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext, NativeFunctionDesc,
-    NativeFunctionId, NativeMethodDesc, ScriptArgsExt, TypeHint,
+    NativeFunctionId, NativeMethodDesc, Runtime, ScriptArgsExt, TypeHint,
 };
 use crate::{FromScriptArg, IntoScriptArg};
 
@@ -183,6 +183,31 @@ fn main(tags) {
         ),
         Ok(Value::Int(4)),
     );
+}
+
+#[test]
+fn engine_builder_installs_standard_natives_into_runtime() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let tags = set.from_array(["fire", "ice", "fire"]);
+    let midpoint = math.floor(math.lerp(10, 20, 0.5));
+    return tags.len() + option.unwrap_or(option.some(midpoint), 0);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    let result = runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
+    assert_eq!(result, Ok(Value::Int(17)),);
 }
 
 #[test]

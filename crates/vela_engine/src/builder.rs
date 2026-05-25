@@ -21,6 +21,7 @@ pub struct EngineBuilder {
     permissions: PermissionSet,
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
+    standard_natives: bool,
 }
 
 impl EngineBuilder {
@@ -110,6 +111,12 @@ impl EngineBuilder {
     pub fn with_context_clock(mut self, now: i64, tick: i64) -> Self {
         self.native_functions
             .extend(crate::clock::context_clock_functions(now, tick));
+        self
+    }
+
+    #[must_use]
+    pub const fn with_standard_natives(mut self) -> Self {
+        self.standard_natives = true;
         self
     }
 
@@ -255,6 +262,7 @@ impl EngineBuilder {
             permissions: self.permissions,
             reflection_policy: self.reflection_policy,
             hot_reload_policy: self.hot_reload_policy,
+            standard_natives: self.standard_natives,
         }))
     }
 }
