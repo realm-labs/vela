@@ -213,11 +213,12 @@ pub(crate) fn map_values(
     let mut mapped = BTreeMap::new();
     for (key, value) in entries {
         let protected = mapped.values().cloned().collect::<Vec<_>>();
+        let callback_args = map_callback_args(&args[0], key.clone(), value, "method map_values")?;
         let value = call_callback(
             &mut runtime,
             "method map_values",
             &args[0],
-            &[value],
+            &callback_args,
             &protected,
         )?;
         mapped.insert(key, value);
@@ -258,7 +259,7 @@ pub(crate) fn find(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
     for (key, value) in entries {
         let predicate_args =
-            map_predicate_args(&args[0], key.clone(), value.clone(), "method find")?;
+            map_callback_args(&args[0], key.clone(), value.clone(), "method find")?;
         let predicate = call_callback(&mut runtime, "method find", &args[0], &predicate_args, &[])?;
         if is_truthy(&predicate) {
             return Ok(option_value(Some(map_entry(&key, value))));
@@ -275,7 +276,7 @@ pub(crate) fn any(
     expect_arity("any", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
     for (key, value) in entries {
-        let predicate_args = map_predicate_args(&args[0], key, value, "method any")?;
+        let predicate_args = map_callback_args(&args[0], key, value, "method any")?;
         let predicate = call_callback(&mut runtime, "method any", &args[0], &predicate_args, &[])?;
         if is_truthy(&predicate) {
             return Ok(true);
@@ -292,7 +293,7 @@ pub(crate) fn all(
     expect_arity("all", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
     for (key, value) in entries {
-        let predicate_args = map_predicate_args(&args[0], key, value, "method all")?;
+        let predicate_args = map_callback_args(&args[0], key, value, "method all")?;
         let predicate = call_callback(&mut runtime, "method all", &args[0], &predicate_args, &[])?;
         if !is_truthy(&predicate) {
             return Ok(false);
@@ -310,7 +311,7 @@ pub(crate) fn count(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
     let mut count = 0_i64;
     for (key, value) in entries {
-        let predicate_args = map_predicate_args(&args[0], key, value, "method count")?;
+        let predicate_args = map_callback_args(&args[0], key, value, "method count")?;
         let predicate =
             call_callback(&mut runtime, "method count", &args[0], &predicate_args, &[])?;
         if is_truthy(&predicate) {
@@ -377,7 +378,7 @@ fn map_entries(
     }
 }
 
-fn map_predicate_args(
+fn map_callback_args(
     callback: &Value,
     key: String,
     value: Value,
@@ -446,8 +447,10 @@ mod tests {
 fn main() {
     let rewards = {"gold": 4, "xp": 6, "quest": 8};
     let doubled = rewards.map_values(|value| value * 2);
+    let keyed = rewards.map_values(|key, value| key.len() + value);
     let filtered = rewards.filter(|key, value| key.contains("o") && value == 4);
     if doubled["gold"] == 8 && doubled["quest"] == 16
+        && keyed["gold"] == 8 && keyed["xp"] == 8
         && filtered.len() == 1 && filtered["gold"] == 4
         && rewards.any(|value| value == 6)
     {
@@ -471,8 +474,10 @@ fn main() {
 fn main() {
     let quests = {"boar": "done", "wolf": "active", "wyrm": "done"};
     let lengths = quests.map_values(|value| value.len());
+    let scores = quests.map_values(|key, value| key.len() + value.len());
     let done = quests.filter(|key, value| key.starts_with("w") && value == "done");
     if lengths["wolf"] == 6 && lengths["boar"] == 4
+        && scores["boar"] == 8 && scores["wolf"] == 10
         && done.len() == 1 && done["wyrm"] == "done"
         && quests.count(|key, value| key.starts_with("w") && value.len() >= 4) == 2
     {

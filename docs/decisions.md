@@ -6301,3 +6301,28 @@ Consequences:
   external handles and do not make Rust host state traceable or movable.
 - Host writes still require explicit proxy methods with `PatchTx`; heap storage
   alone does not grant mutation access.
+
+## 2026-05-26: Map Values Callbacks May See Keys
+
+Status: Accepted
+
+Context:
+M13 requires collection helpers to work naturally with lambdas and expose
+analysis facts for callback parameter hints. Map predicates such as `filter`,
+`find`, `any`, `all`, and `count` already support `(key, value)` callbacks,
+but `map_values` only passed the value even when a script callback declared a
+key parameter.
+
+Decision:
+Make `map.map_values(callback)` derive callback arguments from the closure
+arity like the other map higher-order helpers: zero-argument callbacks receive
+no values, one-argument callbacks receive the map value, and callbacks with two
+or more parameters receive `(key, value)`. Update analysis stdlib facts to
+advertise the key/value lambda shape while preserving runtime compatibility
+with existing value-only scripts.
+
+Consequences:
+- Gameplay scripts can transform map values based on stable string keys
+  without first materializing entries.
+- Analysis and completion metadata now match the richer runtime callback shape.
+- Existing one-argument `map_values(|value| ...)` scripts continue to run.

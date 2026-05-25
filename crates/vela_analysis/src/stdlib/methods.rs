@@ -249,8 +249,12 @@ fn map_method_fact(
         "map_values" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             Some(
-                StdlibMethodFact::new(receiver, "map_values", TypeFact::map(key, mapped.clone()))
-                    .with_lambda(vec![value], mapped),
+                StdlibMethodFact::new(
+                    receiver,
+                    "map_values",
+                    TypeFact::map(key.clone(), mapped.clone()),
+                )
+                .with_lambda(vec![key, value], mapped),
             )
         }
         "filter" => Some(

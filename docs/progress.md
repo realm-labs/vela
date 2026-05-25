@@ -1544,6 +1544,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   slots now preserve path proxies like external host refs without tracing or
   owning Rust host state, allowing native-returned proxies to round-trip through
   heap-backed arrays and maps.
+- Extended `map.map_values` to support key-aware `(key, value)` callbacks
+  while preserving existing one-argument value callbacks. Runtime behavior now
+  matches the richer map lambda shape exposed by M13 analysis facts and works in
+  both inline and managed-heap execution.
 
 ## Next
 

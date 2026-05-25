@@ -129,7 +129,7 @@ mod tests {
         );
         assert_eq!(
             mapped.lambda.expect("map_values lambda").params,
-            vec![TypeFact::Int]
+            vec![TypeFact::String, TypeFact::Int]
         );
 
         let merged = stdlib_method_fact(&receiver, "merge", None).expect("merge fact");
