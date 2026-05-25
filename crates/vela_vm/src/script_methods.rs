@@ -73,6 +73,9 @@ pub(crate) fn call_method(
         "insert" => {
             array_methods::insert(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
         }
+        "extend" => {
+            array_methods::extend(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
+        }
         "first" => array_methods::first(receiver, args, heap.as_deref()),
         "last" => array_methods::last(receiver, args, heap.as_deref()),
         "remove_at" => array_methods::remove_at(receiver, args, heap.as_deref_mut()),

@@ -1686,6 +1686,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   inserts at existing positions or appends at `len`, rejects sparse
   out-of-bounds indexes, works in inline and managed-heap execution, and
   exposes non-generic analysis/completion facts.
+- Added M13 `array.extend(other)` for script-owned array batching. It appends
+  values from another dynamic array, rejects non-array arguments, works in
+  inline and managed-heap execution, and exposes non-generic
+  analysis/completion facts.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new

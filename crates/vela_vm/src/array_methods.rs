@@ -164,6 +164,37 @@ pub(crate) fn insert(
     }
 }
 
+pub(crate) fn extend(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("extend", args, 1)?;
+    let extension = array_values(&args[0], heap.as_deref(), "method extend")?;
+    match receiver {
+        Value::Array(values) => {
+            values.extend(extension);
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method extend");
+            };
+            let mut slots = Vec::with_capacity(extension.len());
+            for value in &extension {
+                slots.push(value_to_heap_slot(value, heap, budget.as_deref_mut())?);
+            }
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method extend");
+            };
+            values.extend(slots);
+            Ok(Value::Null)
+        }
+        _ => type_error("method extend"),
+    }
+}
+
 pub(crate) fn join(
     receiver: &Value,
     args: &[Value],
@@ -861,6 +892,78 @@ fn main() {
             .run(&code)
             .expect_err("array insert should reject sparse indexes");
         assert!(matches!(error.kind, VmErrorKind::IndexOutOfBounds { .. }));
+    }
+
+    #[test]
+    fn runs_compiled_array_extend_method() {
+        let source = r#"
+fn main() {
+    let values = [10, 20];
+    values.extend([30, 40]);
+    let empty = [];
+    values.extend(empty);
+    if values.len() == 4
+        && values[0] == 10
+        && values[1] == 20
+        && values[2] == 30
+        && values[3] == 40
+    {
+        return values[3];
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array extend method should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("array extend method should run");
+        assert_eq!(result, Value::Int(40));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_array_extend_method() {
+        let source = r#"
+fn main() {
+    let tags = ["daily"];
+    let more = ["quest", "raid"];
+    tags.extend(more);
+    tags.extend(["boss"]);
+    if tags.join("|") == "daily|quest|raid|boss" {
+        return tags[2];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array extend method should compile");
+        let mut budget = ExecutionBudget::unbounded();
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array extend method should run");
+        assert_eq!(result, Value::String("raid".to_owned()));
+    }
+
+    #[test]
+    fn array_extend_rejects_non_array_arguments() {
+        let source = r#"
+fn main() {
+    let values = [10];
+    values.extend(20);
+    return values.len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array extend error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("array extend should reject non-array args");
+        assert!(matches!(error.kind, VmErrorKind::TypeMismatch { .. }));
     }
 
     #[test]
