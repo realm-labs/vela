@@ -1314,6 +1314,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   lower natural field reads/writes into `HostPath` segments, and registered
   host methods remain callable on schema-derived field paths. The mapping now
   lives in a focused Engine module instead of growing `engine.rs`.
+- Migrated the game server CLI demo runner onto the stable `Engine` and
+  `Runtime` API. Demo scripts now compile through Engine-owned schema metadata
+  and execute through Runtime call options while still recording host effects
+  into `PatchTx`.
 - Added non-mutating `set.union(other)`, `set.intersection(other)`, and
   `set.difference(other)` helpers. They preserve deterministic receiver-order
   output, work in inline and managed-heap execution, reject non-set operands,

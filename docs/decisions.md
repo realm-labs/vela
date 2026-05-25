@@ -5775,3 +5775,27 @@ Consequences:
   while typed direct receiver calls still use receiver-specific method IDs.
 - This remains a compile-time metadata mapping; scripts still mutate host state
   only through `HostPath` and `PatchTx`.
+
+## 2026-05-25: Demo Runner Uses Stable Engine Runtime
+
+Status: Accepted
+
+Context:
+The game server demo is the primary proof that embedded hosts can register
+schemas and run gameplay scripts through the public API. Keeping the demo on
+manual compiler options and raw VM setup exercises less of the embedding path
+than real hosts will use.
+
+Decision:
+Build the demo runner around `Engine` and `Runtime`. Demo schema metadata is
+registered through `EngineBuilder`, scripts compile through `Engine::compile_file`,
+and execution uses `Runtime::call` with explicit `CallOptions`, host adapter,
+and `PatchTx`.
+
+Consequences:
+- Demo scripts now validate the same stable embedding surface intended for
+  Rust hosts.
+- Host mutations still flow through `PatchTx`; scripts do not receive Rust
+  mutable references.
+- The demo registry setup remains isolated in `demo/registry.rs` rather than
+  growing `demo.rs`.

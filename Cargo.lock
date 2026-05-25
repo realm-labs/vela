@@ -62,6 +62,7 @@ version = "0.1.0"
 dependencies = [
  "vela_bytecode",
  "vela_common",
+ "vela_engine",
  "vela_host",
  "vela_hot_reload",
  "vela_reflect",

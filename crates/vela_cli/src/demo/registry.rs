@@ -1,16 +1,21 @@
-use std::sync::Arc;
-
 use vela_common::{HostTypeId, TypeId};
+use vela_engine::{Engine, EngineResult};
 use vela_reflect::{
-    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, SchemaHash, TraitDesc, TypeDesc, TypeKey,
-    TypeRegistry,
+    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPolicy, SchemaHash, TraitDesc,
+    TypeDesc, TypeKey, TypeRegistry,
 };
-use vela_vm::Vm;
 
 use super::ids::{CTX_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
 
-pub(crate) fn register_demo_reflection_natives(vm: &mut Vm, ids: DemoIds) {
-    vm.register_reflection_natives(Arc::new(demo_type_registry(ids)));
+pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
+    let registry = demo_type_registry(ids);
+    let mut builder = Engine::builder()
+        .with_standard_natives()
+        .reflection_policy(ReflectPolicy::all());
+    for desc in registry.types() {
+        builder = builder.register_type(desc.clone());
+    }
+    builder.build()
 }
 
 pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
