@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::mem;
 
-use vela_host::HostRef;
+use vela_host::{HostRef, PathProxy};
 
 use crate::script_object::ScriptFields;
 use crate::{ExecutionBudget, VmResult};
@@ -40,6 +40,7 @@ pub enum HeapSlot {
     Float(f64),
     Ref(GcRef),
     HostRef(HostRef),
+    PathProxy(PathProxy),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -528,7 +529,8 @@ impl ScriptHeap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_common::{HostObjectId, HostTypeId};
+    use vela_common::{FieldId, HostObjectId, HostTypeId};
+    use vela_host::HostPath;
 
     fn host_ref() -> HostRef {
         HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
@@ -572,6 +574,21 @@ mod tests {
     fn host_refs_are_external_and_do_not_trace_rust_owned_state() {
         let mut heap = ScriptHeap::new();
         let root = heap.allocate(HeapValue::Array(vec![HeapSlot::HostRef(host_ref())]));
+        let unreachable = heap.allocate(HeapValue::String("unused".into()));
+
+        let stats = heap.collect_full(&[root]);
+
+        assert_eq!(stats.marked, 1);
+        assert_eq!(stats.swept, 1);
+        assert!(heap.contains(root));
+        assert!(!heap.contains(unreachable));
+    }
+
+    #[test]
+    fn path_proxies_are_external_and_do_not_trace_rust_owned_state() {
+        let mut heap = ScriptHeap::new();
+        let proxy = PathProxy::new(HostPath::new(host_ref()).field(FieldId::new(2)));
+        let root = heap.allocate(HeapValue::Array(vec![HeapSlot::PathProxy(proxy)]));
         let unreachable = heap.allocate(HeapValue::String("unused".into()));
 
         let stats = heap.collect_full(&[root]);

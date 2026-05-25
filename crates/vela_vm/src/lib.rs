@@ -1480,6 +1480,7 @@ pub(crate) fn value_to_heap_slot(
         Value::Float(value) => Ok(HeapSlot::Float(*value)),
         Value::HeapRef(reference) => Ok(HeapSlot::Ref(*reference)),
         Value::HostRef(reference) => Ok(HeapSlot::HostRef(*reference)),
+        Value::PathProxy(proxy) => Ok(HeapSlot::PathProxy(proxy.clone())),
         Value::String(value) => {
             let Value::HeapRef(reference) =
                 allocate_heap_value(HeapValue::String(value.clone()), heap, budget)?
@@ -1551,13 +1552,11 @@ pub(crate) fn value_to_heap_slot(
             };
             Ok(HeapSlot::Ref(reference))
         }
-        Value::Range(_)
-        | Value::Closure(_)
-        | Value::Iterator(_)
-        | Value::PathProxy(_)
-        | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "heap slot",
-        })),
+        Value::Range(_) | Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
+            Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "heap slot",
+            }))
+        }
     }
 }
 
@@ -1569,6 +1568,7 @@ fn value_from_heap_slot(slot: &HeapSlot) -> Value {
         HeapSlot::Float(value) => Value::Float(*value),
         HeapSlot::Ref(reference) => Value::HeapRef(*reference),
         HeapSlot::HostRef(reference) => Value::HostRef(*reference),
+        HeapSlot::PathProxy(proxy) => Value::PathProxy(proxy.clone()),
     }
 }
 

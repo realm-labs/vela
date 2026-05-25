@@ -13,7 +13,7 @@ use vela_common::{
     TypeId, VariantId,
 };
 use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
-use vela_host::{HostErrorKind, HostValue, MockStateAdapter, PatchOp};
+use vela_host::{HostErrorKind, HostPath, HostValue, MockStateAdapter, PatchOp, PathProxy};
 use vela_reflect::{
     FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc,
     MethodEffectSet, MethodParamDesc, ModuleDesc, ReflectCandidate, ReflectErrorKind, TraitDesc,
@@ -2361,6 +2361,41 @@ fn main() {
             type_name: "Reward".into(),
             fields: ScriptFields::from_pairs("Reward", fields),
         }
+    );
+    assert_eq!(budget.memory_bytes_allocated(), 0);
+}
+
+#[test]
+fn managed_heap_execution_preserves_path_proxy_slots() {
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3);
+    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(2)));
+    let expected = proxy.clone();
+    let mut vm = Vm::new();
+    vm.register_native("game.path", move |_| Ok(Value::PathProxy(proxy.clone())));
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn array_case() {
+    let paths = [game.path()];
+    return paths[0];
+}
+
+fn map_case() {
+    let paths = {"level": game.path()};
+    return paths["level"];
+}
+"#,
+    )
+    .expect("compile path proxy aggregate source");
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+
+    assert_eq!(
+        vm.run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget),
+        Ok(Value::PathProxy(expected.clone()))
+    );
+    assert_eq!(
+        vm.run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget),
+        Ok(Value::PathProxy(expected))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }

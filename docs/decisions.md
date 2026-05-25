@@ -6277,3 +6277,27 @@ Consequences:
 - Path proxies are copied external handles, not script heap ownership of Rust
   state; storing them in heap aggregate values remains rejected until the heap
   slot model has an explicit proxy slot.
+
+## 2026-05-26: PathProxy Heap Slots Are External Handles
+
+Status: Accepted
+
+Context:
+`Value::PathProxy` can cross the Engine/native boundary, but managed-heap
+arrays, maps, sets, records, and enums store contents as `HeapSlot` values.
+Without an explicit heap slot, native-returned path proxies could not round-trip
+through heap-backed script aggregates.
+
+Decision:
+Add a `HeapSlot::PathProxy` external slot. It stores the copied `PathProxy`
+handle, materializes back into `Value::PathProxy`, and does not trace any GC
+references. Set membership keys still reject path proxies, matching host refs
+and keeping external handles out of deterministic scalar set keys.
+
+Consequences:
+- Managed-heap arrays and maps can carry path proxies returned from native
+  callbacks without losing the HostRef/HostPath/PatchTx boundary.
+- GC continues to own only script heap objects; path proxies remain copied
+  external handles and do not make Rust host state traceable or movable.
+- Host writes still require explicit proxy methods with `PatchTx`; heap storage
+  alone does not grant mutation access.

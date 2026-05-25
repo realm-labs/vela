@@ -1540,6 +1540,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   copied proxies without tracing host state, Engine argument conversion accepts
   them, and `ScriptHost` derives now generate per-field proxy helpers alongside
   existing `HostPath` helpers.
+- Extended managed-heap aggregate storage for copied `PathProxy` values. Heap
+  slots now preserve path proxies like external host refs without tracing or
+  owning Rust host state, allowing native-returned proxies to round-trip through
+  heap-backed arrays and maps.
 
 ## Next
 

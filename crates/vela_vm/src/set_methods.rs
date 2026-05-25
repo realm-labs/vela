@@ -331,7 +331,7 @@ fn slot_key(slot: &HeapSlot, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
             Some(HeapValue::String(value)) => Ok(SetKey::String(value.clone())),
             _ => type_error("method set"),
         },
-        HeapSlot::HostRef(_) => type_error("method set"),
+        HeapSlot::HostRef(_) | HeapSlot::PathProxy(_) => type_error("method set"),
         HeapSlot::Float(_) => type_error("method set"),
     }
 }
