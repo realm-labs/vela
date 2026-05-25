@@ -7,7 +7,8 @@ use syn::{
 
 use crate::attrs::{error, spanned_error};
 use crate::signature::{
-    docs_from_attrs, param_name, reject_script_reference_param, type_ident, wrapper_inner_type,
+    docs_from_attrs, param_name, reject_script_reference_param, reject_unsupported_integer_type,
+    type_ident, wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -271,12 +272,14 @@ fn function_meta(
             ));
         }
         reject_script_reference_param(param)?;
+        reject_unsupported_integer_type(&param.ty)?;
         params.push(ParamMeta {
             name: param_name(param),
             ty: param.ty.as_ref().clone(),
             hint: hint_for_type(&param.ty),
         });
     }
+    reject_return_type(&item.sig.output)?;
 
     Ok(FunctionMeta {
         id,
@@ -288,6 +291,13 @@ fn function_meta(
         params,
         returns: return_hint(&item.sig.output),
     })
+}
+
+fn reject_return_type(output: &ReturnType) -> Result<()> {
+    match output {
+        ReturnType::Default => Ok(()),
+        ReturnType::Type(_, ty) => reject_unsupported_integer_type(ty),
+    }
 }
 
 fn is_context_param(param: &PatType) -> bool {
@@ -320,10 +330,7 @@ fn hint_for_type(ty: &Type) -> HintKind {
     }
     match type_ident(ty).as_deref() {
         Some("bool") => HintKind::Bool,
-        Some(
-            "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16" | "u32" | "u64" | "u128"
-            | "usize",
-        ) => HintKind::Int,
+        Some("i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32") => HintKind::Int,
         Some("f32" | "f64") => HintKind::Float,
         Some("String" | "str") => HintKind::String,
         Some("Vec") => HintKind::Array,
@@ -546,5 +553,42 @@ mod tests {
                 .to_string()
                 .contains("script-visible parameters cannot use Rust references")
         );
+    }
+
+    #[test]
+    fn rejects_unsupported_integer_parameters() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn grant(amount: u64) -> i64 {
+                    i64::try_from(amount).unwrap_or(0)
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("unsupported integer parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("u64"));
+        assert!(
+            error
+                .to_string()
+                .contains("script-visible native signatures do not support")
+        );
+    }
+
+    #[test]
+    fn rejects_unsupported_integer_returns() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn grant() -> Option<usize> {
+                    Some(1)
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("unsupported integer return should fail macro expansion");
+
+        assert!(error.to_string().contains("usize"));
     }
 }

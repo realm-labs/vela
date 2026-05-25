@@ -1253,6 +1253,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   native method macros now expose the copied inner value hint for nullable
   arguments and returns, while runtime conversion still uses `null`/value
   shapes and does not introduce script-language generics.
+- Tightened M14 macro signature validation for Rust integer widths. Native
+  function and native method macros now reject `i128`, `isize`, `u64`, `u128`,
+  and `usize` anywhere in script-visible parameters or returns, including
+  wrapper types, matching the Engine typed conversion boundary before
+  generated registration code reaches Rust type-checking.
 
 ## Next
 

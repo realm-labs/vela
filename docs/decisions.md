@@ -5246,3 +5246,28 @@ Consequences:
   `null` at runtime.
 - Dynamic `Result<T, E>` descriptors keep the existing return-value inner hint
   behavior; script-level generic types remain unsupported.
+
+## 2026-05-25: Macro Integer Signatures Match VM Int Bounds
+
+Status: Accepted
+
+Context:
+Vela script `int` values are represented at the VM boundary as `i64`.
+`FromScriptArg` and `IntoScriptArg` support signed integer widths and unsigned
+widths that fit that boundary, but macro hint inference previously labeled
+`u64`, `usize`, `u128`, `i128`, and `isize` as `int`. That could generate
+native registration helpers whose descriptors claimed support for a signature
+that the Engine conversion traits intentionally do not implement.
+
+Decision:
+Native function and native method macros reject unsupported Rust integer widths
+anywhere in script-visible parameters or returns, including nested wrapper
+types such as `Option<u128>`. Supported copied integer signatures remain
+`i64`, `i32`, `i16`, `i8`, `u32`, `u16`, and `u8`.
+
+Consequences:
+- Embedders get an expansion-time diagnostic instead of a later generated
+  trait-bound failure.
+- Macro metadata stays aligned with the VM `i64` script integer boundary.
+- The language still has one dynamic `int` type and does not add numeric
+  generics or unsigned script integer types.
