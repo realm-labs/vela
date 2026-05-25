@@ -191,6 +191,11 @@ pub fn stdlib_function_completion_facts() -> Vec<StdlibFunctionFact> {
             vec![number.clone(), number.clone(), number.clone()],
             number.clone(),
         ),
+        StdlibFunctionFact::new(
+            "math.lerp",
+            vec![number.clone(), number.clone(), number.clone()],
+            TypeFact::Float,
+        ),
         StdlibFunctionFact::new("math.floor", vec![number.clone()], TypeFact::Int),
         StdlibFunctionFact::new("math.ceil", vec![number.clone()], TypeFact::Int),
         StdlibFunctionFact::new("math.abs", vec![number.clone()], number),
@@ -289,6 +294,14 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 "math.clamp",
                 args.to_vec(),
                 numeric_result(args),
+            ))
+        }
+        "math.lerp" => {
+            expect_len(args, 3)?;
+            Some(StdlibFunctionFact::new(
+                "math.lerp",
+                args.to_vec(),
+                TypeFact::Float,
             ))
         }
         "math.floor" | "math.ceil" => {
@@ -838,6 +851,15 @@ mod tests {
             TypeFact::Float
         );
         assert_eq!(
+            stdlib_function_fact(
+                "math.lerp",
+                &[TypeFact::Int, TypeFact::Int, TypeFact::Float]
+            )
+            .expect("lerp fact")
+            .returns,
+            TypeFact::Float
+        );
+        assert_eq!(
             stdlib_function_fact("math.floor", &[TypeFact::Float])
                 .expect("floor fact")
                 .returns,
@@ -907,6 +929,9 @@ mod tests {
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.clamp" && fact.params.len() == 3 && fact.returns == number_fact()
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "math.lerp" && fact.params.len() == 3 && fact.returns == TypeFact::Float
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "set.from_array" && fact.returns == TypeFact::set(TypeFact::Any)

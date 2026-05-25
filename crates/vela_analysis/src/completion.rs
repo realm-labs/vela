@@ -375,6 +375,7 @@ mod tests {
     fn global_completions_include_stdlib_functions() {
         let facts = registry_facts();
         let completions = global_completions(&facts);
+        let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
 
         assert!(completions.contains(&CompletionItem::new(
             "option.unwrap_or",
@@ -388,6 +389,14 @@ mod tests {
             "math.random",
             CompletionKind::Function,
             TypeFact::function(vec![TypeFact::Int, TypeFact::Int], TypeFact::Int),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "math.lerp",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![number.clone(), number.clone(), number],
+                TypeFact::Float
+            ),
         )));
     }
 

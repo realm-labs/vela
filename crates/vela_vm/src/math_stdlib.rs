@@ -4,6 +4,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.max", math_max);
     vm.register_native("math.min", math_min);
     vm.register_native("math.clamp", math_clamp);
+    vm.register_native("math.lerp", math_lerp);
     vm.register_native("math.floor", math_floor);
     vm.register_native("math.ceil", math_ceil);
     vm.register_native("math.abs", math_abs);
@@ -36,6 +37,14 @@ fn math_clamp(args: &[Value]) -> VmResult<Value> {
             Ok(Value::Float(value.clamp(min, max)))
         }
     }
+}
+
+fn math_lerp(args: &[Value]) -> VmResult<Value> {
+    expect_arity("math.lerp", args, 3)?;
+    let start = expect_finite_float(&args[0], "math.lerp")?;
+    let end = expect_finite_float(&args[1], "math.lerp")?;
+    let t = expect_finite_float(&args[2], "math.lerp")?;
+    Ok(Value::Float(start + (end - start) * t))
 }
 
 fn math_floor(args: &[Value]) -> VmResult<Value> {

@@ -19,8 +19,10 @@ mod tests {
 fn main() {
     let clamped = math.clamp(15, 1, 10);
     let rounded = math.floor(3.9) + math.ceil(2.1);
+    let midpoint = math.floor(math.lerp(10, 20, 0.5));
     return math.max(clamped, math.abs(-4))
-        + math.min(rounded, 10);
+        + math.min(rounded, 10)
+        + midpoint;
 }
 "#;
 
@@ -30,7 +32,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math stdlib source should run");
-        assert_eq!(result, crate::Value::Int(16));
+        assert_eq!(result, crate::Value::Int(31));
     }
 
     #[test]
@@ -39,7 +41,9 @@ fn main() {
 fn main() {
     let value = math.max(1.5, math.min(4.5, 3.25));
     let bounded = math.clamp(value, 2.0, 3.0);
-    return bounded == 3.0 && math.abs(-2.5) == 2.5;
+    return bounded == 3.0
+        && math.abs(-2.5) == 2.5
+        && math.lerp(2.0, 10.0, 0.25) == 4.0;
 }
 "#;
 

@@ -1214,6 +1214,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added Option-returning `array.first()` and `array.last()` endpoint helpers
   for inline and managed-heap arrays, with no-script-generics analysis facts
   and completion metadata.
+- Added gameplay-oriented `math.lerp(start, end, t)` as a numeric standard
+  native with inline and managed-heap coverage plus analysis and completion
+  facts.
 
 ## Next
 
