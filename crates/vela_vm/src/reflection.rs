@@ -414,6 +414,12 @@ impl Vm {
                 &variants_budget,
                 reflect::ReflectPermission::ReadTypeInfo,
             )?;
+            if args.is_empty() {
+                return value_from_reflect(reflect::variant_metadata_list_with_policy(
+                    &variants_registry,
+                    &variants_policy,
+                ));
+            }
             expect_arity("reflect.variants", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.variants")?;
             check_host_ref_inspection(&variants_policy, &target)?;

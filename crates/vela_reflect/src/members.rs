@@ -274,6 +274,40 @@ pub fn variants_with_policy(
     )))
 }
 
+pub fn all_variants(registry: &TypeRegistry) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .types()
+            .flat_map(|desc| {
+                desc.variants
+                    .iter()
+                    .map(|variant| variant_record_with_owner(&desc.key.name, variant))
+            })
+            .collect(),
+    ))
+}
+
+pub fn all_variants_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .types()
+            .flat_map(|desc| {
+                desc.variants.iter().map(|variant| {
+                    variant_record_with_owner_and_fields(
+                        &desc.key.name,
+                        variant,
+                        variant.fields.iter().filter(|field| {
+                            policy
+                                .require_field_read_access(&desc.key.name, field)
+                                .is_ok()
+                        }),
+                    )
+                })
+            })
+            .collect(),
+    ))
+}
+
 pub fn variant(target: &ReflectValue) -> ReflectResult<ReflectValue> {
     Ok(ReflectValue::Host(HostValue::String(
         variant_name(target)?.to_owned(),
@@ -543,10 +577,31 @@ fn variant_record(variant: &VariantDesc) -> HostValue {
     variant_record_with_fields(variant, variant.fields.iter())
 }
 
+fn variant_record_with_owner(type_name: &str, variant: &VariantDesc) -> HostValue {
+    variant_record_with_owner_and_fields(type_name, variant, variant.fields.iter())
+}
+
+fn variant_record_with_owner_and_fields<'a>(
+    type_name: &str,
+    variant: &VariantDesc,
+    variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
+) -> HostValue {
+    let mut fields = variant_record_fields(variant, variant_fields);
+    fields.insert("owner".to_owned(), HostValue::String(type_name.to_owned()));
+    variant_record_from_fields(fields)
+}
+
 fn variant_record_with_fields<'a>(
     variant: &VariantDesc,
     variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
 ) -> HostValue {
+    variant_record_from_fields(variant_record_fields(variant, variant_fields))
+}
+
+fn variant_record_fields<'a>(
+    variant: &VariantDesc,
+    variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
+) -> BTreeMap<String, HostValue> {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(variant.id.get())));
     fields.insert("name".to_owned(), HostValue::String(variant.name.clone()));
@@ -557,6 +612,10 @@ fn variant_record_with_fields<'a>(
     fields.insert("docs".to_owned(), docs_value(variant.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&variant.attrs));
     fields.insert("source_span".to_owned(), span_value(variant.source_span));
+    fields
+}
+
+fn variant_record_from_fields(fields: BTreeMap<String, HostValue>) -> HostValue {
     HostValue::Record {
         type_name: "ReflectVariant".to_owned(),
         fields,
@@ -942,6 +1001,25 @@ mod tests {
         assert_eq!(
             variant_fields.get("source_span"),
             Some(&span_value(Some(Span::new(SourceId::new(8), 90, 100))))
+        );
+        let ReflectValue::Host(HostValue::Array(all_variants)) = all_variants(&registry) else {
+            panic!("variant list should be an array");
+        };
+        assert_eq!(all_variants.len(), 2);
+        let HostValue::Record {
+            fields: variant_list_item,
+            ..
+        } = &all_variants[0]
+        else {
+            panic!("variant list item should be a record");
+        };
+        assert_eq!(
+            variant_list_item.get("owner"),
+            Some(&HostValue::String("QuestProgress".to_owned()))
+        );
+        assert_eq!(
+            variant_list_item.get("name"),
+            Some(&HostValue::String("Active".to_owned()))
         );
     }
 
@@ -1334,6 +1412,11 @@ mod tests {
         else {
             panic!("variants should be an array");
         };
+        let ReflectValue::Host(HostValue::Array(policy_all_variants)) =
+            all_variants_with_policy(&registry, &ReflectPolicy::read_only())
+        else {
+            panic!("all variants should be an array");
+        };
         let HostValue::Record { fields, .. } = &policy_variants[0] else {
             panic!("variant metadata should be a record");
         };
@@ -1348,5 +1431,20 @@ mod tests {
             fields.get("name"),
             Some(&HostValue::String("count".to_owned()))
         );
+        let HostValue::Record {
+            fields: all_variant_fields,
+            ..
+        } = &policy_all_variants[0]
+        else {
+            panic!("variant metadata should be a record");
+        };
+        assert_eq!(
+            all_variant_fields.get("owner"),
+            Some(&HostValue::String("QuestProgress".to_owned()))
+        );
+        let Some(HostValue::Array(all_policy_fields)) = all_variant_fields.get("fields") else {
+            panic!("variant fields should be an array");
+        };
+        assert_eq!(all_policy_fields.len(), 1);
     }
 }

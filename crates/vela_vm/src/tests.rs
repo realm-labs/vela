@@ -4716,6 +4716,7 @@ fn main(player) {
     let traits = reflect.traits(player);
     let quest = QuestProgress.Active { count: 1 };
     let variants = reflect.variants(quest);
+    let all_variants = reflect.variants();
     if reflect.has_method(player, "grant_exp")
         && methods.len() == 1
         && all_methods.len() == 1
@@ -4726,6 +4727,9 @@ fn main(player) {
         && methods[0].params[0].type == "int"
         && traits.len() == 1
         && variants.len() == 2
+        && all_variants.len() == 2
+        && all_variants[0].owner == "QuestProgress"
+        && all_variants[0].name == "Active"
         && reflect.variant(quest) == "Active"
         && reflect.variant_is(quest, "Active") {
         return variants[0].fields.len();
@@ -4931,8 +4935,12 @@ fn compiled_source_reflect_variants_respect_field_access() {
 fn main() {
     let quest = QuestProgress.Active { count: 1 };
     let variants = reflect.variants(quest);
-    if variants[0].fields.len() == 1 && variants[0].fields[0].name == "count" {
-        return variants.len();
+    let all_variants = reflect.variants();
+    if variants[0].fields.len() == 1
+        && variants[0].fields[0].name == "count"
+        && all_variants[0].fields.len() == 1
+        && all_variants[0].owner == "QuestProgress" {
+        return variants.len() * 10 + all_variants.len();
     }
     return 0;
 }
@@ -4950,7 +4958,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(2))
+        Ok(Value::Int(22))
     );
 }
 
