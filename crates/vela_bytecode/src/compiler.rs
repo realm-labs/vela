@@ -41,7 +41,10 @@ use patterns::{
     enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
     record_pattern_field_match, tuple_variant_field_name,
 };
-use schema_defaults::{SchemaFieldDefault, ScriptSchemaDefaults, source_schema_defaults};
+use schema_defaults::{
+    ConstructorShape, SchemaFieldDefault, ScriptSchemaDefaults, record_constructor_diagnostics,
+    source_schema_defaults, tuple_constructor_diagnostics, unknown_enum_variant_diagnostic,
+};
 use script_types::{
     ScriptTypeFact, ScriptTypeFlow, expression_script_fact, expression_script_type,
     type_hint_script_type,
@@ -1197,7 +1200,8 @@ impl<'ast> Compiler<'ast> {
             }
             ExprKind::Call { callee, args } => {
                 if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
-                    let fields = self.compile_tuple_variant_fields(&enum_name, &variant, args)?;
+                    let fields =
+                        self.compile_tuple_variant_fields(callee.span, &enum_name, &variant, args)?;
                     let dst = self.alloc_register()?;
                     self.emit(InstructionKind::MakeEnum {
                         dst,
@@ -1365,8 +1369,23 @@ impl<'ast> Compiler<'ast> {
             ExprKind::Record { path, fields } => {
                 let dst = self.alloc_register()?;
                 if let Some((enum_name, variant)) = enum_variant_path(path) {
-                    let enum_name = self.type_symbol_at_span(expr.span).unwrap_or(enum_name);
-                    let defaults = self.enum_default_fields(&enum_name, &variant);
+                    let resolved_enum_name = self.type_symbol_at_span(expr.span);
+                    let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
+                    if resolved_enum_name.is_some()
+                        && !self.enum_constructor_variant_exists(&enum_name, &variant)
+                    {
+                        return Err(self.constructor_diagnostics_error(vec![
+                            unknown_enum_variant_diagnostic(&enum_name, &variant, expr.span),
+                        ]));
+                    }
+                    let shape = self.enum_constructor_shape(&enum_name, &variant);
+                    self.reject_constructor_diagnostics(record_constructor_diagnostics(
+                        &format!("{enum_name}.{variant}"),
+                        shape.as_ref(),
+                        fields,
+                        expr.span,
+                    ))?;
+                    let defaults = schema_default_fields(shape.as_ref());
                     let fields = self.compile_record_fields(fields, defaults)?;
                     self.emit(InstructionKind::MakeEnum {
                         dst,
@@ -1378,7 +1397,14 @@ impl<'ast> Compiler<'ast> {
                     let type_name = self
                         .type_symbol_at_span(expr.span)
                         .unwrap_or_else(|| path.join("."));
-                    let defaults = self.record_default_fields(&type_name);
+                    let shape = self.record_constructor_shape(&type_name);
+                    self.reject_constructor_diagnostics(record_constructor_diagnostics(
+                        &type_name,
+                        shape.as_ref(),
+                        fields,
+                        expr.span,
+                    ))?;
+                    let defaults = schema_default_fields(shape.as_ref());
                     let fields = self.compile_record_fields(fields, defaults)?;
                     self.emit(InstructionKind::MakeRecord {
                         dst,
@@ -2735,10 +2761,28 @@ impl<'ast> Compiler<'ast> {
 
     fn compile_tuple_variant_fields(
         &mut self,
+        constructor_span: Span,
         enum_name: &str,
         variant: &str,
         args: &[Argument],
     ) -> CompileResult<Vec<(String, Register)>> {
+        if !self.enum_constructor_variant_exists(enum_name, variant) {
+            return Err(
+                self.constructor_diagnostics_error(vec![unknown_enum_variant_diagnostic(
+                    enum_name,
+                    variant,
+                    constructor_span,
+                )]),
+            );
+        }
+        let shape = self.enum_constructor_shape(enum_name, variant);
+        self.reject_constructor_diagnostics(tuple_constructor_diagnostics(
+            enum_name,
+            variant,
+            shape.as_ref(),
+            args,
+            constructor_span,
+        ))?;
         let mut fields = Vec::new();
         let mut explicit_names = BTreeSet::new();
         for (index, arg) in args.iter().enumerate() {
@@ -2752,7 +2796,7 @@ impl<'ast> Compiler<'ast> {
             explicit_names.insert(name.clone());
             fields.push((name, value));
         }
-        let defaults = self.enum_default_fields(enum_name, variant);
+        let defaults = schema_default_fields(shape.as_ref());
         self.compile_schema_default_fields(&mut fields, &explicit_names, defaults)?;
         Ok(fields)
     }
@@ -2810,18 +2854,33 @@ impl<'ast> Compiler<'ast> {
         self.compile_expr(&default.value)
     }
 
-    fn record_default_fields(&self, type_name: &str) -> Vec<SchemaFieldDefault> {
-        self.facts
-            .schema_defaults
-            .record(type_name)
-            .map_or_else(Vec::new, <[SchemaFieldDefault]>::to_vec)
+    fn record_constructor_shape(&self, type_name: &str) -> Option<ConstructorShape> {
+        self.facts.schema_defaults.record(type_name).cloned()
     }
 
-    fn enum_default_fields(&self, type_name: &str, variant: &str) -> Vec<SchemaFieldDefault> {
+    fn enum_constructor_shape(&self, type_name: &str, variant: &str) -> Option<ConstructorShape> {
         self.facts
             .schema_defaults
             .enum_variant(type_name, variant)
-            .map_or_else(Vec::new, <[SchemaFieldDefault]>::to_vec)
+            .cloned()
+    }
+
+    fn enum_constructor_variant_exists(&self, type_name: &str, variant: &str) -> bool {
+        self.facts
+            .schema_defaults
+            .enum_contains_variant(type_name, variant)
+    }
+
+    fn reject_constructor_diagnostics(&self, diagnostics: Vec<Diagnostic>) -> CompileResult<()> {
+        if diagnostics.is_empty() {
+            Ok(())
+        } else {
+            Err(self.constructor_diagnostics_error(diagnostics))
+        }
+    }
+
+    fn constructor_diagnostics_error(&self, diagnostics: Vec<Diagnostic>) -> CompileError {
+        CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
     }
 
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {
@@ -3133,6 +3192,10 @@ fn record_literal_field_slot(expr: &Expr, field: &str) -> Option<(LiteralFieldSl
     Some((kind, slot))
 }
 
+fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {
+    shape.map_or_else(Vec::new, |shape| shape.defaults().cloned().collect())
+}
+
 fn sorted_field_slot(fields: &[vela_syntax::RecordField], field: &str) -> Option<usize> {
     let mut names = fields
         .iter()
@@ -3146,6 +3209,16 @@ fn sorted_field_slot(fields: &[vela_syntax::RecordField], field: &str) -> Option
 mod tests {
     use super::*;
     use vela_common::MethodId;
+
+    fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        diagnostics
+            .into_iter()
+            .filter_map(|diagnostic| diagnostic.code)
+            .collect()
+    }
 
     #[test]
     fn compiler_rejects_duplicate_declarations_from_hir() {
@@ -3233,6 +3306,136 @@ fn main() {
                 "missing diagnostic {code}: {diagnostics:?}"
             );
         }
+    }
+
+    #[test]
+    fn compiler_rejects_missing_required_constructor_fields() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    item_id: string,
+    count: int = 1,
+}
+
+fn main() {
+    return Reward { count: 2 };
+}
+"#,
+        )
+        .expect_err("missing required constructor field should fail");
+
+        assert_eq!(
+            semantic_diagnostic_codes(error),
+            ["compiler::missing_constructor_field"]
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_constructor_fields() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    item_id: string,
+    count: int,
+}
+
+fn main() {
+    return Reward { item_id: "gold", count: 2, bonus: 5 };
+}
+"#,
+        )
+        .expect_err("unknown constructor field should fail");
+
+        assert_eq!(
+            semantic_diagnostic_codes(error),
+            ["compiler::unknown_constructor_field"]
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_duplicate_constructor_fields() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Reward {
+    item_id: string,
+    count: int,
+}
+
+fn main() {
+    return Reward { item_id: "gold", item_id: "xp", count: 2 };
+}
+"#,
+        )
+        .expect_err("duplicate constructor field should fail");
+
+        assert_eq!(
+            semantic_diagnostic_codes(error),
+            ["compiler::duplicate_constructor_field"]
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_tuple_constructor_arity() {
+        let missing = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Damage {
+    Magical(amount: int, element: string = "arcane"),
+}
+
+fn main() {
+    return Damage.Magical();
+}
+"#,
+        )
+        .expect_err("missing tuple constructor field should fail");
+        let extra = compile_program_source(
+            SourceId::new(2),
+            r#"
+enum Damage {
+    Magical(amount: int),
+}
+
+fn main() {
+    return Damage.Magical(1, 2);
+}
+"#,
+        )
+        .expect_err("extra tuple constructor field should fail");
+
+        assert_eq!(
+            semantic_diagnostic_codes(missing),
+            ["compiler::missing_constructor_field"]
+        );
+        assert_eq!(
+            semantic_diagnostic_codes(extra),
+            ["compiler::unknown_constructor_field"]
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_constructor_variants() {
+        let error = compile_program_source(
+            SourceId::new(1),
+            r#"
+enum Damage {
+    Physical { amount: int },
+}
+
+fn main() {
+    return Damage.Magical { amount: 7 };
+}
+"#,
+        )
+        .expect_err("unknown constructor variant should fail");
+
+        assert_eq!(
+            semantic_diagnostic_codes(error),
+            ["compiler::unknown_constructor_variant"]
+        );
     }
 
     #[test]
@@ -4764,7 +4967,7 @@ pub struct Reward { count: int }
                 SourceId::new(3),
                 ModulePath::from_dotted("game.damage"),
                 r#"
-pub enum Damage { Physical }
+pub enum Damage { Physical { amount: int } }
 "#,
             ),
         ])
@@ -4809,7 +5012,7 @@ fn main() {
                 SourceId::new(2),
                 ModulePath::from_dotted("game.damage"),
                 r#"
-pub enum Damage { Physical }
+pub enum Damage { Physical { amount: int } }
 "#,
             ),
         ])

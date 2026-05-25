@@ -1496,6 +1496,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   tuple payload fields from declaration defaults, including pure const
   expressions and imported module constructors, while preserving the existing
   dynamic record path for undeclared shapes.
+- Tightened script constructor shape validation before bytecode emission.
+  Known script struct and enum constructors now reject missing required fields,
+  unknown fields, duplicate record fields, invalid tuple arity, and unknown
+  enum variants with source-spanned semantic diagnostics instead of silently
+  producing mismatched runtime shapes.
 
 ## Next
 

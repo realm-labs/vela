@@ -1840,8 +1840,8 @@ fn runs_try_propagation_for_option_values() {
         SourceId::new(1),
         r#"
 enum Option {
-    Some(value)
-    None
+    Some(value),
+    None,
 }
 
 fn maybe(value) {
@@ -1888,8 +1888,8 @@ fn managed_heap_execution_runs_try_propagation_for_result_values() {
         SourceId::new(1),
         r#"
 enum Result {
-    Ok(value)
-    Err(message)
+    Ok(value),
+    Err(message),
 }
 
 fn checked(value) {
@@ -2092,7 +2092,7 @@ pub struct Reward { count: int }
             SourceId::new(3),
             ModulePath::from_dotted("game.damage"),
             r#"
-pub enum Damage { Physical }
+pub enum Damage { Physical { amount: int } }
 "#,
         ),
     ])
@@ -2178,7 +2178,10 @@ fn main() {
             SourceId::new(2),
             ModulePath::from_dotted("game.damage"),
             r#"
-pub enum Damage { Physical, Magical }
+pub enum Damage {
+    Physical { amount: int },
+    Magical { amount: int },
+}
 "#,
         ),
     ])
@@ -2443,8 +2446,8 @@ fn managed_heap_host_execution_converts_record_for_host_write_and_overlay_read()
         SourceId::new(1),
         r#"
 struct Reward {
-    item_id
-    count
+    item_id,
+    count,
 }
 
 fn main(player) {
