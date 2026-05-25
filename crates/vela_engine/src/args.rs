@@ -140,6 +140,18 @@ impl IntoScriptArg for f32 {
     }
 }
 
+impl FromScriptArg for f32 {
+    const TYPE_NAME: &'static str = "float";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        match value {
+            Value::Float(value) => f32_from_f64(*value),
+            Value::Int(value) => f32_from_f64(*value as f64),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
 impl IntoScriptArg for f64 {
     fn into_script_arg(self) -> Value {
         Value::Float(self)
@@ -156,6 +168,14 @@ impl FromScriptArg for f64 {
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
+}
+
+fn f32_from_f64(value: f64) -> VmResult<f32> {
+    let converted = value as f32;
+    if value.is_finite() && !converted.is_finite() {
+        return Err(type_mismatch(<f32 as FromScriptArg>::TYPE_NAME));
+    }
+    Ok(converted)
 }
 
 impl IntoScriptArg for String {

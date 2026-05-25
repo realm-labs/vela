@@ -1245,6 +1245,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   natives, `args!`, and macro-generated native functions can now accept and
   return copied script map values through the existing `Value::Map` boundary,
   matching the macro metadata that already reports HashMap parameters as maps.
+- Added M14 Rust `f32` inbound signature conversion. Typed Engine natives and
+  macro-generated functions can now accept copied script float values as `f32`,
+  while finite script floats that overflow the Rust type report structured
+  conversion errors instead of silently becoming infinity.
 
 ## Next
 

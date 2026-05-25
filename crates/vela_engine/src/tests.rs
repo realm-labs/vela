@@ -146,6 +146,33 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_accept_f32_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(f32,), _>(
+            NativeFunctionDesc::new("game.scale_weight", NativeFunctionId::new(228))
+                .param("weight", TypeHint::Float)
+                .returns(TypeHint::Float),
+            |weight: f32| weight * 2.0,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.scale_weight(1.5);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Float(3.0)),
+    );
+}
+
+#[test]
 fn typed_native_functions_accept_set_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(BTreeSet<String>,), _>(
@@ -1333,6 +1360,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
     assert!(args.required::<bool>(0).expect("bool arg"));
     assert_eq!(args.required::<i64>(1), Ok(5));
     assert_eq!(args.required::<f64>(2), Ok(2.5));
+    assert_eq!(args.required::<f32>(2), Ok(2.5_f32));
     assert_eq!(args.required::<String>(3), Ok("title".to_owned()));
     assert_eq!(args.required::<Vec<i64>>(4), Ok(vec![1, 2, 3]));
     assert_eq!(
@@ -1351,6 +1379,14 @@ fn script_arg_conversions_extract_owned_rust_values() {
             kind: VmErrorKind::TypeMismatch {
                 operation: "host ref"
             },
+            source_span: None,
+            ..
+        })
+    ));
+    assert!(matches!(
+        f32::from_script_arg(&Value::Float(f64::MAX)),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch { operation: "float" },
             source_span: None,
             ..
         })
