@@ -5568,3 +5568,28 @@ Consequences:
   scalar set key model.
 - Analysis metadata describes the methods with internal TypeFacts while script
   syntax remains free of user-visible generics.
+
+## 2026-05-25: Macro Result Returns Use Dynamic Metadata
+
+Status: Accepted
+
+Context:
+Typed Engine callbacks convert Rust `Result<T, E>` through the script-visible
+dynamic `Result.Ok(value)` and `Result.Err(error)` enum shapes. The macro
+metadata path had treated `Result<T, E>` like `VmResult<T>`, exposing the Ok
+payload hint even though the actual script value is a dynamic Result enum.
+
+Decision:
+Native function and native method macros now leave Rust `Result<T, E>` return
+types as `TypeHint::Any`. Implementation wrappers such as `VmResult<T>` and
+`HostResult<T>` still expose the successful copied value hint because those
+wrappers represent host-side error propagation, not script-visible Result
+values. `Option<T>` keeps exposing the nullable inner value hint.
+
+Consequences:
+- Reflection metadata no longer claims that dynamic Result-returning natives
+  return a bare Ok payload.
+- Scripts still compose returned values with `result.is_ok`, `result.is_err`,
+  `result.unwrap_or`, and `?` without adding script-language generics.
+- Macro-generated registration remains on the stable typed Engine API and does
+  not expose Rust references or mutable host state.

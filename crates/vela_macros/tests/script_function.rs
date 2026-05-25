@@ -88,6 +88,12 @@ fn sum5(a: i64, b: i64, c: i64, d: i64, e: i64) -> i64 {
     a + b + c + d + e
 }
 
+/// Returns a dynamic copied Result bonus.
+#[script_function(id = 49, name = "game.checked_bonus", effect = "pure", reflect = true)]
+fn checked_bonus(ok: bool) -> std::result::Result<i64, String> {
+    if ok { Ok(9) } else { Err("denied".to_owned()) }
+}
+
 #[test]
 fn script_function_generates_native_function_metadata() {
     assert_eq!(
@@ -172,6 +178,19 @@ fn script_function_generates_five_arg_signature_metadata() {
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Sums five copied script integers."),
+    );
+}
+
+#[test]
+fn script_function_generates_result_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_checked_bonus(),
+        NativeFunctionDesc::new("game.checked_bonus", NativeFunctionId::new(49))
+            .param("ok", TypeHint::Bool)
+            .returns(TypeHint::Any)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Returns a dynamic copied Result bonus."),
     );
 }
 
@@ -394,6 +413,37 @@ fn main() {
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(15)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_result_native_with_engine() {
+    let engine =
+        vela_register_native_function_checked_bonus(Engine::builder().with_standard_natives())
+            .build()
+            .expect("engine should build from macro result native function");
+    let root = unique_test_dir("script_function_result_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main() {
+    let ok = game.checked_bonus(true);
+    let err = game.checked_bonus(false);
+    return result.unwrap_or(ok, 0) + result.unwrap_or(err, 4);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered result native");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(13)),
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }

@@ -1303,6 +1303,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `set.difference(other)` helpers. They preserve deterministic receiver-order
   output, work in inline and managed-heap execution, reject non-set operands,
   and expose analysis TypeFacts plus completion metadata.
+- Aligned M14 macro metadata for Rust `Result<T, E>` returns with the dynamic
+  script boundary. Native function and method macros now expose Result returns
+  as `TypeHint::Any` while `VmResult<T>` and `HostResult<T>` continue to
+  expose the successful copied value hint, with macro tests proving generated
+  registrations return dynamic `Result.Ok`/`Result.Err` values.
 
 ## Next
 

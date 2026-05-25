@@ -318,7 +318,7 @@ fn return_hint(output: &ReturnType) -> HintKind {
 }
 
 fn return_wrapper_inner_hint(ty: &Type) -> Option<HintKind> {
-    wrapper_inner_type(ty, &["Option", "Result", "VmResult"]).map(hint_for_type)
+    wrapper_inner_type(ty, &["Option", "VmResult"]).map(hint_for_type)
 }
 
 fn hint_for_type(ty: &Type) -> HintKind {

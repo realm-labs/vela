@@ -86,6 +86,20 @@ impl Player {
         )?;
         Ok(total)
     }
+
+    /// Previews a dynamic copied Result through a callable native method.
+    #[script_method(id = 11, effect = "read_host", reflect = true)]
+    pub fn checked_preview(
+        _receiver: &HostPath,
+        _host: &mut HostExecution<'_>,
+        ok: bool,
+    ) -> std::result::Result<i64, String> {
+        if ok {
+            Ok(17)
+        } else {
+            Err("blocked".to_owned())
+        }
+    }
 }
 
 #[test]
@@ -93,7 +107,7 @@ fn script_methods_generates_native_method_metadata() {
     let owner = TypeKey::new(TypeId::new(1001), "Player");
     let descs = Player::vela_native_method_descs();
 
-    assert_eq!(descs.len(), 4);
+    assert_eq!(descs.len(), 5);
     assert_eq!(
         descs[0],
         NativeMethodDesc::new(owner.clone(), HostMethodId::new(7), "grant_exp")
@@ -145,6 +159,15 @@ fn script_methods_generates_native_method_metadata() {
                     .require_permission("player.write"),
             )
             .docs("Sums five copied method values through a callable native method."),
+    );
+    assert_eq!(
+        descs[4],
+        NativeMethodDesc::new(owner.clone(), HostMethodId::new(11), "checked_preview")
+            .param("ok", TypeHint::Bool)
+            .returns(TypeHint::Any)
+            .effects(EffectSet::host_read())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Previews a dynamic copied Result through a callable native method."),
     );
     assert_eq!(descs[0].owner, Player::vela_host_type_desc().key);
     assert_eq!(
@@ -247,7 +270,7 @@ fn script_methods_feed_stable_engine_registration_api() {
     let player_type = registry
         .type_by_name("Player")
         .expect("registered player type");
-    assert_eq!(player_type.methods.len(), 4);
+    assert_eq!(player_type.methods.len(), 5);
     assert_eq!(player_type.methods[0].name, "grant_exp");
     assert_eq!(player_type.methods[3].name, "sum_score");
 
@@ -279,6 +302,52 @@ fn script_methods_feed_stable_engine_registration_api() {
         HostPath::new(player).field(FieldId::new(1)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(15)));
+}
+
+#[test]
+fn script_methods_generate_callable_result_native_registration() {
+    let engine = Player::vela_register_native_method_fns(
+        Engine::builder()
+            .register_host_schema::<Player>()
+            .grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro callable methods");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            HostMethodId::new(11),
+            &HostPath::new(player),
+            &[Value::Bool(true)],
+            &mut host,
+        ),
+        Ok(Value::Enum {
+            enum_name: "Result".to_owned(),
+            variant: "Ok".to_owned(),
+            fields: [("0".to_owned(), Value::Int(17))].into(),
+        }),
+    );
+    assert_eq!(
+        engine.call_native_method(
+            HostMethodId::new(11),
+            &HostPath::new(player),
+            &[Value::Bool(false)],
+            &mut host,
+        ),
+        Ok(Value::Enum {
+            enum_name: "Result".to_owned(),
+            variant: "Err".to_owned(),
+            fields: [("0".to_owned(), Value::String("blocked".to_owned()))].into(),
+        }),
+    );
+    assert!(tx.patches().is_empty());
 }
 
 #[test]
