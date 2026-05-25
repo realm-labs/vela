@@ -1,4 +1,4 @@
-use syn::{Attribute, Generics, Pat, PatType, Result, Type, spanned::Spanned};
+use syn::{Attribute, Generics, Pat, PatType, Result, Signature, Type, spanned::Spanned};
 
 const UNSUPPORTED_SCRIPT_INTEGER_TYPES: &[&str] = &["i128", "isize", "u64", "u128", "usize"];
 
@@ -20,6 +20,17 @@ pub(crate) fn reject_generic_signature(generics: &Generics, context: &str) -> Re
     Err(syn::Error::new(
         generics.span(),
         format!("{context} does not support generic parameters or where clauses"),
+    ))
+}
+
+pub(crate) fn reject_unsafe_signature(signature: &Signature, context: &str) -> Result<()> {
+    if signature.unsafety.is_none() {
+        return Ok(());
+    }
+
+    Err(syn::Error::new(
+        signature.unsafety.span(),
+        format!("{context} does not support unsafe functions"),
     ))
 }
 

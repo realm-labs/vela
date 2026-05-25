@@ -8,7 +8,7 @@ use syn::{
 use crate::attrs::{error, spanned_error};
 use crate::signature::{
     docs_from_attrs, param_name, reject_generic_signature, reject_script_reference_param,
-    reject_unsupported_integer_type, type_ident, wrapper_inner_type,
+    reject_unsafe_signature, reject_unsupported_integer_type, type_ident, wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -99,6 +99,7 @@ fn expand_result(attr: TokenStream, input: TokenStream, mode: FunctionMode) -> R
             &format!("{} does not support async functions", mode.attr_name()),
         ));
     }
+    reject_unsafe_signature(&item.sig, mode.attr_name())?;
 
     let attrs = parse_script_function_attrs(attr)?;
     let id = attrs.id.ok_or_else(|| {
@@ -517,6 +518,22 @@ mod tests {
         .expect_err("function where clause should fail macro expansion");
 
         assert!(error.to_string().contains("where clauses"));
+    }
+
+    #[test]
+    fn rejects_unsafe_functions() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                unsafe fn grant(amount: i64) -> i64 {
+                    amount
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("unsafe function should fail macro expansion");
+
+        assert!(error.to_string().contains("unsafe functions"));
     }
 
     #[test]

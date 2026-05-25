@@ -6061,3 +6061,24 @@ Consequences:
   objects, numeric generics, or host mutation behavior.
 - Analysis and completion expose the helper as `(int | float, int | float,
   int | float, int | float) -> float`.
+
+## 2026-05-25: Native Macros Reject Unsafe Callbacks
+
+Status: Accepted
+
+Context:
+M14 native macros generate stable Engine registration helpers from Rust
+callbacks. Unsafe Rust functions and methods cannot be called through the same
+safe typed-native boundary, and allowing them to reach generated code produces
+less direct compiler failures.
+
+Decision:
+Reject unsafe signatures through a shared macro signature helper. Apply the
+check to `#[script_function]`, `#[script_context_function]`,
+`#[script_host_function]`, and individual `#[script_method]` callbacks.
+
+Consequences:
+- Engine registration helpers remain safe Rust entrypoints.
+- Macro users get an immediate diagnostic instead of generated-code failures.
+- The scripting boundary continues to avoid exposing Rust unsafe or reference
+  semantics to scripts.

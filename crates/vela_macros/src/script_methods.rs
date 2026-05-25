@@ -10,7 +10,7 @@ use syn::{
 use crate::attrs::{error, spanned_error};
 use crate::signature::{
     docs_from_attrs, param_name, reject_generic_signature, reject_script_reference_param,
-    reject_unsupported_integer_type, type_ident, wrapper_inner_type,
+    reject_unsafe_signature, reject_unsupported_integer_type, type_ident, wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -234,6 +234,7 @@ fn method_meta(
             "#[script_method] does not support async methods",
         ));
     }
+    reject_unsafe_signature(&method.sig, "#[script_method]")?;
 
     let mut params = Vec::new();
     let mut skipped_receiver = false;
@@ -561,6 +562,20 @@ mod tests {
         .expect_err("method where clause should fail macro expansion");
 
         assert!(error.to_string().contains("where clauses"));
+    }
+
+    #[test]
+    fn rejects_unsafe_methods() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1)]
+                pub unsafe fn grant(player: HostRef, amount: i64) {
+                }
+            }
+        })
+        .expect_err("unsafe method should fail macro expansion");
+
+        assert!(error.to_string().contains("unsafe functions"));
     }
 
     #[test]
