@@ -627,6 +627,9 @@ mod tests {
                 grant.or_else(|error| ok);
                 failed.or_else(|error| ok);
                 ok.or_else(|error| failed);
+                maybe.filter(|value| value > 0);
+                some.filter(|value| value.len() > 0);
+                none.filter(|value| true);
             }
             "#,
         );
@@ -709,6 +712,18 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[17], &scope),
             TypeFact::result_ok(TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[18], &scope),
+            TypeFact::option(TypeFact::Int)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[19], &scope),
+            TypeFact::option(TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[20], &scope),
+            TypeFact::option_none()
         );
     }
 

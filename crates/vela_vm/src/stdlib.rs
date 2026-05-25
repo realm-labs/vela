@@ -275,6 +275,31 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_option_filter_method() {
+        let source = r#"
+fn main() {
+    let kept = option.some(4).filter(|value| value > 2);
+    let dropped = option.some(1).filter(|value| value > 2);
+    let none = option.none().filter(|value| value > 2);
+
+    return option.unwrap_or(kept, 0) == 4
+        && option.is_none(dropped)
+        && option.is_none(none);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option filter source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option filter source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
     fn runs_compiled_option_ok_or_with_try_propagation() {
         let source = r#"
 fn checked(raw) {
@@ -505,6 +530,34 @@ fn main() {
         let result = vm
             .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
             .expect("heap option/result or_else source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_option_filter_method() {
+        let source = r#"
+fn main() {
+    let kept = option.some("quest").filter(|value| value.starts_with("q"));
+    let dropped = option.some("quest").filter(|value| value.starts_with("x"));
+    let aggregate = option.some(["quest", "done"]).filter(|values| values.len() == 2);
+    let none = option.none().filter(|value| value.starts_with("q"));
+
+    return option.unwrap_or(kept, "") == "quest"
+        && option.is_none(dropped)
+        && option.unwrap_or(aggregate, []).join(".") == "quest.done"
+        && option.is_none(none);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap option filter source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap option filter source should run");
         assert_eq!(result, crate::Value::Bool(true));
     }
 

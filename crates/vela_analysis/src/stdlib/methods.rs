@@ -59,7 +59,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "parse_float",
     "parse_bool",
 ];
-const OPTION_METHOD_NAMES: &[&str] = &["map", "and_then", "or_else"];
+const OPTION_METHOD_NAMES: &[&str] = &["map", "and_then", "or_else", "filter"];
 const RESULT_METHOD_NAMES: &[&str] = &["map", "map_err", "and_then", "or_else"];
 
 pub(super) fn method_fact(
@@ -500,6 +500,16 @@ fn option_method_fact(
             let fallback = option_chain_lambda_return(lambda_return);
             let returns = option_or_else_return(some.clone(), shape, &fallback);
             Some(StdlibMethodFact::new(receiver, "or_else", returns).with_lambda(vec![], fallback))
+        }
+        "filter" => {
+            let returns = match shape {
+                OptionShape::Maybe | OptionShape::Some => TypeFact::option(some.clone()),
+                OptionShape::None => TypeFact::option_none(),
+            };
+            Some(
+                StdlibMethodFact::new(receiver, "filter", returns)
+                    .with_lambda(vec![some], TypeFact::Bool),
+            )
         }
         _ => None,
     }

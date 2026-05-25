@@ -165,7 +165,20 @@ pub(crate) fn call_method(
             }
         }
         "filter" => {
-            if map_methods::is_map(receiver, heap.as_deref()) {
+            if option_result_methods::is_option(receiver, heap.as_deref()) {
+                option_result_methods::filter(
+                    receiver,
+                    args,
+                    MethodRuntime {
+                        vm,
+                        program,
+                        host: host.as_deref_mut(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        caller_roots: &caller_roots,
+                    },
+                )
+            } else if map_methods::is_map(receiver, heap.as_deref()) {
                 map_methods::filter(
                     receiver,
                     args,

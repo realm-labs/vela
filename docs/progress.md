@@ -1599,6 +1599,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Option-family value, `Result.Err` invokes an error-aware callback that must
   return a Result-family value, and success variants pass through with
   matching analysis/completion facts.
+- Added Option `.filter(predicate)` for M13 value validation chains.
+  `Option.Some` invokes a budgeted predicate callback and keeps the payload
+  only when the predicate is truthy, `Option.None` passes through, and
+  analysis/completion facts expose the predicate payload shape without adding
+  script generics.
 
 ## Next
 

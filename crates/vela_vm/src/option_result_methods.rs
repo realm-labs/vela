@@ -7,6 +7,10 @@ pub(crate) fn is_option_or_result(receiver: &Value, heap: Option<&HeapExecution<
     enum_tag(receiver, heap).is_some_and(|tag| tag.is_option() || tag.is_result())
 }
 
+pub(crate) fn is_option(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
+    enum_tag(receiver, heap).is_some_and(|tag| tag.is_option())
+}
+
 pub(crate) fn is_result(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     enum_tag(receiver, heap).is_some_and(|tag| tag.is_result())
 }
@@ -195,6 +199,39 @@ pub(crate) fn or_else(
     }
 }
 
+pub(crate) fn filter(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("filter", args, 1)?;
+    let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method filter",
+        })
+    })?;
+
+    match (tag.kind, tag.variant.as_str()) {
+        (EnumKind::Option, "Some") => {
+            let payload = enum_payload(receiver, runtime.heap.as_deref(), "method filter")?;
+            let predicate = call_callback(
+                &mut runtime,
+                "method filter",
+                &args[0],
+                std::slice::from_ref(&payload),
+                std::slice::from_ref(receiver),
+            )?;
+            if is_truthy(&predicate) {
+                Ok(option_value(Some(payload)))
+            } else {
+                Ok(option_value(None))
+            }
+        }
+        (EnumKind::Option, "None") => Ok(option_value(None)),
+        _ => type_error("method filter"),
+    }
+}
+
 struct EnumTag {
     kind: EnumKind,
     variant: String,
@@ -287,6 +324,10 @@ fn expect_enum_kind(
         Some(tag) if tag.kind == expected => Ok(value),
         _ => type_error(operation),
     }
+}
+
+fn is_truthy(value: &Value) -> bool {
+    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {

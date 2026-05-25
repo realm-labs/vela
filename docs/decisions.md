@@ -6604,3 +6604,29 @@ Consequences:
   generic Option/Result types.
 - The VM keeps fallback chaining in the focused Option/Result stdlib module,
   with `script_methods` remaining dispatch glue.
+
+## 2026-05-26: Option Filter Keeps Predicate-Passing Values
+
+Status: Accepted
+
+Context:
+Gameplay scripts often need to validate an optional lookup or parsed value
+before continuing a propagation chain. This can be written with `match`, but it
+adds noise around common guard checks such as level bounds, tag prefixes, or
+quest state predicates.
+
+Decision:
+Add `.filter(predicate)` as an Option-only value method. `Option.Some` invokes
+the predicate through the existing budgeted method runtime and returns the
+original `Some` only when the predicate is truthy. Falsey predicates return
+`Option.None`. `Option.None` passes through without invoking the callback.
+Analysis exposes a non-generic predicate fact using the contained payload
+shape.
+
+Consequences:
+- Optional validation composes with `.map`, `.and_then`, `.or_else`, and `?`
+  without adding script-language generics.
+- Predicate execution keeps existing heap-root, budget, and host-boundary
+  behavior.
+- Result values do not gain a same-named filter method; method dispatch only
+  routes Option receivers to this implementation.

@@ -469,6 +469,23 @@ mod tests {
             TypeFact::option_some(TypeFact::String)
         );
 
+        let filtered = stdlib_method_fact(&TypeFact::option(TypeFact::Int), "filter", None)
+            .expect("option filter fact");
+        assert_eq!(filtered.returns, TypeFact::option(TypeFact::Int));
+        assert_eq!(
+            filtered.lambda.expect("option filter lambda").params,
+            vec![TypeFact::Int]
+        );
+
+        let filtered_some =
+            stdlib_method_fact(&TypeFact::option_some(TypeFact::String), "filter", None)
+                .expect("some filter fact");
+        assert_eq!(filtered_some.returns, TypeFact::option(TypeFact::String));
+
+        let filtered_none =
+            stdlib_method_fact(&TypeFact::option_none(), "filter", None).expect("none filter fact");
+        assert_eq!(filtered_none.returns, TypeFact::option_none());
+
         let result = stdlib_method_fact(
             &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
             "map",
