@@ -29,7 +29,9 @@ pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
     exports as module_exports, exports_with_policy as module_exports_with_policy,
     function as function_metadata, function_with_policy as function_metadata_with_policy,
-    module as module_metadata, module_with_policy as module_metadata_with_policy,
+    functions as function_metadata_list,
+    functions_with_policy as function_metadata_list_with_policy, module as module_metadata,
+    module_with_policy as module_metadata_with_policy,
 };
 pub use permissions::{
     ReflectLookupBudget, ReflectPermission, ReflectPermissionSet, ReflectPolicy, has_permission,

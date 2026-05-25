@@ -339,6 +339,12 @@ pub fn function(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectVal
     Ok(function_record(desc))
 }
 
+pub fn functions(registry: &TypeRegistry) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry.functions().map(function_record_host).collect(),
+    ))
+}
+
 pub fn function_with_policy(
     registry: &TypeRegistry,
     name: &str,
@@ -354,6 +360,16 @@ pub fn function_with_policy(
     })?;
     policy.require_function_access(desc)?;
     Ok(function_record(desc))
+}
+
+pub fn functions_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
+    ReflectValue::Host(HostValue::Array(
+        registry
+            .functions()
+            .filter(|function| policy.require_function_access(function).is_ok())
+            .map(function_record_host)
+            .collect(),
+    ))
 }
 
 fn module_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::ReflectCandidate> {
@@ -488,6 +504,49 @@ fn function_record(desc: &FunctionDesc) -> ReflectValue {
         ReflectValue::Host(span_value(desc.source_span)),
     );
     ReflectValue::Record(fields)
+}
+
+fn function_record_host(desc: &FunctionDesc) -> HostValue {
+    let mut fields = BTreeMap::new();
+    fields.insert("name".to_owned(), HostValue::String(desc.name.clone()));
+    fields.insert(
+        "module".to_owned(),
+        desc.module
+            .as_ref()
+            .map_or(HostValue::Null, |module| HostValue::String(module.clone())),
+    );
+    fields.insert("public".to_owned(), HostValue::Bool(desc.public));
+    fields.insert("effects".to_owned(), function_effects_record(desc));
+    fields.insert("access".to_owned(), function_access_record(desc));
+    fields.insert(
+        "origin".to_owned(),
+        HostValue::String(
+            match desc.origin {
+                DeclOrigin::Host => "host",
+                DeclOrigin::Script => "script",
+            }
+            .to_owned(),
+        ),
+    );
+    fields.insert(
+        "return".to_owned(),
+        desc.return_type
+            .as_ref()
+            .map_or(HostValue::Null, |return_type| {
+                HostValue::String(return_type.clone())
+            }),
+    );
+    fields.insert(
+        "params".to_owned(),
+        HostValue::Array(desc.params.iter().map(param_record).collect()),
+    );
+    fields.insert("docs".to_owned(), docs_value(desc.docs.as_deref()));
+    fields.insert("attrs".to_owned(), attrs_value(&desc.attrs));
+    fields.insert("source_span".to_owned(), span_value(desc.source_span));
+    HostValue::Record {
+        type_name: "ReflectFunction".to_owned(),
+        fields,
+    }
 }
 
 fn function_effects_record(desc: &FunctionDesc) -> HostValue {
@@ -715,6 +774,22 @@ fn helper() {
                 "game.reward.grant".into()
             )]))
         );
+        let ReflectValue::Host(HostValue::Array(functions)) = functions(&registry) else {
+            panic!("function list should be an array");
+        };
+        assert_eq!(functions.len(), 1);
+        let HostValue::Record {
+            type_name,
+            fields: function_list_item,
+        } = &functions[0]
+        else {
+            panic!("function list item should be a record");
+        };
+        assert_eq!(type_name, "ReflectFunction");
+        assert_eq!(
+            function_list_item.get("name"),
+            Some(&HostValue::String("game.reward.grant".into()))
+        );
 
         let ReflectValue::Record(function_metadata) =
             function(&registry, "game.reward.grant").expect("function")
@@ -908,6 +983,10 @@ fn helper() {
                 HostValue::String("game.reward.admin".to_owned()),
             ]))
         );
+        let ReflectValue::Host(HostValue::Array(raw_functions)) = functions(&registry) else {
+            panic!("raw function list should be an array");
+        };
+        assert_eq!(raw_functions.len(), 4);
         assert_eq!(
             exports_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())
                 .expect("policy exports"),
@@ -915,6 +994,12 @@ fn helper() {
                 "game.reward.grant".to_owned()
             )]))
         );
+        let ReflectValue::Host(HostValue::Array(policy_functions)) =
+            functions_with_policy(&registry, &ReflectPolicy::read_only())
+        else {
+            panic!("policy function list should be an array");
+        };
+        assert_eq!(policy_functions.len(), 1);
 
         let ReflectValue::Record(module) =
             module_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())

@@ -4631,8 +4631,11 @@ fn main() {
     let module = reflect.module("game.reward");
     let exports = reflect.exports("game.reward");
     let function = reflect.function("game.reward.grant");
+    let functions = reflect.functions();
     if option.unwrap_or(module.get("name"), "") == "game.reward"
         && exports.len() == 1
+        && functions.len() == 1
+        && functions[0].name == "game.reward.grant"
         && option.unwrap_or(function.get("return"), "") == "bool" {
         return option.unwrap_or(function.get("params"), []).len();
     }
@@ -4665,7 +4668,10 @@ fn compiled_source_reflect_exports_respect_function_policy() {
 fn main() {
     let module = reflect.module("game.reward");
     let exports = reflect.exports("game.reward");
-    return option.unwrap_or(module.get("exports"), []).len() * 10 + exports.len();
+    let functions = reflect.functions();
+    return option.unwrap_or(module.get("exports"), []).len() * 100
+        + exports.len() * 10
+        + functions.len();
 }
 "#,
     )
@@ -4685,7 +4691,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(11))
+        Ok(Value::Int(111))
     );
 }
 

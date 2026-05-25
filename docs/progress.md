@@ -1186,6 +1186,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Split VM standard-library implementation so Option/Result helpers and math
   natives live in focused modules, and collection methods reuse the same
   dynamic Option constructor for Option-style returns.
+- Added script-visible `reflect.functions()` over copied TypeRegistry function
+  metadata. The query returns policy-filtered function records, matching
+  `reflect.function` and module export visibility rules.
 
 ## Next
 

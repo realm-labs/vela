@@ -286,6 +286,22 @@ impl Vm {
             )?)
         });
 
+        let functions_registry = Arc::clone(&registry);
+        let functions_policy = policy.clone();
+        let functions_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.functions", move |args, _host| {
+            check_reflect_policy(
+                &functions_policy,
+                &functions_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.functions", args, 0)?;
+            value_from_reflect(reflect::function_metadata_list_with_policy(
+                &functions_registry,
+                &functions_policy,
+            ))
+        });
+
         let methods_registry = Arc::clone(&registry);
         let methods_policy = policy.clone();
         let methods_budget = Arc::clone(&lookup_budget);
