@@ -2,7 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use vela_bytecode::Register;
-use vela_common::Span;
+use vela_common::{Diagnostic, Span};
 use vela_host::{HostError, HostErrorKind};
 use vela_reflect::{ReflectError, ReflectErrorKind};
 
@@ -36,6 +36,22 @@ impl VmError {
             self.source_span = source_span;
         }
         self
+    }
+
+    #[must_use]
+    pub fn to_diagnostic(&self) -> Diagnostic {
+        let mut diagnostic = Diagnostic::error(self.kind.message()).with_code(self.kind.code());
+        if let Some(span) = self.source_span {
+            diagnostic = diagnostic.with_span(span).with_label(span, "runtime error");
+        }
+
+        for frame in self.call_stack.iter() {
+            if let Some(call_site) = frame.call_site {
+                diagnostic = diagnostic
+                    .with_label(call_site, format!("while executing `{}`", frame.function));
+            }
+        }
+        diagnostic
     }
 }
 
@@ -120,6 +136,82 @@ pub enum VmErrorKind {
     MissingReturn,
 }
 
+impl VmErrorKind {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::RegisterOutOfBounds { .. } => "vm::register_out_of_bounds",
+            Self::ConstantOutOfBounds { .. } => "vm::constant_out_of_bounds",
+            Self::InstructionOutOfBounds { .. } => "vm::instruction_out_of_bounds",
+            Self::TypeMismatch { .. } => "vm::type_mismatch",
+            Self::DivisionByZero => "vm::division_by_zero",
+            Self::UnknownNative { .. } => "vm::unknown_native",
+            Self::PermissionDenied { .. } => "vm::permission_denied",
+            Self::UnknownFunction { .. } => "vm::unknown_function",
+            Self::UnknownMethod { .. } => "vm::unknown_method",
+            Self::ArityMismatch { .. } => "vm::arity_mismatch",
+            Self::Host(_) => "vm::host_error",
+            Self::Reflect(_) => "vm::reflect_error",
+            Self::UnknownRecordField { .. } => "vm::unknown_record_field",
+            Self::UnknownEnumField { .. } => "vm::unknown_enum_field",
+            Self::IndexOutOfBounds { .. } => "vm::index_out_of_bounds",
+            Self::UnknownMapKey { .. } => "vm::unknown_map_key",
+            Self::BudgetExceeded { .. } => "vm::budget_exceeded",
+            Self::MissingReturn => "vm::missing_return",
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::RegisterOutOfBounds { register } => {
+                format!("register {} is out of bounds", register.0)
+            }
+            Self::ConstantOutOfBounds { constant } => {
+                format!("constant {constant} is out of bounds")
+            }
+            Self::InstructionOutOfBounds { offset } => {
+                format!("instruction offset {offset} is out of bounds")
+            }
+            Self::TypeMismatch { operation } => {
+                format!("type mismatch during `{operation}`")
+            }
+            Self::DivisionByZero => "division by zero".to_owned(),
+            Self::UnknownNative { name } => format!("unknown native function `{name}`"),
+            Self::PermissionDenied { native, permission } => {
+                format!("native `{native}` requires permission `{permission}`")
+            }
+            Self::UnknownFunction { name } => format!("unknown function `{name}`"),
+            Self::UnknownMethod { method } => format!("unknown method `{method}`"),
+            Self::ArityMismatch {
+                name,
+                expected,
+                actual,
+            } => {
+                format!("`{name}` expected {expected} arguments but got {actual}")
+            }
+            Self::Host(kind) => format!("host error: {kind:?}"),
+            Self::Reflect(kind) => format!("reflection error: {kind:?}"),
+            Self::UnknownRecordField { type_name, field } => {
+                format!("unknown field `{field}` for record `{type_name}`")
+            }
+            Self::UnknownEnumField {
+                enum_name,
+                variant,
+                field,
+            } => {
+                format!("unknown field `{field}` for enum variant `{enum_name}.{variant}`")
+            }
+            Self::IndexOutOfBounds { index, len } => {
+                format!("index {index} is out of bounds for length {len}")
+            }
+            Self::UnknownMapKey { key } => format!("unknown map key `{key}`"),
+            Self::BudgetExceeded { budget, limit } => {
+                format!("execution budget exceeded for {budget:?} with limit {limit}")
+            }
+            Self::MissingReturn => "function completed without returning a value".to_owned(),
+        }
+    }
+}
+
 pub type VmResult<T> = Result<T, VmError>;
 
 impl From<HostError> for VmError {
@@ -135,5 +227,85 @@ impl From<HostError> for VmError {
 impl From<ReflectError> for VmError {
     fn from(value: ReflectError) -> Self {
         Self::new(VmErrorKind::Reflect(value.kind))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use vela_common::{DiagnosticSource, SourceId, Span, render_diagnostic};
+
+    use super::{VmError, VmErrorKind, VmStackFrame};
+
+    #[test]
+    fn diagnostic_includes_call_stack_labels() {
+        let source = "\
+fn main() {
+    return middle();
+}
+
+fn middle() {
+    return leaf();
+}
+
+fn leaf() {
+    return 10 / 0;
+}
+";
+        let leaf_call = Span::new(SourceId::new(1), 57, 63);
+        let middle_call = Span::new(SourceId::new(1), 23, 31);
+        let error = VmError {
+            kind: VmErrorKind::DivisionByZero,
+            source_span: Some(leaf_call),
+            call_stack: Arc::from([
+                VmStackFrame::new("leaf", Some(leaf_call)),
+                VmStackFrame::new("middle", Some(middle_call)),
+                VmStackFrame::new("main", None),
+            ]),
+        };
+
+        let diagnostic = error.to_diagnostic();
+
+        assert_eq!(diagnostic.code.as_deref(), Some("vm::division_by_zero"));
+        assert_eq!(diagnostic.message, "division by zero");
+        assert_eq!(diagnostic.span, Some(leaf_call));
+        assert!(
+            diagnostic
+                .labels
+                .iter()
+                .any(|label| label.message == "while executing `middle`")
+        );
+
+        let rendered = render_diagnostic(
+            &diagnostic,
+            [DiagnosticSource::new(
+                SourceId::new(1),
+                "combat.lang",
+                source,
+            )],
+        )
+        .join("\n");
+        assert!(rendered.contains("error[vm::division_by_zero]: division by zero"));
+        assert!(rendered.contains("while executing `leaf`"));
+        assert!(rendered.contains("while executing `middle`"));
+    }
+
+    #[test]
+    fn diagnostic_describes_runtime_error_kinds() {
+        let error = VmError::new(VmErrorKind::ArityMismatch {
+            name: "reward.grant".to_owned(),
+            expected: 2,
+            actual: 1,
+        });
+
+        let diagnostic = error.to_diagnostic();
+
+        assert_eq!(diagnostic.code.as_deref(), Some("vm::arity_mismatch"));
+        assert_eq!(
+            diagnostic.message,
+            "`reward.grant` expected 2 arguments but got 1"
+        );
+        assert!(diagnostic.labels.is_empty());
     }
 }

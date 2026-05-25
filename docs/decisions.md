@@ -4941,3 +4941,27 @@ Consequences:
   a broader public API migration and is deferred.
 - Instruction-exact spans for every runtime operation remain a future
   refinement; this slice establishes the stack structure and safe fallback.
+
+## 2026-05-25: VM Errors Convert To Shared Diagnostics
+
+Status: Accepted
+
+Context:
+After VM errors gained copied call-stack metadata, tooling still needed a stable
+way to render runtime failures without depending on `Debug` output. The shared
+`Diagnostic` model and renderer already support primary spans and related
+labels.
+
+Decision:
+Add `VmError::to_diagnostic()` in `vela_vm::error`. The conversion assigns
+stable `vm::*` diagnostic codes, produces readable messages for each
+`VmErrorKind`, uses the VM source span as the primary diagnostic span, and adds
+call-site labels for stack frames that carry spans.
+
+Consequences:
+- CLI, Engine, and future tooling can render runtime errors through the same
+  source-aware diagnostic pipeline used by analysis and hot reload.
+- VM-specific wording stays next to `VmErrorKind` instead of leaking into
+  embedding or common crates.
+- The conversion copies diagnostic metadata only and does not expose live VM
+  frames, registers, or host state.

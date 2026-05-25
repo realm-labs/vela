@@ -1134,6 +1134,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   copied script stack frames with function names and call-site spans, and nested
   script/closure call failures preserve that stack while retaining a source
   span fallback for runtime diagnostics.
+- Added `VmError::to_diagnostic()` so runtime failures can be converted into
+  shared `Diagnostic` values with stable VM error codes, source spans, and
+  script call-stack labels that render through the existing diagnostic
+  renderer.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.
