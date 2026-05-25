@@ -152,6 +152,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_param_abi_list(old),
             render_param_abi_list(new)
         ),
+        HotReloadDiagnosticDetail::FunctionReturnAbi { old, new } => format!(
+            "function return ABI: old={} new={}",
+            render_optional(old),
+            render_optional(new)
+        ),
         HotReloadDiagnosticDetail::AddedFunctionParameters { added } => {
             format!("added required parameters: {}", render_list(added))
         }
@@ -185,6 +190,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             "method parameter ABI: old=({}) new=({})",
             render_param_abi_list(old),
             render_param_abi_list(new)
+        ),
+        HotReloadDiagnosticDetail::MethodReturnAbi { old, new } => format!(
+            "method return ABI: old={} new={}",
+            render_optional(old),
+            render_optional(new)
         ),
         HotReloadDiagnosticDetail::MethodAccessAbi { old, new } => format!(
             "method access: old=({}) new=({})",

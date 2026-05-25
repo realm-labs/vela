@@ -894,6 +894,63 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
 }
 
 #[test]
+fn function_descriptor_return_abi_changes_are_rejected() {
+    let span = Span::new(SourceId::new(13), 15, 35);
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game.reward.grant",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .return_type("int"),
+    );
+    let changed_return = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game.reward.grant",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .return_type("float")
+        .source_span(span),
+    );
+    let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
+        .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        changed_return,
+    )
+    .expect_err("return ABI change should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedFunctionReturnAbi {
+            function: "game.reward.grant".to_owned(),
+            old: Some("int".to_owned()),
+            new: Some("float".to_owned()),
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(13), error);
+    assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    assert_eq!(
+        report.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::FunctionReturnAbi {
+            old: Some("int".to_owned()),
+            new: Some("float".to_owned()),
+        })
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| line.text == "function return ABI: old=int new=float")
+    );
+}
+
+#[test]
 fn removed_function_abi_is_rejected() {
     let span = Span::new(SourceId::new(9), 10, 25);
     let old_abi = HotReloadAbi::empty().function(
@@ -1090,6 +1147,66 @@ fn method_descriptor_parameter_abi_changes_are_rejected() {
 }
 
 #[test]
+fn method_descriptor_return_abi_changes_are_rejected() {
+    let span = Span::new(SourceId::new(14), 60, 95);
+    let old_abi = HotReloadAbi::empty().method(
+        MethodAbi::new(
+            "Player",
+            "grant_exp",
+            EffectAbi::host_write(),
+            AccessAbi::public(),
+        )
+        .return_type("int"),
+    );
+    let changed_return = HotReloadAbi::empty().method(
+        MethodAbi::new(
+            "Player",
+            "grant_exp",
+            EffectAbi::host_write(),
+            AccessAbi::public(),
+        )
+        .return_type("null")
+        .source_span(span),
+    );
+    let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
+        .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        changed_return,
+    )
+    .expect_err("method return ABI change should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedMethodReturnAbi {
+            type_name: "Player".to_owned(),
+            method: "grant_exp".to_owned(),
+            old: Some("int".to_owned()),
+            new: Some("null".to_owned()),
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(14), error);
+    assert_eq!(report.errors[0].code, "reload.method.return_abi_changed");
+    assert_eq!(
+        report.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::MethodReturnAbi {
+            old: Some("int".to_owned()),
+            new: Some("null".to_owned()),
+        })
+    );
+    assert_eq!(report.errors[0].source_span, Some(span));
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| line.text == "method return ABI: old=int new=null")
+    );
+}
+
+#[test]
 fn removed_method_abi_is_rejected() {
     let span = Span::new(SourceId::new(9), 30, 45);
     let old_abi = HotReloadAbi::empty().method(
@@ -1207,6 +1324,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         .method(
             MethodDesc::new(HostMethodId::new(9), "grant_exp")
                 .param(MethodParamDesc::new("amount").type_hint("int"))
+                .return_type("int")
                 .effects(MethodEffectSet::host_write())
                 .access(
                     MethodAccess::new()
@@ -1220,6 +1338,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("int")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -1244,6 +1363,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .return_type("int")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -1256,6 +1376,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("int")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -1281,6 +1402,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .return_type("int")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -1293,6 +1415,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("float"))
+            .return_type("int")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -1318,6 +1441,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             .method(
                 MethodDesc::new(HostMethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("float"))
+                    .return_type("int")
                     .effects(MethodEffectSet::host_write())
                     .access(
                         MethodAccess::new()
@@ -1330,6 +1454,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("int")
             .effects(FunctionEffectSet::event_emit())
             .access(
                 FunctionAccess::new()
@@ -1347,4 +1472,82 @@ fn abi_manifest_can_be_built_from_type_registry() {
     )
     .expect_err("changed registry method parameter ABI should be rejected");
     assert_eq!(error.code(), "reload.method.parameter_abi_changed");
+
+    let mut changed_function_return_registry = TypeRegistry::new();
+    changed_function_return_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+            .schema_hash(SchemaHash::new(0xfeed))
+            .method(
+                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .return_type("int")
+                    .effects(MethodEffectSet::host_write())
+                    .access(
+                        MethodAccess::new()
+                            .reflect_callable(true)
+                            .require_permission("player.write"),
+                    ),
+            ),
+    );
+    changed_function_return_registry.register_function(
+        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+            .param(FunctionParamDesc::new("player").type_hint("Player"))
+            .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("float")
+            .effects(FunctionEffectSet::event_emit())
+            .access(
+                FunctionAccess::new()
+                    .reflect_visible(true)
+                    .require_permission("reward.grant"),
+            )
+            .attr("event", "monster.kill"),
+    );
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(6),
+        "fn main() { return 6; }",
+        HotReloadAbi::from_registry(&changed_function_return_registry),
+    )
+    .expect_err("changed registry function return ABI should be rejected");
+    assert_eq!(error.code(), "reload.function.return_abi_changed");
+
+    let mut changed_method_return_registry = TypeRegistry::new();
+    changed_method_return_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+            .schema_hash(SchemaHash::new(0xfeed))
+            .method(
+                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                    .param(MethodParamDesc::new("amount").type_hint("int"))
+                    .return_type("float")
+                    .effects(MethodEffectSet::host_write())
+                    .access(
+                        MethodAccess::new()
+                            .reflect_callable(true)
+                            .require_permission("player.write"),
+                    ),
+            ),
+    );
+    changed_method_return_registry.register_function(
+        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+            .param(FunctionParamDesc::new("player").type_hint("Player"))
+            .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("int")
+            .effects(FunctionEffectSet::event_emit())
+            .access(
+                FunctionAccess::new()
+                    .reflect_visible(true)
+                    .require_permission("reward.grant"),
+            )
+            .attr("event", "monster.kill"),
+    );
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(7),
+        "fn main() { return 7; }",
+        HotReloadAbi::from_registry(&changed_method_return_registry),
+    )
+    .expect_err("changed registry method return ABI should be rejected");
+    assert_eq!(error.code(), "reload.method.return_abi_changed");
 }

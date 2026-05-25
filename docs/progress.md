@@ -1676,6 +1676,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   parameters now enter `MethodAbi`, and hot reload rejects method parameter
   deletions, changed parameter names/order/type/default ABI, and new required
   method parameters while accepting appended defaulted parameters.
+- Strengthened M15 callable descriptor ABI checks. Reflected/native
+  `FunctionDesc` and `MethodDesc` return type hints now enter
+  `FunctionAbi`/`MethodAbi`, and hot reload rejects added, removed, or changed
+  return hints with structured report details before a safe-point code swap.
 
 ## Next
 

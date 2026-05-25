@@ -134,6 +134,7 @@ impl SchemaAbi {
 pub struct FunctionAbi {
     pub name: String,
     pub params: Vec<ParamAbi>,
+    pub return_type: Option<String>,
     pub event: Option<String>,
     pub effects: EffectAbi,
     pub access: AccessAbi,
@@ -146,6 +147,7 @@ impl FunctionAbi {
         Self {
             name: name.into(),
             params: Vec::new(),
+            return_type: None,
             event: None,
             effects,
             access,
@@ -174,6 +176,9 @@ impl FunctionAbi {
         for param in &function.params {
             abi = abi.param(ParamAbi::from_function_param(param));
         }
+        if let Some(return_type) = &function.return_type {
+            abi = abi.return_type(return_type.clone());
+        }
         if let Some(source_span) = function.source_span {
             abi = abi.source_span(source_span);
         }
@@ -193,6 +198,12 @@ impl FunctionAbi {
     }
 
     #[must_use]
+    pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
+        self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
         self
@@ -200,6 +211,16 @@ impl FunctionAbi {
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
         ensure_function_params_compatible(self, next)?;
+        if self.return_type != next.return_type {
+            return Err(HotReloadError::new(
+                HotReloadErrorKind::ChangedFunctionReturnAbi {
+                    function: self.name.clone(),
+                    old: self.return_type.clone(),
+                    new: next.return_type.clone(),
+                    source_span: next.source_span.map(Box::new),
+                },
+            ));
+        }
         if self.event != next.event {
             return Err(HotReloadError::new(
                 HotReloadErrorKind::ChangedFunctionEvent {
@@ -340,6 +361,7 @@ pub struct MethodAbi {
     pub type_name: String,
     pub name: String,
     pub params: Vec<ParamAbi>,
+    pub return_type: Option<String>,
     pub effects: EffectAbi,
     pub access: AccessAbi,
     pub source_span: Option<Span>,
@@ -357,6 +379,7 @@ impl MethodAbi {
             type_name: type_name.into(),
             name: name.into(),
             params: Vec::new(),
+            return_type: None,
             effects,
             access,
             source_span: None,
@@ -382,6 +405,9 @@ impl MethodAbi {
         for param in &method.params {
             abi = abi.param(ParamAbi::from_method_param(param));
         }
+        if let Some(return_type) = &method.return_type {
+            abi = abi.return_type(return_type.clone());
+        }
         if let Some(source_span) = method.source_span {
             abi = abi.source_span(source_span);
         }
@@ -395,6 +421,12 @@ impl MethodAbi {
     }
 
     #[must_use]
+    pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
+        self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
         self
@@ -402,6 +434,17 @@ impl MethodAbi {
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
         ensure_method_params_compatible(self, next)?;
+        if self.return_type != next.return_type {
+            return Err(HotReloadError::new(
+                HotReloadErrorKind::ChangedMethodReturnAbi {
+                    type_name: self.type_name.clone(),
+                    method: self.name.clone(),
+                    old: self.return_type.clone(),
+                    new: next.return_type.clone(),
+                    source_span: next.source_span.map(Box::new),
+                },
+            ));
+        }
         if self.effects != next.effects {
             return Err(HotReloadError::new(
                 HotReloadErrorKind::ChangedMethodEffects {

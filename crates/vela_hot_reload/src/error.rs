@@ -28,6 +28,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedFunctionParameterAbi { .. } => {
                 "reload.function.parameter_abi_changed"
             }
+            HotReloadErrorKind::ChangedFunctionReturnAbi { .. } => {
+                "reload.function.return_abi_changed"
+            }
             HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. } => {
                 "reload.function.required_added_parameters"
             }
@@ -46,6 +49,7 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedMethodParameterAbi { .. } => {
                 "reload.method.parameter_abi_changed"
             }
+            HotReloadErrorKind::ChangedMethodReturnAbi { .. } => "reload.method.return_abi_changed",
             HotReloadErrorKind::ChangedMethodEffects { .. } => "reload.method.effects_changed",
             HotReloadErrorKind::ChangedMethodAccess { .. } => "reload.method.access_changed",
         }
@@ -58,6 +62,7 @@ impl HotReloadError {
             HotReloadErrorKind::DeletedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameterAbi { function, .. }
+            | HotReloadErrorKind::ChangedFunctionReturnAbi { function, .. }
             | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, .. }
             | HotReloadErrorKind::AddedFunctionParametersDenied { function, .. }
             | HotReloadErrorKind::NewFunctionDenied { function }
@@ -72,6 +77,9 @@ impl HotReloadError {
                 type_name, method, ..
             }
             | HotReloadErrorKind::ChangedMethodParameterAbi {
+                type_name, method, ..
+            }
+            | HotReloadErrorKind::ChangedMethodReturnAbi {
                 type_name, method, ..
             }
             | HotReloadErrorKind::ChangedMethodEffects {
@@ -95,6 +103,9 @@ impl HotReloadError {
             }
             HotReloadErrorKind::ChangedFunctionParameterAbi { function, .. } => {
                 format!("function `{function}` changed parameter ABI")
+            }
+            HotReloadErrorKind::ChangedFunctionReturnAbi { function, .. } => {
+                format!("function `{function}` changed return ABI")
             }
             HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, .. } => {
                 format!("function `{function}` added required parameters")
@@ -136,6 +147,11 @@ impl HotReloadError {
             } => {
                 format!("method `{type_name}.{method}` changed parameter ABI")
             }
+            HotReloadErrorKind::ChangedMethodReturnAbi {
+                type_name, method, ..
+            } => {
+                format!("method `{type_name}.{method}` changed return ABI")
+            }
             HotReloadErrorKind::ChangedMethodEffects {
                 type_name, method, ..
             } => {
@@ -161,6 +177,9 @@ impl HotReloadError {
             }
             HotReloadErrorKind::ChangedFunctionParameterAbi { .. } => {
                 Some("preserve existing parameter names, order, type hints, and defaults".to_owned())
+            }
+            HotReloadErrorKind::ChangedFunctionReturnAbi { .. } => {
+                Some("preserve the previous return type hint or restart with an explicit migration".to_owned())
             }
             HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. } => {
                 Some("give every appended parameter a default value".to_owned())
@@ -192,6 +211,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedMethodParameterAbi { .. } => {
                 Some("preserve existing method parameter names, order, type hints, and defaults".to_owned())
             }
+            HotReloadErrorKind::ChangedMethodReturnAbi { .. } => {
+                Some("preserve the previous method return type hint or restart with an explicit migration".to_owned())
+            }
             HotReloadErrorKind::ChangedFunctionEffects { .. }
             | HotReloadErrorKind::ChangedMethodEffects { .. } => {
                 Some("preserve the previous effect set or require host approval before reloading".to_owned())
@@ -212,11 +234,13 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
             | HotReloadErrorKind::RemovedFunctionAbi { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionParameterAbi { source_span, .. }
+            | HotReloadErrorKind::ChangedFunctionReturnAbi { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionEvent { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionEffects { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { source_span, .. }
             | HotReloadErrorKind::RemovedMethodAbi { source_span, .. }
             | HotReloadErrorKind::ChangedMethodParameterAbi { source_span, .. }
+            | HotReloadErrorKind::ChangedMethodReturnAbi { source_span, .. }
             | HotReloadErrorKind::ChangedMethodEffects { source_span, .. }
             | HotReloadErrorKind::ChangedMethodAccess { source_span, .. } => {
                 source_span.as_deref().copied()
@@ -291,6 +315,12 @@ pub enum HotReloadErrorKind {
         new: Vec<ParamAbi>,
         source_span: Option<Box<Span>>,
     },
+    ChangedFunctionReturnAbi {
+        function: String,
+        old: Option<String>,
+        new: Option<String>,
+        source_span: Option<Box<Span>>,
+    },
     AddedFunctionParametersWithoutDefaults {
         function: String,
         added: Vec<String>,
@@ -348,6 +378,13 @@ pub enum HotReloadErrorKind {
         method: String,
         old: Vec<ParamAbi>,
         new: Vec<ParamAbi>,
+        source_span: Option<Box<Span>>,
+    },
+    ChangedMethodReturnAbi {
+        type_name: String,
+        method: String,
+        old: Option<String>,
+        new: Option<String>,
         source_span: Option<Box<Span>>,
     },
     ChangedMethodEffects {

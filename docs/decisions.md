@@ -6983,3 +6983,28 @@ Consequences:
   runtime reflection structure.
 - Reports show old and new method parameter ABI alongside existing method
   effect/access details.
+
+## 2026-05-26: Descriptor Return Hints Are Hot-Reload ABI
+
+Status: Accepted
+
+Context:
+Reflection exposes copied function and method return type hints for host and
+script tooling, and Engine registration can populate those hints for native
+functions and methods. Hot reload already checked descriptor parameters,
+effects, access metadata, and event bindings, but return hint changes could
+silently alter the reflected callable shape.
+
+Decision:
+Record reflected/native function and method return type hints in
+`FunctionAbi` and `MethodAbi`. Hot reload rejects added, removed, or changed
+return hints for existing callable ABI entries and reports the old/new return
+ABI through structured reload diagnostics.
+
+Consequences:
+- Reflective tooling and compiler-specialized callers cannot observe silent
+  return-hint drift after a safe-point reload.
+- The check remains metadata-only and does not add static typing, script
+  generics, or runtime schema mutation.
+- Hosts that intentionally migrate callable return shapes must restart or use
+  an explicit migration path.

@@ -10,6 +10,10 @@ pub enum HotReloadDiagnosticDetail {
         old: Vec<ParamAbi>,
         new: Vec<ParamAbi>,
     },
+    FunctionReturnAbi {
+        old: Option<String>,
+        new: Option<String>,
+    },
     AddedFunctionParameters {
         added: Vec<String>,
     },
@@ -37,6 +41,10 @@ pub enum HotReloadDiagnosticDetail {
         old: Vec<ParamAbi>,
         new: Vec<ParamAbi>,
     },
+    MethodReturnAbi {
+        old: Option<String>,
+        new: Option<String>,
+    },
     MethodAccessAbi {
         old: AccessAbi,
         new: AccessAbi,
@@ -61,6 +69,12 @@ impl HotReloadDiagnosticDetail {
             }
             HotReloadErrorKind::ChangedFunctionParameterAbi { old, new, .. } => {
                 Some(Self::FunctionParameterAbiList {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+            }
+            HotReloadErrorKind::ChangedFunctionReturnAbi { old, new, .. } => {
+                Some(Self::FunctionReturnAbi {
                     old: old.clone(),
                     new: new.clone(),
                 })
@@ -107,6 +121,12 @@ impl HotReloadDiagnosticDetail {
             }
             HotReloadErrorKind::ChangedMethodParameterAbi { old, new, .. } => {
                 Some(Self::MethodParameterAbiList {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+            }
+            HotReloadErrorKind::ChangedMethodReturnAbi { old, new, .. } => {
+                Some(Self::MethodReturnAbi {
                     old: old.clone(),
                     new: new.clone(),
                 })
