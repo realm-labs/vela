@@ -1173,13 +1173,19 @@ impl Parser {
             if depth == 0
                 && (self.check_symbol(Symbol::Comma)
                     || self.check_symbol(Symbol::Semicolon)
-                    || self.check_symbol(Symbol::RBrace))
+                    || self.check_symbol(Symbol::RBrace)
+                    || self.check_member_start())
             {
                 break;
             }
             self.bump_depth(&mut depth);
             self.advance();
         }
+    }
+
+    fn check_member_start(&self) -> bool {
+        matches!(self.current().kind, TokenKind::Ident(_))
+            || (self.check_symbol(Symbol::Hash) && self.check_next_symbol(Symbol::LBracket))
     }
 
     fn parse_type_annotation(&mut self) -> Option<TypeHint> {
@@ -2045,6 +2051,50 @@ enum QuestProgress {
             fields[1].default_value.as_ref().map(|expr| &expr.kind),
             Some(ExprKind::Literal(Literal::Int(value))) if value == "0"
         ));
+    }
+
+    #[test]
+    fn parses_schema_members_separated_by_newlines() {
+        let parsed = parse_source(
+            source_id(),
+            r#"
+struct Reward {
+    item_id
+    count
+}
+
+enum QuestProgress {
+    None
+    Active {
+        quest_id
+        count
+    }
+    Finished(quest_id)
+}
+"#,
+        );
+
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let ItemKind::Struct(record) = &parsed.items[0].kind else {
+            panic!("expected struct item");
+        };
+        assert_eq!(struct_field_names(&record.fields), ["item_id", "count"]);
+
+        let ItemKind::Enum(enumeration) = &parsed.items[1].kind else {
+            panic!("expected enum item");
+        };
+        assert_eq!(
+            enum_variant_names(&enumeration.variants),
+            ["None", "Active", "Finished"]
+        );
+        let EnumVariantFields::Record(fields) = &enumeration.variants[1].fields else {
+            panic!("expected record variant fields");
+        };
+        assert_eq!(struct_field_names(fields), ["quest_id", "count"]);
+        let EnumVariantFields::Tuple(fields) = &enumeration.variants[2].fields else {
+            panic!("expected tuple variant fields");
+        };
+        assert_eq!(param_names(fields), ["quest_id"]);
     }
 
     #[test]

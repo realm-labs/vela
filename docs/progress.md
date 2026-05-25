@@ -1501,6 +1501,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   unknown fields, duplicate record fields, invalid tuple arity, and unknown
   enum variants with source-spanned semantic diagnostics instead of silently
   producing mismatched runtime shapes.
+- Fixed schema-member parsing for the grammar's newline-separated style.
+  Struct fields, enum variants, and record variant fields can now appear on
+  adjacent lines without commas instead of the parser treating the following
+  member as trailing text.
 
 ## Next
 
