@@ -8,6 +8,7 @@ mod clock;
 mod context;
 mod engine;
 mod error;
+mod metadata;
 mod method;
 mod native;
 mod permission;
@@ -17,6 +18,7 @@ mod runtime;
 mod schema;
 mod source;
 mod typed;
+mod validation;
 
 pub use args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 pub use builder::EngineBuilder;

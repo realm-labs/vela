@@ -1217,6 +1217,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added gameplay-oriented `math.lerp(start, end, t)` as a numeric standard
   native with inline and managed-heap coverage plus analysis and completion
   facts.
+- Split EngineBuilder reflection metadata injection and duplicate validation
+  into focused private modules, keeping the Engine registration path structured
+  instead of growing builder orchestration into a single implementation file.
 
 ## Next
 

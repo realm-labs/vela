@@ -1,19 +1,13 @@
-use std::collections::BTreeSet;
-
 use vela_hot_reload::HotReloadPolicy;
-use vela_reflect::{
-    DeclOrigin, FunctionAccess as ReflectFunctionAccess, FunctionDesc, FunctionEffectSet,
-    FunctionParamDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc, ModuleDesc,
-    ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeKey, TypeRegistry,
-};
+use vela_reflect::{ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeRegistry};
 use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
-    ContextHostNativeFunctionEntry, Engine, EngineError, EngineErrorKind, EngineResult,
-    HostNativeFunctionEntry, NativeCallContext, NativeFunctionDesc, NativeFunctionEntry,
-    NativeMethodDesc, NativeMethodEntry, PermissionSet, ScriptHostMethodMetadata, ScriptHostSchema,
-    TypeHint, TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
-    TypedNativeMethodFunction, engine::EngineParts,
+    ContextHostNativeFunctionEntry, Engine, EngineResult, HostNativeFunctionEntry,
+    NativeCallContext, NativeFunctionDesc, NativeFunctionEntry, NativeMethodDesc,
+    NativeMethodEntry, PermissionSet, ScriptHostMethodMetadata, ScriptHostSchema,
+    TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
+    TypedNativeMethodFunction, engine::EngineParts, metadata, validation,
 };
 
 #[derive(Clone, Default)]
@@ -229,9 +223,13 @@ impl EngineBuilder {
 
     pub fn build(self) -> EngineResult<Engine> {
         let mut types = self.types;
-        inject_host_method_metadata(&mut types, &self.host_method_metadata, &self.native_methods)?;
-        validate_types(&types)?;
-        validate_native_functions(
+        metadata::inject_host_method_metadata(
+            &mut types,
+            &self.host_method_metadata,
+            &self.native_methods,
+        )?;
+        validation::validate_types(&types)?;
+        validation::validate_native_functions(
             &self.native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
@@ -241,7 +239,7 @@ impl EngineBuilder {
         for desc in types {
             registry.register(desc);
         }
-        inject_native_function_metadata(
+        metadata::inject_native_function_metadata(
             &mut registry,
             &self.native_functions,
             &self.host_native_functions,
@@ -259,214 +257,4 @@ impl EngineBuilder {
             hot_reload_policy: self.hot_reload_policy,
         }))
     }
-}
-
-fn inject_host_method_metadata(
-    types: &mut [TypeDesc],
-    host_method_metadata: &[NativeMethodDesc],
-    native_methods: &[NativeMethodEntry],
-) -> EngineResult<()> {
-    for desc in host_method_metadata
-        .iter()
-        .chain(native_methods.iter().map(|entry| &entry.desc))
-    {
-        let owner = find_type_mut(types, &desc.owner).ok_or_else(|| {
-            EngineError::new(EngineErrorKind::UnknownNativeMethodOwner {
-                name: desc.owner.name.clone(),
-            })
-        })?;
-        let mut method = MethodDesc::new(desc.id, desc.name.clone())
-            .return_type(type_hint_display(&desc.returns))
-            .effects(reflect_effects(&desc.effects))
-            .access(reflect_access(&desc.access));
-        for param in &desc.params {
-            method = method.param(
-                MethodParamDesc::new(param.name.clone()).type_hint(type_hint_display(&param.hint)),
-            );
-        }
-        if let Some(docs) = &desc.docs {
-            method = method.docs(docs.clone());
-        }
-        owner.methods.push(method);
-    }
-    Ok(())
-}
-
-fn inject_native_function_metadata(
-    registry: &mut TypeRegistry,
-    native_functions: &[NativeFunctionEntry],
-    host_native_functions: &[HostNativeFunctionEntry],
-    context_host_native_functions: &[ContextHostNativeFunctionEntry],
-) {
-    for desc in native_functions
-        .iter()
-        .map(|entry| &entry.desc)
-        .chain(host_native_functions.iter().map(|entry| &entry.desc))
-        .chain(
-            context_host_native_functions
-                .iter()
-                .map(|entry| &entry.desc),
-        )
-    {
-        if let Some(module_name) = native_function_module(&desc.name)
-            && registry.module_by_name(&module_name).is_none()
-        {
-            registry.register_module(ModuleDesc::new(module_name));
-        }
-        registry.register_function(reflect_function(desc));
-    }
-}
-
-fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
-    let mut reflected = FunctionDesc::new(desc.id, desc.name.clone())
-        .origin(DeclOrigin::Host)
-        .return_type(type_hint_display(&desc.returns))
-        .effects(reflect_function_effects(&desc.effects))
-        .access(reflect_function_access(&desc.access));
-    if let Some(module_name) = native_function_module(&desc.name) {
-        reflected = reflected.module(module_name);
-    }
-    for param in &desc.params {
-        reflected = reflected.param(
-            FunctionParamDesc::new(param.name.clone()).type_hint(type_hint_display(&param.hint)),
-        );
-    }
-    if let Some(docs) = &desc.docs {
-        reflected = reflected.docs(docs.clone());
-    }
-    reflected
-}
-
-fn native_function_module(name: &str) -> Option<String> {
-    name.rsplit_once('.')
-        .map(|(module, _)| module.to_owned())
-        .filter(|module| !module.is_empty())
-}
-
-fn reflect_effects(effects: &crate::EffectSet) -> MethodEffectSet {
-    MethodEffectSet {
-        reads_host: effects.reads_host,
-        writes_host: effects.writes_host,
-        emits_events: effects.emits_events,
-    }
-}
-
-fn reflect_access(access: &crate::FunctionAccess) -> MethodAccess {
-    access.required_permissions.iter().fold(
-        MethodAccess::new()
-            .public(access.public)
-            .reflect_callable(access.reflect_callable),
-        |access, permission| access.require_permission(permission),
-    )
-}
-
-fn reflect_function_effects(effects: &crate::EffectSet) -> FunctionEffectSet {
-    FunctionEffectSet {
-        reads_host: effects.reads_host,
-        writes_host: effects.writes_host,
-        emits_events: effects.emits_events,
-    }
-}
-
-fn reflect_function_access(access: &crate::FunctionAccess) -> ReflectFunctionAccess {
-    access.required_permissions.iter().fold(
-        ReflectFunctionAccess::new()
-            .public(access.public)
-            .reflect_visible(access.reflect_callable),
-        |access, permission| access.require_permission(permission),
-    )
-}
-
-fn type_hint_display(hint: &TypeHint) -> String {
-    match hint {
-        TypeHint::Any => "any".to_owned(),
-        TypeHint::Null => "null".to_owned(),
-        TypeHint::Bool => "bool".to_owned(),
-        TypeHint::Int => "int".to_owned(),
-        TypeHint::Float => "float".to_owned(),
-        TypeHint::String => "string".to_owned(),
-        TypeHint::Array => "array".to_owned(),
-        TypeHint::Map => "map".to_owned(),
-        TypeHint::Set => "set".to_owned(),
-        TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
-        TypeHint::Trait(name) => name.clone(),
-        TypeHint::Function => "function".to_owned(),
-    }
-}
-
-fn find_type_mut<'a>(types: &'a mut [TypeDesc], key: &TypeKey) -> Option<&'a mut TypeDesc> {
-    types.iter_mut().find(|desc| desc.key == *key)
-}
-
-fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
-    let mut ids = BTreeSet::new();
-    let mut names = BTreeSet::new();
-    let mut host_ids = BTreeSet::new();
-    let mut host_method_ids = BTreeSet::new();
-    let mut host_method_names = BTreeSet::new();
-
-    for desc in types {
-        if !ids.insert(desc.key.id) {
-            return Err(EngineError::new(EngineErrorKind::DuplicateTypeId {
-                id: desc.key.id.get(),
-            }));
-        }
-        if !names.insert(desc.key.name.as_str()) {
-            return Err(EngineError::new(EngineErrorKind::DuplicateTypeName {
-                name: desc.key.name.clone(),
-            }));
-        }
-        if let Some(host_type_id) = desc.host_type_id
-            && !host_ids.insert(host_type_id)
-        {
-            return Err(EngineError::new(EngineErrorKind::DuplicateHostTypeId {
-                id: host_type_id.get(),
-            }));
-        }
-        for method in &desc.methods {
-            if !host_method_ids.insert(method.id) {
-                return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodId {
-                    id: method.id.get(),
-                }));
-            }
-            if !host_method_names.insert((desc.key.name.as_str(), method.name.as_str())) {
-                return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodName {
-                    name: method.name.clone(),
-                }));
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn validate_native_functions(
-    functions: &[NativeFunctionEntry],
-    host_functions: &[HostNativeFunctionEntry],
-    context_host_functions: &[ContextHostNativeFunctionEntry],
-) -> EngineResult<()> {
-    let mut ids = BTreeSet::new();
-    let mut names = BTreeSet::new();
-
-    for desc in functions
-        .iter()
-        .map(|entry| &entry.desc)
-        .chain(host_functions.iter().map(|entry| &entry.desc))
-        .chain(context_host_functions.iter().map(|entry| &entry.desc))
-    {
-        if !ids.insert(desc.id) {
-            return Err(EngineError::new(
-                EngineErrorKind::DuplicateNativeFunctionId { id: desc.id.get() },
-            ));
-        }
-        if !names.insert(desc.name.as_str()) {
-            return Err(EngineError::new(
-                EngineErrorKind::DuplicateNativeFunctionName {
-                    name: desc.name.clone(),
-                },
-            ));
-        }
-    }
-
-    Ok(())
 }
