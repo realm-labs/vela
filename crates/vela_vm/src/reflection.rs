@@ -256,6 +256,24 @@ impl Vm {
             )?)
         });
 
+        let has_module_registry = Arc::clone(&registry);
+        let has_module_policy = policy.clone();
+        let has_module_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.has_module", move |args, _host| {
+            check_reflect_policy(
+                &has_module_policy,
+                &has_module_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.has_module", args, 1)?;
+            let module_name = expect_string(&args[0], "reflect.has_module")?;
+            Ok(Value::Bool(reflect::has_module_with_policy(
+                &has_module_registry,
+                module_name,
+                &has_module_policy,
+            )))
+        });
+
         let modules_registry = Arc::clone(&registry);
         let modules_policy = policy.clone();
         let modules_budget = Arc::clone(&lookup_budget);
@@ -306,6 +324,24 @@ impl Vm {
                 function_name,
                 &function_policy,
             )?)
+        });
+
+        let has_function_registry = Arc::clone(&registry);
+        let has_function_policy = policy.clone();
+        let has_function_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.has_function", move |args, _host| {
+            check_reflect_policy(
+                &has_function_policy,
+                &has_function_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.has_function", args, 1)?;
+            let function_name = expect_string(&args[0], "reflect.has_function")?;
+            Ok(Value::Bool(reflect::has_function_with_policy(
+                &has_function_registry,
+                function_name,
+                &has_function_policy,
+            )))
         });
 
         let functions_registry = Arc::clone(&registry);

@@ -6705,3 +6705,28 @@ Consequences:
   type structure or monkey patch methods at runtime.
 - Method policy remains centralized in `vela_reflect`, with the VM native only
   handling argument conversion, permissions, and budget checks.
+
+## 2026-05-26: Reflection Presence Checks Respect Metadata Policy
+
+Status: Accepted
+
+Context:
+Module and function reflection had throwing lookups and list queries, while
+fields and methods already had non-throwing `has_*` guards. Scripts that wanted
+to branch on optional module/function metadata had to call a lookup that could
+fail or enumerate metadata manually.
+
+Decision:
+Add `reflect.has_module(name)` and `reflect.has_function(name)`. Module checks
+report registry presence because modules currently have no independent access
+policy. Function checks delegate to the same reflective function access policy
+used by `reflect.function`, `reflect.functions`, and policy-filtered module
+exports.
+
+Consequences:
+- Scripts and tools can guard optional module/function metadata without using
+  error-producing lookups for normal control flow.
+- Hidden, private, or unapproved functions are reported as absent to policies
+  that cannot inspect them.
+- Runtime schema structure remains immutable; these helpers only query copied
+  TypeRegistry metadata.

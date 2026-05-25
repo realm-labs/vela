@@ -270,6 +270,18 @@ pub fn module(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue
     Ok(module_record(desc))
 }
 
+pub fn has_module(registry: &TypeRegistry, name: &str) -> bool {
+    registry.module_by_name(name).is_some()
+}
+
+pub fn has_module_with_policy(
+    registry: &TypeRegistry,
+    name: &str,
+    _policy: &ReflectPolicy,
+) -> bool {
+    has_module(registry, name)
+}
+
 pub fn modules(registry: &TypeRegistry) -> ReflectValue {
     ReflectValue::Host(HostValue::Array(
         registry.modules().map(module_record_host).collect(),
@@ -357,6 +369,20 @@ pub fn function(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectVal
         })
     })?;
     Ok(function_record(desc))
+}
+
+pub fn has_function(registry: &TypeRegistry, name: &str) -> bool {
+    registry.function_by_name(name).is_some()
+}
+
+pub fn has_function_with_policy(
+    registry: &TypeRegistry,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> bool {
+    registry
+        .function_by_name(name)
+        .is_some_and(|desc| policy.require_function_access(desc).is_ok())
 }
 
 pub fn functions(registry: &TypeRegistry) -> ReflectValue {
@@ -790,6 +816,11 @@ fn helper() {
                 .source_span(function_span),
         );
 
+        assert!(has_module(&registry, "game.reward"));
+        assert!(!has_module(&registry, "game.missing"));
+        assert!(has_function(&registry, "game.reward.grant"));
+        assert!(!has_function(&registry, "game.reward.missing"));
+
         let ReflectValue::Record(module_metadata) =
             module(&registry, "game.reward").expect("module")
         else {
@@ -1032,6 +1063,37 @@ fn helper() {
                 .access(FunctionAccess::new().require_permission("game.admin")),
         );
 
+        assert!(has_module_with_policy(
+            &registry,
+            "game.reward",
+            &ReflectPolicy::read_only()
+        ));
+        assert!(!has_module_with_policy(
+            &registry,
+            "game.missing",
+            &ReflectPolicy::read_only()
+        ));
+        assert!(has_function_with_policy(
+            &registry,
+            "game.reward.grant",
+            &ReflectPolicy::read_only()
+        ));
+        assert!(!has_function_with_policy(
+            &registry,
+            "game.reward.hidden",
+            &ReflectPolicy::read_only()
+        ));
+        assert!(!has_function_with_policy(
+            &registry,
+            "game.reward.private",
+            &ReflectPolicy::read_only()
+        ));
+        assert!(!has_function_with_policy(
+            &registry,
+            "game.reward.admin",
+            &ReflectPolicy::read_only()
+        ));
+
         assert_eq!(
             exports(&registry, "game.reward").expect("raw exports"),
             ReflectValue::Host(HostValue::Array(vec![
@@ -1098,6 +1160,11 @@ fn helper() {
             crate::ReflectPermissionSet::read_only().with(crate::ReflectPermission::AccessPrivate),
         )
         .with_function_permission("game.admin");
+        assert!(has_function_with_policy(
+            &registry,
+            "game.reward.admin",
+            &admin_policy
+        ));
         assert_eq!(
             exports_with_policy(&registry, "game.reward", &admin_policy).expect("admin exports"),
             ReflectValue::Host(HostValue::Array(vec![

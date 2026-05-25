@@ -4937,6 +4937,10 @@ fn main() {
     let function = reflect.function("game.reward.grant");
     let functions = reflect.functions();
     if option.unwrap_or(module.get("name"), "") == "game.reward"
+        && reflect.has_module("game.reward")
+        && !reflect.has_module("game.missing")
+        && reflect.has_function("game.reward.grant")
+        && !reflect.has_function("game.reward.missing")
         && modules.len() == 1
         && modules[0].name == "game.reward"
         && exports.len() == 1
@@ -4976,10 +4980,18 @@ fn main() {
     let modules = reflect.modules();
     let exports = reflect.exports("game.reward");
     let functions = reflect.functions();
-    return option.unwrap_or(module.get("exports"), []).len() * 100
-        + exports.len() * 10
-        + functions.len()
-        + modules[0].exports.len() * 1000;
+    if reflect.has_module("game.reward")
+        && !reflect.has_module("game.missing")
+        && reflect.has_function("game.reward.grant")
+        && !reflect.has_function("game.reward.hidden")
+        && !reflect.has_function("game.reward.private")
+        && !reflect.has_function("game.reward.admin") {
+        return option.unwrap_or(module.get("exports"), []).len() * 100
+            + exports.len() * 10
+            + functions.len()
+            + modules[0].exports.len() * 1000;
+    }
+    return 0;
 }
 "#,
     )

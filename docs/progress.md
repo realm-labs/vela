@@ -1625,6 +1625,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `reflect.method(target, name)` to retrieve one copied method descriptor with
   the same access policy enforcement as `reflect.methods`, and unknown method
   names report ranked candidates without mutating reflected type structure.
+- Added M12 policy-aware module/function presence checks. Scripts can now call
+  `reflect.has_module(name)` and `reflect.has_function(name)` for non-throwing
+  reflection guards, with function checks respecting the same visibility,
+  privacy, and permission rules as `reflect.function` and `reflect.functions`.
 
 ## Next
 
