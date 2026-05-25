@@ -4475,3 +4475,29 @@ Consequences:
   that need budget or permission access must opt into `NativeCallContext`.
 - Scripts still see copied arguments and return values only; host state remains
   behind `HostRef`, `HostPath`, and `PatchTx`.
+
+## 2026-05-25: Callable Method Macros Use HostPath And HostExecution
+
+Status: Accepted
+
+Context:
+`#[script_methods]` already generates stable native method descriptors for
+host schemas, and the Engine already supports typed callable native methods.
+Embedders still had to pair macro-generated descriptors with hand-written
+`register_typed_native_method_fn` calls for callable method implementations.
+
+Decision:
+Extend `#[script_methods]` with a generated
+`vela_register_native_method_fns` helper. Methods whose Rust signature starts
+with `HostPath` and `HostExecution` are registered through
+`EngineBuilder::register_typed_native_method_fn`; methods that only provide
+metadata remain descriptor-only. The receiver and host boundary parameters are
+omitted from script-visible method metadata.
+
+Consequences:
+- Callable host methods can be registered from macro output without exposing
+  real Rust host references to scripts.
+- Method implementations receive only a safe copied `HostPath` and
+  `HostExecution`, so mutation still flows through `PatchTx`.
+- Metadata-only method descriptors remain supported for deferred host methods
+  and compiler lowering.

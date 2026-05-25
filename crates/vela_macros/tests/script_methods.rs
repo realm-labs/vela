@@ -1,9 +1,9 @@
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
 use vela_engine::{EffectSet, Engine, FunctionAccess, HostRef, NativeMethodDesc, TypeHint, Value};
-use vela_host::{HostValue, MockStateAdapter, PatchOp, PatchTx};
+use vela_host::{HostPath, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::{FieldDesc, TypeDesc, TypeKey, TypeKind};
-use vela_vm::HostExecution;
+use vela_vm::{HostExecution, VmResult};
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
@@ -29,6 +29,26 @@ impl Player {
         _amount: i64,
     ) {
     }
+
+    /// Grants copied score through a callable native method.
+    #[script_method(
+        id = 8,
+        effect = "write_host",
+        permission = "player.write",
+        reflect = true
+    )]
+    pub fn grant_score(
+        receiver: &HostPath,
+        host: &mut HostExecution<'_>,
+        amount: i64,
+    ) -> VmResult<i64> {
+        host.tx.set_path(
+            receiver.clone().field(FieldId::new(1)),
+            HostValue::Int(amount),
+            None,
+        )?;
+        Ok(amount)
+    }
 }
 
 #[test]
@@ -36,7 +56,7 @@ fn script_methods_generates_native_method_metadata() {
     let owner = TypeKey::new(TypeId::new(1001), "Player");
     let descs = Player::vela_native_method_descs();
 
-    assert_eq!(descs.len(), 1);
+    assert_eq!(descs.len(), 2);
     assert_eq!(
         descs[0],
         NativeMethodDesc::new(owner.clone(), HostMethodId::new(7), "grant_exp")
@@ -49,6 +69,19 @@ fn script_methods_generates_native_method_metadata() {
                     .require_permission("player.write"),
             )
             .docs("Grants copied experience through the host patch path."),
+    );
+    assert_eq!(
+        descs[1],
+        NativeMethodDesc::new(owner.clone(), HostMethodId::new(8), "grant_score")
+            .param("amount", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Grants copied score through a callable native method."),
     );
     assert_eq!(descs[0].owner, Player::vela_host_type_desc().key);
     assert_eq!(
@@ -83,8 +116,10 @@ fn script_methods_coexists_with_host_schema_metadata() {
 
 #[test]
 fn script_macros_feed_engine_builder_registration() {
-    let mut descs = <Player as vela_engine::ScriptHostMethodMetadata>::script_host_method_descs();
-    let desc = descs.pop().expect("method descriptor");
+    let desc = <Player as vela_engine::ScriptHostMethodMetadata>::script_host_method_descs()
+        .into_iter()
+        .find(|desc| desc.id == HostMethodId::new(7))
+        .expect("method descriptor");
     let engine = Engine::builder()
         .register_host_schema::<Player>()
         .grant_permission("player.write")
@@ -102,6 +137,39 @@ fn script_macros_feed_engine_builder_registration() {
         player.methods[0].access.required_permissions(),
         &["player.write".to_owned()],
     );
+}
+
+#[test]
+fn script_methods_generate_callable_native_registration() {
+    let engine = Player::vela_register_native_method_fns(
+        Engine::builder()
+            .register_host_schema::<Player>()
+            .grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro callable methods");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            HostMethodId::new(8),
+            &HostPath::new(player),
+            &[Value::Int(13)],
+            &mut host,
+        ),
+        Ok(Value::Int(13)),
+    );
+    assert_eq!(
+        tx.patches()[0].path,
+        HostPath::new(player).field(FieldId::new(1)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
 }
 
 #[test]

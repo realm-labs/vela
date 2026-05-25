@@ -1047,6 +1047,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `EngineBuilder::register_typed_host_native_fn`, skips the host boundary
   parameter in reflected script metadata, and tests prove callbacks record
   `PatchTx` writes through the typed Engine API.
+- Extended `#[script_methods]` with a generated
+  `vela_register_native_method_fns` helper for callable native methods whose
+  Rust signature uses the safe `HostPath` plus `HostExecution` boundary. The
+  helper registers through `EngineBuilder::register_typed_native_method_fn`,
+  while metadata-only methods keep their existing descriptor path.
 
 ## Next
 

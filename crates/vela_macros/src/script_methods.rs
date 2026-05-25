@@ -9,8 +9,9 @@ use syn::{
 
 use crate::attrs::{error, spanned_error};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct MethodMeta {
+    ident: syn::Ident,
     id: u32,
     name: String,
     effect: MethodEffect,
@@ -19,11 +20,13 @@ struct MethodMeta {
     reflect_callable: bool,
     params: Vec<ParamMeta>,
     returns: HintKind,
+    callable_native: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct ParamMeta {
     name: String,
+    ty: Type,
     hint: HintKind,
 }
 
@@ -126,6 +129,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
 
     let self_ty = item.self_ty.clone();
     let method_tokens = methods.iter().map(method_tokens);
+    let registration_tokens = native_method_registration_tokens(&methods);
     Ok(quote! {
         #item
 
@@ -136,6 +140,14 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 let mut methods = ::std::vec::Vec::new();
                 #(#method_tokens)*
                 methods
+            }
+
+            #[must_use]
+            pub fn vela_register_native_method_fns(
+                builder: ::vela_engine::EngineBuilder,
+            ) -> ::vela_engine::EngineBuilder {
+                let owner_key = Self::vela_host_type_desc().key;
+                #registration_tokens
             }
         }
 
@@ -201,6 +213,19 @@ fn method_meta(
     id: u32,
     docs: Option<String>,
 ) -> Result<MethodMeta> {
+    if !method.sig.generics.params.is_empty() {
+        return Err(spanned_error(
+            &method.sig.generics,
+            "#[script_method] does not support generic methods",
+        ));
+    }
+    if method.sig.asyncness.is_some() {
+        return Err(spanned_error(
+            &method.sig.asyncness,
+            "#[script_method] does not support async methods",
+        ));
+    }
+
     let mut params = Vec::new();
     let mut skipped_receiver = false;
     for input in &method.sig.inputs {
@@ -213,20 +238,22 @@ fn method_meta(
                 ));
             }
         };
-        if is_context_param(param) {
+        if is_context_param(param) || is_host_execution_param(param) {
             continue;
         }
-        if !skipped_receiver && is_host_ref(&param.ty) {
+        if !skipped_receiver && (is_host_ref(&param.ty) || is_host_path(&param.ty)) {
             skipped_receiver = true;
             continue;
         }
         params.push(ParamMeta {
             name: param_name(param),
+            ty: param.ty.as_ref().clone(),
             hint: hint_for_type(&param.ty),
         });
     }
 
     Ok(MethodMeta {
+        ident: method.sig.ident.clone(),
         id,
         name: attrs.name.unwrap_or_else(|| method.sig.ident.to_string()),
         effect: attrs.effect.unwrap_or(MethodEffect::Pure),
@@ -235,6 +262,7 @@ fn method_meta(
         reflect_callable: attrs.reflect_callable,
         params,
         returns: return_hint(&method.sig.output),
+        callable_native: has_callable_native_boundary(method),
     })
 }
 
@@ -242,8 +270,27 @@ fn is_context_param(param: &PatType) -> bool {
     type_ident(&param.ty).is_some_and(|ident| ident == "NativeCallContext")
 }
 
+fn is_host_execution_param(param: &PatType) -> bool {
+    type_ident(&param.ty).is_some_and(|ident| ident == "HostExecution")
+}
+
 fn is_host_ref(ty: &Type) -> bool {
     type_ident(ty).is_some_and(|ident| ident == "HostRef")
+}
+
+fn is_host_path(ty: &Type) -> bool {
+    type_ident(ty).is_some_and(|ident| ident == "HostPath")
+}
+
+fn has_callable_native_boundary(method: &ImplItemFn) -> bool {
+    let mut inputs = method.sig.inputs.iter();
+    let Some(FnArg::Typed(receiver)) = inputs.next() else {
+        return false;
+    };
+    let Some(FnArg::Typed(host)) = inputs.next() else {
+        return false;
+    };
+    is_host_path(&receiver.ty) && is_host_execution_param(host)
 }
 
 fn param_name(param: &PatType) -> String {
@@ -339,6 +386,14 @@ fn doc_from_attr(attr: &Attribute) -> Option<String> {
 }
 
 fn method_tokens(method: &MethodMeta) -> TokenStream {
+    let desc = method_desc_expr(method);
+
+    quote! {
+        methods.push(#desc);
+    }
+}
+
+fn method_desc_expr(method: &MethodMeta) -> TokenStream {
     let id = method.id;
     let name = &method.name;
     let effect = effect_tokens(method.effect);
@@ -350,21 +405,52 @@ fn method_tokens(method: &MethodMeta) -> TokenStream {
         .as_ref()
         .map(|docs| quote! { desc = desc.docs(#docs); });
 
-    quote! {
-        {
-            let mut desc = ::vela_engine::NativeMethodDesc::new(
-                owner_key.clone(),
-                ::vela_common::HostMethodId::new(#id),
-                #name,
+    quote! {{
+        let mut desc = ::vela_engine::NativeMethodDesc::new(
+            owner_key.clone(),
+            ::vela_common::HostMethodId::new(#id),
+            #name,
+        )
+        .effects(#effect)
+        .returns(#returns)
+        .access(#access);
+        #(
+            desc = desc.param(#params);
+        )*
+        #docs
+        desc
+    }}
+}
+
+fn native_method_registration_tokens(methods: &[MethodMeta]) -> TokenStream {
+    let mut builder = quote! { builder };
+    for method in methods.iter().filter(|method| method.callable_native) {
+        let desc = method_desc_expr(method);
+        let args_tuple = args_tuple_tokens(&method.params);
+        let ident = &method.ident;
+        builder = quote! {
+            #builder.register_typed_native_method_fn::<#args_tuple, _>(
+                #desc,
+                Self::#ident,
             )
-            .effects(#effect)
-            .returns(#returns)
-            .access(#access);
-            #(
-                desc = desc.param(#params);
-            )*
-            #docs
-            methods.push(desc);
+        };
+    }
+
+    quote! {
+        #builder
+    }
+}
+
+fn args_tuple_tokens(params: &[ParamMeta]) -> TokenStream {
+    match params {
+        [] => quote! { () },
+        [param] => {
+            let ty = &param.ty;
+            quote! { (#ty,) }
+        }
+        params => {
+            let types = params.iter().map(|param| &param.ty);
+            quote! { (#(#types),*) }
         }
     }
 }
