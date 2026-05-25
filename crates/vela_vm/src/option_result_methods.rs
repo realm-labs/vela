@@ -85,6 +85,60 @@ pub(crate) fn map_err(
     }
 }
 
+pub(crate) fn and_then(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("and_then", args, 1)?;
+    let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method and_then",
+        })
+    })?;
+
+    match (tag.kind, tag.variant.as_str()) {
+        (EnumKind::Option, "Some") => {
+            let payload = enum_payload(receiver, runtime.heap.as_deref(), "method and_then")?;
+            let chained = call_callback(
+                &mut runtime,
+                "method and_then",
+                &args[0],
+                &[payload],
+                std::slice::from_ref(receiver),
+            )?;
+            expect_enum_kind(
+                chained,
+                runtime.heap.as_deref(),
+                EnumKind::Option,
+                "method and_then",
+            )
+        }
+        (EnumKind::Option, "None") => Ok(option_value(None)),
+        (EnumKind::Result, "Ok") => {
+            let payload = enum_payload(receiver, runtime.heap.as_deref(), "method and_then")?;
+            let chained = call_callback(
+                &mut runtime,
+                "method and_then",
+                &args[0],
+                &[payload],
+                std::slice::from_ref(receiver),
+            )?;
+            expect_enum_kind(
+                chained,
+                runtime.heap.as_deref(),
+                EnumKind::Result,
+                "method and_then",
+            )
+        }
+        (EnumKind::Result, "Err") => {
+            enum_payload(receiver, runtime.heap.as_deref(), "method and_then")
+                .map(|payload| result_value("Err", payload))
+        }
+        _ => type_error("method and_then"),
+    }
+}
+
 struct EnumTag {
     kind: EnumKind,
     variant: String,
@@ -165,6 +219,18 @@ fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
         expected,
         actual: args.len(),
     }))
+}
+
+fn expect_enum_kind(
+    value: Value,
+    heap: Option<&HeapExecution<'_>>,
+    expected: EnumKind,
+    operation: &'static str,
+) -> VmResult<Value> {
+    match enum_tag(&value, heap) {
+        Some(tag) if tag.kind == expected => Ok(value),
+        _ => type_error(operation),
+    }
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {

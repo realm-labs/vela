@@ -59,8 +59,8 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "parse_float",
     "parse_bool",
 ];
-const OPTION_METHOD_NAMES: &[&str] = &["map"];
-const RESULT_METHOD_NAMES: &[&str] = &["map", "map_err"];
+const OPTION_METHOD_NAMES: &[&str] = &["map", "and_then"];
+const RESULT_METHOD_NAMES: &[&str] = &["map", "map_err", "and_then"];
 
 pub(super) fn method_fact(
     receiver: &TypeFact,
@@ -473,21 +473,31 @@ fn option_method_fact(
     method: &str,
     lambda_return: Option<&TypeFact>,
 ) -> Option<StdlibMethodFact> {
-    if method != "map" {
-        return None;
-    }
-    let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
     let receiver = match shape {
         OptionShape::Maybe => TypeFact::option(some.clone()),
         OptionShape::Some => TypeFact::option_some(some.clone()),
         OptionShape::None => TypeFact::option_none(),
     };
-    let returns = match shape {
-        OptionShape::Maybe => TypeFact::option(mapped.clone()),
-        OptionShape::Some => TypeFact::option_some(mapped.clone()),
-        OptionShape::None => TypeFact::option_none(),
-    };
-    Some(StdlibMethodFact::new(receiver, "map", returns).with_lambda(vec![some], mapped))
+    match method {
+        "map" => {
+            let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
+            let returns = match shape {
+                OptionShape::Maybe => TypeFact::option(mapped.clone()),
+                OptionShape::Some => TypeFact::option_some(mapped.clone()),
+                OptionShape::None => TypeFact::option_none(),
+            };
+            Some(StdlibMethodFact::new(receiver, "map", returns).with_lambda(vec![some], mapped))
+        }
+        "and_then" => {
+            let chained = option_chain_lambda_return(lambda_return);
+            let returns = option_chain_return(shape, &chained);
+            Some(
+                StdlibMethodFact::new(receiver, "and_then", returns)
+                    .with_lambda(vec![some], chained),
+            )
+        }
+        _ => None,
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -526,6 +536,90 @@ fn result_method_fact(
                 ResultShape::Err => TypeFact::result_err(mapped.clone()),
             };
             Some(StdlibMethodFact::new(receiver, "map_err", returns).with_lambda(vec![err], mapped))
+        }
+        "and_then" => {
+            let chained = result_chain_lambda_return(lambda_return);
+            let returns = result_chain_return(err.clone(), shape, lambda_return);
+            Some(
+                StdlibMethodFact::new(receiver, "and_then", returns).with_lambda(vec![ok], chained),
+            )
+        }
+        _ => None,
+    }
+}
+
+fn option_chain_lambda_return(lambda_return: Option<&TypeFact>) -> TypeFact {
+    lambda_return
+        .and_then(option_like_fact)
+        .unwrap_or_else(|| TypeFact::option(TypeFact::Any))
+}
+
+fn option_chain_return(shape: OptionShape, chained: &TypeFact) -> TypeFact {
+    match shape {
+        OptionShape::Some => chained.clone(),
+        OptionShape::None => TypeFact::option_none(),
+        OptionShape::Maybe => option_maybe_return(chained),
+    }
+}
+
+fn option_maybe_return(chained: &TypeFact) -> TypeFact {
+    match chained {
+        TypeFact::Option { some } | TypeFact::OptionSome { some } => {
+            TypeFact::option((**some).clone())
+        }
+        TypeFact::OptionNone => TypeFact::option_none(),
+        _ => TypeFact::option(TypeFact::Any),
+    }
+}
+
+fn option_like_fact(fact: &TypeFact) -> Option<TypeFact> {
+    match fact {
+        TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
+            Some(fact.clone())
+        }
+        _ => None,
+    }
+}
+
+fn result_chain_lambda_return(lambda_return: Option<&TypeFact>) -> TypeFact {
+    lambda_return
+        .and_then(result_like_fact)
+        .unwrap_or_else(|| TypeFact::result(TypeFact::Any, TypeFact::Any))
+}
+
+fn result_chain_return(
+    passthrough_err: TypeFact,
+    shape: ResultShape,
+    lambda_return: Option<&TypeFact>,
+) -> TypeFact {
+    match shape {
+        ResultShape::Ok => result_chain_lambda_return(lambda_return),
+        ResultShape::Err => TypeFact::result_err(passthrough_err),
+        ResultShape::Maybe => lambda_return
+            .and_then(|fact| result_maybe_return(passthrough_err.clone(), fact))
+            .unwrap_or_else(|| TypeFact::result(TypeFact::Any, TypeFact::Any)),
+    }
+}
+
+fn result_maybe_return(passthrough_err: TypeFact, chained: &TypeFact) -> Option<TypeFact> {
+    match chained {
+        TypeFact::Result { ok, err } => Some(TypeFact::result(
+            (**ok).clone(),
+            TypeFact::union([passthrough_err, (**err).clone()]),
+        )),
+        TypeFact::ResultOk { ok } => Some(TypeFact::result((**ok).clone(), passthrough_err)),
+        TypeFact::ResultErr { err } => Some(TypeFact::result_err(TypeFact::union([
+            passthrough_err,
+            (**err).clone(),
+        ]))),
+        _ => None,
+    }
+}
+
+fn result_like_fact(fact: &TypeFact) -> Option<TypeFact> {
+    match fact {
+        TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
+            Some(fact.clone())
         }
         _ => None,
     }

@@ -1589,6 +1589,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `Result.Ok` preserves the success payload, and analysis/completions expose
   matching non-generic facts for general, narrowed-Ok, and narrowed-Err result
   shapes.
+- Added Option/Result `.and_then` value methods for M13 propagation chaining.
+  `Option.Some` and `Result.Ok` invoke budgeted callbacks that must return the
+  same dynamic enum family, while `Option.None` and `Result.Err` pass through;
+  analysis/completions expose matching non-generic facts for general and
+  narrowed Option/Result shapes.
 
 ## Next
 

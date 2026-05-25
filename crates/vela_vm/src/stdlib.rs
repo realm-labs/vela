@@ -199,6 +199,47 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_option_result_and_then_methods() {
+        let source = r#"
+fn checked_option(value) {
+    if value > 0 {
+        return option.some(value + 1);
+    }
+    return option.none();
+}
+
+fn checked_result(value) {
+    if value > 0 {
+        return result.ok(value + 1);
+    }
+    return result.err("bad");
+}
+
+fn main() {
+    let some = option.some(4).and_then(|value| checked_option(value));
+    let none = option.none().and_then(|value| checked_option(value));
+    let ok = result.ok(4).and_then(|value| checked_result(value));
+    let err = result.err("blocked").and_then(|value| checked_result(value));
+
+    return option.unwrap_or(some, 0) == 5
+        && option.is_none(none)
+        && result.unwrap_or(ok, 0) == 5
+        && result.is_err(err);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("option/result and_then source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm
+            .run_program(&program, "main", &[])
+            .expect("option/result and_then source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
     fn runs_compiled_option_ok_or_with_try_propagation() {
         let source = r#"
 fn checked(raw) {
@@ -361,6 +402,42 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_option_result_and_then_methods() {
+        let source = r#"
+fn first_tag(values) {
+    return values.first();
+}
+
+fn join_values(values) {
+    return result.ok(values.join("."));
+}
+
+fn main() {
+    let some = option.some(["quest"]).and_then(|values| first_tag(values));
+    let none = option.none().and_then(|values| first_tag(values));
+    let ok = result.ok(["a", "b"]).and_then(|values| join_values(values));
+    let err = result.err(["blocked"]).and_then(|values| join_values(values));
+
+    return option.unwrap_or(some, "") == "quest"
+        && option.is_none(none)
+        && result.unwrap_or(ok, "") == "a.b"
+        && result.is_err(err);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("heap option/result and_then source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .expect("heap option/result and_then source should run");
+        assert_eq!(result, crate::Value::Bool(true));
+    }
+
+    #[test]
     fn option_result_helpers_reject_wrong_dynamic_shapes() {
         let source = r#"
 fn main() {
@@ -380,6 +457,30 @@ fn main() {
             error.kind,
             VmErrorKind::TypeMismatch {
                 operation: "option.unwrap_or"
+            }
+        );
+    }
+
+    #[test]
+    fn option_result_and_then_rejects_non_enum_callback_results() {
+        let source = r#"
+fn main() {
+    return option.some(1).and_then(|value| value + 1);
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("invalid and_then callback source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run_program(&program, "main", &[])
+            .expect_err("invalid and_then callback should fail");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method and_then"
             }
         );
     }

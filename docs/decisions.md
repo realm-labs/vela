@@ -6551,3 +6551,30 @@ Consequences:
   behavior as collection and Option/Result `.map`.
 - Option values do not gain an error-side method; unsupported receivers keep a
   normal dynamic method type error.
+
+## 2026-05-26: Option And Result And Then Chain Dynamic Enums
+
+Status: Accepted
+
+Context:
+Option/Result `.map` and Result `.map_err` cover payload transformation, but
+fallible workflows still need concise chaining where a callback can return
+another dynamic Option or Result. The language remains non-generic, so this
+must operate on runtime enum families rather than typed `Option<T>` or
+`Result<T, E>` declarations.
+
+Decision:
+Add `.and_then(callback)` as a value method for dynamic `Option` and `Result`
+enum values. `Option.Some` callbacks must return an Option-family value, and
+`Result.Ok` callbacks must return a Result-family value. `Option.None` and
+`Result.Err` preserve their failure shape without invoking the callback.
+Analysis exposes non-generic facts for general and narrowed Option/Result
+shapes, including pass-through error facts for maybe-Result receivers.
+
+Consequences:
+- Scripts can chain parse, lookup, and gameplay validation helpers without
+  manual match/unwrap/re-wrap boilerplate.
+- Wrong callback return shapes fail as normal dynamic method type errors
+  instead of being silently wrapped.
+- Runtime logic stays in the focused Option/Result method module; method
+  dispatch remains glue-only.

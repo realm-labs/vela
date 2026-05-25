@@ -415,6 +415,26 @@ mod tests {
             .expect("none map fact");
         assert_eq!(none.returns, TypeFact::option_none());
 
+        let chained = stdlib_method_fact(
+            &TypeFact::option(TypeFact::Int),
+            "and_then",
+            Some(&TypeFact::option(TypeFact::String)),
+        )
+        .expect("option and_then fact");
+        assert_eq!(chained.returns, TypeFact::option(TypeFact::String));
+        assert_eq!(
+            chained.lambda.expect("option and_then lambda").params,
+            vec![TypeFact::Int]
+        );
+
+        let chained_some = stdlib_method_fact(
+            &TypeFact::option_some(TypeFact::Int),
+            "and_then",
+            Some(&TypeFact::option_none()),
+        )
+        .expect("some and_then fact");
+        assert_eq!(chained_some.returns, TypeFact::option_none());
+
         let result = stdlib_method_fact(
             &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
             "map",
@@ -476,6 +496,46 @@ mod tests {
         )
         .expect("err map_err fact");
         assert_eq!(err_error.returns, TypeFact::result_err(TypeFact::String));
+
+        let chained_result = stdlib_method_fact(
+            &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
+            "and_then",
+            Some(&TypeFact::result(TypeFact::String, TypeFact::String)),
+        )
+        .expect("result and_then fact");
+        assert_eq!(
+            chained_result.returns,
+            TypeFact::result(
+                TypeFact::String,
+                TypeFact::union([TypeFact::record("Error"), TypeFact::String])
+            )
+        );
+        assert_eq!(
+            chained_result
+                .lambda
+                .expect("result and_then lambda")
+                .params,
+            vec![TypeFact::Int]
+        );
+
+        let chained_ok = stdlib_method_fact(
+            &TypeFact::result_ok(TypeFact::Int),
+            "and_then",
+            Some(&TypeFact::result_err(TypeFact::String)),
+        )
+        .expect("ok and_then fact");
+        assert_eq!(chained_ok.returns, TypeFact::result_err(TypeFact::String));
+
+        let chained_err = stdlib_method_fact(
+            &TypeFact::result_err(TypeFact::record("Error")),
+            "and_then",
+            Some(&TypeFact::result(TypeFact::String, TypeFact::String)),
+        )
+        .expect("err and_then fact");
+        assert_eq!(
+            chained_err.returns,
+            TypeFact::result_err(TypeFact::record("Error"))
+        );
     }
 
     #[test]
