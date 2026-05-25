@@ -168,6 +168,18 @@ fn map_method_fact(
             )
             .with_lambda(vec![key, value], TypeFact::Bool),
         ),
+        "any" => Some(
+            StdlibMethodFact::new(receiver, "any", TypeFact::Bool)
+                .with_lambda(vec![value], TypeFact::Bool),
+        ),
+        "all" => Some(
+            StdlibMethodFact::new(receiver, "all", TypeFact::Bool)
+                .with_lambda(vec![value], TypeFact::Bool),
+        ),
+        "count" => Some(
+            StdlibMethodFact::new(receiver, "count", TypeFact::Int)
+                .with_lambda(vec![value], TypeFact::Bool),
+        ),
         _ => None,
     }
 }
@@ -271,6 +283,21 @@ mod tests {
         );
         assert_eq!(
             mapped.lambda.expect("map_values lambda").params,
+            vec![TypeFact::Int]
+        );
+
+        let any = stdlib_method_fact(&receiver, "any", None).expect("any fact");
+        assert_eq!(any.returns, TypeFact::Bool);
+        assert_eq!(any.lambda.expect("any lambda").params, vec![TypeFact::Int]);
+
+        let all = stdlib_method_fact(&receiver, "all", None).expect("all fact");
+        assert_eq!(all.returns, TypeFact::Bool);
+        assert_eq!(all.lambda.expect("all lambda").params, vec![TypeFact::Int]);
+
+        let count = stdlib_method_fact(&receiver, "count", None).expect("count fact");
+        assert_eq!(count.returns, TypeFact::Int);
+        assert_eq!(
+            count.lambda.expect("count lambda").params,
             vec![TypeFact::Int]
         );
     }

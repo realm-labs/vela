@@ -1070,6 +1070,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   metadata and stdlib method facts. Array, map, set, and string methods now
   have focused internal facts for lambda parameter hints and return facts
   without exposing generic syntax to scripts.
+- Extended map stdlib analysis metadata for `map.any`, `map.all`, and
+  `map.count`, matching the VM's value-predicate map helpers with value
+  parameter facts and boolean/count return facts.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.
