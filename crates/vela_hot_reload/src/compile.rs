@@ -154,6 +154,13 @@ pub fn compile_update_with_abi_and_options_and_policy(
         }
         functions.insert(FunctionSymbolId::new(name), Arc::new(code));
     }
+    for old_name in previous.functions.keys() {
+        if !functions.contains_key(old_name) {
+            return Err(HotReloadError::new(HotReloadErrorKind::RemovedFunction {
+                function: old_name.0.clone(),
+            }));
+        }
+    }
     previous.abi().ensure_compatible_update(&abi)?;
     Ok(HotUpdate::new(functions, abi))
 }

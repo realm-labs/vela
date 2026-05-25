@@ -1557,6 +1557,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   exposes a copied-value constructor for native callbacks, and `for-in` accepts
   native-returned `Value::Iterator` values in inline and managed-heap execution
   without storing iterator state in the script heap.
+- Tightened hot-reload function ABI checks. Update source that omits a
+  previously loaded script function now fails with `reload.function.removed`
+  before the runtime version changes, preventing stale function code from being
+  silently retained across accepted reloads.
 
 ## Next
 

@@ -518,6 +518,55 @@ fn main() {
 }
 
 #[test]
+fn removed_script_functions_are_rejected() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+fn helper() {
+    return 2;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+
+    let report = runtime.apply_hot_update_result_report(compile_update(
+        &runtime.current(),
+        SourceId::new(2),
+        r#"
+fn main() {
+    return 3;
+}
+"#,
+    ));
+
+    assert!(!report.accepted);
+    assert_eq!(report.from_version, ProgramVersionId(0));
+    assert_eq!(runtime.current().id, ProgramVersionId(0));
+    assert_eq!(report.errors.len(), 1);
+    assert_eq!(report.errors[0].code, "reload.function.removed");
+    assert_eq!(report.errors[0].target.as_deref(), Some("helper"));
+    assert_eq!(
+        report.errors[0].reason,
+        "function `helper` was removed from the update source"
+    );
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("keep the function declaration or restart with an explicit migration")
+    );
+    assert_eq!(
+        report.errors[0].error.kind,
+        HotReloadErrorKind::RemovedFunction {
+            function: "helper".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn new_private_helper_functions_are_accepted() {
     let initial = compile_initial(SourceId::new(1), "fn main() { return 1; }").expect("initial");
     let mut runtime = HotReloadRuntime::new(initial);

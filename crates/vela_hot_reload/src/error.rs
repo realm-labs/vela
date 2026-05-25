@@ -32,6 +32,7 @@ impl HotReloadError {
                 "reload.function.added_parameters_denied"
             }
             HotReloadErrorKind::NewFunctionDenied { .. } => "reload.function.new_denied",
+            HotReloadErrorKind::RemovedFunction { .. } => "reload.function.removed",
             HotReloadErrorKind::RemovedSchema { .. } => "reload.schema.removed",
             HotReloadErrorKind::ChangedSchema { .. } => "reload.schema.changed",
             HotReloadErrorKind::RemovedFunctionAbi { .. } => "reload.function.removed_abi",
@@ -52,6 +53,7 @@ impl HotReloadError {
             | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, .. }
             | HotReloadErrorKind::AddedFunctionParametersDenied { function, .. }
             | HotReloadErrorKind::NewFunctionDenied { function }
+            | HotReloadErrorKind::RemovedFunction { function }
             | HotReloadErrorKind::RemovedFunctionAbi { function, .. }
             | HotReloadErrorKind::ChangedFunctionEffects { function, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { function, .. } => Some(function.clone()),
@@ -87,6 +89,9 @@ impl HotReloadError {
             }
             HotReloadErrorKind::NewFunctionDenied { function } => {
                 format!("new function `{function}` is denied by reload policy")
+            }
+            HotReloadErrorKind::RemovedFunction { function } => {
+                format!("function `{function}` was removed from the update source")
             }
             HotReloadErrorKind::RemovedSchema { type_name, .. } => {
                 format!("schema `{type_name}` was removed")
@@ -140,6 +145,9 @@ impl HotReloadError {
             HotReloadErrorKind::NewFunctionDenied { .. } => {
                 Some("enable new functions in HotReloadPolicy or remove the new declaration".to_owned())
             }
+            HotReloadErrorKind::RemovedFunction { .. } => {
+                Some("keep the function declaration or restart with an explicit migration".to_owned())
+            }
             HotReloadErrorKind::RemovedSchema { .. } => {
                 Some("restore the schema or restart with an explicit migration".to_owned())
             }
@@ -182,7 +190,8 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedFunctionParameters { .. }
             | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. }
             | HotReloadErrorKind::AddedFunctionParametersDenied { .. }
-            | HotReloadErrorKind::NewFunctionDenied { .. } => None,
+            | HotReloadErrorKind::NewFunctionDenied { .. }
+            | HotReloadErrorKind::RemovedFunction { .. } => None,
         }
     }
 
@@ -250,6 +259,9 @@ pub enum HotReloadErrorKind {
         added: Vec<String>,
     },
     NewFunctionDenied {
+        function: String,
+    },
+    RemovedFunction {
         function: String,
     },
     RemovedSchema {

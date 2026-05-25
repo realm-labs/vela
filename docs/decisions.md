@@ -6381,3 +6381,28 @@ Consequences:
   objects to the script GC.
 - Stateful or lazy Rust-backed iterators remain outside the MVP until they can
   be modeled with explicit budgets and host-boundary rules.
+
+## 2026-05-26: Hot Reload Rejects Removed Script Functions
+
+Status: Accepted
+
+Context:
+Function-level hot reload preserves old frames while new calls enter the
+updated program version. The update compiler already checked parameter ABI for
+functions present in both versions, but an update source that omitted an
+existing script function could still be accepted. Because applying a hot update
+merges changed functions into the current version, that omission left stale
+function code callable instead of making the removal an explicit migration.
+
+Decision:
+Treat removal of a previously loaded script function as a hot-reload
+compatibility error. `compile_update` now compares the old function set with
+the newly compiled source and reports `reload.function.removed` before any
+runtime version swap can occur.
+
+Consequences:
+- Update source must keep existing function declarations unless the host
+  restarts or performs an explicit migration.
+- Accepted hot reloads no longer silently retain stale omitted functions.
+- The check stays in `vela_hot_reload` alongside the existing function
+  parameter ABI checks instead of moving reload policy into VM dispatch.

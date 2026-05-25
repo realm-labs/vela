@@ -37,6 +37,7 @@ impl HotReloadDiagnosticDetail {
         match &error.kind {
             HotReloadErrorKind::Compile(_)
             | HotReloadErrorKind::NewFunctionDenied { .. }
+            | HotReloadErrorKind::RemovedFunction { .. }
             | HotReloadErrorKind::RemovedFunctionAbi { .. }
             | HotReloadErrorKind::RemovedMethodAbi { .. } => None,
             HotReloadErrorKind::DeletedFunctionParameters { old, new, .. }
