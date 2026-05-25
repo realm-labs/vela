@@ -64,6 +64,7 @@ const OPTION_METHOD_NAMES: &[&str] = &[
     "is_none",
     "unwrap_or",
     "ok_or",
+    "flatten",
     "map",
     "and_then",
     "or_else",
@@ -75,6 +76,7 @@ const RESULT_METHOD_NAMES: &[&str] = &[
     "unwrap_or",
     "to_option",
     "to_error_option",
+    "flatten",
     "map",
     "map_err",
     "and_then",
@@ -516,6 +518,8 @@ fn option_method_fact(
             )
             .with_params(vec![TypeFact::Any]),
         ),
+        "flatten" => option_flatten_return(&some, shape)
+            .map(|returns| StdlibMethodFact::new(receiver, "flatten", returns)),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
             let returns = match shape {
@@ -593,6 +597,8 @@ fn result_method_fact(
             "to_error_option",
             result_to_error_option_return(&err, shape),
         )),
+        "flatten" => result_flatten_return(&ok, &err, shape)
+            .map(|returns| StdlibMethodFact::new(receiver, "flatten", returns)),
         "map" => {
             let returns = match shape {
                 ResultShape::Maybe => TypeFact::result(mapped.clone(), err),
@@ -689,11 +695,31 @@ fn option_ok_or_return(some: &TypeFact, shape: OptionShape, err: TypeFact) -> Ty
     }
 }
 
+fn option_flatten_return(some: &TypeFact, shape: OptionShape) -> Option<TypeFact> {
+    match shape {
+        OptionShape::Some => option_like_fact(some),
+        OptionShape::None => Some(TypeFact::option_none()),
+        OptionShape::Maybe => option_maybe_flatten_return(some),
+    }
+}
+
+fn option_maybe_flatten_return(some: &TypeFact) -> Option<TypeFact> {
+    match some {
+        TypeFact::Option { some } | TypeFact::OptionSome { some } => {
+            Some(TypeFact::option((**some).clone()))
+        }
+        TypeFact::OptionNone => Some(TypeFact::option_none()),
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::option(TypeFact::Any)),
+        _ => None,
+    }
+}
+
 fn option_like_fact(fact: &TypeFact) -> Option<TypeFact> {
     match fact {
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             Some(fact.clone())
         }
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::option(TypeFact::Any)),
         _ => None,
     }
 }
@@ -725,6 +751,35 @@ fn result_to_error_option_return(err: &TypeFact, shape: ResultShape) -> TypeFact
         ResultShape::Ok => TypeFact::option_none(),
         ResultShape::Err => TypeFact::option_some(err.clone()),
         ResultShape::Maybe => TypeFact::option(err.clone()),
+    }
+}
+
+fn result_flatten_return(ok: &TypeFact, err: &TypeFact, shape: ResultShape) -> Option<TypeFact> {
+    match shape {
+        ResultShape::Ok => result_like_fact(ok),
+        ResultShape::Err => Some(TypeFact::result_err(err.clone())),
+        ResultShape::Maybe => result_maybe_flatten_return(ok, err),
+    }
+}
+
+fn result_maybe_flatten_return(ok: &TypeFact, err: &TypeFact) -> Option<TypeFact> {
+    match ok {
+        TypeFact::Result {
+            ok: inner_ok,
+            err: inner_err,
+        } => Some(TypeFact::result(
+            (**inner_ok).clone(),
+            TypeFact::union([err.clone(), (**inner_err).clone()]),
+        )),
+        TypeFact::ResultOk { ok: inner_ok } => {
+            Some(TypeFact::result((**inner_ok).clone(), err.clone()))
+        }
+        TypeFact::ResultErr { err: inner_err } => Some(TypeFact::result_err(TypeFact::union([
+            err.clone(),
+            (**inner_err).clone(),
+        ]))),
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::result(TypeFact::Any, TypeFact::Any)),
+        _ => None,
     }
 }
 
@@ -791,6 +846,7 @@ fn result_like_fact(fact: &TypeFact) -> Option<TypeFact> {
         TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
             Some(fact.clone())
         }
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::result(TypeFact::Any, TypeFact::Any)),
         _ => None,
     }
 }

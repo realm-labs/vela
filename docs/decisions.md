@@ -6798,3 +6798,27 @@ Consequences:
   mutation or schema mutation.
 - Runtime support stays in the focused Option/Result stdlib modules, with
   analysis and completion facts maintained separately.
+
+## 2026-05-26: Option And Result Flattening Stays Dynamic
+
+Status: Accepted
+
+Context:
+Option/Result chains can already use `and_then`, but scripts often build
+nested dynamic enum values through helper functions and higher-order methods.
+Flattening those values should not require script generics or static
+monomorphization.
+
+Decision:
+Add `option.flatten(value)` / `value.flatten()` for nested Option values and
+`result.flatten(value)` / `value.flatten()` for nested Result values. The
+runtime validates that successful payloads are the same dynamic enum family and
+reports a type error for non-nested payloads.
+
+Consequences:
+- Scripts can collapse nested propagation values without callback allocation
+  when a callback is not needed.
+- Analysis and completion facts expose `flatten` only when the known receiver
+  shape is nested or dynamic enough to be plausible.
+- The helpers return copied script values and do not add script-language
+  generics, host mutation, or runtime schema mutation.

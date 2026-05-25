@@ -85,6 +85,15 @@ pub(crate) fn call_method(
         "to_error_option" => {
             option_result_methods::to_error_option(receiver, args, heap.as_deref())
         }
+        "flatten" => {
+            if option_result_methods::is_option_or_result(receiver, heap.as_deref()) {
+                option_result_methods::flatten(receiver, args, heap.as_deref())
+            } else {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "method flatten",
+                }))
+            }
+        }
         "map" => {
             if option_result_methods::is_option_or_result(receiver, heap.as_deref()) {
                 option_result_methods::map(

@@ -109,6 +109,10 @@ fn main() {
     let err = result.err("missing");
     let converted_ok = option.ok_or(some, "missing");
     let converted_err = option.ok_or(none, "missing");
+    let flattened_some = option.flatten(option.some(option.some(6)));
+    let flattened_none = option.flatten(option.some(option.none()));
+    let flattened_ok = result.flatten(result.ok(result.ok(8)));
+    let flattened_err = result.flatten(result.ok(result.err("nested")));
 
     if option.is_some(some)
         && option.is_none(none)
@@ -118,6 +122,10 @@ fn main() {
         && result.is_err(converted_err)
         && option.is_none(result.to_error_option(converted_ok))
         && option.unwrap_or(result.to_error_option(converted_err), "ok") == "missing"
+        && option.unwrap_or(flattened_some, 0) == 6
+        && option.is_none(flattened_none)
+        && result.unwrap_or(flattened_ok, 0) == 8
+        && option.unwrap_or(result.to_error_option(flattened_err), "ok") == "nested"
     {
         return option.unwrap_or(some, 0)
             + option.unwrap_or(none, 5)
@@ -311,6 +319,10 @@ fn main() {
     let err = result.err("missing");
     let converted_ok = some.ok_or("missing");
     let converted_err = none.ok_or("missing");
+    let flattened_some = option.some(option.some(6)).flatten();
+    let flattened_none = option.some(option.none()).flatten();
+    let flattened_ok = result.ok(result.ok(8)).flatten();
+    let flattened_err = result.ok(result.err("nested")).flatten();
 
     if some.is_some()
         && none.is_none()
@@ -320,6 +332,10 @@ fn main() {
         && converted_err.is_err()
         && converted_ok.to_error_option().is_none()
         && converted_err.to_error_option().unwrap_or("ok") == "missing"
+        && flattened_some.unwrap_or(0) == 6
+        && flattened_none.is_none()
+        && flattened_ok.unwrap_or(0) == 8
+        && flattened_err.to_error_option().unwrap_or("ok") == "nested"
     {
         return some.unwrap_or(0)
             + none.unwrap_or(5)
@@ -420,6 +436,10 @@ fn main() {
     let err = result.err("blocked");
     let converted_ok = option.ok_or(some, "missing");
     let converted_err = option.ok_or(none, "missing");
+    let flattened_some = option.flatten(option.some(option.some(["quest", "done"])));
+    let flattened_none = option.flatten(option.some(option.none()));
+    let flattened_ok = result.flatten(result.ok(result.ok(["done"])));
+    let flattened_err = result.flatten(result.ok(result.err(["nested"])));
 
     return option.is_some(some)
         && option.is_none(none)
@@ -434,7 +454,11 @@ fn main() {
         && option.unwrap_or(result.to_option(converted_ok), "fallback") == "quest"
         && option.unwrap_or(result.to_option(converted_err), "fallback") == "fallback"
         && option.is_none(result.to_error_option(converted_ok))
-        && option.unwrap_or(result.to_error_option(converted_err), "fallback") == "missing";
+        && option.unwrap_or(result.to_error_option(converted_err), "fallback") == "missing"
+        && option.unwrap_or(flattened_some, []).join(".") == "quest.done"
+        && option.is_none(flattened_none)
+        && result.unwrap_or(flattened_ok, []).join(".") == "done"
+        && option.unwrap_or(result.to_error_option(flattened_err), []).join(".") == "nested";
 }
 "#;
 
@@ -617,6 +641,10 @@ fn main() {
     let err = result.err(["blocked"]);
     let converted_ok = some.ok_or(["missing"]);
     let converted_err = none.ok_or(["missing"]);
+    let flattened_some = option.some(option.some(["quest", "done"])).flatten();
+    let flattened_none = option.some(option.none()).flatten();
+    let flattened_ok = result.ok(result.ok(["done"])).flatten();
+    let flattened_err = result.ok(result.err(["nested"])).flatten();
 
     return some.is_some()
         && none.is_none()
@@ -631,7 +659,11 @@ fn main() {
         && converted_ok.to_option().unwrap_or([]).join(".") == "quest.done"
         && converted_err.to_option().unwrap_or(["fallback"]).join(".") == "fallback"
         && converted_ok.to_error_option().is_none()
-        && converted_err.to_error_option().unwrap_or(["fallback"]).join(".") == "missing";
+        && converted_err.to_error_option().unwrap_or(["fallback"]).join(".") == "missing"
+        && flattened_some.unwrap_or([]).join(".") == "quest.done"
+        && flattened_none.is_none()
+        && flattened_ok.unwrap_or([]).join(".") == "done"
+        && flattened_err.to_error_option().unwrap_or([]).join(".") == "nested";
 }
 "#;
 
@@ -667,6 +699,30 @@ fn main() {
             error.kind,
             VmErrorKind::TypeMismatch {
                 operation: "option.unwrap_or"
+            }
+        );
+    }
+
+    #[test]
+    fn option_result_flatten_rejects_non_nested_values() {
+        let source = r#"
+fn main() {
+    return option.some(1).flatten();
+}
+"#;
+
+        let program = compile_program_source(SourceId::new(1), source)
+            .expect("invalid option flatten source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run_program(&program, "main", &[])
+            .expect_err("invalid option flatten should fail");
+        assert_eq!(
+            error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method flatten"
             }
         );
     }

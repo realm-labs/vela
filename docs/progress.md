@@ -1643,6 +1643,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `Result.Err(error)` into `Option.Some(error)` and `Result.Ok(_)` into
   `Option.None`; runtime, managed-heap execution, analysis facts, and
   completions all use the existing focused Option/Result modules.
+- Added M13 Option/Result flattening helpers. Scripts can now call
+  `option.flatten(value)`, `result.flatten(value)`, or `.flatten()` on nested
+  dynamic Option/Result values, with inline and managed-heap execution,
+  non-nested type errors, analysis facts, and completions covered without
+  adding script-language generics.
 
 ## Next
 

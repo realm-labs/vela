@@ -142,6 +142,34 @@ pub(crate) fn to_error_option(
     }
 }
 
+pub(crate) fn flatten(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("flatten", args, 0)?;
+    let tag = enum_tag(receiver, heap).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method flatten",
+        })
+    })?;
+
+    match (tag.kind, tag.variant.as_str()) {
+        (EnumKind::Option, "Some") => {
+            let payload = enum_payload(receiver, heap, "method flatten")?;
+            expect_enum_kind(payload, heap, EnumKind::Option, "method flatten")
+        }
+        (EnumKind::Option, "None") => Ok(option_value(None)),
+        (EnumKind::Result, "Ok") => {
+            let payload = enum_payload(receiver, heap, "method flatten")?;
+            expect_enum_kind(payload, heap, EnumKind::Result, "method flatten")
+        }
+        (EnumKind::Result, "Err") => enum_payload(receiver, heap, "method flatten")
+            .map(|payload| result_value("Err", payload)),
+        _ => type_error("method flatten"),
+    }
+}
+
 pub(crate) fn map(
     receiver: &Value,
     args: &[Value],

@@ -547,6 +547,13 @@ mod tests {
                 TypeFact::result(TypeFact::Int, TypeFact::Any),
             ),
         )));
+        let nested_option =
+            member_completions(&facts, &TypeFact::option(TypeFact::option(TypeFact::Int)));
+        assert!(nested_option.contains(&CompletionItem::new(
+            "flatten",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Int)),
+        )));
 
         let result = member_completions(&facts, &TypeFact::result(TypeFact::Int, TypeFact::String));
         assert!(result.contains(&CompletionItem::new(
@@ -566,6 +573,24 @@ mod tests {
             "to_error_option",
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::option(TypeFact::String)),
+        )));
+        let nested_result = member_completions(
+            &facts,
+            &TypeFact::result(
+                TypeFact::result(TypeFact::Int, TypeFact::String),
+                TypeFact::record("OuterError"),
+            ),
+        );
+        assert!(nested_result.contains(&CompletionItem::new(
+            "flatten",
+            CompletionKind::Method,
+            TypeFact::function(
+                Vec::new(),
+                TypeFact::result(
+                    TypeFact::Int,
+                    TypeFact::union([TypeFact::record("OuterError"), TypeFact::String]),
+                ),
+            ),
         )));
     }
 
@@ -592,6 +617,14 @@ mod tests {
             ),
         )));
         assert!(completions.contains(&CompletionItem::new(
+            "option.flatten",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::option(TypeFact::option(TypeFact::Any))],
+                TypeFact::option(TypeFact::Any),
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
             "result.to_option",
             CompletionKind::Function,
             TypeFact::function(
@@ -605,6 +638,17 @@ mod tests {
             TypeFact::function(
                 vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
                 TypeFact::option(TypeFact::Any),
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "result.flatten",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::result(
+                    TypeFact::result(TypeFact::Any, TypeFact::Any),
+                    TypeFact::Any,
+                )],
+                TypeFact::result(TypeFact::Any, TypeFact::Any),
             ),
         )));
         assert!(completions.contains(&CompletionItem::new(

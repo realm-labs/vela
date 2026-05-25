@@ -352,6 +352,15 @@ mod tests {
             stdlib_function_fact("option.ok_or", &[TypeFact::option_none(), TypeFact::String])
                 .expect("none ok_or fact");
         assert_eq!(none_ok_or.returns, TypeFact::result_err(TypeFact::String));
+        let flattened_option = stdlib_function_fact(
+            "option.flatten",
+            &[TypeFact::option(TypeFact::option(TypeFact::Int))],
+        )
+        .expect("option flatten fact");
+        assert_eq!(flattened_option.returns, TypeFact::option(TypeFact::Int));
+        assert!(
+            stdlib_function_fact("option.flatten", &[TypeFact::option(TypeFact::Int)]).is_none()
+        );
 
         let ok = stdlib_function_fact("result.ok", &[TypeFact::Int]).expect("ok fact");
         assert_eq!(ok.returns, TypeFact::result(TypeFact::Int, TypeFact::Any));
@@ -402,6 +411,29 @@ mod tests {
         assert_eq!(
             err_to_error_option.returns,
             TypeFact::option_some(TypeFact::String)
+        );
+
+        let flattened_result = stdlib_function_fact(
+            "result.flatten",
+            &[TypeFact::result(
+                TypeFact::result(TypeFact::Int, TypeFact::String),
+                TypeFact::record("OuterError"),
+            )],
+        )
+        .expect("result flatten fact");
+        assert_eq!(
+            flattened_result.returns,
+            TypeFact::result(
+                TypeFact::Int,
+                TypeFact::union([TypeFact::record("OuterError"), TypeFact::String])
+            )
+        );
+        assert!(
+            stdlib_function_fact(
+                "result.flatten",
+                &[TypeFact::result(TypeFact::Int, TypeFact::String)]
+            )
+            .is_none()
         );
     }
 
@@ -527,6 +559,15 @@ mod tests {
         let filtered_none =
             stdlib_method_fact(&TypeFact::option_none(), "filter", None).expect("none filter fact");
         assert_eq!(filtered_none.returns, TypeFact::option_none());
+
+        let flattened_option = stdlib_method_fact(
+            &TypeFact::option(TypeFact::option(TypeFact::String)),
+            "flatten",
+            None,
+        )
+        .expect("option flatten fact");
+        assert_eq!(flattened_option.returns, TypeFact::option(TypeFact::String));
+        assert!(stdlib_method_fact(&TypeFact::option(TypeFact::String), "flatten", None).is_none());
 
         let result = stdlib_method_fact(
             &TypeFact::result(TypeFact::Int, TypeFact::record("Error")),
@@ -721,6 +762,34 @@ mod tests {
             err_to_error_option.returns,
             TypeFact::option_some(TypeFact::record("Error"))
         );
+
+        let flattened_result = stdlib_method_fact(
+            &TypeFact::result(
+                TypeFact::result(TypeFact::String, TypeFact::record("InnerError")),
+                TypeFact::record("OuterError"),
+            ),
+            "flatten",
+            None,
+        )
+        .expect("result flatten fact");
+        assert_eq!(
+            flattened_result.returns,
+            TypeFact::result(
+                TypeFact::String,
+                TypeFact::union([
+                    TypeFact::record("OuterError"),
+                    TypeFact::record("InnerError")
+                ])
+            )
+        );
+        assert!(
+            stdlib_method_fact(
+                &TypeFact::result(TypeFact::String, TypeFact::record("Error")),
+                "flatten",
+                None
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -854,6 +923,11 @@ mod tests {
                     .as_ref()
                     .is_some_and(|lambda| lambda.params == vec![TypeFact::Int])
         }));
+        let nested_option_facts =
+            stdlib_method_facts(&TypeFact::option(TypeFact::option(TypeFact::Int)), None);
+        assert!(nested_option_facts.iter().any(|fact| {
+            fact.method == "flatten" && fact.returns == TypeFact::option(TypeFact::Int)
+        }));
         let result_facts =
             stdlib_method_facts(&TypeFact::result(TypeFact::Int, TypeFact::String), None);
         assert!(
@@ -877,6 +951,21 @@ mod tests {
                     .lambda
                     .as_ref()
                     .is_some_and(|lambda| lambda.params == vec![TypeFact::String])
+        }));
+        let nested_result_facts = stdlib_method_facts(
+            &TypeFact::result(
+                TypeFact::result(TypeFact::Int, TypeFact::String),
+                TypeFact::record("OuterError"),
+            ),
+            None,
+        );
+        assert!(nested_result_facts.iter().any(|fact| {
+            fact.method == "flatten"
+                && fact.returns
+                    == TypeFact::result(
+                        TypeFact::Int,
+                        TypeFact::union([TypeFact::record("OuterError"), TypeFact::String]),
+                    )
         }));
         assert!(
             stdlib_method_facts(
@@ -905,6 +994,11 @@ mod tests {
                 && fact.returns == TypeFact::result(TypeFact::Any, TypeFact::Any)
         }));
         assert!(facts.iter().any(|fact| {
+            fact.name == "option.flatten"
+                && fact.params == vec![TypeFact::option(TypeFact::option(TypeFact::Any))]
+                && fact.returns == TypeFact::option(TypeFact::Any)
+        }));
+        assert!(facts.iter().any(|fact| {
             fact.name == "result.to_option"
                 && fact.params == vec![TypeFact::result(TypeFact::Any, TypeFact::Any)]
                 && fact.returns == TypeFact::option(TypeFact::Any)
@@ -913,6 +1007,15 @@ mod tests {
             fact.name == "result.to_error_option"
                 && fact.params == vec![TypeFact::result(TypeFact::Any, TypeFact::Any)]
                 && fact.returns == TypeFact::option(TypeFact::Any)
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "result.flatten"
+                && fact.params
+                    == vec![TypeFact::result(
+                        TypeFact::result(TypeFact::Any, TypeFact::Any),
+                        TypeFact::Any,
+                    )]
+                && fact.returns == TypeFact::result(TypeFact::Any, TypeFact::Any)
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.clamp" && fact.params.len() == 3 && fact.returns == number

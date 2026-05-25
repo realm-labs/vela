@@ -8,6 +8,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("option.is_none", option_is_none);
     vm.register_native("option.unwrap_or", option_unwrap_or);
     vm.register_native("option.ok_or", option_ok_or);
+    vm.register_native("option.flatten", option_flatten);
     vm.register_native("result.ok", result_ok);
     vm.register_native("result.err", result_err);
     vm.register_native("result.is_ok", result_is_ok);
@@ -15,6 +16,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("result.unwrap_or", result_unwrap_or);
     vm.register_native("result.to_option", result_to_option);
     vm.register_native("result.to_error_option", result_to_error_option);
+    vm.register_native("result.flatten", result_flatten);
 }
 
 pub(crate) fn option_value(payload: Option<Value>) -> Value {
@@ -60,6 +62,19 @@ fn option_ok_or(args: &[Value]) -> VmResult<Value> {
         "Some" => enum_payload(&args[0], "option.ok_or").map(|payload| result_value("Ok", payload)),
         "None" => Ok(result_value("Err", args[1].clone())),
         _ => type_error("option.ok_or"),
+    }
+}
+
+fn option_flatten(args: &[Value]) -> VmResult<Value> {
+    expect_arity("option.flatten", args, 1)?;
+    match option_variant(&args[0], "option.flatten")? {
+        "Some" => {
+            let payload = enum_payload(&args[0], "option.flatten")?;
+            option_variant(&payload, "option.flatten")?;
+            Ok(payload)
+        }
+        "None" => Ok(option_value(None)),
+        _ => type_error("option.flatten"),
     }
 }
 
@@ -111,6 +126,21 @@ fn result_to_error_option(args: &[Value]) -> VmResult<Value> {
             .map(Some)
             .map(option_value),
         _ => type_error("result.to_error_option"),
+    }
+}
+
+fn result_flatten(args: &[Value]) -> VmResult<Value> {
+    expect_arity("result.flatten", args, 1)?;
+    match result_variant(&args[0], "result.flatten")? {
+        "Ok" => {
+            let payload = enum_payload(&args[0], "result.flatten")?;
+            result_variant(&payload, "result.flatten")?;
+            Ok(payload)
+        }
+        "Err" => {
+            enum_payload(&args[0], "result.flatten").map(|payload| result_value("Err", payload))
+        }
+        _ => type_error("result.flatten"),
     }
 }
 

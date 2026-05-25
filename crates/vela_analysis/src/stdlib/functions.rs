@@ -30,6 +30,11 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::result(TypeFact::Any, TypeFact::Any),
         ),
         StdlibFunctionFact::new(
+            "option.flatten",
+            vec![TypeFact::option(TypeFact::option(TypeFact::Any))],
+            TypeFact::option(TypeFact::Any),
+        ),
+        StdlibFunctionFact::new(
             "result.ok",
             vec![TypeFact::Any],
             TypeFact::result(TypeFact::Any, TypeFact::Any),
@@ -66,6 +71,14 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             "result.to_error_option",
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
             TypeFact::option(TypeFact::Any),
+        ),
+        StdlibFunctionFact::new(
+            "result.flatten",
+            vec![TypeFact::result(
+                TypeFact::result(TypeFact::Any, TypeFact::Any),
+                TypeFact::Any,
+            )],
+            TypeFact::result(TypeFact::Any, TypeFact::Any),
         ),
         StdlibFunctionFact::new(
             "math.max",
@@ -175,6 +188,11 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 option_ok_or_return(&args[0], args[1].clone()),
             ))
         }
+        "option.flatten" => {
+            expect_len(args, 1)?;
+            option_flatten_return(&args[0])
+                .map(|returns| StdlibFunctionFact::new("option.flatten", args.to_vec(), returns))
+        }
         "result.ok" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
@@ -222,6 +240,11 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 args.to_vec(),
                 result_to_error_option_return(&args[0]),
             ))
+        }
+        "result.flatten" => {
+            expect_len(args, 1)?;
+            result_flatten_return(&args[0])
+                .map(|returns| StdlibFunctionFact::new("result.flatten", args.to_vec(), returns))
         }
         "math.max" | "math.min" => {
             expect_len(args, 2)?;
@@ -350,6 +373,37 @@ fn option_ok_or_return(value: &TypeFact, err: TypeFact) -> TypeFact {
     }
 }
 
+fn option_flatten_return(value: &TypeFact) -> Option<TypeFact> {
+    match value {
+        TypeFact::OptionSome { some } => option_like_return(some),
+        TypeFact::Option { some } => option_maybe_flatten_return(some),
+        TypeFact::OptionNone => Some(TypeFact::option_none()),
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::option(TypeFact::Any)),
+        _ => None,
+    }
+}
+
+fn option_like_return(value: &TypeFact) -> Option<TypeFact> {
+    match value {
+        TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
+            Some(value.clone())
+        }
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::option(TypeFact::Any)),
+        _ => None,
+    }
+}
+
+fn option_maybe_flatten_return(value: &TypeFact) -> Option<TypeFact> {
+    match value {
+        TypeFact::Option { some } | TypeFact::OptionSome { some } => {
+            Some(TypeFact::option((**some).clone()))
+        }
+        TypeFact::OptionNone => Some(TypeFact::option_none()),
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::option(TypeFact::Any)),
+        _ => None,
+    }
+}
+
 fn result_ok_payload(value: &TypeFact) -> Option<TypeFact> {
     match value {
         TypeFact::Result { ok, .. } | TypeFact::ResultOk { ok } => Some((**ok).clone()),
@@ -387,6 +441,47 @@ fn result_to_error_option_return(value: &TypeFact) -> TypeFact {
         TypeFact::ResultOk { .. } => TypeFact::option_none(),
         TypeFact::ResultErr { err } => TypeFact::option_some((**err).clone()),
         _ => TypeFact::option(result_err_payload(value).unwrap_or(TypeFact::Any)),
+    }
+}
+
+fn result_flatten_return(value: &TypeFact) -> Option<TypeFact> {
+    match value {
+        TypeFact::ResultOk { ok } => result_like_return(ok),
+        TypeFact::Result { ok, err } => result_maybe_flatten_return(ok, err),
+        TypeFact::ResultErr { err } => Some(TypeFact::result_err((**err).clone())),
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::result(TypeFact::Any, TypeFact::Any)),
+        _ => None,
+    }
+}
+
+fn result_like_return(value: &TypeFact) -> Option<TypeFact> {
+    match value {
+        TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
+            Some(value.clone())
+        }
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::result(TypeFact::Any, TypeFact::Any)),
+        _ => None,
+    }
+}
+
+fn result_maybe_flatten_return(ok: &TypeFact, err: &TypeFact) -> Option<TypeFact> {
+    match ok {
+        TypeFact::Result {
+            ok: inner_ok,
+            err: inner_err,
+        } => Some(TypeFact::result(
+            (**inner_ok).clone(),
+            TypeFact::union([err.clone(), (**inner_err).clone()]),
+        )),
+        TypeFact::ResultOk { ok: inner_ok } => {
+            Some(TypeFact::result((**inner_ok).clone(), err.clone()))
+        }
+        TypeFact::ResultErr { err: inner_err } => Some(TypeFact::result_err(TypeFact::union([
+            err.clone(),
+            (**inner_err).clone(),
+        ]))),
+        TypeFact::Any | TypeFact::Unknown => Some(TypeFact::result(TypeFact::Any, TypeFact::Any)),
+        _ => None,
     }
 }
 
