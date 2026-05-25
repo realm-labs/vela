@@ -1448,6 +1448,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   CLI demo schema/state modules now include Inventory and ItemStack metadata,
   and CLI integration coverage proves the nested keyed `HostPath` patch reaches
   the safe-point apply path through the stable Engine/Runtime demo runner.
+- Strengthened M14 explicit Engine schema registration validation. Registered
+  `TypeDesc` values now reject duplicate field IDs/names, duplicate enum
+  variant IDs/names, and duplicate variant payload field IDs/names before
+  schemas enter the `TypeRegistry`, extending the stable-ID duplicate checks
+  beyond types, host types, methods, and native functions.
 
 ## Next
 

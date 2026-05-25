@@ -14,14 +14,56 @@ impl EngineError {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EngineErrorKind {
-    DuplicateNativeFunctionId { id: u64 },
-    DuplicateNativeFunctionName { name: String },
-    DuplicateTypeId { id: u32 },
-    DuplicateTypeName { name: String },
-    DuplicateHostTypeId { id: u32 },
-    DuplicateHostMethodId { id: u32 },
-    DuplicateHostMethodName { name: String },
-    UnknownNativeMethodOwner { name: String },
+    DuplicateNativeFunctionId {
+        id: u64,
+    },
+    DuplicateNativeFunctionName {
+        name: String,
+    },
+    DuplicateTypeId {
+        id: u32,
+    },
+    DuplicateTypeName {
+        name: String,
+    },
+    DuplicateHostTypeId {
+        id: u32,
+    },
+    DuplicateFieldId {
+        type_name: String,
+        id: u32,
+    },
+    DuplicateFieldName {
+        type_name: String,
+        name: String,
+    },
+    DuplicateVariantId {
+        type_name: String,
+        id: u32,
+    },
+    DuplicateVariantName {
+        type_name: String,
+        name: String,
+    },
+    DuplicateVariantFieldId {
+        type_name: String,
+        variant: String,
+        id: u32,
+    },
+    DuplicateVariantFieldName {
+        type_name: String,
+        variant: String,
+        name: String,
+    },
+    DuplicateHostMethodId {
+        id: u32,
+    },
+    DuplicateHostMethodName {
+        name: String,
+    },
+    UnknownNativeMethodOwner {
+        name: String,
+    },
     RuntimeNotHotReloadEnabled,
 }
 
@@ -42,6 +84,41 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DuplicateHostTypeId { id } => {
                 write!(formatter, "duplicate host type id {id}")
+            }
+            EngineErrorKind::DuplicateFieldId { type_name, id } => {
+                write!(formatter, "duplicate field id {id} on type {type_name}")
+            }
+            EngineErrorKind::DuplicateFieldName { type_name, name } => {
+                write!(formatter, "duplicate field name {name} on type {type_name}")
+            }
+            EngineErrorKind::DuplicateVariantId { type_name, id } => {
+                write!(formatter, "duplicate variant id {id} on type {type_name}")
+            }
+            EngineErrorKind::DuplicateVariantName { type_name, name } => {
+                write!(
+                    formatter,
+                    "duplicate variant name {name} on type {type_name}"
+                )
+            }
+            EngineErrorKind::DuplicateVariantFieldId {
+                type_name,
+                variant,
+                id,
+            } => {
+                write!(
+                    formatter,
+                    "duplicate variant field id {id} on {type_name}.{variant}"
+                )
+            }
+            EngineErrorKind::DuplicateVariantFieldName {
+                type_name,
+                variant,
+                name,
+            } => {
+                write!(
+                    formatter,
+                    "duplicate variant field name {name} on {type_name}.{variant}"
+                )
             }
             EngineErrorKind::DuplicateHostMethodId { id } => {
                 write!(formatter, "duplicate host method id {id}")

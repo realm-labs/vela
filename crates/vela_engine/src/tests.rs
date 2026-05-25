@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
 use vela_reflect::{
     FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPermission,
-    ReflectPermissionSet, SchemaHash, TypeDesc, TypeKey,
+    ReflectPermissionSet, SchemaHash, TypeDesc, TypeKey, VariantDesc,
 };
 use vela_vm::{ExecutionBudgetKind, VmError, VmResult};
 use vela_vm::{HostExecution, Value, VmErrorKind};
@@ -3505,6 +3505,128 @@ fn engine_rejects_duplicate_type_names() {
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateTypeName {
             name: "Player".to_owned()
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_field_ids() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(FieldId::new(1), "level"))
+                .field(FieldDesc::new(FieldId::new(1), "exp")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateFieldId {
+            type_name: "Player".to_owned(),
+            id: 1,
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_field_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(FieldId::new(1), "level"))
+                .field(FieldDesc::new(FieldId::new(2), "level")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateFieldName {
+            type_name: "Player".to_owned(),
+            name: "level".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_variant_ids() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+                .variant(VariantDesc::new(VariantId::new(1), "Gold"))
+                .variant(VariantDesc::new(VariantId::new(1), "Gem")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateVariantId {
+            type_name: "Reward".to_owned(),
+            id: 1,
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_variant_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+                .variant(VariantDesc::new(VariantId::new(1), "Gold"))
+                .variant(VariantDesc::new(VariantId::new(2), "Gold")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateVariantName {
+            type_name: "Reward".to_owned(),
+            name: "Gold".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_variant_field_ids() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
+                VariantDesc::new(VariantId::new(1), "Gold")
+                    .field(FieldDesc::new(FieldId::new(1), "item_id"))
+                    .field(FieldDesc::new(FieldId::new(1), "count")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateVariantFieldId {
+            type_name: "Reward".to_owned(),
+            variant: "Gold".to_owned(),
+            id: 1,
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_variant_field_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
+                VariantDesc::new(VariantId::new(1), "Gold")
+                    .field(FieldDesc::new(FieldId::new(1), "count"))
+                    .field(FieldDesc::new(FieldId::new(2), "count")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateVariantFieldName {
+            type_name: "Reward".to_owned(),
+            variant: "Gold".to_owned(),
+            name: "count".to_owned(),
         }
     ));
 }
