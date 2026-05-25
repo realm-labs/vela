@@ -929,6 +929,11 @@ permissions.
   `PatchTx` writes and return `null`, while script records and enum payload
   records now return updated copied values, reject unknown fields, and never
   mutate type structure or expose mutable references.
+- Added schema-backed unknown-field diagnostics for dynamic `reflect.get` and
+  `reflect.set` calls on script records and enum payloads. When registered
+  script metadata is available, errors now report the actual script type or
+  variant and related field source spans instead of falling back to anonymous
+  record candidates.
 
 ## Next
 

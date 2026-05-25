@@ -1,9 +1,8 @@
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::{
-    FunctionDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult, name_candidates,
-};
+use crate::candidates::name_candidates;
+use crate::{FunctionDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectResult};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ReflectPermission {

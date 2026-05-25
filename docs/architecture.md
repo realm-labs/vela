@@ -1754,6 +1754,11 @@ descriptors may leave this field as `null`. Unknown reflection lookups carry
 ranked related candidates with the same optional source spans where descriptors
 have source locations, so admin/debug tooling can jump from a misspelled lookup
 to nearby schema declarations without parsing human-readable messages.
+Dynamic `reflect.get` and `reflect.set` calls on script record or enum values
+preserve the script type name at the reflection boundary. If that type or
+variant exists in the registry, unknown-field diagnostics use the registered
+field metadata and related source spans rather than treating the value as an
+anonymous record.
 Field reflection records also expose the declared `type` hint when one is
 known, or `null` for unhinted/dynamic fields. These are copied documentation and
 tooling hints, not generic script types or static enforcement.

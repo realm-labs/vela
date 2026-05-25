@@ -7485,6 +7485,41 @@ fn main() {
     }
 
     #[test]
+    fn compiled_source_reflect_get_script_record_unknown_field_reports_schema() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+struct Player { level: int }
+
+fn main() {
+    let player = Player { level: 7 };
+    return reflect.get(player, "leve");
+}
+"#,
+        )
+        .expect("compile script record unknown field source");
+        let mut adapter = MockStateAdapter::new();
+        let mut tx = PatchTx::new();
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(script_reflection_registry()));
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+
+        assert!(matches!(
+            vm.run_program_with_host(&program, "main", &[], &mut host),
+            Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
+                type_name: "Player".to_owned(),
+                field: "leve".to_owned(),
+                candidates: vec!["level".to_owned()],
+                related: vec![ReflectCandidate::new("level", None)],
+            })
+        ));
+        assert!(tx.patches().is_empty());
+    }
+
+    #[test]
     fn heap_execution_reflection_fields_returns_heap_metadata_array() {
         let host_ref = player_ref(3);
         let program = compile_program_source(

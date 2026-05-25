@@ -3920,3 +3920,29 @@ Consequences:
   `player = reflect.set(player, "level", 10)`.
 - Host mutation remains exclusively routed through `PatchTx`.
 - Reflection writes remain schema-safe because they update existing fields only.
+
+## 2026-05-25: Script Field Misses Use Registered Schema Metadata
+
+Status: Accepted
+
+Context:
+M12 requires unknown-name diagnostics to include ranked candidates and related
+schema spans. Dynamic `reflect.get` and `reflect.set` on script values already
+preserved the script record or enum name, but unknown-field errors could still
+fall back to anonymous record keys and lose source-span metadata even when the
+registry knew the script schema.
+
+Decision:
+When a reflected script record or enum payload misses a field, look up the
+registered script type or enum variant and rank candidates from descriptor
+fields. Preserve the existing candidate-name list while adding related
+`ReflectCandidate` records with optional source spans. If no schema is
+registered, keep the anonymous record fallback.
+
+Consequences:
+- Admin/debug tooling can navigate dynamic script-value field typos back to
+  registered field declarations when spans are known.
+- The behavior remains schema-safe because reflection only reads registry
+  metadata and never adds fields or mutates type structure.
+- Host descriptors without spans and unregistered dynamic records still produce
+  candidate-name diagnostics through the existing fallback.
