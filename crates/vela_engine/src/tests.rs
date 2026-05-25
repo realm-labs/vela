@@ -354,6 +354,49 @@ fn main(scores) {
 }
 
 #[test]
+fn typed_native_functions_accept_btree_map_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(BTreeMap<String, i64>,), _>(
+            NativeFunctionDesc::new("game.sum_ordered_scores", NativeFunctionId::new(233))
+                .param("scores", TypeHint::Map)
+                .returns(TypeHint::Int),
+            |scores: BTreeMap<String, i64>| scores.values().sum::<i64>(),
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game.default_ordered_scores", NativeFunctionId::new(234))
+                .returns(TypeHint::Map),
+            || BTreeMap::from([("quest".to_owned(), 4_i64), ("raid".to_owned(), 6_i64)]),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(scores) {
+    let defaults = game.default_ordered_scores();
+    return game.sum_ordered_scores(scores) + defaults.get_or("raid", 0);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Map(
+                [
+                    ("daily".to_owned(), Value::Int(2)),
+                    ("weekly".to_owned(), Value::Int(5)),
+                ]
+                .into(),
+            )],
+        ),
+        Ok(Value::Int(13)),
+    );
+}
+
+#[test]
 fn engine_builder_installs_standard_natives_into_runtime() {
     let engine = Engine::builder()
         .with_standard_natives()
