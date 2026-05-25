@@ -6753,3 +6753,26 @@ Consequences:
   throwing lookup APIs when detailed candidates are needed.
 - The helpers only query static registry metadata and do not allow runtime
   schema mutation.
+
+## 2026-05-26: Variant Reflection Mirrors Targeted Member Lookups
+
+Status: Accepted
+
+Context:
+Reflection could list variants for a value's registered enum type and report
+the active variant name, but scripts had no targeted variant metadata lookup or
+presence guard comparable to field and method reflection.
+
+Decision:
+Add `reflect.variant_info(value, name)` and
+`reflect.has_variant(value, name)`. The metadata lookup returns a copied
+variant descriptor, applies the same field-read policy filtering as
+`reflect.variants`, and reports ranked unknown-variant candidates. The guard
+only reports whether the registered enum schema exposes the named variant.
+
+Consequences:
+- Admin/debug scripts can inspect one variant descriptor without enumerating
+  all variants.
+- Policy-hidden variant fields remain hidden in targeted variant metadata.
+- Runtime schema mutation remains unsupported; these APIs only read TypeRegistry
+  metadata.

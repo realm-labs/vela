@@ -521,6 +521,47 @@ impl Vm {
             )?)
         });
 
+        let variant_info_registry = Arc::clone(&registry);
+        let variant_info_policy = policy.clone();
+        let variant_info_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.variant_info", move |args, _host| {
+            check_reflect_policy(
+                &variant_info_policy,
+                &variant_info_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.variant_info", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.variant_info")?;
+            check_host_ref_inspection(&variant_info_policy, &target)?;
+            let variant_name = expect_string(&args[1], "reflect.variant_info")?;
+            value_from_reflect(reflect::variant_info_with_policy(
+                &variant_info_registry,
+                &target,
+                variant_name,
+                &variant_info_policy,
+            )?)
+        });
+
+        let has_variant_registry = Arc::clone(&registry);
+        let has_variant_policy = policy.clone();
+        let has_variant_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.has_variant", move |args, _host| {
+            check_reflect_policy(
+                &has_variant_policy,
+                &has_variant_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.has_variant", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.has_variant")?;
+            check_host_ref_inspection(&has_variant_policy, &target)?;
+            let variant_name = expect_string(&args[1], "reflect.has_variant")?;
+            Ok(Value::Bool(reflect::has_variant(
+                &has_variant_registry,
+                &target,
+                variant_name,
+            )?))
+        });
+
         let variant_policy = policy.clone();
         let variant_budget = Arc::clone(&lookup_budget);
         self.register_host_native("reflect.variant", move |args, _host| {

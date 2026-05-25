@@ -300,6 +300,43 @@ pub fn variants_with_policy(
     )))
 }
 
+pub fn variant_info(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    let variant = find_variant(desc, name)?;
+    Ok(ReflectValue::Host(variant_record(variant)))
+}
+
+pub fn variant_info_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    let variant = find_variant(desc, name)?;
+    Ok(ReflectValue::Host(variant_record_with_fields(
+        variant,
+        variant.fields.iter().filter(|field| {
+            policy
+                .require_field_read_access(&desc.key.name, field)
+                .is_ok()
+        }),
+    )))
+}
+
+pub fn has_variant(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+) -> ReflectResult<bool> {
+    let desc = target_type(registry, target)?;
+    Ok(desc.variants.iter().any(|variant| variant.name == name))
+}
+
 pub fn all_variants(registry: &TypeRegistry) -> ReflectValue {
     ReflectValue::Host(HostValue::Array(
         registry
@@ -418,6 +455,21 @@ fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a Method
             ReflectError::new(ReflectErrorKind::UnknownMethod {
                 type_name: desc.key.name.clone(),
                 method: method.to_owned(),
+                candidates: candidate_names(&related),
+                related,
+            })
+        })
+}
+
+fn find_variant<'a>(desc: &'a TypeDesc, variant: &str) -> ReflectResult<&'a VariantDesc> {
+    desc.variants
+        .iter()
+        .find(|candidate| candidate.name == variant)
+        .ok_or_else(|| {
+            let related = variant_candidates(desc, variant);
+            ReflectError::new(ReflectErrorKind::UnknownVariant {
+                type_name: desc.key.name.clone(),
+                variant: variant.to_owned(),
                 candidates: candidate_names(&related),
                 related,
             })
@@ -1077,6 +1129,8 @@ mod tests {
             panic!("variants should be an array");
         };
         assert_eq!(variants.len(), 2);
+        assert!(has_variant(&registry, &target, "Active").expect("has active"));
+        assert!(!has_variant(&registry, &target, "Paused").expect("has paused"));
         let HostValue::Record {
             fields: variant_fields,
             ..
@@ -1086,6 +1140,21 @@ mod tests {
         };
         assert_eq!(
             variant_fields.get("source_span"),
+            Some(&span_value(Some(Span::new(SourceId::new(8), 90, 100))))
+        );
+        let ReflectValue::Host(HostValue::Record {
+            fields: single_variant,
+            ..
+        }) = variant_info(&registry, &target, "Active").expect("variant info")
+        else {
+            panic!("single variant metadata should be a record");
+        };
+        assert_eq!(
+            single_variant.get("name"),
+            Some(&HostValue::String("Active".to_owned()))
+        );
+        assert_eq!(
+            single_variant.get("source_span"),
             Some(&span_value(Some(Span::new(SourceId::new(8), 90, 100))))
         );
         let ReflectValue::Host(HostValue::Array(all_variants)) = all_variants(&registry) else {
@@ -1121,6 +1190,22 @@ mod tests {
         let error =
             variant_is(&registry, &target, "Actve").expect_err("unknown variant should diagnose");
 
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownVariant {
+                type_name: "QuestProgress".to_owned(),
+                variant: "Actve".to_owned(),
+                candidates: vec!["Active".to_owned(), "Finished".to_owned()],
+                related: vec![
+                    crate::ReflectCandidate::new(
+                        "Active",
+                        Some(Span::new(SourceId::new(8), 90, 100))
+                    ),
+                    crate::ReflectCandidate::new("Finished", None),
+                ],
+            }
+        );
+        let error = variant_info(&registry, &target, "Actve").expect_err("unknown variant info");
         assert_eq!(
             error.kind,
             ReflectErrorKind::UnknownVariant {
@@ -1527,6 +1612,14 @@ mod tests {
         else {
             panic!("variants should be an array");
         };
+        let ReflectValue::Host(HostValue::Record {
+            fields: policy_variant,
+            ..
+        }) = variant_info_with_policy(&registry, &target, "Active", &ReflectPolicy::read_only())
+            .expect("policy variant info")
+        else {
+            panic!("variant info should be a record");
+        };
         let ReflectValue::Host(HostValue::Array(policy_all_variants)) =
             all_variants_with_policy(&registry, &ReflectPolicy::read_only())
         else {
@@ -1561,5 +1654,9 @@ mod tests {
             panic!("variant fields should be an array");
         };
         assert_eq!(all_policy_fields.len(), 1);
+        let Some(HostValue::Array(policy_variant_fields)) = policy_variant.get("fields") else {
+            panic!("variant info fields should be an array");
+        };
+        assert_eq!(policy_variant_fields.len(), 1);
     }
 }

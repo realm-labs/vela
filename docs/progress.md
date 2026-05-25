@@ -1633,6 +1633,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   `reflect.has_type(name)` and `reflect.has_trait(name)` before performing
   throwing metadata lookups with `reflect.type_info` or `reflect.trait_info`,
   preserving schema-safe read-only reflection behavior.
+- Added M12 singular variant metadata lookup and guards. Scripts can now call
+  `reflect.variant_info(value, name)` for one copied variant descriptor and
+  `reflect.has_variant(value, name)` for non-throwing enum-schema checks;
+  reflected variant fields respect the same field-read policy as
+  `reflect.variants`.
 
 ## Next
 

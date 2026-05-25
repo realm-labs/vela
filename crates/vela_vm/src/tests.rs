@@ -5027,6 +5027,7 @@ fn main(player) {
     let traits = reflect.traits(player);
     let quest = QuestProgress.Active { count: 1 };
     let variants = reflect.variants(quest);
+    let active = reflect.variant_info(quest, "Active");
     let all_variants = reflect.variants();
     if reflect.has_method(player, "grant_exp")
         && methods.len() == 1
@@ -5041,10 +5042,14 @@ fn main(player) {
         && method.params[0].name == "amount"
         && traits.len() == 1
         && variants.len() == 2
+        && active.name == "Active"
+        && active.fields[0].name == "count"
         && all_variants.len() == 2
         && all_variants[0].owner == "QuestProgress"
         && all_variants[0].name == "Active"
         && reflect.variant(quest) == "Active"
+        && reflect.has_variant(quest, "Active")
+        && !reflect.has_variant(quest, "Paused")
         && reflect.variant_is(quest, "Active") {
         return variants[0].fields.len();
     }
@@ -5253,8 +5258,11 @@ fn compiled_source_reflect_variants_respect_field_access() {
 fn main() {
     let quest = QuestProgress.Active { count: 1 };
     let variants = reflect.variants(quest);
+    let active = reflect.variant_info(quest, "Active");
     let all_variants = reflect.variants();
     if variants[0].fields.len() == 1
+        && active.fields.len() == 1
+        && active.fields[0].name == "count"
         && variants[0].fields[0].name == "count"
         && all_variants[0].fields.len() == 1
         && all_variants[0].owner == "QuestProgress" {
@@ -5370,6 +5378,42 @@ fn main() {
 "#,
     )
     .expect("compile unknown variant reflection source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(member_reflection_registry()));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        vm.run_program_with_host(&program, "main", &[], &mut host),
+        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
+            type_name: "QuestProgress".to_owned(),
+            variant: "Actve".to_owned(),
+            candidates: vec!["Active".to_owned(), "Finished".to_owned()],
+            related: vec![
+                ReflectCandidate::new("Active", None),
+                ReflectCandidate::new("Finished", None),
+            ],
+        })
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn compiled_source_reflect_variant_info_reports_unknown_variant_candidates() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let quest = QuestProgress.Active { count: 1 };
+    return reflect.variant_info(quest, "Actve");
+}
+"#,
+    )
+    .expect("compile unknown variant info reflection source");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut vm = Vm::new();
