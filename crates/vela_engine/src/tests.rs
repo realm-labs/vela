@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
@@ -182,6 +182,49 @@ fn main(tags) {
             ])],
         ),
         Ok(Value::Int(4)),
+    );
+}
+
+#[test]
+fn typed_native_functions_accept_hash_map_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(HashMap<String, i64>,), _>(
+            NativeFunctionDesc::new("game.sum_scores", NativeFunctionId::new(226))
+                .param("scores", TypeHint::Map)
+                .returns(TypeHint::Int),
+            |scores: HashMap<String, i64>| scores.values().sum::<i64>(),
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game.default_scores", NativeFunctionId::new(227))
+                .returns(TypeHint::Map),
+            || HashMap::from([("quest".to_owned(), 4_i64), ("raid".to_owned(), 6_i64)]),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(scores) {
+    let defaults = game.default_scores();
+    return game.sum_scores(scores) + defaults.get_or("quest", 0);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Map(
+                [
+                    ("daily".to_owned(), Value::Int(2)),
+                    ("weekly".to_owned(), Value::Int(5)),
+                ]
+                .into(),
+            )],
+        ),
+        Ok(Value::Int(11)),
     );
 }
 
@@ -1237,8 +1280,20 @@ fn args_macro_converts_rust_values_and_host_refs() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
     let mut map = BTreeMap::new();
     map.insert("key", 9);
+    let mut hash_map = HashMap::new();
+    hash_map.insert("hash", 11);
 
-    let args = crate::args![(), true, 5, 2.5_f64, "title", ["a", "b"], map, host_ref,];
+    let args = crate::args![
+        (),
+        true,
+        5,
+        2.5_f64,
+        "title",
+        ["a", "b"],
+        map,
+        hash_map,
+        host_ref,
+    ];
 
     assert_eq!(
         args,
@@ -1253,6 +1308,7 @@ fn args_macro_converts_rust_values_and_host_refs() {
                 Value::String("b".to_owned())
             ]),
             Value::Map([("key".to_owned(), Value::Int(9))].into()),
+            Value::Map([("hash".to_owned(), Value::Int(11))].into()),
             Value::HostRef(host_ref),
         ]
     );
@@ -1270,6 +1326,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
         "title",
         [1, 2, 3],
         BTreeMap::from([("key", "value")]),
+        HashMap::from([("hash", "map")]),
         host_ref,
     ];
 
@@ -1282,7 +1339,11 @@ fn script_arg_conversions_extract_owned_rust_values() {
         args.required::<BTreeMap<String, String>>(5),
         Ok(BTreeMap::from([("key".to_owned(), "value".to_owned())]))
     );
-    assert_eq!(args.required::<HostRef>(6), Ok(host_ref));
+    assert_eq!(
+        args.required::<HashMap<String, String>>(6),
+        Ok(HashMap::from([("hash".to_owned(), "map".to_owned())]))
+    );
+    assert_eq!(args.required::<HostRef>(7), Ok(host_ref));
 
     assert!(matches!(
         args.required::<HostRef>(1),
@@ -1300,7 +1361,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
             kind: VmErrorKind::ArityMismatch {
                 name,
                 expected: 10,
-                actual: 7,
+                actual: 8,
             },
             source_span: None,
             ..

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
 use vela_host::HostRef;
@@ -303,6 +303,37 @@ where
 }
 
 impl<T> FromScriptArg for BTreeMap<String, T>
+where
+    T: FromScriptArg,
+{
+    const TYPE_NAME: &'static str = "map";
+
+    fn from_script_arg(value: &Value) -> VmResult<Self> {
+        match value {
+            Value::Map(values) => values
+                .iter()
+                .map(|(key, value)| Ok((key.clone(), T::from_script_arg(value)?)))
+                .collect(),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
+impl<K, T> IntoScriptArg for HashMap<K, T>
+where
+    K: Into<String> + Eq + Hash,
+    T: IntoScriptArg,
+{
+    fn into_script_arg(self) -> Value {
+        Value::Map(
+            self.into_iter()
+                .map(|(key, value)| (key.into(), value.into_script_arg()))
+                .collect(),
+        )
+    }
+}
+
+impl<T> FromScriptArg for HashMap<String, T>
 where
     T: FromScriptArg,
 {

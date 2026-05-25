@@ -1241,6 +1241,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   into deterministic VM standard natives through the stable Engine API.
   Runtime coverage now proves Engine-installed math, set, and Option helpers
   execute together under `Runtime::call`.
+- Added M14 Rust `HashMap<String, T>` signature conversion. Engine typed
+  natives, `args!`, and macro-generated native functions can now accept and
+  return copied script map values through the existing `Value::Map` boundary,
+  matching the macro metadata that already reports HashMap parameters as maps.
 
 ## Next
 

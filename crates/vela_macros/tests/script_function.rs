@@ -1,6 +1,6 @@
 #![allow(clippy::result_large_err)]
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use vela_common::{FieldId, HostObjectId, HostTypeId};
 use vela_engine::{
@@ -64,6 +64,12 @@ fn count_labels(labels: BTreeSet<String>) -> i64 {
     i64::try_from(labels.len()).expect("label count fits i64")
 }
 
+/// Sums copied score values from a script map.
+#[script_function(id = 45, name = "game.score_total", effect = "pure", reflect = true)]
+fn score_total(scores: HashMap<String, i64>) -> i64 {
+    scores.values().sum()
+}
+
 #[test]
 fn script_function_generates_native_function_metadata() {
     assert_eq!(
@@ -92,6 +98,19 @@ fn script_function_generates_set_signature_metadata() {
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
             .docs("Counts copied unique labels from a script set."),
+    );
+}
+
+#[test]
+fn script_function_generates_hash_map_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_score_total(),
+        NativeFunctionDesc::new("game.score_total", NativeFunctionId::new(45))
+            .param("scores", TypeHint::Map)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Sums copied score values from a script map."),
     );
 }
 
@@ -192,6 +211,44 @@ fn main(labels) {
             ])],
         ),
         Ok(Value::Int(2)),
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_function_registers_typed_hash_map_native_with_engine() {
+    let engine = vela_register_native_function_score_total(Engine::builder())
+        .build()
+        .expect("engine should build from macro map native function");
+    let root = unique_test_dir("script_function_hash_map_native");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.lang");
+    std::fs::write(
+        &source,
+        r#"
+fn main(scores) {
+    return game.score_total(scores);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered map native");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Map(
+                [
+                    ("daily".to_owned(), Value::Int(3)),
+                    ("weekly".to_owned(), Value::Int(7)),
+                ]
+                .into(),
+            )],
+        ),
+        Ok(Value::Int(10)),
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
