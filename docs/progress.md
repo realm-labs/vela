@@ -1411,6 +1411,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   function, host function, and host method macros now reject Rust where-clauses
   through a shared signature helper instead of allowing hidden generic
   constraints to reach generated Engine registration code.
+- Added `string.repeat(count)` for deterministic gameplay label and diagnostic
+  text assembly. It works in inline and managed-heap execution, rejects
+  negative counts, and exposes analysis TypeFacts plus completion metadata.
 
 ## Next
 

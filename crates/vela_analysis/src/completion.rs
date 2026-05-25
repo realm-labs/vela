@@ -490,6 +490,11 @@ mod tests {
             TypeFact::function(vec![TypeFact::String, TypeFact::String], TypeFact::String),
         )));
         assert!(string.contains(&CompletionItem::new(
+            "repeat",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::Int], TypeFact::String),
+        )));
+        assert!(string.contains(&CompletionItem::new(
             "trim_start",
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::String),

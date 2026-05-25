@@ -52,6 +52,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "trim_start",
     "trim_end",
     "replace",
+    "repeat",
     "slice",
     "split",
     "parse_int",
@@ -385,6 +386,10 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
         "replace" => Some(
             StdlibMethodFact::new(receiver, "replace", TypeFact::String)
                 .with_params(vec![TypeFact::String, TypeFact::String]),
+        ),
+        "repeat" => Some(
+            StdlibMethodFact::new(receiver, "repeat", TypeFact::String)
+                .with_params(vec![TypeFact::Int]),
         ),
         "slice" => Some(
             StdlibMethodFact::new(receiver, "slice", TypeFact::String)

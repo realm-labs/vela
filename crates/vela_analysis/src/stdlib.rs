@@ -275,6 +275,10 @@ mod tests {
         assert_eq!(replace.params, vec![TypeFact::String, TypeFact::String]);
         assert_eq!(replace.returns, TypeFact::String);
 
+        let repeat = stdlib_method_fact(&TypeFact::String, "repeat", None).expect("repeat fact");
+        assert_eq!(repeat.params, vec![TypeFact::Int]);
+        assert_eq!(repeat.returns, TypeFact::String);
+
         let trim_start =
             stdlib_method_fact(&TypeFact::String, "trim_start", None).expect("trim_start fact");
         assert_eq!(trim_start.params, Vec::<TypeFact>::new());

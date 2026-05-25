@@ -6021,3 +6021,23 @@ Consequences:
   generated.
 - Future support for explicit Rust-side specialization would need a separate
   design instead of appearing accidentally through macro input.
+
+## 2026-05-25: Strings Support Deterministic Repeat
+
+Status: Accepted
+
+Context:
+M13 string helpers support event/tag normalization and diagnostics, but scripts
+still need a compact way to build repeated separators, markers, and fixed-width
+labels without custom native glue.
+
+Decision:
+Add `string.repeat(count)` as a script-value method in the focused VM string
+method module. The method accepts a non-negative integer count, returns a copied
+string, and exposes matching analysis and completion metadata.
+
+Consequences:
+- Gameplay scripts can build simple repeated text deterministically.
+- Negative counts fail through the VM type-error path instead of wrapping.
+- The helper does not add implicit string formatting, numeric generics, or host
+  mutation behavior.

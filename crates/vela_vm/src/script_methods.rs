@@ -55,6 +55,7 @@ pub(crate) fn call_method(
         "trim_start" => string_methods::trim_start(receiver, args, heap.as_deref()),
         "trim_end" => string_methods::trim_end(receiver, args, heap.as_deref()),
         "replace" => string_methods::replace(receiver, args, heap.as_deref()),
+        "repeat" => string_methods::repeat(receiver, args, heap.as_deref()),
         "slice" => {
             if string_methods::is_string(receiver, heap.as_deref()) {
                 string_methods::slice(receiver, args, heap.as_deref())

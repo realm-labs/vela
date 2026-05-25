@@ -166,6 +166,22 @@ pub(crate) fn replace(
     Ok(Value::String(value.replace(from, to)))
 }
 
+pub(crate) fn repeat(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("repeat", args, 1)?;
+    let value = string_value(receiver, heap, "method repeat")?;
+    let count = index_value(&args[0], "method repeat")?;
+    value.len().checked_mul(count).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "method repeat",
+        })
+    })?;
+    Ok(Value::String(value.repeat(count)))
+}
+
 pub(crate) fn slice(
     receiver: &Value,
     args: &[Value],
@@ -400,9 +416,11 @@ fn main() {
 fn main() {
     let event = " Player.LevelUp ";
     let pieces = event.trim_start().trim_end().replace(".", "_").to_lower().slice(0, 14).split("_");
+    let marker = "!".repeat(3);
     if pieces[0] == "player"
         && pieces[1] == "levelup"
         && pieces[1].to_upper() == "LEVELUP"
+        && marker == "!!!"
     {
         return pieces[1];
     }
@@ -437,6 +455,46 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "method trim"
+            }
+        );
+    }
+
+    #[test]
+    fn string_repeat_builds_deterministic_strings() {
+        let source = r#"
+fn main() {
+    let tag = "xp".repeat(3);
+    let empty = "quest".repeat(0);
+    if tag == "xpxpxp" && empty == "" {
+        return "-".repeat(2);
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string repeat source should compile");
+
+        let result = Vm::new().run(&code).expect("string repeat should run");
+        assert_eq!(result, Value::String("--".to_owned()));
+    }
+
+    #[test]
+    fn string_repeat_rejects_negative_counts() {
+        let source = r#"
+fn main() {
+    return "quest".repeat(-1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string repeat type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("string repeat should reject negative counts");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method repeat"
             }
         );
     }
