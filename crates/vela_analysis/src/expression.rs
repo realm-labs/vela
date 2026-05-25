@@ -179,10 +179,12 @@ fn call_fact(callee: &Expr, args: &[vela_syntax::Argument], scope: &ExprFactScop
 }
 
 fn map_key_fact(key: &Expr, scope: &ExprFactScope) -> TypeFact {
-    if matches!(key.kind, ExprKind::Path(_)) {
-        TypeFact::String
-    } else {
-        type_fact_from_expr(key, scope)
+    match &key.kind {
+        ExprKind::Literal(Literal::String(_))
+        | ExprKind::Literal(Literal::Int(_))
+        | ExprKind::Literal(Literal::Float(_))
+        | ExprKind::Path(_) => TypeFact::String,
+        _ => type_fact_from_expr(key, scope),
     }
 }
 
@@ -302,7 +304,7 @@ mod tests {
             struct Reward { count: int }
             fn main() {
                 let values = [1, 2, 3];
-                let rewards = {"quest": 1, boss: 2.5};
+                let rewards = {"quest": 1, boss: 2.5, 10: 3};
                 let reward = Reward { count: 3 };
             }
             "#,
