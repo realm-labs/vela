@@ -1,4 +1,4 @@
-use crate::{RegistryFacts, TypeFact};
+use crate::{RegistryFacts, TypeFact, stdlib_function_completion_facts, stdlib_method_facts};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompletionKind {
@@ -28,7 +28,7 @@ impl CompletionItem {
 }
 
 pub fn member_completions(facts: &RegistryFacts, receiver: &TypeFact) -> Vec<CompletionItem> {
-    match receiver {
+    let mut completions = match receiver {
         TypeFact::Host { name } | TypeFact::Record { name } => {
             owner_member_completions(facts, name)
         }
@@ -42,7 +42,9 @@ pub fn member_completions(facts: &RegistryFacts, receiver: &TypeFact) -> Vec<Com
         } => variant_completions(facts, name),
         TypeFact::Trait { name } => trait_method_completions(facts, name),
         _ => Vec::new(),
-    }
+    };
+    completions.extend(stdlib_method_completions(receiver));
+    completions
 }
 
 pub fn global_completions(facts: &RegistryFacts) -> Vec<CompletionItem> {
@@ -100,9 +102,37 @@ fn trait_method_completions(facts: &RegistryFacts, owner: &str) -> Vec<Completio
 }
 
 fn function_completions(facts: &RegistryFacts) -> Vec<CompletionItem> {
-    facts
+    let mut completions = facts
         .functions()
         .map(|function| CompletionItem::new(function.name, CompletionKind::Function, function.fact))
+        .collect::<Vec<_>>();
+    completions.extend(stdlib_function_completions());
+    completions
+}
+
+fn stdlib_method_completions(receiver: &TypeFact) -> Vec<CompletionItem> {
+    stdlib_method_facts(receiver, None)
+        .into_iter()
+        .map(|fact| {
+            CompletionItem::new(
+                fact.method,
+                CompletionKind::Method,
+                TypeFact::function(fact.params, fact.returns),
+            )
+        })
+        .collect()
+}
+
+fn stdlib_function_completions() -> Vec<CompletionItem> {
+    stdlib_function_completion_facts()
+        .into_iter()
+        .map(|fact| {
+            CompletionItem::new(
+                fact.name,
+                CompletionKind::Function,
+                TypeFact::function(fact.params, fact.returns),
+            )
+        })
         .collect()
 }
 
@@ -196,6 +226,56 @@ mod tests {
                 TypeFact::function(vec![TypeFact::Int], TypeFact::Bool),
             )]
         );
+    }
+
+    #[test]
+    fn receiver_completions_include_stdlib_collection_and_string_methods() {
+        let facts = registry_facts();
+
+        let map = member_completions(&facts, &TypeFact::map(TypeFact::String, TypeFact::Int));
+        assert!(map.contains(&CompletionItem::new(
+            "get",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::String], TypeFact::option(TypeFact::Int)),
+        )));
+        assert!(map.contains(&CompletionItem::new(
+            "filter",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::function(
+                    vec![TypeFact::String, TypeFact::Int],
+                    TypeFact::Bool,
+                )],
+                TypeFact::map(TypeFact::String, TypeFact::Int),
+            ),
+        )));
+
+        let string = member_completions(&facts, &TypeFact::String);
+        assert!(string.contains(&CompletionItem::new(
+            "split",
+            CompletionKind::Method,
+            TypeFact::function(vec![TypeFact::String], TypeFact::array(TypeFact::String)),
+        )));
+    }
+
+    #[test]
+    fn global_completions_include_stdlib_functions() {
+        let facts = registry_facts();
+        let completions = global_completions(&facts);
+
+        assert!(completions.contains(&CompletionItem::new(
+            "option.unwrap_or",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
+                TypeFact::Any
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
+            "math.random",
+            CompletionKind::Function,
+            TypeFact::function(vec![TypeFact::Int, TypeFact::Int], TypeFact::Int),
+        )));
     }
 
     fn registry_facts() -> RegistryFacts {

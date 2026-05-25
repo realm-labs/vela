@@ -16,6 +16,7 @@ pub use facts::AnalysisFacts;
 pub use hints::{type_fact_from_hint, type_fact_from_path};
 pub use registry::{RegistryFacts, RegistryFunctionFact, RegistryMemberFact};
 pub use stdlib::{
-    LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_fact, stdlib_method_fact,
+    LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts,
+    stdlib_function_fact, stdlib_method_fact, stdlib_method_facts,
 };
 pub use type_fact::TypeFact;

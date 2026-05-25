@@ -1097,6 +1097,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   produce copied completion items for TypeRegistry-backed fields, methods,
   enum variants, functions, types, and traits from `TypeFact` receivers without
   querying or mutating runtime reflection state.
+- Extended those completion helpers to standard-library APIs. Collection and
+  string receivers now expose copied method signatures, including callback
+  function facts for lambda-taking methods, and global completions include
+  Option/Result, math, random, and set helper functions without adding
+  script-visible generics.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

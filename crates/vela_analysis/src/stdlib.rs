@@ -1,5 +1,39 @@
 use crate::TypeFact;
 
+const ARRAY_METHOD_NAMES: &[&str] = &[
+    "len", "is_empty", "push", "pop", "map", "filter", "find", "any", "all", "count", "sum",
+    "group_by", "sort_by",
+];
+const MAP_METHOD_NAMES: &[&str] = &[
+    "len",
+    "is_empty",
+    "has",
+    "get",
+    "get_or",
+    "set",
+    "remove",
+    "keys",
+    "values",
+    "entries",
+    "map_values",
+    "filter",
+    "any",
+    "all",
+    "count",
+];
+const SET_METHOD_NAMES: &[&str] = &["len", "is_empty", "has", "add", "remove", "values"];
+const STRING_METHOD_NAMES: &[&str] = &[
+    "len",
+    "is_empty",
+    "contains",
+    "starts_with",
+    "ends_with",
+    "to_upper",
+    "to_lower",
+    "trim",
+    "split",
+];
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LambdaFact {
     pub params: Vec<TypeFact>,
@@ -16,6 +50,7 @@ impl LambdaFact {
 pub struct StdlibMethodFact {
     pub receiver: TypeFact,
     pub method: &'static str,
+    pub params: Vec<TypeFact>,
     pub lambda: Option<LambdaFact>,
     pub returns: TypeFact,
 }
@@ -25,12 +60,19 @@ impl StdlibMethodFact {
         Self {
             receiver,
             method,
+            params: Vec::new(),
             lambda: None,
             returns,
         }
     }
 
+    fn with_params(mut self, params: Vec<TypeFact>) -> Self {
+        self.params = params;
+        self
+    }
+
     fn with_lambda(mut self, params: Vec<TypeFact>, returns: TypeFact) -> Self {
+        self.params = vec![TypeFact::function(params.clone(), returns.clone())];
         self.lambda = Some(LambdaFact::new(params, returns));
         self
     }
@@ -69,6 +111,99 @@ pub fn stdlib_method_fact(
         TypeFact::String => string_method_fact(method),
         _ => None,
     }
+}
+
+pub fn stdlib_method_facts(
+    receiver: &TypeFact,
+    lambda_return: Option<&TypeFact>,
+) -> Vec<StdlibMethodFact> {
+    stdlib_method_names(receiver)
+        .iter()
+        .filter_map(|method| stdlib_method_fact(receiver, method, lambda_return))
+        .collect()
+}
+
+pub fn stdlib_function_completion_facts() -> Vec<StdlibFunctionFact> {
+    let number = number_fact();
+    vec![
+        StdlibFunctionFact::new(
+            "option.some",
+            vec![TypeFact::Any],
+            TypeFact::option(TypeFact::Any),
+        ),
+        StdlibFunctionFact::new("option.none", Vec::new(), TypeFact::option(TypeFact::Any)),
+        StdlibFunctionFact::new(
+            "option.is_some",
+            vec![TypeFact::option(TypeFact::Any)],
+            TypeFact::Bool,
+        ),
+        StdlibFunctionFact::new(
+            "option.is_none",
+            vec![TypeFact::option(TypeFact::Any)],
+            TypeFact::Bool,
+        ),
+        StdlibFunctionFact::new(
+            "option.unwrap_or",
+            vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
+            TypeFact::Any,
+        ),
+        StdlibFunctionFact::new(
+            "result.ok",
+            vec![TypeFact::Any],
+            TypeFact::result(TypeFact::Any, TypeFact::Any),
+        ),
+        StdlibFunctionFact::new(
+            "result.err",
+            vec![TypeFact::Any],
+            TypeFact::result(TypeFact::Any, TypeFact::Any),
+        ),
+        StdlibFunctionFact::new(
+            "result.is_ok",
+            vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
+            TypeFact::Bool,
+        ),
+        StdlibFunctionFact::new(
+            "result.is_err",
+            vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
+            TypeFact::Bool,
+        ),
+        StdlibFunctionFact::new(
+            "result.unwrap_or",
+            vec![
+                TypeFact::result(TypeFact::Any, TypeFact::Any),
+                TypeFact::Any,
+            ],
+            TypeFact::Any,
+        ),
+        StdlibFunctionFact::new(
+            "math.max",
+            vec![number.clone(), number.clone()],
+            number.clone(),
+        ),
+        StdlibFunctionFact::new(
+            "math.min",
+            vec![number.clone(), number.clone()],
+            number.clone(),
+        ),
+        StdlibFunctionFact::new(
+            "math.clamp",
+            vec![number.clone(), number.clone(), number.clone()],
+            number.clone(),
+        ),
+        StdlibFunctionFact::new("math.floor", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math.ceil", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math.abs", vec![number.clone()], number),
+        StdlibFunctionFact::new(
+            "math.random",
+            vec![TypeFact::Int, TypeFact::Int],
+            TypeFact::Int,
+        ),
+        StdlibFunctionFact::new(
+            "set.from_array",
+            vec![TypeFact::array(TypeFact::Any)],
+            TypeFact::set(TypeFact::Any),
+        ),
+    ]
 }
 
 pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunctionFact> {
@@ -198,6 +333,16 @@ pub fn stdlib_function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
     }
 }
 
+fn stdlib_method_names(receiver: &TypeFact) -> &'static [&'static str] {
+    match receiver {
+        TypeFact::Array { .. } => ARRAY_METHOD_NAMES,
+        TypeFact::Map { .. } => MAP_METHOD_NAMES,
+        TypeFact::Set { .. } => SET_METHOD_NAMES,
+        TypeFact::String => STRING_METHOD_NAMES,
+        _ => &[],
+    }
+}
+
 fn array_method_fact(
     element: TypeFact,
     method: &str,
@@ -207,7 +352,10 @@ fn array_method_fact(
     match method {
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::Int)),
         "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::Bool)),
-        "push" => Some(StdlibMethodFact::new(receiver, "push", TypeFact::Null)),
+        "push" => Some(
+            StdlibMethodFact::new(receiver, "push", TypeFact::Null)
+                .with_params(vec![element.clone()]),
+        ),
         "pop" => Some(StdlibMethodFact::new(receiver, "pop", element)),
         "map" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
@@ -269,19 +417,25 @@ fn map_method_fact(
     match method {
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::Int)),
         "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::Bool)),
-        "has" => Some(StdlibMethodFact::new(receiver, "has", TypeFact::Bool)),
-        "get" => Some(StdlibMethodFact::new(
-            receiver,
-            "get",
-            TypeFact::option(value.clone()),
-        )),
-        "get_or" => Some(StdlibMethodFact::new(receiver, "get_or", value.clone())),
-        "set" => Some(StdlibMethodFact::new(receiver, "set", value.clone())),
-        "remove" => Some(StdlibMethodFact::new(
-            receiver,
-            "remove",
-            TypeFact::option(value.clone()),
-        )),
+        "has" => Some(
+            StdlibMethodFact::new(receiver, "has", TypeFact::Bool).with_params(vec![key.clone()]),
+        ),
+        "get" => Some(
+            StdlibMethodFact::new(receiver, "get", TypeFact::option(value.clone()))
+                .with_params(vec![key.clone()]),
+        ),
+        "get_or" => Some(
+            StdlibMethodFact::new(receiver, "get_or", value.clone())
+                .with_params(vec![key.clone(), value.clone()]),
+        ),
+        "set" => Some(
+            StdlibMethodFact::new(receiver, "set", value.clone())
+                .with_params(vec![key.clone(), value.clone()]),
+        ),
+        "remove" => Some(
+            StdlibMethodFact::new(receiver, "remove", TypeFact::option(value.clone()))
+                .with_params(vec![key.clone()]),
+        ),
         "keys" => Some(StdlibMethodFact::new(
             receiver,
             "keys",
@@ -333,9 +487,18 @@ fn set_method_fact(element: TypeFact, method: &str) -> Option<StdlibMethodFact> 
     match method {
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::Int)),
         "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::Bool)),
-        "has" => Some(StdlibMethodFact::new(receiver, "has", TypeFact::Bool)),
-        "add" => Some(StdlibMethodFact::new(receiver, "add", TypeFact::Bool)),
-        "remove" => Some(StdlibMethodFact::new(receiver, "remove", TypeFact::Bool)),
+        "has" => Some(
+            StdlibMethodFact::new(receiver, "has", TypeFact::Bool)
+                .with_params(vec![element.clone()]),
+        ),
+        "add" => Some(
+            StdlibMethodFact::new(receiver, "add", TypeFact::Bool)
+                .with_params(vec![element.clone()]),
+        ),
+        "remove" => Some(
+            StdlibMethodFact::new(receiver, "remove", TypeFact::Bool)
+                .with_params(vec![element.clone()]),
+        ),
         "values" => Some(StdlibMethodFact::new(
             receiver,
             "values",
@@ -350,13 +513,18 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
     match method {
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::Int)),
         "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::Bool)),
-        "contains" => Some(StdlibMethodFact::new(receiver, "contains", TypeFact::Bool)),
-        "starts_with" => Some(StdlibMethodFact::new(
-            receiver,
-            "starts_with",
-            TypeFact::Bool,
-        )),
-        "ends_with" => Some(StdlibMethodFact::new(receiver, "ends_with", TypeFact::Bool)),
+        "contains" => Some(
+            StdlibMethodFact::new(receiver, "contains", TypeFact::Bool)
+                .with_params(vec![TypeFact::String]),
+        ),
+        "starts_with" => Some(
+            StdlibMethodFact::new(receiver, "starts_with", TypeFact::Bool)
+                .with_params(vec![TypeFact::String]),
+        ),
+        "ends_with" => Some(
+            StdlibMethodFact::new(receiver, "ends_with", TypeFact::Bool)
+                .with_params(vec![TypeFact::String]),
+        ),
         "to_upper" => Some(StdlibMethodFact::new(
             receiver,
             "to_upper",
@@ -368,11 +536,10 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             TypeFact::String,
         )),
         "trim" => Some(StdlibMethodFact::new(receiver, "trim", TypeFact::String)),
-        "split" => Some(StdlibMethodFact::new(
-            receiver,
-            "split",
-            TypeFact::array(TypeFact::String),
-        )),
+        "split" => Some(
+            StdlibMethodFact::new(receiver, "split", TypeFact::array(TypeFact::String))
+                .with_params(vec![TypeFact::String]),
+        ),
         _ => None,
     }
 }
@@ -436,6 +603,10 @@ fn numeric_result(values: &[TypeFact]) -> TypeFact {
     } else {
         TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
     }
+}
+
+fn number_fact() -> TypeFact {
+    TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
 }
 
 #[cfg(test)]
@@ -595,5 +766,49 @@ mod tests {
     fn stdlib_function_facts_reject_unknown_names_and_wrong_arity() {
         assert!(stdlib_function_fact("option.some", &[]).is_none());
         assert!(stdlib_function_fact("game.spawn", &[TypeFact::String]).is_none());
+    }
+
+    #[test]
+    fn stdlib_method_facts_enumerate_receiver_api_surface() {
+        let map = TypeFact::map(TypeFact::String, TypeFact::Int);
+        let facts = stdlib_method_facts(&map, Some(&TypeFact::Bool));
+
+        assert!(facts.iter().any(|fact| {
+            fact.method == "map_values"
+                && fact.returns == TypeFact::map(TypeFact::String, TypeFact::Bool)
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.method == "filter"
+                && fact
+                    .lambda
+                    .as_ref()
+                    .is_some_and(|lambda| lambda.params == vec![TypeFact::String, TypeFact::Int])
+        }));
+        assert!(
+            stdlib_method_facts(
+                &TypeFact::Host {
+                    name: "Player".into()
+                },
+                None
+            )
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn stdlib_function_completion_facts_enumerate_global_api_surface() {
+        let facts = stdlib_function_completion_facts();
+
+        assert!(facts.iter().any(|fact| {
+            fact.name == "option.unwrap_or"
+                && fact.params == vec![TypeFact::option(TypeFact::Any), TypeFact::Any]
+                && fact.returns == TypeFact::Any
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "math.clamp" && fact.params.len() == 3 && fact.returns == number_fact()
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "set.from_array" && fact.returns == TypeFact::set(TypeFact::Any)
+        }));
     }
 }

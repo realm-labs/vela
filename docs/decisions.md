@@ -4717,3 +4717,27 @@ Consequences:
   receiver facts return no items instead of guessing.
 - TypeRegistry remains read-only and runtime schema structure is not
   monkey-patched by tooling.
+
+## 2026-05-25: Stdlib Completion Inventory Lives With Analysis Facts
+
+Status: Accepted
+
+Context:
+M13 standard-library APIs and M16 editor-oriented completion both need a stable
+list of supported collection, string, Option/Result, math, random, and set
+helpers. Duplicating that inventory in completion code would drift from the
+analysis facts already used for expression inference and lambda parameter hints.
+
+Decision:
+Keep standard-library method and function completion inventories in
+`vela_analysis::stdlib`. Completion code consumes those copied facts and only
+translates them into `CompletionItem` values. Lambda-taking methods expose a
+callback `function(...)` parameter fact while retaining the separate lambda
+parameter metadata used by expression analysis.
+
+Consequences:
+- Stdlib completion and expression inference share one analysis metadata
+  source instead of querying runtime reflection or VM dispatch tables.
+- Callable signatures can appear in completion without adding script-language
+  generics.
+- Runtime execution remains unchanged; these facts are advisory tooling data.
