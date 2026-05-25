@@ -1110,6 +1110,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   structs, enums, and traits now produce qualified completion items from
   `ModuleGraph` declaration names plus copied `AnalysisFacts`, while impl
   blocks remain metadata and are skipped as completion labels.
+- Added HIR-backed module completion helpers. `vela_analysis` now exposes
+  module and parent namespace completion items as copied `TypeFact::Module`
+  values derived from module paths in the `ModuleGraph`, keeping module
+  completion independent from runtime reflection queries.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

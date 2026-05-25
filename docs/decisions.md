@@ -4790,3 +4790,26 @@ Consequences:
   module qualifier.
 - Completion remains analysis-only and does not query or mutate runtime
   reflection state.
+
+## 2026-05-25: Module Completion Uses HIR Module Paths
+
+Status: Accepted
+
+Context:
+M16 completion includes modules as well as bindings, declarations, members, and
+standard APIs. Runtime reflection also knows registered modules, but editor
+completion should be able to work from the semantic model before VM execution
+or reflection permissions are involved.
+
+Decision:
+Represent modules as analysis-only `TypeFact::Module` values and expose module
+completion from `vela_analysis` by walking `ModuleGraph` declaration module
+paths. The helper includes parent namespace prefixes such as `game` when source
+modules like `game.player` and `game.reward` exist.
+
+Consequences:
+- Module completions are available from copied HIR facts without querying
+  runtime reflection.
+- Parent namespace completions can support import and qualified-path tooling.
+- `TypeFact::Module` remains tooling metadata and does not introduce a new
+  script runtime value category.

@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use vela_hir::{DeclarationKind, HirDeclId, ModuleGraph};
 
 use crate::{
@@ -10,6 +12,7 @@ pub enum CompletionKind {
     Const,
     Field,
     Method,
+    Module,
     Variant,
     Function,
     Type,
@@ -90,6 +93,19 @@ pub fn declaration_completions(graph: &ModuleGraph, facts: &AnalysisFacts) -> Ve
         .collect()
 }
 
+pub fn module_completions(graph: &ModuleGraph) -> Vec<CompletionItem> {
+    module_completion_labels(graph)
+        .into_iter()
+        .map(|label| {
+            CompletionItem::new(
+                label.clone(),
+                CompletionKind::Module,
+                TypeFact::module(label),
+            )
+        })
+        .collect()
+}
+
 pub fn local_completions(
     graph: &ModuleGraph,
     facts: &AnalysisFacts,
@@ -105,6 +121,20 @@ pub fn local_completions(
             CompletionItem::new(local.name.clone(), CompletionKind::Binding, fact)
         })
         .collect()
+}
+
+fn module_completion_labels(graph: &ModuleGraph) -> BTreeSet<String> {
+    let mut modules = BTreeSet::new();
+    for declaration in graph.declarations() {
+        let Some(module_path) = graph.module_path(declaration.module) else {
+            continue;
+        };
+        let segments = module_path.segments();
+        for len in 1..=segments.len() {
+            modules.insert(segments[..len].join("."));
+        }
+    }
+    modules
 }
 
 fn completion_kind_for_declaration(kind: DeclarationKind) -> Option<CompletionKind> {
@@ -476,6 +506,42 @@ mod tests {
             completions
                 .iter()
                 .all(|completion| completion.label != "game.player.Damageable.Player")
+        );
+    }
+
+    #[test]
+    fn module_completions_include_module_paths_and_prefixes() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.player"),
+            "pub fn level() { return 1; }",
+        ));
+        graph.add_source(ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_dotted("game.reward"),
+            "pub fn grant() { return 2; }",
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+
+        let completions = module_completions(&graph);
+
+        assert_eq!(
+            completions,
+            vec![
+                CompletionItem::new("game", CompletionKind::Module, TypeFact::module("game")),
+                CompletionItem::new(
+                    "game.player",
+                    CompletionKind::Module,
+                    TypeFact::module("game.player"),
+                ),
+                CompletionItem::new(
+                    "game.reward",
+                    CompletionKind::Module,
+                    TypeFact::module("game.reward"),
+                ),
+            ]
         );
     }
 

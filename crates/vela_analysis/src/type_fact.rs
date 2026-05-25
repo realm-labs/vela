@@ -44,6 +44,9 @@ pub enum TypeFact {
     Trait {
         name: String,
     },
+    Module {
+        name: String,
+    },
     Union(Vec<TypeFact>),
 }
 
@@ -106,6 +109,10 @@ impl TypeFact {
         Self::Trait { name: name.into() }
     }
 
+    pub fn module(name: impl Into<String>) -> Self {
+        Self::Module { name: name.into() }
+    }
+
     pub fn union(facts: impl IntoIterator<Item = TypeFact>) -> Self {
         let mut merged = Vec::new();
         for fact in facts {
@@ -153,7 +160,10 @@ impl TypeFact {
                     .join(", ");
                 format!("fn({params}) -> {}", returns.display_name())
             }
-            Self::Record { name } | Self::Host { name } | Self::Trait { name } => name.clone(),
+            Self::Record { name }
+            | Self::Host { name }
+            | Self::Trait { name }
+            | Self::Module { name } => name.clone(),
             Self::Enum {
                 name,
                 variant: Some(variant),
@@ -204,5 +214,12 @@ mod tests {
         ]);
 
         assert_eq!(fact, TypeFact::Union(vec![TypeFact::Int, TypeFact::String]));
+    }
+
+    #[test]
+    fn module_facts_display_as_module_paths() {
+        let fact = TypeFact::module("game.reward");
+
+        assert_eq!(fact.display_name(), "game.reward");
     }
 }
