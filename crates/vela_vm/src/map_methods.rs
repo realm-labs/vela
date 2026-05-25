@@ -236,11 +236,13 @@ pub(crate) fn filter(
     let mut filtered = BTreeMap::new();
     for (key, value) in entries {
         let protected = filtered.values().cloned().collect::<Vec<_>>();
+        let predicate_args =
+            map_callback_args(&args[0], key.clone(), value.clone(), "method filter")?;
         let predicate = call_callback(
             &mut runtime,
             "method filter",
             &args[0],
-            &[Value::String(key.clone()), value.clone()],
+            &predicate_args,
             &protected,
         )?;
         if is_truthy(&predicate) {
@@ -449,9 +451,11 @@ fn main() {
     let doubled = rewards.map_values(|value| value * 2);
     let keyed = rewards.map_values(|key, value| key.len() + value);
     let filtered = rewards.filter(|key, value| key.contains("o") && value == 4);
+    let valuable = rewards.filter(|value| value >= 6);
     if doubled["gold"] == 8 && doubled["quest"] == 16
         && keyed["gold"] == 8 && keyed["xp"] == 8
         && filtered.len() == 1 && filtered["gold"] == 4
+        && valuable.len() == 2 && valuable["xp"] == 6 && valuable["quest"] == 8
         && rewards.any(|value| value == 6)
     {
         return rewards.count(|key, value| key.len() >= 2 && value > 4);
@@ -476,9 +480,11 @@ fn main() {
     let lengths = quests.map_values(|value| value.len());
     let scores = quests.map_values(|key, value| key.len() + value.len());
     let done = quests.filter(|key, value| key.starts_with("w") && value == "done");
+    let active = quests.filter(|value| value == "active");
     if lengths["wolf"] == 6 && lengths["boar"] == 4
         && scores["boar"] == 8 && scores["wolf"] == 10
         && done.len() == 1 && done["wyrm"] == "done"
+        && active.len() == 1 && active["wolf"] == "active"
         && quests.count(|key, value| key.starts_with("w") && value.len() >= 4) == 2
     {
         return quests.any(|key, value| key == "wolf" && value == "active")

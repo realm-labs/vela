@@ -1570,6 +1570,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   them during parsing. `Stmt` nodes now carry copied attribute metadata and
   attributed statements continue through HIR, bytecode, and VM execution as
   inert metadata until specific statement-level policies are defined.
+- Aligned map higher-order callbacks for M13 convenience. `map.filter` now
+  accepts value-only callbacks in addition to `(key, value)` callbacks, and
+  expression analysis infers value facts for single-argument map callbacks
+  while preserving key/value facts for two-argument callbacks.
 
 ## Next
 

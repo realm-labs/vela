@@ -6453,3 +6453,28 @@ Consequences:
 - Existing script execution remains unchanged for attributed statements.
 - Reflection continues to expose declaration and member attributes only; no
   runtime statement reflection API is introduced.
+
+## 2026-05-26: Single-Arg Map Callbacks Receive Values
+
+Status: Accepted
+
+Context:
+Map helpers already supported key-aware callbacks for workflows that need both
+the map key and value. `map_values`, `find`, `any`, `all`, and `count` had also
+grown value-only callback support, but `map.filter` still forced `(key, value)`.
+Analysis also inferred the first parameter of any map callback as the key,
+which made one-argument value callbacks look like string-key callbacks.
+
+Decision:
+Use the same callback-argument selection for `map.filter` as other map
+higher-order helpers: zero-argument closures receive no values, one-argument
+closures receive the map value, and two-or-more-argument closures receive
+`(key, value)`. Expression analysis mirrors this by assigning the map value
+fact to one-argument map callbacks and preserving key/value facts for
+two-argument callbacks.
+
+Consequences:
+- Scripts can write concise value-only map filters without binding an unused
+  key.
+- Existing key-aware map callbacks keep their behavior and analysis facts.
+- No script generics or host state mutation paths are introduced.

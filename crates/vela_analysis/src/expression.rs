@@ -294,16 +294,40 @@ fn lambda_return_fact(
         return None;
     };
     let method_fact = stdlib_method_fact(receiver, method, None);
-    let TypeFact::Function { returns, .. } = lambda_fact(
-        params,
-        body,
-        scope,
-        facts,
-        method_fact.and_then(|fact| fact.lambda.map(|lambda| lambda.params)),
-    ) else {
+    let declared_param_count = params.len();
+    let inferred_params = method_fact
+        .and_then(|fact| fact.lambda.map(|lambda| lambda.params))
+        .map(|params| {
+            inferred_lambda_params_for_call(receiver, method, declared_param_count, params)
+        });
+    let TypeFact::Function { returns, .. } =
+        lambda_fact(params, body, scope, facts, inferred_params)
+    else {
         return None;
     };
     Some(*returns)
+}
+
+fn inferred_lambda_params_for_call(
+    receiver: &TypeFact,
+    method: &str,
+    declared_param_count: usize,
+    default_params: Vec<TypeFact>,
+) -> Vec<TypeFact> {
+    if !matches!(
+        method,
+        "map_values" | "filter" | "find" | "any" | "all" | "count"
+    ) {
+        return default_params;
+    }
+    let TypeFact::Map { value, .. } = receiver else {
+        return default_params;
+    };
+    match declared_param_count {
+        0 => Vec::new(),
+        1 => vec![(**value).clone()],
+        _ => default_params,
+    }
 }
 
 fn lambda_fact(
@@ -550,6 +574,34 @@ mod tests {
             TypeFact::option(TypeFact::record("Reward"))
         );
         assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::Int);
+    }
+
+    #[test]
+    fn infers_value_fact_for_single_arg_map_callbacks() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                rewards.map_values(|amount| amount);
+                rewards.map_values(|key, amount| key);
+                rewards.filter(|amount| amount > 4);
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["rewards"], TypeFact::map(TypeFact::String, TypeFact::Int));
+
+        assert_eq!(
+            type_fact_from_expr(&expressions[0], &scope),
+            TypeFact::map(TypeFact::String, TypeFact::Int)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[1], &scope),
+            TypeFact::map(TypeFact::String, TypeFact::String)
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[2], &scope),
+            TypeFact::map(TypeFact::String, TypeFact::Int)
+        );
     }
 
     #[test]
