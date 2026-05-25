@@ -44,6 +44,7 @@ pub(crate) fn call_method(
         "to_lower" => string_methods::to_lower(receiver, args, heap.as_deref()),
         "trim" => string_methods::trim(receiver, args, heap.as_deref()),
         "replace" => string_methods::replace(receiver, args, heap.as_deref()),
+        "slice" => string_methods::slice(receiver, args, heap.as_deref()),
         "split" => string_methods::split(receiver, args, heap.as_deref()),
         "push" => array_push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "pop" => array_pop(receiver, args, heap.as_deref_mut()),

@@ -92,6 +92,31 @@ pub(crate) fn replace(
     Ok(Value::String(value.replace(from, to)))
 }
 
+pub(crate) fn slice(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("slice", args, 2)?;
+    let value = string_value(receiver, heap, "method slice")?;
+    let start = index_value(&args[0], "method slice")?;
+    let end = index_value(&args[1], "method slice")?;
+    let char_len = value.chars().count();
+    if start > end {
+        return type_error("method slice range");
+    }
+    if start > char_len {
+        return Err(index_out_of_bounds(start, char_len));
+    }
+    if end > char_len {
+        return Err(index_out_of_bounds(end, char_len));
+    }
+
+    let start_byte = char_byte_index(value, start);
+    let end_byte = char_byte_index(value, end);
+    Ok(Value::String(value[start_byte..end_byte].to_owned()))
+}
+
 pub(crate) fn split(
     receiver: &Value,
     args: &[Value],
@@ -152,6 +177,30 @@ fn expect_arity(method: &str, args: &[Value], expected: usize) -> VmResult<()> {
     }))
 }
 
+fn index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
+    match value {
+        Value::Int(value) if *value >= 0 => Ok(*value as usize),
+        _ => type_error(operation),
+    }
+}
+
+fn char_byte_index(value: &str, index: usize) -> usize {
+    if index == 0 {
+        return 0;
+    }
+    value
+        .char_indices()
+        .nth(index)
+        .map_or(value.len(), |(byte, _)| byte)
+}
+
+fn index_out_of_bounds(index: usize, len: usize) -> VmError {
+    VmError::new(VmErrorKind::IndexOutOfBounds {
+        index: i64::try_from(index).unwrap_or(i64::MAX),
+        len,
+    })
+}
+
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
@@ -168,7 +217,7 @@ mod tests {
         let source = r#"
 fn main() {
     let label = "  Quest.Log ";
-    let parts = label.trim().replace(".", "_").to_lower().split("_");
+    let parts = label.trim().replace(".", "_").to_lower().slice(0, 9).split("_");
     if parts.len() == 2
         && parts[0] == "quest"
         && parts[1] == "log"
@@ -193,7 +242,7 @@ fn main() {
         let source = r#"
 fn main() {
     let event = " Player.LevelUp ";
-    let pieces = event.trim().replace(".", "_").to_lower().split("_");
+    let pieces = event.trim().replace(".", "_").to_lower().slice(0, 14).split("_");
     if pieces[0] == "player"
         && pieces[1] == "levelup"
         && pieces[1].to_upper() == "LEVELUP"
@@ -232,6 +281,41 @@ fn main() {
             crate::VmErrorKind::TypeMismatch {
                 operation: "method trim"
             }
+        );
+    }
+
+    #[test]
+    fn string_slice_uses_character_indexes() {
+        let source = r#"
+fn main() {
+    return "xp奖励".slice(2, 4);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("unicode string slice source should compile");
+
+        let result = Vm::new()
+            .run(&code)
+            .expect("unicode string slice should run");
+        assert_eq!(result, Value::String("奖励".to_owned()));
+    }
+
+    #[test]
+    fn string_slice_rejects_out_of_bounds_ranges() {
+        let source = r#"
+fn main() {
+    return "quest".slice(0, 10);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("out of bounds string slice source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("string slice should reject out of bounds index");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::IndexOutOfBounds { index: 10, len: 5 }
         );
     }
 }

@@ -32,6 +32,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "to_lower",
     "trim",
     "replace",
+    "slice",
     "split",
 ];
 
@@ -576,6 +577,10 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             StdlibMethodFact::new(receiver, "replace", TypeFact::String)
                 .with_params(vec![TypeFact::String, TypeFact::String]),
         ),
+        "slice" => Some(
+            StdlibMethodFact::new(receiver, "slice", TypeFact::String)
+                .with_params(vec![TypeFact::Int, TypeFact::Int]),
+        ),
         "split" => Some(
             StdlibMethodFact::new(receiver, "split", TypeFact::array(TypeFact::String))
                 .with_params(vec![TypeFact::String]),
@@ -779,6 +784,10 @@ mod tests {
         let replace = stdlib_method_fact(&TypeFact::String, "replace", None).expect("replace fact");
         assert_eq!(replace.params, vec![TypeFact::String, TypeFact::String]);
         assert_eq!(replace.returns, TypeFact::String);
+
+        let slice = stdlib_method_fact(&TypeFact::String, "slice", None).expect("slice fact");
+        assert_eq!(slice.params, vec![TypeFact::Int, TypeFact::Int]);
+        assert_eq!(slice.returns, TypeFact::String);
 
         let split = stdlib_method_fact(&TypeFact::String, "split", None).expect("split fact");
         assert_eq!(split.params, vec![TypeFact::String]);

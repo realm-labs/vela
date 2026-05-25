@@ -1268,6 +1268,9 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Engine `TypeRegistry` through the same stable builder surface as host
   schemas, without requiring embedders to copy generated `TypeDesc` values by
   hand.
+- Added `string.slice(start, end)` as a UTF-8 safe character-indexed string
+  helper with inline and managed-heap runtime coverage, analysis stdlib facts,
+  and completion metadata.
 
 ## Next
 

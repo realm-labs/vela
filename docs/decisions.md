@@ -5321,3 +5321,25 @@ Consequences:
   hot-reload ABI manifests without hand-copying `TypeDesc` values.
 - Host mutation remains behind registered host schemas, host refs, host paths,
   and patch transactions.
+
+## 2026-05-25: String Slice Uses Character Indexes
+
+Status: Accepted
+
+Context:
+M13 standard-library helpers need to be predictable for gameplay scripts and
+safe for UTF-8 script strings. Rust string byte slicing would expose
+implementation details and can fail at non-character boundaries.
+
+Decision:
+`string.slice(start, end)` uses zero-based character indexes and a half-open
+`[start, end)` range. Negative indexes and non-integer indexes are type errors,
+`start > end` is an invalid slice range, and indexes beyond the character count
+produce the VM `IndexOutOfBounds` error.
+
+Consequences:
+- Scripts can slice player-facing UTF-8 strings without byte-boundary hazards.
+- Runtime semantics stay deterministic and do not add locale-aware text
+  processing to the MVP.
+- Analysis and completion expose the helper as `(int, int) -> string` without
+  adding script generics.
