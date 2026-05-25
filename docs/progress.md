@@ -1126,6 +1126,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   remove or select `null` from union facts, and `ExprFactScope` applies that
   narrowing to `if value == null` / `if value != null` branches so expression
   facts and member diagnostics use the branch-local receiver fact.
+- Added analysis-only match exhaustiveness diagnostics for known enum facts.
+  `vela_analysis` now compares unguarded match patterns against copied
+  `TypeRegistry` enum variants, treats wildcard/binding arms as exhaustive,
+  and reports missing variants without changing runtime match semantics.
 - Aligned map lookup/removal runtime behavior with those facts:
   `map.get(key)` and `map.remove(key)` now return dynamic Option values in
   both inline and managed-heap execution.

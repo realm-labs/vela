@@ -159,6 +159,19 @@ impl RegistryFacts {
         self.variants.get(&(owner.to_owned(), variant.to_owned()))
     }
 
+    pub fn variant_names(&self, owner: &str) -> Vec<String> {
+        self.variants
+            .keys()
+            .filter_map(|(variant_owner, variant)| {
+                if variant_owner == owner {
+                    Some(variant.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn variants(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
         self.variants
             .iter()

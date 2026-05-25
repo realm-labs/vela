@@ -4889,3 +4889,28 @@ Consequences:
   runtime values, reflection permissions, or host mutation behavior.
 - Option/Result and match-pattern narrowing can build on the same scoped-fact
   approach later without introducing script-language generics.
+
+## 2026-05-25: Match Exhaustiveness Is A Tooling Hint
+
+Status: Accepted
+
+Context:
+M16 expects match exhaustiveness hints when enum facts are known. The language
+remains dynamic, and runtime match behavior should stay unchanged for the MVP.
+The analysis crate already has copied `TypeFact::Enum` receiver facts and
+`RegistryFacts` enum variant metadata from `TypeRegistry`.
+
+Decision:
+Add `match_exhaustiveness_diagnostics` to `vela_analysis`. The diagnostic walks
+syntax expressions, looks only at matches whose scrutinee has a known enum fact,
+and compares unguarded variant patterns against copied registry variant names.
+Wildcard and binding arms make the match exhaustive. Guarded arms do not count
+as exhaustive coverage because the guard may reject the variant at runtime.
+
+Consequences:
+- Tooling can warn about missing enum variants without changing bytecode or VM
+  match behavior.
+- The diagnostic degrades cleanly when the scrutinee is dynamic or registry
+  variant metadata is unavailable.
+- Future match-pattern narrowing can reuse the same known-enum and variant
+  coverage helpers.
