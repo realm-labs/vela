@@ -2,6 +2,7 @@
 
 mod attrs;
 mod hash;
+mod script_function;
 mod script_host;
 mod script_methods;
 
@@ -25,4 +26,9 @@ pub fn script_methods(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn script_method(_attr: TokenStream, input: TokenStream) -> TokenStream {
     script_methods::expand_standalone_method(input.into()).into()
+}
+
+#[proc_macro_attribute]
+pub fn script_function(attr: TokenStream, input: TokenStream) -> TokenStream {
+    script_function::expand(attr.into(), input.into()).into()
 }

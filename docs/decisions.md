@@ -4403,3 +4403,28 @@ Consequences:
   generic `Result<T, E>` syntax or monomorphized result types.
 - Malformed Result values and inner payload type mismatches report structured
   VM type errors before callback logic can observe invalid data.
+
+## 2026-05-25: Script Function Macro Generates Engine Registration Helpers
+
+Status: Accepted
+
+Context:
+M14 requires Rust hosts to register native functions through a stable Engine
+API and macros. `EngineBuilder::register_typed_native_fn` already provides the
+runtime-safe typed conversion boundary, but embedders still had to duplicate
+function IDs, parameter hints, permissions, effects, and docs by hand.
+
+Decision:
+Add a focused `#[script_function]` attribute macro for pure Rust native
+functions. The macro preserves the original function and generates a
+`NativeFunctionDesc` helper plus an EngineBuilder registration helper that
+calls `register_typed_native_fn` with the inferred copied argument tuple.
+
+Consequences:
+- Embedders can keep native function metadata next to the Rust function while
+  still registering through the stable Engine API.
+- The generated registration path reuses existing typed argument and return
+  conversions, so script code never receives Rust references or bypasses VM
+  permission checks.
+- This first macro covers pure native functions only; context/host-native
+  macro wrappers remain separate follow-up work.

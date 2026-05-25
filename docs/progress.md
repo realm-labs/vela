@@ -1033,6 +1033,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   Typed native functions can now return or extract copied Rust results through
   the existing dynamic `Result.Ok`/`Result.Err` enum value shape, preserving the
   no-script-generics language boundary.
+- Added a focused `#[script_function]` macro for pure native Rust functions.
+  Annotated functions now generate stable `NativeFunctionDesc` metadata plus an
+  EngineBuilder registration helper that uses the typed native function API,
+  with tests proving macro-generated natives compile and execute from scripts.
 
 ## Next
 
