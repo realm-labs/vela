@@ -1808,8 +1808,12 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Extended M16 CLI diagnostic rendering to runtime failures. Demo script
   execution errors now route `VmError::to_diagnostic()` through the common
   renderer, producing stable diagnostic codes/messages instead of raw
-  `VmErrorKind` debug output; the current runtime CLI test also documents that
-  broader compiled instruction span/call-site coverage remains future M16 work.
+  `VmErrorKind` debug output.
+- Improved M16 compiled runtime diagnostic source context. The bytecode
+  compiler now preserves spans on arithmetic/unary operations and call
+  instructions, numeric VM failures attach the active instruction span, and
+  the CLI runtime diagnostic test asserts source lines plus script call-site
+  labels for division-by-zero failures.
 
 ## Next
 

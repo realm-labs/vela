@@ -1109,8 +1109,10 @@ impl<'ast> Compiler<'ast> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(literal),
             ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
-            ExprKind::Binary { op, left, right } => self.compile_binary(*op, left, right),
-            ExprKind::Unary { op, expr } => self.compile_unary(*op, expr),
+            ExprKind::Binary { op, left, right } => {
+                self.compile_binary(*op, expr.span, left, right)
+            }
+            ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr),
             ExprKind::Field { base, name } => {
                 let typed_record_slot = self.script_record_field_slot_for_receiver(base, name);
                 let typed_enum_slot = self.script_enum_field_slot_for_receiver(base, name);
@@ -1226,13 +1228,16 @@ impl<'ast> Compiler<'ast> {
                         .map(|arg| self.compile_expr(&arg.value))
                         .collect::<CompileResult<Vec<_>>>()?;
                     let dst = self.alloc_register()?;
-                    self.emit(InstructionKind::CallHostMethod {
-                        dst: Some(dst),
-                        root,
-                        segments,
-                        method: call.method,
-                        args: arg_registers,
-                    });
+                    self.emit_spanned(
+                        InstructionKind::CallHostMethod {
+                            dst: Some(dst),
+                            root,
+                            segments,
+                            method: call.method,
+                            args: arg_registers,
+                        },
+                        expr.span,
+                    );
                     return Ok(dst);
                 }
 
@@ -1254,20 +1259,26 @@ impl<'ast> Compiler<'ast> {
                         .collect::<CompileResult<Vec<_>>>()?;
                     let dst = self.alloc_register()?;
                     if let Some(method_id) = method_id {
-                        self.emit(InstructionKind::CallMethodId {
-                            dst,
-                            receiver,
-                            method: name.clone(),
-                            method_id,
-                            args: arg_registers,
-                        });
+                        self.emit_spanned(
+                            InstructionKind::CallMethodId {
+                                dst,
+                                receiver,
+                                method: name.clone(),
+                                method_id,
+                                args: arg_registers,
+                            },
+                            expr.span,
+                        );
                     } else {
-                        self.emit(InstructionKind::CallMethod {
-                            dst,
-                            receiver,
-                            method: name.clone(),
-                            args: arg_registers,
-                        });
+                        self.emit_spanned(
+                            InstructionKind::CallMethod {
+                                dst,
+                                receiver,
+                                method: name.clone(),
+                                args: arg_registers,
+                            },
+                            expr.span,
+                        );
                     }
                     return Ok(dst);
                 }
@@ -1285,20 +1296,26 @@ impl<'ast> Compiler<'ast> {
                         .collect::<CompileResult<Vec<_>>>()?;
                     let dst = self.alloc_register()?;
                     if let Some(method_id) = method_id {
-                        self.emit(InstructionKind::CallMethodId {
-                            dst,
-                            receiver,
-                            method: method.clone(),
-                            method_id,
-                            args: arg_registers,
-                        });
+                        self.emit_spanned(
+                            InstructionKind::CallMethodId {
+                                dst,
+                                receiver,
+                                method: method.clone(),
+                                method_id,
+                                args: arg_registers,
+                            },
+                            expr.span,
+                        );
                     } else {
-                        self.emit(InstructionKind::CallMethod {
-                            dst,
-                            receiver,
-                            method: method.clone(),
-                            args: arg_registers,
-                        });
+                        self.emit_spanned(
+                            InstructionKind::CallMethod {
+                                dst,
+                                receiver,
+                                method: method.clone(),
+                                args: arg_registers,
+                            },
+                            expr.span,
+                        );
                     }
                     return Ok(dst);
                 }
@@ -1306,7 +1323,7 @@ impl<'ast> Compiler<'ast> {
                 let dst = self.alloc_register()?;
                 if let Some((declaration, name)) = self.script_function_call(callee) {
                     let args = self.compile_script_call_args(declaration, args, callee.span)?;
-                    self.emit(InstructionKind::CallFunction { dst, name, args });
+                    self.emit_spanned(InstructionKind::CallFunction { dst, name, args }, expr.span);
                 } else if self.local_callee(callee).is_some()
                     || !matches!(callee.kind, ExprKind::Path(_))
                 {
@@ -1316,7 +1333,10 @@ impl<'ast> Compiler<'ast> {
                         .iter()
                         .map(|arg| self.compile_expr(&arg.value))
                         .collect::<CompileResult<Vec<_>>>()?;
-                    self.emit(InstructionKind::CallClosure { dst, callee, args });
+                    self.emit_spanned(
+                        InstructionKind::CallClosure { dst, callee, args },
+                        expr.span,
+                    );
                 } else {
                     let fallback_name = callable_name(callee)?;
                     reject_named_args(args, "native call")?;
@@ -1324,11 +1344,14 @@ impl<'ast> Compiler<'ast> {
                         .iter()
                         .map(|arg| self.compile_expr(&arg.value))
                         .collect::<CompileResult<Vec<_>>>()?;
-                    self.emit(InstructionKind::CallNative {
-                        dst: Some(dst),
-                        name: fallback_name,
-                        args: arg_registers,
-                    });
+                    self.emit_spanned(
+                        InstructionKind::CallNative {
+                            dst: Some(dst),
+                            name: fallback_name,
+                            args: arg_registers,
+                        },
+                        expr.span,
+                    );
                 }
                 Ok(dst)
             }
@@ -2259,6 +2282,7 @@ impl<'ast> Compiler<'ast> {
     fn compile_binary(
         &mut self,
         op: BinaryOp,
+        span: Span,
         left: &Expr,
         right: &Expr,
     ) -> CompileResult<Register> {
@@ -2275,7 +2299,7 @@ impl<'ast> Compiler<'ast> {
         let dst = self.alloc_register()?;
         let instruction = non_logical_binary_instruction(op, dst, lhs, rhs)
             .expect("logical operators handled above");
-        self.emit(instruction);
+        self.emit_spanned(instruction, span);
         Ok(dst)
     }
 
@@ -2336,14 +2360,14 @@ impl<'ast> Compiler<'ast> {
         Ok(())
     }
 
-    fn compile_unary(&mut self, op: UnaryOp, expr: &Expr) -> CompileResult<Register> {
+    fn compile_unary(&mut self, op: UnaryOp, span: Span, expr: &Expr) -> CompileResult<Register> {
         let src = self.compile_expr(expr)?;
         let dst = self.alloc_register()?;
         let instruction = match op {
             UnaryOp::Not => InstructionKind::Not { dst, src },
             UnaryOp::Negate => InstructionKind::Negate { dst, src },
         };
-        self.emit(instruction);
+        self.emit_spanned(instruction, span);
         Ok(dst)
     }
 
@@ -2863,6 +2887,11 @@ impl<'ast> Compiler<'ast> {
 
     fn emit(&mut self, kind: InstructionKind) {
         self.code.push_instruction(Instruction::new(kind));
+    }
+
+    fn emit_spanned(&mut self, kind: InstructionKind, span: Span) {
+        self.code
+            .push_instruction(Instruction::new(kind).with_span(span));
     }
 
     fn emit_jump_if_false(&mut self, condition: Register) -> usize {
@@ -4904,6 +4933,47 @@ fn main() {
             &instruction.kind,
             InstructionKind::CallFunction { name, .. } if name == "helper"
         )));
+    }
+
+    #[test]
+    fn compiler_preserves_runtime_diagnostic_spans_for_calls_and_arithmetic() {
+        let program = compile_program_source(
+            SourceId::new(7),
+            r#"
+fn helper() {
+    return 10 / 0;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        )
+        .expect("diagnostic source spans should compile");
+
+        let helper = program.function("helper").expect("helper function");
+        let div_span = helper
+            .instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::Div { .. } => instruction.span,
+                _ => None,
+            })
+            .expect("division instruction span");
+        assert_eq!(div_span.source, SourceId::new(7));
+
+        let main = program.function("main").expect("main function");
+        let call_span = main
+            .instructions
+            .iter()
+            .find_map(|instruction| match instruction.kind {
+                InstructionKind::CallFunction { ref name, .. } if name == "helper" => {
+                    instruction.span
+                }
+                _ => None,
+            })
+            .expect("script call instruction span");
+        assert_eq!(call_span.source, SourceId::new(7));
     }
 
     #[test]

@@ -3695,7 +3695,7 @@ fn runtime_errors_include_script_call_stack() {
         .expect_err("division by zero should fail");
 
     assert_eq!(error.kind, VmErrorKind::DivisionByZero);
-    assert_eq!(error.source_span, Some(leaf_call_span));
+    assert_eq!(error.source_span, Some(leaf_error_span));
     assert_eq!(
         error
             .call_stack

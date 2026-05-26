@@ -213,6 +213,11 @@ fn main() {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
     assert!(stderr.contains("error[vm::division_by_zero]: division by zero"));
+    assert!(stderr.contains("runtime_error.lang:3:12"));
+    assert!(stderr.contains("return 10 / 0;"));
+    assert!(stderr.contains("runtime_error.lang:7:12"));
+    assert!(stderr.contains("return helper();"));
+    assert!(stderr.contains("while executing `helper`"));
     assert!(!stderr.contains("DivisionByZero"));
     fs::remove_dir_all(root).expect("clean temp dir");
 }
