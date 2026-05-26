@@ -4,6 +4,19 @@ use vela_host::HostValue;
 
 use crate::{ReflectError, ReflectErrorKind, ReflectResult, ReflectValue};
 
+pub(crate) fn name(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    let Some(name) = field(target, "name") else {
+        return Ok(None);
+    };
+    match name {
+        MetadataField::Host(HostValue::String(_))
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::String(_))) => {
+            Ok(Some(host_value(name)?))
+        }
+        _ => Err(invalid_target()),
+    }
+}
+
 pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     let Some(attrs) = field(target, "attrs") else {
         return Ok(None);

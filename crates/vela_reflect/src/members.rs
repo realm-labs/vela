@@ -11,8 +11,12 @@ use crate::{
 };
 
 pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::String(desc.key.name.clone())))
+    match target_type(registry, target) {
+        Ok(desc) => Ok(ReflectValue::Host(HostValue::String(desc.key.name.clone()))),
+        Err(error) => metadata_records::name(target)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
+    }
 }
 
 pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -971,6 +975,10 @@ mod tests {
         assert_eq!(
             docs(&registry, &field_metadata).expect("field docs"),
             ReflectValue::Host(HostValue::String("Current level.".to_owned()))
+        );
+        assert_eq!(
+            name(&registry, &field_metadata).expect("field metadata name"),
+            ReflectValue::Host(HostValue::String("level".to_owned()))
         );
         assert_eq!(
             attrs(&registry, &field_metadata).expect("field attrs"),

@@ -1838,6 +1838,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split copied `Reflect*` metadata-record helper logic into a focused
   reflection module, keeping member queries responsible for dispatch while the
   metadata-record module owns copied descriptor `attrs`/`docs` extraction.
+- Extended copied metadata-record reflection so `reflect.name(record)` can read
+  the stable `name` field from copied `Reflect*` descriptors. This lets scripts
+  use one read-only naming helper for both runtime targets and copied metadata
+  records without exposing mutable schema handles.
 
 ## Next
 

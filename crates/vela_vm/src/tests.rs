@@ -4860,6 +4860,7 @@ fn main(player) {
         && all_fields[1].owner == "Player"
         && all_fields[1].name == "level"
         && field.name == "level"
+        && reflect.name(field) == "level"
         && field.type == "int"
         && field.docs == "Current player level."
         && reflect.docs(field) == "Current player level."
