@@ -70,6 +70,13 @@ pub(crate) fn docs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     }
 }
 
+pub(crate) fn source_span(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    let Some(source_span) = field(target, "source_span") else {
+        return Ok(None);
+    };
+    source_span_value(source_span).map(Some)
+}
+
 enum MetadataField<'a> {
     Host(&'a HostValue),
     Reflect(&'a ReflectValue),
@@ -142,6 +149,40 @@ fn attrs_to_host_map(value: MetadataField<'_>) -> ReflectResult<HostValue> {
             })
             .collect::<ReflectResult<BTreeMap<_, _>>>()
             .map(HostValue::Map),
+        _ => Err(invalid_target()),
+    }
+}
+
+fn source_span_value(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+    match value {
+        MetadataField::Host(HostValue::Null)
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null)) => Ok(HostValue::Null),
+        MetadataField::Host(HostValue::Record { type_name, fields })
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Record { type_name, fields }))
+            if type_name == "ReflectSourceSpan" =>
+        {
+            Ok(HostValue::Record {
+                type_name: type_name.clone(),
+                fields: fields.clone(),
+            })
+        }
+        MetadataField::Reflect(ReflectValue::ScriptRecord { type_name, fields })
+            if type_name == "ReflectSourceSpan" =>
+        {
+            fields
+                .iter()
+                .map(|(key, value)| {
+                    let ReflectValue::Host(value) = value else {
+                        return Err(invalid_target());
+                    };
+                    Ok((key.clone(), value.clone()))
+                })
+                .collect::<ReflectResult<BTreeMap<_, _>>>()
+                .map(|fields| HostValue::Record {
+                    type_name: type_name.clone(),
+                    fields,
+                })
+        }
         _ => Err(invalid_target()),
     }
 }

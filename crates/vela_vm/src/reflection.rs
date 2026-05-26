@@ -224,6 +224,24 @@ impl Vm {
             value_from_reflect(reflect::docs_metadata(&docs_registry, &target)?)
         });
 
+        let source_span_registry = Arc::clone(&registry);
+        let source_span_policy = policy.clone();
+        let source_span_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.source_span", move |args, _host| {
+            check_reflect_policy(
+                &source_span_policy,
+                &source_span_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.source_span", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.source_span")?;
+            check_host_ref_inspection(&source_span_policy, &target)?;
+            value_from_reflect(reflect::source_span_metadata(
+                &source_span_registry,
+                &target,
+            )?)
+        });
+
         let fields_registry = Arc::clone(&registry);
         let fields_policy = policy.clone();
         let fields_budget = Arc::clone(&lookup_budget);

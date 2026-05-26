@@ -4865,6 +4865,7 @@ fn main(player) {
         && field.type == "int"
         && field.docs == "Current player level."
         && reflect.docs(field) == "Current player level."
+        && reflect.source_span(field) == null
         && option.unwrap_or(field.attrs.get("unit"), "") == "level"
         && option.unwrap_or(reflect.attrs(field).get("unit"), "") == "level"
         && reflect.attr(field, "unit") == "level"
@@ -4951,6 +4952,7 @@ fn main() {
     if module.name == "game.reward"
         && reflect.name(module) == "game.reward"
         && reflect.kind(module) == "module"
+        && reflect.source_span(module) != null
         && reflect.has_module("game.reward")
         && !reflect.has_module("game.missing")
         && reflect.has_function("game.reward.grant")
@@ -4964,6 +4966,7 @@ fn main() {
         && reflect.kind(function) == "function"
         && reflect.docs(function) == "Grant reward."
         && reflect.attr(function, "event") == "reward"
+        && reflect.source_span(function).source == 1
         && reflect.get(function, "return") == "bool" {
         return function.params.len();
     }

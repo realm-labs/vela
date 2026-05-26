@@ -77,6 +77,15 @@ pub fn docs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
     }
 }
 
+pub fn source_span(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    match target_type(registry, target) {
+        Ok(desc) => Ok(ReflectValue::Host(span_value(desc.source_span))),
+        Err(error) => metadata_records::source_span(target)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
+    }
+}
+
 pub fn field(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -975,6 +984,10 @@ mod tests {
         assert_eq!(
             fields.get("source_span"),
             Some(&span_value(Some(Span::new(SourceId::new(8), 50, 55))))
+        );
+        assert_eq!(
+            source_span(&registry, &field_metadata).expect("field source span"),
+            ReflectValue::Host(span_value(Some(Span::new(SourceId::new(8), 50, 55))))
         );
         assert_eq!(
             docs(&registry, &field_metadata).expect("field docs"),

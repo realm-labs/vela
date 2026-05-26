@@ -1850,6 +1850,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   descriptor kinds for copied `Reflect*` records, while `ReflectType` records
   preserve their registered schema kind. This keeps runtime targets and copied
   descriptors on the same read-only helper surface.
+- Added script-visible `reflect.source_span(value)` for runtime type targets
+  and copied `Reflect*` metadata records. It returns a copied
+  `ReflectSourceSpan` record or `null`, giving admin/debug scripts a uniform
+  read-only way to locate reflected declarations.
 
 ## Next
 
