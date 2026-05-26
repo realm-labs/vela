@@ -430,7 +430,7 @@ Acceptance:
 benchmarks run in release mode with stable parameters
 benchmark output records environment, profile, runtime options, and checksums
 Vela internal baselines separate compile/load time from repeated function calls
-external comparisons are labeled as rough local measurements
+external comparisons record runtime versions and environment details
 performance docs identify the top interpreter bottlenecks before optimization
 ```
 

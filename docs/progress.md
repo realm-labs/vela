@@ -1799,6 +1799,6 @@ post-MVP reference or optional tracks, not MVP requirements.
   safe-point hot reload workflows.
 - Keep M18 performance work limited to measurement scaffolding until M12-M17
   conformance and demo coverage are stable enough for optimization decisions.
-- Use [performance.md](performance.md) as the performance-track entry point so
-  temporary local measurements do not get mistaken for official benchmark
-  results.
+- Use [performance.md](performance.md) as the performance-track entry point;
+  only tracked benchmark sources and results define official performance
+  evidence.

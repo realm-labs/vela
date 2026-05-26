@@ -1693,8 +1693,8 @@ observed only after applying the collected `PatchTx`.
 Consequences:
 - Demo scripts can grow toward the final game-server acceptance suite without
   adding custom native glue for each script.
-- The harness remains temporary and can be replaced by the Engine API later
-  without changing script-side host mutation semantics.
+- The demo runner can be replaced by the Engine API later without changing
+  script-side host mutation semantics.
 - Unknown demo parameters fail explicitly instead of silently receiving dynamic
   placeholder values.
 

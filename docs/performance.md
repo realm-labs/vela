@@ -5,15 +5,14 @@ It is not a substitute for conformance tests: correctness, host-boundary safety,
 hot reload semantics, budgets, and diagnostics remain required for every fast
 path.
 
-## Current Position
+## Measurement Principles
 
-Vela already runs compiled bytecode. The temporary local comparison harness used
-during early exploration loaded or compiled scripts ahead of time, warmed them
-up, then repeatedly called the same function. That means the large gap to
-LuaJIT and Node.js in scalar microbenchmarks is not primarily because Vela was
-interpreting source text directly.
+Performance measurements should distinguish source loading, compilation,
+warmup, and repeated execution. Function-call benchmarks should load and compile
+scripts before timing, then measure repeated calls to an already-loaded
+function.
 
-The current known cost centers are:
+Benchmark suites should track these cost centers separately:
 
 ```text
 VM instruction dispatch
@@ -25,14 +24,12 @@ string allocation and copying
 missing inline caches, specialization, and JIT
 ```
 
-`PatchTx` is not expected to be the dominant cost in pure script
-microbenchmarks that do not touch host state. It matters for host-heavy gameplay
-benchmarks and should be measured separately.
+Pure script microbenchmarks and host-heavy gameplay benchmarks should be
+reported separately. `PatchTx` cost belongs in host-boundary benchmarks, not in
+scalar VM dispatch conclusions.
 
-Temporary experiments may live under ignored paths such as
-`target/perf_compare_demo/`. Official benchmark sources, baselines, and reports
-should live in tracked benchmark or fixture locations once their shape is
-stable.
+Only tracked benchmark sources, baselines, and reports define the official
+benchmark surface.
 
 ## Targets
 
@@ -52,16 +49,16 @@ Reference tiers:
 
 | Tier | Purpose |
 |---|---|
-| Vela baseline | Current release-mode behavior before an optimization. |
+| Vela baseline | Release-mode behavior before a given optimization. |
 | Lua 5.x | Primary non-JIT comparison target for post-MVP interpreter work. |
 | LuaJIT / Node.js | Upper-reference points for hot scalar loops and future JIT decisions. |
 | Rhai | Rust-embedded dynamic scripting reference point. |
 
 ## Benchmark Groups
 
-Official benchmarks should separate compile/load time from repeated function
-execution. Function-call benchmarks should load scripts, perform warmup calls,
-then measure repeated calls to the same already-loaded function.
+Official benchmarks should use the measurement rules above and should never
+mix compile/load time into repeated function execution results unless the case
+is explicitly labeled as a cold-start or reload benchmark.
 
 Required groups:
 

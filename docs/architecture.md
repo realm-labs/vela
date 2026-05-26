@@ -1912,13 +1912,12 @@ release target.
 official microbenchmarks and gameplay-style benchmarks
 release-mode benchmark parameters and checksum validation
 VM scalar dispatch, function-call, heap, stdlib, record, string, and PatchTx cases
-external rough comparison harness for Lua 5.x, LuaJIT, Rhai, and JavaScript
+external reference comparison harness for Lua 5.x, LuaJIT, Rhai, and JavaScript
 profile capture and bottleneck notes in docs/performance.md
 ```
 
-The temporary comparison harness under `target/perf_compare_demo` is useful for
-local exploration, but official benchmarks should live in tracked benchmark or
-fixture paths once the benchmark shape is stable.
+Only tracked benchmark sources and fixtures define the official benchmark
+surface.
 
 ### Phase 2: Non-JIT Optimized Interpreter
 
