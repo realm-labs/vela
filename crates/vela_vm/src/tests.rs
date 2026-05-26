@@ -4861,6 +4861,7 @@ fn main(player) {
         && all_fields[1].name == "level"
         && field.name == "level"
         && reflect.name(field) == "level"
+        && reflect.kind(field) == "field"
         && field.type == "int"
         && field.docs == "Current player level."
         && reflect.docs(field) == "Current player level."
@@ -4949,6 +4950,7 @@ fn main() {
     let functions = reflect.functions();
     if module.name == "game.reward"
         && reflect.name(module) == "game.reward"
+        && reflect.kind(module) == "module"
         && reflect.has_module("game.reward")
         && !reflect.has_module("game.missing")
         && reflect.has_function("game.reward.grant")
@@ -4959,6 +4961,7 @@ fn main() {
         && functions.len() == 1
         && functions[0].name == "game.reward.grant"
         && reflect.name(function) == "game.reward.grant"
+        && reflect.kind(function) == "function"
         && reflect.docs(function) == "Grant reward."
         && reflect.attr(function, "event") == "reward"
         && reflect.get(function, "return") == "bool" {
@@ -5142,6 +5145,7 @@ fn main() {
         && !reflect.has_type("Plyer")
         && names[0] == "Player"
         && player.kind == "host"
+        && reflect.kind(player) == "host"
         && player.field_count == 2
         && player.method_count == 1
         && player.trait_count == 1 {

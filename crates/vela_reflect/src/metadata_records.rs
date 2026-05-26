@@ -17,6 +17,25 @@ pub(crate) fn name(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     }
 }
 
+pub(crate) fn kind(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    let Some(type_name) = record_type_name(target) else {
+        return Ok(None);
+    };
+    if let Some(kind) = field(target, "kind") {
+        return match kind {
+            MetadataField::Host(HostValue::String(_))
+            | MetadataField::Reflect(ReflectValue::Host(HostValue::String(_))) => {
+                Ok(Some(host_value(kind)?))
+            }
+            _ => Err(invalid_target()),
+        };
+    }
+    descriptor_kind(type_name)
+        .map(|kind| HostValue::String(kind.to_owned()))
+        .ok_or_else(invalid_target)
+        .map(Some)
+}
+
 pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     let Some(attrs) = field(target, "attrs") else {
         return Ok(None);
@@ -72,8 +91,39 @@ fn field<'a>(target: &'a ReflectValue, name: &str) -> Option<MetadataField<'a>> 
     }
 }
 
+fn record_type_name(target: &ReflectValue) -> Option<&str> {
+    match target {
+        ReflectValue::Host(HostValue::Record { type_name, .. })
+        | ReflectValue::ScriptRecord { type_name, .. }
+            if is_reflect_metadata_record(type_name) =>
+        {
+            Some(type_name)
+        }
+        _ => None,
+    }
+}
+
 fn is_reflect_metadata_record(type_name: &str) -> bool {
     type_name.starts_with("Reflect")
+}
+
+fn descriptor_kind(type_name: &str) -> Option<&'static str> {
+    match type_name {
+        "ReflectField" => Some("field"),
+        "ReflectFieldAccess" => Some("field_access"),
+        "ReflectMethod" => Some("method"),
+        "ReflectMethodAccess" => Some("method_access"),
+        "ReflectParam" => Some("param"),
+        "ReflectEffectSet" => Some("effect_set"),
+        "ReflectTrait" => Some("trait"),
+        "ReflectTraitMethod" => Some("trait_method"),
+        "ReflectVariant" => Some("variant"),
+        "ReflectModule" => Some("module"),
+        "ReflectFunction" => Some("function"),
+        "ReflectFunctionAccess" => Some("function_access"),
+        "ReflectSourceSpan" => Some("source_span"),
+        _ => None,
+    }
 }
 
 fn attrs_to_host_map(value: MetadataField<'_>) -> ReflectResult<HostValue> {

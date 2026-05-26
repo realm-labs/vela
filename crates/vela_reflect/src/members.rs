@@ -20,15 +20,19 @@ pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
 }
 
 pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::String(
-        match desc.kind {
-            TypeKind::Host => "host",
-            TypeKind::ScriptStruct => "script_struct",
-            TypeKind::ScriptEnum => "script_enum",
-        }
-        .to_owned(),
-    )))
+    match target_type(registry, target) {
+        Ok(desc) => Ok(ReflectValue::Host(HostValue::String(
+            match desc.kind {
+                TypeKind::Host => "host",
+                TypeKind::ScriptStruct => "script_struct",
+                TypeKind::ScriptEnum => "script_enum",
+            }
+            .to_owned(),
+        ))),
+        Err(error) => metadata_records::kind(target)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
+    }
 }
 
 pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -979,6 +983,10 @@ mod tests {
         assert_eq!(
             name(&registry, &field_metadata).expect("field metadata name"),
             ReflectValue::Host(HostValue::String("level".to_owned()))
+        );
+        assert_eq!(
+            kind(&registry, &field_metadata).expect("field metadata kind"),
+            ReflectValue::Host(HostValue::String("field".to_owned()))
         );
         assert_eq!(
             attrs(&registry, &field_metadata).expect("field attrs"),

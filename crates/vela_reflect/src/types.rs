@@ -91,7 +91,7 @@ mod tests {
     use vela_common::{FieldId, HostTypeId, SourceId, Span, TypeId, VariantId};
 
     use super::*;
-    use crate::{FieldDesc, TypeDesc, TypeKey, VariantDesc};
+    use crate::{FieldDesc, TypeDesc, TypeKey, VariantDesc, kind_metadata};
 
     #[test]
     fn type_query_returns_metadata_and_unknown_type_candidates() {
@@ -136,6 +136,11 @@ mod tests {
         assert_eq!(
             fields.get("kind"),
             Some(&HostValue::String("host".to_owned()))
+        );
+        let metadata = type_by_name(&registry, "Player").expect("type metadata");
+        assert_eq!(
+            kind_metadata(&registry, &metadata).expect("metadata kind"),
+            ReflectValue::Host(HostValue::String("host".to_owned()))
         );
         assert_eq!(fields.get("field_count"), Some(&HostValue::Int(1)));
         assert_eq!(

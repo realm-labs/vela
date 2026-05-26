@@ -1846,6 +1846,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   to return typed copied `ReflectModule`/`ReflectFunction` records, matching
   list-query results and allowing scripts to use descriptor field access plus
   `reflect.name`/`reflect.docs`/`reflect.attr` helpers consistently.
+- Extended copied metadata-record reflection so `reflect.kind(record)` reports
+  descriptor kinds for copied `Reflect*` records, while `ReflectType` records
+  preserve their registered schema kind. This keeps runtime targets and copied
+  descriptors on the same read-only helper surface.
 
 ## Next
 
