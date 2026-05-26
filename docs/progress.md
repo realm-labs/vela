@@ -1718,6 +1718,11 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   dispatch, named/default arguments, collection higher-order methods,
   loops with break/continue, match guards, block values, and Option/Result
   propagation.
+- Extended the M17 conformance fixture across HIR and analysis integration
+  harnesses. The same source now resolves through `ModuleGraph`, validates
+  struct/enum/trait/impl metadata, and checks analysis facts for schema
+  declarations plus typed locals without duplicating inline fixture programs in
+  crate-local tests.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new

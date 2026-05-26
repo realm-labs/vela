@@ -37,9 +37,9 @@ fn add(base, amount = 1, bonus = amount + BASE) {
 }
 
 fn main() {
-    let reward = Reward { item: "gold", count: 5 };
-    let values = [1, 2, 3, 4, 5];
-    let total = 0;
+    let reward: Reward = Reward { item: "gold", count: 5 };
+    let values: array = [1, 2, 3, 4, 5];
+    let total: int = 0;
     for value in values {
         if value == 2 {
             continue;
@@ -50,26 +50,26 @@ fn main() {
         total += value;
     }
 
-    let doubled = values
+    let doubled: int = values
         .filter(|value| value % 2 == 1)
         .map(|value| value * 2)
         .sum();
 
-    let quest = QuestState.Active { id: "daily", count: 2 };
-    let quest_score = match quest {
+    let quest: QuestState = QuestState.Active { id: "daily", count: 2 };
+    let quest_score: int = match quest {
         QuestState.Active { id, count } if id == "daily" => count + 10,
         QuestState.Done { id } => id.len(),
         _ => 0,
     };
 
-    let block_value = {
+    let block_value: int = {
         let local = add(bonus = 3, base = 4);
         local + reward.score()
     };
 
-    let parsed = "42".parse_int().unwrap_or(0);
-    let result = result_bonus(true)?;
-    let mapped = {"gold": reward.count, "quest": quest_score}
+    let parsed: int = "42".parse_int().unwrap_or(0);
+    let result: int = result_bonus(true)?;
+    let mapped: map = {"gold": reward.count, "quest": quest_score}
         .map_values(|key, value| key.len() + value);
 
     return total
