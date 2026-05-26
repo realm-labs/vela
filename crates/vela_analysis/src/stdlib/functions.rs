@@ -2,7 +2,7 @@ use crate::{TypeFact, stdlib::StdlibFunctionFact};
 
 pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
     let number = number_fact();
-    vec![
+    let mut facts = vec![
         StdlibFunctionFact::new(
             "option.some",
             vec![TypeFact::Any],
@@ -143,10 +143,16 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::array(TypeFact::Any)],
             TypeFact::set(TypeFact::Any),
         ),
-    ]
+    ];
+    facts.extend(super::reflect::completion_facts());
+    facts
 }
 
 pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunctionFact> {
+    if let Some(fact) = super::reflect::function_fact(name, args) {
+        return Some(fact);
+    }
+
     match name {
         "option.some" => {
             expect_len(args, 1)?;

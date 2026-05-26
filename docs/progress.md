@@ -1233,6 +1233,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
 - Added zero-argument `reflect.variants()` for copied, owner-qualified
   TypeRegistry variant metadata enumeration using the same payload-field
   policy filtering as `reflect.variants(value)`.
+- Added analysis stdlib facts and completion metadata for the script-visible
+  `reflect.*` native surface, including type/module/function/member queries,
+  field reads/writes/calls, permissions, and variable-arity `reflect.call`,
+  without adding script-visible generic types.
 - Added `string.replace(old, new)` for inline and managed-heap string values,
   with analysis stdlib facts and completion metadata for its two-string
   replacement signature.

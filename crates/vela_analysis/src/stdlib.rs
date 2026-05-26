@@ -2,6 +2,7 @@ use crate::TypeFact;
 
 mod functions;
 mod methods;
+mod reflect;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LambdaFact {
@@ -1037,6 +1038,72 @@ mod tests {
     }
 
     #[test]
+    fn reflection_functions_expose_metadata_facts() {
+        assert_eq!(
+            stdlib_function_fact("reflect.type_of", &[TypeFact::host("Player")])
+                .expect("reflect.type_of fact")
+                .returns,
+            TypeFact::union([TypeFact::String, TypeFact::Null])
+        );
+        assert_eq!(
+            stdlib_function_fact("reflect.attrs", &[TypeFact::host("Player")])
+                .expect("reflect.attrs fact")
+                .returns,
+            TypeFact::map(TypeFact::String, TypeFact::String)
+        );
+        assert_eq!(
+            stdlib_function_fact("reflect.fields", &[])
+                .expect("reflect.fields all fact")
+                .returns,
+            TypeFact::array(TypeFact::record("ReflectField"))
+        );
+        assert_eq!(
+            stdlib_function_fact("reflect.fields", &[TypeFact::host("Player")])
+                .expect("reflect.fields value fact")
+                .returns,
+            TypeFact::array(TypeFact::String)
+        );
+        assert_eq!(
+            stdlib_function_fact(
+                "reflect.method",
+                &[TypeFact::host("Player"), TypeFact::String]
+            )
+            .expect("reflect.method fact")
+            .returns,
+            TypeFact::record("ReflectMethod")
+        );
+        assert_eq!(
+            stdlib_function_fact("reflect.functions", &[])
+                .expect("reflect.functions fact")
+                .returns,
+            TypeFact::array(TypeFact::record("ReflectFunction"))
+        );
+        assert_eq!(
+            stdlib_function_fact(
+                "reflect.call",
+                &[TypeFact::host("Player"), TypeFact::String, TypeFact::Int,]
+            )
+            .expect("reflect.call fact")
+            .returns,
+            TypeFact::Any
+        );
+        assert_eq!(
+            stdlib_function_fact(
+                "reflect.variant_is",
+                &[
+                    TypeFact::enum_type("QuestProgress", Some("Active")),
+                    TypeFact::String,
+                ]
+            )
+            .expect("reflect.variant_is fact")
+            .returns,
+            TypeFact::Bool
+        );
+        assert!(stdlib_function_fact("reflect.call", &[TypeFact::host("Player")]).is_none());
+        assert!(stdlib_function_fact("reflect.fields", &[TypeFact::Any, TypeFact::Any]).is_none());
+    }
+
+    #[test]
     fn stdlib_function_facts_reject_unknown_names_and_wrong_arity() {
         assert!(stdlib_function_fact("option.some", &[]).is_none());
         assert!(stdlib_function_fact("game.spawn", &[TypeFact::String]).is_none());
@@ -1202,5 +1269,17 @@ mod tests {
                 .iter()
                 .any(|fact| fact.name == "ctx.tick" && fact.returns == TypeFact::Int)
         );
+        assert!(facts.iter().any(|fact| {
+            fact.name == "reflect.fields" && fact.returns == TypeFact::array(TypeFact::String)
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "reflect.functions"
+                && fact.returns == TypeFact::array(TypeFact::record("ReflectFunction"))
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "reflect.call"
+                && fact.params == vec![TypeFact::Any, TypeFact::String]
+                && fact.returns == TypeFact::Any
+        }));
     }
 }
