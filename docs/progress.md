@@ -1818,6 +1818,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   records a configured `player.add_reward(...)` host method call through
   `PatchTx` while still mutating nested inventory state through host paths, and
   the CLI integration expectation verifies the reward-call patch count.
+- Added M12 direct reflected attribute lookups. Scripts can now call
+  `reflect.attr(value, name)` and `reflect.has_attr(value, name)` for
+  permissioned, read-only type attribute checks without copying or scanning the
+  full attribute map; analysis facts expose the new helpers without script
+  generics.
 
 ## Next
 

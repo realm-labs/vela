@@ -4850,6 +4850,10 @@ fn main(player) {
         && reflect.kind(player) == "host"
         && reflect.docs(player) == "A player host object."
         && option.unwrap_or(reflect.attrs(player).get("domain"), "") == "gameplay"
+        && reflect.attr(player, "domain") == "gameplay"
+        && reflect.has_attr(player, "domain")
+        && reflect.attr(player, "missing") == null
+        && !reflect.has_attr(player, "missing")
         && reflect.has_field(player, "level")
         && !reflect.has_field(player, "mana")
         && all_fields.len() == 2

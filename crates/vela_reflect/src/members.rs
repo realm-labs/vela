@@ -32,6 +32,24 @@ pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Re
     Ok(ReflectValue::Host(attrs_value(&desc.attrs)))
 }
 
+pub fn attr(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    name: &str,
+) -> ReflectResult<ReflectValue> {
+    let desc = target_type(registry, target)?;
+    Ok(ReflectValue::Host(
+        desc.attrs
+            .get(name)
+            .map_or(HostValue::Null, |value| HostValue::String(value.to_owned())),
+    ))
+}
+
+pub fn has_attr(registry: &TypeRegistry, target: &ReflectValue, name: &str) -> ReflectResult<bool> {
+    let desc = target_type(registry, target)?;
+    Ok(desc.attrs.get(name).is_some())
+}
+
 pub fn docs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(docs_value(desc.docs.as_deref())))

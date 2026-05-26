@@ -1052,6 +1052,24 @@ mod tests {
             TypeFact::map(TypeFact::String, TypeFact::String)
         );
         assert_eq!(
+            stdlib_function_fact(
+                "reflect.attr",
+                &[TypeFact::host("Player"), TypeFact::String]
+            )
+            .expect("reflect.attr fact")
+            .returns,
+            TypeFact::union([TypeFact::String, TypeFact::Null])
+        );
+        assert_eq!(
+            stdlib_function_fact(
+                "reflect.has_attr",
+                &[TypeFact::host("Player"), TypeFact::String]
+            )
+            .expect("reflect.has_attr fact")
+            .returns,
+            TypeFact::Bool
+        );
+        assert_eq!(
             stdlib_function_fact("reflect.fields", &[])
                 .expect("reflect.fields all fact")
                 .returns,

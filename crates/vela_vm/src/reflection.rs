@@ -173,6 +173,42 @@ impl Vm {
             value_from_reflect(reflect::attrs_metadata(&attrs_registry, &target)?)
         });
 
+        let attr_registry = Arc::clone(&registry);
+        let attr_policy = policy.clone();
+        let attr_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.attr", move |args, _host| {
+            check_reflect_policy(
+                &attr_policy,
+                &attr_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.attr", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.attr")?;
+            check_host_ref_inspection(&attr_policy, &target)?;
+            let name = expect_string(&args[1], "reflect.attr")?;
+            value_from_reflect(reflect::attr_metadata(&attr_registry, &target, name)?)
+        });
+
+        let has_attr_registry = Arc::clone(&registry);
+        let has_attr_policy = policy.clone();
+        let has_attr_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.has_attr", move |args, _host| {
+            check_reflect_policy(
+                &has_attr_policy,
+                &has_attr_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.has_attr", args, 2)?;
+            let target = value_to_reflect(&args[0], "reflect.has_attr")?;
+            check_host_ref_inspection(&has_attr_policy, &target)?;
+            let name = expect_string(&args[1], "reflect.has_attr")?;
+            Ok(Value::Bool(reflect::has_attr_metadata(
+                &has_attr_registry,
+                &target,
+                name,
+            )?))
+        });
+
         let docs_registry = Arc::clone(&registry);
         let docs_policy = policy.clone();
         let docs_budget = Arc::clone(&lookup_budget);
