@@ -185,3 +185,34 @@ fn main() {
     assert!(stderr.contains("return missing_value;"));
     fs::remove_dir_all(root).expect("clean temp dir");
 }
+
+#[test]
+fn runtime_demo_error_reports_rendered_diagnostic() {
+    let root = unique_test_dir("runtime_error");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let script = root.join("runtime_error.lang");
+    fs::write(
+        &script,
+        r#"
+fn helper() {
+    return 10 / 0;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("write runtime error script");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg(&script)
+        .output()
+        .expect("run vela_cli runtime error script");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("error[vm::division_by_zero]: division by zero"));
+    assert!(!stderr.contains("DivisionByZero"));
+    fs::remove_dir_all(root).expect("clean temp dir");
+}

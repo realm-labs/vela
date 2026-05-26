@@ -1805,6 +1805,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   the structured `HotReloadReport` renderer so the CLI shows the unchanged
   version, rejection code, target, reason, and repair hint instead of a debug
   dump.
+- Extended M16 CLI diagnostic rendering to runtime failures. Demo script
+  execution errors now route `VmError::to_diagnostic()` through the common
+  renderer, producing stable diagnostic codes/messages instead of raw
+  `VmErrorKind` debug output; the current runtime CLI test also documents that
+  broader compiled instruction span/call-site coverage remains future M16 work.
 
 ## Next
 

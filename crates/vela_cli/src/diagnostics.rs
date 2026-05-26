@@ -7,6 +7,7 @@ use vela_engine::{
     EngineSourceErrorKind,
 };
 use vela_hot_reload::{HotReloadError, HotReloadErrorKind};
+use vela_vm::VmError;
 
 pub(crate) fn render_engine_source_error(path: &Path, error: &EngineSourceError) -> String {
     match &error.kind {
@@ -25,6 +26,13 @@ pub(crate) fn render_hot_reload_source_error(
         EngineHotReloadSourceErrorKind::Source(error) => render_engine_source_error(path, error),
         EngineHotReloadSourceErrorKind::HotReload(error) => render_hot_reload_error(path, error),
     }
+}
+
+pub(crate) fn render_vm_error(path: &Path, error: &VmError) -> String {
+    let source = std::fs::read_to_string(path)
+        .ok()
+        .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
+    render_diagnostics(&[error.to_diagnostic()], source)
 }
 
 fn render_hot_reload_error(path: &Path, error: &HotReloadError) -> String {

@@ -37,7 +37,7 @@ pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
             &mut host_state.adapter,
             &mut tx,
         )
-        .map_err(|error| format!("{error:?}"))?;
+        .map_err(|error| crate::diagnostics::render_vm_error(path, &error))?;
     let patch_count = tx.patches().len();
     tx.apply(&mut host_state.adapter)
         .map_err(|error| format!("{error:?}"))?;
