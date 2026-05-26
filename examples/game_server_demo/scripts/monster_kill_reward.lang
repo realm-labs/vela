@@ -9,6 +9,16 @@ fn main(ctx, player, monster) {
 
     player.inventory.items["gold"].count += monster.reward_count;
     player.add_reward("gold", monster.reward_count);
+
+    if monster.id == 11 {
+        player.quest_count += 1;
+    }
+
+    if player.quest_count >= player.quest_goal {
+        player.quest_done = true;
+        ctx.emit("quest.finished", monster.id, player.quest_count);
+    }
+
     ctx.emit("monster.kill", monster.id, player.level);
     return player.level;
 }

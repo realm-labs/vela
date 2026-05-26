@@ -590,6 +590,9 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Added `examples/game_server_demo/scripts/monster_kill_reward.lang` as a
   runnable demo proving a monster kill can award exp, level up a player, record
   a reward host method call, and emit gameplay events through `PatchTx`.
+- Extended the monster-kill demo workflow to advance quest progress, complete
+  the seeded quest, and emit the quest completion event in the same `PatchTx`
+  safe-point path that applies exp, level, inventory, and reward changes.
 - Added `examples/game_server_demo/scripts/quest_progress.lang` as a runnable
   demo proving quest counters and completion flags update through host field
   patches and emit a quest completion event at the safe point.
