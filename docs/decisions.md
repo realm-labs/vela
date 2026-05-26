@@ -7215,3 +7215,35 @@ Consequences:
 - Artifact loading must still validate engine version, schema ABI, native
   descriptors, hot reload policy, and security-relevant metadata before
   execution.
+
+## 2026-05-26: Pre-Release Code Avoids Compatibility Debt
+
+Status: Accepted
+
+Context:
+The project is still before a stable release. Keeping old internal APIs,
+transitional behavior, duplicate call paths, or compatibility shims would slow
+feature work and make the runtime architecture harder to reason about. At the
+same time, hot reload ABI/schema compatibility is a product feature and must
+not be weakened by a general no-compatibility rule.
+
+Decision:
+Do not preserve backward compatibility for old internal implementation shapes
+during pre-release development. Replace obsolete paths and update callers,
+tests, examples, and documentation to the current architecture. If adding a
+feature requires repeated conditional patches, oversized functions, inflated
+parameter lists, or large mixed-responsibility files, refactor the architecture
+before extending the feature.
+
+Consequences:
+- Internal API churn is acceptable when it produces cleaner module boundaries
+  and simpler runtime semantics.
+- Large files and large functions should be split by responsibility instead of
+  continuing to accumulate unrelated logic.
+- Growing parameter lists should become cohesive context/config structs or
+  option objects.
+- Repeated `if` chains should become `match`, enum-driven dispatch, table
+  dispatch, or focused helper types when that better represents the model.
+- Product compatibility remains explicit: hot reload ABI checks, schema ABI
+  checks, and future persisted artifact compatibility still require deliberate
+  validation and documentation.
