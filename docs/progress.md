@@ -1790,6 +1790,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   compiler options, and configured hot-reload policy. Shared source loading
   lives in a focused loader module, and file/directory reload errors preserve
   both source IO/path failures and hot-reload compatibility failures.
+- Routed the M17 CLI hot-reload demo through the stable Engine/Runtime
+  embedding path instead of low-level reload helpers. The demo now compiles
+  initial and updated scripts through `Engine` source APIs, applies the update
+  through `Runtime`, and still proves old version handles keep old code while
+  new calls enter the updated code.
 
 ## Next
 

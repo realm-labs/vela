@@ -1,11 +1,10 @@
 use std::error::Error;
 
-use vela_engine::{CallOptions, Runtime};
+use vela_engine::{CallOptions, Engine, EngineResult, Runtime};
 use vela_host::PatchTx;
-use vela_hot_reload::HotReloadAbi;
 
 use self::ids::DemoIds;
-use self::registry::{demo_engine, demo_type_registry};
+use self::registry::demo_engine;
 use self::state::DemoHostState;
 
 mod ids;
@@ -14,7 +13,7 @@ mod state;
 
 pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
     let ids = DemoIds::new();
-    let engine = demo_engine(ids).map_err(|error| format!("{error:?}"))?;
+    let engine = build_engine(ids).map_err(|error| format!("{error:?}"))?;
     let program = engine
         .compile_file(path)
         .map_err(|error| format!("{error:?}"))?;
@@ -43,6 +42,10 @@ pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
     host_state.print_result(result, patch_count)
 }
 
-pub(crate) fn hot_reload_abi() -> HotReloadAbi {
-    HotReloadAbi::from_registry(&demo_type_registry(DemoIds::new()))
+pub(crate) fn hot_reload_engine() -> EngineResult<Engine> {
+    build_engine(DemoIds::new())
+}
+
+fn build_engine(ids: DemoIds) -> EngineResult<Engine> {
+    demo_engine(ids)
 }

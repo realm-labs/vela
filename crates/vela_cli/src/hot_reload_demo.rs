@@ -1,28 +1,26 @@
 use std::error::Error;
-use std::fs;
+use std::sync::Arc;
 
-use vela_common::SourceId;
-use vela_hot_reload::{HotReloadRuntime, compile_initial_with_abi, compile_update_with_abi};
-use vela_vm::{Value, Vm};
+use vela_engine::{CallOptions, Engine, Runtime};
+use vela_host::{MockStateAdapter, PatchTx};
+use vela_hot_reload::ProgramVersion;
+use vela_vm::Value;
 
 pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn Error>> {
-    let initial_source = fs::read_to_string(initial_path)?;
-    let updated_source = fs::read_to_string(updated_path)?;
-    let abi = crate::demo::hot_reload_abi();
-    let initial = compile_initial_with_abi(SourceId::new(1), &initial_source, abi.clone())
-        .map_err(|error| format!("{error:?}"))?;
-    let mut runtime = HotReloadRuntime::new(initial);
-    let old = runtime.current();
-    let old_before = run_main(&old.to_program())?;
+    let engine = crate::demo::hot_reload_engine().map_err(|error| format!("{error:?}"))?;
+    let initial = engine.compile_hot_reload_initial_file(initial_path)?;
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let old = runtime
+        .hot_reload_version()
+        .ok_or("runtime must keep the initial hot reload version")?;
+    let old_before = run_current_main(&mut runtime)?;
 
-    let report = runtime.apply_hot_update_result_report(compile_update_with_abi(
-        &old,
-        SourceId::new(2),
-        &updated_source,
-        abi,
-    ));
+    let update = runtime
+        .engine()
+        .compile_hot_reload_update_file(&old, updated_path)?;
+    let report = runtime.apply_hot_update(update)?;
     let report_lines = report.render_lines();
-    let new = report.version().ok_or_else(|| {
+    let new = runtime.hot_reload_version().ok_or_else(|| {
         format!(
             "hot reload rejected:\n{}",
             report_lines
@@ -32,8 +30,8 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
                 .join("\n")
         )
     })?;
-    let old_after = run_main(&old.to_program())?;
-    let new_after = run_main(&new.to_program())?;
+    let old_after = run_version_main(runtime.engine(), &old)?;
+    let new_after = run_current_main(&mut runtime)?;
 
     for line in &report_lines {
         println!("{}", line.text);
@@ -46,8 +44,20 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
     Ok(())
 }
 
-fn run_main(program: &vela_bytecode::Program) -> Result<Value, Box<dyn Error>> {
-    Vm::new()
-        .run_program(program, "main", &[])
+fn run_current_main(runtime: &mut Runtime) -> Result<Value, Box<dyn Error>> {
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    runtime
+        .call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .map_err(|error| format!("{error:?}").into())
+}
+
+fn run_version_main(
+    engine: &Engine,
+    version: &Arc<ProgramVersion>,
+) -> Result<Value, Box<dyn Error>> {
+    engine
+        .into_vm()
+        .run_program(&version.to_program(), "main", &[])
         .map_err(|error| format!("{error:?}").into())
 }
