@@ -28,7 +28,7 @@ post-MVP reference or optional tracks, not MVP requirements.
 | M13 | In progress | Standard library helpers are broad but still need final gameplay, string, math, context, and propagation polish. |
 | M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices; embedding still needs completion. |
 | M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist; full production safe-point workflow remains. |
-| M16 | Not started | Diagnostics, call stacks, TypeFacts polish, and tooling fixtures remain. |
+| M16 | Partial | Runtime diagnostics, common rendering, and CLI compile-error rendering have started; broader tooling fixtures remain. |
 | M17 | Partial | First conformance fixture and integration harnesses exist; game-server demo still needs expansion. |
 | M18 | Not started | Official performance baselines are not in tracked benchmark form yet. |
 | M19-M22 | Not started | Non-JIT optimization, inline caches, optional JIT evaluation, and release performance hardening are post-MVP work. |
@@ -1795,6 +1795,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   initial and updated scripts through `Engine` source APIs, applies the update
   through `Runtime`, and still proves old version handles keep old code while
   new calls enter the updated code.
+- Started M16 CLI diagnostic rendering. Script and hot-reload source compile
+  failures now route compiler diagnostics through the common source renderer
+  when the CLI has the source file, producing code, span, line, and caret
+  output instead of raw debug structs; an integration test covers invalid demo
+  script output.
 
 ## Next
 

@@ -1,6 +1,7 @@
 use std::env;
 
 mod demo;
+mod diagnostics;
 mod hot_reload_demo;
 
 fn main() {

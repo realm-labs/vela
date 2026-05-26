@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -39,6 +40,19 @@ fn script_path(script: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../examples/game_server_demo/scripts")
         .join(script)
+}
+
+fn unique_test_dir(name: &str) -> PathBuf {
+    let mut path = std::env::temp_dir();
+    path.push(format!(
+        "vela_cli_{name}_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time after epoch")
+            .as_nanos()
+    ));
+    path
 }
 
 #[test]
@@ -97,4 +111,32 @@ fn hot_reload_function_swap_demo_runs_through_cli() {
          abi=checked old_version=0 new_version=1 old_before=Int(20) old_after=Int(20) \
          new_after=Int(30)\n"
     );
+}
+
+#[test]
+fn invalid_demo_script_reports_rendered_source_diagnostic() {
+    let root = unique_test_dir("invalid_script");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let script = root.join("invalid.lang");
+    fs::write(
+        &script,
+        r#"
+fn main() {
+    return missing_value;
+}
+"#,
+    )
+    .expect("write invalid script");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg(&script)
+        .output()
+        .expect("run vela_cli invalid script");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("error[hir::unresolved_name]: unresolved name `missing_value`"));
+    assert!(stderr.contains("invalid.lang:3:12"));
+    assert!(stderr.contains("return missing_value;"));
+    fs::remove_dir_all(root).expect("clean temp dir");
 }

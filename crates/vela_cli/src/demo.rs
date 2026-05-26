@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::path::Path;
 
 use vela_engine::{CallOptions, Engine, EngineResult, Runtime};
 use vela_host::PatchTx;
@@ -14,9 +15,10 @@ mod state;
 pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
     let ids = DemoIds::new();
     let engine = build_engine(ids).map_err(|error| format!("{error:?}"))?;
+    let path = Path::new(path);
     let program = engine
         .compile_file(path)
-        .map_err(|error| format!("{error:?}"))?;
+        .map_err(|error| crate::diagnostics::render_engine_source_error(path, &error))?;
 
     let main = program
         .function("main")

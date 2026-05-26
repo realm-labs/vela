@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::path::Path;
 use std::sync::Arc;
 
 use vela_engine::{CallOptions, Engine, Runtime};
@@ -8,7 +9,13 @@ use vela_vm::Value;
 
 pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn Error>> {
     let engine = crate::demo::hot_reload_engine().map_err(|error| format!("{error:?}"))?;
-    let initial = engine.compile_hot_reload_initial_file(initial_path)?;
+    let initial_path = Path::new(initial_path);
+    let updated_path = Path::new(updated_path);
+    let initial = engine
+        .compile_hot_reload_initial_file(initial_path)
+        .map_err(|error| {
+            crate::diagnostics::render_hot_reload_source_error(initial_path, &error)
+        })?;
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let old = runtime
         .hot_reload_version()
@@ -17,7 +24,10 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
 
     let update = runtime
         .engine()
-        .compile_hot_reload_update_file(&old, updated_path)?;
+        .compile_hot_reload_update_file(&old, updated_path)
+        .map_err(|error| {
+            crate::diagnostics::render_hot_reload_source_error(updated_path, &error)
+        })?;
     let report = runtime.apply_hot_update(update)?;
     let report_lines = report.render_lines();
     let new = runtime.hot_reload_version().ok_or_else(|| {
