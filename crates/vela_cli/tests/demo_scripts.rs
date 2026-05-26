@@ -83,7 +83,7 @@ fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.lang"),
         "result=Int(2) level=Int(2) exp=Int(0) quest_count=Int(2) \
-         quest_done=Bool(false) inventory_gold=Int(3) reward_calls=0 emits=2 patches=6\n"
+         quest_done=Bool(false) inventory_gold=Int(3) reward_calls=1 emits=2 patches=7\n"
     );
 }
 

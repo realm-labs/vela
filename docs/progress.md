@@ -1814,6 +1814,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   instructions, numeric VM failures attach the active instruction span, and
   the CLI runtime diagnostic test asserts source lines plus script call-site
   labels for division-by-zero failures.
+- Tightened the M17 monster-kill reward demo proof. The runnable script now
+  records a configured `player.add_reward(...)` host method call through
+  `PatchTx` while still mutating nested inventory state through host paths, and
+  the CLI integration expectation verifies the reward-call patch count.
 
 ## Next
 

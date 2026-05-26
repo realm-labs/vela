@@ -8,6 +8,7 @@ fn main(ctx, player, monster) {
     }
 
     player.inventory.items["gold"].count += monster.reward_count;
+    player.add_reward("gold", monster.reward_count);
     ctx.emit("monster.kill", monster.id, player.level);
     return player.level;
 }
