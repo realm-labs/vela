@@ -39,6 +39,9 @@ pub use native::{
 };
 pub use permission::PermissionSet;
 pub use random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
+pub use reload::{
+    EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
+};
 pub use runtime::{CallOptions, Runtime};
 pub use schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use source::{EngineSourceError, EngineSourceErrorKind};

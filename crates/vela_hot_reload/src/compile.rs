@@ -1,8 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::compiler::{CompilerOptions, compile_program_source_with_options};
+use vela_bytecode::Program;
+use vela_bytecode::compiler::{
+    CompilerOptions, compile_module_sources_with_options, compile_program_source_with_options,
+};
 use vela_common::SourceId;
+use vela_hir::ModuleSource;
 
 use crate::{
     FunctionSymbolId, HotReloadAbi, HotReloadError, HotReloadErrorKind, HotReloadPolicy,
@@ -43,11 +47,17 @@ pub fn compile_initial_with_abi_and_options(
 ) -> HotReloadResult<ProgramVersion> {
     let program = compile_program_source_with_options(source, text, options)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
-    Ok(ProgramVersion::from_program_with_abi(
-        ProgramVersionId(0),
-        program,
-        abi,
-    ))
+    Ok(initial_version_from_program(program, abi))
+}
+
+pub fn compile_initial_modules_with_abi_and_options(
+    sources: &[ModuleSource],
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+) -> HotReloadResult<ProgramVersion> {
+    let program = compile_module_sources_with_options(sources, options)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
+    Ok(initial_version_from_program(program, abi))
 }
 
 pub fn compile_update(
@@ -143,6 +153,31 @@ pub fn compile_update_with_abi_and_options_and_policy(
 ) -> HotReloadResult<HotUpdate> {
     let program = compile_program_source_with_options(source, text, options)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
+    update_from_program(previous, program, abi, policy)
+}
+
+pub fn compile_update_modules_with_abi_and_options_and_policy(
+    previous: &ProgramVersion,
+    sources: &[ModuleSource],
+    abi: HotReloadAbi,
+    options: &CompilerOptions,
+    policy: &HotReloadPolicy,
+) -> HotReloadResult<HotUpdate> {
+    let program = compile_module_sources_with_options(sources, options)
+        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))?;
+    update_from_program(previous, program, abi, policy)
+}
+
+fn initial_version_from_program(program: Program, abi: HotReloadAbi) -> ProgramVersion {
+    ProgramVersion::from_program_with_abi(ProgramVersionId(0), program, abi)
+}
+
+fn update_from_program(
+    previous: &ProgramVersion,
+    program: Program,
+    abi: HotReloadAbi,
+    policy: &HotReloadPolicy,
+) -> HotReloadResult<HotUpdate> {
     let mut functions = BTreeMap::new();
     for (name, code) in program.functions {
         if let Some(old_code) = previous.functions.get(&FunctionSymbolId::new(&name)) {

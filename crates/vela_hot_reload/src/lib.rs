@@ -18,8 +18,9 @@ pub use abi::{
     AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi, ParamAbi, TraitAbi, TraitMethodAbi,
 };
 pub use compile::{
-    compile_initial, compile_initial_with_abi, compile_initial_with_abi_and_options,
-    compile_initial_with_options, compile_update, compile_update_with_abi,
+    compile_initial, compile_initial_modules_with_abi_and_options, compile_initial_with_abi,
+    compile_initial_with_abi_and_options, compile_initial_with_options, compile_update,
+    compile_update_modules_with_abi_and_options_and_policy, compile_update_with_abi,
     compile_update_with_abi_and_options, compile_update_with_abi_and_options_and_policy,
     compile_update_with_abi_and_policy, compile_update_with_options, compile_update_with_policy,
 };

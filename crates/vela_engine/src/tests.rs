@@ -18,9 +18,10 @@ use crate::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID, CONTEXT_TIME_PERMISSION, CONTEXT_TYPE_ID, CONTROLLED_RANDOM_PERMISSION,
     CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID, CallOptions, EffectSet, Engine, EngineErrorKind,
-    EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID, NativeCallContext,
-    NativeFunctionDesc, NativeFunctionId, NativeMethodDesc, PermissionSet, Runtime, ScriptArgsExt,
-    ScriptHostMethodMetadata, ScriptReflectSchema, TypeHint, context_host_type_desc,
+    EngineHotReloadSourceErrorKind, EngineSourceErrorKind, FunctionAccess, MATH_RANDOM_FUNCTION_ID,
+    NativeCallContext, NativeFunctionDesc, NativeFunctionId, NativeMethodDesc, PermissionSet,
+    Runtime, ScriptArgsExt, ScriptHostMethodMetadata, ScriptReflectSchema, TypeHint,
+    context_host_type_desc,
 };
 use crate::{FromScriptArg, IntoScriptArg};
 
@@ -1547,6 +1548,102 @@ pub const BONUS: int = 6;
     );
     assert!(program.function("ignored.main").is_none());
     std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn engine_compile_hot_reload_dir_loads_module_updates() {
+    let root = unique_test_dir("hot_reload_dir");
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    std::fs::write(
+        game_dir.join("main.lang"),
+        r#"
+use game.reward.grant
+
+fn main() {
+    return grant() + 1;
+}
+"#,
+    )
+    .expect("write main module");
+    std::fs::write(
+        game_dir.join("reward.lang"),
+        r#"
+pub fn grant() {
+    return 4;
+}
+"#,
+    )
+    .expect("write reward module");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(5))
+    );
+
+    std::fs::write(
+        game_dir.join("reward.lang"),
+        r#"
+pub fn grant() {
+    return 7;
+}
+"#,
+    )
+    .expect("write updated reward module");
+    let current = runtime
+        .hot_reload_version()
+        .expect("current hot reload version");
+    let update = runtime
+        .engine()
+        .compile_hot_reload_update_dir(&current, &root)
+        .expect("compatible hot reload dir update");
+    let report = runtime.apply_hot_update(update).expect("apply update");
+
+    assert!(report.accepted);
+    assert_eq!(
+        report.changed_functions,
+        vec!["game.main.main".to_owned(), "game.reward.grant".to_owned()]
+    );
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(8))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn engine_compile_hot_reload_file_reports_source_errors() {
+    let root = unique_test_dir("missing_hot_reload_file");
+    let path = root.join("missing.lang");
+    let engine = Engine::builder().build().expect("engine should build");
+
+    let error = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect_err("missing hot reload source file should fail");
+
+    assert!(matches!(
+        error.kind,
+        EngineHotReloadSourceErrorKind::Source(_)
+    ));
 }
 
 #[test]

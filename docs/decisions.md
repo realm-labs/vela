@@ -7133,3 +7133,28 @@ Consequences:
   HostRef/HostPath/PatchTx.
 - The API is opt-in for native authors and does not change existing automatic
   VM budget checks after host native calls.
+
+## 2026-05-26: Engine Hot Reload Source APIs Preserve Error Boundaries
+
+Status: Accepted
+
+Context:
+Engine embedding needs file and directory hot-reload workflows, not only
+caller-supplied source strings. Source loading can fail for IO/path reasons,
+while reload compilation can fail because of syntax, function signature, schema,
+trait, module, or effect ABI incompatibility.
+
+Decision:
+Keep deterministic `.lang` directory discovery in a focused engine source
+loader module and reuse it for normal compilation and hot reload. Add
+`EngineHotReloadSourceError` as a small boundary type that preserves either an
+`EngineSourceError` or `HotReloadError` rather than flattening both into one
+compile error category.
+
+Consequences:
+- Engine callers can compile hot-reload initial/update artifacts directly from
+  files or module directories.
+- API consumers can distinguish filesystem/source-loading failures from reload
+  compatibility rejections.
+- Path discovery, reload ABI construction, and public engine methods remain in
+  separate modules instead of accumulating in one large file.

@@ -4,9 +4,10 @@
 
 M0-M11 runnable prototype, stable script metadata, broad executable language
 surface, and host bridge foundations are complete enough to continue
-reflection, permissions, standard-library expansion, and focused Engine
-embedding slices. Current milestone: M12/M13 reflection and standard-library
-completion, with targeted M14 Engine API work as it unblocks embedding.
+reflection, permissions, standard-library expansion, focused Engine embedding
+slices, and hot-reload ABI/source workflows. Current milestone: M12/M13
+reflection and standard-library completion, with targeted M14/M15 Engine API
+work as it unblocks embedding and safe-point reload workflows.
 
 ## Completed
 
@@ -1759,6 +1760,12 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   metadata even when the schema hash is unchanged, allows added impls, and
   rejects removed or changed impl metadata with the existing structured schema
   ABI diagnostics.
+- Added M15 Engine file/directory hot-reload source APIs. `Engine` can now
+  compile initial and update `ProgramVersion`/`HotUpdate` values from single
+  files or deterministic `.lang` module directories using registry ABI,
+  compiler options, and configured hot-reload policy. Shared source loading
+  lives in a focused loader module, and file/directory reload errors preserve
+  both source IO/path failures and hot-reload compatibility failures.
 
 ## Next
 
