@@ -437,7 +437,7 @@ fn function_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::Reflec
 }
 
 fn module_record(desc: &ModuleDesc) -> ReflectValue {
-    module_record_with_exports(desc, desc.exports.iter().map(|export| export.name.clone()))
+    ReflectValue::Host(module_record_host(desc))
 }
 
 fn module_record_host(desc: &ModuleDesc) -> HostValue {
@@ -448,26 +448,7 @@ fn module_record_with_exports(
     desc: &ModuleDesc,
     exports: impl IntoIterator<Item = String>,
 ) -> ReflectValue {
-    let mut fields = BTreeMap::new();
-    fields.insert(
-        "name".to_owned(),
-        ReflectValue::Host(HostValue::String(desc.name.clone())),
-    );
-    fields.insert(
-        "exports".to_owned(),
-        ReflectValue::Host(HostValue::Array(
-            exports.into_iter().map(HostValue::String).collect(),
-        )),
-    );
-    fields.insert(
-        "attrs".to_owned(),
-        ReflectValue::Host(attrs_value(&desc.attrs)),
-    );
-    fields.insert(
-        "source_span".to_owned(),
-        ReflectValue::Host(span_value(desc.source_span)),
-    );
-    ReflectValue::Record(fields)
+    ReflectValue::Host(module_record_host_with_exports(desc, exports))
 }
 
 fn module_record_host_with_exports(
@@ -508,70 +489,7 @@ fn visible_export_names(
 }
 
 fn function_record(desc: &FunctionDesc) -> ReflectValue {
-    let mut fields = BTreeMap::new();
-    fields.insert(
-        "name".to_owned(),
-        ReflectValue::Host(HostValue::String(desc.name.clone())),
-    );
-    fields.insert(
-        "module".to_owned(),
-        ReflectValue::Host(
-            desc.module
-                .as_ref()
-                .map_or(HostValue::Null, |module| HostValue::String(module.clone())),
-        ),
-    );
-    fields.insert(
-        "public".to_owned(),
-        ReflectValue::Host(HostValue::Bool(desc.public)),
-    );
-    fields.insert(
-        "effects".to_owned(),
-        ReflectValue::Host(function_effects_record(desc)),
-    );
-    fields.insert(
-        "access".to_owned(),
-        ReflectValue::Host(function_access_record(desc)),
-    );
-    fields.insert(
-        "origin".to_owned(),
-        ReflectValue::Host(HostValue::String(
-            match desc.origin {
-                DeclOrigin::Host => "host",
-                DeclOrigin::Script => "script",
-            }
-            .to_owned(),
-        )),
-    );
-    fields.insert(
-        "return".to_owned(),
-        ReflectValue::Host(
-            desc.return_type
-                .as_ref()
-                .map_or(HostValue::Null, |return_type| {
-                    HostValue::String(return_type.clone())
-                }),
-        ),
-    );
-    fields.insert(
-        "params".to_owned(),
-        ReflectValue::Host(HostValue::Array(
-            desc.params.iter().map(param_record).collect(),
-        )),
-    );
-    fields.insert(
-        "docs".to_owned(),
-        ReflectValue::Host(docs_value(desc.docs.as_deref())),
-    );
-    fields.insert(
-        "attrs".to_owned(),
-        ReflectValue::Host(attrs_value(&desc.attrs)),
-    );
-    fields.insert(
-        "source_span".to_owned(),
-        ReflectValue::Host(span_value(desc.source_span)),
-    );
-    ReflectValue::Record(fields)
+    ReflectValue::Host(function_record_host(desc))
 }
 
 fn function_record_host(desc: &FunctionDesc) -> HostValue {
@@ -821,25 +739,28 @@ fn helper() {
         assert!(has_function(&registry, "game.reward.grant"));
         assert!(!has_function(&registry, "game.reward.missing"));
 
-        let ReflectValue::Record(module_metadata) =
-            module(&registry, "game.reward").expect("module")
+        let ReflectValue::Host(HostValue::Record {
+            type_name,
+            fields: module_metadata,
+        }) = module(&registry, "game.reward").expect("module")
         else {
             panic!("module metadata should be a record");
         };
+        assert_eq!(type_name, "ReflectModule");
         assert_eq!(
             module_metadata.get("name"),
-            Some(&ReflectValue::Host(HostValue::String("game.reward".into())))
+            Some(&HostValue::String("game.reward".into()))
         );
         assert_eq!(
             module_metadata.get("attrs"),
-            Some(&ReflectValue::Host(HostValue::Map(BTreeMap::from([(
+            Some(&HostValue::Map(BTreeMap::from([(
                 "domain".to_owned(),
                 HostValue::String("gameplay".to_owned())
-            )]))))
+            )])))
         );
         assert_eq!(
             module_metadata.get("source_span"),
-            Some(&ReflectValue::Host(span_value(Some(module_span))))
+            Some(&span_value(Some(module_span)))
         );
         assert_eq!(
             exports(&registry, "game.reward").expect("exports"),
@@ -880,37 +801,40 @@ fn helper() {
             Some(&HostValue::String("game.reward.grant".into()))
         );
 
-        let ReflectValue::Record(function_metadata) =
-            function(&registry, "game.reward.grant").expect("function")
+        let ReflectValue::Host(HostValue::Record {
+            type_name,
+            fields: function_metadata,
+        }) = function(&registry, "game.reward.grant").expect("function")
         else {
             panic!("function metadata should be a record");
         };
+        assert_eq!(type_name, "ReflectFunction");
         assert_eq!(
             function_metadata.get("return"),
-            Some(&ReflectValue::Host(HostValue::String("bool".into())))
+            Some(&HostValue::String("bool".into()))
         );
         assert_eq!(
             function_metadata.get("origin"),
-            Some(&ReflectValue::Host(HostValue::String("script".into())))
+            Some(&HostValue::String("script".into()))
         );
         assert_eq!(
             function_metadata.get("source_span"),
-            Some(&ReflectValue::Host(span_value(Some(function_span))))
+            Some(&span_value(Some(function_span)))
         );
         assert_eq!(
             function_metadata.get("effects"),
-            Some(&ReflectValue::Host(HostValue::Record {
+            Some(&HostValue::Record {
                 type_name: "ReflectEffectSet".to_owned(),
                 fields: BTreeMap::from([
                     ("reads_host".to_owned(), HostValue::Bool(true)),
                     ("writes_host".to_owned(), HostValue::Bool(true)),
                     ("emits_events".to_owned(), HostValue::Bool(false)),
                 ]),
-            }))
+            })
         );
         assert_eq!(
             function_metadata.get("access"),
-            Some(&ReflectValue::Host(HostValue::Record {
+            Some(&HostValue::Record {
                 type_name: "ReflectFunctionAccess".to_owned(),
                 fields: BTreeMap::from([
                     ("public".to_owned(), HostValue::Bool(true)),
@@ -920,20 +844,18 @@ fn helper() {
                         HostValue::Array(vec![HostValue::String("reward.grant".to_owned())])
                     ),
                 ]),
-            }))
+            })
         );
         assert_eq!(
             function_metadata.get("docs"),
-            Some(&ReflectValue::Host(HostValue::String(
-                "Grant reward.".into()
-            )))
+            Some(&HostValue::String("Grant reward.".into()))
         );
         assert_eq!(
             function_metadata.get("attrs"),
-            Some(&ReflectValue::Host(HostValue::Map(BTreeMap::from([(
+            Some(&HostValue::Map(BTreeMap::from([(
                 "event".to_owned(),
                 HostValue::String("reward".to_owned())
-            )]))))
+            )])))
         );
 
         let error = module(&registry, "game.rewards").expect_err("unknown module");
@@ -1027,17 +949,15 @@ fn helper() {
         )
         .with_function_permission("game.admin");
 
-        let ReflectValue::Record(function) =
-            function_with_policy(&registry, "game.private_admin", &policy)
-                .expect("private function metadata")
+        let ReflectValue::Host(HostValue::Record {
+            fields: function, ..
+        }) = function_with_policy(&registry, "game.private_admin", &policy)
+            .expect("private function metadata")
         else {
             panic!("function metadata should be a record");
         };
 
-        assert_eq!(
-            function.get("public"),
-            Some(&ReflectValue::Host(HostValue::Bool(false)))
-        );
+        assert_eq!(function.get("public"), Some(&HostValue::Bool(false)));
     }
 
     #[test]
@@ -1143,7 +1063,7 @@ fn helper() {
             )]))
         );
 
-        let ReflectValue::Record(module) =
+        let ReflectValue::Host(HostValue::Record { fields: module, .. }) =
             module_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())
                 .expect("policy module")
         else {
@@ -1151,9 +1071,9 @@ fn helper() {
         };
         assert_eq!(
             module.get("exports"),
-            Some(&ReflectValue::Host(HostValue::Array(vec![
-                HostValue::String("game.reward.grant".to_owned())
-            ])))
+            Some(&HostValue::Array(vec![HostValue::String(
+                "game.reward.grant".to_owned()
+            )]))
         );
 
         let admin_policy = ReflectPolicy::new(

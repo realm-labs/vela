@@ -4947,7 +4947,8 @@ fn main() {
     let exports = reflect.exports("game.reward");
     let function = reflect.function("game.reward.grant");
     let functions = reflect.functions();
-    if option.unwrap_or(module.get("name"), "") == "game.reward"
+    if module.name == "game.reward"
+        && reflect.name(module) == "game.reward"
         && reflect.has_module("game.reward")
         && !reflect.has_module("game.missing")
         && reflect.has_function("game.reward.grant")
@@ -4957,8 +4958,11 @@ fn main() {
         && exports.len() == 1
         && functions.len() == 1
         && functions[0].name == "game.reward.grant"
-        && option.unwrap_or(function.get("return"), "") == "bool" {
-        return option.unwrap_or(function.get("params"), []).len();
+        && reflect.name(function) == "game.reward.grant"
+        && reflect.docs(function) == "Grant reward."
+        && reflect.attr(function, "event") == "reward"
+        && reflect.get(function, "return") == "bool" {
+        return function.params.len();
     }
     return 0;
 }
@@ -4997,7 +5001,7 @@ fn main() {
         && !reflect.has_function("game.reward.hidden")
         && !reflect.has_function("game.reward.private")
         && !reflect.has_function("game.reward.admin") {
-        return option.unwrap_or(module.get("exports"), []).len() * 100
+        return module.exports.len() * 100
             + exports.len() * 10
             + functions.len()
             + modules[0].exports.len() * 1000;
@@ -6032,6 +6036,8 @@ fn script_module_reflection_registry() -> TypeRegistry {
         SourceId::new(1),
         ModulePath::from_dotted("game.reward"),
         r#"
+#[doc("Grant reward.")]
+#[event("reward")]
 pub fn grant(player: Player, amount: int = 1) -> bool {
     return true;
 }

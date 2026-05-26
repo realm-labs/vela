@@ -1842,6 +1842,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   the stable `name` field from copied `Reflect*` descriptors. This lets scripts
   use one read-only naming helper for both runtime targets and copied metadata
   records without exposing mutable schema handles.
+- Normalized direct `reflect.module(name)` and `reflect.function(name)` lookups
+  to return typed copied `ReflectModule`/`ReflectFunction` records, matching
+  list-query results and allowing scripts to use descriptor field access plus
+  `reflect.name`/`reflect.docs`/`reflect.attr` helpers consistently.
 
 ## Next
 
