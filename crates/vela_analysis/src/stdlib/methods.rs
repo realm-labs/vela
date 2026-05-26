@@ -26,6 +26,8 @@ const ARRAY_METHOD_NAMES: &[&str] = &[
     "sum",
     "group_by",
     "sort",
+    "min",
+    "max",
     "sort_by",
 ];
 const MAP_METHOD_NAMES: &[&str] = &[
@@ -305,6 +307,16 @@ fn array_method_fact(
             receiver,
             "sort",
             TypeFact::array(element.clone()),
+        )),
+        "min" => Some(StdlibMethodFact::new(
+            receiver,
+            "min",
+            TypeFact::option(element.clone()),
+        )),
+        "max" => Some(StdlibMethodFact::new(
+            receiver,
+            "max",
+            TypeFact::option(element.clone()),
         )),
         "sort_by" => Some(
             StdlibMethodFact::new(receiver, "sort_by", TypeFact::array(element.clone()))

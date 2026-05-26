@@ -261,6 +261,18 @@ mod tests {
                 .returns,
             TypeFact::array(TypeFact::Float)
         );
+        assert_eq!(
+            stdlib_method_fact(&array, "min", None)
+                .expect("min fact")
+                .returns,
+            TypeFact::option(TypeFact::Float)
+        );
+        assert_eq!(
+            stdlib_method_fact(&array, "max", None)
+                .expect("max fact")
+                .returns,
+            TypeFact::option(TypeFact::Float)
+        );
         let slice = stdlib_method_fact(&array, "slice", None).expect("slice fact");
         assert_eq!(slice.params, vec![TypeFact::Int, TypeFact::Int]);
         assert_eq!(slice.returns, TypeFact::array(TypeFact::Float));

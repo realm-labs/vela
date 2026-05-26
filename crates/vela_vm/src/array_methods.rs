@@ -310,6 +310,24 @@ pub(crate) fn sort(
     sort_values_by_key(values, heap, "method sort", |value, _| Ok(value.clone()))
 }
 
+pub(crate) fn min(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("min", args, 0)?;
+    extremum(receiver, heap, "method min", Extremum::Min)
+}
+
+pub(crate) fn max(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("max", args, 0)?;
+    extremum(receiver, heap, "method max", Extremum::Max)
+}
+
 pub(crate) fn slice(
     receiver: &Value,
     args: &[Value],
@@ -518,6 +536,43 @@ fn sort_entries(mut entries: Vec<SortEntry>) -> VmResult<Value> {
     Ok(Value::Array(
         entries.into_iter().map(|entry| entry.value).collect(),
     ))
+}
+
+#[derive(Clone, Copy)]
+enum Extremum {
+    Min,
+    Max,
+}
+
+fn extremum(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+    extremum: Extremum,
+) -> VmResult<Value> {
+    let values = array_values(receiver, heap, operation)?;
+    let Some((first, rest)) = values.split_first() else {
+        return Ok(option_value("None", None));
+    };
+    let mut best = first.clone();
+    let mut best_key = sort_key(first, heap, operation)?;
+    let key_kind = best_key.kind();
+    for value in rest {
+        let key = sort_key(value, heap, operation)?;
+        if key.kind() != key_kind {
+            return type_error(operation);
+        }
+        let ordering = key.compare(&best_key);
+        let replace = match extremum {
+            Extremum::Min => ordering.is_lt(),
+            Extremum::Max => ordering.is_gt(),
+        };
+        if replace {
+            best = value.clone();
+            best_key = key;
+        }
+    }
+    Ok(option_value("Some", Some(best)))
 }
 
 enum NumericTotal {
@@ -1621,6 +1676,31 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_array_extrema_methods() {
+        let source = r#"
+fn main() {
+    let values = [4, 1, 3, 1];
+    let empty = [];
+    if values.min().unwrap_or(0) == 1
+        && values.max().unwrap_or(0) == 4
+        && empty.min().unwrap_or(99) == 99
+        && values[0] == 4
+    {
+        return values.max().unwrap_or(0);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("array extrema methods should compile");
+
+        let result = Vm::new()
+            .run(&code)
+            .expect("array extrema methods should run");
+        assert_eq!(result, Value::Int(4));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_array_sort_by_method() {
         let source = r#"
 fn main() {
@@ -1673,6 +1753,29 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_array_extrema_methods() {
+        let source = r#"
+fn main() {
+    let names = ["wyrm", "boar", "bat", "wolf"];
+    if names.min().unwrap_or("") == "bat"
+        && names.max().unwrap_or("") == "wyrm"
+    {
+        return names.max().unwrap_or("");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap array extrema methods should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap array extrema methods should run");
+        assert_eq!(result, Value::String("wyrm".to_owned()));
+    }
+
+    #[test]
     fn array_sort_by_rejects_mixed_key_domains() {
         let source = r#"
 fn main() {
@@ -1710,6 +1813,45 @@ fn main() {
             error.kind,
             VmErrorKind::TypeMismatch {
                 operation: "method sort"
+            }
+        );
+    }
+
+    #[test]
+    fn array_extrema_reject_mixed_scalar_domains() {
+        let min_source = r#"
+fn main() {
+    return [1, "two"].min();
+}
+"#;
+        let min_code = compile_function_source(SourceId::new(1), min_source, "main")
+            .expect("array min type error source should compile");
+
+        let min_error = Vm::new()
+            .run(&min_code)
+            .expect_err("array min should reject mixed scalar domains");
+        assert_eq!(
+            min_error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method min"
+            }
+        );
+
+        let max_source = r#"
+fn main() {
+    return [1, "two"].max();
+}
+"#;
+        let max_code = compile_function_source(SourceId::new(1), max_source, "main")
+            .expect("array max type error source should compile");
+
+        let max_error = Vm::new()
+            .run(&max_code)
+            .expect_err("array max should reject mixed scalar domains");
+        assert_eq!(
+            max_error.kind,
+            VmErrorKind::TypeMismatch {
+                operation: "method max"
             }
         );
     }
