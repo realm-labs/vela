@@ -12,6 +12,11 @@ warmup, and repeated execution. Function-call benchmarks should load and compile
 scripts before timing, then measure repeated calls to an already-loaded
 function.
 
+Precompiled bytecode artifacts should be measured as a load/startup/reload
+optimization. They can reduce parser, HIR, analysis, and bytecode generation
+costs, but they should not be counted as an execution-speed optimization for an
+already-loaded function.
+
 Benchmark suites should track these cost centers separately:
 
 ```text

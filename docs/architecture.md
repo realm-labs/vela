@@ -1931,12 +1931,16 @@ managed heap allocation and materialization reduction
 optimized for-in and callback paths
 GC pacing and allocation thresholds
 simple peephole optimization
-bytecode cache
+precompiled bytecode artifacts and bytecode cache
 ```
 
 This is the main path toward Lua-comparable performance without JIT. The work
 should be benchmark-driven and must not make host patching, hot reload,
 reflection, or diagnostics less reliable.
+
+Precompiled bytecode artifacts improve startup, deployment validation, and
+reload/load latency. They do not by themselves improve the execution speed of
+an already-loaded function, because that function already runs as bytecode.
 
 ### Phase 3: Inline Cache And Specialization
 

@@ -452,7 +452,8 @@ native stdlib fast paths for array/map/set/string/Option/Result methods
 optimized for-in loops and iterator state
 closure allocation caching where semantics allow it
 GC threshold and safe-point pacing improvements
-peephole optimization and bytecode cache
+peephole optimization
+precompiled bytecode artifacts and bytecode cache
 ```
 
 Acceptance:

@@ -7189,3 +7189,29 @@ Consequences:
 - The first non-JIT target is Lua 5.x comparable gameplay workload performance,
   while LuaJIT and Node.js remain upper-reference points for later JIT
   decisions.
+
+## 2026-05-26: Precompiled Bytecode Artifacts Are Load-Time Optimization
+
+Status: Accepted
+
+Context:
+Vela compiles source into bytecode before VM execution. A persisted bytecode
+artifact can avoid repeated parsing, HIR lowering, analysis, bytecode
+generation, and validation work during startup, deployment checks, or hot
+reload preparation.
+
+Decision:
+Treat precompiled bytecode artifacts and bytecode caches as load/startup/reload
+optimizations. They may carry validated code objects, metadata, schema hashes,
+and compatibility information, but they are not an execution-speed optimization
+for a function that is already loaded as bytecode.
+
+Consequences:
+- Benchmarks must separate compile/load latency from repeated function
+  execution latency.
+- Bytecode artifacts belong in the performance roadmap, but interpreter
+  dispatch, value layout, heap behavior, stdlib fast paths, inline caches, and
+  specialization remain the main non-JIT execution-speed levers.
+- Artifact loading must still validate engine version, schema ABI, native
+  descriptors, hot reload policy, and security-relevant metadata before
+  execution.
