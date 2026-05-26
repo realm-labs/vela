@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_common::FunctionId;
+use vela_common::{FunctionId, Span};
 use vela_reflect::{AttrMap, TypeKey};
 use vela_vm::{HostExecution, Value, VmResult};
 
@@ -18,6 +18,7 @@ pub struct NativeFunctionDesc {
     pub access: FunctionAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl NativeFunctionDesc {
@@ -32,6 +33,7 @@ impl NativeFunctionDesc {
             access: FunctionAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -71,6 +73,12 @@ impl NativeFunctionDesc {
     #[must_use]
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
         self
     }
 }

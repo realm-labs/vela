@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_common::HostMethodId;
+use vela_common::{HostMethodId, Span};
 use vela_host::HostPath;
 use vela_reflect::{AttrMap, TypeKey};
 use vela_vm::{HostExecution, Value, VmResult};
@@ -18,6 +18,7 @@ pub struct NativeMethodDesc {
     pub access: FunctionAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
+    pub source_span: Option<Span>,
 }
 
 impl NativeMethodDesc {
@@ -33,6 +34,7 @@ impl NativeMethodDesc {
             access: FunctionAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
+            source_span: None,
         }
     }
 
@@ -72,6 +74,12 @@ impl NativeMethodDesc {
     #[must_use]
     pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
         self
     }
 }

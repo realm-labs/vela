@@ -39,6 +39,9 @@ pub(crate) fn inject_host_method_metadata(
         for (name, value) in desc.attrs.iter() {
             method = method.attr(name, value);
         }
+        if let Some(source_span) = desc.source_span {
+            method = method.source_span(source_span);
+        }
         owner.methods.push(method);
     }
     Ok(())
@@ -88,6 +91,9 @@ fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
     }
     for (name, value) in desc.attrs.iter() {
         reflected = reflected.attr(name, value);
+    }
+    if let Some(source_span) = desc.source_span {
+        reflected = reflected.source_span(source_span);
     }
     reflected
 }

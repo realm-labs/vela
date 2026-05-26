@@ -1854,6 +1854,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   and copied `Reflect*` metadata records. It returns a copied
   `ReflectSourceSpan` record or `null`, giving admin/debug scripts a uniform
   read-only way to locate reflected declarations.
+- Extended M14 Engine native descriptors with optional source spans for
+  registered native functions and host methods. The existing metadata mapper
+  now carries those spans into reflected `FunctionDesc`/`MethodDesc` records,
+  allowing registry-derived hot-reload ABI diagnostics to point back at
+  embedder-provided native declaration locations.
 
 ## Next
 

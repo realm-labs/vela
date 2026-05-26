@@ -2,10 +2,13 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{
-    FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TraitId, TypeId, VariantId,
+    FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Span, TraitId, TypeId,
+    VariantId,
 };
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx, PathProxy};
-use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
+use vela_hot_reload::{
+    FunctionAbi, HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime, MethodAbi,
+};
 use vela_reflect::{
     FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc,
     ReflectPermission, ReflectPermissionSet, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
@@ -1393,6 +1396,7 @@ fn typed_context_sum6_level(
 
 #[test]
 fn engine_registers_native_function_reflection_metadata() {
+    let source_span = Span::new(SourceId::new(7), 12, 24);
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game.add", NativeFunctionId::new(21))
@@ -1407,7 +1411,8 @@ fn engine_registers_native_function_reflection_metadata() {
                 )
                 .docs("Adds two integers.")
                 .attr("domain", "gameplay")
-                .attr("stable", "true"),
+                .attr("stable", "true")
+                .source_span(source_span),
             |_| Ok(Value::Int(0)),
         )
         .build()
@@ -1442,6 +1447,42 @@ fn engine_registers_native_function_reflection_metadata() {
     assert_eq!(function.docs.as_deref(), Some("Adds two integers."));
     assert_eq!(function.attrs.get("domain"), Some("gameplay"));
     assert_eq!(function.attrs.get("stable"), Some("true"));
+    assert_eq!(function.source_span, Some(source_span));
+
+    let function_abi = FunctionAbi::from_function(function);
+    assert_eq!(function_abi.source_span, Some(source_span));
+}
+
+#[test]
+fn engine_registers_native_method_source_span_metadata() {
+    let source_span = Span::new(SourceId::new(8), 30, 42);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_native_method_fn(
+            NativeMethodDesc::new(owner, HostMethodId::new(51), "grant_exp")
+                .param("amount", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .source_span(source_span),
+            |_, _, _| Ok(Value::Int(0)),
+        )
+        .build()
+        .expect("engine should build");
+    let registry = engine.registry();
+    let method = registry
+        .type_by_name("Player")
+        .and_then(|desc| {
+            desc.methods
+                .iter()
+                .find(|method| method.name == "grant_exp")
+        })
+        .expect("native method metadata");
+
+    assert_eq!(method.source_span, Some(source_span));
+
+    let method_abi = MethodAbi::from_method("Player", method);
+    assert_eq!(method_abi.source_span, Some(source_span));
 }
 
 #[test]
