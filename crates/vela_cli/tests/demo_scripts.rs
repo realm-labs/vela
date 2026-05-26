@@ -19,12 +19,9 @@ fn run_demo(script: &str) -> String {
 }
 
 fn run_hot_reload_demo(initial: &str, updated: &str) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
-        .arg("--hot-reload")
-        .arg(script_path(initial))
-        .arg(script_path(updated))
-        .output()
-        .expect("run vela_cli hot reload demo");
+    let initial = script_path(initial);
+    let updated = script_path(updated);
+    let output = run_hot_reload_paths(&initial, &updated);
 
     assert!(
         output.status.success(),
@@ -34,6 +31,15 @@ fn run_hot_reload_demo(initial: &str, updated: &str) -> String {
     );
 
     String::from_utf8(output.stdout).expect("hot reload stdout should be utf8")
+}
+
+fn run_hot_reload_paths(initial: &Path, updated: &Path) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg("--hot-reload")
+        .arg(initial)
+        .arg(updated)
+        .output()
+        .expect("run vela_cli hot reload demo")
 }
 
 fn script_path(script: &str) -> PathBuf {
@@ -111,6 +117,45 @@ fn hot_reload_function_swap_demo_runs_through_cli() {
          abi=checked old_version=0 new_version=1 old_before=Int(20) old_after=Int(20) \
          new_after=Int(30)\n"
     );
+}
+
+#[test]
+fn hot_reload_demo_reports_abi_rejection() {
+    let root = unique_test_dir("hot_reload_reject");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let initial = root.join("initial.lang");
+    let updated = root.join("updated.lang");
+    fs::write(
+        &initial,
+        r#"
+fn helper() {
+    return 20;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("write initial script");
+    fs::write(
+        &updated,
+        r#"
+fn main() {
+    return 30;
+}
+"#,
+    )
+    .expect("write updated script");
+
+    let output = run_hot_reload_paths(&initial, &updated);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("hot reload rejected: v0 unchanged"));
+    assert!(stderr.contains("[reload.function.removed] helper: function `helper` was removed"));
+    assert!(stderr.contains("repair: keep the function declaration"));
+    fs::remove_dir_all(root).expect("clean temp dir");
 }
 
 #[test]

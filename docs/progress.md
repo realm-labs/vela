@@ -1800,6 +1800,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   when the CLI has the source file, producing code, span, line, and caret
   output instead of raw debug structs; an integration test covers invalid demo
   script output.
+- Strengthened the M17 hot-reload CLI demo rejection path. ABI-compatible
+  updates still apply through `Runtime`, while ABI rejections now go through
+  the structured `HotReloadReport` renderer so the CLI shows the unchanged
+  version, rejection code, target, reason, and repair hint instead of a debug
+  dump.
 
 ## Next
 
