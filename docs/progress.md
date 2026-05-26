@@ -1823,6 +1823,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   permissioned, read-only type attribute checks without copying or scanning the
   full attribute map; analysis facts expose the new helpers without script
   generics.
+- Added M13 `string.split_lines()` for gameplay log and diagnostic text
+  processing. It returns deterministic script arrays in inline and managed-heap
+  execution, handles LF and CRLF through the focused string stdlib module, and
+  exposes non-generic analysis/completion facts.
 
 ## Next
 

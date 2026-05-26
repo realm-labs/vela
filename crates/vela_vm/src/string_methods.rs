@@ -223,6 +223,21 @@ pub(crate) fn split(
     ))
 }
 
+pub(crate) fn split_lines(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("split_lines", args)?;
+    let value = string_value(receiver, heap, "method split_lines")?;
+    Ok(Value::Array(
+        value
+            .lines()
+            .map(|line| Value::String(line.to_owned()))
+            .collect(),
+    ))
+}
+
 pub(crate) fn parse_int(
     receiver: &Value,
     args: &[Value],
@@ -664,6 +679,52 @@ fn main() {
                 operation: "method strip_prefix"
             }
         );
+    }
+
+    #[test]
+    fn string_split_lines_returns_line_array() {
+        let source = r#"
+fn main() {
+    let lines = "quest\n\nreward\r\ndone\n".split_lines();
+    if lines.len() == 4
+        && lines[0] == "quest"
+        && lines[1] == ""
+        && lines[2] == "reward"
+        && lines[3] == "done"
+    {
+        return lines[2];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string split_lines source should compile");
+
+        let result = Vm::new().run(&code).expect("string split_lines should run");
+        assert_eq!(result, Value::String("reward".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_split_lines() {
+        let source = r#"
+fn main() {
+    let log = "start\napply\ncommit";
+    let lines = log.split_lines();
+    if lines.len() == 3 && lines[1] == "apply" {
+        return lines[2];
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string split_lines source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string split_lines should run");
+        assert_eq!(result, Value::String("commit".to_owned()));
+        assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
     #[test]

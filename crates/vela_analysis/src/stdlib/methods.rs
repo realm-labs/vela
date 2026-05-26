@@ -92,6 +92,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "repeat",
     "slice",
     "split",
+    "split_lines",
     "parse_int",
     "parse_float",
     "parse_bool",
@@ -573,6 +574,11 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             StdlibMethodFact::new(receiver, "split", TypeFact::array(TypeFact::String))
                 .with_params(vec![TypeFact::String]),
         ),
+        "split_lines" => Some(StdlibMethodFact::new(
+            receiver,
+            "split_lines",
+            TypeFact::array(TypeFact::String),
+        )),
         "parse_int" => Some(StdlibMethodFact::new(
             receiver,
             "parse_int",
