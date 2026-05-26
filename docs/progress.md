@@ -1832,6 +1832,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   copied `Reflect*` records such as field metadata, so scripts can use the same
   read-only helper surface for type, field, method, trait, variant, module, and
   function descriptors without mutating runtime schema structure.
+- Split copied `Reflect*` metadata-record helper logic into a focused
+  reflection module, keeping member queries responsible for dispatch while the
+  metadata-record module owns copied descriptor `attrs`/`docs` extraction.
 
 ## Next
 

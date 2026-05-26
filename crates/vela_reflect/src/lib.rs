@@ -6,6 +6,7 @@ mod error;
 mod error_diagnostics;
 mod members;
 mod metadata;
+mod metadata_records;
 mod modules;
 mod permissions;
 mod registry;

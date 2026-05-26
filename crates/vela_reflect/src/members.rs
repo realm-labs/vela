@@ -7,7 +7,7 @@ use crate::{
     ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
     candidates::{candidate_names, ranked_candidates},
     metadata::{attrs_value, docs_value, span_value},
-    type_of,
+    metadata_records, type_of,
 };
 
 pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -30,9 +30,9 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
 pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(attrs_value(&desc.attrs))),
-        Err(error) => {
-            metadata_attrs(target)?.map_or(Err(error), |attrs| Ok(ReflectValue::Host(attrs)))
-        }
+        Err(error) => metadata_records::attrs(target)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
     }
 }
 
@@ -47,25 +47,25 @@ pub fn attr(
                 .get(name)
                 .map_or(HostValue::Null, |value| HostValue::String(value.to_owned())),
         )),
-        Err(error) => {
-            metadata_attr(target, name)?.map_or(Err(error), |attr| Ok(ReflectValue::Host(attr)))
-        }
+        Err(error) => metadata_records::attr(target, name)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
     }
 }
 
 pub fn has_attr(registry: &TypeRegistry, target: &ReflectValue, name: &str) -> ReflectResult<bool> {
     match target_type(registry, target) {
         Ok(desc) => Ok(desc.attrs.get(name).is_some()),
-        Err(error) => metadata_has_attr(target, name)?.ok_or(error),
+        Err(error) => metadata_records::has_attr(target, name)?.ok_or(error),
     }
 }
 
 pub fn docs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(docs_value(desc.docs.as_deref()))),
-        Err(error) => {
-            metadata_docs(target)?.map_or(Err(error), |docs| Ok(ReflectValue::Host(docs)))
-        }
+        Err(error) => metadata_records::docs(target)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
     }
 }
 
@@ -447,94 +447,6 @@ fn target_type<'a>(
         ReflectValue::ScriptRecord { .. } | ReflectValue::ScriptEnum { .. } => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
-    }
-}
-
-fn metadata_attrs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    let Some(attrs) = metadata_field(target, "attrs") else {
-        return Ok(None);
-    };
-    attrs_to_host_map(attrs).map(Some)
-}
-
-fn metadata_attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<HostValue>> {
-    let Some(HostValue::Map(attrs)) = metadata_attrs(target)? else {
-        return Ok(None);
-    };
-    Ok(Some(attrs.get(name).cloned().unwrap_or(HostValue::Null)))
-}
-
-fn metadata_has_attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<bool>> {
-    let Some(HostValue::Map(attrs)) = metadata_attrs(target)? else {
-        return Ok(None);
-    };
-    Ok(Some(attrs.contains_key(name)))
-}
-
-fn metadata_docs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    let Some(docs) = metadata_field(target, "docs") else {
-        return Ok(None);
-    };
-    match docs {
-        MetadataField::Host(HostValue::Null | HostValue::String(_))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null | HostValue::String(_))) => {
-            Ok(Some(metadata_host_value(docs)?))
-        }
-        _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-    }
-}
-
-enum MetadataField<'a> {
-    Host(&'a HostValue),
-    Reflect(&'a ReflectValue),
-}
-
-fn metadata_field<'a>(target: &'a ReflectValue, name: &str) -> Option<MetadataField<'a>> {
-    match target {
-        ReflectValue::Host(HostValue::Record { type_name, fields })
-            if is_reflect_metadata_record(type_name) =>
-        {
-            fields.get(name).map(MetadataField::Host)
-        }
-        ReflectValue::ScriptRecord { type_name, fields }
-            if is_reflect_metadata_record(type_name) =>
-        {
-            fields.get(name).map(MetadataField::Reflect)
-        }
-        _ => None,
-    }
-}
-
-fn is_reflect_metadata_record(type_name: &str) -> bool {
-    type_name.starts_with("Reflect")
-}
-
-fn attrs_to_host_map(value: MetadataField<'_>) -> ReflectResult<HostValue> {
-    match value {
-        MetadataField::Host(HostValue::Map(attrs)) => Ok(HostValue::Map(attrs.clone())),
-        MetadataField::Reflect(ReflectValue::Host(HostValue::Map(attrs))) => {
-            Ok(HostValue::Map(attrs.clone()))
-        }
-        MetadataField::Reflect(ReflectValue::Record(attrs)) => attrs
-            .iter()
-            .map(|(key, value)| {
-                let ReflectValue::Host(HostValue::String(value)) = value else {
-                    return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
-                };
-                Ok((key.clone(), HostValue::String(value.clone())))
-            })
-            .collect::<ReflectResult<BTreeMap<_, _>>>()
-            .map(HostValue::Map),
-        _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-    }
-}
-
-fn metadata_host_value(value: MetadataField<'_>) -> ReflectResult<HostValue> {
-    match value {
-        MetadataField::Host(value) | MetadataField::Reflect(ReflectValue::Host(value)) => {
-            Ok(value.clone())
-        }
-        _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
 
