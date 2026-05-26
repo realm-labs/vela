@@ -4862,7 +4862,13 @@ fn main(player) {
         && field.name == "level"
         && field.type == "int"
         && field.docs == "Current player level."
+        && reflect.docs(field) == "Current player level."
         && option.unwrap_or(field.attrs.get("unit"), "") == "level"
+        && option.unwrap_or(reflect.attrs(field).get("unit"), "") == "level"
+        && reflect.attr(field, "unit") == "level"
+        && reflect.has_attr(field, "unit")
+        && reflect.attr(field, "missing") == null
+        && !reflect.has_attr(field, "missing")
         && field.writable {
         return 1;
     }

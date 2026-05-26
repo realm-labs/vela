@@ -1827,6 +1827,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   processing. It returns deterministic script arrays in inline and managed-heap
   execution, handles LF and CRLF through the focused string stdlib module, and
   exposes non-generic analysis/completion facts.
+- Extended M12 copied metadata attribute/docs helpers. `reflect.attrs`,
+  `reflect.attr`, `reflect.has_attr`, and `reflect.docs` now also accept
+  copied `Reflect*` records such as field metadata, so scripts can use the same
+  read-only helper surface for type, field, method, trait, variant, module, and
+  function descriptors without mutating runtime schema structure.
 
 ## Next
 

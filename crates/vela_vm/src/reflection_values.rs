@@ -47,8 +47,10 @@ pub(crate) fn value_to_reflect(
                 fields: values,
             })
         }
-        Value::Array(_)
-        | Value::Set(_)
+        Value::Array(_) => Ok(reflect::ReflectValue::Host(value_to_host(
+            value, operation, None,
+        )?)),
+        Value::Set(_)
         | Value::Range(_)
         | Value::Closure(_)
         | Value::PathProxy(_)
