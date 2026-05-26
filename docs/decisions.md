@@ -7105,3 +7105,31 @@ Consequences:
 - Hosts can add new capabilities without breaking existing callers.
 - Trait implementation ABI remains part of schema compatibility while trait
   descriptor ABI continues to validate standalone trait definitions.
+
+## 2026-05-26: Context Natives Reserve Budgets Before Patching
+
+Status: Accepted
+
+Context:
+M14 context host natives receive a `NativeCallContext` with access to the
+engine, adapter, `PatchTx`, permissions, and execution budget. They could
+already charge instruction budget before mutating host state, but memory budget
+and patch budget checks were only available to VM internals. A context native
+that records patches directly needs an explicit way to fail before adding a
+patch when the call budget is exhausted.
+
+Decision:
+Expose `ExecutionBudget::charge_memory_bytes`,
+`ExecutionBudget::check_patch_count`, and `ExecutionBudget::reserve_patch` as
+public budget APIs, and add `NativeCallContext::charge_memory_bytes` plus
+`NativeCallContext::reserve_patch`. Context natives can now charge native-side
+copied allocations and reserve PatchTx capacity before recording host
+mutations.
+
+Consequences:
+- Context host natives can enforce memory and patch budgets before mutating
+  `PatchTx`.
+- Scripts still never receive Rust `&mut` references; mutation remains through
+  HostRef/HostPath/PatchTx.
+- The API is opt-in for native authors and does not change existing automatic
+  VM budget checks after host native calls.

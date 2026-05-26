@@ -1979,6 +1979,130 @@ fn main(player) {
 }
 
 #[test]
+fn context_host_native_can_charge_memory_budget_before_patching() {
+    let engine = Engine::builder()
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game.memory_checked_set_level", NativeFunctionId::new(25))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            |args, ctx| {
+                ctx.charge_memory_bytes(128)?;
+                let player = args.required::<HostRef>(0)?;
+                let level = args.required::<i64>(1)?;
+                ctx.tx().set_path(
+                    HostPath::new(player).field(FieldId::new(1)),
+                    HostValue::Int(level),
+                    None,
+                )?;
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    game.memory_checked_set_level(player, 13);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = crate::Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    let error = runtime
+        .call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::new(u64::MAX, 64, usize::MAX, usize::MAX),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect_err("native memory budget charge should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::MemoryBytes,
+            limit: 64
+        }
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn context_host_native_can_reserve_patch_budget_before_patching() {
+    let engine = Engine::builder()
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game.patch_checked_set_level", NativeFunctionId::new(26))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            |args, ctx| {
+                ctx.reserve_patch()?;
+                let player = args.required::<HostRef>(0)?;
+                let level = args.required::<i64>(1)?;
+                ctx.tx().set_path(
+                    HostPath::new(player).field(FieldId::new(1)),
+                    HostValue::Int(level),
+                    None,
+                )?;
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    game.patch_checked_set_level(player, 13);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = crate::Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    let error = runtime
+        .call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect_err("native patch budget reservation should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Patches,
+            limit: 0
+        }
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn args_macro_converts_rust_values_and_host_refs() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
     let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(9)));

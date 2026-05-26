@@ -75,7 +75,7 @@ impl ExecutionBudget {
         Ok(())
     }
 
-    pub(crate) fn charge_memory(&mut self, bytes: usize) -> VmResult<()> {
+    pub fn charge_memory_bytes(&mut self, bytes: usize) -> VmResult<()> {
         let next = self.memory_bytes_allocated.saturating_add(bytes);
         if next > self.memory_limit_bytes {
             return Err(VmError::new(VmErrorKind::BudgetExceeded {
@@ -85,6 +85,10 @@ impl ExecutionBudget {
         }
         self.memory_bytes_allocated = next;
         Ok(())
+    }
+
+    pub(crate) fn charge_memory(&mut self, bytes: usize) -> VmResult<()> {
+        self.charge_memory_bytes(bytes)
     }
 
     pub(crate) fn release_memory(&mut self, bytes: usize) {
@@ -106,7 +110,7 @@ impl ExecutionBudget {
         self.current_call_depth = self.current_call_depth.saturating_sub(1);
     }
 
-    pub(crate) fn check_patch_count(&self, patch_count: usize) -> VmResult<()> {
+    pub fn check_patch_count(&self, patch_count: usize) -> VmResult<()> {
         if patch_count > self.max_patches {
             Err(VmError::new(VmErrorKind::BudgetExceeded {
                 budget: ExecutionBudgetKind::Patches,
@@ -117,7 +121,7 @@ impl ExecutionBudget {
         }
     }
 
-    pub(crate) fn reserve_patch(&self, current_patch_count: usize) -> VmResult<()> {
+    pub fn reserve_patch(&self, current_patch_count: usize) -> VmResult<()> {
         self.check_patch_count(current_patch_count.saturating_add(1))
     }
 }

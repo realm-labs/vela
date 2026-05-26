@@ -1723,6 +1723,10 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   struct/enum/trait/impl metadata, and checks analysis facts for schema
   declarations plus typed locals without duplicating inline fixture programs in
   crate-local tests.
+- Extended M14 `NativeCallContext` budget controls. Context host natives can
+  now charge native-side memory bytes and reserve PatchTx patch capacity before
+  recording host mutations, with tests proving instruction, memory, and patch
+  budget failures leave `PatchTx` unchanged.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new

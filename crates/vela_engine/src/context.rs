@@ -52,6 +52,20 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         Ok(())
     }
 
+    pub fn charge_memory_bytes(&mut self, bytes: usize) -> VmResult<()> {
+        if let Some(budget) = self.budget.as_deref_mut() {
+            budget.charge_memory_bytes(bytes)?;
+        }
+        Ok(())
+    }
+
+    pub fn reserve_patch(&self) -> VmResult<()> {
+        if let Some(budget) = self.budget.as_deref() {
+            budget.reserve_patch(self.host.tx.patches().len())?;
+        }
+        Ok(())
+    }
+
     #[must_use]
     pub fn budget(&self) -> Option<&ExecutionBudget> {
         self.budget.as_deref()
