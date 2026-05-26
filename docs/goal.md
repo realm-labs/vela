@@ -14,7 +14,11 @@ The language should provide:
 4. Hot Reload First semantics: hot reload replaces function-level or module-level code objects. Existing call frames continue on old code, and new calls enter new code.
 5. Controlled reflection: scripts can inspect types, fields, methods, variants, traits, modules, and functions, and can perform controlled dynamic reads, writes, and calls. Runtime schema mutation is not allowed.
 6. Embeddability: Rust hosts can register types, native functions, permissions, execution budgets, state adapters, and hot reload policies.
-7. Practical performance: the MVP should focus on a high-quality bytecode VM, stable IDs, field specialization, inline-cache-ready dispatch, native standard library functions, and GC pacing. JIT is not part of the MVP.
+7. Practical performance: the MVP should keep the bytecode VM, stable IDs,
+   field slots, native standard library functions, and GC boundaries ready for
+   optimization. After the MVP, the non-JIT interpreter should target
+   Lua-comparable performance on representative gameplay workloads before any
+   optional JIT work.
 
 ## Non-Goals
 
@@ -60,6 +64,12 @@ The following goal can be used as a persistent implementation target:
 ```text
 /goal Treat docs/goal.md as the authoritative product roadmap, docs/architecture.md as the technical contract, and docs/progress.md as the current implementation status. Continue implementing Vela from the completed M0-M6 runnable prototype into a complete Hot Reload First dynamic scripting language for game server logic. Complete means the full planned language surface in docs/grammar.ebnf can be resolved, analyzed, compiled, and executed; script heap values are managed by a budgeted non-moving GC; scripts mutate host state only through HostRef, HostPath, PathProxy, and PatchTx; TypeRegistry and reflection cover types, modules, functions, fields, methods, traits, variants, attributes, and permissions; Rust hosts can register schemas and native functions through a stable Engine API and derive macros; hot reload performs function, schema, and effect ABI checks at safe points; the standard library covers collections, Option/Result-style propagation, math, time/context, and gameplay helpers; and examples/game_server_demo proves level-up, monster-kill rewards, quest progress, reflection, and hot reload workflows. Maintain these constraints throughout implementation: the script language has no generics; scripts never hold real Rust &mut references; host mutation must enter PatchTx; reflection can only query and perform controlled reads/writes/calls and cannot monkey patch type structure; the first complete interpreter does not implement JIT, script async/coroutines, moving GC, or a full LSP. Every milestone must be runnable, tested, documented in docs/progress.md, and validated by the relevant subset of cargo fmt --all -- --check, cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace, demo script runs, and benchmark/fuzz targets once those exist. Commit appropriate verified checkpoints using Conventional Commit messages.
 ```
+
+Post-MVP performance work is a first-class roadmap track. The initial release
+should not depend on JIT, but the optimized interpreter should eventually be
+measured against Lua 5.x on equivalent gameplay-style workloads. LuaJIT and
+Node.js remain useful upper-reference points for hot scalar loops and future
+JIT decisions, not the baseline required for the MVP.
 
 ## Milestones
 
@@ -393,118 +403,172 @@ hot reload demo proves old frames and new calls observe correct code versions
 conformance suite guards every supported grammar feature
 ```
 
-### M18: Performance Foundation And Release Hardening
+### M18: Performance Measurement And Baselines
 
-Goal: the interpreter has measured performance, first-round optimizations, and
-clear release-quality behavior.
+Goal: make script performance measurable, reproducible, and comparable before
+large optimization work begins.
 
 Scope:
 
 ```text
 criterion benchmark suite
-field access benchmark
-host patch benchmark
-array map/filter benchmark
-hot reload benchmark
+official microbench and gameplay-style benchmark cases
+external comparison harness for Lua 5.x, LuaJIT, Rhai, and JavaScript when available
+VM scalar dispatch benchmark
+managed heap allocation and materialization benchmark
+array/map/set/string stdlib benchmarks
+record, enum, Option, and Result benchmarks
+HostRef/HostPath/PatchTx benchmark
+hot reload safe-point and ABI benchmark
 GC pacing benchmark
-shape and field slot optimization
-inline cache prototype for fields and method dispatch
-specialized host field read/write fast paths
-peephole optimization
-bytecode cache
-runtime configuration docs
-public API docs and examples
+profile capture notes in docs/performance.md
 ```
 
 Acceptance:
 
 ```text
-benchmarks run reliably and compare before/after optimization reports
-optimized paths preserve all conformance behavior
-GC pacing keeps configured pause budgets in benchmark scenarios
-public API docs compile
+benchmarks run in release mode with stable parameters
+benchmark output records environment, profile, runtime options, and checksums
+Vela internal baselines separate compile/load time from repeated function calls
+external comparisons are labeled as rough local measurements
+performance docs identify the top interpreter bottlenecks before optimization
+```
+
+### M19: Non-JIT Interpreter And Heap Optimization
+
+Goal: improve the bytecode interpreter enough that non-JIT Vela can target
+Lua-comparable performance on representative gameplay workloads.
+
+Scope:
+
+```text
+VM dispatch tightening and operand decode cleanup
+fast paths for int, float, bool, and string operations
+Value layout profiling before low-level representation changes
+shape + slot record and enum access
+heap allocation reduction for temporary arrays, records, strings, and callbacks
+managed heap materialization reduction at native and stdlib boundaries
+native stdlib fast paths for array/map/set/string/Option/Result methods
+optimized for-in loops and iterator state
+closure allocation caching where semantics allow it
+GC threshold and safe-point pacing improvements
+peephole optimization and bytecode cache
+```
+
+Acceptance:
+
+```text
+optimized interpreter preserves all conformance and host-boundary behavior
+benchmarks show before/after changes for each accepted optimization
+non-JIT gameplay-style benchmark group is within the documented Lua 5.x target band
+slow-path diagnostics remain source-spanned and debuggable
+no optimization bypasses ExecutionBudget, PatchTx, reflection policy, or GC roots
+```
+
+### M20: Inline Cache And Specialization
+
+Goal: specialize common dynamic operations while preserving VM semantics and
+safe fallback paths.
+
+Scope:
+
+```text
+inline cache for script record fields
+inline cache for host field reads and writes
+inline cache for method dispatch and stdlib value methods
+shape, schema, MethodId, FieldId, and ProgramVersion guards
+monomorphic and small polymorphic cache states
+profile counters for hot functions and hot bytecode offsets
+cache invalidation on hot reload and schema ABI changes
+specialized bytecode or side-table fast paths for stable hot operations
+```
+
+Acceptance:
+
+```text
+cache misses and guard failures fall back to the generic VM path
+cache state is owned by ProgramVersion or another versioned runtime artifact
+hot reload cannot expose stale FieldId, MethodId, shape, or function targets
+benchmark reports separate interpreter-only and cache-enabled results
+```
+
+### M21: Optional Cranelift Baseline JIT
+
+Goal: evaluate native code generation only after the optimized interpreter and
+inline-cache work establish clear remaining bottlenecks.
+
+Scope:
+
+```text
+Cranelift baseline JIT for a restricted hot-function subset
+guards for dynamic value tags, shapes, schemas, and method targets
+deoptimization or side exits back to the bytecode VM
+compiled frame root reporting for GC
+ExecutionBudget checks in compiled code or mandatory side exits
+PatchTx, permissions, reflection, and host calls routed through existing helpers
+ProgramVersion ownership of compiled code and invalidation metadata
+JIT disabled-by-default runtime option
+```
+
+Acceptance:
+
+```text
+JIT is optional and never required for correctness
+unsupported functions continue through the bytecode VM
+compiled code and VM code produce identical results on conformance fixtures
+hot reload drops or invalidates compiled artifacts at safe points
+budget, GC, and PatchTx invariants hold under compiled execution
+```
+
+### M22: Performance Hardening And Release Targets
+
+Goal: turn the measured and optimized runtime into a release-quality scripting
+engine with documented performance expectations.
+
+Scope:
+
+```text
+performance regression thresholds for key benchmarks
+runtime configuration docs for budgets, GC, heap mode, and caches
+public API docs and examples
+release validation command set
+benchmark result archive and trend notes
+clear guidance for Lua-comparable, LuaJIT-comparable, and host-heavy workloads
+```
+
+Acceptance:
+
+```text
 final validation passes fmt, clippy, tests, demos, and benchmarks
+public API docs compile
+performance docs state achieved target bands and known gaps
+hosts can choose deterministic interpreter-only execution without enabling JIT
 ```
 
 ## Remaining Task List
 
-1. Implement `ExecutionBudget` and charge the current VM dispatch loop.
-2. Move script-owned compound values behind a non-moving heap and `GcRef`.
-3. Add mark-sweep GC roots for VM frames, native calls, and temporary values.
-4. Create `vela_hir` for module resolution, bindings, HIR, and stable node IDs.
-5. Move bytecode lowering from syntax AST to HIR.
-6. Complete bytecode and VM support for loops, indexes, lambdas, closures, and
-   full match patterns.
-7. Replace named-map records/enums with shape, slot, and stable schema metadata.
-8. Implement nested HostPath/PathProxy operations and rollback-safe patch apply.
-9. Expand TypeRegistry and reflection permissions to the full metadata surface.
-10. Build `vela_std` with collections, Option/Result, `?`, math, and context APIs.
-11. Add `Engine`, `Runtime`, `CallOptions`, native descriptors, and permissioned
-    native dispatch.
-12. Add `vela_macros` for host schema and method registration.
-13. Strengthen hot reload ABI/schema/effect checks and safe-point integration.
-14. Add diagnostic rendering, call stacks, TypeFacts, and tooling fixtures.
-15. Expand `examples/game_server_demo` into the final acceptance demo suite.
-16. Add benchmarks, inline caches, peephole optimization, and bytecode caching.
+The current implementation status is tracked in [progress.md](progress.md).
+This list keeps the remaining roadmap shape, not a completed-work ledger.
 
-## Roadmap Maintenance Files
-
-`docs/progress.md`:
-
-````md
-# Progress
-
-## Current Milestone
-
-M7 - Runtime safety, budgets, and GC
-
-## Completed
-
-- M0-M6 runnable prototype loop complete.
-
-## Next
-
-- [ ] Implement `ExecutionBudget`
-- [ ] Add GC heap and roots
-- [ ] Validate with focused runtime tests
-
-## Validation
-
-```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-```
-````
-
-`docs/decisions.md`:
-
-```md
-# Architecture Decisions
-
-## ADR-0001: Host mutation uses PatchTx, not Rust &mut
-
-Status: Accepted
-
-Context:
-Scripts need to mutate Rust host state freely, but Rust borrowing rules cannot be exposed directly to a dynamic VM.
-
-Decision:
-Scripts receive HostRef and PathProxy. Mutations produce PatchTx entries. The host applies patches at safe points.
-
-Consequences:
-- Multiple script aliases are allowed.
-- Runtime can batch, validate, rollback, and log changes.
-- Direct Rust mutation is delayed until apply.
-```
-
-`docs/blocked.md`:
-
-```md
-# Blocked Items
-
-No blockers currently.
-```
+1. Finish M12 reflection access/reporting coverage and permission edge cases.
+2. Finish M13 standard library convenience coverage, including remaining
+   collection, string, Option/Result, math, context, and gameplay helpers.
+3. Complete M14 Engine embedding APIs, native descriptors, and host macros.
+4. Complete M15 hot reload safe-point, ABI, schema, effect, and source
+   workflows.
+5. Add M16 diagnostic rendering, call stacks, TypeFacts, and tooling fixtures.
+6. Expand M17 game-server demo and conformance fixtures across parser,
+   compiler, VM, host, reflection, stdlib, and hot reload behavior.
+7. Establish M18 official performance baselines and external comparison
+   harnesses.
+8. Optimize the M19 non-JIT interpreter and heap path toward Lua-comparable
+   gameplay workload performance.
+9. Add M20 inline caches and specialization for fields, methods, stdlib calls,
+   and hot bytecode offsets.
+10. Evaluate M21 optional Cranelift JIT only after non-JIT targets and
+    conformance are stable.
+11. Finish M22 release hardening, public docs, validation gates, and
+    performance target reporting.
 
 ## Key Risks
 
@@ -559,14 +623,17 @@ reflect.set writes values only; it never changes schema.
 
 ### Premature Performance Work
 
-Risk: early NaN boxing, JIT, or moving GC makes the system hard to maintain.
+Risk: early NaN boxing, JIT, or moving GC makes the system hard to maintain, or
+unmeasured micro-optimizations obscure the path to Lua-comparable non-JIT
+gameplay performance.
 
 Control:
 
 ```text
 Close the interpreter loop first.
 Optimize only after benchmarks exist.
-Prioritize FieldId, shapes, inline caches, and native standard library functions.
+Prioritize FieldId, shapes, native standard library fast paths, heap reductions,
+and inline caches before considering JIT.
 ```
 
 ## Final Acceptance Demo

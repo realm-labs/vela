@@ -7158,3 +7158,34 @@ Consequences:
   compatibility rejections.
 - Path discovery, reload ABI construction, and public engine methods remain in
   separate modules instead of accumulating in one large file.
+
+## 2026-05-26: Performance Optimizations Preserve VM Semantics
+
+Status: Accepted
+
+Context:
+Performance is a major post-MVP goal, and Vela should eventually reach
+Lua-comparable non-JIT performance on representative gameplay workloads.
+However, Vela's core value comes from safe host patching, budgets, reflection
+policy, GC ownership, diagnostics, and hot reload. Optimizations that bypass
+those boundaries would make benchmark results misleading and weaken the product
+model.
+
+Decision:
+The optimized interpreter, inline caches, specialization, and any future
+Cranelift JIT must preserve bytecode VM semantics. Fast paths require guarded
+assumptions and VM-equivalent slow paths. Version-dependent executable state is
+owned by `ProgramVersion` or another versioned runtime artifact. Host mutation
+continues through `HostRef`, `HostPath`, `PathProxy`, `PatchTx`, and
+`ScriptStateAdapter`; optimized paths may call shared helpers but must not
+write Rust host state directly.
+
+Consequences:
+- Performance milestones can start with measurement and interpreter work before
+  optional JIT exploration.
+- Inline caches and compiled code are safe to invalidate during hot reload.
+- Execution budgets, memory budgets, permissions, reflection policy, GC roots,
+  and source-spanned diagnostics remain part of optimized execution.
+- The first non-JIT target is Lua 5.x comparable gameplay workload performance,
+  while LuaJIT and Node.js remain upper-reference points for later JIT
+  decisions.

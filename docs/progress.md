@@ -1,6 +1,6 @@
 # Progress
 
-## Current Milestone
+## Current Focus
 
 M0-M11 runnable prototype, stable script metadata, broad executable language
 surface, and host bridge foundations are complete enough to continue
@@ -8,6 +8,30 @@ reflection, permissions, standard-library expansion, focused Engine embedding
 slices, and hot-reload ABI/source workflows. Current milestone: M12/M13
 reflection and standard-library completion, with targeted M14/M15 Engine API
 work as it unblocks embedding and safe-point reload workflows.
+
+Performance work is now documented as an explicit post-MVP track. The target is
+an optimized non-JIT interpreter that can be compared against Lua 5.x on
+representative gameplay workloads; LuaJIT, Node.js, and Cranelift JIT remain
+post-MVP reference or optional tracks, not MVP requirements.
+
+## Milestone Status
+
+| Milestone | Status | Notes |
+|---|---|---|
+| M0-M6 | Complete | Runnable source -> bytecode -> VM -> host patch -> hot reload prototype loop. |
+| M7 | Complete | Execution budgets, managed heap path, GC roots, and managed heap entrypoints are in place. |
+| M8 | Complete enough | HIR, module graph, imports, declarations, binding maps, and compiler integration are active. |
+| M9 | Complete enough | Broad executable language surface works; conformance continues to catch edge cases. |
+| M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist, with optimization still pending. |
+| M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx, overlays, and rollback-safe host boundaries are established. |
+| M12 | In progress | Reflection metadata surface and permission-aware queries are still being polished. |
+| M13 | In progress | Standard library helpers are broad but still need final gameplay, string, math, context, and propagation polish. |
+| M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices; embedding still needs completion. |
+| M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist; full production safe-point workflow remains. |
+| M16 | Not started | Diagnostics, call stacks, TypeFacts polish, and tooling fixtures remain. |
+| M17 | Partial | First conformance fixture and integration harnesses exist; game-server demo still needs expansion. |
+| M18 | Not started | Official performance baselines are not in tracked benchmark form yet. |
+| M19-M22 | Not started | Non-JIT optimization, inline caches, optional JIT evaluation, and release performance hardening are post-MVP work. |
 
 ## Completed
 
@@ -1769,6 +1793,12 @@ work as it unblocks embedding and safe-point reload workflows.
 
 ## Next
 
-- Continue M12/M13 with remaining reflection access/reporting polish and
-  standard-library gameplay conveniences, plus M14 native context and method
-  macro slices.
+- Continue M12/M13 with remaining reflection access/reporting polish,
+  standard-library gameplay conveniences, and string/math/context gaps.
+- Continue targeted M14/M15 slices only where they unblock embedding and
+  safe-point hot reload workflows.
+- Keep M18 performance work limited to measurement scaffolding until M12-M17
+  conformance and demo coverage are stable enough for optimization decisions.
+- Use [performance.md](performance.md) as the performance-track entry point so
+  temporary local measurements do not get mistaken for official benchmark
+  results.

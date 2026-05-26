@@ -84,6 +84,7 @@ vela/
     progress.md
     decisions.md
     blocked.md
+    performance.md
     reflection.md
     hot_reload.md
     host_bridge.md
@@ -1868,43 +1869,108 @@ The parser may use context to disambiguate blocks from map literals, but LSP
 completion should prefer record fields only after a known type path followed by
 `{` or when expected type information exists.
 
-## Performance Roadmap
+## Performance Architecture Contract
 
-First phase:
+Performance work must preserve the language and embedding contracts. The
+optimized interpreter, inline caches, specialization, and any future JIT are
+implementation choices behind the same VM semantics.
+
+Stable runtime facts:
 
 ```text
-compile-time FieldId / MethodId
-symbol interning
-register bytecode
-native standard library
-PatchTx batch commit
-shape + slot record access
+FieldId, MethodId, VariantId, FunctionId, TraitId, ShapeId, and TypeKey are stable handles
+bytecode offsets and source spans remain available for diagnostics and profiling
+ProgramVersion owns bytecode, registry snapshots, profile data, inline-cache state, and optional compiled code
+call frames expose registers and roots for GC, debugging, deoptimization, and hot reload lifetime tracking
+host mutation flows through HostRef, HostPath, PathProxy, PatchTx, and ScriptStateAdapter only
+```
+
+Optimization rules:
+
+```text
+every optimized path has a VM-equivalent slow path
+guards validate dynamic value tags, shapes, schemas, methods, fields, and ProgramVersion assumptions
+guard failure is a normal slow-path transition, not a correctness failure
+optimized code must charge or preserve ExecutionBudget behavior
+optimized code must report or preserve GC roots before allocation, calls, and safe points
+optimized code must not bypass PatchTx, reflection policy, permissions, or host access checks
+hot reload invalidates version-owned caches and compiled code at safe points
+dynamic type hints and TypeFacts guide optimization but are not correctness guarantees
+```
+
+The non-JIT performance target is intentionally part of the post-MVP roadmap:
+an optimized bytecode interpreter should aim for Lua 5.x comparable performance
+on representative gameplay workloads. LuaJIT and Node.js are useful reference
+ceilings for hot scalar loops and future JIT work, but they are not the first
+release target.
+
+## Performance Roadmap
+
+### Phase 1: Measurement And Baselines
+
+```text
+official microbenchmarks and gameplay-style benchmarks
+release-mode benchmark parameters and checksum validation
+VM scalar dispatch, function-call, heap, stdlib, record, string, and PatchTx cases
+external rough comparison harness for Lua 5.x, LuaJIT, Rhai, and JavaScript
+profile capture and bottleneck notes in docs/performance.md
+```
+
+The temporary comparison harness under `target/perf_compare_demo` is useful for
+local exploration, but official benchmarks should live in tracked benchmark or
+fixture paths once the benchmark shape is stable.
+
+### Phase 2: Non-JIT Optimized Interpreter
+
+```text
+dispatch loop tightening
+bytecode operand decode cleanup
+fast primitive arithmetic, comparison, and branch paths
+shape + slot record and enum access
+native stdlib fast paths for arrays, maps, sets, strings, Option, and Result
+managed heap allocation and materialization reduction
+optimized for-in and callback paths
+GC pacing and allocation thresholds
 simple peephole optimization
 bytecode cache
 ```
 
-Second phase:
+This is the main path toward Lua-comparable performance without JIT. The work
+should be benchmark-driven and must not make host patching, hot reload,
+reflection, or diagnostics less reliable.
+
+### Phase 3: Inline Cache And Specialization
 
 ```text
-inline cache for field access
-inline cache for method dispatch
-specialized host field read/write
-optimized for-in
-closure caching
-GC pacing
-small string optimization
+inline cache for script field access
+inline cache for host field read/write
+inline cache for method dispatch and stdlib value methods
+small polymorphic cache states
+profile counters for hot bytecode offsets
+specialized fast paths guarded by shape, schema, and ProgramVersion
+cache invalidation on schema ABI or hot reload changes
 ```
 
-Third phase:
+Inline caches are still interpreter technology. They should be version-owned,
+cheap to invalidate, and safe to disable for deterministic debugging or
+performance investigations.
+
+### Phase 4: Optional Cranelift JIT
 
 ```text
-profile-guided specialization
-internal typed arrays
-hot function specialization
-optional Cranelift JIT
+baseline native compilation for restricted hot functions
+tag, shape, schema, method, field, and version guards
+side exits or deoptimization back to the bytecode VM
+compiled frame root maps for GC
+budget checks in compiled code or side exits to checked VM helpers
+host calls routed through existing NativeCallContext and PatchTx helpers
+runtime option to disable JIT
 ```
 
-JIT is not part of the MVP.
+JIT is not part of the MVP, and it is not required to meet the non-JIT Lua
+comparison target. If added later, Cranelift should be introduced as an
+optional backend after interpreter correctness, conformance, and profiling data
+are already stable.
 
 ## Security And Sandbox
 
