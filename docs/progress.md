@@ -1711,6 +1711,13 @@ completion, with targeted M14 Engine API work as it unblocks embedding.
   source array, support numeric and string arrays in inline and managed-heap
   execution, reject mixed scalar domains, and expose non-generic
   analysis/completion facts.
+- Added the first M17 source fixture under
+  `tests/fixtures/conformance/core_language.lang` plus a focused VM integration
+  harness. The fixture compiles and executes through the public bytecode/VM
+  APIs while covering constants, typed structs/enums, trait self-method
+  dispatch, named/default arguments, collection higher-order methods,
+  loops with break/continue, match guards, block values, and Option/Result
+  propagation.
 - Strengthened M15 function descriptor ABI checks. Reflected/native
   `FunctionDesc` parameters now enter `FunctionAbi`, hot reload rejects
   deleted parameters, changed parameter names/order/type/default ABI, and new
