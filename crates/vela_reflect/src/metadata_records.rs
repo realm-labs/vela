@@ -17,6 +17,19 @@ pub(crate) fn name(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     }
 }
 
+pub(crate) fn id(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    let Some(id) = field(target, "id") else {
+        return Ok(None);
+    };
+    match id {
+        MetadataField::Host(HostValue::Int(_))
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Int(_))) => {
+            Ok(Some(host_value(id)?))
+        }
+        _ => Err(invalid_target()),
+    }
+}
+
 pub(crate) fn kind(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     let Some(type_name) = record_type_name(target) else {
         return Ok(None);

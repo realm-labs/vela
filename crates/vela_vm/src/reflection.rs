@@ -143,6 +143,21 @@ impl Vm {
             value_from_reflect(reflect::name_metadata(&name_registry, &target)?)
         });
 
+        let id_registry = Arc::clone(&registry);
+        let id_policy = policy.clone();
+        let id_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.id", move |args, _host| {
+            check_reflect_policy(
+                &id_policy,
+                &id_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.id", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.id")?;
+            check_host_ref_inspection(&id_policy, &target)?;
+            value_from_reflect(reflect::id_metadata(&id_registry, &target)?)
+        });
+
         let kind_registry = Arc::clone(&registry);
         let kind_policy = policy.clone();
         let kind_budget = Arc::clone(&lookup_budget);

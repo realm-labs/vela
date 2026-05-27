@@ -4847,6 +4847,7 @@ fn main(player) {
     let field = reflect.field(player, "level");
     let all_fields = reflect.fields();
     if reflect.name(player) == "Player"
+        && reflect.id(player) == 100
         && reflect.kind(player) == "host"
         && reflect.docs(player) == "A player host object."
         && option.unwrap_or(reflect.attrs(player).get("domain"), "") == "gameplay"
@@ -4861,6 +4862,7 @@ fn main(player) {
         && all_fields[1].name == "level"
         && field.name == "level"
         && reflect.name(field) == "level"
+        && reflect.id(field) == 2
         && reflect.kind(field) == "field"
         && field.type == "int"
         && field.docs == "Current player level."
@@ -4964,6 +4966,7 @@ fn main() {
         && functions[0].name == "game.reward.grant"
         && functions[0].id == function.id
         && reflect.name(function) == "game.reward.grant"
+        && reflect.id(function) == function.id
         && reflect.kind(function) == "function"
         && function.id > 0
         && reflect.docs(function) == "Grant reward."

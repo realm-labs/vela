@@ -17,6 +17,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         ),
         fact("reflect.has_type", vec![TypeFact::String], TypeFact::Bool),
         fact("reflect.name", vec![TypeFact::Any], TypeFact::String),
+        fact("reflect.id", vec![TypeFact::Any], TypeFact::Int),
         fact("reflect.kind", vec![TypeFact::Any], TypeFact::String),
         fact("reflect.attrs", vec![TypeFact::Any], attrs()),
         fact(
@@ -187,6 +188,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         "reflect.type_of" if args.len() == 1 => maybe_string(),
         "reflect.type_info" if args.len() == 1 => record("ReflectType"),
         "reflect.name" | "reflect.kind" | "reflect.variant" if args.len() == 1 => TypeFact::String,
+        "reflect.id" if args.len() == 1 => TypeFact::Int,
         "reflect.attrs" if args.len() == 1 => attrs(),
         "reflect.attr" if args.len() == 2 => maybe_string(),
         "reflect.has_attr" if args.len() == 2 => TypeFact::Bool,
@@ -262,6 +264,7 @@ fn canonical_name(name: &str) -> Option<&'static str> {
         "reflect.type_info" => Some("reflect.type_info"),
         "reflect.has_type" => Some("reflect.has_type"),
         "reflect.name" => Some("reflect.name"),
+        "reflect.id" => Some("reflect.id"),
         "reflect.kind" => Some("reflect.kind"),
         "reflect.attrs" => Some("reflect.attrs"),
         "reflect.attr" => Some("reflect.attr"),

@@ -1864,6 +1864,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   function metadata lists now preserve the registry's `FunctionId` alongside
   names, modules, signatures, effects, access metadata, attrs, docs, and source
   spans.
+- Added script-visible `reflect.id(value)` for runtime type targets and copied
+  metadata records that carry stable IDs. The helper mirrors the existing
+  read-only `reflect.name`/`reflect.kind` surface, works for host type targets
+  and copied field/function records, and has analysis facts as an integer
+  metadata query.
 
 ## Next
 

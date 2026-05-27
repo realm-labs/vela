@@ -19,6 +19,17 @@ pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
     }
 }
 
+pub fn id(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    match target_type(registry, target) {
+        Ok(desc) => Ok(ReflectValue::Host(HostValue::Int(i64::from(
+            desc.key.id.get(),
+        )))),
+        Err(error) => metadata_records::id(target)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
+    }
+}
+
 pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(HostValue::String(
