@@ -494,6 +494,10 @@ fn function_record(desc: &FunctionDesc) -> ReflectValue {
 
 fn function_record_host(desc: &FunctionDesc) -> HostValue {
     let mut fields = BTreeMap::new();
+    fields.insert(
+        "id".to_owned(),
+        HostValue::Int(i64::try_from(desc.id.get()).unwrap_or(i64::MAX)),
+    );
     fields.insert("name".to_owned(), HostValue::String(desc.name.clone()));
     fields.insert(
         "module".to_owned(),
@@ -800,6 +804,12 @@ fn helper() {
             function_list_item.get("name"),
             Some(&HostValue::String("game.reward.grant".into()))
         );
+        assert_eq!(
+            function_list_item.get("id"),
+            Some(&HostValue::Int(
+                i64::try_from(function_id.get()).unwrap_or(i64::MAX)
+            ))
+        );
 
         let ReflectValue::Host(HostValue::Record {
             type_name,
@@ -809,6 +819,12 @@ fn helper() {
             panic!("function metadata should be a record");
         };
         assert_eq!(type_name, "ReflectFunction");
+        assert_eq!(
+            function_metadata.get("id"),
+            Some(&HostValue::Int(
+                i64::try_from(function_id.get()).unwrap_or(i64::MAX)
+            ))
+        );
         assert_eq!(
             function_metadata.get("return"),
             Some(&HostValue::String("bool".into()))

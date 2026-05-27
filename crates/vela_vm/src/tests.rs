@@ -4962,8 +4962,10 @@ fn main() {
         && exports.len() == 1
         && functions.len() == 1
         && functions[0].name == "game.reward.grant"
+        && functions[0].id == function.id
         && reflect.name(function) == "game.reward.grant"
         && reflect.kind(function) == "function"
+        && function.id > 0
         && reflect.docs(function) == "Grant reward."
         && reflect.attr(function, "event") == "reward"
         && reflect.source_span(function).source == 1

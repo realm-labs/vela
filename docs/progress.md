@@ -1859,6 +1859,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   now carries those spans into reflected `FunctionDesc`/`MethodDesc` records,
   allowing registry-derived hot-reload ABI diagnostics to point back at
   embedder-provided native declaration locations.
+- Filled an M12 function reflection metadata gap by exposing stable function
+  IDs on copied `ReflectFunction` records. Direct function lookups and
+  function metadata lists now preserve the registry's `FunctionId` alongside
+  names, modules, signatures, effects, access metadata, attrs, docs, and source
+  spans.
 
 ## Next
 
