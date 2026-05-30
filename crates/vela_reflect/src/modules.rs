@@ -19,6 +19,16 @@ pub enum DeclOrigin {
     Script,
 }
 
+impl DeclOrigin {
+    #[must_use]
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Host => "host",
+            Self::Script => "script",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionParamDesc {
     pub name: String,
@@ -580,13 +590,7 @@ fn function_record_host(desc: &FunctionDesc) -> HostValue {
 }
 
 fn origin_value(origin: DeclOrigin) -> HostValue {
-    HostValue::String(
-        match origin {
-            DeclOrigin::Host => "host",
-            DeclOrigin::Script => "script",
-        }
-        .to_owned(),
-    )
+    HostValue::String(origin.as_str().to_owned())
 }
 
 fn function_effects_record(desc: &FunctionDesc) -> HostValue {

@@ -5253,6 +5253,7 @@ fn main() {
         && trait_info.name == "Damageable"
         && trait_info.methods[0].name == "damage"
         && trait_info.methods[0].owner == "Damageable"
+        && reflect.origin(trait_info) == "host"
         && reflect.owner(trait_info.methods[0]) == "Damageable"
         && reflect.kind(trait_info.methods[0]) == "trait_method" {
         return trait_info.methods.len();

@@ -1931,6 +1931,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   accepts either a module name string or a copied `ReflectModule` descriptor,
   preserving policy-filtered export visibility while matching the descriptor
   helper style used by the rest of the reflection surface.
+- Extended M12 trait declaration-origin metadata. `TraitDesc` now records
+  `host` or `script` origin, script trait registration marks traits as
+  script-declared, implemented trait copies preserve that origin, and
+  `reflect.origin(trait_info)` works for copied `ReflectTrait` records.
 
 ## Next
 

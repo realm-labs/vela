@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
-use crate::modules::{FunctionDesc, ModuleDesc};
+use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc};
 use crate::{
     ReflectError, ReflectErrorKind, ReflectResult,
     candidates::{candidate_names, ranked_candidates},
@@ -364,6 +364,7 @@ pub struct TraitDesc {
     pub id: TraitId,
     pub name: String,
     pub methods: Vec<TraitMethodDesc>,
+    pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
@@ -377,10 +378,17 @@ impl TraitDesc {
             id: stable_trait_id(&name),
             name,
             methods: Vec::new(),
+            origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
             source_span: None,
         }
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
+        self
     }
 
     #[must_use]

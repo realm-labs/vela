@@ -3,8 +3,9 @@ use std::collections::BTreeMap;
 use vela_host::HostValue;
 
 use crate::{
-    FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult,
-    ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
+    DeclOrigin, FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectPolicy,
+    ReflectResult, ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
+    VariantDesc,
     candidates::{candidate_names, ranked_candidates},
     metadata::{attrs_value, docs_value, span_value},
     metadata_records, type_of,
@@ -763,6 +764,7 @@ fn trait_record(trait_desc: &TraitDesc) -> HostValue {
                 .collect(),
         ),
     );
+    fields.insert("origin".to_owned(), origin_value(trait_desc.origin));
     fields.insert("docs".to_owned(), docs_value(trait_desc.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&trait_desc.attrs));
     fields.insert("source_span".to_owned(), span_value(trait_desc.source_span));
@@ -770,6 +772,10 @@ fn trait_record(trait_desc: &TraitDesc) -> HostValue {
         type_name: "ReflectTrait".to_owned(),
         fields,
     }
+}
+
+fn origin_value(origin: DeclOrigin) -> HostValue {
+    HostValue::String(origin.as_str().to_owned())
 }
 
 fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> HostValue {
@@ -1496,6 +1502,11 @@ mod tests {
             first_trait.get("name"),
             Some(&HostValue::String("Damageable".to_owned()))
         );
+        let first_trait_value = ReflectValue::Host(traits[0].clone());
+        assert_eq!(
+            origin(&registry, &first_trait_value).expect("trait origin metadata"),
+            ReflectValue::Host(HostValue::String("host".to_owned()))
+        );
 
         let ReflectValue::Host(HostValue::Record { fields, .. }) =
             trait_by_name(&registry, "Damageable").expect("trait metadata")
@@ -1505,6 +1516,10 @@ mod tests {
         assert_eq!(
             fields.get("name"),
             Some(&HostValue::String("Damageable".to_owned()))
+        );
+        assert_eq!(
+            fields.get("origin"),
+            Some(&HostValue::String("host".to_owned()))
         );
         assert_eq!(
             fields.get("source_span"),

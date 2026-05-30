@@ -2,8 +2,8 @@ use vela_common::{FieldId, MethodId, Span, TypeId, VariantId};
 use vela_hir::{Declaration, DeclarationKind, EnumVariantFieldsHint, ModuleGraph};
 
 use crate::{
-    FieldDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
-    TypeKind, TypeRegistry, VariantDesc, script_attrs::ReflectedScriptAttrs,
+    DeclOrigin, FieldDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
+    TypeKey, TypeKind, TypeRegistry, VariantDesc, script_attrs::ReflectedScriptAttrs,
 };
 
 impl TypeRegistry {
@@ -87,7 +87,9 @@ impl TypeRegistry {
                     };
                     let trait_name = qualified_type_name(graph, declaration);
                     let mut desc = shape.methods.iter().fold(
-                        TraitDesc::new(trait_name.clone()).source_span(declaration.span),
+                        TraitDesc::new(trait_name.clone())
+                            .origin(DeclOrigin::Script)
+                            .source_span(declaration.span),
                         |desc, method| {
                             desc.method(apply_trait_method_attrs(
                                 TraitMethodDesc::new(
@@ -661,6 +663,7 @@ impl Damageable for Player {
             .expect("Player type");
 
         assert_eq!(damageable.docs.as_deref(), Some("Damage protocol."));
+        assert_eq!(damageable.origin, DeclOrigin::Script);
         assert_eq!(
             damageable.source_span.map(|span| span.source),
             Some(SourceId::new(1))
@@ -697,6 +700,7 @@ impl Damageable for Player {
             ["game.combat.Damageable"]
         );
         assert_eq!(player.traits[0].id, damageable.id);
+        assert_eq!(player.traits[0].origin, DeclOrigin::Script);
         assert_eq!(player.traits[0].methods, damageable.methods);
     }
 }
