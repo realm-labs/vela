@@ -646,6 +646,7 @@ fn method_record_fields(method: &MethodDesc) -> BTreeMap<String, HostValue> {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
+    fields.insert("origin".to_owned(), origin_value(method.origin));
     fields.insert(
         "params".to_owned(),
         HostValue::Array(method.params.iter().map(method_param_record).collect()),
@@ -783,6 +784,7 @@ fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> HostValue {
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
     fields.insert("owner".to_owned(), HostValue::String(owner.to_owned()));
+    fields.insert("origin".to_owned(), origin_value(method.origin));
     fields.insert(
         "params".to_owned(),
         HostValue::Array(method.params.iter().map(method_param_record).collect()),
@@ -836,6 +838,7 @@ fn variant_record_fields<'a>(
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(variant.id.get())));
     fields.insert("name".to_owned(), HostValue::String(variant.name.clone()));
+    fields.insert("origin".to_owned(), origin_value(variant.origin));
     fields.insert(
         "fields".to_owned(),
         HostValue::Array(variant_fields.into_iter().map(field_record).collect()),
@@ -868,6 +871,7 @@ fn field_record_fields(field: &FieldDesc) -> BTreeMap<String, HostValue> {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(field.id.get())));
     fields.insert("name".to_owned(), HostValue::String(field.name.clone()));
+    fields.insert("origin".to_owned(), origin_value(field.origin));
     fields.insert(
         "type".to_owned(),
         field
@@ -1082,6 +1086,14 @@ mod tests {
             ReflectValue::Host(HostValue::String("field".to_owned()))
         );
         assert_eq!(
+            fields.get("origin"),
+            Some(&HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
+            origin(&registry, &field_metadata).expect("field origin metadata"),
+            ReflectValue::Host(HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
             attrs(&registry, &field_metadata).expect("field attrs"),
             ReflectValue::Host(HostValue::Map(BTreeMap::from([(
                 "unit".to_owned(),
@@ -1246,6 +1258,14 @@ mod tests {
             Some(&HostValue::String("grant_exp".to_owned()))
         );
         assert_eq!(
+            single_method.get("origin"),
+            Some(&HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
+            origin(&registry, &single_method_value).expect("method origin metadata"),
+            ReflectValue::Host(HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
             owner(&registry, &single_method_value).expect("method owner metadata"),
             ReflectValue::Host(HostValue::String("Player".to_owned()))
         );
@@ -1397,16 +1417,26 @@ mod tests {
             variant_fields.get("source_span"),
             Some(&span_value(Some(Span::new(SourceId::new(8), 90, 100))))
         );
+        let single_variant_value =
+            variant_info(&registry, &target, "Active").expect("variant info");
         let ReflectValue::Host(HostValue::Record {
             fields: single_variant,
             ..
-        }) = variant_info(&registry, &target, "Active").expect("variant info")
+        }) = &single_variant_value
         else {
             panic!("single variant metadata should be a record");
         };
         assert_eq!(
             single_variant.get("name"),
             Some(&HostValue::String("Active".to_owned()))
+        );
+        assert_eq!(
+            single_variant.get("origin"),
+            Some(&HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
+            origin(&registry, &single_variant_value).expect("variant origin metadata"),
+            ReflectValue::Host(HostValue::String("host".to_owned()))
         );
         assert_eq!(
             single_variant.get("source_span"),

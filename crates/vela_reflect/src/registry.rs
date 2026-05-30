@@ -98,6 +98,7 @@ pub struct TypeDesc {
     pub methods: Vec<MethodDesc>,
     pub traits: Vec<TraitDesc>,
     pub variants: Vec<VariantDesc>,
+    pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
@@ -115,6 +116,7 @@ impl TypeDesc {
             methods: Vec::new(),
             traits: Vec::new(),
             variants: Vec::new(),
+            origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
             source_span: None,
@@ -136,6 +138,12 @@ impl TypeDesc {
     #[must_use]
     pub fn host_type(mut self, host_type_id: HostTypeId) -> Self {
         self.host_type_id = Some(host_type_id);
+        self
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
         self
     }
 
@@ -190,6 +198,7 @@ pub struct FieldDesc {
     pub has_default: bool,
     pub writable: bool,
     pub access: FieldAccess,
+    pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
@@ -205,6 +214,7 @@ impl FieldDesc {
             has_default: false,
             writable: false,
             access: FieldAccess::default(),
+            origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
             source_span: None,
@@ -223,6 +233,12 @@ impl FieldDesc {
     pub fn access(mut self, access: FieldAccess) -> Self {
         self.writable = access.writable;
         self.access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
         self
     }
 
@@ -265,6 +281,7 @@ pub struct MethodDesc {
     pub return_type: Option<String>,
     pub effects: MethodEffectSet,
     pub access: MethodAccess,
+    pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
@@ -280,6 +297,7 @@ impl MethodDesc {
             return_type: None,
             effects: MethodEffectSet::default(),
             access: MethodAccess::default(),
+            origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
             source_span: None,
@@ -307,6 +325,12 @@ impl MethodDesc {
     #[must_use]
     pub fn access(mut self, access: MethodAccess) -> Self {
         self.access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
         self
     }
 
@@ -423,6 +447,7 @@ pub struct TraitMethodDesc {
     pub params: Vec<MethodParamDesc>,
     pub return_type: Option<String>,
     pub has_default: bool,
+    pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
@@ -437,6 +462,7 @@ impl TraitMethodDesc {
             params: Vec::new(),
             return_type: None,
             has_default: false,
+            origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
             source_span: None,
@@ -458,6 +484,12 @@ impl TraitMethodDesc {
     #[must_use]
     pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
         self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
         self
     }
 
@@ -485,6 +517,7 @@ pub struct VariantDesc {
     pub id: VariantId,
     pub name: String,
     pub fields: Vec<FieldDesc>,
+    pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
@@ -497,6 +530,7 @@ impl VariantDesc {
             id,
             name: name.into(),
             fields: Vec::new(),
+            origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
             source_span: None,
@@ -506,6 +540,12 @@ impl VariantDesc {
     #[must_use]
     pub fn field(mut self, field: FieldDesc) -> Self {
         self.fields.push(field);
+        self
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
         self
     }
 

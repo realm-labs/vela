@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use vela_host::HostValue;
 
 use crate::{
-    ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeKind, TypeRegistry,
+    DeclOrigin, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeKind,
+    TypeRegistry,
     candidates::{candidate_names, ranked_candidates},
     metadata::{attrs_value, docs_value, span_value},
 };
@@ -46,6 +47,7 @@ fn type_record(desc: &TypeDesc) -> HostValue {
     );
     fields.insert("name".to_owned(), HostValue::String(desc.key.name.clone()));
     fields.insert("kind".to_owned(), HostValue::String(kind_name(desc.kind)));
+    fields.insert("origin".to_owned(), origin_value(desc.origin));
     fields.insert(
         "schema_hash".to_owned(),
         desc.schema_hash.map_or(HostValue::Null, |hash| {
@@ -77,6 +79,10 @@ fn type_record(desc: &TypeDesc) -> HostValue {
     }
 }
 
+fn origin_value(origin: DeclOrigin) -> HostValue {
+    HostValue::String(origin.as_str().to_owned())
+}
+
 fn kind_name(kind: TypeKind) -> String {
     match kind {
         TypeKind::Host => "host",
@@ -91,7 +97,7 @@ mod tests {
     use vela_common::{FieldId, HostTypeId, SourceId, Span, TypeId, VariantId};
 
     use super::*;
-    use crate::{FieldDesc, TypeDesc, TypeKey, VariantDesc, kind_metadata};
+    use crate::{FieldDesc, TypeDesc, TypeKey, VariantDesc, kind_metadata, origin_metadata};
 
     #[test]
     fn type_query_returns_metadata_and_unknown_type_candidates() {
@@ -137,9 +143,17 @@ mod tests {
             fields.get("kind"),
             Some(&HostValue::String("host".to_owned()))
         );
+        assert_eq!(
+            fields.get("origin"),
+            Some(&HostValue::String("host".to_owned()))
+        );
         let metadata = type_by_name(&registry, "Player").expect("type metadata");
         assert_eq!(
             kind_metadata(&registry, &metadata).expect("metadata kind"),
+            ReflectValue::Host(HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
+            origin_metadata(&registry, &metadata).expect("metadata origin"),
             ReflectValue::Host(HostValue::String("host".to_owned()))
         );
         assert_eq!(fields.get("field_count"), Some(&HostValue::Int(1)));

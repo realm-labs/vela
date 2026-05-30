@@ -18,6 +18,7 @@ impl TypeRegistry {
                     let mut desc = shape.fields.iter().fold(
                         TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
                             .kind(TypeKind::ScriptStruct)
+                            .origin(DeclOrigin::Script)
                             .schema_hash(struct_schema_hash(&type_name, shape))
                             .source_span(declaration.span),
                         |desc, field| {
@@ -27,6 +28,7 @@ impl TypeRegistry {
                                         stable_field_id(&type_name, &field.name),
                                         field.name.clone(),
                                     )
+                                    .origin(DeclOrigin::Script)
                                     .defaulted(field.default_value_span.is_some())
                                     .source_span(field.span),
                                     &field.type_hint,
@@ -46,6 +48,7 @@ impl TypeRegistry {
                     let mut desc = shape.variants.iter().fold(
                         TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
                             .kind(TypeKind::ScriptEnum)
+                            .origin(DeclOrigin::Script)
                             .schema_hash(enum_schema_hash(&type_name, shape))
                             .source_span(declaration.span),
                         |desc, variant| {
@@ -57,6 +60,7 @@ impl TypeRegistry {
                                             stable_variant_id(&type_name, &variant.name),
                                             variant.name.clone(),
                                         )
+                                        .origin(DeclOrigin::Script)
                                         .source_span(variant.span),
                                         &variant.attrs,
                                     ),
@@ -67,6 +71,7 @@ impl TypeRegistry {
                                                     stable_field_id(&variant_owner, &field.name),
                                                     field.name,
                                                 )
+                                                .origin(DeclOrigin::Script)
                                                 .defaulted(field.has_default)
                                                 .source_span(field.span),
                                                 &field.type_hint,
@@ -96,6 +101,7 @@ impl TypeRegistry {
                                     stable_trait_method_id(&trait_name, &method.name),
                                     method.name.clone(),
                                 )
+                                .origin(DeclOrigin::Script)
                                 .defaulted(method.has_default)
                                 .source_span(method.span),
                                 &method.signature,
@@ -422,6 +428,8 @@ enum QuestProgress {
             .expect("QuestProgress type metadata");
         assert_eq!(reward.kind, TypeKind::ScriptStruct);
         assert_eq!(progress.kind, TypeKind::ScriptEnum);
+        assert_eq!(reward.origin, DeclOrigin::Script);
+        assert_eq!(progress.origin, DeclOrigin::Script);
         assert!(reward.source_span.is_some());
         assert_eq!(
             reward.source_span.map(|span| span.source),
@@ -459,6 +467,7 @@ enum QuestProgress {
             .expect("count field");
         assert_eq!(count_field.type_hint.as_deref(), Some("int"));
         assert!(count_field.has_default);
+        assert_eq!(count_field.origin, DeclOrigin::Script);
         assert_eq!(
             count_field.source_span.map(|span| span.source),
             Some(SourceId::new(1))
@@ -477,6 +486,7 @@ enum QuestProgress {
             .find(|variant| variant.name == "Active")
             .expect("Active variant");
         assert_eq!(active.attrs.get("active"), Some("true"));
+        assert_eq!(active.origin, DeclOrigin::Script);
         assert_eq!(
             active.source_span.map(|span| span.source),
             Some(SourceId::new(1))
@@ -496,6 +506,14 @@ enum QuestProgress {
                 .find(|field| field.name == "quest_id")
                 .and_then(|field| field.type_hint.as_deref()),
             Some("string")
+        );
+        assert_eq!(
+            active
+                .fields
+                .iter()
+                .find(|field| field.name == "quest_id")
+                .map(|field| field.origin),
+            Some(DeclOrigin::Script)
         );
         assert!(
             active
@@ -677,6 +695,7 @@ impl Damageable for Player {
             [("damage", false), ("alive", true)]
         );
         assert_eq!(damageable.methods[0].docs.as_deref(), Some("Apply damage."));
+        assert_eq!(damageable.methods[0].origin, DeclOrigin::Script);
         assert_eq!(damageable.methods[0].return_type.as_deref(), Some("int"));
         assert_eq!(
             damageable.methods[0]

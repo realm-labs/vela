@@ -4865,6 +4865,7 @@ fn main(player) {
         && field.name == "level"
         && reflect.name(field) == "level"
         && reflect.owner(field) == "Player"
+        && reflect.origin(field) == "host"
         && reflect.id(field) == 2
         && reflect.kind(field) == "field"
         && field.type == "int"
@@ -5191,6 +5192,7 @@ fn main(player) {
         && method.name == "grant_exp"
         && method.owner == "Player"
         && reflect.owner(method) == "Player"
+        && reflect.origin(method) == "host"
         && method.attrs["effect"] == "write"
         && methods[0].returns == "bool"
         && methods[0].params[0].name == "amount"
@@ -5203,6 +5205,7 @@ fn main(player) {
         && active.name == "Active"
         && active.owner == "QuestProgress"
         && reflect.owner(active) == "QuestProgress"
+        && reflect.origin(active) == "host"
         && active.fields[0].name == "count"
         && all_variants.len() == 2
         && all_variants[0].owner == "QuestProgress"
@@ -5292,6 +5295,8 @@ fn main() {
         && names[0] == "Player"
         && player.kind == "host"
         && reflect.kind(player) == "host"
+        && player.origin == "host"
+        && reflect.origin(player) == "host"
         && player.field_count == 2
         && player.method_count == 1
         && player.trait_count == 1 {

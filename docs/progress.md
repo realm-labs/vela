@@ -1935,6 +1935,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   `host` or `script` origin, script trait registration marks traits as
   script-declared, implemented trait copies preserve that origin, and
   `reflect.origin(trait_info)` works for copied `ReflectTrait` records.
+- Extended M12 declaration-origin metadata across type and member
+  descriptors. `TypeDesc`, fields, methods, trait methods, and variants now
+  carry host/script origin, HIR script type registration stamps script
+  descriptors accordingly, and copied `ReflectType`/member records expose the
+  same `reflect.origin` helper surface.
 
 ## Next
 
