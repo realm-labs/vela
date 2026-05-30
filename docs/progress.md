@@ -1895,6 +1895,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Added M12 `reflect.effects(value)` for copied function and method metadata.
   It returns a copied `ReflectEffectSet` record from descriptors or existing
   effect records, giving scripts a stable read-only helper for effect metadata.
+- Added M12 `reflect.params(value)` and `reflect.returns(value)` for copied
+  function, method, and trait-method metadata. Scripts can inspect descriptor
+  signatures through stable read-only helpers instead of knowing each copied
+  record's field layout.
 
 ## Next
 

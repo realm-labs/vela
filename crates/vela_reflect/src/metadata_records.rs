@@ -110,6 +110,23 @@ pub(crate) fn effects(target: &ReflectValue) -> ReflectResult<Option<HostValue>>
     Ok(None)
 }
 
+pub(crate) fn params(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    if let Some(params) = field(target, "params") {
+        return param_array(params).map(Some);
+    }
+    if let ReflectValue::Host(HostValue::Array(_)) = target {
+        return param_array(MetadataField::Reflect(target)).map(Some);
+    }
+    Ok(None)
+}
+
+pub(crate) fn returns(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    if let Some(returns) = field(target, "returns").or_else(|| field(target, "return")) {
+        return return_type(returns).map(Some);
+    }
+    Ok(None)
+}
+
 enum MetadataField<'a> {
     Host(&'a HostValue),
     Reflect(&'a ReflectValue),
@@ -257,6 +274,41 @@ fn effect_set(value: MetadataField<'_>) -> ReflectResult<HostValue> {
                     type_name: type_name.clone(),
                     fields,
                 })
+        }
+        _ => Err(invalid_target()),
+    }
+}
+
+fn param_array(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+    match value {
+        MetadataField::Host(HostValue::Array(values))
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Array(values))) => values
+            .iter()
+            .map(param_record)
+            .collect::<ReflectResult<Vec<_>>>()
+            .map(HostValue::Array),
+        _ => Err(invalid_target()),
+    }
+}
+
+fn param_record(value: &HostValue) -> ReflectResult<HostValue> {
+    let HostValue::Record { type_name, fields } = value else {
+        return Err(invalid_target());
+    };
+    if type_name != "ReflectParam" {
+        return Err(invalid_target());
+    }
+    Ok(HostValue::Record {
+        type_name: type_name.clone(),
+        fields: fields.clone(),
+    })
+}
+
+fn return_type(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+    match value {
+        MetadataField::Host(HostValue::Null | HostValue::String(_))
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null | HostValue::String(_))) => {
+            host_value(value)
         }
         _ => Err(invalid_target()),
     }

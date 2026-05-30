@@ -46,6 +46,12 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::Any],
             record("ReflectEffectSet"),
         ),
+        fact(
+            "reflect.params",
+            vec![TypeFact::Any],
+            array(record("ReflectParam")),
+        ),
+        fact("reflect.returns", vec![TypeFact::Any], maybe_string()),
         fact("reflect.fields", Vec::new(), array(record("ReflectField"))),
         fact(
             "reflect.fields",
@@ -206,6 +212,8 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         "reflect.source_span" if args.len() == 1 => maybe_source_span(),
         "reflect.required_permissions" if args.len() == 1 => array(TypeFact::String),
         "reflect.effects" if args.len() == 1 => record("ReflectEffectSet"),
+        "reflect.params" if args.len() == 1 => array(record("ReflectParam")),
+        "reflect.returns" if args.len() == 1 => maybe_string(),
         "reflect.fields" => match args.len() {
             0 => array(record("ReflectField")),
             1 => array(TypeFact::String),
@@ -285,6 +293,8 @@ fn canonical_name(name: &str) -> Option<&'static str> {
         "reflect.source_span" => Some("reflect.source_span"),
         "reflect.required_permissions" => Some("reflect.required_permissions"),
         "reflect.effects" => Some("reflect.effects"),
+        "reflect.params" => Some("reflect.params"),
+        "reflect.returns" => Some("reflect.returns"),
         "reflect.fields" => Some("reflect.fields"),
         "reflect.field" => Some("reflect.field"),
         "reflect.has_field" => Some("reflect.has_field"),

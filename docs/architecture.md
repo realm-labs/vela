@@ -1148,6 +1148,8 @@ reflect.set(value, name, value)
 reflect.methods(type)
 reflect.has_method(value, name)
 reflect.call(value, name, args)
+reflect.params(value)
+reflect.returns(value)
 
 reflect.variant(value)
 reflect.variant_is(value, name)

@@ -115,6 +115,18 @@ pub fn effects(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult
         .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 
+pub fn params(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    metadata_records::params(target)?
+        .map(ReflectValue::Host)
+        .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
+}
+
+pub fn returns(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    metadata_records::returns(target)?
+        .map(ReflectValue::Host)
+        .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
+}
+
 pub fn field(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -1118,14 +1130,14 @@ mod tests {
             fields.get("returns"),
             Some(&HostValue::String("bool".to_owned()))
         );
-        let Some(HostValue::Array(params)) = fields.get("params") else {
+        let Some(HostValue::Array(raw_params)) = fields.get("params") else {
             panic!("method params should be an array");
         };
-        assert_eq!(params.len(), 1);
+        assert_eq!(raw_params.len(), 1);
         let HostValue::Record {
             fields: param_fields,
             ..
-        } = &params[0]
+        } = &raw_params[0]
         else {
             panic!("method param should be a record");
         };
@@ -1235,6 +1247,40 @@ mod tests {
                 type_name: "ReflectEffectSet".to_owned(),
                 fields: helper_effects,
             })
+        );
+        let ReflectValue::Host(HostValue::Array(helper_params)) =
+            params(&registry, &single_method_value).expect("method params metadata")
+        else {
+            panic!("method params metadata should be an array");
+        };
+        assert_eq!(helper_params.len(), 1);
+        let HostValue::Record {
+            fields: param_fields,
+            ..
+        } = &helper_params[0]
+        else {
+            panic!("method param should be a record");
+        };
+        assert_eq!(
+            param_fields.get("name"),
+            Some(&HostValue::String("amount".to_owned()))
+        );
+        assert_eq!(
+            params(
+                &registry,
+                &ReflectValue::Host(
+                    single_method
+                        .get("params")
+                        .expect("method params record")
+                        .clone()
+                )
+            )
+            .expect("nested params metadata"),
+            ReflectValue::Host(HostValue::Array(helper_params))
+        );
+        assert_eq!(
+            returns(&registry, &single_method_value).expect("method returns metadata"),
+            ReflectValue::Host(HostValue::String("bool".to_owned()))
         );
         let unknown = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_xp")
             .expect_err("unknown method");

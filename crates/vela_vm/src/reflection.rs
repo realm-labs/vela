@@ -290,6 +290,36 @@ impl Vm {
             value_from_reflect(reflect::effects_metadata(&effects_registry, &target)?)
         });
 
+        let params_registry = Arc::clone(&registry);
+        let params_policy = policy.clone();
+        let params_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.params", move |args, _host| {
+            check_reflect_policy(
+                &params_policy,
+                &params_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.params", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.params")?;
+            check_host_ref_inspection(&params_policy, &target)?;
+            value_from_reflect(reflect::params_metadata(&params_registry, &target)?)
+        });
+
+        let returns_registry = Arc::clone(&registry);
+        let returns_policy = policy.clone();
+        let returns_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.returns", move |args, _host| {
+            check_reflect_policy(
+                &returns_policy,
+                &returns_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.returns", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.returns")?;
+            check_host_ref_inspection(&returns_policy, &target)?;
+            value_from_reflect(reflect::returns_metadata(&returns_registry, &target)?)
+        });
+
         let fields_registry = Arc::clone(&registry);
         let fields_policy = policy.clone();
         let fields_budget = Arc::clone(&lookup_budget);

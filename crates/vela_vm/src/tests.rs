@@ -4974,6 +4974,42 @@ fn main(player) {
 }
 
 #[test]
+fn compiled_source_reflects_signature_metadata_helpers() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let function = reflect.function("game.reward.grant");
+    let params = reflect.params(function);
+    let direct = reflect.params(function.params);
+    return params.len() == 2
+        && params[0].name == "player"
+        && params[0].type == "Player"
+        && params[1].name == "amount"
+        && params[1].defaulted
+        && direct[1].name == "amount"
+        && reflect.returns(function) == "bool";
+}
+"#,
+    )
+    .expect("compile reflected signature metadata source");
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        vm.run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Bool(true))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn compiled_source_reflect_fields_respect_field_access() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
