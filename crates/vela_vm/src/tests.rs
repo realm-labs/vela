@@ -4845,6 +4845,7 @@ fn compiled_source_reflects_name_kind_and_field_metadata() {
         r#"
 fn main(player) {
     let field = reflect.field(player, "level");
+    let access = reflect.access(field);
     let all_fields = reflect.fields();
     if reflect.name(player) == "Player"
         && reflect.id(player) == 100
@@ -4870,6 +4871,8 @@ fn main(player) {
         && field.docs == "Current player level."
         && reflect.docs(field) == "Current player level."
         && reflect.source_span(field) == null
+        && access.reflect_readable
+        && access.reflect_writable
         && option.unwrap_or(field.attrs.get("unit"), "") == "level"
         && option.unwrap_or(reflect.attrs(field).get("unit"), "") == "level"
         && reflect.attr(field, "unit") == "level"
@@ -4908,12 +4911,16 @@ fn compiled_source_reflects_required_permissions_metadata() {
 fn main() {
     let function = reflect.function("game.reward.admin");
     let permissions = reflect.required_permissions(function);
+    let access = reflect.access(function);
     let access_permissions = reflect.required_permissions(function.access);
+    let direct_access = reflect.access(function.access);
     let public_function = reflect.function("game.reward.grant");
     return permissions.len() == 1
         && permissions[0] == "game.admin"
+        && access.required_permissions[0] == "game.admin"
         && access_permissions.len() == 1
         && access_permissions[0] == "game.admin"
+        && direct_access.required_permissions[0] == "game.admin"
         && reflect.required_permissions(public_function).is_empty();
 }
 "#,

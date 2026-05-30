@@ -272,6 +272,21 @@ impl Vm {
             )?)
         });
 
+        let access_registry = Arc::clone(&registry);
+        let access_policy = policy.clone();
+        let access_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.access", move |args, _host| {
+            check_reflect_policy(
+                &access_policy,
+                &access_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.access", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.access")?;
+            check_host_ref_inspection(&access_policy, &target)?;
+            value_from_reflect(reflect::access_metadata(&access_registry, &target)?)
+        });
+
         let required_permissions_registry = Arc::clone(&registry);
         let required_permissions_policy = policy.clone();
         let required_permissions_budget = Arc::clone(&lookup_budget);

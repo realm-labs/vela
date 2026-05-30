@@ -1138,6 +1138,7 @@ reflect.type_of(value)
 reflect.name(type)
 reflect.kind(type)
 reflect.owner(descriptor)
+reflect.access(descriptor)
 
 reflect.fields(type)
 reflect.field(type, name)

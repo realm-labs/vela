@@ -1114,6 +1114,16 @@ mod tests {
             TypeFact::String
         );
         assert_eq!(
+            stdlib_function_fact("reflect.access", &[TypeFact::record("ReflectMethod")])
+                .expect("reflect.access fact")
+                .returns,
+            TypeFact::union([
+                TypeFact::record("ReflectFieldAccess"),
+                TypeFact::record("ReflectMethodAccess"),
+                TypeFact::record("ReflectFunctionAccess"),
+            ])
+        );
+        assert_eq!(
             stdlib_function_fact("reflect.params", &[TypeFact::record("ReflectFunction")])
                 .expect("reflect.params fact")
                 .returns,

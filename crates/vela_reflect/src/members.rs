@@ -103,6 +103,12 @@ pub fn source_span(registry: &TypeRegistry, target: &ReflectValue) -> ReflectRes
     }
 }
 
+pub fn access(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    metadata_records::access(target)?
+        .map(ReflectValue::Host)
+        .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
+}
+
 pub fn required_permissions(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -1291,6 +1297,33 @@ mod tests {
         assert_eq!(
             returns(&registry, &single_method_value).expect("method returns metadata"),
             ReflectValue::Host(HostValue::String("bool".to_owned()))
+        );
+        let ReflectValue::Host(HostValue::Record {
+            fields: helper_access,
+            ..
+        }) = access(&registry, &single_method_value).expect("method access metadata")
+        else {
+            panic!("method access metadata should be a record");
+        };
+        assert_eq!(
+            helper_access.get("reflect_callable"),
+            Some(&HostValue::Bool(true))
+        );
+        assert_eq!(
+            access(
+                &registry,
+                &ReflectValue::Host(
+                    single_method
+                        .get("access")
+                        .expect("method access record")
+                        .clone()
+                )
+            )
+            .expect("nested access metadata"),
+            ReflectValue::Host(HostValue::Record {
+                type_name: "ReflectMethodAccess".to_owned(),
+                fields: helper_access,
+            })
         );
         let unknown = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_xp")
             .expect_err("unknown method");

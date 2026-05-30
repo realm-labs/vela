@@ -1903,6 +1903,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   descriptors. Scripts can now read owner type names through the same
   controlled metadata-helper surface used for names, kinds, IDs, docs, attrs,
   effects, and signatures.
+- Added M12 `reflect.access(value)` for copied field, method, and function
+  descriptors. It returns a copied access record from descriptors or existing
+  access records, giving scripts a stable read-only entry point for visibility,
+  callability, writability, and required permission metadata.
 
 ## Next
 

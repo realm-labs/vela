@@ -103,6 +103,16 @@ pub(crate) fn source_span(target: &ReflectValue) -> ReflectResult<Option<HostVal
     source_span_value(source_span).map(Some)
 }
 
+pub(crate) fn access(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    if let Some(access) = field(target, "access") {
+        return access_record(access).map(Some);
+    }
+    if is_access_record(target) {
+        return access_record(MetadataField::Reflect(target)).map(Some);
+    }
+    Ok(None)
+}
+
 pub(crate) fn required_permissions(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     if let Some(access) = field(target, "access") {
         return required_permissions_from_access(access).map(Some);
@@ -290,6 +300,45 @@ fn effect_set(value: MetadataField<'_>) -> ReflectResult<HostValue> {
         }
         _ => Err(invalid_target()),
     }
+}
+
+fn access_record(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+    match value {
+        MetadataField::Host(HostValue::Record { type_name, fields })
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Record { type_name, fields }))
+            if is_access_type(type_name) =>
+        {
+            Ok(HostValue::Record {
+                type_name: type_name.clone(),
+                fields: fields.clone(),
+            })
+        }
+        MetadataField::Reflect(ReflectValue::ScriptRecord { type_name, fields })
+            if is_access_type(type_name) =>
+        {
+            fields
+                .iter()
+                .map(|(key, value)| {
+                    let ReflectValue::Host(value) = value else {
+                        return Err(invalid_target());
+                    };
+                    Ok((key.clone(), value.clone()))
+                })
+                .collect::<ReflectResult<BTreeMap<_, _>>>()
+                .map(|fields| HostValue::Record {
+                    type_name: type_name.clone(),
+                    fields,
+                })
+        }
+        _ => Err(invalid_target()),
+    }
+}
+
+fn is_access_type(type_name: &str) -> bool {
+    matches!(
+        type_name,
+        "ReflectFieldAccess" | "ReflectMethodAccess" | "ReflectFunctionAccess"
+    )
 }
 
 fn param_array(value: MetadataField<'_>) -> ReflectResult<HostValue> {

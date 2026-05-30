@@ -20,8 +20,8 @@ pub use access::{FieldAccess, FunctionAccess, FunctionEffectSet, MethodAccess, M
 pub use candidates::ReflectCandidate;
 pub use error::{ReflectError, ReflectErrorKind, ReflectResult};
 pub use members::{
-    all_fields as field_metadata_list, all_fields_with_policy as field_metadata_list_with_policy,
-    all_methods as method_metadata_list,
+    access as access_metadata, all_fields as field_metadata_list,
+    all_fields_with_policy as field_metadata_list_with_policy, all_methods as method_metadata_list,
     all_methods_with_policy as method_metadata_list_with_policy, all_traits as trait_metadata_list,
     all_variants as variant_metadata_list,
     all_variants_with_policy as variant_metadata_list_with_policy, attr as attr_metadata,
