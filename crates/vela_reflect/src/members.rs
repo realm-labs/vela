@@ -104,7 +104,10 @@ pub fn field(
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     let field = find_field(desc, name)?;
-    Ok(ReflectValue::Host(field_record(field)))
+    Ok(ReflectValue::Host(field_record_with_owner(
+        &desc.key.name,
+        field,
+    )))
 }
 
 pub fn field_with_policy(
@@ -116,7 +119,10 @@ pub fn field_with_policy(
     let desc = target_type(registry, target)?;
     let field = find_field(desc, name)?;
     policy.require_field_read_access(&desc.key.name, field)?;
-    Ok(ReflectValue::Host(field_record(field)))
+    Ok(ReflectValue::Host(field_record_with_owner(
+        &desc.key.name,
+        field,
+    )))
 }
 
 pub fn field_names_with_policy(
@@ -196,7 +202,10 @@ pub fn has_field_with_policy(
 pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(HostValue::Array(
-        desc.methods.iter().map(method_record).collect(),
+        desc.methods
+            .iter()
+            .map(|method| method_record_with_owner(&desc.key.name, method))
+            .collect(),
     )))
 }
 
@@ -207,7 +216,10 @@ pub fn method(
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     let method = find_method(desc, name)?;
-    Ok(ReflectValue::Host(method_record(method)))
+    Ok(ReflectValue::Host(method_record_with_owner(
+        &desc.key.name,
+        method,
+    )))
 }
 
 pub fn method_with_policy(
@@ -219,7 +231,10 @@ pub fn method_with_policy(
     let desc = target_type(registry, target)?;
     let method = find_method(desc, name)?;
     policy.require_method_access(&desc.key.name, method)?;
-    Ok(ReflectValue::Host(method_record(method)))
+    Ok(ReflectValue::Host(method_record_with_owner(
+        &desc.key.name,
+        method,
+    )))
 }
 
 pub fn methods_with_policy(
@@ -232,7 +247,7 @@ pub fn methods_with_policy(
         desc.methods
             .iter()
             .filter(|method| policy.require_method_access(&desc.key.name, method).is_ok())
-            .map(method_record)
+            .map(|method| method_record_with_owner(&desc.key.name, method))
             .collect(),
     )))
 }
@@ -333,7 +348,10 @@ pub fn has_trait(registry: &TypeRegistry, name: &str) -> bool {
 pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(HostValue::Array(
-        desc.variants.iter().map(variant_record).collect(),
+        desc.variants
+            .iter()
+            .map(|variant| variant_record_with_owner(&desc.key.name, variant))
+            .collect(),
     )))
 }
 
@@ -347,7 +365,8 @@ pub fn variants_with_policy(
         desc.variants
             .iter()
             .map(|variant| {
-                variant_record_with_fields(
+                variant_record_with_owner_and_fields(
+                    &desc.key.name,
                     variant,
                     variant.fields.iter().filter(|field| {
                         policy
@@ -367,7 +386,10 @@ pub fn variant_info(
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     let variant = find_variant(desc, name)?;
-    Ok(ReflectValue::Host(variant_record(variant)))
+    Ok(ReflectValue::Host(variant_record_with_owner(
+        &desc.key.name,
+        variant,
+    )))
 }
 
 pub fn variant_info_with_policy(
@@ -378,7 +400,8 @@ pub fn variant_info_with_policy(
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     let variant = find_variant(desc, name)?;
-    Ok(ReflectValue::Host(variant_record_with_fields(
+    Ok(ReflectValue::Host(variant_record_with_owner_and_fields(
+        &desc.key.name,
         variant,
         variant.fields.iter().filter(|field| {
             policy
@@ -563,10 +586,6 @@ fn variant_candidates(desc: &TypeDesc, variant: &str) -> Vec<crate::ReflectCandi
     )
 }
 
-fn method_record(method: &MethodDesc) -> HostValue {
-    method_record_from_fields(method_record_fields(method))
-}
-
 fn method_record_with_owner(type_name: &str, method: &MethodDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("owner".to_owned(), HostValue::String(type_name.to_owned()));
@@ -735,10 +754,6 @@ fn trait_method_record(method: &TraitMethodDesc) -> HostValue {
     }
 }
 
-fn variant_record(variant: &VariantDesc) -> HostValue {
-    variant_record_with_fields(variant, variant.fields.iter())
-}
-
 fn variant_record_with_owner(type_name: &str, variant: &VariantDesc) -> HostValue {
     variant_record_with_owner_and_fields(type_name, variant, variant.fields.iter())
 }
@@ -751,13 +766,6 @@ fn variant_record_with_owner_and_fields<'a>(
     let mut fields = variant_record_fields(variant, variant_fields);
     fields.insert("owner".to_owned(), HostValue::String(type_name.to_owned()));
     variant_record_from_fields(fields)
-}
-
-fn variant_record_with_fields<'a>(
-    variant: &VariantDesc,
-    variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
-) -> HostValue {
-    variant_record_from_fields(variant_record_fields(variant, variant_fields))
 }
 
 fn variant_record_fields<'a>(

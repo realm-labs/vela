@@ -1869,6 +1869,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   read-only `reflect.name`/`reflect.kind` surface, works for host type targets
   and copied field/function records, and has analysis facts as an integer
   metadata query.
+- Normalized owner metadata on copied member descriptors. Direct
+  `reflect.field`, `reflect.method`, `reflect.methods(value)`,
+  `reflect.variants(value)`, and `reflect.variant_info` records now carry the
+  same `owner` field as zero-argument member metadata lists, so scripts can use
+  one descriptor shape for targeted and enumerated field/method/variant queries.
 
 ## Next
 
