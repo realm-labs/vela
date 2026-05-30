@@ -1135,6 +1135,9 @@ First-version API:
 
 ```rust
 reflect.type_of(value)
+reflect.types()
+reflect.type_info(name)
+reflect.has_type(name)
 reflect.name(type)
 reflect.kind(type)
 reflect.owner(descriptor)
@@ -1148,18 +1151,29 @@ reflect.get(value, name)
 reflect.set(value, name, value)
 
 reflect.methods(type)
+reflect.method(type, name)
 reflect.has_method(value, name)
 reflect.call(value, name, args)
 reflect.params(value)
 reflect.returns(value)
 
+reflect.variants(type)
 reflect.variant(value)
+reflect.variant_info(value, name)
 reflect.variant_is(value, name)
+reflect.has_variant(value, name)
 
 reflect.implements(value, trait)
 reflect.traits(type)
+reflect.trait_info(name)
+reflect.has_trait(name)
 
+reflect.modules()
 reflect.module(name)
+reflect.has_module(name)
+reflect.functions()
+reflect.function(name)
+reflect.has_function(name)
 reflect.exports(module)
 
 reflect.permissions()
