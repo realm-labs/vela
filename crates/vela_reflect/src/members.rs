@@ -46,6 +46,12 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
     }
 }
 
+pub fn owner(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    metadata_records::owner(target)?
+        .map(ReflectValue::Host)
+        .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
+}
+
 pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(attrs_value(&desc.attrs))),
@@ -1213,6 +1219,10 @@ mod tests {
         assert_eq!(
             single_method.get("name"),
             Some(&HostValue::String("grant_exp".to_owned()))
+        );
+        assert_eq!(
+            owner(&registry, &single_method_value).expect("method owner metadata"),
+            ReflectValue::Host(HostValue::String("Player".to_owned()))
         );
         assert_eq!(
             single_method.get("attrs"),

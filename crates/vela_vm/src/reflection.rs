@@ -173,6 +173,21 @@ impl Vm {
             value_from_reflect(reflect::kind_metadata(&kind_registry, &target)?)
         });
 
+        let owner_registry = Arc::clone(&registry);
+        let owner_policy = policy.clone();
+        let owner_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.owner", move |args, _host| {
+            check_reflect_policy(
+                &owner_policy,
+                &owner_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.owner", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.owner")?;
+            check_host_ref_inspection(&owner_policy, &target)?;
+            value_from_reflect(reflect::owner_metadata(&owner_registry, &target)?)
+        });
+
         let attrs_registry = Arc::clone(&registry);
         let attrs_policy = policy.clone();
         let attrs_budget = Arc::clone(&lookup_budget);

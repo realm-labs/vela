@@ -1108,6 +1108,12 @@ mod tests {
             TypeFact::record("ReflectEffectSet")
         );
         assert_eq!(
+            stdlib_function_fact("reflect.owner", &[TypeFact::record("ReflectMethod")])
+                .expect("reflect.owner fact")
+                .returns,
+            TypeFact::String
+        );
+        assert_eq!(
             stdlib_function_fact("reflect.params", &[TypeFact::record("ReflectFunction")])
                 .expect("reflect.params fact")
                 .returns,

@@ -1899,6 +1899,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   function, method, and trait-method metadata. Scripts can inspect descriptor
   signatures through stable read-only helpers instead of knowing each copied
   record's field layout.
+- Added M12 `reflect.owner(value)` for copied field, method, and variant
+  descriptors. Scripts can now read owner type names through the same
+  controlled metadata-helper surface used for names, kinds, IDs, docs, attrs,
+  effects, and signatures.
 
 ## Next
 

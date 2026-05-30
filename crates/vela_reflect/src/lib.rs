@@ -31,7 +31,7 @@ pub use members::{
     has_field_with_policy, has_method, has_method_with_policy, has_trait, has_variant,
     id as id_metadata, kind as kind_metadata, method as method_metadata,
     method_with_policy as method_metadata_with_policy, methods, methods_with_policy,
-    name as name_metadata, params as params_metadata,
+    name as name_metadata, owner as owner_metadata, params as params_metadata,
     required_permissions as required_permissions_metadata, returns as returns_metadata,
     source_span as source_span_metadata, trait_by_name as trait_metadata_by_name,
     traits as trait_metadata, variant, variant_info, variant_info_with_policy, variant_is,
