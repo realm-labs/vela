@@ -5,6 +5,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.min", math_min);
     vm.register_native("math.clamp", math_clamp);
     vm.register_native("math.lerp", math_lerp);
+    vm.register_native("math.move_towards", math_move_towards);
     vm.register_native("math.distance2d", math_distance2d);
     vm.register_native("math.distance3d", math_distance3d);
     vm.register_native("math.pow", math_pow);
@@ -50,6 +51,56 @@ fn math_lerp(args: &[Value]) -> VmResult<Value> {
     let end = expect_finite_float(&args[1], "math.lerp")?;
     let t = expect_finite_float(&args[2], "math.lerp")?;
     Ok(Value::Float(start + (end - start) * t))
+}
+
+fn math_move_towards(args: &[Value]) -> VmResult<Value> {
+    expect_arity("math.move_towards", args, 3)?;
+    match (&args[0], &args[1], &args[2]) {
+        (Value::Int(current), Value::Int(target), Value::Int(max_delta)) => {
+            int_move_towards(*current, *target, *max_delta).map(Value::Int)
+        }
+        _ => float_move_towards(args).map(Value::Float),
+    }
+}
+
+fn int_move_towards(current: i64, target: i64, max_delta: i64) -> VmResult<i64> {
+    if max_delta < 0 {
+        return type_error("math.move_towards");
+    }
+
+    let delta = i128::from(target) - i128::from(current);
+    if delta.unsigned_abs() <= max_delta as u128 {
+        return Ok(target);
+    }
+
+    let step = delta.signum() * i128::from(max_delta);
+    let value = i128::from(current) + step;
+    i64::try_from(value).map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "math.move_towards",
+        })
+    })
+}
+
+fn float_move_towards(args: &[Value]) -> VmResult<f64> {
+    let current = expect_finite_float(&args[0], "math.move_towards")?;
+    let target = expect_finite_float(&args[1], "math.move_towards")?;
+    let max_delta = expect_finite_float(&args[2], "math.move_towards")?;
+    if max_delta < 0.0 {
+        return type_error("math.move_towards");
+    }
+
+    let delta = target - current;
+    if delta.abs() <= max_delta {
+        return Ok(target);
+    }
+
+    let value = current + delta.signum() * max_delta;
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        type_error("math.move_towards")
+    }
 }
 
 fn math_distance2d(args: &[Value]) -> VmResult<Value> {
@@ -292,6 +343,29 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_math_move_towards() {
+        let source = r#"
+fn main() {
+    let forward = math.move_towards(0, 10, 3);
+    let snapped = math.move_towards(8, 10, 5);
+    let backward = math.move_towards(10, 0, 4);
+    let float_step = math.move_towards(1.5, 4.0, 1.25);
+    if float_step == 2.75 {
+        return forward + snapped + backward;
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math move_towards source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("math move_towards should run");
+        assert_eq!(result, Value::Int(19));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_math_distance2d() {
         let source = r#"
 fn main() {
@@ -368,6 +442,27 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_math_move_towards() {
+        let source = r#"
+fn main() {
+    return math.move_towards(0, 10, 0) == 0
+        && math.move_towards(0.0, -2.0, 0.5) == -0.5
+        && math.move_towards(5, 2, 10) == 2;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap math move_towards source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap math move_towards should run");
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
     fn math_distance2d_rejects_non_numeric_values() {
         let source = r#"
 fn main() {
@@ -432,6 +527,52 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "math.sign"
+            }
+        );
+    }
+
+    #[test]
+    fn math_move_towards_rejects_negative_delta() {
+        let source = r#"
+fn main() {
+    return math.move_towards(0, 10, -1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math move_towards negative delta source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("math move_towards should reject negative max_delta");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "math.move_towards"
+            }
+        );
+    }
+
+    #[test]
+    fn math_move_towards_rejects_non_numeric_values() {
+        let source = r#"
+fn main() {
+    return math.move_towards(0, "target", 1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math move_towards type error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("math move_towards should reject non-numeric values");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "math.move_towards"
             }
         );
     }

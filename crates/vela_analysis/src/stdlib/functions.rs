@@ -101,6 +101,11 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Float,
         ),
         StdlibFunctionFact::new(
+            "math.move_towards",
+            vec![number.clone(), number.clone(), number.clone()],
+            number.clone(),
+        ),
+        StdlibFunctionFact::new(
             "math.distance2d",
             vec![
                 number.clone(),
@@ -275,6 +280,14 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 "math.lerp",
                 args.to_vec(),
                 TypeFact::Float,
+            ))
+        }
+        "math.move_towards" => {
+            expect_len(args, 3)?;
+            Some(StdlibFunctionFact::new(
+                "math.move_towards",
+                args.to_vec(),
+                numeric_result(args),
             ))
         }
         "math.distance2d" => {
@@ -536,6 +549,7 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "math.floor" => Some("math.floor"),
         "math.ceil" => Some("math.ceil"),
         "math.round" => Some("math.round"),
+        "math.move_towards" => Some("math.move_towards"),
         "math.distance2d" => Some("math.distance2d"),
         "math.distance3d" => Some("math.distance3d"),
         "math.pow" => Some("math.pow"),

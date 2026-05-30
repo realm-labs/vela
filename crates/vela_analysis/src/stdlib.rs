@@ -976,6 +976,24 @@ mod tests {
         );
         assert_eq!(
             stdlib_function_fact(
+                "math.move_towards",
+                &[TypeFact::Int, TypeFact::Int, TypeFact::Int]
+            )
+            .expect("move_towards int fact")
+            .returns,
+            TypeFact::Int
+        );
+        assert_eq!(
+            stdlib_function_fact(
+                "math.move_towards",
+                &[TypeFact::Int, TypeFact::Float, TypeFact::Int]
+            )
+            .expect("move_towards float fact")
+            .returns,
+            TypeFact::Float
+        );
+        assert_eq!(
+            stdlib_function_fact(
                 "math.distance2d",
                 &[
                     TypeFact::Int,
@@ -1280,6 +1298,9 @@ mod tests {
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.lerp" && fact.params.len() == 3 && fact.returns == TypeFact::Float
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "math.move_towards" && fact.params.len() == 3 && fact.returns == number
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.distance2d"

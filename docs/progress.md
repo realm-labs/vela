@@ -1884,6 +1884,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   It returns `-1`, `0`, or `1` for numeric inputs in inline, managed-heap, and
   Engine-installed standard native execution, and analysis/completion facts
   expose the helper without introducing script generics.
+- Added M13 `math.move_towards(current, target, max_delta)` for deterministic
+  gameplay movement/cooldown steps. It handles integer and finite float inputs,
+  rejects negative deltas, clamps without overshoot, and is covered by VM,
+  managed-heap, Engine, analysis, and completion tests.
 
 ## Next
 

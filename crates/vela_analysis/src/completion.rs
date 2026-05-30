@@ -727,6 +727,12 @@ mod tests {
         )));
         let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
         assert!(completions.contains(&CompletionItem::new(
+            "math.move_towards",
+            CompletionKind::Function,
+            TypeFact::function(vec![number.clone(), number.clone(), number.clone()], number),
+        )));
+        let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
+        assert!(completions.contains(&CompletionItem::new(
             "math.distance2d",
             CompletionKind::Function,
             TypeFact::function(
