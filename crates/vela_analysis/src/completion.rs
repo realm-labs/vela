@@ -576,6 +576,11 @@ mod tests {
             TypeFact::function(Vec::new(), TypeFact::array(TypeFact::String)),
         )));
         assert!(string.contains(&CompletionItem::new(
+            "split_whitespace",
+            CompletionKind::Method,
+            TypeFact::function(Vec::new(), TypeFact::array(TypeFact::String)),
+        )));
+        assert!(string.contains(&CompletionItem::new(
             "parse_int",
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::option(TypeFact::Int)),

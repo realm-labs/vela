@@ -238,6 +238,21 @@ pub(crate) fn split_lines(
     ))
 }
 
+pub(crate) fn split_whitespace(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_no_args("split_whitespace", args)?;
+    let value = string_value(receiver, heap, "method split_whitespace")?;
+    Ok(Value::Array(
+        value
+            .split_whitespace()
+            .map(|word| Value::String(word.to_owned()))
+            .collect(),
+    ))
+}
+
 pub(crate) fn parse_int(
     receiver: &Value,
     args: &[Value],
@@ -724,6 +739,53 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string split_lines should run");
         assert_eq!(result, Value::String("commit".to_owned()));
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn string_split_whitespace_returns_words() {
+        let source = r#"
+fn main() {
+    let words = "  player\tlevel_up\nreward  ".split_whitespace();
+    if words.len() == 3
+        && words[0] == "player"
+        && words[1] == "level_up"
+        && words[2] == "reward"
+    {
+        return words.join(".");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string split_whitespace source should compile");
+
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let result = vm.run(&code).expect("string split_whitespace should run");
+        assert_eq!(result, Value::String("player.level_up.reward".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_split_whitespace() {
+        let source = r#"
+fn main() {
+    let command = " grant   xp\t42 ";
+    let words = command.split_whitespace();
+    if words.len() == 3 && words[0] == "grant" {
+        return [words[1], words[2]].join(":");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string split_whitespace source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string split_whitespace should run");
+        assert_eq!(result, Value::String("xp:42".to_owned()));
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 

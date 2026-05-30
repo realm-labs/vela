@@ -66,6 +66,7 @@ pub(crate) fn call_method(
         }
         "split" => string_methods::split(receiver, args, heap.as_deref()),
         "split_lines" => string_methods::split_lines(receiver, args, heap.as_deref()),
+        "split_whitespace" => string_methods::split_whitespace(receiver, args, heap.as_deref()),
         "parse_int" => string_methods::parse_int(receiver, args, heap.as_deref()),
         "parse_float" => string_methods::parse_float(receiver, args, heap.as_deref()),
         "parse_bool" => string_methods::parse_bool(receiver, args, heap.as_deref()),

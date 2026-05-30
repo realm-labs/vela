@@ -1911,6 +1911,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   and method descriptors through the stable CLI/Engine path, and refreshed the
   architecture reflection API list with the implemented type, trait, module,
   function, method, variant, and non-throwing `has_*` queries.
+- Added M13 `string.split_whitespace()` for gameplay command and diagnostic
+  tokenization. It returns deterministic word arrays for inline and
+  managed-heap strings, exposes analysis/completion facts without script
+  generics, and is now listed in the architecture standard-library contract.
 
 ## Next
 

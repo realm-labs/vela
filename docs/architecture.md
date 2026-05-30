@@ -1698,6 +1698,33 @@ enum Result {
 
 The `?` operator should support Option/Result-style propagation.
 
+### String
+
+```rust
+text.len()
+text.is_empty()
+text.contains(needle)
+text.find(needle)
+text.starts_with(prefix)
+text.ends_with(suffix)
+text.strip_prefix(prefix)
+text.strip_suffix(suffix)
+text.to_upper()
+text.to_lower()
+text.trim()
+text.trim_start()
+text.trim_end()
+text.replace(old, new)
+text.repeat(count)
+text.slice(start, end)
+text.split(separator)
+text.split_lines()
+text.split_whitespace()
+text.parse_int()
+text.parse_float()
+text.parse_bool()
+```
+
 ### Math And Time
 
 ```text
