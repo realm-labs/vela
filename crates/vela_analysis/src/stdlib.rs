@@ -177,6 +177,7 @@ mod tests {
         let map = TypeFact::map(TypeFact::String, TypeFact::Int);
         let array = TypeFact::array(TypeFact::Float);
         let set = TypeFact::set(TypeFact::String);
+        let range = TypeFact::Range;
 
         assert_eq!(
             stdlib_method_fact(&map, "keys", None)
@@ -357,6 +358,18 @@ mod tests {
         let disjoint = stdlib_method_fact(&set, "is_disjoint", None).expect("is_disjoint fact");
         assert_eq!(disjoint.params, vec![TypeFact::set(TypeFact::String)]);
         assert_eq!(disjoint.returns, TypeFact::Bool);
+        assert_eq!(
+            stdlib_method_fact(&range, "len", None)
+                .expect("range len fact")
+                .returns,
+            TypeFact::Int
+        );
+        assert_eq!(
+            stdlib_method_fact(&range, "is_empty", None)
+                .expect("range is_empty fact")
+                .returns,
+            TypeFact::Bool
+        );
     }
 
     #[test]

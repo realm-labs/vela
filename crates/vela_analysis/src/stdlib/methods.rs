@@ -98,6 +98,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "parse_float",
     "parse_bool",
 ];
+const RANGE_METHOD_NAMES: &[&str] = &["len", "is_empty"];
 const OPTION_METHOD_NAMES: &[&str] = &[
     "is_some",
     "is_none",
@@ -136,6 +137,7 @@ pub(super) fn method_fact(
         }
         TypeFact::Set { element } => set_method_fact((**element).clone(), method, lambda_return),
         TypeFact::String => string_method_fact(method),
+        TypeFact::Range => range_method_fact(method),
         TypeFact::Option { some } => {
             option_method_fact((**some).clone(), OptionShape::Maybe, method, lambda_return)
         }
@@ -186,6 +188,7 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
         TypeFact::Map { .. } => MAP_METHOD_NAMES,
         TypeFact::Set { .. } => SET_METHOD_NAMES,
         TypeFact::String => STRING_METHOD_NAMES,
+        TypeFact::Range => RANGE_METHOD_NAMES,
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             OPTION_METHOD_NAMES
         }
@@ -600,6 +603,15 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             "parse_bool",
             TypeFact::option(TypeFact::Bool),
         )),
+        _ => None,
+    }
+}
+
+fn range_method_fact(method: &str) -> Option<StdlibMethodFact> {
+    let receiver = TypeFact::Range;
+    match method {
+        "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::Int)),
+        "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::Bool)),
         _ => None,
     }
 }

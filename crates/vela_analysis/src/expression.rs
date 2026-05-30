@@ -169,7 +169,7 @@ fn binary_fact(op: BinaryOp, left: TypeFact, right: TypeFact) -> TypeFact {
         BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
             numeric_result([left, right])
         }
-        BinaryOp::Range | BinaryOp::RangeInclusive => TypeFact::Unknown,
+        BinaryOp::Range | BinaryOp::RangeInclusive => TypeFact::Range,
     }
 }
 
@@ -781,6 +781,32 @@ mod tests {
             type_fact_from_expr(&expressions[2], &scope),
             TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
         );
+    }
+
+    #[test]
+    fn infers_range_expression_facts() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                1..4;
+                1..=4;
+                (1..=4).len();
+                (1..4).is_empty();
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new();
+
+        assert_eq!(
+            type_fact_from_expr(&expressions[0], &scope),
+            TypeFact::Range
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[1], &scope),
+            TypeFact::Range
+        );
+        assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::Int);
+        assert_eq!(type_fact_from_expr(&expressions[3], &scope), TypeFact::Bool);
     }
 
     #[test]

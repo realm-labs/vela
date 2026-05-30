@@ -1969,6 +1969,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   focused compiler submodule. Local, index, record-field, and host-path
   assignment behavior remains unchanged, while the compiler file no longer
   owns the full assignment lowering implementation directly.
+- Filled an M9 analysis gap for range expressions. Exclusive and inclusive
+  ranges now produce an explicit non-generic `range` `TypeFact`, and analysis
+  exposes the runtime-supported `range.len()` and `range.is_empty()` method
+  facts instead of degrading those expressions to `unknown`.
 
 ## Next
 
