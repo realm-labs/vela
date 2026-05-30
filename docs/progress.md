@@ -1923,6 +1923,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   records returned from `reflect.trait_info` and `reflect.traits` now carry
   the owning trait name, so scripts can use `reflect.owner` and `reflect.kind`
   on trait methods just like field, method, and variant descriptors.
+- Extended M12 module declaration-origin metadata. `ModuleDesc` now records
+  `host` or `script` origin, script module registration marks modules as
+  script-declared, and `reflect.origin(module)` works for direct and listed
+  `ReflectModule` records instead of reporting `null`.
 
 ## Next
 

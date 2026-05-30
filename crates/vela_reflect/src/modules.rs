@@ -174,6 +174,7 @@ impl ModuleExportDesc {
 pub struct ModuleDesc {
     pub name: String,
     pub exports: Vec<ModuleExportDesc>,
+    pub origin: DeclOrigin,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
 }
@@ -184,9 +185,16 @@ impl ModuleDesc {
         Self {
             name: name.into(),
             exports: Vec::new(),
+            origin: DeclOrigin::Host,
             attrs: AttrMap::new(),
             source_span: None,
         }
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
+        self
     }
 
     #[must_use]
@@ -225,7 +233,11 @@ impl TypeRegistry {
                 continue;
             };
             if self.module_by_name(&module_name).is_none() {
-                self.register_module(ModuleDesc::new(module_name).source_span(declaration.span));
+                self.register_module(
+                    ModuleDesc::new(module_name)
+                        .origin(DeclOrigin::Script)
+                        .source_span(declaration.span),
+                );
             }
         }
 
@@ -457,6 +469,7 @@ fn module_record_host_with_exports(
 ) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("name".to_owned(), HostValue::String(desc.name.clone()));
+    fields.insert("origin".to_owned(), origin_value(desc.origin));
     fields.insert(
         "exports".to_owned(),
         HostValue::Array(exports.into_iter().map(HostValue::String).collect()),
@@ -508,16 +521,7 @@ fn function_record_host(desc: &FunctionDesc) -> HostValue {
     fields.insert("public".to_owned(), HostValue::Bool(desc.public));
     fields.insert("effects".to_owned(), function_effects_record(desc));
     fields.insert("access".to_owned(), function_access_record(desc));
-    fields.insert(
-        "origin".to_owned(),
-        HostValue::String(
-            match desc.origin {
-                DeclOrigin::Host => "host",
-                DeclOrigin::Script => "script",
-            }
-            .to_owned(),
-        ),
-    );
+    fields.insert("origin".to_owned(), origin_value(desc.origin));
     fields.insert(
         "return".to_owned(),
         desc.return_type
@@ -537,6 +541,16 @@ fn function_record_host(desc: &FunctionDesc) -> HostValue {
         type_name: "ReflectFunction".to_owned(),
         fields,
     }
+}
+
+fn origin_value(origin: DeclOrigin) -> HostValue {
+    HostValue::String(
+        match origin {
+            DeclOrigin::Host => "host",
+            DeclOrigin::Script => "script",
+        }
+        .to_owned(),
+    )
 }
 
 fn function_effects_record(desc: &FunctionDesc) -> HostValue {
@@ -678,6 +692,7 @@ fn helper() {
             .module_by_name("game.reward")
             .expect("script module metadata");
         assert_eq!(module.exports.len(), 2);
+        assert_eq!(module.origin, DeclOrigin::Script);
         assert_eq!(module.exports[0].name, "game.reward.grant");
         assert_eq!(module.exports[0].kind, ModuleExportKind::Function);
         assert_eq!(
@@ -746,7 +761,7 @@ fn helper() {
         let module_value = module(&registry, "game.reward").expect("module");
         assert_eq!(
             crate::origin_metadata(&registry, &module_value).expect("module origin helper"),
-            ReflectValue::Host(HostValue::Null)
+            ReflectValue::Host(HostValue::String("host".to_owned()))
         );
         let ReflectValue::Host(HostValue::Record {
             type_name,
@@ -759,6 +774,10 @@ fn helper() {
         assert_eq!(
             module_metadata.get("name"),
             Some(&HostValue::String("game.reward".into()))
+        );
+        assert_eq!(
+            module_metadata.get("origin"),
+            Some(&HostValue::String("host".to_owned()))
         );
         assert_eq!(
             module_metadata.get("attrs"),
@@ -792,6 +811,10 @@ fn helper() {
         assert_eq!(
             module_list_item.get("name"),
             Some(&HostValue::String("game.reward".into()))
+        );
+        assert_eq!(
+            module_list_item.get("origin"),
+            Some(&HostValue::String("host".to_owned()))
         );
         let ReflectValue::Host(HostValue::Array(functions)) = functions(&registry) else {
             panic!("function list should be an array");

@@ -5090,7 +5090,7 @@ fn main() {
         && function.id > 0
         && reflect.docs(function) == "Grant reward."
         && reflect.origin(function) == "script"
-        && reflect.origin(module) == null
+        && reflect.origin(module) == "script"
         && reflect.attr(function, "event") == "reward"
         && reflect.source_span(function).source == 1
         && reflect.get(function, "return") == "bool" {
