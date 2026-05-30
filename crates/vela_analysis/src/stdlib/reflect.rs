@@ -32,6 +32,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Bool,
         ),
         fact("reflect.docs", vec![TypeFact::Any], maybe_string()),
+        fact("reflect.origin", vec![TypeFact::Any], maybe_string()),
         fact(
             "reflect.source_span",
             vec![TypeFact::Any],
@@ -212,6 +213,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         "reflect.attr" if args.len() == 2 => maybe_string(),
         "reflect.has_attr" if args.len() == 2 => TypeFact::Bool,
         "reflect.docs" if args.len() == 1 => maybe_string(),
+        "reflect.origin" if args.len() == 1 => maybe_string(),
         "reflect.source_span" if args.len() == 1 => maybe_source_span(),
         "reflect.access" if args.len() == 1 => access(),
         "reflect.required_permissions" if args.len() == 1 => array(TypeFact::String),
@@ -303,6 +305,7 @@ fn canonical_name(name: &str) -> Option<&'static str> {
         "reflect.attr" => Some("reflect.attr"),
         "reflect.has_attr" => Some("reflect.has_attr"),
         "reflect.docs" => Some("reflect.docs"),
+        "reflect.origin" => Some("reflect.origin"),
         "reflect.source_span" => Some("reflect.source_span"),
         "reflect.access" => Some("reflect.access"),
         "reflect.required_permissions" => Some("reflect.required_permissions"),

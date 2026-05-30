@@ -1915,6 +1915,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   tokenization. It returns deterministic word arrays for inline and
   managed-heap strings, exposes analysis/completion facts without script
   generics, and is now listed in the architecture standard-library contract.
+- Added M12 `reflect.origin(value)` for copied descriptors that carry
+  declaration-origin metadata. Function descriptors now have a stable helper
+  for `host`/`script` origin strings, descriptors without origin report `null`,
+  and analysis exposes the helper as a non-generic nullable string query.
 
 ## Next
 

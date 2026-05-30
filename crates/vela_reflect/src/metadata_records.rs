@@ -62,6 +62,19 @@ pub(crate) fn owner(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     }
 }
 
+pub(crate) fn origin(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    let Some(origin) = field(target, "origin") else {
+        return Ok(None);
+    };
+    match origin {
+        MetadataField::Host(HostValue::Null | HostValue::String(_))
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null | HostValue::String(_))) => {
+            Ok(Some(host_value(origin)?))
+        }
+        _ => Err(invalid_target()),
+    }
+}
+
 pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     let Some(attrs) = field(target, "attrs") else {
         return Ok(None);

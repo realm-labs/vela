@@ -743,10 +743,15 @@ fn helper() {
         assert!(has_function(&registry, "game.reward.grant"));
         assert!(!has_function(&registry, "game.reward.missing"));
 
+        let module_value = module(&registry, "game.reward").expect("module");
+        assert_eq!(
+            crate::origin_metadata(&registry, &module_value).expect("module origin helper"),
+            ReflectValue::Host(HostValue::Null)
+        );
         let ReflectValue::Host(HostValue::Record {
             type_name,
             fields: module_metadata,
-        }) = module(&registry, "game.reward").expect("module")
+        }) = module_value
         else {
             panic!("module metadata should be a record");
         };
@@ -811,10 +816,15 @@ fn helper() {
             ))
         );
 
+        let function_value = function(&registry, "game.reward.grant").expect("function");
+        assert_eq!(
+            crate::origin_metadata(&registry, &function_value).expect("function origin helper"),
+            ReflectValue::Host(HostValue::String("script".to_owned()))
+        );
         let ReflectValue::Host(HostValue::Record {
             type_name,
             fields: function_metadata,
-        }) = function(&registry, "game.reward.grant").expect("function")
+        }) = function_value
         else {
             panic!("function metadata should be a record");
         };

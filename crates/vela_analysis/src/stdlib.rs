@@ -1093,6 +1093,12 @@ mod tests {
             TypeFact::union([TypeFact::record("ReflectSourceSpan"), TypeFact::Null])
         );
         assert_eq!(
+            stdlib_function_fact("reflect.origin", &[TypeFact::record("ReflectFunction")])
+                .expect("reflect.origin fact")
+                .returns,
+            TypeFact::union([TypeFact::String, TypeFact::Null])
+        );
+        assert_eq!(
             stdlib_function_fact(
                 "reflect.required_permissions",
                 &[TypeFact::record("ReflectFunction")]

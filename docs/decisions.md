@@ -7274,3 +7274,28 @@ Consequences:
   random or host-provided time.
 - Analysis and completion metadata can expose the helpers without adding
   user-visible generic syntax.
+
+## 2026-05-30: Reflection Origin Helper Is Nullable
+
+Status: Accepted
+
+Context:
+Copied function descriptors carry `DeclOrigin` metadata so admin/debug scripts
+can distinguish host-registered functions from script declarations. Other
+copied reflection records, such as module descriptors, may not have meaningful
+origin data yet.
+
+Decision:
+Expose `reflect.origin(value)` as a read-only helper over copied reflection
+records. When a copied descriptor has an `origin` field, the helper returns the
+origin string such as `host` or `script`. When the descriptor shape has no
+origin field, the helper returns `null` rather than requiring callers to know
+which descriptor kinds currently carry origin metadata.
+
+Consequences:
+- Scripts can inspect origin metadata through the same helper style as
+  `reflect.name`, `reflect.kind`, and `reflect.source_span`.
+- The helper remains schema-safe because it only reads copied descriptor data
+  and cannot mutate registry structure.
+- Future descriptor kinds can add origin fields without changing the helper
+  contract.

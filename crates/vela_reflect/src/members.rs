@@ -52,6 +52,12 @@ pub fn owner(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<R
         .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 
+pub fn origin(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    Ok(ReflectValue::Host(
+        metadata_records::origin(target)?.unwrap_or(HostValue::Null),
+    ))
+}
+
 pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(attrs_value(&desc.attrs))),
