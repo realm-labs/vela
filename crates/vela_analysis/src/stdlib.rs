@@ -1102,6 +1102,12 @@ mod tests {
             TypeFact::array(TypeFact::String)
         );
         assert_eq!(
+            stdlib_function_fact("reflect.effects", &[TypeFact::record("ReflectFunction")])
+                .expect("reflect.effects fact")
+                .returns,
+            TypeFact::record("ReflectEffectSet")
+        );
+        assert_eq!(
             stdlib_function_fact(
                 "reflect.attr",
                 &[TypeFact::host("Player"), TypeFact::String]

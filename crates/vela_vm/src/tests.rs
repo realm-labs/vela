@@ -4938,6 +4938,42 @@ fn main() {
 }
 
 #[test]
+fn compiled_source_reflects_effect_metadata_helper() {
+    let host_ref = player_ref(3);
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    let method = reflect.method(player, "grant_exp");
+    let effects = reflect.effects(method);
+    let direct = reflect.effects(method.effects);
+    return effects.writes_host
+        && effects.reads_host
+        && !effects.emits_events
+        && direct.writes_host
+        && direct.reads_host
+        && reflect.kind(effects) == "effect_set";
+}
+"#,
+    )
+    .expect("compile reflected effect metadata source");
+    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(reflection_registry()));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        Ok(Value::Bool(true))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn compiled_source_reflect_fields_respect_field_access() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
@@ -6064,6 +6100,7 @@ fn reflection_registry() -> TypeRegistry {
             )
             .method(
                 MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                    .effects(MethodEffectSet::host_write())
                     .param(MethodParamDesc::new("amount").type_hint("int"))
                     .return_type("bool")
                     .docs("Grant experience.")

@@ -275,6 +275,21 @@ impl Vm {
             )?)
         });
 
+        let effects_registry = Arc::clone(&registry);
+        let effects_policy = policy.clone();
+        let effects_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.effects", move |args, _host| {
+            check_reflect_policy(
+                &effects_policy,
+                &effects_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.effects", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.effects")?;
+            check_host_ref_inspection(&effects_policy, &target)?;
+            value_from_reflect(reflect::effects_metadata(&effects_registry, &target)?)
+        });
+
         let fields_registry = Arc::clone(&registry);
         let fields_policy = policy.clone();
         let fields_budget = Arc::clone(&lookup_budget);

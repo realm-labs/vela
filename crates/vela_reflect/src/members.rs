@@ -109,6 +109,12 @@ pub fn required_permissions(
     }
 }
 
+pub fn effects(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
+    metadata_records::effects(target)?
+        .map(ReflectValue::Host)
+        .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
+}
+
 pub fn field(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -1182,11 +1188,13 @@ mod tests {
             method_list_item.get("name"),
             Some(&HostValue::String("grant_exp".to_owned()))
         );
+        let single_method_value =
+            method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
+                .expect("method metadata");
         let ReflectValue::Host(HostValue::Record {
             fields: single_method,
             ..
-        }) = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
-            .expect("method metadata")
+        }) = &single_method_value
         else {
             panic!("single method metadata should be a record");
         };
@@ -1200,6 +1208,33 @@ mod tests {
                 "effect".to_owned(),
                 HostValue::String("write".to_owned())
             )])))
+        );
+        let ReflectValue::Host(HostValue::Record {
+            fields: helper_effects,
+            ..
+        }) = effects(&registry, &single_method_value).expect("method effects metadata")
+        else {
+            panic!("method effects metadata should be a record");
+        };
+        assert_eq!(
+            helper_effects.get("reads_host"),
+            Some(&HostValue::Bool(true))
+        );
+        assert_eq!(
+            helper_effects.get("writes_host"),
+            Some(&HostValue::Bool(true))
+        );
+        let nested_effects = single_method
+            .get("effects")
+            .expect("method effects record")
+            .clone();
+        assert_eq!(
+            effects(&registry, &ReflectValue::Host(nested_effects))
+                .expect("nested effects metadata"),
+            ReflectValue::Host(HostValue::Record {
+                type_name: "ReflectEffectSet".to_owned(),
+                fields: helper_effects,
+            })
         );
         let unknown = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_xp")
             .expect_err("unknown method");

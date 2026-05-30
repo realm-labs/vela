@@ -100,6 +100,16 @@ pub(crate) fn required_permissions(target: &ReflectValue) -> ReflectResult<Optio
     Ok(None)
 }
 
+pub(crate) fn effects(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    if let Some(effects) = field(target, "effects") {
+        return effect_set(effects).map(Some);
+    }
+    if record_type_name(target) == Some("ReflectEffectSet") {
+        return effect_set(MetadataField::Reflect(target)).map(Some);
+    }
+    Ok(None)
+}
+
 enum MetadataField<'a> {
     Host(&'a HostValue),
     Reflect(&'a ReflectValue),
@@ -216,6 +226,38 @@ fn string_array(value: MetadataField<'_>) -> ReflectResult<HostValue> {
             })
             .collect::<ReflectResult<Vec<_>>>()
             .map(HostValue::Array),
+        _ => Err(invalid_target()),
+    }
+}
+
+fn effect_set(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+    match value {
+        MetadataField::Host(HostValue::Record { type_name, fields })
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Record { type_name, fields }))
+            if type_name == "ReflectEffectSet" =>
+        {
+            Ok(HostValue::Record {
+                type_name: type_name.clone(),
+                fields: fields.clone(),
+            })
+        }
+        MetadataField::Reflect(ReflectValue::ScriptRecord { type_name, fields })
+            if type_name == "ReflectEffectSet" =>
+        {
+            fields
+                .iter()
+                .map(|(key, value)| {
+                    let ReflectValue::Host(HostValue::Bool(value)) = value else {
+                        return Err(invalid_target());
+                    };
+                    Ok((key.clone(), HostValue::Bool(*value)))
+                })
+                .collect::<ReflectResult<BTreeMap<_, _>>>()
+                .map(|fields| HostValue::Record {
+                    type_name: type_name.clone(),
+                    fields,
+                })
+        }
         _ => Err(invalid_target()),
     }
 }

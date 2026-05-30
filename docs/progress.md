@@ -1892,6 +1892,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   metadata records and access records. Scripts can now read descriptor
   permission requirements without knowing each descriptor's nested access
   shape, and analysis exposes the helper as a non-generic string-array query.
+- Added M12 `reflect.effects(value)` for copied function and method metadata.
+  It returns a copied `ReflectEffectSet` record from descriptors or existing
+  effect records, giving scripts a stable read-only helper for effect metadata.
 
 ## Next
 
