@@ -537,6 +537,11 @@ fn target_type<'a>(
     if let Some(desc) = type_of(registry, target) {
         return Ok(desc);
     }
+    if let Some(type_name) = reflect_type_name(target)? {
+        return registry
+            .type_by_name(type_name)
+            .ok_or_else(|| unknown_type_name(registry, type_name));
+    }
     match target {
         ReflectValue::HostRef(host_ref) => Err(ReflectError::new(ReflectErrorKind::UnknownType {
             host_type_id: host_ref.type_id,
@@ -548,6 +553,40 @@ fn target_type<'a>(
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
     }
+}
+
+fn reflect_type_name(target: &ReflectValue) -> ReflectResult<Option<&str>> {
+    match target {
+        ReflectValue::Host(HostValue::Record { type_name, fields })
+            if type_name == "ReflectType" =>
+        {
+            match fields.get("name") {
+                Some(HostValue::String(name)) => Ok(Some(name.as_str())),
+                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+            }
+        }
+        ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectType" => {
+            match fields.get("name") {
+                Some(ReflectValue::Host(HostValue::String(name))) => Ok(Some(name.as_str())),
+                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+            }
+        }
+        _ => Ok(None),
+    }
+}
+
+fn unknown_type_name(registry: &TypeRegistry, type_name: &str) -> ReflectError {
+    let related = ranked_candidates(
+        type_name,
+        registry
+            .types()
+            .map(|desc| (desc.key.name.as_str(), desc.source_span)),
+    );
+    ReflectError::new(ReflectErrorKind::UnknownTypeName {
+        type_name: type_name.to_owned(),
+        candidates: candidate_names(&related),
+        related,
+    })
 }
 
 fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
@@ -1033,9 +1072,13 @@ mod tests {
         assert!(has_field(&registry, &target, "level").expect("has field"));
 
         let field_metadata = field(&registry, &target, "level").expect("field");
+        let player_type = crate::type_metadata_by_name(&registry, "Player").expect("type info");
+        let field_from_type = field(&registry, &player_type, "level").expect("type field");
+        assert!(has_field(&registry, &player_type, "level").expect("type has field"));
         let ReflectValue::Host(HostValue::Record { fields, .. }) = &field_metadata else {
             panic!("field metadata should be a record");
         };
+        assert_eq!(field_metadata, field_from_type);
         assert_eq!(fields.get("writable"), Some(&HostValue::Bool(true)));
         assert_eq!(
             fields.get("type"),
@@ -1156,13 +1199,21 @@ mod tests {
             has_method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
                 .expect("has method")
         );
-        let ReflectValue::Host(HostValue::Array(methods)) =
+        let ReflectValue::Host(HostValue::Array(method_records)) =
             methods(&registry, &ReflectValue::HostRef(player_ref())).expect("methods")
         else {
             panic!("methods should be an array");
         };
-        assert_eq!(methods.len(), 1);
-        let HostValue::Record { fields, .. } = &methods[0] else {
+        let player_type = crate::type_metadata_by_name(&registry, "Player").expect("type info");
+        let ReflectValue::Host(HostValue::Array(type_methods)) =
+            methods(&registry, &player_type).expect("type methods")
+        else {
+            panic!("type methods should be an array");
+        };
+        assert_eq!(method_records.len(), 1);
+        assert_eq!(type_methods, method_records);
+        assert!(has_method(&registry, &player_type, "grant_exp").expect("type has method"));
+        let HostValue::Record { fields, .. } = &method_records[0] else {
             panic!("method metadata should be a record");
         };
         assert_eq!(
@@ -1246,6 +1297,10 @@ mod tests {
         let single_method_value =
             method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
                 .expect("method metadata");
+        assert_eq!(
+            method(&registry, &player_type, "grant_exp").expect("type method"),
+            single_method_value
+        );
         let ReflectValue::Host(HostValue::Record {
             fields: single_method,
             ..
@@ -1379,12 +1434,16 @@ mod tests {
             }
         );
 
-        let ReflectValue::Host(HostValue::Array(traits)) =
+        let ReflectValue::Host(HostValue::Array(trait_records)) =
             traits(&registry, &ReflectValue::HostRef(player_ref())).expect("traits")
         else {
             panic!("traits should be an array");
         };
-        assert_eq!(traits.len(), 1);
+        assert_eq!(
+            traits(&registry, &player_type).expect("type traits"),
+            ReflectValue::Host(HostValue::Array(trait_records.clone()))
+        );
+        assert_eq!(trait_records.len(), 1);
         assert!(has_trait(&registry, "Damageable"));
         assert!(!has_trait(&registry, "Trackable"));
 
@@ -1398,18 +1457,25 @@ mod tests {
             ReflectValue::Host(HostValue::String("Active".to_owned()))
         );
         assert!(variant_is(&registry, &target, "Active").expect("variant is"));
-        let ReflectValue::Host(HostValue::Array(variants)) =
+        let ReflectValue::Host(HostValue::Array(variant_records)) =
             variants(&registry, &target).expect("variants")
         else {
             panic!("variants should be an array");
         };
-        assert_eq!(variants.len(), 2);
+        let quest_type =
+            crate::type_metadata_by_name(&registry, "QuestProgress").expect("type info");
+        assert_eq!(
+            variants(&registry, &quest_type).expect("type variants"),
+            ReflectValue::Host(HostValue::Array(variant_records.clone()))
+        );
+        assert_eq!(variant_records.len(), 2);
         assert!(has_variant(&registry, &target, "Active").expect("has active"));
+        assert!(has_variant(&registry, &quest_type, "Active").expect("type has active"));
         assert!(!has_variant(&registry, &target, "Paused").expect("has paused"));
         let HostValue::Record {
             fields: variant_fields,
             ..
-        } = &variants[0]
+        } = &variant_records[0]
         else {
             panic!("variant metadata should be a record");
         };
@@ -1419,6 +1485,10 @@ mod tests {
         );
         let single_variant_value =
             variant_info(&registry, &target, "Active").expect("variant info");
+        assert_eq!(
+            variant_info(&registry, &quest_type, "Active").expect("type variant info"),
+            single_variant_value
+        );
         let ReflectValue::Host(HostValue::Record {
             fields: single_variant,
             ..

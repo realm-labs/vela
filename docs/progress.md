@@ -1940,6 +1940,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   carry host/script origin, HIR script type registration stamps script
   descriptors accordingly, and copied `ReflectType`/member records expose the
   same `reflect.origin` helper surface.
+- Normalized M12 type descriptor query targets. Copied `ReflectType` records
+  returned by `reflect.type_info` can now be passed directly to
+  `reflect.fields`, `reflect.field`, `reflect.methods`, `reflect.method`,
+  `reflect.traits`, `reflect.variants`, and related `has_*`/variant helpers,
+  matching the documented `reflect.*(type)` API without requiring a live value.
 
 ## Next
 

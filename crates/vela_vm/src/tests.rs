@@ -4844,7 +4844,9 @@ fn compiled_source_reflects_name_kind_and_field_metadata() {
         SourceId::new(1),
         r#"
 fn main(player) {
+    let player_type = reflect.type_info("Player");
     let field = reflect.field(player, "level");
+    let type_field = reflect.field(player_type, "level");
     let access = reflect.access(field);
     let all_fields = reflect.fields();
     if reflect.name(player) == "Player"
@@ -4857,12 +4859,16 @@ fn main(player) {
         && reflect.attr(player, "missing") == null
         && !reflect.has_attr(player, "missing")
         && reflect.has_field(player, "level")
+        && reflect.has_field(player_type, "level")
         && !reflect.has_field(player, "mana")
+        && reflect.fields(player_type).len() == 2
         && all_fields.len() == 2
         && all_fields[1].owner == "Player"
         && all_fields[1].name == "level"
         && field.owner == "Player"
         && field.name == "level"
+        && type_field.name == "level"
+        && type_field.id == field.id
         && reflect.name(field) == "level"
         && reflect.owner(field) == "Player"
         && reflect.origin(field) == "host"
@@ -5175,21 +5181,31 @@ fn compiled_source_reflects_methods_traits_and_variants() {
         SourceId::new(1),
         r#"
 fn main(player) {
+    let player_type = reflect.type_info("Player");
+    let quest_type = reflect.type_info("QuestProgress");
     let methods = reflect.methods(player);
     let method = reflect.method(player, "grant_exp");
+    let type_methods = reflect.methods(player_type);
+    let type_method = reflect.method(player_type, "grant_exp");
     let all_methods = reflect.methods();
     let traits = reflect.traits(player);
+    let type_traits = reflect.traits(player_type);
     let quest = QuestProgress.Active { count: 1 };
     let variants = reflect.variants(quest);
     let active = reflect.variant_info(quest, "Active");
+    let type_variants = reflect.variants(quest_type);
+    let type_active = reflect.variant_info(quest_type, "Active");
     let all_variants = reflect.variants();
     if reflect.has_method(player, "grant_exp")
+        && reflect.has_method(player_type, "grant_exp")
         && methods.len() == 1
+        && type_methods.len() == 1
         && all_methods.len() == 1
         && all_methods[0].owner == "Player"
         && all_methods[0].name == "grant_exp"
         && methods[0].owner == "Player"
         && method.name == "grant_exp"
+        && type_method.id == method.id
         && method.owner == "Player"
         && reflect.owner(method) == "Player"
         && reflect.origin(method) == "host"
@@ -5199,14 +5215,18 @@ fn main(player) {
         && methods[0].params[0].type == "int"
         && method.params[0].name == "amount"
         && traits.len() == 1
+        && type_traits.len() == 1
         && variants.len() == 2
+        && type_variants.len() == 2
         && variants[0].owner == "QuestProgress"
         && reflect.owner(variants[0]) == "QuestProgress"
         && active.name == "Active"
+        && type_active.id == active.id
         && active.owner == "QuestProgress"
         && reflect.owner(active) == "QuestProgress"
         && reflect.origin(active) == "host"
         && active.fields[0].name == "count"
+        && reflect.has_variant(quest_type, "Active")
         && all_variants.len() == 2
         && all_variants[0].owner == "QuestProgress"
         && all_variants[0].name == "Active"
