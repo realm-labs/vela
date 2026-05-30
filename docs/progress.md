@@ -1965,6 +1965,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   already host-shaped receiver, while expressions such as
   `reflect.traits(type_info)[0].name` compile through normal index and record
   field reads.
+- Split M9 assignment lowering out of the main bytecode compiler file into a
+  focused compiler submodule. Local, index, record-field, and host-path
+  assignment behavior remains unchanged, while the compiler file no longer
+  owns the full assignment lowering implementation directly.
 
 ## Next
 
