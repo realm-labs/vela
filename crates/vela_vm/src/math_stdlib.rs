@@ -8,6 +8,7 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.distance2d", math_distance2d);
     vm.register_native("math.distance3d", math_distance3d);
     vm.register_native("math.pow", math_pow);
+    vm.register_native("math.sign", math_sign);
     vm.register_native("math.floor", math_floor);
     vm.register_native("math.ceil", math_ceil);
     vm.register_native("math.round", math_round);
@@ -100,6 +101,21 @@ fn math_pow(args: &[Value]) -> VmResult<Value> {
     }
 
     numeric_pow(args)
+}
+
+fn math_sign(args: &[Value]) -> VmResult<Value> {
+    expect_arity("math.sign", args, 1)?;
+    match &args[0] {
+        Value::Int(value) => Ok(Value::Int(value.signum())),
+        Value::Float(value) if value.is_finite() => Ok(Value::Int(if *value > 0.0 {
+            1
+        } else if *value < 0.0 {
+            -1
+        } else {
+            0
+        })),
+        _ => type_error("math.sign"),
+    }
 }
 
 fn numeric_pow(args: &[Value]) -> VmResult<Value> {
@@ -257,6 +273,25 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_math_sign() {
+        let source = r#"
+fn main() {
+    return math.sign(-12)
+        + math.sign(0)
+        + math.sign(3.5)
+        + math.sign(-0.0);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math sign source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("math sign should run");
+        assert_eq!(result, Value::Int(0));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_math_distance2d() {
         let source = r#"
 fn main() {
@@ -314,6 +349,25 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_math_sign() {
+        let source = r#"
+fn main() {
+    return math.sign(-2.5) == -1 && math.sign(0.0) == 0 && math.sign(8) == 1;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap math sign source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap math sign should run");
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
     fn math_distance2d_rejects_non_numeric_values() {
         let source = r#"
 fn main() {
@@ -355,6 +409,29 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "math.pow"
+            }
+        );
+    }
+
+    #[test]
+    fn math_sign_rejects_non_numeric_values() {
+        let source = r#"
+fn main() {
+    return math.sign("left");
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math sign type error source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("math sign should reject non-numeric values");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "math.sign"
             }
         );
     }

@@ -534,7 +534,8 @@ fn main() {
     let midpoint = math.floor(math.lerp(10, 20, 0.5));
     let range = math.round(math.distance3d(0, 0, 0, 2, 3, 6));
     let score = math.pow(2, 3);
-    return tags.len() + option.unwrap_or(option.some(midpoint), 0) + math.round(1.5) + range + score;
+    let direction = math.sign(-3);
+    return tags.len() + option.unwrap_or(option.some(midpoint), 0) + math.round(1.5) + range + score + direction;
 }
 "#,
     )
@@ -544,7 +545,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     let result = runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
-    assert_eq!(result, Ok(Value::Int(34)),);
+    assert_eq!(result, Ok(Value::Int(33)),);
 }
 
 #[test]

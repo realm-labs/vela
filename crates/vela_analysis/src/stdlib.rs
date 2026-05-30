@@ -1011,6 +1011,12 @@ mod tests {
             TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])
         );
         assert_eq!(
+            stdlib_function_fact("math.sign", &[TypeFact::Float])
+                .expect("sign fact")
+                .returns,
+            TypeFact::Int
+        );
+        assert_eq!(
             stdlib_function_fact("math.floor", &[TypeFact::Float])
                 .expect("floor fact")
                 .returns,
@@ -1287,6 +1293,9 @@ mod tests {
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.pow" && fact.params.len() == 2 && fact.returns == number
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "math.sign" && fact.params.len() == 1 && fact.returns == TypeFact::Int
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "math.round" && fact.params.len() == 1 && fact.returns == TypeFact::Int

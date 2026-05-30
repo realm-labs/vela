@@ -1880,6 +1880,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   field IDs, owner-qualified field and method descriptors, method effect
   metadata, and the existing controlled `reflect.set`/`reflect.call` workflow
   through the stable Engine/Runtime CLI path.
+- Added M13 `math.sign(value)` as a deterministic gameplay direction helper.
+  It returns `-1`, `0`, or `1` for numeric inputs in inline, managed-heap, and
+  Engine-installed standard native execution, and analysis/completion facts
+  expose the helper without introducing script generics.
 
 ## Next
 
