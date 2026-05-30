@@ -1187,6 +1187,12 @@ mod tests {
             TypeFact::array(TypeFact::record("ReflectFunction"))
         );
         assert_eq!(
+            stdlib_function_fact("reflect.exports", &[TypeFact::record("ReflectModule")])
+                .expect("reflect.exports module fact")
+                .returns,
+            TypeFact::array(TypeFact::String)
+        );
+        assert_eq!(
             stdlib_function_fact(
                 "reflect.call",
                 &[TypeFact::host("Player"), TypeFact::String, TypeFact::Int,]
@@ -1389,6 +1395,15 @@ mod tests {
         assert!(facts.iter().any(|fact| {
             fact.name == "reflect.functions"
                 && fact.returns == TypeFact::array(TypeFact::record("ReflectFunction"))
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "reflect.exports"
+                && fact.params
+                    == vec![TypeFact::union([
+                        TypeFact::String,
+                        TypeFact::record("ReflectModule"),
+                    ])]
+                && fact.returns == TypeFact::array(TypeFact::String)
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "reflect.call"

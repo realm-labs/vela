@@ -350,6 +350,13 @@ pub fn exports(registry: &TypeRegistry, module_name: &str) -> ReflectResult<Refl
     )))
 }
 
+pub fn exports_for_target(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+) -> ReflectResult<ReflectValue> {
+    exports(registry, module_target_name(target)?)
+}
+
 pub fn exports_with_policy(
     registry: &TypeRegistry,
     module_name: &str,
@@ -369,6 +376,14 @@ pub fn exports_with_policy(
             .map(HostValue::String)
             .collect(),
     )))
+}
+
+pub fn exports_for_target_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    exports_with_policy(registry, module_target_name(target)?, policy)
 }
 
 pub fn function(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
@@ -499,6 +514,27 @@ fn visible_export_names(
         })
         .map(|export| export.name.clone())
         .collect()
+}
+
+fn module_target_name(target: &ReflectValue) -> ReflectResult<&str> {
+    match target {
+        ReflectValue::Host(HostValue::String(name)) => Ok(name),
+        ReflectValue::Host(HostValue::Record { type_name, fields })
+            if type_name == "ReflectModule" =>
+        {
+            match fields.get("name") {
+                Some(HostValue::String(name)) => Ok(name),
+                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+            }
+        }
+        ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectModule" => {
+            match fields.get("name") {
+                Some(ReflectValue::Host(HostValue::String(name))) => Ok(name),
+                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+            }
+        }
+        _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+    }
 }
 
 fn function_record(desc: &FunctionDesc) -> ReflectValue {
@@ -762,6 +798,22 @@ fn helper() {
         assert_eq!(
             crate::origin_metadata(&registry, &module_value).expect("module origin helper"),
             ReflectValue::Host(HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
+            exports_for_target(&registry, &module_value).expect("module record exports"),
+            ReflectValue::Host(HostValue::Array(vec![HostValue::String(
+                "game.reward.grant".into()
+            )]))
+        );
+        assert_eq!(
+            exports_for_target(
+                &registry,
+                &ReflectValue::Host(HostValue::String("game.reward".into())),
+            )
+            .expect("module string exports"),
+            ReflectValue::Host(HostValue::Array(vec![HostValue::String(
+                "game.reward.grant".into()
+            )]))
         );
         let ReflectValue::Host(HostValue::Record {
             type_name,
@@ -1121,6 +1173,20 @@ fn helper() {
         assert_eq!(
             module.get("exports"),
             Some(&HostValue::Array(vec![HostValue::String(
+                "game.reward.grant".to_owned()
+            )]))
+        );
+        assert_eq!(
+            exports_for_target_with_policy(
+                &registry,
+                &ReflectValue::Host(HostValue::Record {
+                    type_name: "ReflectModule".to_owned(),
+                    fields: module.clone(),
+                }),
+                &ReflectPolicy::read_only(),
+            )
+            .expect("policy module record exports"),
+            ReflectValue::Host(HostValue::Array(vec![HostValue::String(
                 "game.reward.grant".to_owned()
             )]))
         );

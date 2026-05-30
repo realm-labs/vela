@@ -1927,6 +1927,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `host` or `script` origin, script module registration marks modules as
   script-declared, and `reflect.origin(module)` works for direct and listed
   `ReflectModule` records instead of reporting `null`.
+- Normalized M12 module export reflection targets. `reflect.exports(value)` now
+  accepts either a module name string or a copied `ReflectModule` descriptor,
+  preserving policy-filtered export visibility while matching the descriptor
+  helper style used by the rest of the reflection surface.
 
 ## Next
 

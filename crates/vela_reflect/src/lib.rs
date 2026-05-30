@@ -40,9 +40,10 @@ pub use members::{
 };
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
-    exports as module_exports, exports_with_policy as module_exports_with_policy,
-    function as function_metadata, function_with_policy as function_metadata_with_policy,
-    functions as function_metadata_list,
+    exports as module_exports, exports_for_target as module_exports_for_target,
+    exports_for_target_with_policy as module_exports_for_target_with_policy,
+    exports_with_policy as module_exports_with_policy, function as function_metadata,
+    function_with_policy as function_metadata_with_policy, functions as function_metadata_list,
     functions_with_policy as function_metadata_list_with_policy, has_function,
     has_function_with_policy, has_module, has_module_with_policy, module as module_metadata,
     module_with_policy as module_metadata_with_policy, modules as module_metadata_list,

@@ -494,10 +494,10 @@ impl Vm {
                 reflect::ReflectPermission::ReadTypeInfo,
             )?;
             expect_arity("reflect.exports", args, 1)?;
-            let module_name = expect_string(&args[0], "reflect.exports")?;
-            value_from_reflect(reflect::module_exports_with_policy(
+            let target = value_to_reflect(&args[0], "reflect.exports")?;
+            value_from_reflect(reflect::module_exports_for_target_with_policy(
                 &exports_registry,
-                module_name,
+                &target,
                 &exports_policy,
             )?)
         });

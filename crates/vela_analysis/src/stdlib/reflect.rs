@@ -84,7 +84,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         ),
         fact(
             "reflect.exports",
-            vec![TypeFact::String],
+            vec![module_target()],
             array(TypeFact::String),
         ),
         fact(
@@ -283,6 +283,10 @@ fn maybe_string() -> TypeFact {
 
 fn maybe_source_span() -> TypeFact {
     TypeFact::union([record("ReflectSourceSpan"), TypeFact::Null])
+}
+
+fn module_target() -> TypeFact {
+    TypeFact::union([TypeFact::String, record("ReflectModule")])
 }
 
 fn record(name: &'static str) -> TypeFact {

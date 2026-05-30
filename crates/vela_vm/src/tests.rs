@@ -5068,6 +5068,8 @@ fn main() {
     let module = reflect.module("game.reward");
     let modules = reflect.modules();
     let exports = reflect.exports("game.reward");
+    let module_exports = reflect.exports(module);
+    let listed_exports = reflect.exports(modules[0]);
     let function = reflect.function("game.reward.grant");
     let functions = reflect.functions();
     if module.name == "game.reward"
@@ -5081,6 +5083,8 @@ fn main() {
         && modules.len() == 1
         && modules[0].name == "game.reward"
         && exports.len() == 1
+        && module_exports.len() == 1
+        && listed_exports[0] == "game.reward.grant"
         && functions.len() == 1
         && functions[0].name == "game.reward.grant"
         && functions[0].id == function.id
@@ -5126,6 +5130,7 @@ fn main() {
     let module = reflect.module("game.reward");
     let modules = reflect.modules();
     let exports = reflect.exports("game.reward");
+    let module_exports = reflect.exports(module);
     let functions = reflect.functions();
     if reflect.has_module("game.reward")
         && !reflect.has_module("game.missing")
@@ -5135,6 +5140,7 @@ fn main() {
         && !reflect.has_function("game.reward.admin") {
         return module.exports.len() * 100
             + exports.len() * 10
+            + module_exports.len() * 10000
             + functions.len()
             + modules[0].exports.len() * 1000;
     }
@@ -5158,7 +5164,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(1111))
+        Ok(Value::Int(11111))
     );
 }
 
