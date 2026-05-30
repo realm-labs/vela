@@ -1955,6 +1955,16 @@ post-MVP reference or optional tracks, not MVP requirements.
   `ReflectTrait` records returned by `reflect.trait_info`/`reflect.traits`, and
   analysis completion facts expose the trait argument as either a string name
   or copied trait descriptor without introducing script generics.
+- Extended the M17 reflection demo proof to exercise copied `ReflectType` and
+  `ReflectTrait` descriptor targets directly. `reflect_debug.lang` now checks
+  `reflect.fields(type_info)`, `reflect.traits(type_info)`, and
+  `reflect.implements(type_info, trait_info)` through the stable CLI demo path
+  while preserving the controlled `reflect.set`/`reflect.call` workflow.
+- Fixed an M9/M11 lowering edge where indexing the result of an ordinary call
+  could be mistaken for a host path. Indexed host paths now only grow from an
+  already host-shaped receiver, while expressions such as
+  `reflect.traits(type_info)[0].name` compile through normal index and record
+  field reads.
 
 ## Next
 

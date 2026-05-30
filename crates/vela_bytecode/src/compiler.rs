@@ -5664,6 +5664,37 @@ fn main() {
     }
 
     #[test]
+    fn compiler_keeps_call_result_index_reads_off_host_paths() {
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn values() {
+    return [{ "name": "Damageable" }];
+}
+
+fn main() {
+    return values()[0].name;
+}
+"#,
+            "main",
+            &CompilerOptions::new().with_host_field("count", FieldId::new(1)),
+        )
+        .expect("call result index read should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::GetIndex { .. }))
+        );
+        assert!(
+            !code
+                .instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::GetHostPath { .. }))
+        );
+    }
+
+    #[test]
     fn compiler_lowers_index_writes() {
         let code = compile_function_source(
             SourceId::new(1),

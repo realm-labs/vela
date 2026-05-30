@@ -34,7 +34,7 @@ pub(super) fn host_field_path<'ast>(
         }
         ExprKind::Path(path) => host_field_path_parts(options, path),
         ExprKind::Index { base, index } => {
-            let mut path = host_path_receiver(options, base)?;
+            let mut path = host_path_index_receiver(options, base)?;
             path.segments.push(HostPathPart::Value(index));
             Some(path)
         }
@@ -63,6 +63,27 @@ fn host_path_receiver<'ast>(
             root: HostPathRoot::Expr(receiver),
             segments: Vec::new(),
         }),
+    }
+}
+
+fn host_path_index_receiver<'ast>(
+    options: &CompilerOptions,
+    receiver: &'ast Expr,
+) -> Option<HostPath<'ast>> {
+    match &receiver.kind {
+        ExprKind::Field { base, name } => {
+            let field = options.host_fields.get(name).copied()?;
+            let mut path = host_path_receiver(options, base)?;
+            path.segments.push(HostPathPart::Field(field));
+            Some(path)
+        }
+        ExprKind::Index { base, index } => {
+            let mut path = host_path_index_receiver(options, base)?;
+            path.segments.push(HostPathPart::Value(index));
+            Some(path)
+        }
+        ExprKind::Path(path) => host_field_path_parts(options, path),
+        _ => None,
     }
 }
 
