@@ -755,7 +755,13 @@ fn trait_record(trait_desc: &TraitDesc) -> HostValue {
     );
     fields.insert(
         "methods".to_owned(),
-        HostValue::Array(trait_desc.methods.iter().map(trait_method_record).collect()),
+        HostValue::Array(
+            trait_desc
+                .methods
+                .iter()
+                .map(|method| trait_method_record(&trait_desc.name, method))
+                .collect(),
+        ),
     );
     fields.insert("docs".to_owned(), docs_value(trait_desc.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&trait_desc.attrs));
@@ -766,10 +772,11 @@ fn trait_record(trait_desc: &TraitDesc) -> HostValue {
     }
 }
 
-fn trait_method_record(method: &TraitMethodDesc) -> HostValue {
+fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
+    fields.insert("owner".to_owned(), HostValue::String(owner.to_owned()));
     fields.insert(
         "params".to_owned(),
         HostValue::Array(method.params.iter().map(method_param_record).collect()),
@@ -1517,6 +1524,19 @@ mod tests {
         else {
             panic!("trait method should be a record");
         };
+        let trait_method_value = ReflectValue::Host(methods[0].clone());
+        assert_eq!(
+            method_fields.get("owner"),
+            Some(&HostValue::String("Damageable".to_owned()))
+        );
+        assert_eq!(
+            owner(&registry, &trait_method_value).expect("trait method owner metadata"),
+            ReflectValue::Host(HostValue::String("Damageable".to_owned()))
+        );
+        assert_eq!(
+            kind(&registry, &trait_method_value).expect("trait method kind metadata"),
+            ReflectValue::Host(HostValue::String("trait_method".to_owned()))
+        );
         assert_eq!(
             method_fields.get("return"),
             Some(&HostValue::String("int".to_owned()))

@@ -5245,7 +5245,10 @@ fn main() {
         && !reflect.has_trait("Damagable")
         && traits[0].name == "Damageable"
         && trait_info.name == "Damageable"
-        && trait_info.methods[0].name == "damage" {
+        && trait_info.methods[0].name == "damage"
+        && trait_info.methods[0].owner == "Damageable"
+        && reflect.owner(trait_info.methods[0]) == "Damageable"
+        && reflect.kind(trait_info.methods[0]) == "trait_method" {
         return trait_info.methods.len();
     }
     return 0;

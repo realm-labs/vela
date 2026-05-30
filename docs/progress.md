@@ -1919,6 +1919,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   declaration-origin metadata. Function descriptors now have a stable helper
   for `host`/`script` origin strings, descriptors without origin report `null`,
   and analysis exposes the helper as a non-generic nullable string query.
+- Normalized copied trait-method descriptors with owner metadata. Trait method
+  records returned from `reflect.trait_info` and `reflect.traits` now carry
+  the owning trait name, so scripts can use `reflect.owner` and `reflect.kind`
+  on trait methods just like field, method, and variant descriptors.
 
 ## Next
 
