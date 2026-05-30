@@ -177,7 +177,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         ),
         fact(
             "reflect.implements",
-            vec![TypeFact::Any, TypeFact::String],
+            vec![TypeFact::Any, trait_target()],
             TypeFact::Bool,
         ),
     ]
@@ -267,6 +267,10 @@ fn array(element: TypeFact) -> TypeFact {
 
 fn attrs() -> TypeFact {
     TypeFact::map(TypeFact::String, TypeFact::String)
+}
+
+fn trait_target() -> TypeFact {
+    TypeFact::union([TypeFact::String, record("ReflectTrait")])
 }
 
 fn access() -> TypeFact {

@@ -867,9 +867,11 @@ impl Vm {
             expect_arity("reflect.implements", args, 2)?;
             let target = value_to_reflect(&args[0], "reflect.implements")?;
             check_host_ref_inspection(&implements_policy, &target)?;
-            let trait_name = expect_string(&args[1], "reflect.implements")?;
+            let trait_target = value_to_reflect(&args[1], "reflect.implements")?;
             Ok(Value::Bool(reflect::implements(
-                &registry, &target, trait_name,
+                &registry,
+                &target,
+                &trait_target,
             )?))
         });
     }

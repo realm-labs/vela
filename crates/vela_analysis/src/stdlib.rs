@@ -1203,6 +1203,15 @@ mod tests {
         );
         assert_eq!(
             stdlib_function_fact(
+                "reflect.implements",
+                &[TypeFact::host("Player"), TypeFact::record("ReflectTrait"),]
+            )
+            .expect("reflect.implements trait descriptor fact")
+            .returns,
+            TypeFact::Bool
+        );
+        assert_eq!(
+            stdlib_function_fact(
                 "reflect.variant_is",
                 &[
                     TypeFact::enum_type("QuestProgress", Some("Active")),
@@ -1409,6 +1418,15 @@ mod tests {
             fact.name == "reflect.call"
                 && fact.params == vec![TypeFact::Any, TypeFact::String]
                 && fact.returns == TypeFact::Any
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.name == "reflect.implements"
+                && fact.params
+                    == vec![
+                        TypeFact::Any,
+                        TypeFact::union([TypeFact::String, TypeFact::record("ReflectTrait")]),
+                    ]
+                && fact.returns == TypeFact::Bool
         }));
     }
 }

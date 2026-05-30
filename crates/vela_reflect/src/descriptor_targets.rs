@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use vela_host::HostValue;
 
 use crate::{
@@ -18,6 +20,21 @@ pub(crate) fn type_desc<'a>(
         .map(Some)
 }
 
+pub(crate) fn trait_name(target: &ReflectValue) -> ReflectResult<&str> {
+    match target {
+        ReflectValue::Host(HostValue::String(name)) => Ok(name),
+        ReflectValue::Host(HostValue::Record { type_name, fields })
+            if type_name == "ReflectTrait" =>
+        {
+            reflect_record_name(fields)
+        }
+        ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectTrait" => {
+            script_record_name(fields)
+        }
+        _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+    }
+}
+
 fn type_name(target: &ReflectValue) -> ReflectResult<Option<&str>> {
     match target {
         ReflectValue::Host(HostValue::Record { type_name, fields })
@@ -35,6 +52,20 @@ fn type_name(target: &ReflectValue) -> ReflectResult<Option<&str>> {
             }
         }
         _ => Ok(None),
+    }
+}
+
+fn reflect_record_name(fields: &BTreeMap<String, HostValue>) -> ReflectResult<&str> {
+    match fields.get("name") {
+        Some(HostValue::String(name)) => Ok(name),
+        _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+    }
+}
+
+fn script_record_name(fields: &BTreeMap<String, ReflectValue>) -> ReflectResult<&str> {
+    match fields.get("name") {
+        Some(ReflectValue::Host(HostValue::String(name))) => Ok(name),
+        _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
 

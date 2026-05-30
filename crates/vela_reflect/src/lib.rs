@@ -100,6 +100,10 @@ mod tests {
         adapter
     }
 
+    fn trait_name(name: &str) -> ReflectValue {
+        ReflectValue::Host(HostValue::String(name.to_owned()))
+    }
+
     #[test]
     fn reflect_set_host_ref_creates_patch() {
         let registry = registry();
@@ -948,26 +952,40 @@ mod tests {
             implements(
                 &registry,
                 &ReflectValue::HostRef(player_ref()),
-                "Damageable"
+                &trait_name("Damageable"),
             )
             .expect("implements check")
         );
         assert!(
-            !implements(&registry, &ReflectValue::HostRef(player_ref()), "Trackable")
-                .expect("known unimplemented trait check")
+            !implements(
+                &registry,
+                &ReflectValue::HostRef(player_ref()),
+                &trait_name("Trackable")
+            )
+            .expect("known unimplemented trait check")
         );
         let player_type = type_metadata_by_name(&registry, "Player").expect("type metadata");
         assert!(
-            implements(&registry, &player_type, "Damageable")
+            implements(&registry, &player_type, &trait_name("Damageable"))
                 .expect("copied type descriptor implements check")
         );
         assert!(
-            !implements(&registry, &player_type, "Trackable")
+            !implements(&registry, &player_type, &trait_name("Trackable"))
                 .expect("copied type descriptor negative implements check")
         );
+        let damageable_trait =
+            trait_metadata_by_name(&registry, "Damageable").expect("trait metadata");
+        assert!(
+            implements(&registry, &player_type, &damageable_trait)
+                .expect("copied trait descriptor implements check")
+        );
 
-        let error = implements(&registry, &ReflectValue::HostRef(player_ref()), "Damagable")
-            .expect_err("unknown trait should diagnose");
+        let error = implements(
+            &registry,
+            &ReflectValue::HostRef(player_ref()),
+            &trait_name("Damagable"),
+        )
+        .expect_err("unknown trait should diagnose");
         assert_eq!(
             error.kind,
             ReflectErrorKind::UnknownTrait {
@@ -1002,7 +1020,7 @@ mod tests {
                     type_name: "game.Player".to_owned(),
                     fields: BTreeMap::new(),
                 },
-                "game.Damageable",
+                &trait_name("game.Damageable"),
             )
             .expect("script record implements check")
         );
@@ -1014,7 +1032,7 @@ mod tests {
                     variant: "Active".to_owned(),
                     fields: BTreeMap::new(),
                 },
-                "game.Trackable",
+                &trait_name("game.Trackable"),
             )
             .expect("script enum implements check")
         );
@@ -1025,7 +1043,7 @@ mod tests {
                     type_name: "game.Player".to_owned(),
                     fields: BTreeMap::new(),
                 },
-                "game.Trackable",
+                &trait_name("game.Trackable"),
             )
             .expect("script record negative implements check")
         );

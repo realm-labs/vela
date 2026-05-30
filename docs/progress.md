@@ -1950,6 +1950,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   lives in a focused reflection helper module shared by member metadata queries
   and implements checks, keeping copied `ReflectType` parsing out of unrelated
   logic.
+- Normalized M12 trait descriptor targets for implements checks.
+  `reflect.implements(value_or_type, trait_info)` now accepts copied
+  `ReflectTrait` records returned by `reflect.trait_info`/`reflect.traits`, and
+  analysis completion facts expose the trait argument as either a string name
+  or copied trait descriptor without introducing script generics.
 
 ## Next
 

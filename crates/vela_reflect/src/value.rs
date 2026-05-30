@@ -271,8 +271,9 @@ fn call_impl(
 pub fn implements(
     registry: &TypeRegistry,
     target: &ReflectValue,
-    trait_name: &str,
+    trait_target: &ReflectValue,
 ) -> ReflectResult<bool> {
+    let trait_name = descriptor_targets::trait_name(trait_target)?;
     let known_traits = registry.known_trait_names();
     if !known_traits.iter().any(|candidate| candidate == trait_name) {
         let candidates = registry.known_trait_candidates();

@@ -5667,7 +5667,8 @@ fn compiled_source_reflect_implements_accepts_type_descriptor() {
         r#"
 fn main() {
     let player_type = reflect.type_info("Player");
-    if reflect.kind(player_type) == "host" && reflect.implements(player_type, "Damageable") {
+    let damageable = reflect.trait_info("Damageable");
+    if reflect.kind(player_type) == "host" && reflect.implements(player_type, damageable) {
         return reflect.id(player_type);
     }
     return 0;
