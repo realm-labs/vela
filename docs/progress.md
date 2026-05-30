@@ -99,6 +99,8 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split `vela_host` into focused modules for paths, values, patches, errors,
   adapters, transactions, mock adapters, and tests while preserving the public
   crate API.
+- Kept `PatchTx` orchestration separate from patch overlay state by moving
+  overlay read/write policy into a focused host module.
 - Implemented transaction overlay updates for `Set` and read-modify-write
   `Add` patches without exposing Rust `&mut` references.
 - Added host tests for set patch recording, add patch overlay behavior,

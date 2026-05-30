@@ -3,6 +3,7 @@
 mod adapter;
 mod error;
 mod mock;
+mod overlay;
 mod patch;
 mod path;
 mod proxy;
