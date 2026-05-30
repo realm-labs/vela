@@ -1945,6 +1945,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   `reflect.fields`, `reflect.field`, `reflect.methods`, `reflect.method`,
   `reflect.traits`, `reflect.variants`, and related `has_*`/variant helpers,
   matching the documented `reflect.*(type)` API without requiring a live value.
+- Extended the same M12 copied type descriptor target handling to
+  `reflect.implements(type_info, trait_name)`. Descriptor-target extraction now
+  lives in a focused reflection helper module shared by member metadata queries
+  and implements checks, keeping copied `ReflectType` parsing out of unrelated
+  logic.
 
 ## Next
 

@@ -7,6 +7,7 @@ use crate::{
     ReflectResult, ReflectValue, TraitDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
     VariantDesc,
     candidates::{candidate_names, ranked_candidates},
+    descriptor_targets,
     metadata::{attrs_value, docs_value, span_value},
     metadata_records, type_of,
 };
@@ -537,10 +538,8 @@ fn target_type<'a>(
     if let Some(desc) = type_of(registry, target) {
         return Ok(desc);
     }
-    if let Some(type_name) = reflect_type_name(target)? {
-        return registry
-            .type_by_name(type_name)
-            .ok_or_else(|| unknown_type_name(registry, type_name));
+    if let Some(desc) = descriptor_targets::type_desc(registry, target)? {
+        return Ok(desc);
     }
     match target {
         ReflectValue::HostRef(host_ref) => Err(ReflectError::new(ReflectErrorKind::UnknownType {
@@ -553,40 +552,6 @@ fn target_type<'a>(
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
     }
-}
-
-fn reflect_type_name(target: &ReflectValue) -> ReflectResult<Option<&str>> {
-    match target {
-        ReflectValue::Host(HostValue::Record { type_name, fields })
-            if type_name == "ReflectType" =>
-        {
-            match fields.get("name") {
-                Some(HostValue::String(name)) => Ok(Some(name.as_str())),
-                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-            }
-        }
-        ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectType" => {
-            match fields.get("name") {
-                Some(ReflectValue::Host(HostValue::String(name))) => Ok(Some(name.as_str())),
-                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-            }
-        }
-        _ => Ok(None),
-    }
-}
-
-fn unknown_type_name(registry: &TypeRegistry, type_name: &str) -> ReflectError {
-    let related = ranked_candidates(
-        type_name,
-        registry
-            .types()
-            .map(|desc| (desc.key.name.as_str(), desc.source_span)),
-    );
-    ReflectError::new(ReflectErrorKind::UnknownTypeName {
-        type_name: type_name.to_owned(),
-        candidates: candidate_names(&related),
-        related,
-    })
 }
 
 fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {

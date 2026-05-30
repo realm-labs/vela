@@ -5661,6 +5661,37 @@ fn main(player) {
 }
 
 #[test]
+fn compiled_source_reflect_implements_accepts_type_descriptor() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let player_type = reflect.type_info("Player");
+    if reflect.kind(player_type) == "host" && reflect.implements(player_type, "Damageable") {
+        return reflect.id(player_type);
+    }
+    return 0;
+}
+"#,
+    )
+    .expect("compile type descriptor implements source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(reflection_registry()));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        vm.run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Int(100))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn compiled_source_reflects_script_record_implements() {
     let program = compile_program_source(
         SourceId::new(1),

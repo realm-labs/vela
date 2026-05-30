@@ -2,6 +2,7 @@
 
 mod access;
 mod candidates;
+mod descriptor_targets;
 mod error;
 mod error_diagnostics;
 mod members;
@@ -954,6 +955,15 @@ mod tests {
         assert!(
             !implements(&registry, &ReflectValue::HostRef(player_ref()), "Trackable")
                 .expect("known unimplemented trait check")
+        );
+        let player_type = type_metadata_by_name(&registry, "Player").expect("type metadata");
+        assert!(
+            implements(&registry, &player_type, "Damageable")
+                .expect("copied type descriptor implements check")
+        );
+        assert!(
+            !implements(&registry, &player_type, "Trackable")
+                .expect("copied type descriptor negative implements check")
         );
 
         let error = implements(&registry, &ReflectValue::HostRef(player_ref()), "Damagable")

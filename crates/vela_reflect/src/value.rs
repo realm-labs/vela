@@ -4,7 +4,7 @@ use vela_host::{HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter};
 
 use crate::{
     FieldDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult, TypeDesc,
-    TypeRegistry, candidates,
+    TypeRegistry, candidates, descriptor_targets,
     value_access::{
         get_record_field, record_unknown_field, script_enum_field, script_enum_unknown_field,
         script_record_field, script_record_unknown_field, set_record_field,
@@ -289,6 +289,10 @@ pub fn implements(
         }));
     }
 
+    if let Some(desc) = descriptor_targets::type_desc(registry, target)? {
+        return Ok(type_implements(desc, trait_name));
+    }
+
     match target {
         ReflectValue::HostRef(host_ref) => {
             let desc = registry.type_of_host(*host_ref).ok_or_else(|| {
@@ -296,10 +300,7 @@ pub fn implements(
                     host_type_id: host_ref.type_id,
                 })
             })?;
-            Ok(desc
-                .traits
-                .iter()
-                .any(|trait_desc| trait_desc.name == trait_name))
+            Ok(type_implements(desc, trait_name))
         }
         ReflectValue::ScriptRecord { type_name, .. }
         | ReflectValue::ScriptEnum {
@@ -309,15 +310,18 @@ pub fn implements(
             let Some(desc) = registry.type_by_name(type_name) else {
                 return Ok(false);
             };
-            Ok(desc
-                .traits
-                .iter()
-                .any(|trait_desc| trait_desc.name == trait_name))
+            Ok(type_implements(desc, trait_name))
         }
         ReflectValue::Host(_) | ReflectValue::Record(_) => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
     }
+}
+
+fn type_implements(desc: &TypeDesc, trait_name: &str) -> bool {
+    desc.traits
+        .iter()
+        .any(|trait_desc| trait_desc.name == trait_name)
 }
 
 fn host_arg(value: ReflectValue) -> ReflectResult<HostValue> {
