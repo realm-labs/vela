@@ -7247,3 +7247,30 @@ Consequences:
 - Product compatibility remains explicit: hot reload ABI checks, schema ABI
   checks, and future persisted artifact compatibility still require deliberate
   validation and documentation.
+
+## 2026-05-30: Gameplay Math Helpers Stay Deterministic
+
+Status: Accepted
+
+Context:
+M13 standard-library work now includes gameplay-oriented math helpers beyond
+basic scalar operations. Helpers such as `math.sign` and `math.move_towards`
+are useful in game-server logic for direction checks, cooldowns, interpolation
+steps, and bounded state changes, but they must not introduce nondeterminism or
+hidden host access.
+
+Decision:
+Keep gameplay math helpers as deterministic standard natives over copied script
+numbers. `math.sign(value)` returns `-1`, `0`, or `1`. `math.move_towards`
+steps from `current` toward `target` by a non-negative `max_delta` and clamps
+without overshoot. Integer-only inputs preserve integer results; mixed numeric
+inputs produce finite floats. Invalid numeric domains fail through normal VM
+type errors.
+
+Consequences:
+- Gameplay scripts can express common movement and timer steps without custom
+  host natives.
+- These helpers remain pure and require no permissions, unlike controlled
+  random or host-provided time.
+- Analysis and completion metadata can expose the helpers without adding
+  user-visible generic syntax.

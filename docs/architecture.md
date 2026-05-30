@@ -1687,9 +1687,11 @@ math.max
 math.min
 math.clamp
 math.lerp
+math.move_towards
 math.distance2d
 math.distance3d
 math.pow
+math.sign
 math.floor
 math.ceil
 math.round
