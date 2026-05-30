@@ -1,7 +1,19 @@
 fn main(ctx, player) {
     let fields = reflect.fields(player);
+    let level = reflect.field(player, "level");
+    let method = reflect.method(player, "add_reward");
 
-    if reflect.type_of(player) == "Player" && reflect.implements(player, "Damageable") {
+    if reflect.type_of(player) == "Player"
+        && reflect.id(player) == 100
+        && reflect.implements(player, "Damageable")
+        && fields.len() == 7
+        && reflect.name(level) == "level"
+        && reflect.id(level) == 2
+        && level.owner == "Player"
+        && level.writable
+        && reflect.name(method) == "add_reward"
+        && method.owner == "Player"
+        && method.effects.writes_host {
         reflect.set(player, "level", 12);
         reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
         return reflect.get(player, "level") + fields.len();

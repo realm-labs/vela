@@ -1874,6 +1874,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `reflect.variants(value)`, and `reflect.variant_info` records now carry the
   same `owner` field as zero-argument member metadata lists, so scripts can use
   one descriptor shape for targeted and enumerated field/method/variant queries.
+- Extended the M17 reflection demo script to prove stable reflected type and
+  field IDs, owner-qualified field and method descriptors, method effect
+  metadata, and the existing controlled `reflect.set`/`reflect.call` workflow
+  through the stable Engine/Runtime CLI path.
 
 ## Next
 
