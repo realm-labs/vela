@@ -257,6 +257,24 @@ impl Vm {
             )?)
         });
 
+        let required_permissions_registry = Arc::clone(&registry);
+        let required_permissions_policy = policy.clone();
+        let required_permissions_budget = Arc::clone(&lookup_budget);
+        self.register_host_native("reflect.required_permissions", move |args, _host| {
+            check_reflect_policy(
+                &required_permissions_policy,
+                &required_permissions_budget,
+                reflect::ReflectPermission::ReadTypeInfo,
+            )?;
+            expect_arity("reflect.required_permissions", args, 1)?;
+            let target = value_to_reflect(&args[0], "reflect.required_permissions")?;
+            check_host_ref_inspection(&required_permissions_policy, &target)?;
+            value_from_reflect(reflect::required_permissions_metadata(
+                &required_permissions_registry,
+                &target,
+            )?)
+        });
+
         let fields_registry = Arc::clone(&registry);
         let fields_policy = policy.clone();
         let fields_budget = Arc::clone(&lookup_budget);

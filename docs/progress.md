@@ -1888,6 +1888,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   gameplay movement/cooldown steps. It handles integer and finite float inputs,
   rejects negative deltas, clamps without overshoot, and is covered by VM,
   managed-heap, Engine, analysis, and completion tests.
+- Added M12 `reflect.required_permissions(value)` for copied reflection
+  metadata records and access records. Scripts can now read descriptor
+  permission requirements without knowing each descriptor's nested access
+  shape, and analysis exposes the helper as a non-generic string-array query.
 
 ## Next
 

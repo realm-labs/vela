@@ -1094,6 +1094,15 @@ mod tests {
         );
         assert_eq!(
             stdlib_function_fact(
+                "reflect.required_permissions",
+                &[TypeFact::record("ReflectFunction")]
+            )
+            .expect("reflect.required_permissions fact")
+            .returns,
+            TypeFact::array(TypeFact::String)
+        );
+        assert_eq!(
+            stdlib_function_fact(
                 "reflect.attr",
                 &[TypeFact::host("Player"), TypeFact::String]
             )

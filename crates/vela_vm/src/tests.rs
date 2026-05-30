@@ -4900,6 +4900,44 @@ fn main(player) {
 }
 
 #[test]
+fn compiled_source_reflects_required_permissions_metadata() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let function = reflect.function("game.reward.admin");
+    let permissions = reflect.required_permissions(function);
+    let access_permissions = reflect.required_permissions(function.access);
+    let public_function = reflect.function("game.reward.grant");
+    return permissions.len() == 1
+        && permissions[0] == "game.admin"
+        && access_permissions.len() == 1
+        && access_permissions[0] == "game.admin"
+        && reflect.required_permissions(public_function).is_empty();
+}
+"#,
+    )
+    .expect("compile required permission reflection source");
+    let mut vm = Vm::new();
+    vm.register_reflection_natives_with_policy(
+        Arc::new(policy_module_reflection_registry()),
+        reflect::ReflectPolicy::read_only().with_function_permission("game.admin"),
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        vm.run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Bool(true))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn compiled_source_reflect_fields_respect_field_access() {
     let host_ref = player_ref(3);
     let program = compile_program_source(

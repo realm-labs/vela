@@ -97,6 +97,18 @@ pub fn source_span(registry: &TypeRegistry, target: &ReflectValue) -> ReflectRes
     }
 }
 
+pub fn required_permissions(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+) -> ReflectResult<ReflectValue> {
+    match target_type(registry, target) {
+        Ok(_) => Ok(ReflectValue::Host(HostValue::Array(Vec::new()))),
+        Err(error) => metadata_records::required_permissions(target)?
+            .map(ReflectValue::Host)
+            .ok_or(error),
+    }
+}
+
 pub fn field(
     registry: &TypeRegistry,
     target: &ReflectValue,

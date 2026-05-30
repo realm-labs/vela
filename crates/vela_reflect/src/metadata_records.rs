@@ -90,6 +90,16 @@ pub(crate) fn source_span(target: &ReflectValue) -> ReflectResult<Option<HostVal
     source_span_value(source_span).map(Some)
 }
 
+pub(crate) fn required_permissions(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+    if let Some(access) = field(target, "access") {
+        return required_permissions_from_access(access).map(Some);
+    }
+    if is_access_record(target) {
+        return required_permissions_from_access(MetadataField::Reflect(target)).map(Some);
+    }
+    Ok(None)
+}
+
 enum MetadataField<'a> {
     Host(&'a HostValue),
     Reflect(&'a ReflectValue),
@@ -146,6 +156,13 @@ fn descriptor_kind(type_name: &str) -> Option<&'static str> {
     }
 }
 
+fn is_access_record(target: &ReflectValue) -> bool {
+    matches!(
+        record_type_name(target),
+        Some("ReflectFieldAccess" | "ReflectMethodAccess" | "ReflectFunctionAccess")
+    )
+}
+
 fn attrs_to_host_map(value: MetadataField<'_>) -> ReflectResult<HostValue> {
     match value {
         MetadataField::Host(HostValue::Map(attrs)) => Ok(HostValue::Map(attrs.clone())),
@@ -162,6 +179,43 @@ fn attrs_to_host_map(value: MetadataField<'_>) -> ReflectResult<HostValue> {
             })
             .collect::<ReflectResult<BTreeMap<_, _>>>()
             .map(HostValue::Map),
+        _ => Err(invalid_target()),
+    }
+}
+
+fn required_permissions_from_access(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+    let Some(required_permissions) = record_field(value, "required_permissions") else {
+        return Err(invalid_target());
+    };
+    string_array(required_permissions)
+}
+
+fn record_field<'a>(value: MetadataField<'a>, name: &str) -> Option<MetadataField<'a>> {
+    match value {
+        MetadataField::Host(HostValue::Record { fields, .. }) => {
+            fields.get(name).map(MetadataField::Host)
+        }
+        MetadataField::Reflect(ReflectValue::Host(HostValue::Record { fields, .. })) => {
+            fields.get(name).map(MetadataField::Host)
+        }
+        MetadataField::Reflect(ReflectValue::ScriptRecord { fields, .. }) => {
+            fields.get(name).map(MetadataField::Reflect)
+        }
+        _ => None,
+    }
+}
+
+fn string_array(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+    match value {
+        MetadataField::Host(HostValue::Array(values))
+        | MetadataField::Reflect(ReflectValue::Host(HostValue::Array(values))) => values
+            .iter()
+            .map(|value| match value {
+                HostValue::String(value) => Ok(HostValue::String(value.clone())),
+                _ => Err(invalid_target()),
+            })
+            .collect::<ReflectResult<Vec<_>>>()
+            .map(HostValue::Array),
         _ => Err(invalid_target()),
     }
 }
