@@ -9,7 +9,7 @@ use vela_reflect::{
 };
 use vela_vm::Value;
 
-use super::ids::{DemoIds, MONSTER_TYPE, PLAYER_TYPE};
+use super::ids::{CONFIG_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
 
 pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
     let registry = demo_type_registry(ids);
@@ -43,14 +43,16 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
             )
             .trait_impl(TraitDesc::new("Damageable")),
     );
-    registry.register(context_host_type_desc());
+    registry.register(
+        context_host_type_desc()
+            .field(FieldDesc::new(ids.config_field, "config").type_hint("Config")),
+    );
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(102), "Monster"))
             .schema_hash(SchemaHash::new(0x1000_0000_0000_0003))
             .host_type(HostTypeId::new(MONSTER_TYPE))
             .field(FieldDesc::new(ids.id_field, "id"))
-            .field(FieldDesc::new(ids.exp_field, "exp"))
-            .field(FieldDesc::new(ids.reward_count_field, "reward_count")),
+            .field(FieldDesc::new(ids.exp_field, "exp")),
     );
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(103), "Inventory"))
@@ -64,6 +66,22 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
                 FieldDesc::new(ids.count_field, "count")
                     .writable(true)
                     .type_hint("int"),
+            ),
+    );
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(105), "Config"))
+            .schema_hash(SchemaHash::new(0x1000_0000_0000_0006))
+            .host_type(HostTypeId::new(CONFIG_TYPE))
+            .docs("Demo gameplay configuration exposed through context host paths.")
+            .field(
+                FieldDesc::new(ids.exp_to_next_level_field, "exp_to_next_level")
+                    .type_hint("int")
+                    .docs("Experience threshold for the next level."),
+            )
+            .field(
+                FieldDesc::new(ids.kill_rewards_field, "kill_rewards")
+                    .type_hint("array")
+                    .docs("Configured monster reward table."),
             ),
     );
     registry

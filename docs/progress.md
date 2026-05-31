@@ -2028,6 +2028,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   file into the focused host-path compiler module. Host path recognition,
   root/segment materialization, and push/remove bytecode emission now live
   together while preserving the existing PatchTx execution behavior.
+- Moved the M17 monster-kill reward demo closer to the architecture gameplay
+  loop by adding a reflected `Config` host schema under `ctx.config`. The
+  script now reads `ctx.config.exp_to_next_level` and filters
+  `ctx.config.kill_rewards` through normal HostPath reads and stdlib arrays
+  before recording inventory, reward, quest, and event patches.
 
 ## Next
 

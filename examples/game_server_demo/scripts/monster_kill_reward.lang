@@ -1,14 +1,18 @@
 fn main(ctx, player, monster) {
     player.exp += monster.exp;
 
-    if player.exp >= 100 {
+    if player.exp >= ctx.config.exp_to_next_level {
         player.level += 1;
         player.exp = 0;
         ctx.emit("player.level_up", player.level);
     }
 
-    player.inventory.items["gold"].count += monster.reward_count;
-    player.add_reward("gold", monster.reward_count);
+    let rewards = ctx.config.kill_rewards
+        .filter(|reward| reward["monster_id"] == monster.id);
+    for reward in rewards {
+        player.inventory.items[reward["item_id"]].count += reward["count"];
+        player.add_reward(reward["item_id"], reward["count"]);
+    }
 
     if monster.id == 11 {
         player.quest_count += 1;

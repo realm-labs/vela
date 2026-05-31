@@ -1,5 +1,6 @@
 fn main(ctx, player) {
     let player_type = reflect.type_info("Player");
+    let config_type = reflect.type_info("Config");
     let damageable = reflect.trait_info("Damageable");
     let fields = reflect.fields(player);
     let level = reflect.field(player, "level");
@@ -19,6 +20,8 @@ fn main(ctx, player) {
         && reflect.id(player) == 100
         && reflected_types.any(|type_info| type_info.name == "Player"
             && reflect.kind(type_info) == "host")
+        && reflect.has_field(config_type, "kill_rewards")
+        && reflect.field(config_type, "exp_to_next_level").type == "int"
         && reflect.implements(player_type, damageable)
         && fields.len() == 7
         && reflect.fields(player_type).len() == fields.len()

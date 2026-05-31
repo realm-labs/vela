@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::error::Error;
 
 use vela_bytecode::CodeObject;
@@ -61,6 +62,12 @@ impl DemoHostState {
             .field(ids.count_field);
         let now_path = HostPath::new(ctx).field(ids.now_field);
         let tick_path = HostPath::new(ctx).field(ids.tick_field);
+        let exp_to_next_level_path = HostPath::new(ctx)
+            .field(ids.config_field)
+            .field(ids.exp_to_next_level_field);
+        let kill_rewards_path = HostPath::new(ctx)
+            .field(ids.config_field)
+            .field(ids.kill_rewards_field);
 
         let mut adapter = MockStateAdapter::new();
         adapter.insert_value(
@@ -78,6 +85,8 @@ impl DemoHostState {
         adapter.insert_value(inventory_gold_count_path.clone(), HostValue::Int(0));
         adapter.insert_value(now_path.clone(), HostValue::Int(1_700_000_000));
         adapter.insert_value(tick_path.clone(), HostValue::Int(42));
+        adapter.insert_value(exp_to_next_level_path, HostValue::Int(100));
+        adapter.insert_value(kill_rewards_path, demo_kill_rewards());
         adapter.insert_value(
             HostPath::new(monster).field(ids.exp_field),
             HostValue::Int(20),
@@ -85,10 +94,6 @@ impl DemoHostState {
         adapter.insert_value(
             HostPath::new(monster).field(ids.id_field),
             HostValue::Int(11),
-        );
-        adapter.insert_value(
-            HostPath::new(monster).field(ids.reward_count_field),
-            HostValue::Int(3),
         );
         adapter.insert_method_return(ids.emit_method, HostValue::Null);
         adapter.insert_method_return(ids.add_reward_method, HostValue::Null);
@@ -178,4 +183,12 @@ impl DemoHostState {
             .filter(|(_, called_method, _)| *called_method == method)
             .count()
     }
+}
+
+fn demo_kill_rewards() -> HostValue {
+    HostValue::Array(vec![HostValue::Map(BTreeMap::from([
+        ("monster_id".to_owned(), HostValue::Int(11)),
+        ("item_id".to_owned(), HostValue::String("gold".to_owned())),
+        ("count".to_owned(), HostValue::Int(3)),
+    ]))])
 }
