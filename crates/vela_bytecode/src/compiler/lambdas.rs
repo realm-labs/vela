@@ -151,7 +151,7 @@ fn collect_expr(
         ExprKind::If(if_expr) => collect_if(bindings, available, if_expr, captures),
         ExprKind::Match(match_expr) => collect_match(bindings, available, match_expr, captures),
         ExprKind::Block(block) => collect_block(bindings, available, block, captures),
-        ExprKind::Lambda { .. } => {}
+        ExprKind::Lambda { body, .. } => collect_expr(bindings, available, body, captures),
         ExprKind::Literal(_) | ExprKind::SelfValue | ExprKind::Error => {}
     }
 }

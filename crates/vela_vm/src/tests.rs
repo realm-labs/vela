@@ -2105,6 +2105,33 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_nested_lambdas_with_transitive_captures() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn make_nested(base) {
+    return |amount| {
+        let scale = 2;
+        return |bonus| base + amount * scale + bonus;
+    };
+}
+
+fn main() {
+    let make = make_nested(10);
+    let add = make(4);
+    return add(3);
+}
+"#,
+    )
+    .expect("compile nested captured lambda");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "main", &[]),
+        Ok(Value::Int(21))
+    );
+}
+
+#[test]
 fn runs_immediate_lambda_calls_and_block_returns() {
     let code = compile_function_source(
         SourceId::new(1),

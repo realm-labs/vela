@@ -2152,6 +2152,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   method calls now support named arguments and default parameters through the
   same `CallArgument::Missing` path as script functions, and the shared
   conformance fixture exercises named/default method dispatch.
+- Filled an M9 nested closure capture gap. Lambda capture discovery now walks
+  nested lambda bodies so variables from an outer function can be carried
+  through an intermediate closure into an inner returned closure, with
+  compiler, VM, and shared conformance coverage.
 
 ## Next
 

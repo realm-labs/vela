@@ -92,6 +92,16 @@ fn main() {
         local + reward.score()
     };
     let named_method_score: int = reward.weighted(offset = 4, amount = 3);
+    let nested_lambda_score: int = {
+        let make_nested = |base| {
+            return |amount| {
+                return |bonus| base + amount + bonus;
+            };
+        };
+        let make = make_nested(8);
+        let add = make(4);
+        add(2)
+    };
 
     let parsed: int = "42".parse_int().unwrap_or(0);
     let result: int = result_bonus(true)?;
@@ -147,6 +157,7 @@ fn main() {
         + streak_score
         + block_value
         + named_method_score
+        + nested_lambda_score
         + parsed
         + result
         + mapped["gold"]

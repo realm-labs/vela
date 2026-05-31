@@ -2734,6 +2734,36 @@ fn main() {
     }
 
     #[test]
+    fn compiler_lowers_nested_lambda_transitive_captures() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+fn make_nested(base) {
+    return |amount| {
+        return |bonus| base + amount + bonus;
+    };
+}
+
+fn main() {
+    let make = make_nested(10);
+    let add = make(4);
+    return add(3);
+}
+"#,
+        )
+        .expect("nested capturing lambda should compile");
+        let make_nested = program
+            .function("make_nested")
+            .expect("make_nested function");
+
+        assert!(make_nested.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::MakeClosure { code, captures, .. }
+                if code.capture_count == 1 && code.params == ["amount"] && captures.len() == 1
+        )));
+    }
+
+    #[test]
     fn compiler_lowers_try_propagation() {
         let code = compile_function_source(
             SourceId::new(1),
