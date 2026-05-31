@@ -2062,6 +2062,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   `Runtime::compile_hot_reload_update_file`, so the runnable example no longer
   manually fetches and passes the current `ProgramVersion` before applying the
   update report at the safe point.
+- Split bytecode call-expression lowering into a focused compiler module.
+  Tuple enum constructor calls, host method calls, host-path helper calls,
+  script method dispatch, closure calls, script calls, and native fallback
+  calls now live outside the main compiler coordinator without changing the
+  emitted bytecode behavior.
 
 ## Next
 
