@@ -2293,6 +2293,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `pop`, `remove_at`, `insert`, `extend`, and `clear` now keep managed-heap
   slot conversion and in-place mutation separate from read-only collection
   helpers.
+- Split M13 array lookup helpers into a focused VM module. Array `first`,
+  `last`, `contains`, and `index_of` now keep Option-returning lookup and
+  equality search behavior separate from mutation, ordering, transforms, and
+  aggregation helpers.
 
 ## Next
 
