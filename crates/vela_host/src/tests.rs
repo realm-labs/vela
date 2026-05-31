@@ -17,6 +17,12 @@ fn rewards_path() -> HostPath {
     HostPath::new(player_ref(3)).field(FieldId::new(3))
 }
 
+fn quest_variant_count_path() -> HostPath {
+    HostPath::new(player_ref(3))
+        .field(FieldId::new(4))
+        .variant_field(FieldId::new(5))
+}
+
 #[test]
 fn path_proxy_routes_reads_and_writes_through_patch_tx() {
     let path = level_path();
@@ -113,6 +119,36 @@ fn set_path_records_patch_and_overlay_value() {
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
     assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(10)));
+}
+
+#[test]
+fn variant_field_paths_record_overlay_and_apply() {
+    let path = quest_variant_count_path();
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(path.clone(), HostValue::Int(2));
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        tx.read_path(&adapter, &path)
+            .expect("read variant field path"),
+        HostValue::Int(2)
+    );
+
+    tx.add_path(path.clone(), HostValue::Int(1), HostValue::Int(2), None)
+        .expect("record variant field add");
+
+    assert_eq!(
+        tx.read_path(&adapter, &path)
+            .expect("read variant field overlay"),
+        HostValue::Int(3)
+    );
+    assert_eq!(tx.patches()[0].path, path);
+    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+
+    tx.apply(&mut adapter)
+        .expect("apply variant field patch at safe point");
+
+    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(3)));
 }
 
 #[test]

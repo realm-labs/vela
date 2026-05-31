@@ -50,6 +50,12 @@ impl HostPath {
         self.segments.push(PathSegment::Key(key));
         self
     }
+
+    #[must_use]
+    pub fn variant_field(mut self, field: FieldId) -> Self {
+        self.segments.push(PathSegment::VariantField(field));
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

@@ -2130,6 +2130,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   argument module. Named/default argument resolution and register-or-missing
   argument emission now live together outside the main compiler coordinator
   while preserving script call bytecode behavior.
+- Filled an M11 host variant-field path boundary gap. `HostPath` now has an
+  explicit `variant_field(FieldId)` builder, and PatchTx overlay/apply coverage
+  proves host enum payload field paths can read, patch, and commit through the
+  same safe transaction model as fields, indexes, and keys.
 
 ## Next
 
