@@ -2398,6 +2398,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   modules and functions. Compiled scripts now prove `reflect.module` and
   `reflect.function` surface nearest-name candidates and related metadata for
   unknown script module/function lookups.
+- Kept M14 Engine API validation coverage reviewable by splitting duplicate
+  descriptor/schema/native registration tests into a focused
+  `tests::validation` module instead of growing the monolithic Engine test
+  module.
 
 ## Next
 
