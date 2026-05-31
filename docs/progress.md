@@ -2253,6 +2253,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `parse_float`, and `parse_bool` keep their Option-returning behavior and
   finite-float policy while the broad string method module no longer owns
   gameplay/config text parsing internals.
+- Split M13 string splitting helpers into a focused VM module. `split`,
+  `split_lines`, and `split_whitespace` keep their deterministic array
+  materialization behavior while general string search, affix, slice, and case
+  helpers stay in the parent method module.
 
 ## Next
 
