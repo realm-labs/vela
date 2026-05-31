@@ -1,78 +1,17 @@
 use std::collections::BTreeMap;
 
 use crate::heap::HeapValue;
-use crate::option_result::option_value;
 use crate::script_object::ScriptFields;
 use crate::string_methods;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 mod higher_order;
+mod lookup;
 mod mutation;
 
 pub(crate) use higher_order::{all, any, count, filter, find, map_values};
+pub(crate) use lookup::{get, get_or, has};
 pub(crate) use mutation::{clear, extend, remove, set};
-
-pub(crate) fn has(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<bool> {
-    expect_arity("has", args, 1)?;
-    let key = map_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(values.contains_key(&key)),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method has");
-            };
-            Ok(values.contains_key(&key))
-        }
-        _ => type_error("method has"),
-    }
-}
-
-pub(crate) fn get(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("get", args, 1)?;
-    let key = map_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(option_value(values.get(&key).cloned())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method get");
-            };
-            Ok(option_value(values.get(&key).map(value_from_heap_slot)))
-        }
-        _ => type_error("method get"),
-    }
-}
-
-pub(crate) fn get_or(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("get_or", args, 2)?;
-    let key = map_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(values.get(&key).cloned().unwrap_or_else(|| args[1].clone())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method get_or");
-            };
-            Ok(values
-                .get(&key)
-                .map_or_else(|| args[1].clone(), value_from_heap_slot))
-        }
-        _ => type_error("method get_or"),
-    }
-}
 
 pub(crate) fn keys(
     receiver: &Value,

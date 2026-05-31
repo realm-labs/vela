@@ -2309,6 +2309,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   `remove`, `clear`, and `extend` now keep managed-heap slot conversion and
   in-place updates separate from lookup, introspection, merge, and
   higher-order helpers.
+- Split M13 map lookup helpers into a focused VM module. Map `has`, `get`,
+  and `get_or` now keep key normalization and Option/default-return behavior
+  separate from mutation, introspection, merge, and higher-order helpers.
 
 ## Next
 
