@@ -121,41 +121,16 @@ fn hot_reload_function_swap_demo_runs_through_cli() {
 
 #[test]
 fn hot_reload_demo_reports_abi_rejection() {
-    let root = unique_test_dir("hot_reload_reject");
-    fs::create_dir_all(&root).expect("create temp dir");
-    let initial = root.join("initial.lang");
-    let updated = root.join("updated.lang");
-    fs::write(
-        &initial,
-        r#"
-fn helper() {
-    return 20;
-}
-
-fn main() {
-    return helper();
-}
-"#,
-    )
-    .expect("write initial script");
-    fs::write(
-        &updated,
-        r#"
-fn main() {
-    return 30;
-}
-"#,
-    )
-    .expect("write updated script");
-
-    let output = run_hot_reload_paths(&initial, &updated);
+    let output = run_hot_reload_paths(
+        &script_path("hot_reload_function_swap_v1.lang"),
+        &script_path("hot_reload_function_swap_invalid.lang"),
+    );
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
     assert!(stderr.contains("hot reload rejected: v0 unchanged"));
-    assert!(stderr.contains("[reload.function.removed] helper: function `helper` was removed"));
+    assert!(stderr.contains("[reload.function.removed] kill_exp: function `kill_exp` was removed"));
     assert!(stderr.contains("repair: keep the function declaration"));
-    fs::remove_dir_all(root).expect("clean temp dir");
 }
 
 #[test]

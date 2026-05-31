@@ -1988,6 +1988,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Strengthened M13 map introspection coverage. `map.keys()`, `map.values()`,
   and `map.entries()` now have focused inline, managed-heap, and analysis
   assertions proving deterministic key order and copied `MapEntry` records.
+- Promoted the M17 hot-reload ABI rejection proof into the game-server demo
+  fixtures. The CLI rejection test now uses an incompatible
+  `examples/game_server_demo` script update that removes `kill_exp`, matching
+  the accepted hot-reload workflow's example-script coverage.
 - Split M14 script-function macro emission into a focused child module. The
   derive crate now keeps script-function parsing/validation separate from
   generated descriptor and Engine registration token construction, preserving
