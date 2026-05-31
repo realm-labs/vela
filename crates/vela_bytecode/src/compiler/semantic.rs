@@ -16,6 +16,7 @@ use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
 
 pub(super) struct SemanticSource {
+    source: SourceId,
     parsed: SourceFile,
     graph: ModuleGraph,
     module: ModuleId,
@@ -28,6 +29,17 @@ pub(super) struct SemanticModules {
 }
 
 impl SemanticSource {
+    pub(super) fn script_metadata_graph(&self) -> ModuleGraph {
+        let mut graph = ModuleGraph::new();
+        graph.add_parsed_source(
+            self.source,
+            ModulePath::new(Vec::<String>::new()),
+            self.parsed.clone(),
+        );
+        graph.resolve_imports();
+        graph
+    }
+
     pub(super) fn function(
         &self,
         name: &str,
@@ -177,6 +189,10 @@ impl SemanticSource {
 }
 
 impl SemanticModules {
+    pub(super) fn script_metadata_graph(&self) -> ModuleGraph {
+        self.graph.clone()
+    }
+
     pub(super) fn function(
         &self,
         declaration: HirDeclId,
@@ -395,6 +411,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
         Ok(SemanticSource {
+            source,
             parsed,
             graph,
             module,

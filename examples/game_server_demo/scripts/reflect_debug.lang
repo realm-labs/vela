@@ -1,7 +1,18 @@
+enum QuestProgress {
+    Active { count }
+    Finished { count }
+}
+
 fn main(ctx, player) {
     let player_type = reflect.type_info("Player");
     let config_type = reflect.type_info("Config");
+    let quest_type = reflect.type_info("QuestProgress");
     let damageable = reflect.trait_info("Damageable");
+    let quest = QuestProgress.Active { count: 2 };
+    let quest_variants = reflect.variants(quest);
+    let active_variant = reflect.variant_info(quest, "Active");
+    let quest_type_variants = reflect.variants(quest_type);
+    let reflected_variants = reflect.variants();
     let fields = reflect.fields(player);
     let level = reflect.field(player, "level");
     let level_access = reflect.access(level);
@@ -39,6 +50,19 @@ fn main(ctx, player) {
             && reflect.kind(type_info) == "host")
         && reflect.has_field(config_type, "kill_rewards")
         && reflect.field(config_type, "exp_to_next_level").type == "int"
+        && reflect.kind(quest_type) == "script_enum"
+        && quest_type.variant_count == 2
+        && quest_variants.len() == 2
+        && quest_type_variants.len() == 2
+        && reflected_variants.len() == 2
+        && reflect.name(active_variant) == "Active"
+        && reflect.owner(active_variant) == "QuestProgress"
+        && active_variant.fields.len() == 1
+        && active_variant.fields[0].name == "count"
+        && reflect.has_variant(quest_type, "Active")
+        && !reflect.has_variant(quest_type, "Paused")
+        && reflect.variant(quest) == "Active"
+        && reflect.variant_is(quest, "Active")
         && reflect.implements(player_type, damageable)
         && fields.len() == 7
         && reflect.fields(player_type).len() == fields.len()

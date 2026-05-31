@@ -165,6 +165,7 @@ pub fn compile_program_source_with_options(
         );
     }
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
+    program.set_script_metadata(semantic.script_metadata_graph());
 
     Ok(program)
 }
@@ -215,6 +216,7 @@ pub fn compile_module_sources_with_options(
         );
     }
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
+    program.set_script_metadata(semantic.script_metadata_graph());
 
     Ok(program)
 }

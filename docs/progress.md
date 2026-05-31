@@ -2343,6 +2343,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   safe-point apply, and permission/freshness modules. HostPath, PathProxy, and
   PatchTx coverage now stays aligned with the production module boundaries
   instead of growing one catch-all host test file.
+- Filled an M12 Engine reflection gap for compiled script enum metadata.
+  Compiled `Program`s now carry HIR script declaration metadata, Runtime
+  installs a program-specific reflection registry that includes script types,
+  and the game-server reflection demo verifies `reflect.variants`,
+  `reflect.variant_info`, `reflect.has_variant`, `reflect.variant`, and
+  `reflect.variant_is` through the CLI path.
 
 ## Next
 

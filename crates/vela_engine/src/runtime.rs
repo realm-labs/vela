@@ -108,7 +108,7 @@ impl Runtime {
     ) -> VmResult<Value> {
         let mut budget = options.budget();
         let mut host = HostExecution { adapter, tx };
-        let vm = self.engine.into_vm();
+        let vm = self.engine.into_vm_for_program(&self.program);
         if options.managed_heap {
             vm.run_program_with_host_managed_heap_and_budget(
                 &self.program,

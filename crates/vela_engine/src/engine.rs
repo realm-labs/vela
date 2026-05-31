@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::compiler::CompilerOptions;
+use vela_bytecode::{Program, compiler::CompilerOptions};
 use vela_common::{FunctionId, HostMethodId};
 use vela_host::HostPath;
 use vela_hot_reload::HotReloadPolicy;
@@ -194,6 +194,14 @@ impl Engine {
     }
 
     pub fn install(&self, vm: &mut Vm) {
+        self.install_with_registry(vm, Arc::clone(&self.registry));
+    }
+
+    pub fn install_program(&self, vm: &mut Vm, program: &Program) {
+        self.install_with_registry(vm, self.registry_for_program(program));
+    }
+
+    fn install_with_registry(&self, vm: &mut Vm, registry: Arc<TypeRegistry>) {
         if self.standard_natives {
             vm.register_standard_natives();
         }
@@ -203,9 +211,9 @@ impl Engine {
                 .with_field_permissions(self.permissions.iter())
                 .with_method_permissions(self.permissions.iter());
             let policy = policy.with_function_permissions(self.permissions.iter());
-            vm.register_reflection_natives_with_policy(Arc::clone(&self.registry), policy.clone());
+            vm.register_reflection_natives_with_policy(registry, policy.clone());
         } else {
-            vm.register_type_registry(Arc::clone(&self.registry));
+            vm.register_type_registry(registry);
         }
         for entry in self.native_functions.values() {
             let name = entry.desc.name.clone();
@@ -241,10 +249,26 @@ impl Engine {
         }
     }
 
+    fn registry_for_program(&self, program: &Program) -> Arc<TypeRegistry> {
+        let Some(graph) = program.script_metadata() else {
+            return Arc::clone(&self.registry);
+        };
+        let mut registry = (*self.registry).clone();
+        registry.register_script_types(graph);
+        Arc::new(registry)
+    }
+
     #[must_use]
     pub fn into_vm(&self) -> Vm {
         let mut vm = Vm::new();
         self.install(&mut vm);
+        vm
+    }
+
+    #[must_use]
+    pub fn into_vm_for_program(&self, program: &Program) -> Vm {
+        let mut vm = Vm::new();
+        self.install_program(&mut vm, program);
         vm
     }
 }

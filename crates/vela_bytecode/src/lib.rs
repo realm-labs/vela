@@ -6,6 +6,7 @@ pub mod script_methods;
 use std::collections::BTreeMap;
 
 use vela_common::{FieldId, HostMethodId, MethodId, Span};
+use vela_hir::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
 
@@ -13,6 +14,7 @@ use crate::script_methods::ScriptMethodTable;
 pub struct Program {
     pub functions: BTreeMap<String, CodeObject>,
     script_methods: ScriptMethodTable,
+    script_metadata: Option<ModuleGraph>,
 }
 
 impl Program {
@@ -34,6 +36,21 @@ impl Program {
     ) {
         self.script_methods
             .insert(type_name, method, method_id, function);
+    }
+
+    #[must_use]
+    pub fn with_script_metadata(mut self, graph: ModuleGraph) -> Self {
+        self.script_metadata = Some(graph);
+        self
+    }
+
+    pub fn set_script_metadata(&mut self, graph: ModuleGraph) {
+        self.script_metadata = Some(graph);
+    }
+
+    #[must_use]
+    pub fn script_metadata(&self) -> Option<&ModuleGraph> {
+        self.script_metadata.as_ref()
     }
 
     #[must_use]
