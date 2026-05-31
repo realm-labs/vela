@@ -1989,6 +1989,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   macro parsing and signature validation now stay separate from generated
   method descriptor expressions and Engine registration chains, preserving the
   existing host-method API while reducing macro-file responsibility.
+- Improved M16 unresolved-name diagnostics for function binding. Local name
+  suggestions now include a related declaration label pointing at the candidate
+  binding, and candidate ranking lives in a focused HIR binding helper module
+  instead of expanding the main binding lowerer file.
 
 ## Next
 

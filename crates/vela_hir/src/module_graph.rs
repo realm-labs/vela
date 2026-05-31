@@ -1466,8 +1466,13 @@ fn main(player) {
             .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::unresolved_name"))
             .expect("unresolved name diagnostic");
 
-        assert_eq!(unresolved.labels.len(), 1);
-        assert!(unresolved.labels[0].message.contains("player"));
+        assert_eq!(unresolved.labels.len(), 2);
+        assert_eq!(unresolved.labels[0].message, "did you mean `player`?");
+        assert_eq!(
+            unresolved.labels[1].message,
+            "candidate `player` is declared here"
+        );
+        assert_ne!(unresolved.labels[0].span, unresolved.labels[1].span);
     }
 
     #[test]

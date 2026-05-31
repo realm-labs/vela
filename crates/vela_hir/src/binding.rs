@@ -8,6 +8,10 @@ use vela_syntax::{
 
 use crate::{HirDeclId, HirExprId, HirLocalId, HirTypeHint};
 
+mod name_candidates;
+
+use name_candidates::{NameCandidate, closest_name_candidate};
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalBinding {
     pub id: HirLocalId,
@@ -401,12 +405,8 @@ impl<'a> BindingLowerer<'a> {
             if let Some(resolution) = self.resolve_name(&field.name) {
                 self.resolutions.insert(id, resolution);
             } else {
-                self.diagnostics.push(
-                    Diagnostic::error(format!("unresolved name `{}`", field.name))
-                        .with_code("hir::unresolved_name")
-                        .with_span(field.span)
-                        .with_label(field.span, self.name_candidate_label(&field.name)),
-                );
+                self.diagnostics
+                    .push(self.unresolved_name_diagnostic(&field.name, field.span));
             }
         }
     }
@@ -502,12 +502,8 @@ impl<'a> BindingLowerer<'a> {
         }
 
         if matches!(usage, PathUsage::Value | PathUsage::AssignmentTarget) {
-            self.diagnostics.push(
-                Diagnostic::error(format!("unresolved name `{name}`"))
-                    .with_code("hir::unresolved_name")
-                    .with_span(span)
-                    .with_label(span, self.name_candidate_label(name)),
-            );
+            self.diagnostics
+                .push(self.unresolved_name_diagnostic(name, span));
         }
     }
 
@@ -586,26 +582,54 @@ impl<'a> BindingLowerer<'a> {
             })
     }
 
-    fn name_candidate_label(&self, name: &str) -> String {
+    fn unresolved_name_diagnostic(&self, name: &str, span: Span) -> Diagnostic {
+        let mut diagnostic = Diagnostic::error(format!("unresolved name `{name}`"))
+            .with_code("hir::unresolved_name")
+            .with_span(span);
+
+        let Some(candidate) = self.name_candidate(name) else {
+            return diagnostic.with_label(span, "no similar names found");
+        };
+
+        diagnostic = diagnostic.with_label(span, format!("did you mean `{}`?", candidate.name));
+        if let Some(candidate_span) = candidate.span
+            && candidate_span != span
+        {
+            diagnostic = diagnostic.with_label(
+                candidate_span,
+                format!("candidate `{}` is declared here", candidate.name),
+            );
+        }
+        diagnostic
+    }
+
+    fn name_candidate(&self, name: &str) -> Option<NameCandidate> {
         let mut candidates = self
             .scopes
             .iter()
-            .flat_map(|scope| scope.keys().map(String::as_str))
+            .rev()
+            .flat_map(|scope| {
+                scope.iter().filter_map(|(name, local)| {
+                    self.locals
+                        .get(local)
+                        .map(|binding| NameCandidate::new(name.clone(), Some(binding.span)))
+                })
+            })
             .chain(
                 self.module_declarations
                     .iter()
-                    .map(|(name, _)| name.as_str()),
+                    .map(|(name, _)| NameCandidate::new(name.clone(), None)),
             )
-            .chain(self.imports.iter().map(|import| import.name.as_str()))
+            .chain(
+                self.imports
+                    .iter()
+                    .map(|import| NameCandidate::new(import.name.clone(), None)),
+            )
             .collect::<Vec<_>>();
-        candidates.sort_unstable();
-        candidates.dedup();
+        candidates.sort_by(|left, right| left.name.cmp(&right.name));
+        candidates.dedup_by(|left, right| left.name == right.name);
 
-        if let Some(candidate) = closest_name(name, candidates) {
-            format!("did you mean `{candidate}`?")
-        } else {
-            "no similar names found".to_owned()
-        }
+        closest_name_candidate(name, candidates)
     }
 
     fn declare_local(
@@ -681,40 +705,4 @@ impl<'a> BindingLowerer<'a> {
         *self.next_local_id = self.next_local_id.saturating_add(1);
         id
     }
-}
-
-fn closest_name(
-    wanted: &str,
-    candidates: impl IntoIterator<Item = impl AsRef<str>>,
-) -> Option<String> {
-    candidates
-        .into_iter()
-        .map(|candidate| candidate.as_ref().to_owned())
-        .min_by_key(|candidate| candidate_distance(wanted, candidate))
-        .filter(|candidate| candidate_distance(wanted, candidate) <= 3)
-}
-
-fn candidate_distance(wanted: &str, candidate: &str) -> usize {
-    if wanted.contains(candidate) || candidate.contains(wanted) {
-        return 0;
-    }
-    levenshtein(wanted, candidate)
-}
-
-fn levenshtein(lhs: &str, rhs: &str) -> usize {
-    let mut previous = (0..=rhs.chars().count()).collect::<Vec<_>>();
-    let mut current = vec![0; previous.len()];
-
-    for (lhs_index, lhs_char) in lhs.chars().enumerate() {
-        current[0] = lhs_index + 1;
-        for (rhs_index, rhs_char) in rhs.chars().enumerate() {
-            let cost = usize::from(lhs_char != rhs_char);
-            current[rhs_index + 1] = (previous[rhs_index + 1] + 1)
-                .min(current[rhs_index] + 1)
-                .min(previous[rhs_index] + cost);
-        }
-        std::mem::swap(&mut previous, &mut current);
-    }
-
-    previous[rhs.chars().count()]
 }
