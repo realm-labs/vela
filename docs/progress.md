@@ -2237,6 +2237,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   writes respect read-only metadata, and reflective host method calls remain
   deferred until safe-point transaction apply without relying on crate-private
   test access.
+- Split M13 array ordering helpers into a focused VM module. `sort`,
+  `sort_by`, `min`, and `max` keep their stable non-mutating behavior and
+  managed-heap coverage while the main array method module no longer owns
+  scalar ordering and extrema internals.
 
 ## Next
 
