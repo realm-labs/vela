@@ -7,7 +7,7 @@ use vela_bytecode::compiler::{
     CompilerOptions, compile_function_source, compile_module_sources, compile_program_source,
     compile_program_source_with_options,
 };
-use vela_bytecode::{ConstantId, Instruction, InstructionOffset};
+use vela_bytecode::{ConstantId, HostPathSegment, Instruction, InstructionOffset};
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Symbol,
     TypeId, VariantId,
@@ -4122,6 +4122,61 @@ fn main(player) {
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
     tx.apply(&mut adapter).expect("apply indexed host patch");
     assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
+}
+
+#[test]
+fn bytecode_mutates_host_variant_field_through_patch_tx() {
+    let host_ref = player_ref(3);
+    let quest_progress = FieldId::new(8);
+    let count = FieldId::new(9);
+    let quest_count = HostPath::new(host_ref)
+        .field(quest_progress)
+        .variant_field(count);
+    let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
+    let one = code.push_constant(Constant::Int(1));
+    let segments = vec![
+        HostPathSegment::Field(quest_progress),
+        HostPathSegment::VariantField(count),
+    ];
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(1),
+        constant: one,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::AddHostPath {
+        root: Register(0),
+        segments: segments.clone(),
+        rhs: Register(1),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::GetHostPath {
+        dst: Register(2),
+        root: Register(0),
+        segments,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(2),
+    }));
+    let mut program = Program::new();
+    program.insert_function(code);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(quest_count.clone(), HostValue::Int(4));
+    let mut tx = PatchTx::new();
+
+    let result = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+    };
+
+    assert_eq!(result, Ok(Value::Int(5)));
+    assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(4)));
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].path, quest_count);
+    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+    tx.apply(&mut adapter)
+        .expect("apply host variant field patch");
+    assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
 }
 
 #[test]

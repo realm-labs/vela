@@ -23,7 +23,14 @@ pub(super) enum HostPathRoot<'ast> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum HostPathPart<'ast> {
     Field(FieldId),
+    VariantField(FieldId),
     Value(&'ast Expr),
+}
+
+impl HostPath<'_> {
+    pub(super) fn requires_path_instruction(&self) -> bool {
+        !matches!(self.segments.as_slice(), [HostPathPart::Field(_)])
+    }
 }
 
 pub(super) fn host_field_path<'ast>(
@@ -32,9 +39,9 @@ pub(super) fn host_field_path<'ast>(
 ) -> Option<HostPath<'ast>> {
     match &expr.kind {
         ExprKind::Field { base, name } => {
-            let field = options.host_fields.get(name).copied()?;
+            let field = host_path_field_part(options, name)?;
             let mut path = host_path_receiver(options, base)?;
-            path.segments.push(HostPathPart::Field(field));
+            path.segments.push(field);
             Some(path)
         }
         ExprKind::Path(path) => host_field_path_parts(options, path),
@@ -53,9 +60,9 @@ fn host_path_receiver<'ast>(
 ) -> Option<HostPath<'ast>> {
     match &receiver.kind {
         ExprKind::Field { base, name } => {
-            let field = options.host_fields.get(name).copied()?;
+            let field = host_path_field_part(options, name)?;
             let mut path = host_path_receiver(options, base)?;
-            path.segments.push(HostPathPart::Field(field));
+            path.segments.push(field);
             Some(path)
         }
         ExprKind::Index { base, index } => {
@@ -77,9 +84,9 @@ fn host_path_index_receiver<'ast>(
 ) -> Option<HostPath<'ast>> {
     match &receiver.kind {
         ExprKind::Field { base, name } => {
-            let field = options.host_fields.get(name).copied()?;
+            let field = host_path_field_part(options, name)?;
             let mut path = host_path_receiver(options, base)?;
-            path.segments.push(HostPathPart::Field(field));
+            path.segments.push(field);
             Some(path)
         }
         ExprKind::Index { base, index } => {
@@ -102,13 +109,27 @@ pub(super) fn host_field_path_parts<'ast>(
     let root = path.first()?;
     let segments = path[1..]
         .iter()
-        .map(|segment| options.host_fields.get(segment).copied())
-        .map(|field| field.map(HostPathPart::Field))
+        .map(|segment| host_path_field_part(options, segment))
         .collect::<Option<Vec<_>>>()?;
     Some(HostPath {
         root: HostPathRoot::LocalPath(root),
         segments,
     })
+}
+
+fn host_path_field_part<'ast>(options: &CompilerOptions, name: &str) -> Option<HostPathPart<'ast>> {
+    options
+        .host_fields
+        .get(name)
+        .copied()
+        .map(HostPathPart::Field)
+        .or_else(|| {
+            options
+                .host_variant_fields
+                .get(name)
+                .copied()
+                .map(HostPathPart::VariantField)
+        })
 }
 
 impl Compiler<'_> {
@@ -198,6 +219,7 @@ impl Compiler<'_> {
             .into_iter()
             .map(|segment| match segment {
                 HostPathPart::Field(field) => Ok(HostPathSegment::Field(field)),
+                HostPathPart::VariantField(field) => Ok(HostPathSegment::VariantField(field)),
                 HostPathPart::Value(expr) => self.compile_expr(expr).map(HostPathSegment::Value),
             })
             .collect()

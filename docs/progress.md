@@ -2134,6 +2134,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   explicit `variant_field(FieldId)` builder, and PatchTx overlay/apply coverage
   proves host enum payload field paths can read, patch, and commit through the
   same safe transaction model as fields, indexes, and keys.
+- Extended the M11 host variant-field path through bytecode and VM execution.
+  Compiler options can mark host enum payload fields, bytecode preserves them
+  as `VariantField` path segments, and a focused VM host-path module routes
+  those segments into PatchTx without growing the central dispatch file.
 
 ## Next
 

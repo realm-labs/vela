@@ -2,10 +2,11 @@ use vela_bytecode::{HostPathSegment, Register};
 use vela_common::{FieldId, Span, SymbolInterner};
 use vela_host::{HostPath, HostValue, PatchTx};
 
+use crate::host_paths::host_path_from_segments;
 use crate::host_values::value_to_host;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, VmError, VmErrorKind, VmResult,
-    expect_host_ref, host_path_from_segments,
+    expect_host_ref,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

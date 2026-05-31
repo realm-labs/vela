@@ -451,6 +451,7 @@ pub enum InstructionKind {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HostPathSegment {
     Field(FieldId),
+    VariantField(FieldId),
     Value(Register),
 }
 

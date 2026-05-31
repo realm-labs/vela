@@ -2253,6 +2253,47 @@ fn main(player, item_id) {
     }
 
     #[test]
+    fn compiler_lowers_host_variant_field_paths() {
+        let quest_progress = FieldId::new(3);
+        let count = FieldId::new(4);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.quest_progress.count += 1;
+    return player.quest_progress.count;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("quest_progress", quest_progress)
+                .with_host_variant_field("count", count),
+        )
+        .expect("host variant field path should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::AddHostPath {
+                segments,
+                ..
+            } if segments.as_slice() == [
+                HostPathSegment::Field(quest_progress),
+                HostPathSegment::VariantField(count)
+            ]
+        )));
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::GetHostPath {
+                segments,
+                ..
+            } if segments.as_slice() == [
+                HostPathSegment::Field(quest_progress),
+                HostPathSegment::VariantField(count)
+            ]
+        )));
+    }
+
+    #[test]
     fn compiler_lowers_host_sub_assignments() {
         let stats = FieldId::new(3);
         let level = FieldId::new(4);

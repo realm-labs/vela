@@ -63,7 +63,7 @@ impl Compiler<'_> {
                     Ok(dst)
                 } else {
                     if let Some(path) = host_field_path(&self.facts.options, expr)
-                        && path.segments.len() > 1
+                        && path.requires_path_instruction()
                     {
                         let root = self.compile_host_path_root(expr.span, path.root)?;
                         let segments = self.compile_host_path_segments(path.segments)?;

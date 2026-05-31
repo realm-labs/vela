@@ -5,6 +5,7 @@ use vela_common::{FieldId, HostMethodId};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompilerOptions {
     pub(super) host_fields: HashMap<String, FieldId>,
+    pub(super) host_variant_fields: HashMap<String, FieldId>,
     pub(super) host_methods: HashMap<String, HostMethodId>,
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
     pub(super) host_types: HashSet<String>,
@@ -19,6 +20,12 @@ impl CompilerOptions {
     #[must_use]
     pub fn with_host_field(mut self, name: impl Into<String>, field: FieldId) -> Self {
         self.host_fields.insert(name.into(), field);
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_variant_field(mut self, name: impl Into<String>, field: FieldId) -> Self {
+        self.host_variant_fields.insert(name.into(), field);
         self
     }
 

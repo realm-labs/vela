@@ -8,6 +8,7 @@ mod error;
 pub mod heap;
 mod heap_execution;
 mod host_patches;
+mod host_paths;
 mod host_values;
 mod indexing;
 mod iteration;
@@ -35,6 +36,7 @@ use std::sync::Arc;
 pub use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
 pub use heap_execution::HeapExecution;
+use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};
 pub use iteration::IteratorState;
 pub use ranges::RangeValue;
@@ -42,9 +44,7 @@ pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 use script_methods::{call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
-use vela_bytecode::{
-    CallArgument, CodeObject, Constant, HostPathSegment, InstructionKind, Program, Register,
-};
+use vela_bytecode::{CallArgument, CodeObject, Constant, InstructionKind, Program, Register};
 use vela_common::{Span, SymbolInterner};
 use vela_host::{HostPath, HostRef, PatchTx, ScriptStateAdapter};
 #[cfg(test)]
@@ -1675,7 +1675,10 @@ fn materialize_values(values: &[Value], heap: Option<&HeapExecution<'_>>) -> VmR
         .collect()
 }
 
-fn materialize_value(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
+pub(crate) fn materialize_value(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
     match value {
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
@@ -2092,40 +2095,6 @@ fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> 
         Value::HostRef(value) => Ok(*value),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
-}
-
-fn host_path_from_segments(
-    root: HostRef,
-    segments: &[HostPathSegment],
-    frame: &CallFrame,
-    heap: Option<&HeapExecution<'_>>,
-    symbols: &mut SymbolInterner,
-) -> VmResult<HostPath> {
-    let mut path = HostPath::new(root);
-    for segment in segments {
-        path = match segment {
-            HostPathSegment::Field(field) => path.field(*field),
-            HostPathSegment::Value(register) => {
-                match materialize_value(frame.read(*register)?, heap)? {
-                    Value::Int(index) => {
-                        let index = u32::try_from(index).map_err(|_| {
-                            VmError::new(VmErrorKind::TypeMismatch {
-                                operation: "host path index",
-                            })
-                        })?;
-                        path.index(index)
-                    }
-                    Value::String(key) => path.key(symbols.intern(key)),
-                    _ => {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host path index",
-                        }));
-                    }
-                }
-            }
-        };
-    }
-    Ok(path)
 }
 
 fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureValue> {
