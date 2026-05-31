@@ -2078,6 +2078,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Filled an M9/M11 host compound-assignment gap. Host field and HostPath
   targets now lower and execute `*=`, `/=`, and `%=` through PatchTx
   Mul/Div/Rem patches with transaction overlay reads and safe-point apply.
+- Filled an M12 active-variant field reflection gap. Enum values now expose
+  the active variant's payload fields through `reflect.fields`,
+  `reflect.field`, and `reflect.has_field`, with the same field access policy
+  filtering and diagnostics as type-level fields.
 
 ## Next
 

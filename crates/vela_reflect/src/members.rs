@@ -156,6 +156,11 @@ pub fn field(
     name: &str,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
+    if let Some(variant) = active_variant_desc(desc, target)? {
+        let owner = variant_owner_name(desc, variant);
+        let field = find_variant_field(desc, variant, name)?;
+        return Ok(ReflectValue::Host(field_record_with_owner(&owner, field)));
+    }
     let field = find_field(desc, name)?;
     Ok(ReflectValue::Host(field_record_with_owner(
         &desc.key.name,
@@ -170,6 +175,12 @@ pub fn field_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
+    if let Some(variant) = active_variant_desc(desc, target)? {
+        let owner = variant_owner_name(desc, variant);
+        let field = find_variant_field(desc, variant, name)?;
+        policy.require_field_read_access(&owner, field)?;
+        return Ok(ReflectValue::Host(field_record_with_owner(&owner, field)));
+    }
     let field = find_field(desc, name)?;
     policy.require_field_read_access(&desc.key.name, field)?;
     Ok(ReflectValue::Host(field_record_with_owner(
@@ -184,6 +195,17 @@ pub fn fields_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
+    if let Some(variant) = active_variant_desc(desc, target)? {
+        let owner = variant_owner_name(desc, variant);
+        return Ok(ReflectValue::Host(HostValue::Array(
+            variant
+                .fields
+                .iter()
+                .filter(|field| policy.require_field_read_access(&owner, field).is_ok())
+                .map(|field| field_record_with_owner(&owner, field))
+                .collect(),
+        )));
+    }
     Ok(ReflectValue::Host(HostValue::Array(
         desc.fields
             .iter()
@@ -234,6 +256,9 @@ pub fn has_field(
     name: &str,
 ) -> ReflectResult<bool> {
     let desc = target_type(registry, target)?;
+    if let Some(variant) = active_variant_desc(desc, target)? {
+        return Ok(variant.fields.iter().any(|field| field.name == name));
+    }
     Ok(desc.fields.iter().any(|field| field.name == name))
 }
 
@@ -244,6 +269,12 @@ pub fn has_field_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<bool> {
     let desc = target_type(registry, target)?;
+    if let Some(variant) = active_variant_desc(desc, target)? {
+        let owner = variant_owner_name(desc, variant);
+        return Ok(variant.fields.iter().any(|field| {
+            field.name == name && policy.require_field_read_access(&owner, field).is_ok()
+        }));
+    }
     Ok(desc.fields.iter().any(|field| {
         field.name == name
             && policy
@@ -585,6 +616,43 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
         })
 }
 
+fn active_variant_desc<'a>(
+    desc: &'a TypeDesc,
+    target: &ReflectValue,
+) -> ReflectResult<Option<&'a VariantDesc>> {
+    match target {
+        ReflectValue::ScriptEnum { variant, .. } => find_variant(desc, variant).map(Some),
+        ReflectValue::Host(HostValue::Enum { variant, .. }) => {
+            find_variant(desc, variant).map(Some)
+        }
+        _ => Ok(None),
+    }
+}
+
+fn variant_owner_name(desc: &TypeDesc, variant: &VariantDesc) -> String {
+    format!("{}.{}", desc.key.name, variant.name)
+}
+
+fn find_variant_field<'a>(
+    desc: &TypeDesc,
+    variant: &'a VariantDesc,
+    field: &str,
+) -> ReflectResult<&'a FieldDesc> {
+    variant
+        .fields
+        .iter()
+        .find(|candidate| candidate.name == field)
+        .ok_or_else(|| {
+            let related = variant_field_candidates(variant, field);
+            ReflectError::new(ReflectErrorKind::UnknownField {
+                type_name: variant_owner_name(desc, variant),
+                field: field.to_owned(),
+                candidates: candidate_names(&related),
+                related,
+            })
+        })
+}
+
 fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a MethodDesc> {
     desc.methods
         .iter()
@@ -619,6 +687,16 @@ fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::ReflectCandidate
     ranked_candidates(
         field,
         desc.fields
+            .iter()
+            .map(|field| (field.name.as_str(), field.source_span)),
+    )
+}
+
+fn variant_field_candidates(variant: &VariantDesc, field: &str) -> Vec<crate::ReflectCandidate> {
+    ranked_candidates(
+        field,
+        variant
+            .fields
             .iter()
             .map(|field| (field.name.as_str(), field.source_span)),
     )
@@ -1147,6 +1225,33 @@ mod tests {
         assert!(has_variant(&registry, &target, "Active").expect("has active"));
         assert!(has_variant(&registry, &quest_type, "Active").expect("type has active"));
         assert!(!has_variant(&registry, &target, "Paused").expect("has paused"));
+        assert!(has_field(&registry, &target, "count").expect("has active field"));
+        assert!(!has_field(&registry, &target, "missing").expect("missing active field"));
+        let ReflectValue::Host(HostValue::Array(active_fields)) =
+            fields_with_policy(&registry, &target, &ReflectPolicy::read_only())
+                .expect("active variant fields")
+        else {
+            panic!("active variant fields should be an array");
+        };
+        assert_eq!(active_fields.len(), 1);
+        let active_field = field(&registry, &target, "count").expect("active variant field");
+        assert_eq!(
+            active_fields[0],
+            match active_field {
+                ReflectValue::Host(value) => value,
+                _ => panic!("active variant field should be host metadata"),
+            }
+        );
+        let error = field(&registry, &target, "cout").expect_err("unknown active variant field");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::UnknownField {
+                type_name: "QuestProgress.Active".to_owned(),
+                field: "cout".to_owned(),
+                candidates: vec!["count".to_owned()],
+                related: vec![crate::ReflectCandidate::new("count", None)],
+            }
+        );
         let HostValue::Record {
             fields: variant_fields,
             ..
@@ -1736,5 +1841,23 @@ mod tests {
             panic!("variant info fields should be an array");
         };
         assert_eq!(policy_variant_fields.len(), 1);
+        assert!(
+            has_field_with_policy(&registry, &target, "count", &ReflectPolicy::read_only())
+                .expect("has visible active variant field")
+        );
+        assert!(
+            !has_field_with_policy(&registry, &target, "secret", &ReflectPolicy::read_only())
+                .expect("has hidden active variant field")
+        );
+
+        let error = field_with_policy(&registry, &target, "secret", &ReflectPolicy::read_only())
+            .expect_err("hidden active variant field");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FieldNotReflectReadable {
+                type_name: "QuestProgress.Active".to_owned(),
+                field: "secret".to_owned(),
+            }
+        );
     }
 }
