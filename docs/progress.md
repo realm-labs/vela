@@ -2219,6 +2219,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   module and function scope. The fixture now proves grammar-level nested block
   comment layout survives HIR resolution, bytecode compilation, and VM
   execution without changing program semantics.
+- Added a focused M15 Engine integration test for the runtime safe-point reload
+  workflow. Compiling a compatible update from the active runtime now proves
+  the current `ProgramVersion` and calls remain unchanged until the host invokes
+  `Runtime::apply_hot_update`, then switch only after that explicit apply step.
 
 ## Next
 
