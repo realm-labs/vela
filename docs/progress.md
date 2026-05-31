@@ -2201,6 +2201,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   owns its callback runtime plumbing in a focused module, reducing the shared
   dispatcher while preserving stdlib behavior across inline and managed-heap
   execution.
+- Extended the M13/M17 demo permission proof for controlled random. The
+  game-server demo Engine now registers permission-gated `math.random` without
+  granting `std.random`, the reflection demo proves the hidden native is
+  filtered to an empty `math` module export list, and a negative CLI fixture
+  renders the source-spanned permission denial.
 
 ## Next
 

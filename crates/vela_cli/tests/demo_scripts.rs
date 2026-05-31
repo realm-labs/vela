@@ -95,6 +95,23 @@ fn gameplay_helpers_demo_runs_through_cli() {
 }
 
 #[test]
+fn random_permission_demo_reports_permission_denial() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg(script_path("random_permission_denied.lang"))
+        .output()
+        .expect("run vela_cli random permission demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains(
+        "error[vm::permission_denied]: native `math.random` requires permission `std.random`"
+    ));
+    assert!(stderr.contains("native `math.random` requires permission `std.random`"));
+    assert!(stderr.contains("random_permission_denied.lang:2:12"));
+    assert!(stderr.contains("return math.random(1, 6);"));
+}
+
+#[test]
 fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.lang"),

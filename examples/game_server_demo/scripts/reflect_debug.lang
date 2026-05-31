@@ -10,6 +10,7 @@ fn main(ctx, player) {
     let reflected_types = reflect.types();
     let reward_module = reflect.module("game.reward");
     let ctx_module = reflect.module("ctx");
+    let math_module = reflect.module("math");
     let reward_function = reflect.function("game.reward.grant");
     let ctx_now = reflect.function("ctx.now");
     let ctx_tick = reflect.function("ctx.tick");
@@ -20,6 +21,7 @@ fn main(ctx, player) {
     let functions = reflect.functions();
     let exports = reflect.exports(reward_module);
     let ctx_exports = reflect.exports(ctx_module);
+    let math_exports = reflect.exports(math_module);
     let permissions = reflect.permissions();
     let player_type_of = reflect.type_of(player);
 
@@ -52,7 +54,9 @@ fn main(ctx, player) {
         && reflect.has_permission("reflect.call_event_methods")
         && reflect.has_module("game.reward")
         && reflect.has_module("ctx")
+        && reflect.has_module("math")
         && !reflect.has_module("game.missing")
+        && !reflect.has_function("math.random")
         && reflect.name(reward_module) == "game.reward"
         && reflect.kind(reward_module) == "module"
         && reflect.origin(reward_module) == "host"
@@ -60,7 +64,9 @@ fn main(ctx, player) {
         && reflect.attr(reward_module, "domain") == "gameplay"
         && reflect.name(ctx_module) == "ctx"
         && reflect.kind(ctx_module) == "module"
-        && modules.len() == 2
+        && reflect.name(math_module) == "math"
+        && reflect.kind(math_module) == "module"
+        && modules.len() == 3
         && reflect.has_function("game.reward.grant")
         && reflect.has_function("ctx.now")
         && reflect.has_function("ctx.tick")
@@ -87,6 +93,7 @@ fn main(ctx, player) {
         && ctx_exports.len() == 2
         && ctx_exports.contains("ctx.now")
         && ctx_exports.contains("ctx.tick")
+        && math_exports.is_empty()
         && reflect.name(ctx_now) == "ctx.now"
         && reflect.name(ctx_tick) == "ctx.tick"
         && reflect.returns(ctx_now) == "int"

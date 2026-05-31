@@ -17,6 +17,7 @@ pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
         .with_standard_natives()
         .permissions(PermissionSet::gameplay())
         .with_context_clock(1_700_000_000, 42)
+        .with_controlled_random(7)
         .reflection_policy(ReflectPolicy::all())
         .register_module(
             ModuleDesc::new("game.reward")

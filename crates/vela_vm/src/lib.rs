@@ -686,18 +686,21 @@ impl Vm {
                         .collect::<VmResult<Vec<_>>>()?;
                     let values = materialize_values(&values, heap.as_deref())?;
                     let result = if let Some(native) = self.natives.get(name) {
-                        native(&values)?
+                        native(&values)
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?
                     } else if let Some(native) = self.host_natives.get(name) {
                         let host = host.as_deref_mut().ok_or_else(|| {
                             VmError::new(VmErrorKind::TypeMismatch {
                                 operation: "host context",
                             })
                         })?;
-                        native(&values, host, budget.as_deref_mut())?
+                        native(&values, host, budget.as_deref_mut())
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?
                     } else {
                         return Err(VmError::new(VmErrorKind::UnknownNative {
                             name: name.clone(),
-                        }));
+                        })
+                        .with_source_span_if_absent(instruction.span));
                     };
                     if let (Some(budget), Some(host)) = (budget.as_deref(), host.as_deref()) {
                         budget.check_patch_count(host.tx.patches().len())?;
