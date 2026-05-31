@@ -1026,6 +1026,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   translation now stays near reflection native registration instead of growing
   the VM crate root, while preserving the controlled host-ref and script-value
   reflection boundary.
+- Split VM-side reflection native registration into focused modules for
+  policy metadata, type metadata, fields, modules/functions, methods, traits,
+  variants, and controlled value operations. The public `Vm` registration APIs
+  are unchanged, but future M12 reflection work no longer has to grow a single
+  monolithic registration file.
 
 ### M14: Engine, Native Functions, And Rust Host Macros
 
