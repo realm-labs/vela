@@ -2067,6 +2067,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   script method dispatch, closure calls, script calls, and native fallback
   calls now live outside the main compiler coordinator without changing the
   emitted bytecode behavior.
+- Split bytecode path-expression lowering into a focused compiler module.
+  Local/const path lookup, qualified path access, host-path reads, and
+  typed record/enum slot lookup now live outside the main compiler
+  coordinator without changing emitted bytecode behavior.
 
 ## Next
 
