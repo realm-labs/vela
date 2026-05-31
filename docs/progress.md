@@ -2020,6 +2020,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   through the Engine API, and `reflect_debug.lang` verifies module exports,
   function lists, params, returns, docs, attrs, origins, and access metadata
   through the CLI path.
+- Extended the shared M17 core-language conformance fixture with tuple enum
+  variant construction and guarded tuple-pattern matching. The same fixture now
+  resolves through HIR, carries analysis facts, and executes through the VM for
+  both record and tuple enum payload shapes.
 
 ## Next
 

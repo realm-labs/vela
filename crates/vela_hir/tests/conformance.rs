@@ -61,6 +61,11 @@ fn core_language_fixture_resolves() {
         EnumVariantFieldsHint::Record(_)
     ));
     assert_eq!(quest_shape.variants[1].name, "Done");
+    assert_eq!(quest_shape.variants[2].name, "Streak");
+    assert!(matches!(
+        quest_shape.variants[2].fields,
+        EnumVariantFieldsHint::Tuple(_)
+    ));
 
     let scored = declaration(&graph, "Scored");
     assert_eq!(scored.kind, DeclarationKind::Trait);

@@ -8,6 +8,7 @@ struct Reward {
 enum QuestState {
     Active { id: string, count: int },
     Done { id: string },
+    Streak(string, int),
 }
 
 trait Scored {
@@ -61,6 +62,11 @@ fn main() {
         QuestState.Done { id } => id.len(),
         _ => 0,
     };
+    let streak: QuestState = QuestState.Streak("weekly", 4);
+    let streak_score: int = match streak {
+        QuestState.Streak(kind, count) if kind == "weekly" => count * 3,
+        _ => 0,
+    };
 
     let block_value: int = {
         let local = add(bonus = 3, base = 4);
@@ -81,6 +87,7 @@ fn main() {
     return total
         + doubled
         + quest_score
+        + streak_score
         + block_value
         + parsed
         + result

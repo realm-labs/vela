@@ -57,6 +57,17 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
             None::<String>
         ))
     );
+    assert_eq!(
+        local_fact(bindings, &facts, "streak"),
+        Some(TypeFact::enum_type(
+            "conformance.core.QuestState",
+            None::<String>
+        ))
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "streak_score"),
+        Some(TypeFact::Int)
+    );
     assert_eq!(local_fact(bindings, &facts, "total"), Some(TypeFact::Int));
     assert_eq!(
         local_fact(bindings, &facts, "mapped"),
