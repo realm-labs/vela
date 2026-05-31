@@ -2261,6 +2261,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   `starts_with`, `ends_with`, `find`, and `char_at` keep Unicode-aware
   character indexing and Option-returning lookup behavior separate from affix,
   slice, case, parsing, and splitting helpers.
+- Split M13 string affix helpers into a focused VM module. `strip_prefix` and
+  `strip_suffix` keep their Option-returning behavior and managed-heap coverage
+  separate from search, trim, case, slice, parsing, and splitting helpers.
 
 ## Next
 
