@@ -1,0 +1,281 @@
+use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
+use vela_common::{HostObjectId, SourceId};
+use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
+use vela_vm::{HostExecution, VmErrorKind};
+
+use crate::{
+    CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
+    CONTEXT_TICK_FIELD_ID, CONTEXT_TIME_PERMISSION, CONTEXT_TYPE_ID, CONTROLLED_RANDOM_PERMISSION,
+    CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID, Engine, PermissionSet, Value,
+    context_host_type_desc,
+};
+
+#[test]
+fn engine_context_clock_requires_permission() {
+    let engine = Engine::builder()
+        .with_context_clock(1_700_000_000, 42)
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return ctx.now();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert!(matches!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+            native: "ctx.now".to_owned(),
+            permission: CONTEXT_TIME_PERMISSION.to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn gameplay_permissions_allow_context_time_but_not_random() {
+    let permissions = PermissionSet::gameplay();
+    assert!(permissions.contains(CONTEXT_TIME_PERMISSION));
+    assert!(!permissions.contains(CONTROLLED_RANDOM_PERMISSION));
+
+    let engine = Engine::builder()
+        .permissions(permissions)
+        .with_context_clock(1_700_000_000, 42)
+        .with_controlled_random(7)
+        .build()
+        .expect("engine should build");
+    let time_program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return ctx.now() + ctx.tick();
+}
+"#,
+    )
+    .expect("time program should compile");
+    assert_eq!(
+        engine
+            .clone()
+            .into_vm()
+            .run_program(&time_program, "main", &[]),
+        Ok(Value::Int(1_700_000_042))
+    );
+
+    let random_program = compile_program_source(
+        SourceId::new(2),
+        r#"
+fn main() {
+    return math.random(1, 6);
+}
+"#,
+    )
+    .expect("random program should compile");
+    assert!(matches!(
+        engine.into_vm().run_program(&random_program, "main", &[]),
+        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+            native: "math.random".to_owned(),
+            permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_context_clock_returns_configured_values() {
+    let engine = Engine::builder()
+        .grant_permission(CONTEXT_TIME_PERMISSION)
+        .with_context_clock(1_700_000_000, 42)
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return ctx.now() + ctx.tick();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(1_700_000_042))
+    );
+}
+
+#[test]
+fn engine_context_clock_registers_metadata() {
+    let engine = Engine::builder()
+        .with_context_clock(1, 2)
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.registry();
+    let now = registry
+        .function_by_name("ctx.now")
+        .expect("ctx.now metadata");
+    let tick = registry
+        .function_by_name("ctx.tick")
+        .expect("ctx.tick metadata");
+
+    assert_eq!(now.id, CTX_NOW_FUNCTION_ID);
+    assert_eq!(now.module.as_deref(), Some("ctx"));
+    assert!(now.params.is_empty());
+    assert_eq!(now.return_type.as_deref(), Some("int"));
+    assert!(now.access.reflect_visible);
+    assert_eq!(
+        now.access.required_permissions(),
+        &[CONTEXT_TIME_PERMISSION.to_owned()]
+    );
+    assert_eq!(tick.id, CTX_TICK_FUNCTION_ID);
+    assert_eq!(tick.module.as_deref(), Some("ctx"));
+    assert!(tick.params.is_empty());
+    assert_eq!(tick.return_type.as_deref(), Some("int"));
+    assert!(tick.access.reflect_visible);
+    assert_eq!(
+        tick.access.required_permissions(),
+        &[CONTEXT_TIME_PERMISSION.to_owned()]
+    );
+}
+
+#[test]
+fn engine_context_host_schema_registers_metadata() {
+    let engine = Engine::builder()
+        .with_context_host_schema()
+        .build()
+        .expect("engine should build");
+    let direct_desc = context_host_type_desc();
+    assert_eq!(direct_desc.key.id, CONTEXT_TYPE_ID);
+
+    let registry = engine.registry();
+    let context = registry
+        .type_by_name("Context")
+        .expect("context type metadata");
+    assert_eq!(context.key.id, CONTEXT_TYPE_ID);
+    assert_eq!(context.host_type_id, Some(CONTEXT_HOST_TYPE_ID));
+    assert_eq!(context.fields.len(), 2);
+    assert_eq!(context.fields[0].id, CONTEXT_NOW_FIELD_ID);
+    assert_eq!(context.fields[0].name, "now");
+    assert_eq!(context.fields[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(context.fields[1].id, CONTEXT_TICK_FIELD_ID);
+    assert_eq!(context.fields[1].name, "tick");
+    assert_eq!(context.fields[1].type_hint.as_deref(), Some("int"));
+
+    let emit = context
+        .methods
+        .iter()
+        .find(|method| method.name == "emit")
+        .expect("emit method metadata");
+    assert_eq!(emit.id, CONTEXT_EMIT_METHOD_ID);
+    assert!(emit.effects.emits_events);
+    assert!(emit.access.reflect_callable);
+    assert_eq!(emit.params[0].name, "event");
+    assert_eq!(emit.params[0].type_hint.as_deref(), Some("string"));
+    assert_eq!(emit.return_type.as_deref(), Some("null"));
+
+    let log = context
+        .methods
+        .iter()
+        .find(|method| method.name == "log")
+        .expect("log method metadata");
+    assert_eq!(log.id, CONTEXT_LOG_METHOD_ID);
+    assert!(log.effects.emits_events);
+    assert!(log.access.reflect_callable);
+    assert_eq!(log.params[0].name, "level");
+    assert_eq!(log.params[1].name, "message");
+    assert_eq!(log.return_type.as_deref(), Some("null"));
+}
+
+#[test]
+fn engine_context_host_schema_lowers_patch_tx_workflows() {
+    let engine = Engine::builder()
+        .with_context_host_schema()
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(ctx) {
+    let stamp = ctx.now + ctx.tick;
+    ctx.emit("player.level_checked", stamp);
+    ctx.log("info", "player.level_checked", stamp);
+    return stamp;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let ctx = HostRef::new(CONTEXT_HOST_TYPE_ID, HostObjectId::new(99), 1);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(
+        HostPath::new(ctx).field(CONTEXT_NOW_FIELD_ID),
+        HostValue::Int(1_700_000_000),
+    );
+    adapter.insert_value(
+        HostPath::new(ctx).field(CONTEXT_TICK_FIELD_ID),
+        HostValue::Int(42),
+    );
+    adapter.insert_method_return(CONTEXT_EMIT_METHOD_ID, HostValue::Null);
+    adapter.insert_method_return(CONTEXT_LOG_METHOD_ID, HostValue::Null);
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[Value::HostRef(ctx)], &mut host),
+        Ok(Value::Int(1_700_000_042))
+    );
+    assert_eq!(tx.patches().len(), 2);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method: CONTEXT_EMIT_METHOD_ID,
+            args: vec![
+                HostValue::String("player.level_checked".to_owned()),
+                HostValue::Int(1_700_000_042),
+            ],
+        }
+    );
+    assert_eq!(
+        tx.patches()[1].op,
+        PatchOp::CallHostMethod {
+            method: CONTEXT_LOG_METHOD_ID,
+            args: vec![
+                HostValue::String("info".to_owned()),
+                HostValue::String("player.level_checked".to_owned()),
+                HostValue::Int(1_700_000_042),
+            ],
+        }
+    );
+    assert!(adapter.method_calls().is_empty());
+
+    tx.apply(&mut adapter).expect("context patches apply");
+    assert_eq!(
+        adapter.method_calls(),
+        &[
+            (
+                HostPath::new(ctx),
+                CONTEXT_EMIT_METHOD_ID,
+                vec![
+                    HostValue::String("player.level_checked".to_owned()),
+                    HostValue::Int(1_700_000_042),
+                ],
+            ),
+            (
+                HostPath::new(ctx),
+                CONTEXT_LOG_METHOD_ID,
+                vec![
+                    HostValue::String("info".to_owned()),
+                    HostValue::String("player.level_checked".to_owned()),
+                    HostValue::Int(1_700_000_042),
+                ],
+            ),
+        ]
+    );
+}

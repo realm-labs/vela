@@ -2391,6 +2391,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   value methods, and callback-driven methods. Existing inline and managed-heap
   behavior is preserved while future propagation helpers have clearer module
   boundaries.
+- Kept M13/M14 Engine coverage reviewable by splitting permissioned context
+  time/event tests and controlled-random tests out of the oversized Engine
+  test module into focused `tests::context` and `tests::random` modules.
 
 ## Next
 
