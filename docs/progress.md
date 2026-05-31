@@ -2058,6 +2058,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   helpers. `Runtime` can now compile source, file, and directory updates
   against its current `ProgramVersion`, then let the host apply or reject the
   resulting update report at an explicit safe point.
+- Routed the M17 CLI hot-reload demo update compile path through
+  `Runtime::compile_hot_reload_update_file`, so the runnable example no longer
+  manually fetches and passes the current `ProgramVersion` before applying the
+  update report at the safe point.
 
 ## Next
 

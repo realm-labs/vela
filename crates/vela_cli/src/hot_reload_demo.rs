@@ -23,8 +23,8 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
     let old_before = run_current_main(&mut runtime)?;
 
     let update = match runtime
-        .engine()
-        .compile_hot_reload_update_file(&old, updated_path)
+        .compile_hot_reload_update_file(updated_path)
+        .map_err(|error| format!("{error:?}"))?
     {
         Ok(update) => Ok(update),
         Err(error) => match error.kind {
