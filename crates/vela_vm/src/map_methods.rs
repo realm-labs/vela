@@ -6,91 +6,14 @@ use crate::string_methods;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 mod higher_order;
+mod introspection;
 mod lookup;
 mod mutation;
 
 pub(crate) use higher_order::{all, any, count, filter, find, map_values};
+pub(crate) use introspection::{entries, keys, values};
 pub(crate) use lookup::{get, get_or, has};
 pub(crate) use mutation::{clear, extend, remove, set};
-
-pub(crate) fn keys(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_no_args("keys", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(
-            values
-                .keys()
-                .map(|key| Value::String(key.clone()))
-                .collect(),
-        )),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method keys");
-            };
-            Ok(Value::Array(
-                values
-                    .keys()
-                    .map(|key| Value::String(key.clone()))
-                    .collect(),
-            ))
-        }
-        _ => type_error("method keys"),
-    }
-}
-
-pub(crate) fn values(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_no_args("values", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(values.values().cloned().collect())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method values");
-            };
-            Ok(Value::Array(
-                values.values().map(value_from_heap_slot).collect(),
-            ))
-        }
-        _ => type_error("method values"),
-    }
-}
-
-pub(crate) fn entries(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_no_args("entries", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(
-            values
-                .iter()
-                .map(|(key, value)| map_entry(key, value.clone()))
-                .collect(),
-        )),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method entries");
-            };
-            Ok(Value::Array(
-                values
-                    .iter()
-                    .map(|(key, value)| map_entry(key, value_from_heap_slot(value)))
-                    .collect(),
-            ))
-        }
-        _ => type_error("method entries"),
-    }
-}
 
 pub(crate) fn merge(
     receiver: &Value,
@@ -169,7 +92,7 @@ pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmRes
     }))
 }
 
-fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
+pub(super) fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
     expect_arity(method, args, 0)
 }
 

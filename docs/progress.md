@@ -2312,6 +2312,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split M13 map lookup helpers into a focused VM module. Map `has`, `get`,
   and `get_or` now keep key normalization and Option/default-return behavior
   separate from mutation, introspection, merge, and higher-order helpers.
+- Split M13 map introspection helpers into a focused VM module. Map `keys`,
+  `values`, and `entries` now keep deterministic materialization and
+  `MapEntry` construction separate from lookup, mutation, merge, and
+  higher-order helpers.
 
 ## Next
 
