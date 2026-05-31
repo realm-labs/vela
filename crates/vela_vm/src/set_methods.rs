@@ -1,16 +1,15 @@
 use crate::heap::{HeapSlot, HeapValue};
-use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
-    value_to_heap_slot,
-};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 mod combination;
 mod higher_order;
+mod mutation;
 
 pub(crate) use combination::{
     difference, intersection, is_disjoint, is_subset, is_superset, symmetric_difference, union,
 };
 pub(crate) use higher_order::{all, any, count, filter, find, map};
+pub(crate) use mutation::{add, clear, extend, remove};
 
 pub(crate) fn from_array(args: &[Value]) -> VmResult<Value> {
     expect_arity("set.from_array", args, 1)?;
@@ -35,158 +34,6 @@ pub(crate) fn has(
     Ok(values
         .iter()
         .any(|value| SetKey::from_value(value, heap, "method has").as_ref() == Ok(&key)))
-}
-
-pub(crate) fn add(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    expect_arity("add", args, 1)?;
-    match receiver {
-        Value::Set(values) => Ok(Value::Bool(push_unique(
-            values,
-            args[0].clone(),
-            None,
-            "method add",
-        )?)),
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method add");
-            };
-            let key = SetKey::from_value(&args[0], Some(&*heap), "method add")?;
-            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
-                return type_error("method add");
-            };
-            if values
-                .iter()
-                .any(|value| slot_key(value, &*heap).as_ref() == Ok(&key))
-            {
-                return Ok(Value::Bool(false));
-            }
-            let slot = value_to_heap_slot(&args[0], heap, budget)?;
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method add");
-            };
-            values.push(slot);
-            Ok(Value::Bool(true))
-        }
-        _ => type_error("method add"),
-    }
-}
-
-pub(crate) fn remove(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("remove", args, 1)?;
-    match receiver {
-        Value::Set(values) => {
-            let key = SetKey::from_value(&args[0], None, "method remove")?;
-            let before = values.len();
-            values.retain(|value| {
-                SetKey::from_value(value, None, "method remove").as_ref() != Ok(&key)
-            });
-            Ok(Value::Bool(values.len() != before))
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method remove");
-            };
-            let key = SetKey::from_value(&args[0], Some(&*heap), "method remove")?;
-            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
-                return type_error("method remove");
-            };
-            let indexes = values
-                .iter()
-                .enumerate()
-                .filter_map(|(index, value)| {
-                    (slot_key(value, &*heap).as_ref() == Ok(&key)).then_some(index)
-                })
-                .collect::<Vec<_>>();
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method remove");
-            };
-            let before = values.len();
-            for index in indexes.into_iter().rev() {
-                values.remove(index);
-            }
-            Ok(Value::Bool(values.len() != before))
-        }
-        _ => type_error("method remove"),
-    }
-}
-
-pub(crate) fn clear(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("clear", args, 0)?;
-    match receiver {
-        Value::Set(values) => {
-            values.clear();
-            Ok(Value::Null)
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method clear");
-            };
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method clear");
-            };
-            values.clear();
-            Ok(Value::Null)
-        }
-        _ => type_error("method clear"),
-    }
-}
-
-pub(crate) fn extend(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    expect_arity("extend", args, 1)?;
-    let extension = set_values(&args[0], heap.as_deref(), "method extend")?;
-    match receiver {
-        Value::Set(values) => {
-            for value in extension {
-                push_unique(values, value, None, "method extend")?;
-            }
-            Ok(Value::Null)
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method extend");
-            };
-            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
-                return type_error("method extend");
-            };
-            let mut keys = values
-                .iter()
-                .map(|slot| slot_key(slot, &*heap))
-                .collect::<VmResult<Vec<_>>>()?;
-            let mut slots = Vec::new();
-            for value in extension {
-                let key = SetKey::from_value(&value, Some(&*heap), "method extend")?;
-                if keys.contains(&key) {
-                    continue;
-                }
-                keys.push(key);
-                slots.push(value_to_heap_slot(&value, heap, budget.as_deref_mut())?);
-            }
-            let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method extend");
-            };
-            values.extend(slots);
-            Ok(Value::Null)
-        }
-        _ => type_error("method extend"),
-    }
 }
 
 pub(crate) fn values(
@@ -287,7 +134,7 @@ impl SetKey {
     }
 }
 
-fn slot_key(slot: &HeapSlot, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
+pub(super) fn slot_key(slot: &HeapSlot, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
     match slot {
         HeapSlot::Null => Ok(SetKey::Null),
         HeapSlot::Bool(value) => Ok(SetKey::Bool(*value)),

@@ -2323,6 +2323,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   intersection, difference, symmetric difference, subset, superset, and
   disjoint checks now keep algebra/relation behavior separate from mutation,
   construction, scalar keying, and higher-order callback helpers.
+- Split M13 set mutation helpers into a focused VM module. Set `add`,
+  `remove`, `clear`, and `extend` now keep managed-heap slot conversion and
+  in-place updates separate from construction, lookup, values, combination,
+  scalar keying, and higher-order callback helpers.
 
 ## Next
 
