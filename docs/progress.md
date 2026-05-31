@@ -2402,6 +2402,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   descriptor/schema/native registration tests into a focused
   `tests::validation` module instead of growing the monolithic Engine test
   module.
+- Kept M14 typed native Engine API coverage reviewable by splitting pure typed
+  native registration, argument conversion, collection conversion, dynamic
+  result conversion, and typed callback error tests into a focused
+  `tests::typed_native` module.
 
 ## Next
 
