@@ -2355,6 +2355,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   the game-server reflection demo verifies the script `main` function through
   `reflect.function`, `reflect.has_function`, `reflect.functions`, params,
   origin, module, and visibility metadata.
+- Added M12 Engine runtime coverage for compile-dir script module reflection.
+  A focused public integration test now runs a multi-module program through
+  `Runtime::call` and verifies `reflect.module`, `reflect.modules`,
+  `reflect.exports`, `reflect.function`, `reflect.functions`, script
+  docs/attrs, params, defaults, returns, origin, and export names.
 
 ## Next
 
