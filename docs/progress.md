@@ -2210,6 +2210,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   and `slice` dispatch now live with the dedicated string method dispatcher,
   leaving the central script-method router responsible for collection fallbacks
   and script-defined method lookup.
+- Extended the M13/M17 gameplay helper demo proof across the remaining common
+  string and math convenience APIs. The runnable script now exercises trimming,
+  line splitting, affix checks, case conversion, slicing, repetition,
+  `parse_float`, 3D distance, clamp/min/max/abs/sign, pow, ceil, and round
+  while preserving its deterministic CLI result.
 
 ## Next
 
