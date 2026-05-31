@@ -254,7 +254,10 @@ impl<'src> Lexer<'src> {
         if self.peek_char() == Some('0') && matches!(self.peek_next_char(), Some('x' | 'X')) {
             self.bump_char();
             self.bump_char();
-            self.consume_digits_or_underscores_with(|ch| ch.is_ascii_hexdigit());
+            let has_digit = self.consume_digits_or_underscores_with(|ch| ch.is_ascii_hexdigit());
+            if !has_digit {
+                self.push_int_literal_diagnostic(start);
+            }
             self.push_token(
                 TokenKind::Int(self.slice(start, self.offset).to_owned()),
                 start,
@@ -265,7 +268,10 @@ impl<'src> Lexer<'src> {
         if self.peek_char() == Some('0') && matches!(self.peek_next_char(), Some('b' | 'B')) {
             self.bump_char();
             self.bump_char();
-            self.consume_digits_or_underscores_with(|ch| matches!(ch, '0' | '1'));
+            let has_digit = self.consume_digits_or_underscores_with(|ch| matches!(ch, '0' | '1'));
+            if !has_digit {
+                self.push_int_literal_diagnostic(start);
+            }
             self.push_token(
                 TokenKind::Int(self.slice(start, self.offset).to_owned()),
                 start,
@@ -303,10 +309,27 @@ impl<'src> Lexer<'src> {
         self.consume_digits_or_underscores_with(|ch| ch.is_ascii_digit());
     }
 
-    fn consume_digits_or_underscores_with(&mut self, is_digit: impl Fn(char) -> bool) {
-        while self.peek_char().is_some_and(|ch| ch == '_' || is_digit(ch)) {
-            self.bump_char();
+    fn consume_digits_or_underscores_with(&mut self, is_digit: impl Fn(char) -> bool) -> bool {
+        let mut has_digit = false;
+        while let Some(ch) = self.peek_char() {
+            if ch == '_' {
+                self.bump_char();
+            } else if is_digit(ch) {
+                has_digit = true;
+                self.bump_char();
+            } else {
+                break;
+            }
         }
+        has_digit
+    }
+
+    fn push_int_literal_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid integer literal")
+                .with_code("E_LEX_INT")
+                .with_span(self.span(start, self.offset)),
+        );
     }
 
     fn has_valid_exponent(&self) -> bool {

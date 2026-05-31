@@ -2168,6 +2168,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   escapes now produce `E_LEX_STRING_ESCAPE` diagnostics instead of silently
   accepting non-grammar escape forms, while supported escapes and Unicode
   escapes continue to lex normally.
+- Tightened M9 radix integer grammar conformance. Hex and binary literals now
+  require at least one digit after the `0x` or `0b` prefix, preserving token
+  recovery while reporting `E_LEX_INT` for prefix-only forms.
 
 ## Next
 

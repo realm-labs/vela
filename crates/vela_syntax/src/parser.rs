@@ -1560,6 +1560,36 @@ mod tests {
     }
 
     #[test]
+    fn diagnoses_radix_ints_without_digits() {
+        let lexed = lex(source_id(), "0x 0x_ 0b 0b_");
+
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Int("0x".into()));
+        assert_eq!(lexed.tokens[1].kind, TokenKind::Int("0x_".into()));
+        assert_eq!(lexed.tokens[2].kind, TokenKind::Int("0b".into()));
+        assert_eq!(lexed.tokens[3].kind, TokenKind::Int("0b_".into()));
+        assert_eq!(lexed.diagnostics.len(), 4);
+        assert!(
+            lexed
+                .diagnostics
+                .iter()
+                .all(|diagnostic| diagnostic.code.as_deref() == Some("E_LEX_INT"))
+        );
+        assert_eq!(
+            lexed
+                .diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.span)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(Span::new(source_id(), 0, 2)),
+                Some(Span::new(source_id(), 3, 6)),
+                Some(Span::new(source_id(), 7, 9)),
+                Some(Span::new(source_id(), 10, 13)),
+            ]
+        );
+    }
+
+    #[test]
     fn lexes_leading_shebang_as_layout() {
         let lexed = lex(source_id(), "#!/usr/bin/env vela\nfn main() { return 1; }");
 
