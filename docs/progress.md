@@ -2086,6 +2086,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   entry key normalization and value lowering now live outside the main
   compiler coordinator, preserving emitted bytecode while keeping future
   collection-literal work modular.
+- Extended the M13/M17 game-server demo proof to use Engine-installed
+  deterministic context clock helpers. The demo Engine now grants gameplay
+  permissions, registers `ctx.now()` and `ctx.tick()` as reflect-visible
+  permissioned natives, and the CLI suite runs a dedicated context-clock script
+  alongside the existing HostRef context event workflow.
 
 ## Next
 

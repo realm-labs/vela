@@ -2827,6 +2827,7 @@ fn engine_context_clock_registers_metadata() {
     assert_eq!(now.module.as_deref(), Some("ctx"));
     assert!(now.params.is_empty());
     assert_eq!(now.return_type.as_deref(), Some("int"));
+    assert!(now.access.reflect_visible);
     assert_eq!(
         now.access.required_permissions(),
         &[CONTEXT_TIME_PERMISSION.to_owned()]
@@ -2835,6 +2836,7 @@ fn engine_context_clock_registers_metadata() {
     assert_eq!(tick.module.as_deref(), Some("ctx"));
     assert!(tick.params.is_empty());
     assert_eq!(tick.return_type.as_deref(), Some("int"));
+    assert!(tick.access.reflect_visible);
     assert_eq!(
         tick.access.required_permissions(),
         &[CONTEXT_TIME_PERMISSION.to_owned()]

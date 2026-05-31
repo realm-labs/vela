@@ -15,7 +15,11 @@ pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEnt
             NativeFunctionDesc::new("ctx.now", CTX_NOW_FUNCTION_ID)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::pure())
-                .access(FunctionAccess::public().require_permission(CONTEXT_TIME_PERMISSION))
+                .access(
+                    FunctionAccess::public()
+                        .reflect_callable(true)
+                        .require_permission(CONTEXT_TIME_PERMISSION),
+                )
                 .docs("Returns the configured deterministic context timestamp."),
             move |args| context_value("ctx.now", now, args),
         ),
@@ -23,7 +27,11 @@ pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEnt
             NativeFunctionDesc::new("ctx.tick", CTX_TICK_FUNCTION_ID)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::pure())
-                .access(FunctionAccess::public().require_permission(CONTEXT_TIME_PERMISSION))
+                .access(
+                    FunctionAccess::public()
+                        .reflect_callable(true)
+                        .require_permission(CONTEXT_TIME_PERMISSION),
+                )
                 .docs("Returns the configured deterministic context tick."),
             move |args| context_value("ctx.tick", tick, args),
         ),

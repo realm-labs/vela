@@ -79,6 +79,14 @@ fn context_event_demo_runs_through_cli() {
 }
 
 #[test]
+fn context_clock_demo_runs_through_cli() {
+    assert_eq!(
+        run_demo("context_clock.lang"),
+        "result=Int(1700000042) level=Int(9) patches=0\n"
+    );
+}
+
+#[test]
 fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.lang"),

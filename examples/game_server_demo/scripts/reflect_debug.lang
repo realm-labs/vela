@@ -9,12 +9,17 @@ fn main(ctx, player) {
     let method_access = reflect.access(method);
     let reflected_types = reflect.types();
     let reward_module = reflect.module("game.reward");
+    let ctx_module = reflect.module("ctx");
     let reward_function = reflect.function("game.reward.grant");
+    let ctx_now = reflect.function("ctx.now");
+    let ctx_tick = reflect.function("ctx.tick");
     let reward_params = reflect.params(reward_function);
     let reward_access = reflect.access(reward_function);
+    let ctx_now_access = reflect.access(ctx_now);
     let modules = reflect.modules();
     let functions = reflect.functions();
     let exports = reflect.exports(reward_module);
+    let ctx_exports = reflect.exports(ctx_module);
     let player_type_of = reflect.type_of(player);
 
     if reflect.name(player_type_of) == "Player"
@@ -41,12 +46,17 @@ fn main(ctx, player) {
         && method.effects.writes_host
         && method_access.reflect_callable
         && reflect.has_module("game.reward")
+        && reflect.has_module("ctx")
         && !reflect.has_module("game.missing")
         && reflect.name(reward_module) == "game.reward"
         && reflect.kind(reward_module) == "module"
         && reflect.origin(reward_module) == "host"
-        && modules.len() == 1
+        && reflect.name(ctx_module) == "ctx"
+        && reflect.kind(ctx_module) == "module"
+        && modules.len() == 2
         && reflect.has_function("game.reward.grant")
+        && reflect.has_function("ctx.now")
+        && reflect.has_function("ctx.tick")
         && !reflect.has_function("game.reward.missing")
         && reflect.name(reward_function) == "game.reward.grant"
         && reflect.kind(reward_function) == "function"
@@ -67,8 +77,18 @@ fn main(ctx, player) {
         && exports.len() == 1
         && exports[0] == "game.reward.grant"
         && reflect.exports("game.reward")[0] == exports[0]
-        && functions.len() == 1
-        && reflect.id(functions[0]) == reflect.id(reward_function) {
+        && ctx_exports.len() == 2
+        && ctx_exports.contains("ctx.now")
+        && ctx_exports.contains("ctx.tick")
+        && reflect.name(ctx_now) == "ctx.now"
+        && reflect.name(ctx_tick) == "ctx.tick"
+        && reflect.returns(ctx_now) == "int"
+        && reflect.returns(ctx_tick) == "int"
+        && ctx_now_access.required_permissions[0] == "ctx.time"
+        && functions.len() == 3
+        && functions.any(|function| reflect.id(function) == reflect.id(reward_function))
+        && functions.any(|function| reflect.name(function) == "ctx.now"
+            && reflect.returns(function) == "int") {
         reflect.set(player, "level", 12);
         reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
         return reflect.get(player, "level") + fields.len() + reward_params.len();

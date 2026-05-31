@@ -1,6 +1,6 @@
 use vela_common::{HostTypeId, TypeId};
 use vela_engine::{
-    EffectSet, Engine, EngineResult, FunctionAccess, NativeFunctionDesc, TypeHint,
+    EffectSet, Engine, EngineResult, FunctionAccess, NativeFunctionDesc, PermissionSet, TypeHint,
     context_host_type_desc,
 };
 use vela_reflect::{
@@ -15,6 +15,8 @@ pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
     let registry = demo_type_registry(ids);
     let mut builder = Engine::builder()
         .with_standard_natives()
+        .permissions(PermissionSet::gameplay())
+        .with_context_clock(1_700_000_000, 42)
         .reflection_policy(ReflectPolicy::all());
     for desc in registry.types() {
         builder = builder.register_type(desc.clone());
