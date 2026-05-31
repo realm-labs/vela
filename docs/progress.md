@@ -2285,6 +2285,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split M13 power math native into a focused VM module. `math.pow` now keeps
   integer-preserving exponentiation, overflow rejection, and finite float
   fallback behavior separate from scalar, movement, and distance helpers.
+- Split M13 array higher-order helpers into a focused VM module. Array
+  `map`, `filter`, `find`, `any`, `all`, and `count` now keep callback
+  dispatch and truthiness handling separate from mutation, slicing, grouping,
+  and numeric aggregation helpers.
 
 ## Next
 
