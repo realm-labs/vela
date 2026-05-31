@@ -4,8 +4,12 @@ use crate::{
     value_to_heap_slot,
 };
 
+mod combination;
 mod higher_order;
 
+pub(crate) use combination::{
+    difference, intersection, is_disjoint, is_subset, is_superset, symmetric_difference, union,
+};
 pub(crate) use higher_order::{all, any, count, filter, find, map};
 
 pub(crate) fn from_array(args: &[Value]) -> VmResult<Value> {
@@ -194,127 +198,6 @@ pub(crate) fn values(
     set_values(receiver, heap, "method values").map(Value::Array)
 }
 
-pub(crate) fn union(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("union", args, 1)?;
-    let mut combined = Vec::new();
-    for value in set_values(receiver, heap, "method union")? {
-        push_unique(&mut combined, value, heap, "method union")?;
-    }
-    for value in set_values(&args[0], heap, "method union")? {
-        push_unique(&mut combined, value, heap, "method union")?;
-    }
-    Ok(Value::Set(combined))
-}
-
-pub(crate) fn intersection(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("intersection", args, 1)?;
-    let right = set_keys(
-        &set_values(&args[0], heap, "method intersection")?,
-        heap,
-        "method intersection",
-    )?;
-    let mut result = Vec::new();
-    for value in set_values(receiver, heap, "method intersection")? {
-        let key = SetKey::from_value(&value, heap, "method intersection")?;
-        if right.contains(&key) {
-            push_unique(&mut result, value, heap, "method intersection")?;
-        }
-    }
-    Ok(Value::Set(result))
-}
-
-pub(crate) fn difference(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("difference", args, 1)?;
-    let right = set_keys(
-        &set_values(&args[0], heap, "method difference")?,
-        heap,
-        "method difference",
-    )?;
-    let mut result = Vec::new();
-    for value in set_values(receiver, heap, "method difference")? {
-        let key = SetKey::from_value(&value, heap, "method difference")?;
-        if !right.contains(&key) {
-            push_unique(&mut result, value, heap, "method difference")?;
-        }
-    }
-    Ok(Value::Set(result))
-}
-
-pub(crate) fn symmetric_difference(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("symmetric_difference", args, 1)?;
-    let left_values = set_values(receiver, heap, "method symmetric_difference")?;
-    let right_values = set_values(&args[0], heap, "method symmetric_difference")?;
-    let left_keys = set_keys(&left_values, heap, "method symmetric_difference")?;
-    let right_keys = set_keys(&right_values, heap, "method symmetric_difference")?;
-
-    let mut result = Vec::new();
-    for (value, key) in left_values.into_iter().zip(left_keys.iter()) {
-        if !right_keys.contains(key) {
-            push_unique(&mut result, value, heap, "method symmetric_difference")?;
-        }
-    }
-    for (value, key) in right_values.into_iter().zip(right_keys.iter()) {
-        if !left_keys.contains(key) {
-            push_unique(&mut result, value, heap, "method symmetric_difference")?;
-        }
-    }
-    Ok(Value::Set(result))
-}
-
-pub(crate) fn is_subset(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<bool> {
-    expect_arity("is_subset", args, 1)?;
-    set_contains_all(receiver, &args[0], heap, "method is_subset")
-}
-
-pub(crate) fn is_superset(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<bool> {
-    expect_arity("is_superset", args, 1)?;
-    set_contains_all(&args[0], receiver, heap, "method is_superset")
-}
-
-pub(crate) fn is_disjoint(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<bool> {
-    expect_arity("is_disjoint", args, 1)?;
-    let right = set_keys(
-        &set_values(&args[0], heap, "method is_disjoint")?,
-        heap,
-        "method is_disjoint",
-    )?;
-    for value in set_values(receiver, heap, "method is_disjoint")? {
-        let key = SetKey::from_value(&value, heap, "method is_disjoint")?;
-        if right.contains(&key) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
-}
-
 pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match receiver {
         Value::Set(_) => true,
@@ -326,22 +209,6 @@ pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool
         }
         _ => false,
     }
-}
-
-fn set_contains_all(
-    subset: &Value,
-    superset: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<bool> {
-    let superset = set_keys(&set_values(superset, heap, operation)?, heap, operation)?;
-    for value in set_values(subset, heap, operation)? {
-        let key = SetKey::from_value(&value, heap, operation)?;
-        if !superset.contains(&key) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
 }
 
 pub(super) fn push_unique(
@@ -379,7 +246,7 @@ pub(super) fn set_values(
     }
 }
 
-fn set_keys(
+pub(super) fn set_keys(
     values: &[Value],
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
@@ -391,7 +258,7 @@ fn set_keys(
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum SetKey {
+pub(super) enum SetKey {
     Null,
     Bool(bool),
     Int(i64),
@@ -400,7 +267,7 @@ enum SetKey {
 }
 
 impl SetKey {
-    fn from_value(
+    pub(super) fn from_value(
         value: &Value,
         heap: Option<&HeapExecution<'_>>,
         operation: &'static str,

@@ -2319,6 +2319,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split M13 map merge into a focused VM module. Non-mutating merge behavior now
   owns ordered copy materialization separately from lookup, introspection,
   mutation, and higher-order callback helpers.
+- Split M13 set combination helpers into a focused VM module. Set union,
+  intersection, difference, symmetric difference, subset, superset, and
+  disjoint checks now keep algebra/relation behavior separate from mutation,
+  construction, scalar keying, and higher-order callback helpers.
 
 ## Next
 
