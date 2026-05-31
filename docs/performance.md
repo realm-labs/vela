@@ -36,6 +36,41 @@ scalar VM dispatch conclusions.
 Only tracked benchmark sources, baselines, and reports define the official
 benchmark surface.
 
+## Tracked Harnesses
+
+The first tracked M18 harness lives in `crates/vela_vm/benches/baseline.rs` and
+can be run with:
+
+```bash
+cargo bench -p vela_vm --bench baseline
+```
+
+For quick validation during implementation:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+The baseline harness intentionally has no external benchmarking dependency yet.
+It separates script compilation from repeated execution timing, runs in Cargo's
+bench/release profile, and reports one line per workload with:
+
+```text
+benchmark name
+execution mode
+min, mean, median, and p95 nanoseconds
+checksum
+repeat, iteration, warmup, profile, OS, and architecture parameters
+```
+
+Current tracked workload groups:
+
+```text
+scalar_branch_loop          VM dispatch, arithmetic, branches, range for-in
+stdlib_collections          array, map, set, Option, and stdlib method dispatch
+managed_heap_materialization records, enums, strings, Option helpers, heap mode
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

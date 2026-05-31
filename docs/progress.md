@@ -30,7 +30,7 @@ post-MVP reference or optional tracks, not MVP requirements.
 | M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist; full production safe-point workflow remains. |
 | M16 | Partial | Runtime diagnostics, common rendering, and CLI compile-error rendering have started; broader tooling fixtures remain. |
 | M17 | Partial | First conformance fixture and integration harnesses exist; game-server demo still needs expansion. |
-| M18 | Not started | Official performance baselines are not in tracked benchmark form yet. |
+| M18 | Partial | First tracked VM baseline harness exists; full official baselines and external comparisons remain. |
 | M19-M22 | Not started | Non-JIT optimization, inline caches, optional JIT evaluation, and release performance hardening are post-MVP work. |
 
 ## Completed
@@ -2381,6 +2381,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   hot-reload reports now render updated-source spans with the common
   diagnostic renderer when ABI checks carry source locations, while preserving
   the structured report summary, detail, and repair-hint lines.
+- Started M18 measurement scaffolding with a tracked `vela_vm` baseline bench
+  target. `cargo bench -p vela_vm --bench baseline` now runs stable VM scalar,
+  stdlib collection, and managed-heap materialization workloads after compile
+  time, reporting release-profile timing summaries and checksums; `--quick`
+  provides a short validation mode.
 
 ## Next
 

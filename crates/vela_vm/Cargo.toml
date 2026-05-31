@@ -13,5 +13,9 @@ vela_reflect = { path = "../vela_reflect" }
 [dev-dependencies]
 vela_hir = { path = "../vela_hir" }
 
+[[bench]]
+name = "baseline"
+harness = false
+
 [lints]
 workspace = true
