@@ -9,7 +9,6 @@ use crate::map_methods;
 use crate::option_result_methods;
 use crate::set_methods;
 use crate::string_method_dispatch;
-use crate::string_methods;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
 };
@@ -28,9 +27,6 @@ pub(crate) fn call_method(
 ) -> VmResult<Value> {
     if let Some(result) = string_method_dispatch::call(method, receiver, args, heap.as_deref()) {
         return result;
-    }
-    if method == "find" && string_methods::is_string(receiver, heap.as_deref()) {
-        return string_methods::find(receiver, args, heap.as_deref());
     }
     if let Some(result) = callback_method_dispatch::call(
         method,
@@ -57,21 +53,8 @@ pub(crate) fn call_method(
             expect_no_args(method, args)?;
             is_empty(receiver, heap.as_deref()).map(Value::Bool)
         }
-        "contains" => {
-            if string_methods::is_string(receiver, heap.as_deref()) {
-                string_methods::contains(receiver, args, heap.as_deref())
-            } else {
-                array_methods::contains(receiver, args, heap.as_deref())
-            }
-        }
-        .map(Value::Bool),
-        "slice" => {
-            if string_methods::is_string(receiver, heap.as_deref()) {
-                string_methods::slice(receiver, args, heap.as_deref())
-            } else {
-                array_methods::slice(receiver, args, heap.as_deref())
-            }
-        }
+        "contains" => { array_methods::contains(receiver, args, heap.as_deref()) }.map(Value::Bool),
+        "slice" => array_methods::slice(receiver, args, heap.as_deref()),
         "push" => array_methods::push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "pop" => array_methods::pop(receiver, args, heap.as_deref_mut()),
         "insert" => {

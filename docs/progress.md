@@ -2206,6 +2206,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   granting `std.random`, the reflection demo proves the hidden native is
   filtered to an empty `math` module export list, and a negative CLI fixture
   renders the source-spanned permission denial.
+- Kept M13 string helper routing modular. String-specific `contains`, `find`,
+  and `slice` dispatch now live with the dedicated string method dispatcher,
+  leaving the central script-method router responsible for collection fallbacks
+  and script-defined method lookup.
 
 ## Next
 

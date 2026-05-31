@@ -7,6 +7,12 @@ pub(crate) fn call(
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
     match method {
+        "contains" if string_methods::is_string(receiver, heap) => {
+            Some(string_methods::contains(receiver, args, heap).map(Value::Bool))
+        }
+        "find" if string_methods::is_string(receiver, heap) => {
+            Some(string_methods::find(receiver, args, heap))
+        }
         "starts_with" => Some(string_methods::starts_with(receiver, args, heap).map(Value::Bool)),
         "ends_with" => Some(string_methods::ends_with(receiver, args, heap).map(Value::Bool)),
         "strip_prefix" => Some(string_methods::strip_prefix(receiver, args, heap)),
@@ -18,6 +24,9 @@ pub(crate) fn call(
         "trim_end" => Some(string_methods::trim_end(receiver, args, heap)),
         "replace" => Some(string_methods::replace(receiver, args, heap)),
         "repeat" => Some(string_methods::repeat(receiver, args, heap)),
+        "slice" if string_methods::is_string(receiver, heap) => {
+            Some(string_methods::slice(receiver, args, heap))
+        }
         "split" => Some(string_methods::split(receiver, args, heap)),
         "split_lines" => Some(string_methods::split_lines(receiver, args, heap)),
         "split_whitespace" => Some(string_methods::split_whitespace(receiver, args, heap)),
