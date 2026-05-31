@@ -1,12 +1,12 @@
 fn main(ctx, player, monster) {
     if monster.id == 11 {
-        player.quest_count += 1;
+        player.quest_progress.quest_count += 1;
     }
 
-    if player.quest_count >= player.quest_goal {
-        player.quest_done = true;
-        ctx.emit("quest.finished", monster.id, player.quest_count);
+    if player.quest_progress.quest_count >= player.quest_goal {
+        player.quest_progress.quest_done = true;
+        ctx.emit("quest.finished", monster.id, player.quest_progress.quest_count);
     }
 
-    return player.quest_count;
+    return player.quest_progress.quest_count;
 }

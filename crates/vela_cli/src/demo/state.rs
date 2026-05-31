@@ -50,9 +50,12 @@ impl DemoHostState {
         );
         let level_path = HostPath::new(player).field(ids.level_field);
         let exp_path = HostPath::new(player).field(ids.exp_field);
-        let quest_count_path = HostPath::new(player).field(ids.quest_count_field);
+        let quest_progress_path = HostPath::new(player).field(ids.quest_progress_field);
+        let quest_count_path = quest_progress_path
+            .clone()
+            .variant_field(ids.quest_count_field);
         let quest_goal_path = HostPath::new(player).field(ids.quest_goal_field);
-        let quest_done_path = HostPath::new(player).field(ids.quest_done_field);
+        let quest_done_path = quest_progress_path.variant_field(ids.quest_done_field);
         let mut symbols = SymbolInterner::new();
         let gold_key = symbols.intern("gold");
         let inventory_gold_count_path = HostPath::new(player)

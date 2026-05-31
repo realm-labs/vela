@@ -7,10 +7,12 @@ fn main(ctx, player) {
     let player_type = reflect.type_info("Player");
     let config_type = reflect.type_info("Config");
     let quest_type = reflect.type_info("QuestProgress");
+    let host_quest_type = reflect.type_info("HostQuestProgress");
     let damageable = reflect.trait_info("Damageable");
     let quest = QuestProgress.Active { count: 2 };
     let quest_variants = reflect.variants(quest);
     let active_variant = reflect.variant_info(quest, "Active");
+    let host_active_variant = reflect.variant_info(host_quest_type, "Active");
     let quest_type_variants = reflect.variants(quest_type);
     let reflected_variants = reflect.variants();
     let fields = reflect.fields(player);
@@ -53,20 +55,30 @@ fn main(ctx, player) {
         && reflect.has_field(config_type, "kill_rewards")
         && reflect.field(config_type, "exp_to_next_level").type == "int"
         && reflect.kind(quest_type) == "script_enum"
+        && reflect.kind(host_quest_type) == "host"
+        && reflect.has_field(player_type, "quest_progress")
+        && reflect.field(player_type, "quest_progress").type == "HostQuestProgress"
         && quest_type.variant_count == 2
+        && host_quest_type.variant_count == 1
         && quest_variants.len() == 2
         && quest_type_variants.len() == 2
-        && reflected_variants.len() == 2
+        && reflected_variants.len() == 3
         && reflect.name(active_variant) == "Active"
         && reflect.owner(active_variant) == "QuestProgress"
         && active_variant.fields.len() == 1
         && active_variant.fields[0].name == "count"
+        && reflect.name(host_active_variant) == "Active"
+        && reflect.owner(host_active_variant) == "HostQuestProgress"
+        && host_active_variant.fields.len() == 2
+        && host_active_variant.fields[0].name == "quest_count"
+        && host_active_variant.fields[1].name == "quest_done"
         && reflect.has_variant(quest_type, "Active")
+        && reflect.has_variant(host_quest_type, "Active")
         && !reflect.has_variant(quest_type, "Paused")
         && reflect.variant(quest) == "Active"
         && reflect.variant_is(quest, "Active")
         && reflect.implements(player_type, damageable)
-        && fields.len() == 7
+        && fields.len() == 6
         && reflect.fields(player_type).len() == fields.len()
         && fields[1].owner == "Player"
         && fields[1].name == "level"
@@ -168,7 +180,8 @@ fn main(ctx, player) {
             && reflect.returns(function) == "int") {
         reflect.set(player, "level", 12);
         reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
-        return reflect.get(player, "level") + fields.len() + reward_params.len();
+        let metadata_score = reflect.get(player, "level") + fields.len() + reward_params.len();
+        return metadata_score + host_active_variant.fields.len();
     }
 
     return 0;

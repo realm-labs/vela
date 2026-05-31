@@ -1,11 +1,11 @@
-use vela_common::{HostTypeId, TypeId};
+use vela_common::{HostTypeId, TypeId, VariantId};
 use vela_engine::{
     EffectSet, Engine, EngineResult, FunctionAccess, NativeFunctionDesc, PermissionSet, TypeHint,
     context_host_type_desc,
 };
 use vela_reflect::{
     FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ModuleDesc, ReflectPolicy, SchemaHash,
-    TraitDesc, TypeDesc, TypeKey, TypeRegistry,
+    TraitDesc, TypeDesc, TypeKey, TypeRegistry, VariantDesc,
 };
 use vela_vm::Value;
 
@@ -40,9 +40,11 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
             .field(FieldDesc::new(ids.id_field, "id"))
             .field(FieldDesc::new(ids.level_field, "level").writable(true))
             .field(FieldDesc::new(ids.exp_field, "exp").writable(true))
-            .field(FieldDesc::new(ids.quest_count_field, "quest_count").writable(true))
+            .field(
+                FieldDesc::new(ids.quest_progress_field, "quest_progress")
+                    .type_hint("HostQuestProgress"),
+            )
             .field(FieldDesc::new(ids.quest_goal_field, "quest_goal"))
-            .field(FieldDesc::new(ids.quest_done_field, "quest_done").writable(true))
             .field(FieldDesc::new(ids.inventory_field, "inventory").type_hint("Inventory"))
             .method(
                 MethodDesc::new(ids.add_reward_method, "add_reward")
@@ -90,6 +92,23 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
                 FieldDesc::new(ids.kill_rewards_field, "kill_rewards")
                     .type_hint("array")
                     .docs("Configured monster reward table."),
+            ),
+    );
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(106), "HostQuestProgress"))
+            .schema_hash(SchemaHash::new(0x1000_0000_0000_0007))
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Active")
+                    .field(
+                        FieldDesc::new(ids.quest_count_field, "quest_count")
+                            .writable(true)
+                            .type_hint("int"),
+                    )
+                    .field(
+                        FieldDesc::new(ids.quest_done_field, "quest_done")
+                            .writable(true)
+                            .type_hint("bool"),
+                    ),
             ),
     );
     registry

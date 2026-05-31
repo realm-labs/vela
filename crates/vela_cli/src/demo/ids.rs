@@ -12,15 +12,16 @@ pub(crate) const CONFIG_TYPE: u32 = 4;
 const LEVEL_FIELD: u32 = 2;
 const EXP_FIELD: u32 = 6;
 const ID_FIELD: u32 = 7;
-const QUEST_COUNT_FIELD: u32 = 10;
+const QUEST_PROGRESS_FIELD: u32 = 10;
 const QUEST_GOAL_FIELD: u32 = 11;
-const QUEST_DONE_FIELD: u32 = 12;
 const INVENTORY_FIELD: u32 = 14;
 const ITEMS_FIELD: u32 = 15;
 const COUNT_FIELD: u32 = 16;
 const CONFIG_FIELD: u32 = 17;
 const EXP_TO_NEXT_LEVEL_FIELD: u32 = 18;
 const KILL_REWARDS_FIELD: u32 = 19;
+const QUEST_COUNT_FIELD: u32 = 20;
+const QUEST_DONE_FIELD: u32 = 21;
 const ADD_REWARD_METHOD: u32 = 9;
 const REWARD_GRANT_FUNCTION: u64 = 40;
 
@@ -31,6 +32,7 @@ pub(crate) struct DemoIds {
     pub(crate) tick_field: FieldId,
     pub(crate) exp_field: FieldId,
     pub(crate) id_field: FieldId,
+    pub(crate) quest_progress_field: FieldId,
     pub(crate) quest_count_field: FieldId,
     pub(crate) quest_goal_field: FieldId,
     pub(crate) quest_done_field: FieldId,
@@ -54,6 +56,7 @@ impl DemoIds {
             tick_field: CONTEXT_TICK_FIELD_ID,
             exp_field: FieldId::new(EXP_FIELD),
             id_field: FieldId::new(ID_FIELD),
+            quest_progress_field: FieldId::new(QUEST_PROGRESS_FIELD),
             quest_count_field: FieldId::new(QUEST_COUNT_FIELD),
             quest_goal_field: FieldId::new(QUEST_GOAL_FIELD),
             quest_done_field: FieldId::new(QUEST_DONE_FIELD),

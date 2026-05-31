@@ -2366,6 +2366,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   integration coverage proves reflection metadata and trait method dispatch
   stay old before safe-point apply and switch to the updated surface after
   apply.
+- Strengthened the M11/M17 game-server quest proof. The runnable demo now
+  models quest progress as a `player.quest_progress` host path with
+  `HostQuestProgress.Active` variant fields, so `quest_progress.lang` and
+  `monster_kill_reward.lang` mutate quest count/done state through
+  `HostPath::variant_field` PatchTx segments. The reflection demo also
+  verifies the host quest-progress variant metadata through the CLI path.
 
 ## Next
 

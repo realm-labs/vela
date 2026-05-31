@@ -133,7 +133,7 @@ fn quest_progress_demo_runs_through_cli() {
 fn reflect_debug_demo_runs_through_cli() {
     assert_eq!(
         run_demo("reflect_debug.lang"),
-        "result=Int(21) level=Int(12) ctx_now=Int(1700000000) \
+        "result=Int(22) level=Int(12) ctx_now=Int(1700000000) \
          ctx_tick=Int(42) emits=1 patches=2\n"
     );
 }
