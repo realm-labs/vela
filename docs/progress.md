@@ -2279,6 +2279,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   `math.lerp` and `math.move_towards` now keep finite-output validation,
   negative-delta rejection, and integer-preserving stepping separate from
   scalar, distance, and power helpers.
+- Split M13 distance math natives into a focused VM module. `math.distance2d`
+  and `math.distance3d` now keep coordinate validation and finite-distance
+  checks separate from scalar, interpolation, movement, and power helpers.
 
 ## Next
 
