@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::heap::HeapValue;
 use crate::script_object::ScriptFields;
 use crate::string_methods;
@@ -8,28 +6,14 @@ use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_hea
 mod higher_order;
 mod introspection;
 mod lookup;
+mod merge;
 mod mutation;
 
 pub(crate) use higher_order::{all, any, count, filter, find, map_values};
 pub(crate) use introspection::{entries, keys, values};
 pub(crate) use lookup::{get, get_or, has};
+pub(crate) use merge::merge;
 pub(crate) use mutation::{clear, extend, remove, set};
-
-pub(crate) fn merge(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&crate::HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("merge", args, 1)?;
-    let mut merged = BTreeMap::new();
-    for (key, value) in map_entries(receiver, heap, "method merge")? {
-        merged.insert(key, value);
-    }
-    for (key, value) in map_entries(&args[0], heap, "method merge")? {
-        merged.insert(key, value);
-    }
-    Ok(Value::Map(merged))
-}
 
 pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
     match receiver {

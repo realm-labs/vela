@@ -2316,6 +2316,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   `values`, and `entries` now keep deterministic materialization and
   `MapEntry` construction separate from lookup, mutation, merge, and
   higher-order helpers.
+- Split M13 map merge into a focused VM module. Non-mutating merge behavior now
+  owns ordered copy materialization separately from lookup, introspection,
+  mutation, and higher-order callback helpers.
 
 ## Next
 
