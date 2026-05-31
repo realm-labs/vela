@@ -2289,6 +2289,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `map`, `filter`, `find`, `any`, `all`, and `count` now keep callback
   dispatch and truthiness handling separate from mutation, slicing, grouping,
   and numeric aggregation helpers.
+- Split M13 array mutation helpers into a focused VM module. Array `push`,
+  `pop`, `remove_at`, `insert`, `extend`, and `clear` now keep managed-heap
+  slot conversion and in-place mutation separate from read-only collection
+  helpers.
 
 ## Next
 
