@@ -47,7 +47,7 @@ use const_eval::evaluate_const_expr;
 use control_flow::LoopContext;
 pub use error::{CompileError, CompileErrorKind, CompileResult};
 use field_slots::ScriptFieldSlots;
-use lambdas::{LambdaCapture, collect_lambda_captures};
+use lambdas::LambdaCapture;
 pub use options::CompilerOptions;
 use patterns::enum_variant_path;
 use schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
@@ -935,64 +935,6 @@ impl<'ast> Compiler<'ast> {
                 }
             })
             .collect()
-    }
-
-    fn compile_lambda(
-        &mut self,
-        lambda: &Expr,
-        params: &[Param],
-        body: &Expr,
-    ) -> CompileResult<Register> {
-        let captures = collect_lambda_captures(self.bindings, &self.hir_locals, body);
-        let capture_registers = captures
-            .iter()
-            .map(|capture| capture.register)
-            .collect::<Vec<_>>();
-        let mut lambda_compiler = Compiler::new_lambda(
-            format!("{}::<lambda@{}>", self.code.name, lambda.span.start),
-            lambda.span,
-            params,
-            self.body,
-            &captures,
-            self.bindings,
-            self.facts.clone(),
-        )?;
-        for capture in &captures {
-            if let Some(script_fact) = self.script_types.local_fact(capture.local) {
-                lambda_compiler.script_types.set_local_fact(
-                    capture.local,
-                    &capture.name,
-                    Some(script_fact),
-                );
-            }
-        }
-        let code = lambda_compiler.compile_lambda_body(body)?;
-        let dst = self.alloc_register()?;
-        self.emit(InstructionKind::MakeClosure {
-            dst,
-            code: Box::new(code),
-            captures: capture_registers,
-        });
-        Ok(dst)
-    }
-
-    fn compile_lambda_body(mut self, body: &Expr) -> CompileResult<CodeObject> {
-        self.compile_param_defaults()?;
-        match &body.kind {
-            ExprKind::Block(block) => {
-                let dst = self.alloc_register()?;
-                let returned = self.compile_block_value_to(block, dst)?;
-                if !returned {
-                    self.emit(InstructionKind::Return { src: dst });
-                }
-            }
-            _ => {
-                let value = self.compile_expr(body)?;
-                self.emit(InstructionKind::Return { src: value });
-            }
-        }
-        self.code.register_count = self.next_register;
-        Ok(self.code)
     }
 
     fn tuple_enum_constructor_call(&self, callee: &Expr) -> Option<(String, String)> {

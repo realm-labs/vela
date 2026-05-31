@@ -2,11 +2,13 @@ use std::collections::{BTreeMap, HashMap};
 
 use vela_hir::{BindingMap, BindingResolution, HirLocalId};
 use vela_syntax::{
-    Argument, Block, ElseBranch, Expr, ExprKind, IfExpr, MapEntry, MatchArm, MatchExpr,
+    Argument, Block, ElseBranch, Expr, ExprKind, IfExpr, MapEntry, MatchArm, MatchExpr, Param,
     RecordField, Stmt, StmtKind,
 };
 
-use crate::Register;
+use crate::{CodeObject, InstructionKind, Register};
+
+use super::{CompileResult, Compiler};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LambdaCapture {
@@ -23,6 +25,66 @@ pub(crate) fn collect_lambda_captures(
     let mut captures = BTreeMap::new();
     collect_expr(bindings, available, body, &mut captures);
     captures.into_values().collect()
+}
+
+impl Compiler<'_> {
+    pub(super) fn compile_lambda(
+        &mut self,
+        lambda: &Expr,
+        params: &[Param],
+        body: &Expr,
+    ) -> CompileResult<Register> {
+        let captures = collect_lambda_captures(self.bindings, &self.hir_locals, body);
+        let capture_registers = captures
+            .iter()
+            .map(|capture| capture.register)
+            .collect::<Vec<_>>();
+        let mut lambda_compiler = Compiler::new_lambda(
+            format!("{}::<lambda@{}>", self.code.name, lambda.span.start),
+            lambda.span,
+            params,
+            self.body,
+            &captures,
+            self.bindings,
+            self.facts.clone(),
+        )?;
+        for capture in &captures {
+            if let Some(script_fact) = self.script_types.local_fact(capture.local) {
+                lambda_compiler.script_types.set_local_fact(
+                    capture.local,
+                    &capture.name,
+                    Some(script_fact),
+                );
+            }
+        }
+        let code = lambda_compiler.compile_lambda_body(body)?;
+        let dst = self.alloc_register()?;
+        self.emit(InstructionKind::MakeClosure {
+            dst,
+            code: Box::new(code),
+            captures: capture_registers,
+        });
+        Ok(dst)
+    }
+
+    fn compile_lambda_body(mut self, body: &Expr) -> CompileResult<CodeObject> {
+        self.compile_param_defaults()?;
+        match &body.kind {
+            ExprKind::Block(block) => {
+                let dst = self.alloc_register()?;
+                let returned = self.compile_block_value_to(block, dst)?;
+                if !returned {
+                    self.emit(InstructionKind::Return { src: dst });
+                }
+            }
+            _ => {
+                let value = self.compile_expr(body)?;
+                self.emit(InstructionKind::Return { src: value });
+            }
+        }
+        self.code.register_count = self.next_register;
+        Ok(self.code)
+    }
 }
 
 fn collect_expr(

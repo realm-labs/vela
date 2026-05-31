@@ -2122,6 +2122,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   enum constructor arguments, schema defaults, record field compilation, and
   constructor diagnostics now live outside the main compiler coordinator while
   preserving emitted bytecode behavior.
+- Split bytecode lambda lowering into the focused compiler lambda module.
+  Capture collection, nested closure compiler setup, script type fact
+  propagation, and closure bytecode emission now live together outside the main
+  compiler coordinator while preserving lambda runtime behavior.
 
 ## Next
 
