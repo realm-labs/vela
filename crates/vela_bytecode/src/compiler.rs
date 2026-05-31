@@ -28,14 +28,16 @@ use vela_syntax::{
     MapEntry, MatchExpr, Param, Pattern, SourceFile, Stmt, StmtKind, UnaryOp, parse_source,
 };
 
+#[cfg(test)]
+use crate::HostPathSegment;
 use crate::{
-    CallArgument, CodeObject, Constant, HostPathSegment, Instruction, InstructionKind,
-    InstructionOffset, Program, Register,
+    CallArgument, CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program,
+    Register,
 };
 use call_args::resolve_script_call_arguments;
 use control_flow::LoopContext;
 use field_slots::ScriptFieldSlots;
-use host_paths::{HostPathPart, HostPathRoot, host_field_path, host_field_path_parts};
+use host_paths::{host_field_path, host_field_path_parts};
 use lambdas::{LambdaCapture, collect_lambda_captures};
 use methods::host_method_call;
 use operators::non_logical_binary_instruction;
@@ -1880,97 +1882,6 @@ impl<'ast> Compiler<'ast> {
         self.facts
             .script_field_slots
             .enum_variant(&fact.type_name, variant, field)
-    }
-
-    fn host_path_push_call(
-        &mut self,
-        callee: &Expr,
-        args: &[Argument],
-    ) -> CompileResult<Option<Register>> {
-        let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "push" => {
-                host_field_path(&self.facts.options, base)
-            }
-            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "push") => {
-                host_field_path_parts(&self.facts.options, &parts[..parts.len() - 1])
-            }
-            _ => None,
-        };
-        let Some(path) = path else {
-            return Ok(None);
-        };
-        reject_named_args(args, "host path push")?;
-        let [arg] = args else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "host path push arity",
-            )));
-        };
-        let root = self.compile_host_path_root(callee.span, path.root)?;
-        let segments = self.compile_host_path_segments(path.segments)?;
-        let value = self.compile_expr(&arg.value)?;
-        self.emit(InstructionKind::PushHostPath {
-            root,
-            segments,
-            value,
-        });
-        let dst = self.alloc_register()?;
-        self.emit_constant_to(dst, Constant::Null);
-        Ok(Some(dst))
-    }
-
-    fn host_path_remove_call(
-        &mut self,
-        callee: &Expr,
-        args: &[Argument],
-    ) -> CompileResult<Option<Register>> {
-        let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "remove" => {
-                host_field_path(&self.facts.options, base)
-            }
-            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "remove") => {
-                host_field_path_parts(&self.facts.options, &parts[..parts.len() - 1])
-            }
-            _ => None,
-        };
-        let Some(path) = path else {
-            return Ok(None);
-        };
-        reject_named_args(args, "host path remove")?;
-        if !args.is_empty() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "host path remove arity",
-            )));
-        }
-        let root = self.compile_host_path_root(callee.span, path.root)?;
-        let segments = self.compile_host_path_segments(path.segments)?;
-        self.emit(InstructionKind::RemoveHostPath { root, segments });
-        let dst = self.alloc_register()?;
-        self.emit_constant_to(dst, Constant::Null);
-        Ok(Some(dst))
-    }
-
-    fn compile_host_path_root<'expr>(
-        &mut self,
-        span: Span,
-        root: HostPathRoot<'expr>,
-    ) -> CompileResult<Register> {
-        match root {
-            HostPathRoot::Expr(expr) => self.compile_expr(expr),
-            HostPathRoot::LocalPath(name) => self.local_register_at_span(span, name),
-        }
-    }
-
-    fn compile_host_path_segments<'expr>(
-        &mut self,
-        segments: Vec<HostPathPart<'expr>>,
-    ) -> CompileResult<Vec<HostPathSegment>> {
-        segments
-            .into_iter()
-            .map(|segment| match segment {
-                HostPathPart::Field(field) => Ok(HostPathSegment::Field(field)),
-                HostPathPart::Value(expr) => self.compile_expr(expr).map(HostPathSegment::Value),
-            })
-            .collect()
     }
 
     fn compile_literal(&mut self, literal: &Literal) -> CompileResult<Register> {

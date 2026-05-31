@@ -2024,6 +2024,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   variant construction and guarded tuple-pattern matching. The same fixture now
   resolves through HIR, carries analysis facts, and executes through the VM for
   both record and tuple enum payload shapes.
+- Split M11 host-path push/remove lowering out of the main bytecode compiler
+  file into the focused host-path compiler module. Host path recognition,
+  root/segment materialization, and push/remove bytecode emission now live
+  together while preserving the existing PatchTx execution behavior.
 
 ## Next
 
