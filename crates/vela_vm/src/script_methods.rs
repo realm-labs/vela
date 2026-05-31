@@ -6,14 +6,12 @@ use crate::array_methods;
 use crate::heap::{GcRef, HeapValue};
 use crate::map_methods;
 use crate::method_runtime::MethodRuntime;
-use crate::option_result::option_value;
 use crate::option_result_methods;
 use crate::set_methods;
 use crate::string_method_dispatch;
 use crate::string_methods;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
-    value_from_heap_slot, value_to_heap_slot,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -56,8 +54,8 @@ pub(crate) fn call_method(
                 array_methods::slice(receiver, args, heap.as_deref())
             }
         }
-        "push" => array_push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
-        "pop" => array_pop(receiver, args, heap.as_deref_mut()),
+        "push" => array_methods::push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
+        "pop" => array_methods::pop(receiver, args, heap.as_deref_mut()),
         "insert" => {
             array_methods::insert(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
         }
@@ -695,56 +693,6 @@ fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool
         }
         Value::Record { fields, .. } | Value::Enum { fields, .. } => Ok(fields.is_empty()),
         _ => type_error("method is_empty"),
-    }
-}
-
-fn array_push(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    expect_arity("push", args, 1)?;
-    match receiver {
-        Value::Array(values) => {
-            values.push(args[0].clone());
-            Ok(Value::Null)
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method push");
-            };
-            let slot = value_to_heap_slot(&args[0], heap, budget)?;
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method push");
-            };
-            values.push(slot);
-            Ok(Value::Null)
-        }
-        _ => type_error("method push"),
-    }
-}
-
-fn array_pop(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_no_args("pop", args)?;
-    match receiver {
-        Value::Array(values) => Ok(option_value(values.pop())),
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method pop");
-            };
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method pop");
-            };
-            Ok(option_value(
-                values.pop().map(|slot| value_from_heap_slot(&slot)),
-            ))
-        }
-        _ => type_error("method pop"),
     }
 }
 

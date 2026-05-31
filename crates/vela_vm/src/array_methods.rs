@@ -95,6 +95,60 @@ pub(crate) fn last(
     ))
 }
 
+pub(crate) fn push(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("push", args, 1)?;
+    match receiver {
+        Value::Array(values) => {
+            values.push(args[0].clone());
+            Ok(Value::Null)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method push");
+            };
+            let slot = value_to_heap_slot(&args[0], heap, budget)?;
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method push");
+            };
+            values.push(slot);
+            Ok(Value::Null)
+        }
+        _ => type_error("method push"),
+    }
+}
+
+pub(crate) fn pop(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("pop", args, 0)?;
+    match receiver {
+        Value::Array(values) => Ok(values.pop().map_or_else(
+            || option_value("None", None),
+            |value| option_value("Some", Some(value)),
+        )),
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method pop");
+            };
+            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+                return type_error("method pop");
+            };
+            Ok(values.pop().map_or_else(
+                || option_value("None", None),
+                |slot| option_value("Some", Some(value_from_heap_slot(&slot))),
+            ))
+        }
+        _ => type_error("method pop"),
+    }
+}
+
 pub(crate) fn remove_at(
     receiver: &mut Value,
     args: &[Value],

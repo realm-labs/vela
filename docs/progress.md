@@ -2180,6 +2180,9 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split string-only VM method dispatch into a focused module. The central
   script method dispatcher now keeps overloaded collection/string decisions,
   while dedicated string routing owns the growing M13 string helper surface.
+- Moved array `push` and `pop` method implementations into the focused VM
+  array method module. The central script method dispatcher now routes those
+  calls without owning array mutation and managed-heap slot conversion logic.
 
 ## Next
 
