@@ -48,9 +48,18 @@ impl Program {
         self.script_metadata = Some(graph);
     }
 
+    pub fn set_script_methods(&mut self, methods: ScriptMethodTable) {
+        self.script_methods = methods;
+    }
+
     #[must_use]
     pub fn script_metadata(&self) -> Option<&ModuleGraph> {
         self.script_metadata.as_ref()
+    }
+
+    #[must_use]
+    pub fn script_methods(&self) -> &ScriptMethodTable {
+        &self.script_methods
     }
 
     #[must_use]

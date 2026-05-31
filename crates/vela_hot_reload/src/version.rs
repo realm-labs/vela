@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::{CodeObject, Program};
+use vela_bytecode::{CodeObject, Program, script_methods::ScriptMethodTable};
+use vela_hir::ModuleGraph;
 
 use crate::{FunctionSymbolId, HotReloadAbi, ProgramVersionId};
 
@@ -9,6 +10,8 @@ use crate::{FunctionSymbolId, HotReloadAbi, ProgramVersionId};
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
     pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+    pub(crate) script_methods: ScriptMethodTable,
+    pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
 }
 
@@ -24,12 +27,20 @@ impl ProgramVersion {
         program: Program,
         abi: HotReloadAbi,
     ) -> Self {
+        let script_methods = program.script_methods().clone();
+        let script_metadata = program.script_metadata().cloned();
         let functions = program
             .functions
             .into_iter()
             .map(|(name, code)| (FunctionSymbolId::new(name), Arc::new(code)))
             .collect();
-        Self { id, functions, abi }
+        Self {
+            id,
+            functions,
+            script_methods,
+            script_metadata,
+            abi,
+        }
     }
 
     #[must_use]
@@ -48,6 +59,10 @@ impl ProgramVersion {
         for function in self.functions.values() {
             program.insert_function((**function).clone());
         }
+        program.set_script_methods(self.script_methods.clone());
+        if let Some(graph) = &self.script_metadata {
+            program.set_script_metadata(graph.clone());
+        }
         program
     }
 }
@@ -55,14 +70,23 @@ impl ProgramVersion {
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotUpdate {
     pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+    pub(crate) script_methods: ScriptMethodTable,
+    pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
 }
 
 impl HotUpdate {
     pub(crate) fn new(
         functions: BTreeMap<FunctionSymbolId, Arc<CodeObject>>,
+        script_methods: ScriptMethodTable,
+        script_metadata: Option<ModuleGraph>,
         abi: HotReloadAbi,
     ) -> Self {
-        Self { functions, abi }
+        Self {
+            functions,
+            script_methods,
+            script_metadata,
+            abi,
+        }
     }
 }

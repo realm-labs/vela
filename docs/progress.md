@@ -2360,6 +2360,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   `Runtime::call` and verifies `reflect.module`, `reflect.modules`,
   `reflect.exports`, `reflect.function`, `reflect.functions`, script
   docs/attrs, params, defaults, returns, origin, and export names.
+- Tightened the M15 safe-point hot-reload program surface. `ProgramVersion`
+  and `HotUpdate` now preserve compiled script reflection metadata and script
+  method dispatch tables when rebuilding active `Program`s, and Engine
+  integration coverage proves reflection metadata and trait method dispatch
+  stay old before safe-point apply and switch to the updated surface after
+  apply.
 
 ## Next
 

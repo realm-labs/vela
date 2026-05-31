@@ -178,6 +178,8 @@ fn update_from_program(
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
+    let script_methods = program.script_methods().clone();
+    let script_metadata = program.script_metadata().cloned();
     let mut functions = BTreeMap::new();
     for (name, code) in program.functions {
         if let Some(old_code) = previous.functions.get(&FunctionSymbolId::new(&name)) {
@@ -197,5 +199,10 @@ fn update_from_program(
         }
     }
     previous.abi().ensure_compatible_update(&abi)?;
-    Ok(HotUpdate::new(functions, abi))
+    Ok(HotUpdate::new(
+        functions,
+        script_methods,
+        script_metadata,
+        abi,
+    ))
 }
