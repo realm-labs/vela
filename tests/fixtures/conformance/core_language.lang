@@ -1,3 +1,8 @@
+use conformance.reward.BASE_REWARD as REWARD_BASE
+use conformance.reward.RewardConfig as ConfigReward
+use conformance.reward.RewardOutcome as Outcome
+use conformance.reward.reward_bonus
+
 const BASE = 2
 
 struct Reward {
@@ -83,6 +88,17 @@ fn main() {
         };
         if maybe == null { 6 } else { 0 }
     };
+    let imported_reward: ConfigReward = ConfigReward { item: "gem" };
+    let imported_bonus: int = reward_bonus(imported_reward.count) + REWARD_BASE;
+    let outcome: Outcome = Outcome.Granted {
+        item: imported_reward.item,
+        count: imported_reward.count,
+    };
+    let imported_match: int = match outcome {
+        Outcome.Granted { item, count } if item == "gem" => count + 5,
+        Outcome.Skipped(reason) => reason.len(),
+        _ => 0,
+    };
 
     return total
         + doubled
@@ -93,5 +109,7 @@ fn main() {
         + result
         + mapped["gold"]
         + mapped["quest"]
-        + no_else_score;
+        + no_else_score
+        + imported_bonus
+        + imported_match;
 }

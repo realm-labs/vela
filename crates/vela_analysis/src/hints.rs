@@ -1,9 +1,20 @@
-use vela_hir::{Declaration, DeclarationKind, HirTypeHint, ModuleGraph};
+use vela_hir::{
+    Declaration, DeclarationKind, HirTypeHint, ImportResolution, ModuleGraph, ModuleId,
+};
 
 use crate::TypeFact;
 
 pub fn type_fact_from_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> TypeFact {
     type_fact_from_path(graph, &hint.path)
+}
+
+pub(crate) fn type_fact_from_hint_in_module(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    hint: &HirTypeHint,
+) -> TypeFact {
+    imported_schema_fact(graph, module, &hint.path)
+        .unwrap_or_else(|| type_fact_from_hint(graph, hint))
 }
 
 pub fn type_fact_from_path(graph: &ModuleGraph, path: &[String]) -> TypeFact {
@@ -75,6 +86,26 @@ fn resolved_schema_fact(graph: &ModuleGraph, path: &[String]) -> Option<TypeFact
         return None;
     };
     declaration_schema_fact(graph, declaration)
+}
+
+fn imported_schema_fact(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    path: &[String],
+) -> Option<TypeFact> {
+    let [name] = path else {
+        return None;
+    };
+    graph.imports(module)?.iter().find_map(|import| {
+        let imported_name = import.alias.as_ref().or_else(|| import.path.last())?;
+        if imported_name != name {
+            return None;
+        }
+        let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
+            return None;
+        };
+        declaration_schema_fact(graph, graph.declaration(declaration)?)
+    })
 }
 
 fn schema_path_matches(graph: &ModuleGraph, declaration: &Declaration, path: &[String]) -> bool {
@@ -166,6 +197,54 @@ mod tests {
         assert_eq!(
             type_fact_from_path(&graph, &["arena".to_owned(), "Player".to_owned()]),
             TypeFact::record("arena.Player")
+        );
+    }
+
+    #[test]
+    fn imported_schema_alias_hints_map_to_qualified_facts() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.main"),
+            r#"
+            use game.reward.Reward as Prize
+            fn grant(reward: Prize) -> Prize {
+                return reward;
+            }
+            "#,
+        ));
+        graph.add_source(ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_dotted("game.reward"),
+            "pub struct Reward { count: int }",
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+
+        let grant = graph
+            .declarations()
+            .find(|declaration| declaration.name == "grant")
+            .expect("grant declaration");
+        let signature = graph.function_signature(grant.id).expect("grant signature");
+
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                grant.module,
+                signature.params[0]
+                    .type_hint
+                    .as_ref()
+                    .expect("param type hint")
+            ),
+            TypeFact::record("game.reward.Reward")
+        );
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                grant.module,
+                signature.return_type.as_ref().expect("return type hint")
+            ),
+            TypeFact::record("game.reward.Reward")
         );
     }
 }

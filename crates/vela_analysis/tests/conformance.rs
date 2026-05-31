@@ -3,6 +3,7 @@ use vela_common::SourceId;
 use vela_hir::{Declaration, LocalBindingKind, ModuleGraph, ModulePath, ModuleSource};
 
 const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.lang");
+const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.lang");
 
 fn conformance_graph() -> ModuleGraph {
     let mut graph = ModuleGraph::new();
@@ -10,6 +11,11 @@ fn conformance_graph() -> ModuleGraph {
         SourceId::new(1),
         ModulePath::from_dotted("conformance.core"),
         CORE_LANGUAGE,
+    ));
+    graph.add_source(ModuleSource::new(
+        SourceId::new(2),
+        ModulePath::from_dotted("conformance.reward"),
+        REWARD_MODULE,
     ));
     graph.resolve_imports();
     graph
@@ -43,6 +49,17 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
         facts.declaration(declaration(&graph, "Scored").id),
         Some(&TypeFact::trait_type("conformance.core.Scored"))
     );
+    assert_eq!(
+        facts.declaration(declaration(&graph, "RewardConfig").id),
+        Some(&TypeFact::record("conformance.reward.RewardConfig"))
+    );
+    assert_eq!(
+        facts.declaration(declaration(&graph, "RewardOutcome").id),
+        Some(&TypeFact::enum_type(
+            "conformance.reward.RewardOutcome",
+            None::<String>
+        ))
+    );
 
     let main = declaration(&graph, "main");
     let bindings = graph.bindings(main.id).expect("main bindings should exist");
@@ -75,6 +92,25 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "no_else_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "imported_reward"),
+        Some(TypeFact::record("conformance.reward.RewardConfig"))
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "imported_bonus"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "outcome"),
+        Some(TypeFact::enum_type(
+            "conformance.reward.RewardOutcome",
+            None::<String>
+        ))
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "imported_match"),
         Some(TypeFact::Int)
     );
 }

@@ -1,9 +1,11 @@
 use vela_common::SourceId;
 use vela_hir::{
-    Declaration, DeclarationKind, EnumVariantFieldsHint, ModuleGraph, ModulePath, ModuleSource,
+    Declaration, DeclarationKind, EnumVariantFieldsHint, ImportResolution, ModuleGraph, ModulePath,
+    ModuleSource,
 };
 
 const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.lang");
+const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.lang");
 
 fn conformance_graph() -> ModuleGraph {
     let mut graph = ModuleGraph::new();
@@ -11,6 +13,11 @@ fn conformance_graph() -> ModuleGraph {
         SourceId::new(1),
         ModulePath::from_dotted("conformance.core"),
         CORE_LANGUAGE,
+    ));
+    graph.add_source(ModuleSource::new(
+        SourceId::new(2),
+        ModulePath::from_dotted("conformance.reward"),
+        REWARD_MODULE,
     ));
     graph.resolve_imports();
     graph
@@ -27,6 +34,22 @@ fn declaration<'graph>(graph: &'graph ModuleGraph, name: &str) -> &'graph Declar
 fn core_language_fixture_resolves() {
     let graph = conformance_graph();
     assert_eq!(graph.diagnostics(), &[]);
+
+    let reward_config = declaration(&graph, "RewardConfig");
+    assert_eq!(reward_config.kind, DeclarationKind::Struct);
+    let reward_config_shape = graph
+        .struct_shape(reward_config.id)
+        .expect("RewardConfig should have a struct shape");
+    assert_eq!(reward_config_shape.fields[0].name, "item");
+    assert_eq!(reward_config_shape.fields[1].name, "count");
+
+    let reward_outcome = declaration(&graph, "RewardOutcome");
+    assert_eq!(reward_outcome.kind, DeclarationKind::Enum);
+    let reward_outcome_shape = graph
+        .enum_shape(reward_outcome.id)
+        .expect("RewardOutcome should have an enum shape");
+    assert_eq!(reward_outcome_shape.variants[0].name, "Granted");
+    assert_eq!(reward_outcome_shape.variants[1].name, "Skipped");
 
     let reward = declaration(&graph, "Reward");
     assert_eq!(reward.kind, DeclarationKind::Struct);
@@ -94,6 +117,15 @@ fn core_language_fixture_resolves() {
     assert_eq!(impl_metadata.methods[0].name, "score");
 
     let main = declaration(&graph, "main");
+    let imports = graph
+        .imports(main.module)
+        .expect("core imports should exist");
+    assert_eq!(imports.len(), 4);
+    assert!(
+        imports
+            .iter()
+            .all(|import| matches!(import.resolution, Some(ImportResolution::Declaration(_))))
+    );
     let main_bindings = graph.bindings(main.id).expect("main bindings should exist");
     assert!(
         main_bindings.expression_count() > 40,

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_hir::{BindingResolution, DeclarationKind, HirDeclId, HirExprId, HirLocalId, ModuleGraph};
 
 use crate::TypeFact;
-use crate::hints::{declaration_schema_fact, type_fact_from_hint};
+use crate::hints::{declaration_schema_fact, type_fact_from_hint_in_module};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AnalysisFacts {
@@ -25,7 +25,10 @@ impl AnalysisFacts {
             if let Some(bindings) = graph.bindings(declaration.id) {
                 facts.locals.extend(bindings.locals().filter_map(|local| {
                     let hint = local.type_hint.as_ref()?;
-                    Some((local.id, type_fact_from_hint(graph, hint)))
+                    Some((
+                        local.id,
+                        type_fact_from_hint_in_module(graph, declaration.module, hint),
+                    ))
                 }));
             }
         }
@@ -95,22 +98,23 @@ fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeF
             .const_metadata(declaration)?
             .type_hint
             .as_ref()
-            .map(|hint| type_fact_from_hint(graph, hint)),
+            .map(|hint| type_fact_from_hint_in_module(graph, metadata.module, hint)),
         DeclarationKind::Function => graph.function_signature(declaration).map(|signature| {
             let params = signature
                 .params
                 .iter()
                 .map(|param| {
-                    param
-                        .type_hint
-                        .as_ref()
-                        .map_or(TypeFact::Unknown, |hint| type_fact_from_hint(graph, hint))
+                    param.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
+                        type_fact_from_hint_in_module(graph, metadata.module, hint)
+                    })
                 })
                 .collect();
             let returns = signature
                 .return_type
                 .as_ref()
-                .map_or(TypeFact::Unknown, |hint| type_fact_from_hint(graph, hint));
+                .map_or(TypeFact::Unknown, |hint| {
+                    type_fact_from_hint_in_module(graph, metadata.module, hint)
+                });
             TypeFact::function(params, returns)
         }),
         DeclarationKind::Impl => None,

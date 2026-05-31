@@ -2033,6 +2033,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   script now reads `ctx.config.exp_to_next_level` and filters
   `ctx.config.kill_rewards` through normal HostPath reads and stdlib arrays
   before recording inventory, reward, quest, and event patches.
+- Extended the shared M17 core-language conformance fixtures across modules.
+  The fixture now imports a public const, struct, enum, and function from a
+  second module, executes imported constructor/default/function/match flows in
+  the VM, and analysis now resolves imported schema aliases in type hints to
+  qualified record/enum facts instead of degrading them to `unknown`.
 
 ## Next
 

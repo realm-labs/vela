@@ -1,0 +1,15 @@
+pub const BASE_REWARD = 4
+
+pub struct RewardConfig {
+    item: string,
+    count: int = BASE_REWARD,
+}
+
+pub enum RewardOutcome {
+    Granted { item: string, count: int },
+    Skipped(string),
+}
+
+pub fn reward_bonus(amount, scale = 2) {
+    return amount * scale + BASE_REWARD;
+}
