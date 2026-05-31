@@ -16,6 +16,13 @@ struct RecordFieldAssignmentTarget {
     slot: Option<usize>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct IndexedRecordFieldAssignmentTarget<'expr> {
+    collection: &'expr Expr,
+    index: &'expr Expr,
+    fields: Vec<String>,
+}
+
 impl Compiler<'_> {
     pub(super) fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
@@ -36,6 +43,9 @@ impl Compiler<'_> {
             && let ExprKind::Index { base, index } = &target.kind
         {
             return self.compile_index_assignment(*op, base, index, value);
+        }
+        if let Some(target) = self.indexed_record_field_assignment_target(target) {
+            return self.compile_indexed_record_field_assignment(*op, target, value);
         }
         if let Some(target) = self.record_field_assignment_target(target)? {
             return self.compile_record_field_assignment(*op, target, value);
@@ -131,6 +141,21 @@ impl Compiler<'_> {
         Ok(assigned)
     }
 
+    fn indexed_record_field_assignment_target<'expr>(
+        &self,
+        target: &'expr Expr,
+    ) -> Option<IndexedRecordFieldAssignmentTarget<'expr>> {
+        if host_field_path(&self.facts.options, target).is_some() {
+            return None;
+        }
+        let (collection, index, fields) = indexed_record_field_parts(target)?;
+        Some(IndexedRecordFieldAssignmentTarget {
+            collection,
+            index,
+            fields,
+        })
+    }
+
     fn record_field_assignment_target(
         &mut self,
         target: &Expr,
@@ -204,22 +229,33 @@ impl Compiler<'_> {
                 "record field assignment target",
             )));
         };
+        self.compile_record_field_assignment_at_root(op, target.root, field, target.slot, value)
+    }
+
+    fn compile_record_field_assignment_at_root(
+        &mut self,
+        op: AssignOp,
+        root: Register,
+        field: &str,
+        slot: Option<usize>,
+        value: &Expr,
+    ) -> CompileResult<Register> {
         let assigned = match op {
             AssignOp::Set => self.compile_expr(value)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
-                if let Some(slot) = target.slot {
+                if let Some(slot) = slot {
                     self.emit(InstructionKind::GetRecordSlot {
                         dst: current,
-                        record: target.root,
-                        field: field.clone(),
+                        record: root,
+                        field: field.to_owned(),
                         slot,
                     });
                 } else {
                     self.emit(InstructionKind::GetRecordField {
                         dst: current,
-                        record: target.root,
-                        field: field.clone(),
+                        record: root,
+                        field: field.to_owned(),
                     });
                 }
                 let rhs = self.compile_expr(value)?;
@@ -230,20 +266,54 @@ impl Compiler<'_> {
                 dst
             }
         };
-        if let Some(slot) = target.slot {
+        if let Some(slot) = slot {
             self.emit(InstructionKind::SetRecordSlot {
-                record: target.root,
-                field: field.clone(),
+                record: root,
+                field: field.to_owned(),
                 slot,
                 src: assigned,
             });
         } else {
             self.emit(InstructionKind::SetRecordField {
-                record: target.root,
-                field: field.clone(),
+                record: root,
+                field: field.to_owned(),
                 src: assigned,
             });
         }
+        Ok(assigned)
+    }
+
+    fn compile_indexed_record_field_assignment(
+        &mut self,
+        op: AssignOp,
+        target: IndexedRecordFieldAssignmentTarget<'_>,
+        value: &Expr,
+    ) -> CompileResult<Register> {
+        let collection = self.compile_expr(target.collection)?;
+        let index = self.compile_expr(target.index)?;
+        let record = self.alloc_register()?;
+        self.emit(InstructionKind::GetIndex {
+            dst: record,
+            base: collection,
+            index,
+        });
+
+        let assigned = if target.fields.len() > 1 {
+            self.compile_nested_record_field_assignment(op, record, target.fields, value)?
+        } else {
+            let [field] = target.fields.as_slice() else {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "record field assignment target",
+                )));
+            };
+            self.compile_record_field_assignment_at_root(op, record, field, None, value)?
+        };
+
+        self.emit(InstructionKind::SetIndex {
+            base: collection,
+            index,
+            src: record,
+        });
         Ok(assigned)
     }
 
@@ -449,6 +519,33 @@ fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
 fn record_field_base_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
     let root = path.first()?;
     Some((root.as_str(), path[1..].to_vec()))
+}
+
+fn indexed_record_field_parts(target: &Expr) -> Option<(&Expr, &Expr, Vec<String>)> {
+    let ExprKind::Field { base, name } = &target.kind else {
+        return None;
+    };
+    let (collection, index, mut fields) = indexed_record_field_base_parts(base)?;
+    fields.push(name.clone());
+    Some((collection, index, fields))
+}
+
+fn indexed_record_field_base_parts(expr: &Expr) -> Option<(&Expr, &Expr, Vec<String>)> {
+    match &expr.kind {
+        ExprKind::Index { base, index } if is_local_index_collection(base) => {
+            Some((base, index, Vec::new()))
+        }
+        ExprKind::Field { base, name } => {
+            let (collection, index, mut fields) = indexed_record_field_base_parts(base)?;
+            fields.push(name.clone());
+            Some((collection, index, fields))
+        }
+        _ => None,
+    }
+}
+
+fn is_local_index_collection(expr: &Expr) -> bool {
+    matches!(&expr.kind, ExprKind::Path(path) if path.len() == 1)
 }
 
 fn compound_assignment_instruction_or_error(

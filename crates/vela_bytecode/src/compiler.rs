@@ -4900,6 +4900,35 @@ fn main() {
     }
 
     #[test]
+    fn compiler_lowers_indexed_record_field_writes() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let players = [
+        Player { level: 2, exp: 5 },
+        Player { level: 7, exp: 1 },
+    ];
+    players[0].level += 3;
+    players[1].exp = players[0].level + 4;
+    return players[0].level + players[1].exp;
+}
+"#,
+            "main",
+        )
+        .expect("indexed record field writes should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .any(|instruction| matches!(instruction.kind, InstructionKind::SetIndex { .. }))
+        );
+        assert!(code.instructions.iter().any(|instruction| {
+            matches!(instruction.kind, InstructionKind::SetRecordField { .. })
+        }));
+    }
+
+    #[test]
     fn compiler_lowers_immediate_record_field_reads_to_slots() {
         let code = compile_function_source(
             SourceId::new(1),

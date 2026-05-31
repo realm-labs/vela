@@ -7370,3 +7370,29 @@ Consequences:
   unsupported compiler special case.
 - The VM instruction set stays unchanged; lowering reuses constants, jumps, and
   branch register merging.
+
+## 2026-06-01: Indexed Record Assignment Writes Back Through SetIndex
+
+Status: Accepted
+
+Context:
+The grammar allows field assignments whose receiver is an indexed expression,
+such as `players[0].stats.level += 1`. Direct and nested local record
+assignment already updated copied record values, but indexed record elements
+still failed during assignment-target lowering.
+
+Decision:
+For local collection roots, lower indexed record-field assignment by reading
+the element with `GetIndex`, updating the copied record field path, and writing
+the modified record back with `SetIndex`. Keep this policy in the focused
+assignment compiler module, and leave broader arbitrary-place writeback as a
+future explicit lowering problem instead of compiling misleading temporary
+expression assignments.
+
+Consequences:
+- Scripts can mutate record values stored in local arrays or maps without
+  exposing host references or bypassing `PatchTx` for host state.
+- Nested record updates reuse the existing record writeback lowering before
+  the element is stored back into the collection.
+- The VM instruction set stays unchanged; the compiler composes existing
+  `GetIndex`, record field, and `SetIndex` bytecode.

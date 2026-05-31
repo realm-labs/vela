@@ -100,6 +100,23 @@ fn main() {
     player.stats.level += 3;
     player.stats.exp = player.stats.level + 1;
     let nested_score: int = player.stats.level + player.stats.exp;
+    let players: array = [
+        Player {
+            stats: Stats {
+                level: 2,
+                exp: 0,
+            },
+        },
+        Player {
+            stats: Stats {
+                level: 5,
+                exp: 1,
+            },
+        },
+    ];
+    players[0].stats.level += 4;
+    players[1].stats.exp = players[0].stats.level + 3;
+    let indexed_record_score: int = players[0].stats.level + players[1].stats.exp;
     let no_else_score: int = {
         let maybe = if false {
             9;
@@ -128,6 +145,7 @@ fn main() {
         + mapped["gold"]
         + mapped["quest"]
         + nested_score
+        + indexed_record_score
         + no_else_score
         + imported_bonus
         + imported_match;

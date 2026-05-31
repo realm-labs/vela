@@ -541,6 +541,28 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_indexed_record_field_write_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let players = [
+        Player { level: 2, exp: 5 },
+        Player { level: 7, exp: 1 },
+    ];
+    players[0].level += 3;
+    players[1].exp = players[0].level + 4;
+    return players[0].level + players[1].exp;
+}
+"#,
+        "main",
+    )
+    .expect("compile indexed record field write source");
+
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(14)));
+}
+
+#[test]
 fn managed_heap_execution_writes_heap_index_values() {
     let program = compile_program_source(
         SourceId::new(1),

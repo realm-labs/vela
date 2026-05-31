@@ -2100,6 +2100,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `player.stats.level += 1` now lower by updating the leaf record field and
   writing modified intermediate records back to the root local, with focused VM
   coverage and shared core-language conformance coverage.
+- Filled an M9 indexed script record assignment gap. Local collection elements
+  such as `players[0].stats.level += 1` now lower by reading the indexed
+  record, updating its nested record field path, and writing the modified
+  record back through `SetIndex`, with compiler, VM, and conformance coverage.
 
 ## Next
 
