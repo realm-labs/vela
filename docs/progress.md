@@ -2177,6 +2177,9 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Added M13 `string.char_at(index)` as a Unicode-aware, Option-returning
   string helper for safe command and event parsing. Runtime and analysis
   coverage now expose `option<string>` results without out-of-bounds errors.
+- Split string-only VM method dispatch into a focused module. The central
+  script method dispatcher now keeps overloaded collection/string decisions,
+  while dedicated string routing owns the growing M13 string helper surface.
 
 ## Next
 

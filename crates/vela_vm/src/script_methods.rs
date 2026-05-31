@@ -9,6 +9,7 @@ use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
 use crate::option_result_methods;
 use crate::set_methods;
+use crate::string_method_dispatch;
 use crate::string_methods;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
@@ -27,6 +28,10 @@ pub(crate) fn call_method(
     mut budget: Option<&mut ExecutionBudget>,
     caller_roots: Vec<GcRef>,
 ) -> VmResult<Value> {
+    if let Some(result) = string_method_dispatch::call(method, receiver, args, heap.as_deref()) {
+        return result;
+    }
+
     match method {
         "len" => {
             expect_no_args(method, args)?;
@@ -44,19 +49,6 @@ pub(crate) fn call_method(
             }
         }
         .map(Value::Bool),
-        "starts_with" => {
-            string_methods::starts_with(receiver, args, heap.as_deref()).map(Value::Bool)
-        }
-        "ends_with" => string_methods::ends_with(receiver, args, heap.as_deref()).map(Value::Bool),
-        "strip_prefix" => string_methods::strip_prefix(receiver, args, heap.as_deref()),
-        "strip_suffix" => string_methods::strip_suffix(receiver, args, heap.as_deref()),
-        "to_upper" => string_methods::to_upper(receiver, args, heap.as_deref()),
-        "to_lower" => string_methods::to_lower(receiver, args, heap.as_deref()),
-        "trim" => string_methods::trim(receiver, args, heap.as_deref()),
-        "trim_start" => string_methods::trim_start(receiver, args, heap.as_deref()),
-        "trim_end" => string_methods::trim_end(receiver, args, heap.as_deref()),
-        "replace" => string_methods::replace(receiver, args, heap.as_deref()),
-        "repeat" => string_methods::repeat(receiver, args, heap.as_deref()),
         "slice" => {
             if string_methods::is_string(receiver, heap.as_deref()) {
                 string_methods::slice(receiver, args, heap.as_deref())
@@ -64,13 +56,6 @@ pub(crate) fn call_method(
                 array_methods::slice(receiver, args, heap.as_deref())
             }
         }
-        "split" => string_methods::split(receiver, args, heap.as_deref()),
-        "split_lines" => string_methods::split_lines(receiver, args, heap.as_deref()),
-        "split_whitespace" => string_methods::split_whitespace(receiver, args, heap.as_deref()),
-        "char_at" => string_methods::char_at(receiver, args, heap.as_deref()),
-        "parse_int" => string_methods::parse_int(receiver, args, heap.as_deref()),
-        "parse_float" => string_methods::parse_float(receiver, args, heap.as_deref()),
-        "parse_bool" => string_methods::parse_bool(receiver, args, heap.as_deref()),
         "push" => array_push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "pop" => array_pop(receiver, args, heap.as_deref_mut()),
         "insert" => {
