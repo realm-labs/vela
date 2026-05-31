@@ -2249,6 +2249,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `map`, `filter`, `find`, `any`, `all`, and `count` now keep callback
   dispatch and truthiness handling separate from set mutation, algebra, and
   scalar keying internals.
+- Split M13 string parsing helpers into a focused VM module. `parse_int`,
+  `parse_float`, and `parse_bool` keep their Option-returning behavior and
+  finite-float policy while the broad string method module no longer owns
+  gameplay/config text parsing internals.
 
 ## Next
 
