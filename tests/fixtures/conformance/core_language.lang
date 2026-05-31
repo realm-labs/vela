@@ -1,3 +1,7 @@
+/* Grammar conformance: nested block comments must be layout.
+   The inner comment deliberately contains item-like text:
+   /* fn hidden() { return 999; } */
+*/
 use conformance.reward.BASE_REWARD as REWARD_BASE
 use conformance.reward.RewardConfig as ConfigReward
 use conformance.reward.RewardOutcome as Outcome
@@ -58,6 +62,9 @@ fn add(base, amount = 1, bonus = amount + BASE) {
 
 fn main() {
     let reward: Reward = Reward { item: "gold", count: 5 };
+    /* Nested comments inside executable bodies must not affect lowering:
+       /* let impossible = missing_symbol; */
+    */
     let values: array = [1, 2, 3, 4, 5];
     let total: int = 0;
     for value in values {

@@ -2215,6 +2215,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   line splitting, affix checks, case conversion, slicing, repetition,
   `parse_float`, 3D distance, clamp/min/max/abs/sign, pow, ceil, and round
   while preserving its deterministic CLI result.
+- Extended the shared M9/M17 conformance fixture with nested block comments at
+  module and function scope. The fixture now proves grammar-level nested block
+  comment layout survives HIR resolution, bytecode compilation, and VM
+  execution without changing program semantics.
 
 ## Next
 
