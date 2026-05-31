@@ -2257,6 +2257,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `split_lines`, and `split_whitespace` keep their deterministic array
   materialization behavior while general string search, affix, slice, and case
   helpers stay in the parent method module.
+- Split M13 string search/index helpers into a focused VM module. `contains`,
+  `starts_with`, `ends_with`, `find`, and `char_at` keep Unicode-aware
+  character indexing and Option-returning lookup behavior separate from affix,
+  slice, case, parsing, and splitting helpers.
 
 ## Next
 
