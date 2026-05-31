@@ -1,9 +1,10 @@
-use crate::heap::{HeapSlot, HeapValue};
+use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 mod basic;
 mod combination;
 mod higher_order;
+mod key;
 mod mutation;
 
 pub(crate) use basic::{from_array, has, values};
@@ -11,6 +12,7 @@ pub(crate) use combination::{
     difference, intersection, is_disjoint, is_subset, is_superset, symmetric_difference, union,
 };
 pub(crate) use higher_order::{all, any, count, filter, find, map};
+use key::{SetKey, set_keys, slot_key};
 pub(crate) use mutation::{add, clear, extend, remove};
 
 pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
@@ -58,62 +60,6 @@ pub(super) fn set_values(
             Ok(values.iter().map(value_from_heap_slot).collect())
         }
         _ => type_error(operation),
-    }
-}
-
-pub(super) fn set_keys(
-    values: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<Vec<SetKey>> {
-    values
-        .iter()
-        .map(|value| SetKey::from_value(value, heap, operation))
-        .collect()
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(super) enum SetKey {
-    Null,
-    Bool(bool),
-    Int(i64),
-    Float(u64),
-    String(String),
-}
-
-impl SetKey {
-    pub(super) fn from_value(
-        value: &Value,
-        heap: Option<&HeapExecution<'_>>,
-        operation: &'static str,
-    ) -> VmResult<Self> {
-        match value {
-            Value::Null => Ok(Self::Null),
-            Value::Bool(value) => Ok(Self::Bool(*value)),
-            Value::Int(value) => Ok(Self::Int(*value)),
-            Value::Float(value) if value.is_finite() => Ok(Self::Float(value.to_bits())),
-            Value::String(value) => Ok(Self::String(value.clone())),
-            Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-                Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
-                _ => type_error(operation),
-            },
-            _ => type_error(operation),
-        }
-    }
-}
-
-pub(super) fn slot_key(slot: &HeapSlot, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
-    match slot {
-        HeapSlot::Null => Ok(SetKey::Null),
-        HeapSlot::Bool(value) => Ok(SetKey::Bool(*value)),
-        HeapSlot::Int(value) => Ok(SetKey::Int(*value)),
-        HeapSlot::Float(value) if value.is_finite() => Ok(SetKey::Float(value.to_bits())),
-        HeapSlot::Ref(reference) => match heap.heap.get(*reference) {
-            Some(HeapValue::String(value)) => Ok(SetKey::String(value.clone())),
-            _ => type_error("method set"),
-        },
-        HeapSlot::HostRef(_) | HeapSlot::PathProxy(_) => type_error("method set"),
-        HeapSlot::Float(_) => type_error("method set"),
     }
 }
 

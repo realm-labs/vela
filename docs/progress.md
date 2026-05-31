@@ -2331,6 +2331,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   module. `set.from_array`, `set.has`, and `set.values` now keep scalar
   uniqueness and deterministic materialization separate from mutation,
   combination, scalar keying, and higher-order callback helpers.
+- Split M13 set scalar keying into a focused VM module. `SetKey`, value key
+  normalization, batch key extraction, and heap-slot key conversion now live
+  separately from construction, lookup, mutation, combination, and
+  higher-order helpers.
 
 ## Next
 
