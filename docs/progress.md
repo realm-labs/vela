@@ -2327,6 +2327,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `remove`, `clear`, and `extend` now keep managed-heap slot conversion and
   in-place updates separate from construction, lookup, values, combination,
   scalar keying, and higher-order callback helpers.
+- Split M13 set construction and basic lookup helpers into a focused VM
+  module. `set.from_array`, `set.has`, and `set.values` now keep scalar
+  uniqueness and deterministic materialization separate from mutation,
+  combination, scalar keying, and higher-order callback helpers.
 
 ## Next
 
