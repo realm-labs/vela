@@ -410,6 +410,110 @@ fn deleted_function_parameters_are_rejected() {
 }
 
 #[test]
+fn script_schema_abi_changes_are_rejected_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    item_id: string
+    count: int
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script schema should compile");
+
+    let error = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+struct Reward {
+    item_id: string
+    count: float
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect_err("changed script schema should be rejected");
+
+    assert_eq!(error.code(), "reload.schema.abi_changed");
+    assert_eq!(error.target(), Some("Reward".to_owned()));
+}
+
+#[test]
+fn script_schema_defaulted_field_additions_are_accepted_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    item_id: string
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script schema should compile");
+
+    let update = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+struct Reward {
+    item_id: string
+    count: int = 1
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("defaulted script schema addition should be accepted");
+
+    let mut runtime = HotReloadRuntime::new(initial);
+    runtime.apply_hot_update(update).expect("apply update");
+    assert_eq!(
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
+fn script_function_return_abi_changes_are_rejected_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+fn main() -> int {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script function should compile");
+
+    let error = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+fn main() -> float {
+    return 1;
+}
+"#,
+    )
+    .expect_err("changed script function return ABI should be rejected");
+
+    assert_eq!(error.code(), "reload.function.return_abi_changed");
+    assert_eq!(error.target(), Some("main".to_owned()));
+}
+
+#[test]
 fn reordered_function_parameters_are_rejected() {
     let initial = compile_initial(SourceId::new(1), "fn main(player, monster) { return 1; }")
         .expect("compile initial");

@@ -169,7 +169,16 @@ pub fn compile_update_modules_with_abi_and_options_and_policy(
 }
 
 fn initial_version_from_program(program: Program, abi: HotReloadAbi) -> ProgramVersion {
+    let abi = abi_with_script_metadata(abi, &program);
     ProgramVersion::from_program_with_abi(ProgramVersionId(0), program, abi)
+}
+
+fn abi_with_script_metadata(abi: HotReloadAbi, program: &Program) -> HotReloadAbi {
+    if let Some(graph) = program.script_metadata() {
+        abi.with_script_metadata(graph)
+    } else {
+        abi
+    }
 }
 
 fn update_from_program(
@@ -178,6 +187,7 @@ fn update_from_program(
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
+    let abi = abi_with_script_metadata(abi, &program);
     let script_methods = program.script_methods().clone();
     let script_metadata = program.script_metadata().cloned();
     let mut functions = BTreeMap::new();

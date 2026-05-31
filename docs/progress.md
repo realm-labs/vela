@@ -1794,6 +1794,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   metadata even when the schema hash is unchanged, allows added impls, and
   rejects removed or changed impl metadata with the existing structured schema
   ABI diagnostics.
+- Tightened M15 script hot-reload ABI coverage. `compile_initial` and
+  `compile_update` now merge compiled script type, module, function, and trait
+  metadata into the reload ABI manifest, so script schema changes are checked
+  before safe-point swaps; coverage rejects incompatible script field changes
+  while accepting defaulted field additions.
 - Added M15 Engine file/directory hot-reload source APIs. `Engine` can now
   compile initial and update `ProgramVersion`/`HotUpdate` values from single
   files or deterministic `.lang` module directories using registry ABI,

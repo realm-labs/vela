@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
+use vela_hir::ModuleGraph;
 use vela_reflect::{
     FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc,
     TypeRegistry,
@@ -44,6 +45,24 @@ impl HotReloadAbi {
             manifest = manifest.module(ModuleAbi::from_module(module));
         }
         manifest
+    }
+
+    #[must_use]
+    pub fn with_script_metadata(self, graph: &ModuleGraph) -> Self {
+        let mut registry = TypeRegistry::new();
+        registry.register_script_types(graph);
+        registry.register_script_modules(graph);
+        self.merge(Self::from_registry(&registry))
+    }
+
+    #[must_use]
+    fn merge(mut self, other: Self) -> Self {
+        self.schemas.extend(other.schemas);
+        self.functions.extend(other.functions);
+        self.methods.extend(other.methods);
+        self.traits.extend(other.traits);
+        self.modules.extend(other.modules);
+        self
     }
 
     #[must_use]
