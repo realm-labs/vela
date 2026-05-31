@@ -2082,6 +2082,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   the active variant's payload fields through `reflect.fields`,
   `reflect.field`, and `reflect.has_field`, with the same field access policy
   filtering and diagnostics as type-level fields.
+- Split bytecode map literal lowering into a focused compiler module. Map
+  entry key normalization and value lowering now live outside the main
+  compiler coordinator, preserving emitted bytecode while keeping future
+  collection-literal work modular.
 
 ## Next
 

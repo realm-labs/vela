@@ -9,6 +9,7 @@ mod error;
 mod field_slots;
 mod host_paths;
 mod lambdas;
+mod map_literals;
 mod methods;
 mod operators;
 mod options;
@@ -31,7 +32,7 @@ use vela_hir::{
 };
 use vela_syntax::{
     Argument, BinaryOp, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Literal,
-    MapEntry, MatchExpr, Param, Pattern, SourceFile, Stmt, StmtKind, UnaryOp, parse_source,
+    MatchExpr, Param, Pattern, SourceFile, Stmt, StmtKind, UnaryOp, parse_source,
 };
 
 #[cfg(test)]
@@ -1979,12 +1980,6 @@ impl<'ast> Compiler<'ast> {
         }
     }
 
-    fn compile_map_entry(&mut self, entry: &MapEntry) -> CompileResult<(String, Register)> {
-        let key = map_key_name(&entry.key)?;
-        let value = self.compile_expr(&entry.value)?;
-        Ok((key, value))
-    }
-
     fn compile_tuple_variant_fields(
         &mut self,
         constructor_span: Span,
@@ -2239,18 +2234,6 @@ fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<
         )));
     }
     Ok(())
-}
-
-fn map_key_name(key: &Expr) -> CompileResult<String> {
-    match &key.kind {
-        ExprKind::Literal(Literal::String(value))
-        | ExprKind::Literal(Literal::Int(value))
-        | ExprKind::Literal(Literal::Float(value)) => Ok(value.clone()),
-        ExprKind::Path(path) => Ok(path.join(".")),
-        _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "map key",
-        ))),
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
