@@ -2271,6 +2271,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split M13 Unicode-aware string slicing into a focused VM module. `slice`
   now keeps character-index to byte-index conversion and range diagnostics
   separate from search, affix, transform, parsing, and splitting helpers.
+- Split M13 scalar math natives into a focused VM module. `math.max`,
+  `math.min`, `math.clamp`, `math.sign`, rounding helpers, and `math.abs`
+  now keep their finite-number and integer-preserving behavior separate from
+  interpolation, movement, distance, and power helpers.
 
 ## Next
 
