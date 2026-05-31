@@ -6,7 +6,7 @@ use vela_engine::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineSourceError,
     EngineSourceErrorKind,
 };
-use vela_hot_reload::{HotReloadError, HotReloadErrorKind};
+use vela_hot_reload::{HotReloadError, HotReloadErrorKind, HotReloadReport};
 use vela_vm::VmError;
 
 pub(crate) fn render_engine_source_error(path: &Path, error: &EngineSourceError) -> String {
@@ -33,6 +33,23 @@ pub(crate) fn render_vm_error(path: &Path, error: &VmError) -> String {
         .ok()
         .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
     render_diagnostics(&[error.to_diagnostic()], source)
+}
+
+pub(crate) fn render_hot_reload_report(path: &Path, report: &HotReloadReport) -> String {
+    let source = std::fs::read_to_string(path)
+        .ok()
+        .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
+    let mut lines = report
+        .render_lines()
+        .into_iter()
+        .map(|line| line.text)
+        .collect::<Vec<_>>();
+    let source_diagnostics = report_source_diagnostics(report);
+    if !source_diagnostics.is_empty() {
+        lines.push(String::new());
+        lines.push(render_diagnostics(&source_diagnostics, source));
+    }
+    lines.join("\n")
 }
 
 fn render_hot_reload_error(path: &Path, error: &HotReloadError) -> String {
@@ -64,6 +81,21 @@ fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
         | CompileErrorKind::RegisterOverflow
         | CompileErrorKind::UnsupportedSyntax(_) => None,
     }
+}
+
+fn report_source_diagnostics(report: &HotReloadReport) -> Vec<Diagnostic> {
+    report
+        .errors
+        .iter()
+        .filter_map(|error| {
+            let span = error.source_span?;
+            Some(
+                Diagnostic::error(error.reason.clone())
+                    .with_code(error.code)
+                    .with_span(span),
+            )
+        })
+        .collect()
 }
 
 fn render_diagnostics(diagnostics: &[Diagnostic], source: Option<DiagnosticSource>) -> String {

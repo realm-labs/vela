@@ -38,16 +38,9 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
     };
     let report = runtime.apply_hot_update_result_report(update)?;
     let report_lines = report.render_lines();
-    let new = report.version().ok_or_else(|| {
-        format!(
-            "hot reload rejected:\n{}",
-            report_lines
-                .iter()
-                .map(|line| line.text.as_str())
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
-    })?;
+    let new = report
+        .version()
+        .ok_or_else(|| crate::diagnostics::render_hot_reload_report(updated_path, &report))?;
     let old_after = run_version_main(runtime.engine(), &old)?;
     let new_after = run_current_main(&mut runtime)?;
 

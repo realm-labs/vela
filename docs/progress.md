@@ -2377,6 +2377,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `monster_kill_reward.lang` mutate quest count/done state through
   `HostPath::variant_field` PatchTx segments. The reflection demo also
   verifies the host quest-progress variant metadata through the CLI path.
+- Improved M16 hot-reload diagnostic rendering in the CLI. Rejected
+  hot-reload reports now render updated-source spans with the common
+  diagnostic renderer when ABI checks carry source locations, while preserving
+  the structured report summary, detail, and repair-hint lines.
 
 ## Next
 

@@ -167,6 +167,40 @@ fn hot_reload_demo_reports_abi_rejection() {
 }
 
 #[test]
+fn hot_reload_demo_renders_source_spans_for_abi_rejections() {
+    let root = unique_test_dir("hot_reload_abi_span");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let updated = root.join("hot_reload_return_abi.lang");
+    fs::write(
+        &updated,
+        r#"
+fn kill_exp() -> float {
+    return 30;
+}
+
+fn main() {
+    return kill_exp();
+}
+"#,
+    )
+    .expect("write ABI-invalid hot reload script");
+
+    let output = run_hot_reload_paths(&script_path("hot_reload_function_swap_v1.lang"), &updated);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("hot reload rejected: v0 unchanged"));
+    assert!(stderr.contains(
+        "[reload.function.return_abi_changed] kill_exp: function `kill_exp` changed return ABI"
+    ));
+    assert!(stderr.contains("error[reload.function.return_abi_changed]"));
+    assert!(stderr.contains("hot_reload_return_abi.lang:2:1"));
+    assert!(stderr.contains("fn kill_exp() -> float {"));
+    assert!(!stderr.contains("ChangedFunctionReturnAbi"));
+    fs::remove_dir_all(root).expect("clean temp dir");
+}
+
+#[test]
 fn invalid_demo_script_reports_rendered_source_diagnostic() {
     let root = unique_test_dir("invalid_script");
     fs::create_dir_all(&root).expect("create temp dir");
