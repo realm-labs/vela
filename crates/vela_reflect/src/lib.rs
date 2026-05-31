@@ -5,6 +5,7 @@ mod candidates;
 mod descriptor_targets;
 mod error;
 mod error_diagnostics;
+mod member_records;
 mod members;
 mod metadata;
 mod metadata_records;

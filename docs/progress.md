@@ -2038,6 +2038,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   second module, executes imported constructor/default/function/match flows in
   the VM, and analysis now resolves imported schema aliases in type hints to
   qualified record/enum facts instead of degrading them to `unknown`.
+- Split M12 copied member metadata construction into a focused reflection
+  module. Field, method, trait, and variant record builders now live outside
+  the member-query policy module, preserving the public reflection API while
+  keeping future access/reporting work out of a single large file.
 
 ## Next
 
