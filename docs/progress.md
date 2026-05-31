@@ -2050,6 +2050,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   script-visible native now returns a copied `ReflectType` record or `null`,
   analysis facts expose that descriptor shape, and the reflection demo checks
   type names through `reflect.name(...)` instead of relying on raw strings.
+- Split bytecode compiler API records into focused modules. `CompileError`,
+  `CompileErrorKind`, `CompileResult`, and `CompilerOptions` now live outside
+  the main compiler coordinator while preserving the existing public
+  `vela_bytecode::compiler::*` import surface for callers.
 
 ## Next
 

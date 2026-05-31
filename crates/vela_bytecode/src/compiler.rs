@@ -4,20 +4,24 @@ mod assignments;
 mod call_args;
 mod const_eval;
 mod control_flow;
+mod error;
 mod field_slots;
 mod host_paths;
 mod lambdas;
 mod methods;
 mod operators;
+mod options;
 mod patterns;
 mod schema_defaults;
 mod script_impls;
 mod script_types;
 mod value_flow;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use vela_common::{Diagnostic, FieldId, HostMethodId, MethodId, SourceId, Span};
+use vela_common::{Diagnostic, MethodId, SourceId, Span};
+#[cfg(test)]
+use vela_common::{FieldId, HostMethodId};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
     HirTypeHint, ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath,
@@ -37,11 +41,13 @@ use crate::{
 use call_args::resolve_script_call_arguments;
 use const_eval::{compile_literal_constant, evaluate_const_expr};
 use control_flow::LoopContext;
+pub use error::{CompileError, CompileErrorKind, CompileResult};
 use field_slots::ScriptFieldSlots;
 use host_paths::{host_field_path, host_field_path_parts};
 use lambdas::{LambdaCapture, collect_lambda_captures};
 use methods::host_method_call;
 use operators::non_logical_binary_instruction;
+pub use options::CompilerOptions;
 use patterns::{
     enum_variant_path, pattern_declares_locals, record_pattern_field_declares_locals,
     record_pattern_field_match, tuple_variant_field_name,
@@ -55,88 +61,6 @@ use script_types::{
     type_hint_script_type,
 };
 use value_flow::{BlockValue, block_value};
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct CompileError {
-    pub kind: CompileErrorKind,
-}
-
-impl CompileError {
-    fn new(kind: CompileErrorKind) -> Self {
-        Self { kind }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum CompileErrorKind {
-    SyntaxDiagnostics(Vec<Diagnostic>),
-    SemanticDiagnostics(Vec<Diagnostic>),
-    FunctionNotFound(String),
-    UnknownLocal(String),
-    InvalidIntLiteral { literal: String, error: String },
-    InvalidFloatLiteral { literal: String, error: String },
-    RegisterOverflow,
-    UnsupportedSyntax(&'static str),
-}
-
-pub type CompileResult<T> = Result<T, CompileError>;
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct CompilerOptions {
-    host_fields: HashMap<String, FieldId>,
-    host_methods: HashMap<String, HostMethodId>,
-    host_methods_by_type: HashMap<(String, String), HostMethodId>,
-    host_types: HashSet<String>,
-}
-
-impl CompilerOptions {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub fn with_host_field(mut self, name: impl Into<String>, field: FieldId) -> Self {
-        self.host_fields.insert(name.into(), field);
-        self
-    }
-
-    #[must_use]
-    pub fn with_host_method(mut self, name: impl Into<String>, method: HostMethodId) -> Self {
-        self.host_methods.insert(name.into(), method);
-        self
-    }
-
-    #[must_use]
-    pub fn with_host_type(mut self, type_name: impl Into<String>) -> Self {
-        self.host_types.insert(type_name.into());
-        self
-    }
-
-    #[must_use]
-    pub fn with_host_method_for_type(
-        mut self,
-        type_name: impl Into<String>,
-        name: impl Into<String>,
-        method: HostMethodId,
-    ) -> Self {
-        let type_name = type_name.into();
-        self.host_types.insert(type_name.clone());
-        self.host_methods_by_type
-            .insert((type_name, name.into()), method);
-        self
-    }
-
-    fn host_method(&self, receiver_type: Option<&str>, name: &str) -> Option<HostMethodId> {
-        receiver_type
-            .and_then(|type_name| {
-                self.host_methods_by_type
-                    .get(&(type_name.to_owned(), name.to_owned()))
-            })
-            .copied()
-            .or_else(|| self.host_methods.get(name).copied())
-    }
-}
 
 #[derive(Clone, Debug)]
 struct CompilerFacts {
