@@ -2110,6 +2110,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   while keeping grammar-surface work modular.
 - Updated M17 validation docs to include the deterministic context-clock demo
   script alongside the other runnable game-server demo workflows.
+- Split bytecode statement and control-flow lowering into the focused compiler
+  control-flow module. Let/return/expression statements, for-in loop patching,
+  break/continue handling, and value-producing block/if/match lowering now
+  live outside the main compiler coordinator without changing emitted bytecode.
 
 ## Next
 
