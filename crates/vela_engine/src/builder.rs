@@ -1,5 +1,5 @@
 use vela_hot_reload::HotReloadPolicy;
-use vela_reflect::{ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeRegistry};
+use vela_reflect::{ModuleDesc, ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeRegistry};
 use vela_vm::{HostExecution, Value, VmResult};
 
 use crate::{
@@ -13,6 +13,7 @@ use crate::{
 #[derive(Clone, Default)]
 pub struct EngineBuilder {
     types: Vec<TypeDesc>,
+    modules: Vec<ModuleDesc>,
     native_functions: Vec<NativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
@@ -33,6 +34,12 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_type(mut self, desc: TypeDesc) -> Self {
         self.types.push(desc);
+        self
+    }
+
+    #[must_use]
+    pub fn register_module(mut self, desc: ModuleDesc) -> Self {
+        self.modules.push(desc);
         self
     }
 
@@ -251,6 +258,7 @@ impl EngineBuilder {
             &self.native_methods,
         )?;
         validation::validate_types(&types)?;
+        validation::validate_modules(&self.modules)?;
         validation::validate_native_functions(
             &self.native_functions,
             &self.host_native_functions,
@@ -260,6 +268,9 @@ impl EngineBuilder {
         let mut registry = TypeRegistry::new();
         for desc in types {
             registry.register(desc);
+        }
+        for module in self.modules {
+            registry.register_module(module);
         }
         metadata::inject_native_function_metadata(
             &mut registry,

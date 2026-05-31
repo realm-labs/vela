@@ -4,8 +4,8 @@ use vela_engine::{
     context_host_type_desc,
 };
 use vela_reflect::{
-    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPolicy, SchemaHash, TraitDesc,
-    TypeDesc, TypeKey, TypeRegistry,
+    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ModuleDesc, ReflectPolicy, SchemaHash,
+    TraitDesc, TypeDesc, TypeKey, TypeRegistry,
 };
 use vela_vm::Value;
 
@@ -17,7 +17,12 @@ pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
         .with_standard_natives()
         .permissions(PermissionSet::gameplay())
         .with_context_clock(1_700_000_000, 42)
-        .reflection_policy(ReflectPolicy::all());
+        .reflection_policy(ReflectPolicy::all())
+        .register_module(
+            ModuleDesc::new("game.reward")
+                .docs("Demo reward helper module.")
+                .attr("domain", "gameplay"),
+        );
     for desc in registry.types() {
         builder = builder.register_type(desc.clone());
     }

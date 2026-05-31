@@ -2143,6 +2143,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   payload fields as host variant fields, and Engine coverage proves a
   schema-registered `player.quest_progress.count += 1` script records a
   `HostPath::variant_field` PatchTx update.
+- Added stable Engine module metadata registration for M12/M14. Hosts can
+  register `ModuleDesc` docs and attributes before native function injection,
+  duplicate module names are rejected, reflected module records expose docs,
+  and the game-server reflection demo now verifies module docs/attrs through
+  the CLI path.
 
 ## Next
 

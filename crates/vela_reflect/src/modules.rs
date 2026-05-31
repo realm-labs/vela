@@ -185,6 +185,7 @@ pub struct ModuleDesc {
     pub name: String,
     pub exports: Vec<ModuleExportDesc>,
     pub origin: DeclOrigin,
+    pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
 }
@@ -196,6 +197,7 @@ impl ModuleDesc {
             name: name.into(),
             exports: Vec::new(),
             origin: DeclOrigin::Host,
+            docs: None,
             attrs: AttrMap::new(),
             source_span: None,
         }
@@ -204,6 +206,12 @@ impl ModuleDesc {
     #[must_use]
     pub fn origin(mut self, origin: DeclOrigin) -> Self {
         self.origin = origin;
+        self
+    }
+
+    #[must_use]
+    pub fn docs(mut self, docs: impl Into<String>) -> Self {
+        self.docs = Some(docs.into());
         self
     }
 
@@ -499,6 +507,7 @@ fn module_record_host_with_exports(
         "exports".to_owned(),
         HostValue::Array(exports.into_iter().map(HostValue::String).collect()),
     );
+    fields.insert("docs".to_owned(), docs_value(desc.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&desc.attrs));
     fields.insert("source_span".to_owned(), span_value(desc.source_span));
     HostValue::Record {
@@ -773,6 +782,7 @@ fn helper() {
         let function_span = Span::new(SourceId::new(7), 30, 50);
         registry.register_module(
             ModuleDesc::new("game.reward")
+                .docs("Reward module.")
                 .attr("domain", "gameplay")
                 .source_span(module_span),
         );
@@ -834,6 +844,21 @@ fn helper() {
         assert_eq!(
             module_metadata.get("origin"),
             Some(&HostValue::String("host".to_owned()))
+        );
+        assert_eq!(
+            crate::docs_metadata(
+                &registry,
+                &ReflectValue::Host(HostValue::Record {
+                    type_name: type_name.clone(),
+                    fields: module_metadata.clone(),
+                })
+            )
+            .expect("module docs helper"),
+            ReflectValue::Host(HostValue::String("Reward module.".to_owned()))
+        );
+        assert_eq!(
+            module_metadata.get("docs"),
+            Some(&HostValue::String("Reward module.".to_owned()))
         );
         assert_eq!(
             module_metadata.get("attrs"),

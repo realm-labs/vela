@@ -24,6 +24,9 @@ pub enum EngineErrorKind {
         function: String,
         name: String,
     },
+    DuplicateModuleName {
+        name: String,
+    },
     DuplicateTypeId {
         id: u32,
     },
@@ -116,6 +119,9 @@ impl fmt::Display for EngineError {
                     formatter,
                     "duplicate parameter name {name} on native function {function}"
                 )
+            }
+            EngineErrorKind::DuplicateModuleName { name } => {
+                write!(formatter, "duplicate module name {name}")
             }
             EngineErrorKind::DuplicateTypeId { id } => write!(formatter, "duplicate type id {id}"),
             EngineErrorKind::DuplicateTypeName { name } => {

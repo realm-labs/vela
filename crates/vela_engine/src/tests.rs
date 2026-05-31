@@ -10,7 +10,7 @@ use vela_hot_reload::{
     FunctionAbi, HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime, MethodAbi,
 };
 use vela_reflect::{
-    FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc,
+    FieldAccess, FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc, ModuleDesc,
     ReflectPermission, ReflectPermissionSet, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
     TypeKey, VariantDesc,
 };
@@ -1453,6 +1453,32 @@ fn engine_registers_native_function_reflection_metadata() {
 
     let function_abi = FunctionAbi::from_function(function);
     assert_eq!(function_abi.source_span, Some(source_span));
+}
+
+#[test]
+fn engine_builder_registers_module_reflection_metadata() {
+    let engine = Engine::builder()
+        .register_module(
+            ModuleDesc::new("game.reward")
+                .docs("Reward module.")
+                .attr("domain", "gameplay"),
+        )
+        .register_native_fn(
+            NativeFunctionDesc::new("game.reward.grant", NativeFunctionId::new(221))
+                .returns(TypeHint::Bool),
+            |_| Ok(Value::Bool(true)),
+        )
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.registry();
+    let module = registry
+        .module_by_name("game.reward")
+        .expect("registered module metadata");
+    assert_eq!(module.docs.as_deref(), Some("Reward module."));
+    assert_eq!(module.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(module.exports.len(), 1);
+    assert_eq!(module.exports[0].name, "game.reward.grant");
 }
 
 #[test]
@@ -4084,6 +4110,21 @@ fn engine_rejects_duplicate_native_function_param_names() {
         Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionParamName {
             function: "game.grant_reward".to_owned(),
             name: "amount".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_module_names() {
+    let result = Engine::builder()
+        .register_module(ModuleDesc::new("game.reward"))
+        .register_module(ModuleDesc::new("game.reward"))
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateModuleName {
+            name: "game.reward".to_owned()
         }
     ));
 }

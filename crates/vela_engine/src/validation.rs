@@ -1,11 +1,23 @@
 use std::collections::BTreeSet;
 
-use vela_reflect::{MethodParamDesc, TypeDesc};
+use vela_reflect::{MethodParamDesc, ModuleDesc, TypeDesc};
 
 use crate::{
     ContextHostNativeFunctionEntry, EngineError, EngineErrorKind, EngineResult,
     HostNativeFunctionEntry, NativeFunctionEntry,
 };
+
+pub(crate) fn validate_modules(modules: &[ModuleDesc]) -> EngineResult<()> {
+    let mut names = BTreeSet::new();
+    for module in modules {
+        if !names.insert(module.name.as_str()) {
+            return Err(EngineError::new(EngineErrorKind::DuplicateModuleName {
+                name: module.name.clone(),
+            }));
+        }
+    }
+    Ok(())
+}
 
 pub(crate) fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
