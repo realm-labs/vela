@@ -15,8 +15,10 @@ fn main(ctx, player) {
     let modules = reflect.modules();
     let functions = reflect.functions();
     let exports = reflect.exports(reward_module);
+    let player_type_of = reflect.type_of(player);
 
-    if reflect.type_of(player) == "Player"
+    if reflect.name(player_type_of) == "Player"
+        && reflect.kind(player_type_of) == "host"
         && reflect.id(player) == 100
         && reflected_types.any(|type_info| type_info.name == "Player"
             && reflect.kind(type_info) == "host")

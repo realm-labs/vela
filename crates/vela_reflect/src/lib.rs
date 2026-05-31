@@ -59,7 +59,10 @@ pub use registry::{
     AttrMap, FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc,
     TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
-pub use types::{has_type, type_by_name as type_metadata_by_name, type_list as type_metadata_list};
+pub use types::{
+    has_type, type_by_name as type_metadata_by_name, type_list as type_metadata_list,
+    type_of_value as type_metadata_of,
+};
 pub use value::{
     ReflectContext, ReflectValue, call, call_with_policy, fields, get, get_with_policy, implements,
     set, set_with_policy, type_of,

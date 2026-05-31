@@ -77,8 +77,7 @@ impl Vm {
             expect_arity("reflect.type_of", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.type_of")?;
             check_host_ref_inspection(&type_of_policy, &target)?;
-            Ok(reflect::type_of(&type_of_registry, &target)
-                .map_or(Value::Null, |desc| Value::String(desc.key.name.clone())))
+            value_from_reflect(reflect::type_metadata_of(&type_of_registry, &target))
         });
 
         let types_registry = Arc::clone(&registry);

@@ -1097,7 +1097,7 @@ mod tests {
             stdlib_function_fact("reflect.type_of", &[TypeFact::host("Player")])
                 .expect("reflect.type_of fact")
                 .returns,
-            TypeFact::union([TypeFact::String, TypeFact::Null])
+            TypeFact::union([TypeFact::record("ReflectType"), TypeFact::Null])
         );
         assert_eq!(
             stdlib_function_fact("reflect.types", &[])

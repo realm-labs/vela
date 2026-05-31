@@ -240,7 +240,7 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Added VM tests proving heap-backed native args/results and host string patch
   conversions work under memory budgeting.
 - Added heap-aware equality by materializing compared heap refs, allowing
-  comparisons such as `reflect.type_of(player) == "Player"` to work in
+  reflection helper results and heap-backed strings to compare correctly in
   heap-backed execution.
 - Added VM tests proving heap-backed reflection natives can query traits,
   read/write host state through `PatchTx`, and return field metadata arrays
@@ -2046,6 +2046,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   parsing plus scalar top-level const and constructor-default evaluation now
   live outside the main compiler coordinator, preserving behavior while making
   future grammar-surface work easier to keep modular.
+- Aligned M12 `reflect.type_of(value)` with the copied metadata contract. The
+  script-visible native now returns a copied `ReflectType` record or `null`,
+  analysis facts expose that descriptor shape, and the reflection demo checks
+  type names through `reflect.name(...)` instead of relying on raw strings.
 
 ## Next
 

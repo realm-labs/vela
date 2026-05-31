@@ -32,6 +32,12 @@ pub fn type_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<Reflec
     Ok(ReflectValue::Host(type_record(desc)))
 }
 
+pub fn type_of_value(registry: &TypeRegistry, target: &ReflectValue) -> ReflectValue {
+    crate::type_of(registry, target)
+        .map(type_record)
+        .map_or(ReflectValue::Host(HostValue::Null), ReflectValue::Host)
+}
+
 pub fn has_type(registry: &TypeRegistry, name: &str) -> bool {
     registry.type_by_name(name).is_some()
 }
@@ -91,7 +97,8 @@ fn kind_name(kind: TypeKind) -> String {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostTypeId, SourceId, Span, TypeId, VariantId};
+    use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, Span, TypeId, VariantId};
+    use vela_host::HostRef;
 
     use super::*;
     use crate::{FieldDesc, TypeDesc, TypeKey, VariantDesc, kind_metadata, origin_metadata};
@@ -153,6 +160,11 @@ mod tests {
             Some(&HostValue::String("host".to_owned()))
         );
         let metadata = type_by_name(&registry, "Player").expect("type metadata");
+        let type_of_metadata = type_of_value(
+            &registry,
+            &ReflectValue::HostRef(HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 0)),
+        );
+        assert_eq!(type_of_metadata, metadata);
         assert_eq!(
             kind_metadata(&registry, &metadata).expect("metadata kind"),
             ReflectValue::Host(HostValue::String("host".to_owned()))

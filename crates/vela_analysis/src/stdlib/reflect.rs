@@ -8,7 +8,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::String],
             TypeFact::Bool,
         ),
-        fact("reflect.type_of", vec![TypeFact::Any], maybe_string()),
+        fact("reflect.type_of", vec![TypeFact::Any], maybe_reflect_type()),
         fact("reflect.types", Vec::new(), array(record("ReflectType"))),
         fact(
             "reflect.type_info",
@@ -205,7 +205,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         {
             TypeFact::Bool
         }
-        "reflect.type_of" if args.len() == 1 => maybe_string(),
+        "reflect.type_of" if args.len() == 1 => maybe_reflect_type(),
         "reflect.type_info" if args.len() == 1 => record("ReflectType"),
         "reflect.name" | "reflect.kind" | "reflect.variant" if args.len() == 1 => TypeFact::String,
         "reflect.owner" if args.len() == 1 => TypeFact::String,
@@ -284,6 +284,10 @@ fn access() -> TypeFact {
 
 fn maybe_string() -> TypeFact {
     TypeFact::union([TypeFact::String, TypeFact::Null])
+}
+
+fn maybe_reflect_type() -> TypeFact {
+    TypeFact::union([record("ReflectType"), TypeFact::Null])
 }
 
 fn maybe_source_span() -> TypeFact {

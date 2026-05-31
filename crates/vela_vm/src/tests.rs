@@ -4292,7 +4292,8 @@ fn compiled_source_uses_reflection_natives_for_host_state() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    if reflect.type_of(player) == "Player" {
+    let player_type = reflect.type_of(player);
+    if reflect.name(player_type) == "Player" && reflect.kind(player_type) == "host" {
         if reflect.implements(player, "Damageable") {
             reflect.set(player, "level", 10);
             return reflect.get(player, "level");
@@ -4813,7 +4814,8 @@ fn heap_execution_uses_reflection_natives_for_host_state() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    if reflect.type_of(player) == "Player" {
+    let player_type = reflect.type_of(player);
+    if reflect.name(player_type) == "Player" && reflect.kind(player_type) == "host" {
         if reflect.implements(player, "Damageable") {
             reflect.set(player, "level", 10);
             return reflect.get(player, "level");
@@ -5753,7 +5755,7 @@ struct Player { level: int }
 
 fn main() {
     let player = Player { level: 7 };
-    if reflect.type_of(player) == "Player" && reflect.implements(player, "Damageable") {
+    if reflect.name(reflect.type_of(player)) == "Player" && reflect.implements(player, "Damageable") {
         return reflect.get(player, "level") + reflect.fields(player).len();
     }
     return 0;
@@ -5944,7 +5946,7 @@ struct Player { level: int }
 
 fn main() {
     let player = Player { level: 7 };
-    if reflect.type_of(player) == "Player" && reflect.implements(player, "Damageable") {
+    if reflect.name(reflect.type_of(player)) == "Player" && reflect.implements(player, "Damageable") {
         return reflect.get(player, "level") + reflect.fields(player).len();
     }
     return 0;
@@ -5991,7 +5993,7 @@ impl Damageable for Player {}
 
 pub fn main() {
     let player = Player { level: 7 };
-    if reflect.type_of(player) == "game.Player" && reflect.implements(player, "game.Damageable") {
+    if reflect.name(reflect.type_of(player)) == "game.Player" && reflect.implements(player, "game.Damageable") {
         return player.damage() + reflect.fields(player).len();
     }
     return 0;
