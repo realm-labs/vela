@@ -2232,6 +2232,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   Engine test module into a focused integration test. `args!`, `host!`,
   Option/Result/set conversions, owned Rust extraction, and Runtime call
   argument plumbing now exercise only the public Engine API surface.
+- Split core M12 reflection value-access coverage into a focused public
+  integration test. Host field reads observe PatchTx overlays, reflective
+  writes respect read-only metadata, and reflective host method calls remain
+  deferred until safe-point transaction apply without relying on crate-private
+  test access.
 
 ## Next
 
