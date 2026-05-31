@@ -4,11 +4,12 @@ use vela_syntax::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 use crate::{InstructionKind, Register};
 
 use super::const_eval::compile_literal_constant;
+use super::constructors::schema_default_fields;
 use super::host_paths::host_field_path;
 use super::operators::non_logical_binary_instruction;
 use super::patterns::enum_variant_path;
 use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler, schema_default_fields};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_> {
     pub(super) fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {

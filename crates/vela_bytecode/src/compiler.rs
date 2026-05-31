@@ -4,6 +4,7 @@ mod assignments;
 mod call_args;
 mod calls;
 mod const_eval;
+mod constructors;
 mod control_flow;
 mod error;
 mod expressions;
@@ -23,9 +24,9 @@ mod value_flow;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use vela_common::{Diagnostic, MethodId, SourceId, Span};
 #[cfg(test)]
 use vela_common::{FieldId, HostMethodId};
+use vela_common::{MethodId, SourceId, Span};
 use vela_hir::{
     BindingMap, BindingResolution, DeclarationKind, FunctionSignature, HirDeclId, HirLocalId,
     HirTypeHint, ImportResolution, LocalBindingKind, ModuleGraph, ModuleId, ModulePath,
@@ -48,12 +49,8 @@ pub use error::{CompileError, CompileErrorKind, CompileResult};
 use field_slots::ScriptFieldSlots;
 use lambdas::{LambdaCapture, collect_lambda_captures};
 pub use options::CompilerOptions;
-use patterns::{enum_variant_path, tuple_variant_field_name};
-use schema_defaults::{
-    ConstructorShape, SchemaFieldDefault, ScriptSchemaDefaults,
-    resolve_tuple_constructor_arguments, source_schema_defaults, tuple_constructor_diagnostics,
-    unknown_enum_variant_diagnostic,
-};
+use patterns::enum_variant_path;
+use schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use script_types::{
     ScriptTypeFact, ScriptTypeFlow, expression_script_fact, expression_script_type,
     type_hint_script_type,
@@ -1109,148 +1106,6 @@ impl<'ast> Compiler<'ast> {
         )
     }
 
-    fn compile_tuple_variant_fields(
-        &mut self,
-        constructor_span: Span,
-        enum_name: &str,
-        variant: &str,
-        args: &[Argument],
-    ) -> CompileResult<Vec<(String, Register)>> {
-        if !self.enum_constructor_variant_exists(enum_name, variant) {
-            return Err(
-                self.constructor_diagnostics_error(vec![unknown_enum_variant_diagnostic(
-                    enum_name,
-                    variant,
-                    constructor_span,
-                )]),
-            );
-        }
-        let shape = self.enum_constructor_shape(enum_name, variant);
-        self.reject_constructor_diagnostics(tuple_constructor_diagnostics(
-            enum_name,
-            variant,
-            shape.as_ref(),
-            args,
-            constructor_span,
-        ))?;
-        let mut fields = Vec::new();
-        let mut explicit_names = BTreeSet::new();
-        if let Some(shape) = shape.as_ref() {
-            let owner = format!("{enum_name}.{variant}");
-            let slots = resolve_tuple_constructor_arguments(shape, &owner, args, constructor_span)
-                .map_err(|diagnostics| self.constructor_diagnostics_error(diagnostics))?;
-            for (index, arg) in slots.into_iter().enumerate() {
-                let Some(arg) = arg else {
-                    continue;
-                };
-                let name = shape
-                    .field_name_at(index)
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| tuple_variant_field_name(index));
-                let value = self.compile_expr(&arg.value)?;
-                explicit_names.insert(name.clone());
-                fields.push((name, value));
-            }
-        } else {
-            for (index, arg) in args.iter().enumerate() {
-                if arg.name.is_some() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "named tuple variant argument",
-                    )));
-                }
-                let name = tuple_variant_field_name(index);
-                let value = self.compile_expr(&arg.value)?;
-                explicit_names.insert(name.clone());
-                fields.push((name, value));
-            }
-        }
-        let defaults = schema_default_fields(shape.as_ref());
-        self.compile_schema_default_fields(&mut fields, &explicit_names, defaults)?;
-        Ok(fields)
-    }
-
-    fn compile_record_fields(
-        &mut self,
-        fields: &[vela_syntax::RecordField],
-        defaults: Vec<SchemaFieldDefault>,
-    ) -> CompileResult<Vec<(String, Register)>> {
-        let mut compiled = Vec::new();
-        let mut explicit_names = BTreeSet::new();
-        for field in fields {
-            explicit_names.insert(field.name.clone());
-            compiled.push(self.compile_record_field(field)?);
-        }
-        self.compile_schema_default_fields(&mut compiled, &explicit_names, defaults)?;
-        Ok(compiled)
-    }
-
-    fn compile_record_field(
-        &mut self,
-        field: &vela_syntax::RecordField,
-    ) -> CompileResult<(String, Register)> {
-        let value = if let Some(value) = &field.value {
-            self.compile_expr(value)?
-        } else {
-            self.local_register_at_span(field.span, &field.name)?
-        };
-        Ok((field.name.clone(), value))
-    }
-
-    fn compile_schema_default_fields(
-        &mut self,
-        fields: &mut Vec<(String, Register)>,
-        explicit_names: &BTreeSet<String>,
-        defaults: Vec<SchemaFieldDefault>,
-    ) -> CompileResult<()> {
-        for default in defaults {
-            if explicit_names.contains(&default.name) {
-                continue;
-            }
-            let value = self.compile_schema_field_default(&default)?;
-            fields.push((default.name, value));
-        }
-        Ok(())
-    }
-
-    fn compile_schema_field_default(
-        &mut self,
-        default: &SchemaFieldDefault,
-    ) -> CompileResult<Register> {
-        if let Some(value) = evaluate_const_expr(&default.value, &default.constants)? {
-            return self.emit_constant(value);
-        }
-        self.compile_expr(&default.value)
-    }
-
-    fn record_constructor_shape(&self, type_name: &str) -> Option<ConstructorShape> {
-        self.facts.schema_defaults.record(type_name).cloned()
-    }
-
-    fn enum_constructor_shape(&self, type_name: &str, variant: &str) -> Option<ConstructorShape> {
-        self.facts
-            .schema_defaults
-            .enum_variant(type_name, variant)
-            .cloned()
-    }
-
-    fn enum_constructor_variant_exists(&self, type_name: &str, variant: &str) -> bool {
-        self.facts
-            .schema_defaults
-            .enum_contains_variant(type_name, variant)
-    }
-
-    fn reject_constructor_diagnostics(&self, diagnostics: Vec<Diagnostic>) -> CompileResult<()> {
-        if diagnostics.is_empty() {
-            Ok(())
-        } else {
-            Err(self.constructor_diagnostics_error(diagnostics))
-        }
-    }
-
-    fn constructor_diagnostics_error(&self, diagnostics: Vec<Diagnostic>) -> CompileError {
-        CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-    }
-
     fn emit_constant(&mut self, constant: Constant) -> CompileResult<Register> {
         let dst = self.alloc_register()?;
         let constant = self.code.push_constant(constant);
@@ -1363,10 +1218,6 @@ fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<
         )));
     }
     Ok(())
-}
-
-fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {
-    shape.map_or_else(Vec::new, |shape| shape.defaults().cloned().collect())
 }
 
 #[cfg(test)]
