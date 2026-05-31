@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use crate::heap::HeapValue;
-use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::option_result::option_value;
 use crate::script_object::ScriptFields;
 use crate::string_methods;
@@ -9,6 +8,10 @@ use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
     value_to_heap_slot,
 };
+
+mod higher_order;
+
+pub(crate) use higher_order::{all, any, count, filter, find, map_values};
 
 pub(crate) fn has(
     receiver: &Value,
@@ -262,130 +265,6 @@ pub(crate) fn entries(
     }
 }
 
-pub(crate) fn map_values(
-    receiver: &Value,
-    args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
-) -> VmResult<Value> {
-    expect_arity("map_values", args, 1)?;
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
-    let mut mapped = BTreeMap::new();
-    for (key, value) in entries {
-        let protected = mapped.values().cloned().collect::<Vec<_>>();
-        let callback_args = map_callback_args(&args[0], key.clone(), value, "method map_values")?;
-        let value = call_callback(
-            &mut runtime,
-            "method map_values",
-            &args[0],
-            &callback_args,
-            &protected,
-        )?;
-        mapped.insert(key, value);
-    }
-    Ok(Value::Map(mapped))
-}
-
-pub(crate) fn filter(
-    receiver: &Value,
-    args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
-) -> VmResult<Value> {
-    expect_arity("filter", args, 1)?;
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
-    let mut filtered = BTreeMap::new();
-    for (key, value) in entries {
-        let protected = filtered.values().cloned().collect::<Vec<_>>();
-        let predicate_args =
-            map_callback_args(&args[0], key.clone(), value.clone(), "method filter")?;
-        let predicate = call_callback(
-            &mut runtime,
-            "method filter",
-            &args[0],
-            &predicate_args,
-            &protected,
-        )?;
-        if is_truthy(&predicate) {
-            filtered.insert(key, value);
-        }
-    }
-    Ok(Value::Map(filtered))
-}
-
-pub(crate) fn find(
-    receiver: &Value,
-    args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
-) -> VmResult<Value> {
-    expect_arity("find", args, 1)?;
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
-    for (key, value) in entries {
-        let predicate_args =
-            map_callback_args(&args[0], key.clone(), value.clone(), "method find")?;
-        let predicate = call_callback(&mut runtime, "method find", &args[0], &predicate_args, &[])?;
-        if is_truthy(&predicate) {
-            return Ok(option_value(Some(map_entry(&key, value))));
-        }
-    }
-    Ok(option_value(None))
-}
-
-pub(crate) fn any(
-    receiver: &Value,
-    args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    expect_arity("any", args, 1)?;
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
-    for (key, value) in entries {
-        let predicate_args = map_callback_args(&args[0], key, value, "method any")?;
-        let predicate = call_callback(&mut runtime, "method any", &args[0], &predicate_args, &[])?;
-        if is_truthy(&predicate) {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
-pub(crate) fn all(
-    receiver: &Value,
-    args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    expect_arity("all", args, 1)?;
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
-    for (key, value) in entries {
-        let predicate_args = map_callback_args(&args[0], key, value, "method all")?;
-        let predicate = call_callback(&mut runtime, "method all", &args[0], &predicate_args, &[])?;
-        if !is_truthy(&predicate) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
-}
-
-pub(crate) fn count(
-    receiver: &Value,
-    args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
-) -> VmResult<i64> {
-    expect_arity("count", args, 1)?;
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
-    let mut count = 0_i64;
-    for (key, value) in entries {
-        let predicate_args = map_callback_args(&args[0], key, value, "method count")?;
-        let predicate =
-            call_callback(&mut runtime, "method count", &args[0], &predicate_args, &[])?;
-        if is_truthy(&predicate) {
-            count = count.checked_add(1).ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "method count",
-                })
-            })?;
-        }
-    }
-    Ok(count)
-}
-
 pub(crate) fn merge(
     receiver: &Value,
     args: &[Value],
@@ -415,7 +294,7 @@ pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) 
     }
 }
 
-fn map_entries(
+pub(super) fn map_entries(
     receiver: &Value,
     heap: Option<&crate::HeapExecution<'_>>,
     operation: &'static str,
@@ -439,23 +318,7 @@ fn map_entries(
     }
 }
 
-fn map_callback_args(
-    callback: &Value,
-    key: String,
-    value: Value,
-    operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let Value::Closure(closure) = callback else {
-        return type_error(operation);
-    };
-    match closure.code.params.len() {
-        0 => Ok(Vec::new()),
-        1 => Ok(vec![value]),
-        _ => Ok(vec![Value::String(key), value]),
-    }
-}
-
-fn map_entry(key: &str, value: Value) -> Value {
+pub(super) fn map_entry(key: &str, value: Value) -> Value {
     Value::Record {
         type_name: "MapEntry".to_owned(),
         fields: ScriptFields::from_pairs(
@@ -468,7 +331,7 @@ fn map_entry(key: &str, value: Value) -> Value {
     }
 }
 
-fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
+pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
     }
@@ -487,11 +350,7 @@ fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> 
     string_methods::string_value(value, heap, "map key").map(str::to_owned)
 }
 
-fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
-}
-
-fn type_error<T>(operation: &'static str) -> VmResult<T> {
+pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 

@@ -2241,6 +2241,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `sort_by`, `min`, and `max` keep their stable non-mutating behavior and
   managed-heap coverage while the main array method module no longer owns
   scalar ordering and extrema internals.
+- Split M13 map higher-order helpers into a focused VM module. `map_values`,
+  `filter`, `find`, `any`, `all`, and `count` now keep callback argument
+  shaping and truthiness routing outside the general map mutation and
+  introspection helpers.
 
 ## Next
 
