@@ -2196,6 +2196,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   and ScriptHost schema collection/hash logic is separate from token emission,
   keeping the stable Engine API derive surface modular without behavior
   changes.
+- Split M13 VM callback method dispatch out of the central script-method
+  router. Higher-order array/map/set and Option/Result method routing now
+  owns its callback runtime plumbing in a focused module, reducing the shared
+  dispatcher while preserving stdlib behavior across inline and managed-heap
+  execution.
 
 ## Next
 

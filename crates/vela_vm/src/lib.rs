@@ -4,6 +4,7 @@
 
 mod array_methods;
 mod budget;
+mod callback_method_dispatch;
 mod error;
 pub mod heap;
 mod heap_execution;
