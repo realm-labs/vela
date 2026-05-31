@@ -1981,6 +1981,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   infers the unwrapped `Option.Some`/`Result.Ok` payload fact, treats known
   `Option.None`/`Result.Err` paths as `never`, and keeps the propagation policy
   in a focused analysis submodule.
+- Split M14 script-function macro emission into a focused child module. The
+  derive crate now keeps script-function parsing/validation separate from
+  generated descriptor and Engine registration token construction, preserving
+  existing macro output while keeping the implementation reviewable.
 
 ## Next
 
