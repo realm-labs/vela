@@ -1590,6 +1590,33 @@ mod tests {
     }
 
     #[test]
+    fn diagnoses_uppercase_radix_prefixes() {
+        let lexed = lex(source_id(), "0X2a 0B1010");
+
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Int("0X2a".into()));
+        assert_eq!(lexed.tokens[1].kind, TokenKind::Int("0B1010".into()));
+        assert_eq!(
+            lexed
+                .diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.code.as_deref())
+                .collect::<Vec<_>>(),
+            vec![Some("E_LEX_INT"), Some("E_LEX_INT")]
+        );
+        assert_eq!(
+            lexed
+                .diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.span)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(Span::new(source_id(), 0, 4)),
+                Some(Span::new(source_id(), 5, 11)),
+            ]
+        );
+    }
+
+    #[test]
     fn lexes_leading_shebang_as_layout() {
         let lexed = lex(source_id(), "#!/usr/bin/env vela\nfn main() { return 1; }");
 

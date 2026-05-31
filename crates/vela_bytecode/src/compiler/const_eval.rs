@@ -134,15 +134,9 @@ fn evaluate_numeric_compare_const(
 
 fn parse_int(value: &str) -> CompileResult<i64> {
     let value_without_separators = value.replace('_', "");
-    let (radix, digits) = if let Some(digits) = value_without_separators
-        .strip_prefix("0x")
-        .or_else(|| value_without_separators.strip_prefix("0X"))
-    {
+    let (radix, digits) = if let Some(digits) = value_without_separators.strip_prefix("0x") {
         (16, digits)
-    } else if let Some(digits) = value_without_separators
-        .strip_prefix("0b")
-        .or_else(|| value_without_separators.strip_prefix("0B"))
-    {
+    } else if let Some(digits) = value_without_separators.strip_prefix("0b") {
         (2, digits)
     } else {
         (10, value_without_separators.as_str())

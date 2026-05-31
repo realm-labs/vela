@@ -2171,6 +2171,9 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Tightened M9 radix integer grammar conformance. Hex and binary literals now
   require at least one digit after the `0x` or `0b` prefix, preserving token
   recovery while reporting `E_LEX_INT` for prefix-only forms.
+- Tightened the same M9 radix path to reject uppercase `0X` and `0B`
+  prefixes at lex time, matching the lowercase-only grammar and removing the
+  compiler's old uppercase-prefix fallback.
 
 ## Next
 

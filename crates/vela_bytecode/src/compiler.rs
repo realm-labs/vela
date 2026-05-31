@@ -2519,6 +2519,30 @@ fn main() {
     }
 
     #[test]
+    fn compiler_rejects_uppercase_radix_prefixes_before_codegen() {
+        let error = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    return 0X10 + 0B10;
+}
+"#,
+            "main",
+        )
+        .expect_err("uppercase radix prefixes should be rejected by syntax validation");
+
+        let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
+            panic!("expected syntax diagnostics");
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .all(|diagnostic| diagnostic.code.as_deref() == Some("E_LEX_INT"))
+        );
+        assert_eq!(diagnostics.len(), 2);
+    }
+
+    #[test]
     fn compiler_accepts_leading_shebang() {
         let code = compile_function_source(
             SourceId::new(1),

@@ -252,31 +252,11 @@ impl<'src> Lexer<'src> {
     fn lex_number(&mut self) {
         let start = self.offset;
         if self.peek_char() == Some('0') && matches!(self.peek_next_char(), Some('x' | 'X')) {
-            self.bump_char();
-            self.bump_char();
-            let has_digit = self.consume_digits_or_underscores_with(|ch| ch.is_ascii_hexdigit());
-            if !has_digit {
-                self.push_int_literal_diagnostic(start);
-            }
-            self.push_token(
-                TokenKind::Int(self.slice(start, self.offset).to_owned()),
-                start,
-                self.offset,
-            );
+            self.lex_radix_int(start, |ch| ch.is_ascii_hexdigit());
             return;
         }
         if self.peek_char() == Some('0') && matches!(self.peek_next_char(), Some('b' | 'B')) {
-            self.bump_char();
-            self.bump_char();
-            let has_digit = self.consume_digits_or_underscores_with(|ch| matches!(ch, '0' | '1'));
-            if !has_digit {
-                self.push_int_literal_diagnostic(start);
-            }
-            self.push_token(
-                TokenKind::Int(self.slice(start, self.offset).to_owned()),
-                start,
-                self.offset,
-            );
+            self.lex_radix_int(start, |ch| matches!(ch, '0' | '1'));
             return;
         }
 
@@ -303,6 +283,20 @@ impl<'src> Lexer<'src> {
         } else {
             self.push_token(TokenKind::Int(text), start, self.offset);
         }
+    }
+
+    fn lex_radix_int(&mut self, start: usize, is_digit: impl Fn(char) -> bool) {
+        self.bump_char();
+        let prefix = self.bump_char();
+        let has_digit = self.consume_digits_or_underscores_with(is_digit);
+        if !has_digit || matches!(prefix, Some('X' | 'B')) {
+            self.push_int_literal_diagnostic(start);
+        }
+        self.push_token(
+            TokenKind::Int(self.slice(start, self.offset).to_owned()),
+            start,
+            self.offset,
+        );
     }
 
     fn consume_digits_or_underscores(&mut self) {
