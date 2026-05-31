@@ -20,6 +20,7 @@ fn main(ctx, player) {
     let functions = reflect.functions();
     let exports = reflect.exports(reward_module);
     let ctx_exports = reflect.exports(ctx_module);
+    let permissions = reflect.permissions();
     let player_type_of = reflect.type_of(player);
 
     if reflect.name(player_type_of) == "Player"
@@ -45,6 +46,10 @@ fn main(ctx, player) {
         && method.owner == "Player"
         && method.effects.writes_host
         && method_access.reflect_callable
+        && permissions.len() == 9
+        && reflect.has_permission("reflect.read_type_info")
+        && reflect.has_permission("reflect.write_value_fields")
+        && reflect.has_permission("reflect.call_event_methods")
         && reflect.has_module("game.reward")
         && reflect.has_module("ctx")
         && !reflect.has_module("game.missing")

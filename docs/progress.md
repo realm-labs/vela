@@ -2091,6 +2091,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   permissions, registers `ctx.now()` and `ctx.tick()` as reflect-visible
   permissioned natives, and the CLI suite runs a dedicated context-clock script
   alongside the existing HostRef context event workflow.
+- Extended the M12/M17 reflection demo proof to cover script-visible
+  reflection permission metadata. `reflect_debug.lang` now verifies
+  `reflect.permissions()` and `reflect.has_permission(...)` under the
+  permissioned demo Engine policy before performing controlled reflective host
+  writes and calls.
 
 ## Next
 
