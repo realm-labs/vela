@@ -2282,6 +2282,9 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split M13 distance math natives into a focused VM module. `math.distance2d`
   and `math.distance3d` now keep coordinate validation and finite-distance
   checks separate from scalar, interpolation, movement, and power helpers.
+- Split M13 power math native into a focused VM module. `math.pow` now keeps
+  integer-preserving exponentiation, overflow rejection, and finite float
+  fallback behavior separate from scalar, movement, and distance helpers.
 
 ## Next
 

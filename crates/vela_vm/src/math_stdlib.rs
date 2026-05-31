@@ -1,11 +1,13 @@
-use crate::{Value, Vm, VmError, VmErrorKind, VmResult, expect_arity};
+use crate::{Value, Vm, VmError, VmErrorKind, VmResult};
 
 mod distance;
 mod movement;
+mod power;
 mod scalar;
 
 use distance::{math_distance2d, math_distance3d};
 use movement::{math_lerp, math_move_towards};
+use power::math_pow;
 use scalar::{
     math_abs, math_ceil, math_clamp, math_floor, math_max, math_min, math_round, math_sign,
 };
@@ -24,38 +26,6 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math.ceil", math_ceil);
     vm.register_native("math.round", math_round);
     vm.register_native("math.abs", math_abs);
-}
-
-fn math_pow(args: &[Value]) -> VmResult<Value> {
-    expect_arity("math.pow", args, 2)?;
-    if let (Value::Int(base), Value::Int(exponent)) = (&args[0], &args[1]) {
-        if *exponent < 0 {
-            return numeric_pow(args);
-        }
-        let exponent = u32::try_from(*exponent).map_err(|_| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "math.pow",
-            })
-        })?;
-        return base.checked_pow(exponent).map(Value::Int).ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "math.pow",
-            })
-        });
-    }
-
-    numeric_pow(args)
-}
-
-fn numeric_pow(args: &[Value]) -> VmResult<Value> {
-    let base = expect_finite_float(&args[0], "math.pow")?;
-    let exponent = expect_finite_float(&args[1], "math.pow")?;
-    let value = base.powf(exponent);
-    if value.is_finite() {
-        Ok(Value::Float(value))
-    } else {
-        type_error("math.pow")
-    }
 }
 
 pub(super) fn expect_finite_float(value: &Value, operation: &'static str) -> VmResult<f64> {
