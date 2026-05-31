@@ -23,9 +23,11 @@ fn main(ctx, player) {
     let ctx_module = reflect.module("ctx");
     let math_module = reflect.module("math");
     let reward_function = reflect.function("game.reward.grant");
+    let main_function = reflect.function("main");
     let ctx_now = reflect.function("ctx.now");
     let ctx_tick = reflect.function("ctx.tick");
     let reward_params = reflect.params(reward_function);
+    let main_params = reflect.params(main_function);
     let reward_access = reflect.access(reward_function);
     let ctx_now_access = reflect.access(ctx_now);
     let ctx_methods = reflect.methods(ctx);
@@ -99,6 +101,7 @@ fn main(ctx, player) {
         && reflect.kind(math_module) == "module"
         && modules.len() == 3
         && reflect.has_function("game.reward.grant")
+        && reflect.has_function("main")
         && reflect.has_function("ctx.now")
         && reflect.has_function("ctx.tick")
         && !reflect.has_function("game.reward.missing")
@@ -118,6 +121,14 @@ fn main(ctx, player) {
         && reward_params[0].type == "Player"
         && reward_params[1].name == "item_id"
         && reward_params[1].type == "string"
+        && reflect.name(main_function) == "main"
+        && reflect.kind(main_function) == "function"
+        && reflect.origin(main_function) == "script"
+        && main_function.module == null
+        && !main_function.public
+        && main_params.len() == 2
+        && main_params[0].name == "ctx"
+        && main_params[1].name == "player"
         && exports.len() == 1
         && exports[0] == "game.reward.grant"
         && reflect.exports("game.reward")[0] == exports[0]
@@ -149,8 +160,10 @@ fn main(ctx, player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
-        && functions.len() == 3
+        && functions.len() == 4
         && functions.any(|function| reflect.id(function) == reflect.id(reward_function))
+        && functions.any(|function| reflect.name(function) == "main"
+            && reflect.origin(function) == "script")
         && functions.any(|function| reflect.name(function) == "ctx.now"
             && reflect.returns(function) == "int") {
         reflect.set(player, "level", 12);

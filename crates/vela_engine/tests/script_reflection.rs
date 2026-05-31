@@ -18,7 +18,7 @@ fn unique_test_dir(name: &str) -> PathBuf {
 }
 
 #[test]
-fn runtime_reflection_includes_compiled_script_enum_metadata() {
+fn runtime_reflection_includes_compiled_script_metadata() {
     let root = unique_test_dir("script_reflection");
     fs::create_dir_all(&root).expect("create temp dir");
     let script = root.join("script_reflection.lang");
@@ -32,12 +32,20 @@ enum QuestProgress {
 
 fn main() {
     let quest_type = reflect.type_info("QuestProgress");
+    let main_function = reflect.function("main");
+    let functions = reflect.functions();
     let quest = QuestProgress.Active { count: 2 };
     let variants = reflect.variants(quest);
     let active = reflect.variant_info(quest, "Active");
 
     if reflect.kind(quest_type) == "script_enum"
         && quest_type.variant_count == 2
+        && reflect.name(main_function) == "main"
+        && reflect.kind(main_function) == "function"
+        && reflect.origin(main_function) == "script"
+        && reflect.has_function("main")
+        && functions.any(|function| reflect.name(function) == "main"
+            && reflect.origin(function) == "script")
         && variants.len() == 2
         && reflect.has_variant(quest_type, "Active")
         && reflect.variant(quest) == "Active"

@@ -255,6 +255,7 @@ impl Engine {
         };
         let mut registry = (*self.registry).clone();
         registry.register_script_types(graph);
+        registry.register_script_modules(graph);
         Arc::new(registry)
     }
 

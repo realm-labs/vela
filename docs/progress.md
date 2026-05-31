@@ -2349,6 +2349,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   and the game-server reflection demo verifies `reflect.variants`,
   `reflect.variant_info`, `reflect.has_variant`, `reflect.variant`, and
   `reflect.variant_is` through the CLI path.
+- Extended the M12 program-specific reflection registry to include compiled
+  script functions and named script modules. Single-file scripts now expose
+  unqualified script function metadata without creating an empty module, and
+  the game-server reflection demo verifies the script `main` function through
+  `reflect.function`, `reflect.has_function`, `reflect.functions`, params,
+  origin, module, and visibility metadata.
 
 ## Next
 

@@ -250,7 +250,7 @@ impl TypeRegistry {
             else {
                 continue;
             };
-            if self.module_by_name(&module_name).is_none() {
+            if !module_name.is_empty() && self.module_by_name(&module_name).is_none() {
                 self.register_module(
                     ModuleDesc::new(module_name)
                         .origin(DeclOrigin::Script)
@@ -275,10 +275,12 @@ impl TypeRegistry {
                 stable_function_id(&module_name, &declaration.name),
                 qualified_name,
             )
-            .module(module_name)
             .public(declaration.visibility == Visibility::Public)
             .origin(DeclOrigin::Script)
             .source_span(declaration.span);
+            if !module_name.is_empty() {
+                desc = desc.module(module_name);
+            }
             if let Some(signature) = signature {
                 desc = apply_signature(desc, signature);
             }
