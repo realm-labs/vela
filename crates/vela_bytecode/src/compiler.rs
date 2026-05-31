@@ -3440,6 +3440,53 @@ fn main(player) {
     }
 
     #[test]
+    fn compiler_lowers_host_numeric_compound_assignments() {
+        let stats = FieldId::new(3);
+        let level = FieldId::new(4);
+        let code = compile_function_source_with_options(
+            SourceId::new(1),
+            r#"
+fn main(player) {
+    player.stats.level *= 3;
+    player.stats.level /= 2;
+    player.stats.level %= 5;
+    return player.stats.level;
+}
+"#,
+            "main",
+            &CompilerOptions::new()
+                .with_host_field("stats", stats)
+                .with_host_field("level", level),
+        )
+        .expect("host numeric compound assignments should compile");
+
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::MulHostPath { segments, .. }
+                if segments.as_slice() == [
+                    HostPathSegment::Field(stats),
+                    HostPathSegment::Field(level)
+                ]
+        )));
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::DivHostPath { segments, .. }
+                if segments.as_slice() == [
+                    HostPathSegment::Field(stats),
+                    HostPathSegment::Field(level)
+                ]
+        )));
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            &instruction.kind,
+            InstructionKind::RemHostPath { segments, .. }
+                if segments.as_slice() == [
+                    HostPathSegment::Field(stats),
+                    HostPathSegment::Field(level)
+                ]
+        )));
+    }
+
+    #[test]
     fn compiler_lowers_host_path_push_calls() {
         let inventory = FieldId::new(3);
         let rewards = FieldId::new(4);

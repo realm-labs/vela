@@ -7,6 +7,7 @@ mod budget;
 mod error;
 pub mod heap;
 mod heap_execution;
+mod host_patches;
 mod host_values;
 mod indexing;
 mod iteration;
@@ -1156,100 +1157,184 @@ impl Vm {
                     host.tx.set_path(path, value, instruction.span)?;
                 }
                 InstructionKind::AddHostField { root, field, rhs } => {
-                    let root = expect_host_ref(frame.read(*root)?, "add_host_field")?;
-                    let value =
-                        value_to_host(frame.read(*rhs)?, "add_host_field", heap.as_deref())?;
-                    let path = HostPath::new(root).field(*field);
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host context",
-                        })
-                    })?;
-                    let base_value = host
-                        .tx
-                        .read_path_at(host.adapter, &path, instruction.span)?;
-                    if let Some(budget) = budget.as_deref() {
-                        budget.reserve_patch(host.tx.patches().len())?;
-                    }
-                    host.tx
-                        .add_path(path, value, base_value, instruction.span)?;
+                    host_patches::apply_host_field_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *field,
+                        *rhs,
+                        host_patches::HostNumericPatch::Add,
+                    )?;
                 }
                 InstructionKind::SubHostField { root, field, rhs } => {
-                    let root = expect_host_ref(frame.read(*root)?, "sub_host_field")?;
-                    let value =
-                        value_to_host(frame.read(*rhs)?, "sub_host_field", heap.as_deref())?;
-                    let path = HostPath::new(root).field(*field);
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host context",
-                        })
-                    })?;
-                    let base_value = host
-                        .tx
-                        .read_path_at(host.adapter, &path, instruction.span)?;
-                    if let Some(budget) = budget.as_deref() {
-                        budget.reserve_patch(host.tx.patches().len())?;
-                    }
-                    host.tx
-                        .sub_path(path, value, base_value, instruction.span)?;
+                    host_patches::apply_host_field_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *field,
+                        *rhs,
+                        host_patches::HostNumericPatch::Sub,
+                    )?;
+                }
+                InstructionKind::MulHostField { root, field, rhs } => {
+                    host_patches::apply_host_field_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *field,
+                        *rhs,
+                        host_patches::HostNumericPatch::Mul,
+                    )?;
+                }
+                InstructionKind::DivHostField { root, field, rhs } => {
+                    host_patches::apply_host_field_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *field,
+                        *rhs,
+                        host_patches::HostNumericPatch::Div,
+                    )?;
+                }
+                InstructionKind::RemHostField { root, field, rhs } => {
+                    host_patches::apply_host_field_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        *field,
+                        *rhs,
+                        host_patches::HostNumericPatch::Rem,
+                    )?;
                 }
                 InstructionKind::AddHostPath {
                     root,
                     segments,
                     rhs,
                 } => {
-                    let root = expect_host_ref(frame.read(*root)?, "add_host_path")?;
-                    let value = value_to_host(frame.read(*rhs)?, "add_host_path", heap.as_deref())?;
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    let path = host_path_from_segments(
-                        root,
+                    host_patches::apply_host_path_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
                         segments,
-                        &frame,
-                        heap.as_deref(),
+                        *rhs,
+                        host_patches::HostNumericPatch::Add,
                         &mut symbols,
                     )?;
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host context",
-                        })
-                    })?;
-                    let base_value = host
-                        .tx
-                        .read_path_at(host.adapter, &path, instruction.span)?;
-                    if let Some(budget) = budget.as_deref() {
-                        budget.reserve_patch(host.tx.patches().len())?;
-                    }
-                    host.tx
-                        .add_path(path, value, base_value, instruction.span)?;
                 }
                 InstructionKind::SubHostPath {
                     root,
                     segments,
                     rhs,
                 } => {
-                    let root = expect_host_ref(frame.read(*root)?, "sub_host_path")?;
-                    let value = value_to_host(frame.read(*rhs)?, "sub_host_path", heap.as_deref())?;
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    let path = host_path_from_segments(
-                        root,
+                    host_patches::apply_host_path_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
                         segments,
-                        &frame,
-                        heap.as_deref(),
+                        *rhs,
+                        host_patches::HostNumericPatch::Sub,
                         &mut symbols,
                     )?;
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host context",
-                        })
-                    })?;
-                    let base_value = host
-                        .tx
-                        .read_path_at(host.adapter, &path, instruction.span)?;
-                    if let Some(budget) = budget.as_deref() {
-                        budget.reserve_patch(host.tx.patches().len())?;
-                    }
-                    host.tx
-                        .sub_path(path, value, base_value, instruction.span)?;
+                }
+                InstructionKind::MulHostPath {
+                    root,
+                    segments,
+                    rhs,
+                } => {
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    host_patches::apply_host_path_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        segments,
+                        *rhs,
+                        host_patches::HostNumericPatch::Mul,
+                        &mut symbols,
+                    )?;
+                }
+                InstructionKind::DivHostPath {
+                    root,
+                    segments,
+                    rhs,
+                } => {
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    host_patches::apply_host_path_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        segments,
+                        *rhs,
+                        host_patches::HostNumericPatch::Div,
+                        &mut symbols,
+                    )?;
+                }
+                InstructionKind::RemHostPath {
+                    root,
+                    segments,
+                    rhs,
+                } => {
+                    let mut symbols = self.host_path_symbols.borrow_mut();
+                    host_patches::apply_host_path_numeric_patch(
+                        host_patches::HostPatchRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref(),
+                            budget: budget.as_deref(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
+                        segments,
+                        *rhs,
+                        host_patches::HostNumericPatch::Rem,
+                        &mut symbols,
+                    )?;
                 }
                 InstructionKind::PushHostPath {
                     root,

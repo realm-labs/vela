@@ -2,7 +2,8 @@ use vela_common::Span;
 
 use crate::{
     HostError, HostErrorKind, HostPath, HostRef, HostResult, HostValue, Patch, PatchOp,
-    ScriptStateAdapter, add_values, overlay::PatchOverlay, push_value, sub_values,
+    ScriptStateAdapter, add_values, div_values, mul_values, overlay::PatchOverlay, push_value,
+    rem_values, sub_values,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -104,6 +105,75 @@ impl PatchTx {
         self.patches.push(Patch {
             path: path.clone(),
             op: PatchOp::Sub(value),
+            expected_base,
+            source_span,
+        });
+        self.overlay.set_value(path, next);
+        Ok(())
+    }
+
+    pub fn mul_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let expected_base = self.overlay.expected_base(&path, &base_value);
+        let current = self.overlay_value_or_base(&path, base_value, source_span)?;
+        let next = mul_values(&current, &value).ok_or_else(|| {
+            HostError::new(HostErrorKind::InvalidMul { path: path.clone() })
+                .with_source_span(source_span)
+        })?;
+        self.patches.push(Patch {
+            path: path.clone(),
+            op: PatchOp::Mul(value),
+            expected_base,
+            source_span,
+        });
+        self.overlay.set_value(path, next);
+        Ok(())
+    }
+
+    pub fn div_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let expected_base = self.overlay.expected_base(&path, &base_value);
+        let current = self.overlay_value_or_base(&path, base_value, source_span)?;
+        let next = div_values(&current, &value).ok_or_else(|| {
+            HostError::new(HostErrorKind::InvalidDiv { path: path.clone() })
+                .with_source_span(source_span)
+        })?;
+        self.patches.push(Patch {
+            path: path.clone(),
+            op: PatchOp::Div(value),
+            expected_base,
+            source_span,
+        });
+        self.overlay.set_value(path, next);
+        Ok(())
+    }
+
+    pub fn rem_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let expected_base = self.overlay.expected_base(&path, &base_value);
+        let current = self.overlay_value_or_base(&path, base_value, source_span)?;
+        let next = rem_values(&current, &value).ok_or_else(|| {
+            HostError::new(HostErrorKind::InvalidRem { path: path.clone() })
+                .with_source_span(source_span)
+        })?;
+        self.patches.push(Patch {
+            path: path.clone(),
+            op: PatchOp::Rem(value),
             expected_base,
             source_span,
         });

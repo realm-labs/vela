@@ -387,12 +387,42 @@ pub enum InstructionKind {
         field: FieldId,
         rhs: Register,
     },
+    MulHostField {
+        root: Register,
+        field: FieldId,
+        rhs: Register,
+    },
+    DivHostField {
+        root: Register,
+        field: FieldId,
+        rhs: Register,
+    },
+    RemHostField {
+        root: Register,
+        field: FieldId,
+        rhs: Register,
+    },
     AddHostPath {
         root: Register,
         segments: Vec<HostPathSegment>,
         rhs: Register,
     },
     SubHostPath {
+        root: Register,
+        segments: Vec<HostPathSegment>,
+        rhs: Register,
+    },
+    MulHostPath {
+        root: Register,
+        segments: Vec<HostPathSegment>,
+        rhs: Register,
+    },
+    DivHostPath {
+        root: Register,
+        segments: Vec<HostPathSegment>,
+        rhs: Register,
+    },
+    RemHostPath {
         root: Register,
         segments: Vec<HostPathSegment>,
         rhs: Register,

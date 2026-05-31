@@ -81,6 +81,39 @@ impl PathProxy {
         tx.sub_path(self.path.clone(), value, base_value, source_span)
     }
 
+    pub fn mul(
+        &self,
+        adapter: &(impl ScriptStateAdapter + ?Sized),
+        tx: &mut PatchTx,
+        value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
+        tx.mul_path(self.path.clone(), value, base_value, source_span)
+    }
+
+    pub fn div(
+        &self,
+        adapter: &(impl ScriptStateAdapter + ?Sized),
+        tx: &mut PatchTx,
+        value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
+        tx.div_path(self.path.clone(), value, base_value, source_span)
+    }
+
+    pub fn rem(
+        &self,
+        adapter: &(impl ScriptStateAdapter + ?Sized),
+        tx: &mut PatchTx,
+        value: HostValue,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
+        tx.rem_path(self.path.clone(), value, base_value, source_span)
+    }
+
     pub fn push(
         &self,
         adapter: &(impl ScriptStateAdapter + ?Sized),

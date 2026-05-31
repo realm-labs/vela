@@ -3878,6 +3878,50 @@ fn main(player) {
 }
 
 #[test]
+fn compiled_source_applies_host_numeric_compound_assignments_through_patch_tx() {
+    let host_ref = player_ref(3);
+    let stats = FieldId::new(8);
+    let level = FieldId::new(9);
+    let stats_level = HostPath::new(host_ref).field(stats).field(level);
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    player.stats.level *= 3;
+    player.stats.level /= 2;
+    player.stats.level %= 5;
+    return player.stats.level;
+}
+"#,
+        &CompilerOptions::new()
+            .with_host_field("stats", stats)
+            .with_host_field("level", level),
+    )
+    .expect("compile nested host numeric compound source");
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(stats_level.clone(), HostValue::Int(4));
+    let mut tx = PatchTx::new();
+
+    let result = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+    };
+
+    assert_eq!(result, Ok(Value::Int(1)));
+    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(4)));
+    assert_eq!(tx.patches().len(), 3);
+    assert_eq!(tx.patches()[0].op, PatchOp::Mul(HostValue::Int(3)));
+    assert_eq!(tx.patches()[1].op, PatchOp::Div(HostValue::Int(2)));
+    assert_eq!(tx.patches()[2].op, PatchOp::Rem(HostValue::Int(5)));
+    tx.apply(&mut adapter)
+        .expect("apply nested host numeric compound patches");
+    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
+}
+
+#[test]
 fn compiled_source_pushes_host_path_through_patch_tx() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);

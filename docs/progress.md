@@ -2075,6 +2075,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   named arguments and declared default values while still storing payloads in
   stable positional enum fields, and the shared conformance fixture executes
   the named/default constructor path.
+- Filled an M9/M11 host compound-assignment gap. Host field and HostPath
+  targets now lower and execute `*=`, `/=`, and `%=` through PatchTx
+  Mul/Div/Rem patches with transaction overlay reads and safe-point apply.
 
 ## Next
 

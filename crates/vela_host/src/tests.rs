@@ -59,6 +59,15 @@ fn path_proxy_records_rmw_push_remove_and_calls() {
     PathProxy::new(level.clone())
         .sub(&adapter, &mut tx, HostValue::Int(1), None)
         .expect("record sub through proxy");
+    PathProxy::new(level.clone())
+        .mul(&adapter, &mut tx, HostValue::Int(3), None)
+        .expect("record mul through proxy");
+    PathProxy::new(level.clone())
+        .div(&adapter, &mut tx, HostValue::Int(2), None)
+        .expect("record div through proxy");
+    PathProxy::new(level.clone())
+        .rem(&adapter, &mut tx, HostValue::Int(5), None)
+        .expect("record rem through proxy");
     PathProxy::new(rewards.clone())
         .push(&adapter, &mut tx, HostValue::String("gold".into()), None)
         .expect("record push through proxy");
@@ -72,13 +81,16 @@ fn path_proxy_records_rmw_push_remove_and_calls() {
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(9)));
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
     assert_eq!(tx.patches()[1].op, PatchOp::Sub(HostValue::Int(1)));
+    assert_eq!(tx.patches()[2].op, PatchOp::Mul(HostValue::Int(3)));
+    assert_eq!(tx.patches()[3].op, PatchOp::Div(HostValue::Int(2)));
+    assert_eq!(tx.patches()[4].op, PatchOp::Rem(HostValue::Int(5)));
     assert_eq!(
-        tx.patches()[2].op,
+        tx.patches()[5].op,
         PatchOp::Push(HostValue::String("gold".into()))
     );
-    assert_eq!(tx.patches()[3].op, PatchOp::Remove);
+    assert_eq!(tx.patches()[6].op, PatchOp::Remove);
     assert_eq!(
-        tx.patches()[4].op,
+        tx.patches()[7].op,
         PatchOp::CallHostMethod {
             method,
             args: vec![HostValue::Int(5)]
@@ -155,6 +167,24 @@ fn sub_path_uses_previous_overlay_value() {
         .expect("sub path");
 
     assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(7)));
+}
+
+#[test]
+fn numeric_compound_paths_record_patches_and_update_overlay() {
+    let mut tx = PatchTx::new();
+    let path = level_path();
+
+    tx.mul_path(path.clone(), HostValue::Int(3), HostValue::Int(4), None)
+        .expect("mul path");
+    tx.div_path(path.clone(), HostValue::Int(2), HostValue::Int(0), None)
+        .expect("div path");
+    tx.rem_path(path.clone(), HostValue::Int(5), HostValue::Int(0), None)
+        .expect("rem path");
+
+    assert_eq!(tx.patches()[0].op, PatchOp::Mul(HostValue::Int(3)));
+    assert_eq!(tx.patches()[1].op, PatchOp::Div(HostValue::Int(2)));
+    assert_eq!(tx.patches()[2].op, PatchOp::Rem(HostValue::Int(5)));
+    assert_eq!(tx.read_overlay(&path), Some(&HostValue::Int(1)));
 }
 
 #[test]

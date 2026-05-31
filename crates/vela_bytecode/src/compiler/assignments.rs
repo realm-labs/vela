@@ -283,10 +283,50 @@ impl Compiler<'_> {
                     });
                 }
             }
-            AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "compound assignment operator",
-                )));
+            AssignOp::Mul => {
+                if let Some(field) = field {
+                    self.emit(InstructionKind::MulHostField {
+                        root,
+                        field,
+                        rhs: src,
+                    });
+                } else {
+                    self.emit(InstructionKind::MulHostPath {
+                        root,
+                        segments: segments.expect("host path segments"),
+                        rhs: src,
+                    });
+                }
+            }
+            AssignOp::Div => {
+                if let Some(field) = field {
+                    self.emit(InstructionKind::DivHostField {
+                        root,
+                        field,
+                        rhs: src,
+                    });
+                } else {
+                    self.emit(InstructionKind::DivHostPath {
+                        root,
+                        segments: segments.expect("host path segments"),
+                        rhs: src,
+                    });
+                }
+            }
+            AssignOp::Rem => {
+                if let Some(field) = field {
+                    self.emit(InstructionKind::RemHostField {
+                        root,
+                        field,
+                        rhs: src,
+                    });
+                } else {
+                    self.emit(InstructionKind::RemHostPath {
+                        root,
+                        segments: segments.expect("host path segments"),
+                        rhs: src,
+                    });
+                }
             }
         }
         Ok(src)

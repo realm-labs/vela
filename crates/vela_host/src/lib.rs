@@ -19,7 +19,7 @@ pub use proxy::PathProxy;
 pub use tx::{HostObjectSnapshot, PatchTx};
 pub use value::HostValue;
 
-pub(crate) use value::{add_values, push_value, sub_values};
+pub(crate) use value::{add_values, div_values, mul_values, push_value, rem_values, sub_values};
 
 #[cfg(test)]
 mod tests;

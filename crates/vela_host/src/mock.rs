@@ -4,7 +4,8 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
     HostError, HostErrorKind, HostObjectSnapshot, HostPath, HostRef, HostResult, HostValue, Patch,
-    PatchOp, PatchTx, ScriptStateAdapter, add_values, push_value, sub_values,
+    PatchOp, PatchTx, ScriptStateAdapter, add_values, div_values, mul_values, push_value,
+    rem_values, sub_values,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -171,6 +172,9 @@ impl ScriptStateAdapter for MockStateAdapter {
                 PatchOp::Set(_)
                 | PatchOp::Add(_)
                 | PatchOp::Sub(_)
+                | PatchOp::Mul(_)
+                | PatchOp::Div(_)
+                | PatchOp::Rem(_)
                 | PatchOp::Push(_)
                 | PatchOp::Remove => self.validate_access(&patch.path, "write"),
                 PatchOp::CallHostMethod { method, .. }
@@ -207,6 +211,33 @@ impl ScriptStateAdapter for MockStateAdapter {
                     let current = self.read_path(&patch.path)?;
                     let next = sub_values(&current, &value).ok_or_else(|| {
                         HostError::new(HostErrorKind::InvalidSub {
+                            path: patch.path.clone(),
+                        })
+                    })?;
+                    self.write_path(&patch.path, next)
+                }
+                PatchOp::Mul(value) => {
+                    let current = self.read_path(&patch.path)?;
+                    let next = mul_values(&current, &value).ok_or_else(|| {
+                        HostError::new(HostErrorKind::InvalidMul {
+                            path: patch.path.clone(),
+                        })
+                    })?;
+                    self.write_path(&patch.path, next)
+                }
+                PatchOp::Div(value) => {
+                    let current = self.read_path(&patch.path)?;
+                    let next = div_values(&current, &value).ok_or_else(|| {
+                        HostError::new(HostErrorKind::InvalidDiv {
+                            path: patch.path.clone(),
+                        })
+                    })?;
+                    self.write_path(&patch.path, next)
+                }
+                PatchOp::Rem(value) => {
+                    let current = self.read_path(&patch.path)?;
+                    let next = rem_values(&current, &value).ok_or_else(|| {
+                        HostError::new(HostErrorKind::InvalidRem {
                             path: patch.path.clone(),
                         })
                     })?;

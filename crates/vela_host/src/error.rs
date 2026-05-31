@@ -76,6 +76,15 @@ pub enum HostErrorKind {
     InvalidSub {
         path: HostPath,
     },
+    InvalidMul {
+        path: HostPath,
+    },
+    InvalidDiv {
+        path: HostPath,
+    },
+    InvalidRem {
+        path: HostPath,
+    },
     InvalidPush {
         path: HostPath,
     },

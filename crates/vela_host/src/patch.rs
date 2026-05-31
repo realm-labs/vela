@@ -15,6 +15,9 @@ pub enum PatchOp {
     Set(HostValue),
     Add(HostValue),
     Sub(HostValue),
+    Mul(HostValue),
+    Div(HostValue),
+    Rem(HostValue),
     Remove,
     Push(HostValue),
     CallHostMethod {
