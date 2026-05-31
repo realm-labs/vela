@@ -2096,6 +2096,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `reflect.permissions()` and `reflect.has_permission(...)` under the
   permissioned demo Engine policy before performing controlled reflective host
   writes and calls.
+- Filled an M9 nested script record assignment gap. Record paths such as
+  `player.stats.level += 1` now lower by updating the leaf record field and
+  writing modified intermediate records back to the root local, with focused VM
+  coverage and shared core-language conformance coverage.
 
 ## Next
 

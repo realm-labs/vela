@@ -27,5 +27,5 @@ fn core_language_fixture_executes() {
         .run_program(&program, "conformance.core.main", &[])
         .expect("core language conformance fixture should run");
 
-    assert_eq!(result, Value::Int(168));
+    assert_eq!(result, Value::Int(179));
 }

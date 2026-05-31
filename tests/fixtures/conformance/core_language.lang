@@ -10,6 +10,15 @@ struct Reward {
     count: int,
 }
 
+struct Stats {
+    level: int,
+    exp: int,
+}
+
+struct Player {
+    stats: Stats,
+}
+
 enum QuestState {
     Active { id: string, count: int },
     Done { id: string },
@@ -82,6 +91,15 @@ fn main() {
     let result: int = result_bonus(true)?;
     let mapped: map = {"gold": reward.count, "quest": quest_score}
         .map_values(|key, value| key.len() + value);
+    let player: Player = Player {
+        stats: Stats {
+            level: 2,
+            exp: 5,
+        },
+    };
+    player.stats.level += 3;
+    player.stats.exp = player.stats.level + 1;
+    let nested_score: int = player.stats.level + player.stats.exp;
     let no_else_score: int = {
         let maybe = if false {
             9;
@@ -109,6 +127,7 @@ fn main() {
         + result
         + mapped["gold"]
         + mapped["quest"]
+        + nested_score
         + no_else_score
         + imported_bonus
         + imported_match;

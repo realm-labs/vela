@@ -4868,6 +4868,38 @@ fn main() {
     }
 
     #[test]
+    fn compiler_lowers_nested_record_field_writes() {
+        let code = compile_function_source(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let player = Player {
+        stats: Stats {
+            level: 2,
+            exp: 5,
+        },
+    };
+    player.stats.level += 3;
+    player.stats.exp = player.stats.level + 1;
+    return player.stats.level + player.stats.exp;
+}
+"#,
+            "main",
+        )
+        .expect("nested record field writes should compile");
+
+        assert!(
+            code.instructions
+                .iter()
+                .filter(|instruction| {
+                    matches!(instruction.kind, InstructionKind::SetRecordField { .. })
+                })
+                .count()
+                >= 3
+        );
+    }
+
+    #[test]
     fn compiler_lowers_immediate_record_field_reads_to_slots() {
         let code = compile_function_source(
             SourceId::new(1),

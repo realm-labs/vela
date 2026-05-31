@@ -517,6 +517,30 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_nested_record_field_write_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let player = Player {
+        stats: Stats {
+            level: 2,
+            exp: 5,
+        },
+    };
+    player.stats.level += 3;
+    player.stats.exp = player.stats.level + 1;
+    return player.stats.level + player.stats.exp;
+}
+"#,
+        "main",
+    )
+    .expect("compile nested record field write source");
+
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(11)));
+}
+
+#[test]
 fn managed_heap_execution_writes_heap_index_values() {
     let program = compile_program_source(
         SourceId::new(1),

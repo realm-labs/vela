@@ -11,8 +11,8 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct RecordFieldAssignmentTarget {
-    record: Register,
-    field: String,
+    root: Register,
+    fields: Vec<String>,
     slot: Option<usize>,
 }
 
@@ -137,22 +137,28 @@ impl Compiler<'_> {
     ) -> CompileResult<Option<RecordFieldAssignmentTarget>> {
         match &target.kind {
             ExprKind::Path(path) => {
-                let [record, field] = path.as_slice() else {
+                let Some((record, fields)) = record_path_parts(path) else {
                     return Ok(None);
                 };
-                let slot = self.script_record_field_slot_for_path_root(target.span, record, field);
-                if slot.is_none() && self.facts.options.host_fields.contains_key(field) {
+                if host_field_path(&self.facts.options, target).is_some() {
                     return Ok(None);
                 }
+                let slot = match fields.as_slice() {
+                    [field] => self.script_record_field_slot_for_path_root(
+                        target.span,
+                        record,
+                        field.as_str(),
+                    ),
+                    _ => None,
+                };
                 Ok(Some(RecordFieldAssignmentTarget {
-                    record: self.local_register_at_span(target.span, record)?,
-                    field: field.clone(),
+                    root: self.local_register_at_span(target.span, record)?,
+                    fields,
                     slot,
                 }))
             }
             ExprKind::Field { base, name } => {
-                let slot = self.script_record_field_slot_for_receiver(base, name);
-                if slot.is_none() && self.facts.options.host_fields.contains_key(name) {
+                if host_field_path(&self.facts.options, target).is_some() {
                     return Ok(None);
                 }
                 let ExprKind::Path(path) = &base.kind else {
@@ -160,14 +166,18 @@ impl Compiler<'_> {
                         "record field assignment target",
                     )));
                 };
-                let [record] = path.as_slice() else {
+                let Some((record, mut fields)) = record_field_base_parts(path) else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "record field assignment target",
                     )));
                 };
+                fields.push(name.clone());
+                let slot = (fields.len() == 1)
+                    .then(|| self.script_record_field_slot_for_receiver(base, name))
+                    .flatten();
                 Ok(Some(RecordFieldAssignmentTarget {
-                    record: self.local_register_at_span(base.span, record)?,
-                    field: name.clone(),
+                    root: self.local_register_at_span(base.span, record)?,
+                    fields,
                     slot,
                 }))
             }
@@ -181,6 +191,19 @@ impl Compiler<'_> {
         target: RecordFieldAssignmentTarget,
         value: &Expr,
     ) -> CompileResult<Register> {
+        if target.fields.len() > 1 {
+            return self.compile_nested_record_field_assignment(
+                op,
+                target.root,
+                target.fields,
+                value,
+            );
+        }
+        let [field] = target.fields.as_slice() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "record field assignment target",
+            )));
+        };
         let assigned = match op {
             AssignOp::Set => self.compile_expr(value)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
@@ -188,15 +211,15 @@ impl Compiler<'_> {
                 if let Some(slot) = target.slot {
                     self.emit(InstructionKind::GetRecordSlot {
                         dst: current,
-                        record: target.record,
-                        field: target.field.clone(),
+                        record: target.root,
+                        field: field.clone(),
                         slot,
                     });
                 } else {
                     self.emit(InstructionKind::GetRecordField {
                         dst: current,
-                        record: target.record,
-                        field: target.field.clone(),
+                        record: target.root,
+                        field: field.clone(),
                     });
                 }
                 let rhs = self.compile_expr(value)?;
@@ -209,16 +232,82 @@ impl Compiler<'_> {
         };
         if let Some(slot) = target.slot {
             self.emit(InstructionKind::SetRecordSlot {
-                record: target.record,
-                field: target.field,
+                record: target.root,
+                field: field.clone(),
                 slot,
                 src: assigned,
             });
         } else {
             self.emit(InstructionKind::SetRecordField {
-                record: target.record,
-                field: target.field,
+                record: target.root,
+                field: field.clone(),
                 src: assigned,
+            });
+        }
+        Ok(assigned)
+    }
+
+    fn compile_nested_record_field_assignment(
+        &mut self,
+        op: AssignOp,
+        root: Register,
+        fields: Vec<String>,
+        value: &Expr,
+    ) -> CompileResult<Register> {
+        let mut records = vec![root];
+        for field in fields.iter().take(fields.len().saturating_sub(1)) {
+            let dst = self.alloc_register()?;
+            let record = *records
+                .last()
+                .expect("nested record assignment always has root");
+            self.emit(InstructionKind::GetRecordField {
+                dst,
+                record,
+                field: field.clone(),
+            });
+            records.push(dst);
+        }
+
+        let leaf_record = *records
+            .last()
+            .expect("nested record assignment always has leaf parent");
+        let leaf_field = fields
+            .last()
+            .expect("nested record assignment has at least one field")
+            .clone();
+        let assigned = match op {
+            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                self.emit(InstructionKind::GetRecordField {
+                    dst: current,
+                    record: leaf_record,
+                    field: leaf_field.clone(),
+                });
+                let rhs = self.compile_expr(value)?;
+                let dst = self.alloc_register()?;
+                self.emit(compound_assignment_instruction_or_error(
+                    op, dst, current, rhs,
+                )?);
+                dst
+            }
+        };
+
+        self.emit(InstructionKind::SetRecordField {
+            record: leaf_record,
+            field: leaf_field,
+            src: assigned,
+        });
+        for (index, field) in fields
+            .iter()
+            .take(fields.len().saturating_sub(1))
+            .enumerate()
+            .rev()
+        {
+            self.emit(InstructionKind::SetRecordField {
+                record: records[index],
+                field: field.clone(),
+                src: records[index + 1],
             });
         }
         Ok(assigned)
@@ -348,6 +437,18 @@ impl Compiler<'_> {
         }
         Ok(path)
     }
+}
+
+fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
+    if path.len() < 2 {
+        return None;
+    }
+    record_field_base_parts(path)
+}
+
+fn record_field_base_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
+    let root = path.first()?;
+    Some((root.as_str(), path[1..].to_vec()))
 }
 
 fn compound_assignment_instruction_or_error(
