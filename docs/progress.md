@@ -2386,6 +2386,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   stdlib collection, and managed-heap materialization workloads after compile
   time, reporting release-profile timing summaries and checksums; `--quick`
   provides a short validation mode.
+- Kept M13 Option/Result propagation helpers reviewable by splitting value
+  methods into focused VM modules for enum access, receiver predicates, simple
+  value methods, and callback-driven methods. Existing inline and managed-heap
+  behavior is preserved while future propagation helpers have clearer module
+  boundaries.
 
 ## Next
 
