@@ -2275,6 +2275,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `math.min`, `math.clamp`, `math.sign`, rounding helpers, and `math.abs`
   now keep their finite-number and integer-preserving behavior separate from
   interpolation, movement, distance, and power helpers.
+- Split M13 interpolation and movement math natives into a focused VM module.
+  `math.lerp` and `math.move_towards` now keep finite-output validation,
+  negative-delta rejection, and integer-preserving stepping separate from
+  scalar, distance, and power helpers.
 
 ## Next
 
