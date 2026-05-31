@@ -2339,6 +2339,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   game-server `reflect_debug` script now verifies `Context.emit` and
   `Context.log` method metadata, parameters, callable access, and event-effect
   flags through the same CLI path that applies reflected event patches.
+- Split M11 host bridge tests into focused proxy, transaction overlay,
+  safe-point apply, and permission/freshness modules. HostPath, PathProxy, and
+  PatchTx coverage now stays aligned with the production module boundaries
+  instead of growing one catch-all host test file.
 
 ## Next
 
