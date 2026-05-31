@@ -2228,6 +2228,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `merge` plus set construction, union, intersection, difference, symmetric
   difference, subset/superset, disjoint, and membership checks through the HIR,
   compiler, and VM path.
+- Split M14 Engine argument-conversion coverage out of the large internal
+  Engine test module into a focused integration test. `args!`, `host!`,
+  Option/Result/set conversions, owned Rust extraction, and Runtime call
+  argument plumbing now exercise only the public Engine API surface.
 
 ## Next
 
