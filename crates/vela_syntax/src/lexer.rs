@@ -137,6 +137,7 @@ impl<'src> Lexer<'src> {
                     return;
                 }
                 '\\' => {
+                    let escape_start = self.offset;
                     self.bump_char();
                     if let Some(escaped) = self.peek_char() {
                         if escaped == 'u' && self.peek_next_char() == Some('{') {
@@ -154,7 +155,10 @@ impl<'src> Lexer<'src> {
                             '"' => '"',
                             '\\' => '\\',
                             '/' => '/',
-                            other => other,
+                            other => {
+                                self.push_string_escape_diagnostic(escape_start);
+                                other
+                            }
                         };
                         value.push(decoded);
                     }
@@ -233,6 +237,14 @@ impl<'src> Lexer<'src> {
         self.diagnostics.push(
             Diagnostic::error("invalid unicode escape")
                 .with_code("E_LEX_UNICODE_ESCAPE")
+                .with_span(self.span(start, self.offset)),
+        );
+    }
+
+    fn push_string_escape_diagnostic(&mut self, start: usize) {
+        self.diagnostics.push(
+            Diagnostic::error("invalid string escape")
+                .with_code("E_LEX_STRING_ESCAPE")
                 .with_span(self.span(start, self.offset)),
         );
     }

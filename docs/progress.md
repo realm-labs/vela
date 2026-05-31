@@ -2164,6 +2164,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Tightened M13 `math.lerp` numeric safety. The helper now rejects
   non-finite interpolation results even when all inputs are finite, matching
   the finite-output policy used by the other deterministic math helpers.
+- Tightened M9 string literal grammar conformance. Unsupported backslash
+  escapes now produce `E_LEX_STRING_ESCAPE` diagnostics instead of silently
+  accepting non-grammar escape forms, while supported escapes and Unicode
+  escapes continue to lex normally.
 
 ## Next
 

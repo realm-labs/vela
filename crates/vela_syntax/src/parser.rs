@@ -1580,6 +1580,22 @@ mod tests {
     }
 
     #[test]
+    fn diagnoses_invalid_string_escapes() {
+        let lexed = lex(source_id(), r#""quest\qtag""#);
+
+        assert_eq!(lexed.tokens[0].kind, TokenKind::String("questqtag".into()));
+        assert_eq!(lexed.diagnostics.len(), 1);
+        assert_eq!(
+            lexed.diagnostics[0].code.as_deref(),
+            Some("E_LEX_STRING_ESCAPE")
+        );
+        assert_eq!(
+            lexed.diagnostics[0].span,
+            Some(Span::new(source_id(), 6, 8))
+        );
+    }
+
+    #[test]
     fn parses_core_module_items() {
         let parsed = parse_source(
             source_id(),
