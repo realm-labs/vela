@@ -4,39 +4,16 @@ use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 mod affix;
 mod parsing;
 mod search;
+mod slicing;
 mod splitting;
 mod transform;
 
 pub(crate) use affix::{strip_prefix, strip_suffix};
 pub(crate) use parsing::{parse_bool, parse_float, parse_int};
 pub(crate) use search::{char_at, contains, ends_with, find, starts_with};
+pub(crate) use slicing::slice;
 pub(crate) use splitting::{split, split_lines, split_whitespace};
 pub(crate) use transform::{repeat, replace, to_lower, to_upper, trim, trim_end, trim_start};
-
-pub(crate) fn slice(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("slice", args, 2)?;
-    let value = string_value(receiver, heap, "method slice")?;
-    let start = index_value(&args[0], "method slice")?;
-    let end = index_value(&args[1], "method slice")?;
-    let char_len = value.chars().count();
-    if start > end {
-        return type_error("method slice range");
-    }
-    if start > char_len {
-        return Err(index_out_of_bounds(start, char_len));
-    }
-    if end > char_len {
-        return Err(index_out_of_bounds(end, char_len));
-    }
-
-    let start_byte = char_byte_index(value, start);
-    let end_byte = char_byte_index(value, end);
-    Ok(Value::String(value[start_byte..end_byte].to_owned()))
-}
 
 pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
     match value {
@@ -84,23 +61,6 @@ pub(super) fn index_value(value: &Value, operation: &'static str) -> VmResult<us
         Value::Int(value) if *value >= 0 => Ok(*value as usize),
         _ => type_error(operation),
     }
-}
-
-fn char_byte_index(value: &str, index: usize) -> usize {
-    if index == 0 {
-        return 0;
-    }
-    value
-        .char_indices()
-        .nth(index)
-        .map_or(value.len(), |(byte, _)| byte)
-}
-
-fn index_out_of_bounds(index: usize, len: usize) -> VmError {
-    VmError::new(VmErrorKind::IndexOutOfBounds {
-        index: i64::try_from(index).unwrap_or(i64::MAX),
-        len,
-    })
 }
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {

@@ -2268,6 +2268,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   `to_upper`, `to_lower`, `trim`, `replace`, and `repeat` now keep their
   deterministic string materialization and repeat overflow guard separate from
   search, affix, slice, parsing, and splitting helpers.
+- Split M13 Unicode-aware string slicing into a focused VM module. `slice`
+  now keeps character-index to byte-index conversion and range diagnostics
+  separate from search, affix, transform, parsing, and splitting helpers.
 
 ## Next
 
