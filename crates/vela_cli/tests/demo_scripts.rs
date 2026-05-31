@@ -87,6 +87,14 @@ fn context_clock_demo_runs_through_cli() {
 }
 
 #[test]
+fn gameplay_helpers_demo_runs_through_cli() {
+    assert_eq!(
+        run_demo("gameplay_helpers.lang"),
+        "result=Int(9) level=Int(9) patches=0\n"
+    );
+}
+
+#[test]
 fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.lang"),

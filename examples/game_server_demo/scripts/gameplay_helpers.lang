@@ -1,0 +1,23 @@
+fn main() {
+    let command = "reward:gold count=3 enabled=true";
+    let parts = command.replace(":", " ").split_whitespace();
+    let item = parts[1];
+    let count_text = parts[2].strip_prefix("count=").unwrap_or("0");
+    let enabled_text = parts[3].strip_prefix("enabled=").unwrap_or("false");
+    let count = count_text.parse_int().unwrap_or(0);
+    let enabled = enabled_text.parse_bool().unwrap_or(false);
+    let tags = set.from_array(["reward", item, "daily", item]);
+    let tag_prefix = item.char_at(0).unwrap_or("");
+    let distance = math.distance2d(0, 0, 3, 4);
+    let step = math.move_towards(0, 10, count);
+
+    if enabled
+        && tag_prefix == "g"
+        && tags.has("gold")
+        && tags.len() == 3
+        && math.floor(distance) == 5
+    {
+        return step + count + tags.len();
+    }
+    return 0;
+}

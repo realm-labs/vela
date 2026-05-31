@@ -2187,6 +2187,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   Syntax checking, HIR module graph setup, const evaluation, script function
   symbol discovery, script field slots, and schema-default collection now live
   outside the compiler coordinator while preserving emitted bytecode behavior.
+- Added an M13/M17 gameplay helper demo script. The CLI suite now runs a
+  parameterless game-server fixture that parses command text with string and
+  Option helpers, builds deterministic tag sets, and uses gameplay math helpers
+  through the same Engine-installed standard library path as the host demos.
 
 ## Next
 
