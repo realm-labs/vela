@@ -1,0 +1,454 @@
+use std::collections::{BTreeMap, BTreeSet};
+
+use vela_common::SourceId;
+use vela_hir::{
+    BindingMap, DeclarationKind, FunctionSignature, HirDeclId, ImportResolution, ModuleGraph,
+    ModuleId, ModulePath, ModuleSource, ParamHint,
+};
+use vela_syntax::{FunctionItem, ItemKind, SourceFile, parse_source};
+
+use crate::Constant;
+
+use super::const_eval::evaluate_const_expr;
+use super::error::{CompileError, CompileErrorKind, CompileResult};
+use super::field_slots::ScriptFieldSlots;
+use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
+use super::script_impls;
+
+pub(super) struct SemanticSource {
+    parsed: SourceFile,
+    graph: ModuleGraph,
+    module: ModuleId,
+}
+
+pub(super) struct SemanticModules {
+    parsed: BTreeMap<ModuleId, SourceFile>,
+    graph: ModuleGraph,
+    modules: Vec<ModuleId>,
+}
+
+impl SemanticSource {
+    pub(super) fn function(
+        &self,
+        name: &str,
+    ) -> Option<(&FunctionItem, &FunctionSignature, &BindingMap)> {
+        let declaration = self.function_declaration(name)?;
+        let signature = self.graph.function_signature(declaration)?;
+        let bindings = self.graph.bindings(declaration)?;
+        let function = self.parsed.items.iter().find_map(|item| match &item.kind {
+            ItemKind::Function(function) if function.name == name => Some(function),
+            _ => None,
+        })?;
+        Some((function, signature, bindings))
+    }
+
+    pub(super) fn script_function_names(&self) -> BTreeSet<String> {
+        let Some(declarations) = self.graph.module(self.module) else {
+            return BTreeSet::new();
+        };
+        declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = declarations.get(name)?;
+                let declaration = self.graph.declaration(declaration)?;
+                (declaration.kind == DeclarationKind::Function).then(|| name.to_owned())
+            })
+            .collect()
+    }
+
+    pub(super) fn script_function_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        let Some(declarations) = self.graph.module(self.module) else {
+            return BTreeMap::new();
+        };
+        declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = declarations.get(name)?;
+                let metadata = self.graph.declaration(declaration)?;
+                (metadata.kind == DeclarationKind::Function).then(|| (declaration, name.to_owned()))
+            })
+            .collect()
+    }
+
+    pub(super) fn script_function_signatures(&self) -> BTreeMap<HirDeclId, Vec<ParamHint>> {
+        self.script_function_symbols()
+            .keys()
+            .filter_map(|declaration| {
+                self.graph
+                    .function_signature(*declaration)
+                    .map(|signature| (*declaration, signature.params.clone()))
+            })
+            .collect()
+    }
+
+    pub(super) fn type_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        let Some(declarations) = self.graph.module(self.module) else {
+            return BTreeMap::new();
+        };
+        declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = declarations.get(name)?;
+                let metadata = self.graph.declaration(declaration)?;
+                matches!(
+                    metadata.kind,
+                    DeclarationKind::Struct | DeclarationKind::Enum
+                )
+                .then(|| (declaration, name.to_owned()))
+            })
+            .collect()
+    }
+
+    pub(super) fn script_field_slots(
+        &self,
+        type_symbols: &BTreeMap<HirDeclId, String>,
+    ) -> ScriptFieldSlots {
+        ScriptFieldSlots::from_graph(&self.graph, type_symbols)
+    }
+
+    pub(super) fn schema_defaults(
+        &self,
+        type_symbols: &BTreeMap<HirDeclId, String>,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> ScriptSchemaDefaults {
+        source_schema_defaults(
+            &self.parsed,
+            &self.graph,
+            self.module,
+            type_symbols,
+            self.const_values_by_name(const_values),
+        )
+    }
+
+    pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
+        let mut values_by_declaration = BTreeMap::new();
+        let mut values_by_name = BTreeMap::new();
+        for item in &self.parsed.items {
+            let ItemKind::Const(item) = &item.kind else {
+                continue;
+            };
+            let Some(declaration) = self
+                .graph
+                .module(self.module)
+                .and_then(|m| m.get(&item.name))
+            else {
+                continue;
+            };
+            if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
+                values_by_declaration.insert(declaration, value.clone());
+                values_by_name.insert(item.name.clone(), value);
+            }
+        }
+        Ok(values_by_declaration)
+    }
+
+    pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
+        script_impls::source_methods(&self.parsed, &self.graph, self.module)
+    }
+
+    fn const_values_by_name(
+        &self,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> BTreeMap<String, Constant> {
+        let mut values = BTreeMap::new();
+        let Some(declarations) = self.graph.module(self.module) else {
+            return values;
+        };
+        for item in &self.parsed.items {
+            let ItemKind::Const(item) = &item.kind else {
+                continue;
+            };
+            let Some(declaration) = declarations.get(&item.name) else {
+                continue;
+            };
+            let Some(value) = const_values.get(&declaration).cloned() else {
+                continue;
+            };
+            values.insert(item.name.clone(), value);
+        }
+        values
+    }
+
+    fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
+        let declaration = self.graph.module(self.module)?.get(name)?;
+        let metadata = self.graph.declaration(declaration)?;
+        (metadata.kind == DeclarationKind::Function).then_some(declaration)
+    }
+}
+
+impl SemanticModules {
+    pub(super) fn function(
+        &self,
+        declaration: HirDeclId,
+    ) -> Option<(&FunctionItem, &FunctionSignature, &BindingMap)> {
+        let metadata = self.graph.declaration(declaration)?;
+        let signature = self.graph.function_signature(declaration)?;
+        let bindings = self.graph.bindings(declaration)?;
+        let parsed = self.parsed.get(&metadata.module)?;
+        let function = parsed.items.iter().find_map(|item| match &item.kind {
+            ItemKind::Function(function) if function.name == metadata.name => Some(function),
+            _ => None,
+        })?;
+        Some((function, signature, bindings))
+    }
+
+    pub(super) fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {
+        self.modules
+            .iter()
+            .filter_map(|module| self.graph.module(*module))
+            .flat_map(|declarations| {
+                declarations.names().filter_map(|name| {
+                    let declaration = declarations.get(name)?;
+                    let metadata = self.graph.declaration(declaration)?;
+                    (metadata.kind == DeclarationKind::Function).then_some(declaration)
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn script_function_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        self.modules
+            .iter()
+            .filter_map(|module| {
+                let path = self.graph.module_path(*module)?.join();
+                let declarations = self.graph.module(*module)?;
+                Some((path, declarations))
+            })
+            .flat_map(|(path, declarations)| {
+                declarations.names().filter_map(move |name| {
+                    let declaration = declarations.get(name)?;
+                    let metadata = self.graph.declaration(declaration)?;
+                    (metadata.kind == DeclarationKind::Function)
+                        .then(|| (declaration, format!("{path}.{}", metadata.name)))
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn script_function_signatures(&self) -> BTreeMap<HirDeclId, Vec<ParamHint>> {
+        self.script_function_symbols()
+            .keys()
+            .filter_map(|declaration| {
+                self.graph
+                    .function_signature(*declaration)
+                    .map(|signature| (*declaration, signature.params.clone()))
+            })
+            .collect()
+    }
+
+    pub(super) fn type_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        self.modules
+            .iter()
+            .filter_map(|module| {
+                let path = self.graph.module_path(*module)?.join();
+                let declarations = self.graph.module(*module)?;
+                Some((path, declarations))
+            })
+            .flat_map(|(path, declarations)| {
+                declarations.names().filter_map(move |name| {
+                    let declaration = declarations.get(name)?;
+                    let metadata = self.graph.declaration(declaration)?;
+                    matches!(
+                        metadata.kind,
+                        DeclarationKind::Struct | DeclarationKind::Enum
+                    )
+                    .then(|| (declaration, format!("{path}.{}", metadata.name)))
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn script_field_slots(
+        &self,
+        type_symbols: &BTreeMap<HirDeclId, String>,
+    ) -> ScriptFieldSlots {
+        ScriptFieldSlots::from_graph(&self.graph, type_symbols)
+    }
+
+    pub(super) fn schema_defaults(
+        &self,
+        type_symbols: &BTreeMap<HirDeclId, String>,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> ScriptSchemaDefaults {
+        let mut defaults = ScriptSchemaDefaults::default();
+        for module in &self.modules {
+            let Some(parsed) = self.parsed.get(module) else {
+                continue;
+            };
+            defaults.merge(source_schema_defaults(
+                parsed,
+                &self.graph,
+                *module,
+                type_symbols,
+                self.const_values_by_name(*module, const_values),
+            ));
+        }
+        defaults
+    }
+
+    pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
+        let mut values_by_declaration = BTreeMap::new();
+        loop {
+            let mut progressed = false;
+            for module in &self.modules {
+                let mut previous_values = BTreeMap::new();
+                let Some(parsed) = self.parsed.get(module) else {
+                    continue;
+                };
+                for item in &parsed.items {
+                    let ItemKind::Const(item) = &item.kind else {
+                        continue;
+                    };
+                    let Some(declaration) =
+                        self.graph.module(*module).and_then(|m| m.get(&item.name))
+                    else {
+                        continue;
+                    };
+                    if let Some(value) = values_by_declaration.get(&declaration).cloned() {
+                        previous_values.insert(item.name.clone(), value);
+                        continue;
+                    }
+
+                    let mut values_by_name =
+                        self.imported_const_values(*module, &values_by_declaration);
+                    values_by_name.extend(previous_values.clone());
+                    if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
+                        values_by_declaration.insert(declaration, value.clone());
+                        previous_values.insert(item.name.clone(), value);
+                        progressed = true;
+                    }
+                }
+            }
+            if !progressed {
+                break;
+            }
+        }
+        Ok(values_by_declaration)
+    }
+
+    pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
+        script_impls::module_methods(&self.parsed, &self.graph)
+    }
+
+    fn const_values_by_name(
+        &self,
+        module: ModuleId,
+        const_values: &BTreeMap<HirDeclId, Constant>,
+    ) -> BTreeMap<String, Constant> {
+        let mut values = self.imported_const_values(module, const_values);
+        let Some(parsed) = self.parsed.get(&module) else {
+            return values;
+        };
+        let Some(declarations) = self.graph.module(module) else {
+            return values;
+        };
+        for item in &parsed.items {
+            let ItemKind::Const(item) = &item.kind else {
+                continue;
+            };
+            let Some(declaration) = declarations.get(&item.name) else {
+                continue;
+            };
+            let Some(value) = const_values.get(&declaration).cloned() else {
+                continue;
+            };
+            values.insert(item.name.clone(), value);
+        }
+        values
+    }
+
+    fn imported_const_values(
+        &self,
+        module: ModuleId,
+        values_by_declaration: &BTreeMap<HirDeclId, Constant>,
+    ) -> BTreeMap<String, Constant> {
+        let mut values = BTreeMap::new();
+        let Some(imports) = self.graph.imports(module) else {
+            return values;
+        };
+        for import in imports {
+            let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
+                continue;
+            };
+            let Some(metadata) = self.graph.declaration(declaration) else {
+                continue;
+            };
+            if metadata.kind != DeclarationKind::Const {
+                continue;
+            }
+            let Some(value) = values_by_declaration.get(&declaration).cloned() else {
+                continue;
+            };
+            let Some(name) = import.alias.clone().or_else(|| import.path.last().cloned()) else {
+                continue;
+            };
+            values.insert(name, value);
+        }
+        values
+    }
+}
+
+pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
+    let parsed = parse_checked_source(source, text)?;
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_parsed_source(source, ModulePath::from_dotted("main"), parsed.clone());
+    graph.resolve_imports();
+    if graph.diagnostics().is_empty() {
+        Ok(SemanticSource {
+            parsed,
+            graph,
+            module,
+        })
+    } else {
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            graph.diagnostics().to_vec(),
+        )))
+    }
+}
+
+pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<SemanticModules> {
+    let mut parsed = BTreeMap::new();
+    let mut graph = ModuleGraph::new();
+    let mut modules = Vec::new();
+    let mut syntax_diagnostics = Vec::new();
+
+    for source in sources {
+        let source_file = parse_source(source.id, &source.text);
+        if !source_file.diagnostics.is_empty() {
+            syntax_diagnostics.extend(source_file.diagnostics.clone());
+        }
+        let module = graph.add_parsed_source(source.id, source.path.clone(), source_file.clone());
+        parsed.insert(module, source_file);
+        modules.push(module);
+    }
+
+    if !syntax_diagnostics.is_empty() {
+        return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
+            syntax_diagnostics,
+        )));
+    }
+
+    graph.resolve_imports();
+    if graph.diagnostics().is_empty() {
+        Ok(SemanticModules {
+            parsed,
+            graph,
+            modules,
+        })
+    } else {
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            graph.diagnostics().to_vec(),
+        )))
+    }
+}
+
+fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
+    let parsed = parse_source(source, text);
+    if parsed.diagnostics.is_empty() {
+        Ok(parsed)
+    } else {
+        Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
+            parsed.diagnostics,
+        )))
+    }
+}

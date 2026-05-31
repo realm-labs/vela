@@ -2183,6 +2183,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Moved array `push` and `pop` method implementations into the focused VM
   array method module. The central script method dispatcher now routes those
   calls without owning array mutation and managed-heap slot conversion logic.
+- Split bytecode semantic source preparation into a focused compiler module.
+  Syntax checking, HIR module graph setup, const evaluation, script function
+  symbol discovery, script field slots, and schema-default collection now live
+  outside the compiler coordinator while preserving emitted bytecode behavior.
 
 ## Next
 
