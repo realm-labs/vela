@@ -2138,6 +2138,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   Compiler options can mark host enum payload fields, bytecode preserves them
   as `VariantField` path segments, and a focused VM host-path module routes
   those segments into PatchTx without growing the central dispatch file.
+- Connected M11 variant-field host paths to the stable Engine API path.
+  `compiler_options_from_registry` now installs registered `VariantDesc`
+  payload fields as host variant fields, and Engine coverage proves a
+  schema-registered `player.quest_progress.count += 1` script records a
+  `HostPath::variant_field` PatchTx update.
 
 ## Next
 

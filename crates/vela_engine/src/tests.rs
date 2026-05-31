@@ -3456,6 +3456,63 @@ fn main(player: Player) {
 }
 
 #[test]
+fn engine_compiler_options_lower_registered_host_variant_fields() {
+    let quest_progress = FieldId::new(3);
+    let count = FieldId::new(4);
+    let engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(quest_progress, "quest_progress")),
+        )
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
+                .host_type(HostTypeId::new(2))
+                .variant(
+                    VariantDesc::new(VariantId::new(1), "Active")
+                        .field(FieldDesc::new(count, "count")),
+                ),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    player.quest_progress.count += 1;
+    return player.quest_progress.count;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let quest_count = HostPath::new(host_ref)
+        .field(quest_progress)
+        .variant_field(count);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(quest_count.clone(), HostValue::Int(4));
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(5))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].path, quest_count);
+    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+}
+
+#[test]
 fn engine_compiler_options_disambiguate_host_methods_by_receiver_type() {
     let player_method = HostMethodId::new(5);
     let monster_method = HostMethodId::new(6);

@@ -8,6 +8,11 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
         for field in &desc.fields {
             options = options.with_host_field(field.name.clone(), field.id);
         }
+        for variant in &desc.variants {
+            for field in &variant.fields {
+                options = options.with_host_variant_field(field.name.clone(), field.id);
+            }
+        }
         for method in &desc.methods {
             options = options
                 .with_host_method(method.name.clone(), method.id)
