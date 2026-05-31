@@ -2394,6 +2394,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Kept M13/M14 Engine coverage reviewable by splitting permissioned context
   time/event tests and controlled-random tests out of the oversized Engine
   test module into focused `tests::context` and `tests::random` modules.
+- Added M12 VM-boundary coverage for reflection typo diagnostics on script
+  modules and functions. Compiled scripts now prove `reflect.module` and
+  `reflect.function` surface nearest-name candidates and related metadata for
+  unknown script module/function lookups.
 
 ## Next
 

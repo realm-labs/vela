@@ -5383,6 +5383,84 @@ fn main() {
 }
 
 #[test]
+fn compiled_source_reflect_module_reports_unknown_module_candidates() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return reflect.module("game.rewards");
+}
+"#,
+    )
+    .expect("compile unknown module reflection source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = vm
+        .run_program_with_host(&program, "main", &[], &mut host)
+        .expect_err("unknown module should report candidates");
+
+    assert!(matches!(
+        error.kind,
+        VmErrorKind::Reflect(ReflectErrorKind::UnknownModule {
+            ref module,
+            ref candidates,
+            ref related,
+        }) if module == "game.rewards"
+            && candidates.len() == 1
+            && candidates[0] == "game.reward"
+            && related
+                .iter()
+                .any(|candidate| candidate.name == "game.reward")
+    ));
+}
+
+#[test]
+fn compiled_source_reflect_function_reports_unknown_function_candidates() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return reflect.function("game.reward.grnat");
+}
+"#,
+    )
+    .expect("compile unknown function reflection source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = vm
+        .run_program_with_host(&program, "main", &[], &mut host)
+        .expect_err("unknown function should report candidates");
+
+    assert!(matches!(
+        error.kind,
+        VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
+            ref function,
+            ref candidates,
+            ref related,
+        }) if function == "game.reward.grnat"
+            && candidates.len() == 1
+            && candidates[0] == "game.reward.grant"
+            && related
+                .iter()
+                .any(|candidate| candidate.name == "game.reward.grant")
+    ));
+}
+
+#[test]
 fn compiled_source_reflect_exports_respect_function_policy() {
     let program = compile_program_source(
         SourceId::new(1),
