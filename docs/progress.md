@@ -2015,6 +2015,11 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Normalized M12 type list reflection. `reflect.types()` now returns copied
   `ReflectType` records instead of string names, aligning list and direct type
   metadata queries plus analysis/demo coverage.
+- Extended the M17 reflection demo proof across module and function metadata.
+  The game-server demo now registers a reflected `game.reward.grant` native
+  through the Engine API, and `reflect_debug.lang` verifies module exports,
+  function lists, params, returns, docs, attrs, origins, and access metadata
+  through the CLI path.
 
 ## Next
 

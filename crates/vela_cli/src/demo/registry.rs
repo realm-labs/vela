@@ -1,9 +1,13 @@
 use vela_common::{HostTypeId, TypeId};
-use vela_engine::{Engine, EngineResult, context_host_type_desc};
+use vela_engine::{
+    EffectSet, Engine, EngineResult, FunctionAccess, NativeFunctionDesc, TypeHint,
+    context_host_type_desc,
+};
 use vela_reflect::{
     FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ReflectPolicy, SchemaHash, TraitDesc,
     TypeDesc, TypeKey, TypeRegistry,
 };
+use vela_vm::Value;
 
 use super::ids::{DemoIds, MONSTER_TYPE, PLAYER_TYPE};
 
@@ -15,6 +19,7 @@ pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
     for desc in registry.types() {
         builder = builder.register_type(desc.clone());
     }
+    builder = builder.register_typed_native_fn(demo_reward_grant_desc(ids), demo_reward_grant);
     builder.build()
 }
 
@@ -62,4 +67,22 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
             ),
     );
     registry
+}
+
+fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
+    NativeFunctionDesc::new("game.reward.grant", ids.reward_grant_function)
+        .param(
+            "player",
+            TypeHint::Host(TypeKey::new(TypeId::new(100), "Player")),
+        )
+        .param("item_id", TypeHint::String)
+        .returns(TypeHint::Bool)
+        .effects(EffectSet::pure())
+        .access(FunctionAccess::public().reflect_callable(true))
+        .docs("Grant reward.")
+        .attr("event", "reward")
+}
+
+fn demo_reward_grant(_: Value, _: String) -> bool {
+    true
 }

@@ -1,4 +1,4 @@
-use vela_common::{FieldId, HostMethodId};
+use vela_common::{FieldId, FunctionId, HostMethodId};
 use vela_engine::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID,
@@ -19,6 +19,7 @@ const INVENTORY_FIELD: u32 = 14;
 const ITEMS_FIELD: u32 = 15;
 const COUNT_FIELD: u32 = 16;
 const ADD_REWARD_METHOD: u32 = 9;
+const REWARD_GRANT_FUNCTION: u64 = 40;
 
 #[derive(Clone, Copy)]
 pub(crate) struct DemoIds {
@@ -37,6 +38,7 @@ pub(crate) struct DemoIds {
     pub(crate) emit_method: HostMethodId,
     pub(crate) add_reward_method: HostMethodId,
     pub(crate) log_method: HostMethodId,
+    pub(crate) reward_grant_function: FunctionId,
 }
 
 impl DemoIds {
@@ -57,6 +59,7 @@ impl DemoIds {
             emit_method: CONTEXT_EMIT_METHOD_ID,
             add_reward_method: HostMethodId::new(ADD_REWARD_METHOD),
             log_method: CONTEXT_LOG_METHOD_ID,
+            reward_grant_function: FunctionId::new(REWARD_GRANT_FUNCTION),
         }
     }
 }

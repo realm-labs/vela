@@ -7,6 +7,13 @@ fn main(ctx, player) {
     let method = reflect.method(player, "add_reward");
     let method_access = reflect.access(method);
     let reflected_types = reflect.types();
+    let reward_module = reflect.module("game.reward");
+    let reward_function = reflect.function("game.reward.grant");
+    let reward_params = reflect.params(reward_function);
+    let reward_access = reflect.access(reward_function);
+    let modules = reflect.modules();
+    let functions = reflect.functions();
+    let exports = reflect.exports(reward_module);
 
     if reflect.type_of(player) == "Player"
         && reflect.id(player) == 100
@@ -27,10 +34,39 @@ fn main(ctx, player) {
         && reflect.name(method) == "add_reward"
         && method.owner == "Player"
         && method.effects.writes_host
-        && method_access.reflect_callable {
+        && method_access.reflect_callable
+        && reflect.has_module("game.reward")
+        && !reflect.has_module("game.missing")
+        && reflect.name(reward_module) == "game.reward"
+        && reflect.kind(reward_module) == "module"
+        && reflect.origin(reward_module) == "host"
+        && modules.len() == 1
+        && reflect.has_function("game.reward.grant")
+        && !reflect.has_function("game.reward.missing")
+        && reflect.name(reward_function) == "game.reward.grant"
+        && reflect.kind(reward_function) == "function"
+        && reflect.id(reward_function) > 0
+        && reflect.origin(reward_function) == "host"
+        && reflect.docs(reward_function) == "Grant reward."
+        && reflect.attr(reward_function, "event") == "reward"
+        && reflect.returns(reward_function) == "bool"
+        && reward_function.module == "game.reward"
+        && reward_function.effects.writes_host == false
+        && reward_access.reflect_visible
+        && reward_access.required_permissions.is_empty()
+        && reward_params.len() == 2
+        && reward_params[0].name == "player"
+        && reward_params[0].type == "Player"
+        && reward_params[1].name == "item_id"
+        && reward_params[1].type == "string"
+        && exports.len() == 1
+        && exports[0] == "game.reward.grant"
+        && reflect.exports("game.reward")[0] == exports[0]
+        && functions.len() == 1
+        && reflect.id(functions[0]) == reflect.id(reward_function) {
         reflect.set(player, "level", 12);
         reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
-        return reflect.get(player, "level") + fields.len();
+        return reflect.get(player, "level") + fields.len() + reward_params.len();
     }
 
     return 0;
