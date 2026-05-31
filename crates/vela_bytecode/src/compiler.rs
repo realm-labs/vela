@@ -55,7 +55,8 @@ use patterns::{
 };
 use schema_defaults::{
     ConstructorShape, SchemaFieldDefault, ScriptSchemaDefaults, record_constructor_diagnostics,
-    source_schema_defaults, tuple_constructor_diagnostics, unknown_enum_variant_diagnostic,
+    resolve_tuple_constructor_arguments, source_schema_defaults, tuple_constructor_diagnostics,
+    unknown_enum_variant_diagnostic,
 };
 use script_types::{
     ScriptTypeFact, ScriptTypeFlow, expression_script_fact, expression_script_type,
@@ -2010,16 +2011,34 @@ impl<'ast> Compiler<'ast> {
         ))?;
         let mut fields = Vec::new();
         let mut explicit_names = BTreeSet::new();
-        for (index, arg) in args.iter().enumerate() {
-            if arg.name.is_some() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "named tuple variant argument",
-                )));
+        if let Some(shape) = shape.as_ref() {
+            let owner = format!("{enum_name}.{variant}");
+            let slots = resolve_tuple_constructor_arguments(shape, &owner, args, constructor_span)
+                .map_err(|diagnostics| self.constructor_diagnostics_error(diagnostics))?;
+            for (index, arg) in slots.into_iter().enumerate() {
+                let Some(arg) = arg else {
+                    continue;
+                };
+                let name = shape
+                    .field_name_at(index)
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| tuple_variant_field_name(index));
+                let value = self.compile_expr(&arg.value)?;
+                explicit_names.insert(name.clone());
+                fields.push((name, value));
             }
-            let name = tuple_variant_field_name(index);
-            let value = self.compile_expr(&arg.value)?;
-            explicit_names.insert(name.clone());
-            fields.push((name, value));
+        } else {
+            for (index, arg) in args.iter().enumerate() {
+                if arg.name.is_some() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "named tuple variant argument",
+                    )));
+                }
+                let name = tuple_variant_field_name(index);
+                let value = self.compile_expr(&arg.value)?;
+                explicit_names.insert(name.clone());
+                fields.push((name, value));
+            }
         }
         let defaults = schema_default_fields(shape.as_ref());
         self.compile_schema_default_fields(&mut fields, &explicit_names, defaults)?;

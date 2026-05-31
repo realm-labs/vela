@@ -2071,6 +2071,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   Local/const path lookup, qualified path access, host-path reads, and
   typed record/enum slot lookup now live outside the main compiler
   coordinator without changing emitted bytecode behavior.
+- Filled an M9 tuple-constructor surface gap. Tuple enum variants now accept
+  named arguments and declared default values while still storing payloads in
+  stable positional enum fields, and the shared conformance fixture executes
+  the named/default constructor path.
 
 ## Next
 

@@ -13,7 +13,7 @@ struct Reward {
 enum QuestState {
     Active { id: string, count: int },
     Done { id: string },
-    Streak(string, int),
+    Streak(kind: string = "weekly", count: int),
 }
 
 trait Scored {
@@ -67,7 +67,7 @@ fn main() {
         QuestState.Done { id } => id.len(),
         _ => 0,
     };
-    let streak: QuestState = QuestState.Streak("weekly", 4);
+    let streak: QuestState = QuestState.Streak(count = 4);
     let streak_score: int = match streak {
         QuestState.Streak(kind, count) if kind == "weekly" => count * 3,
         _ => 0,

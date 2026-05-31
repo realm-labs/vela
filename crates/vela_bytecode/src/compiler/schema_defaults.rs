@@ -57,6 +57,10 @@ impl ConstructorShape {
             .filter_map(|field| field.default.as_ref())
     }
 
+    pub(super) fn field_name_at(&self, index: usize) -> Option<&str> {
+        self.fields.get(index).map(|field| field.name.as_str())
+    }
+
     fn contains_field(&self, name: &str) -> bool {
         self.fields.iter().any(|field| field.name == name)
     }
@@ -72,6 +76,19 @@ impl ConstructorShape {
             .collect()
     }
 
+    fn argument_names(&self) -> Vec<&str> {
+        self.fields
+            .iter()
+            .map(|field| field.argument_name.as_str())
+            .collect()
+    }
+
+    fn argument_index(&self, name: &str) -> Option<usize> {
+        self.fields
+            .iter()
+            .position(|field| field.argument_name == name)
+    }
+
     fn len(&self) -> usize {
         self.fields.len()
     }
@@ -80,6 +97,7 @@ impl ConstructorShape {
 #[derive(Clone, Debug, PartialEq)]
 struct ConstructorField {
     name: String,
+    argument_name: String,
     default: Option<SchemaFieldDefault>,
 }
 
@@ -117,6 +135,7 @@ pub(super) fn source_schema_defaults(
                     .iter()
                     .map(|field| ConstructorField {
                         name: field.name.clone(),
+                        argument_name: field.name.clone(),
                         default: field.default_value.clone().map(|value| SchemaFieldDefault {
                             name: field.name.clone(),
                             value,
@@ -206,23 +225,65 @@ pub(super) fn tuple_constructor_diagnostics(
         return Vec::new();
     };
     let owner = format!("{type_name}.{variant}");
+    match resolve_tuple_constructor_arguments(shape, &owner, args, constructor_span) {
+        Ok(_) => Vec::new(),
+        Err(diagnostics) => diagnostics,
+    }
+}
+
+pub(super) fn resolve_tuple_constructor_arguments<'ast>(
+    shape: &ConstructorShape,
+    owner: &str,
+    args: &'ast [Argument],
+    constructor_span: Span,
+) -> Result<Vec<Option<&'ast Argument>>, Vec<Diagnostic>> {
     let mut diagnostics = Vec::new();
-    for (index, arg) in args.iter().enumerate().skip(shape.len()) {
-        diagnostics.push(unknown_field_diagnostic(
-            &owner,
-            &index.to_string(),
-            arg.value.span,
-            shape.field_names(),
-        ));
+    let mut slots = vec![None; shape.len()];
+    let mut slot_spans = vec![None; shape.len()];
+    let mut next_positional = 0_usize;
+    let mut seen_named = false;
+
+    for arg in args {
+        let arg_span = arg.value.span;
+        let Some(index) = tuple_argument_index(
+            shape,
+            arg,
+            arg_span,
+            &mut next_positional,
+            &mut seen_named,
+            &mut diagnostics,
+            owner,
+        ) else {
+            continue;
+        };
+
+        if let Some(previous_span) = slot_spans[index] {
+            diagnostics.push(duplicate_constructor_field_diagnostic(
+                shape.fields[index].argument_name.as_str(),
+                previous_span,
+                arg_span,
+            ));
+            continue;
+        }
+        slots[index] = Some(arg);
+        slot_spans[index] = Some(arg_span);
     }
-    for field in shape.required_fields().skip(args.len()) {
-        diagnostics.push(missing_field_diagnostic(
-            &owner,
-            &field.name,
-            constructor_span,
-        ));
+
+    for (slot, field) in slots.iter().zip(&shape.fields) {
+        if slot.is_none() && field.default.is_none() {
+            diagnostics.push(missing_field_diagnostic(
+                owner,
+                &field.argument_name,
+                constructor_span,
+            ));
+        }
     }
-    diagnostics
+
+    if diagnostics.is_empty() {
+        Ok(slots)
+    } else {
+        Err(diagnostics)
+    }
 }
 
 pub(super) fn unknown_enum_variant_diagnostic(
@@ -241,16 +302,78 @@ fn duplicate_record_field_diagnostics(fields: &[RecordField]) -> Vec<Diagnostic>
     let mut seen = BTreeMap::<&str, Span>::new();
     for field in fields {
         if let Some(previous_span) = seen.insert(&field.name, field.span) {
-            diagnostics.push(
-                Diagnostic::error(format!("duplicate constructor field `{}`", field.name))
-                    .with_code("compiler::duplicate_constructor_field")
-                    .with_span(field.span)
-                    .with_label(previous_span, "previous field is here")
-                    .with_label(field.span, "duplicate field is here"),
-            );
+            diagnostics.push(duplicate_constructor_field_diagnostic(
+                &field.name,
+                previous_span,
+                field.span,
+            ));
         }
     }
     diagnostics
+}
+
+fn tuple_argument_index(
+    shape: &ConstructorShape,
+    arg: &Argument,
+    arg_span: Span,
+    next_positional: &mut usize,
+    seen_named: &mut bool,
+    diagnostics: &mut Vec<Diagnostic>,
+    owner: &str,
+) -> Option<usize> {
+    if let Some(name) = &arg.name {
+        *seen_named = true;
+        return match shape.argument_index(name) {
+            Some(index) => Some(index),
+            None => {
+                diagnostics.push(unknown_field_diagnostic(
+                    owner,
+                    name,
+                    arg_span,
+                    shape.argument_names(),
+                ));
+                None
+            }
+        };
+    }
+
+    if *seen_named {
+        diagnostics.push(
+            Diagnostic::error("positional argument after named argument")
+                .with_code("compiler::positional_after_named_argument")
+                .with_span(arg_span)
+                .with_label(
+                    arg_span,
+                    "positional arguments must appear before named arguments",
+                ),
+        );
+        return None;
+    }
+
+    let index = *next_positional;
+    *next_positional = next_positional.saturating_add(1);
+    if index >= shape.len() {
+        diagnostics.push(unknown_field_diagnostic(
+            owner,
+            &index.to_string(),
+            arg_span,
+            shape.argument_names(),
+        ));
+        return None;
+    }
+    Some(index)
+}
+
+fn duplicate_constructor_field_diagnostic(
+    name: &str,
+    previous_span: Span,
+    span: Span,
+) -> Diagnostic {
+    Diagnostic::error(format!("duplicate constructor field `{name}`"))
+        .with_code("compiler::duplicate_constructor_field")
+        .with_span(span)
+        .with_label(previous_span, "previous field is here")
+        .with_label(span, "duplicate field is here")
 }
 
 fn unknown_field_diagnostic(
@@ -292,6 +415,7 @@ fn enum_variant_fields(
             .enumerate()
             .map(|(index, field)| ConstructorField {
                 name: index.to_string(),
+                argument_name: field.name.clone(),
                 default: field.default_value.clone().map(|value| SchemaFieldDefault {
                     name: index.to_string(),
                     value,
@@ -303,6 +427,7 @@ fn enum_variant_fields(
             .iter()
             .map(|field| ConstructorField {
                 name: field.name.clone(),
+                argument_name: field.name.clone(),
                 default: field.default_value.clone().map(|value| SchemaFieldDefault {
                     name: field.name.clone(),
                     value,
