@@ -7299,3 +7299,28 @@ Consequences:
   and cannot mutate registry structure.
 - Future descriptor kinds can add origin fields without changing the helper
   contract.
+
+## 2026-05-31: Target Field Reflection Returns Descriptors
+
+Status: Accepted
+
+Context:
+`reflect.fields()` already returns copied, owner-qualified `ReflectField`
+records for registry-wide field metadata, while `reflect.fields(value)` still
+returned only field-name strings. That split forced callers to use two shapes
+for the same field-query concept and weakened reflection coverage for
+descriptor helpers such as `reflect.name`, `reflect.owner`, `reflect.kind`,
+`reflect.docs`, and `reflect.access`.
+
+Decision:
+Normalize `reflect.fields(target)` to return copied `ReflectField` descriptor
+records filtered by the same field-read policy as before. Remove the
+string-name-list internal path and update analysis facts, tests, and demos to
+treat targeted field lists as metadata records.
+
+Consequences:
+- Scripts use one field descriptor shape for global and targeted field queries.
+- Reflection remains schema-safe because returned descriptors are copied host
+  values, not mutable registry handles.
+- Field-read permissions still filter inaccessible fields before descriptors
+  are returned.

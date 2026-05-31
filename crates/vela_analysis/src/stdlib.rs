@@ -1182,7 +1182,7 @@ mod tests {
             stdlib_function_fact("reflect.fields", &[TypeFact::host("Player")])
                 .expect("reflect.fields value fact")
                 .returns,
-            TypeFact::array(TypeFact::String)
+            TypeFact::array(TypeFact::record("ReflectField"))
         );
         assert_eq!(
             stdlib_function_fact(
@@ -1412,7 +1412,8 @@ mod tests {
                 .any(|fact| fact.name == "ctx.tick" && fact.returns == TypeFact::Int)
         );
         assert!(facts.iter().any(|fact| {
-            fact.name == "reflect.fields" && fact.returns == TypeFact::array(TypeFact::String)
+            fact.name == "reflect.fields"
+                && fact.returns == TypeFact::array(TypeFact::record("ReflectField"))
         }));
         assert!(facts.iter().any(|fact| {
             fact.name == "reflect.functions"

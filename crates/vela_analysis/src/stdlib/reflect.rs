@@ -59,7 +59,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         fact(
             "reflect.fields",
             vec![TypeFact::Any],
-            array(TypeFact::String),
+            array(record("ReflectField")),
         ),
         fact(
             "reflect.field",
@@ -222,7 +222,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         "reflect.returns" if args.len() == 1 => maybe_string(),
         "reflect.fields" => match args.len() {
             0 => array(record("ReflectField")),
-            1 => array(TypeFact::String),
+            1 => array(record("ReflectField")),
             _ => return None,
         },
         "reflect.field" if args.len() == 2 => record("ReflectField"),

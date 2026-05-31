@@ -383,7 +383,7 @@ impl Vm {
             expect_arity("reflect.fields", args, 1)?;
             let target = value_to_reflect(&args[0], "reflect.fields")?;
             check_host_ref_inspection(&fields_policy, &target)?;
-            value_from_reflect(reflect::field_names_with_policy(
+            value_from_reflect(reflect::field_metadata_for_target_with_policy(
                 &fields_registry,
                 &target,
                 &fields_policy,

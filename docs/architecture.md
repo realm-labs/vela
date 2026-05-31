@@ -1146,6 +1146,7 @@ reflect.access(descriptor)
 
 reflect.fields(type)
 reflect.field(type, name)
+// field queries return copied ReflectField descriptor records
 
 reflect.has_field(value, name)
 reflect.get(value, name)

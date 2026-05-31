@@ -1997,6 +1997,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   now rank completion candidates by typo similarity and surface the closest
   `did you mean` label through the existing focused analysis diagnostics
   candidate helper.
+- Normalized M12 target field reflection. `reflect.fields(value_or_type)` now
+  returns copied owner-qualified `ReflectField` records with the same policy
+  filtering as `reflect.fields()`, and analysis/demo coverage now treats the
+  targeted field list as descriptor metadata rather than a string-name list.
 
 ## Next
 

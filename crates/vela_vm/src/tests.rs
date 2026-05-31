@@ -4812,7 +4812,13 @@ fn compiled_source_reflection_fields_returns_metadata() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.fields(player);
+    let fields = reflect.fields(player);
+    return fields.len() == 2
+        && fields[0].owner == "Player"
+        && fields[0].name == "id"
+        && fields[1].owner == "Player"
+        && fields[1].name == "level"
+        && reflect.kind(fields[1]) == "field";
 }
 "#,
     )
@@ -4828,13 +4834,7 @@ fn main(player) {
 
     let result = vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host);
 
-    assert_eq!(
-        result,
-        Ok(Value::Array(vec![
-            Value::String("id".into()),
-            Value::String("level".into())
-        ]))
-    );
+    assert_eq!(result, Ok(Value::Bool(true)));
 }
 
 #[test]
@@ -5035,6 +5035,8 @@ fn main(player) {
     let all_fields = reflect.fields();
     if reflect.has_field(player, "level")
         && !reflect.has_field(player, "secret")
+        && fields[0].owner == "Player"
+        && fields[0].name == "level"
         && reflect.field(player, "level").name == "level" {
         return fields.len() * 10 + all_fields.len();
     }
@@ -5840,13 +5842,18 @@ fn main() {
 }
 
 #[test]
-fn heap_execution_reflection_fields_returns_heap_metadata_array() {
+fn heap_execution_reflection_fields_returns_heap_metadata_records() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.fields(player);
+    let fields = reflect.fields(player);
+    return fields.len() == 2
+        && fields[0].owner == "Player"
+        && fields[0].name == "id"
+        && fields[1].owner == "Player"
+        && fields[1].name == "level";
 }
 "#,
     )
@@ -5875,22 +5882,7 @@ fn main(player) {
     }
     .expect("run heap reflection fields");
 
-    let Value::HeapRef(fields_ref) = result else {
-        panic!("expected heap metadata array");
-    };
-    let Some(HeapValue::Array(fields)) = heap_execution.heap.get(fields_ref).cloned() else {
-        panic!("expected heap metadata array object");
-    };
-    let field_names = fields
-        .iter()
-        .map(|slot| materialize_heap_slot(slot, Some(&heap_execution)))
-        .collect::<VmResult<Vec<_>>>()
-        .expect("materialize field names");
-
-    assert_eq!(
-        field_names,
-        vec![Value::String("id".into()), Value::String("level".into())]
-    );
+    assert_eq!(result, Value::Bool(true));
 }
 
 #[test]

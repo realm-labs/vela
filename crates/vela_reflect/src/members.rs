@@ -175,7 +175,7 @@ pub fn field_with_policy(
     )))
 }
 
-pub fn field_names_with_policy(
+pub fn fields_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
     policy: &ReflectPolicy,
@@ -189,7 +189,7 @@ pub fn field_names_with_policy(
                     .require_field_read_access(&desc.key.name, field)
                     .is_ok()
             })
-            .map(|field| HostValue::String(field.name.clone()))
+            .map(|field| field_record_with_owner(&desc.key.name, field))
             .collect(),
     )))
 }
@@ -1797,12 +1797,27 @@ mod tests {
 
         assert!(has_field(&registry, &target, "secret").expect("raw has field"));
         let ReflectValue::Host(HostValue::Array(fields)) =
-            field_names_with_policy(&registry, &target, &ReflectPolicy::read_only())
-                .expect("field names")
+            fields_with_policy(&registry, &target, &ReflectPolicy::read_only())
+                .expect("field metadata")
         else {
             panic!("fields should be an array");
         };
-        assert_eq!(fields, vec![HostValue::String("level".to_owned())]);
+        assert_eq!(fields.len(), 1);
+        let HostValue::Record {
+            fields: field_fields,
+            ..
+        } = &fields[0]
+        else {
+            panic!("field metadata should be a record");
+        };
+        assert_eq!(
+            field_fields.get("owner"),
+            Some(&HostValue::String("Player".to_owned()))
+        );
+        assert_eq!(
+            field_fields.get("name"),
+            Some(&HostValue::String("level".to_owned()))
+        );
         let ReflectValue::Host(HostValue::Array(all_fields)) =
             all_fields_with_policy(&registry, &ReflectPolicy::read_only())
         else {
@@ -1871,12 +1886,23 @@ mod tests {
             ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
 
         let ReflectValue::Host(HostValue::Array(fields)) =
-            field_names_with_policy(&registry, &target, &ReflectPolicy::read_only())
-                .expect("field names")
+            fields_with_policy(&registry, &target, &ReflectPolicy::read_only())
+                .expect("field metadata")
         else {
             panic!("fields should be an array");
         };
-        assert_eq!(fields, vec![HostValue::String("level".to_owned())]);
+        assert_eq!(fields.len(), 1);
+        let HostValue::Record {
+            fields: field_fields,
+            ..
+        } = &fields[0]
+        else {
+            panic!("field metadata should be a record");
+        };
+        assert_eq!(
+            field_fields.get("name"),
+            Some(&HostValue::String("level".to_owned()))
+        );
         assert!(
             !has_field_with_policy(&registry, &target, "title", &ReflectPolicy::read_only())
                 .expect("has title")

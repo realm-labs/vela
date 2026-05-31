@@ -12,6 +12,8 @@ fn main(ctx, player) {
         && reflect.implements(player_type, damageable)
         && fields.len() == 7
         && reflect.fields(player_type).len() == fields.len()
+        && fields[1].owner == "Player"
+        && fields[1].name == "level"
         && reflect.traits(player_type)[0].name == reflect.name(damageable)
         && reflect.name(level) == "level"
         && reflect.id(level) == 2
