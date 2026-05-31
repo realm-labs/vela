@@ -9,7 +9,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Bool,
         ),
         fact("reflect.type_of", vec![TypeFact::Any], maybe_string()),
-        fact("reflect.types", Vec::new(), array(TypeFact::String)),
+        fact("reflect.types", Vec::new(), array(record("ReflectType"))),
         fact(
             "reflect.type_info",
             vec![TypeFact::String],
@@ -189,7 +189,8 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             if args.is_empty() =>
         {
             match name {
-                "reflect.permissions" | "reflect.types" => array(TypeFact::String),
+                "reflect.permissions" => array(TypeFact::String),
+                "reflect.types" => array(record("ReflectType")),
                 "reflect.modules" => array(record("ReflectModule")),
                 "reflect.functions" => array(record("ReflectFunction")),
                 _ => unreachable!("name matched above"),

@@ -6,9 +6,12 @@ fn main(ctx, player) {
     let level_access = reflect.access(level);
     let method = reflect.method(player, "add_reward");
     let method_access = reflect.access(method);
+    let reflected_types = reflect.types();
 
     if reflect.type_of(player) == "Player"
         && reflect.id(player) == 100
+        && reflected_types.any(|type_info| type_info.name == "Player"
+            && reflect.kind(type_info) == "host")
         && reflect.implements(player_type, damageable)
         && fields.len() == 7
         && reflect.fields(player_type).len() == fields.len()

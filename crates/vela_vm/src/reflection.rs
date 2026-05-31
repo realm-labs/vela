@@ -91,7 +91,7 @@ impl Vm {
                 reflect::ReflectPermission::ReadTypeInfo,
             )?;
             expect_arity("reflect.types", args, 0)?;
-            value_from_reflect(reflect::type_metadata_names(&types_registry))
+            value_from_reflect(reflect::type_metadata_list(&types_registry))
         });
 
         let type_info_registry = Arc::clone(&registry);

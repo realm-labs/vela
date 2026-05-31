@@ -5309,12 +5309,15 @@ fn compiled_source_reflects_registered_type_metadata() {
         SourceId::new(1),
         r#"
 fn main() {
-    let names = reflect.types();
+    let types = reflect.types();
     let player = reflect.type_info("Player");
-    if names.len() == 1
+    if types.len() == 1
         && reflect.has_type("Player")
         && !reflect.has_type("Plyer")
-        && names[0] == "Player"
+        && types[0].name == "Player"
+        && types[0].id == player.id
+        && reflect.name(types[0]) == "Player"
+        && reflect.kind(types[0]) == "host"
         && player.kind == "host"
         && reflect.kind(player) == "host"
         && player.origin == "host"

@@ -9,12 +9,9 @@ use crate::{
     metadata::{attrs_value, docs_value, span_value},
 };
 
-pub fn type_names(registry: &TypeRegistry) -> ReflectValue {
+pub fn type_list(registry: &TypeRegistry) -> ReflectValue {
     ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .map(|desc| HostValue::String(desc.key.name.clone()))
-            .collect(),
+        registry.types().map(type_record).collect(),
     ))
 }
 
@@ -119,15 +116,23 @@ mod tests {
         assert!(has_type(&registry, "QuestProgress"));
         assert!(!has_type(&registry, "Monster"));
 
-        let ReflectValue::Host(HostValue::Array(names)) = type_names(&registry) else {
-            panic!("type names should be an array");
+        let ReflectValue::Host(HostValue::Array(types)) = type_list(&registry) else {
+            panic!("type list should be an array");
+        };
+        assert_eq!(types.len(), 2);
+        let HostValue::Record { fields, .. } = &types[0] else {
+            panic!("type list item should be a record");
         };
         assert_eq!(
-            names,
-            vec![
-                HostValue::String("Player".to_owned()),
-                HostValue::String("QuestProgress".to_owned())
-            ]
+            fields.get("name"),
+            Some(&HostValue::String("Player".to_owned()))
+        );
+        let HostValue::Record { fields, .. } = &types[1] else {
+            panic!("type list item should be a record");
+        };
+        assert_eq!(
+            fields.get("name"),
+            Some(&HostValue::String("QuestProgress".to_owned()))
         );
 
         let ReflectValue::Host(HostValue::Record { fields, .. }) =

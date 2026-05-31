@@ -1088,6 +1088,12 @@ mod tests {
             TypeFact::union([TypeFact::String, TypeFact::Null])
         );
         assert_eq!(
+            stdlib_function_fact("reflect.types", &[])
+                .expect("reflect.types fact")
+                .returns,
+            TypeFact::array(TypeFact::record("ReflectType"))
+        );
+        assert_eq!(
             stdlib_function_fact("reflect.attrs", &[TypeFact::host("Player")])
                 .expect("reflect.attrs fact")
                 .returns,
@@ -1411,6 +1417,10 @@ mod tests {
                 .iter()
                 .any(|fact| fact.name == "ctx.tick" && fact.returns == TypeFact::Int)
         );
+        assert!(facts.iter().any(|fact| {
+            fact.name == "reflect.types"
+                && fact.returns == TypeFact::array(TypeFact::record("ReflectType"))
+        }));
         assert!(facts.iter().any(|fact| {
             fact.name == "reflect.fields"
                 && fact.returns == TypeFact::array(TypeFact::record("ReflectField"))

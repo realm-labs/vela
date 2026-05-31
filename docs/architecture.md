@@ -1138,6 +1138,7 @@ reflect.type_of(value)
 reflect.types()
 reflect.type_info(name)
 reflect.has_type(name)
+// type queries return copied ReflectType descriptor records
 reflect.name(type)
 reflect.kind(type)
 reflect.owner(descriptor)

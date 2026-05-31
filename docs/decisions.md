@@ -3656,7 +3656,7 @@ variants, attributes, and permissions.
 
 Decision:
 Add a focused `vela_reflect::types` module with copied type descriptor records.
-Rust callers can use `type_metadata_by_name` and `type_metadata_names`, while
+Rust callers can use `type_metadata_by_name` and `type_metadata_list`, while
 scripts can use `reflect.type_info(name)` and `reflect.types()`. Type records
 include stable ID, name, kind, optional schema hash, docs, attrs, and member
 counts. Unknown names report `UnknownTypeName` with ranked candidates.
@@ -7324,3 +7324,26 @@ Consequences:
   values, not mutable registry handles.
 - Field-read permissions still filter inaccessible fields before descriptors
   are returned.
+
+## 2026-05-31: Type List Reflection Returns Descriptors
+
+Status: Accepted
+
+Context:
+`reflect.type_info(name)` returned copied `ReflectType` records, while
+`reflect.types()` still returned only string names. That forced scripts and
+analysis facts to handle separate shapes for direct and list type metadata
+queries.
+
+Decision:
+Normalize `reflect.types()` to return copied `ReflectType` records. Replace the
+old internal type-name list API with `type_metadata_list`, and update the VM,
+analysis facts, tests, and demo script to consume descriptor records.
+
+Consequences:
+- Scripts use one copied type descriptor shape for direct and enumerated type
+  metadata.
+- Reflection remains schema-safe because descriptors are copied host values,
+  not mutable registry handles.
+- Existing descriptor helpers such as `reflect.name`, `reflect.kind`,
+  `reflect.id`, and `reflect.origin` work on list-query results.

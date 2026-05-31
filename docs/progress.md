@@ -954,7 +954,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   candidates, while `reflect.traits(value)` continues to report traits
   implemented by a target value.
 - Added registered type metadata lookup in a focused reflection types module.
-  Rust callers can query `type_metadata_by_name`/`type_metadata_names`, and
+  Rust callers can query `type_metadata_by_name`/`type_metadata_list`, and
   scripts can call `reflect.type_info(name)` plus `reflect.types()` to inspect
   copied `ReflectType` records with kind, schema hash, docs, attrs, and member
   counts, including ranked unknown-type candidates.
@@ -2001,6 +2001,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   returns copied owner-qualified `ReflectField` records with the same policy
   filtering as `reflect.fields()`, and analysis/demo coverage now treats the
   targeted field list as descriptor metadata rather than a string-name list.
+- Normalized M12 type list reflection. `reflect.types()` now returns copied
+  `ReflectType` records instead of string names, aligning list and direct type
+  metadata queries plus analysis/demo coverage.
 
 ## Next
 
