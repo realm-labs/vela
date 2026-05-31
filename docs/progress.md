@@ -2042,6 +2042,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   module. Field, method, trait, and variant record builders now live outside
   the member-query policy module, preserving the public reflection API while
   keeping future access/reporting work out of a single large file.
+- Split bytecode const evaluation into a focused compiler module. Literal
+  parsing plus scalar top-level const and constructor-default evaluation now
+  live outside the main compiler coordinator, preserving behavior while making
+  future grammar-surface work easier to keep modular.
 
 ## Next
 
