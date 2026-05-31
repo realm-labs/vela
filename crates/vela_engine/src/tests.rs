@@ -1822,6 +1822,85 @@ fn runtime_applies_engine_hot_reload_updates() {
 }
 
 #[test]
+fn runtime_compiles_hot_reload_update_from_active_version() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .expect("initial hot reload compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    let first_update = runtime
+        .compile_hot_reload_update(
+            SourceId::new(2),
+            r#"
+fn helper() {
+    return 2;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        )
+        .expect("runtime should be hot-reload enabled")
+        .expect("compatible update should compile");
+    let first_report = runtime
+        .apply_hot_update(first_update)
+        .expect("runtime should apply first update");
+    assert!(first_report.accepted);
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+
+    let rejected_update = runtime
+        .compile_hot_reload_update(SourceId::new(3), "fn main() { return 3; }")
+        .expect("runtime should be hot-reload enabled");
+    let error = rejected_update.expect_err("active helper removal should be rejected");
+    assert!(matches!(
+        error.kind,
+        HotReloadErrorKind::RemovedFunction { ref function } if function == "helper"
+    ));
+}
+
+#[test]
+fn runtime_compiles_hot_reload_update_file_from_active_version() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .expect("initial hot reload compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system clock should be after epoch")
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+        "vela-runtime-hot-reload-{pid}-{unique}.lang",
+        pid = std::process::id()
+    ));
+    std::fs::write(&path, "fn main() { return 5; }").expect("update file should write");
+
+    let update = runtime
+        .compile_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("file update should compile");
+    std::fs::remove_file(&path).expect("update file should clean up");
+    let report = runtime
+        .apply_hot_update(update)
+        .expect("runtime should apply file update");
+    assert!(report.accepted);
+
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(5))
+    );
+}
+
+#[test]
 fn runtime_preserves_program_when_engine_hot_reload_update_is_rejected() {
     let engine = Engine::builder()
         .hot_reload_policy(HotReloadPolicy::locked_down())
@@ -1871,6 +1950,20 @@ fn runtime_rejects_hot_update_when_not_created_from_version() {
 
     assert!(matches!(
         runtime.apply_hot_update(update),
+        Err(error) if error.kind == EngineErrorKind::RuntimeNotHotReloadEnabled
+    ));
+}
+
+#[test]
+fn runtime_rejects_compile_update_when_not_created_from_version() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .expect("initial hot reload compile");
+    let runtime = Runtime::new(engine, initial.to_program());
+
+    assert!(matches!(
+        runtime.compile_hot_reload_update(SourceId::new(2), "fn main() { return 2; }"),
         Err(error) if error.kind == EngineErrorKind::RuntimeNotHotReloadEnabled
     ));
 }

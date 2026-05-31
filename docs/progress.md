@@ -2054,6 +2054,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `CompileErrorKind`, `CompileResult`, and `CompilerOptions` now live outside
   the main compiler coordinator while preserving the existing public
   `vela_bytecode::compiler::*` import surface for callers.
+- Extended M14/M15 Runtime embedding with active-version hot-reload compile
+  helpers. `Runtime` can now compile source, file, and directory updates
+  against its current `ProgramVersion`, then let the host apply or reject the
+  resulting update report at an explicit safe point.
 
 ## Next
 

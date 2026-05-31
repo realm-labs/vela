@@ -1793,12 +1793,7 @@ let mut tx = PatchTx::new();
 runtime.call(
     "combat.on_kill",
     args![host(player_id), host(monster_id)],
-    CallOptions {
-        instruction_budget: 50_000,
-        memory_budget: 4 * MB,
-        timeout: Duration::from_millis(5),
-        permissions: PermissionSet::gameplay(),
-    },
+    CallOptions::gameplay(),
     &mut state_adapter,
     &mut tx,
 )?;
@@ -1809,13 +1804,20 @@ world.apply(tx)?;
 ### Hot Reload
 
 ```rust
-let update = runtime.compile_update(changed_files)?;
+let update = runtime
+    .compile_hot_reload_update_file("scripts/combat.lang")?
+    ?;
 let report = runtime.apply_hot_update(update)?;
 
 if !report.accepted {
     log::error!("hot reload failed: {:#?}", report.errors);
 }
 ```
+
+Runtime update compilation uses the runtime's active `ProgramVersion`, so hosts
+do not need to separately fetch the current version before compiling an update.
+The update still takes effect only when the host calls `apply_hot_update` at a
+safe point.
 
 Hot-reload ABI manifests copy optional declaration spans from reflected schema,
 function, and method descriptors. When schema, function effect/access, or method

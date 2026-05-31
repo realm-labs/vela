@@ -1,11 +1,14 @@
+use std::path::Path;
+
 use vela_bytecode::Program;
+use vela_common::SourceId;
 use vela_host::{PatchTx, ScriptStateAdapter};
 use vela_hot_reload::{
     HotReloadReport, HotReloadResult, HotReloadRuntime, HotUpdate, ProgramVersion,
 };
 use vela_vm::{ExecutionBudget, HostExecution, Value, VmResult};
 
-use crate::{Engine, EngineError, EngineErrorKind, EngineResult};
+use crate::{Engine, EngineError, EngineErrorKind, EngineHotReloadSourceResult, EngineResult};
 
 #[derive(Clone)]
 pub struct Runtime {
@@ -68,6 +71,33 @@ impl Runtime {
         Ok(report)
     }
 
+    pub fn compile_hot_reload_update(
+        &self,
+        source: SourceId,
+        text: &str,
+    ) -> EngineResult<HotReloadResult<HotUpdate>> {
+        let previous = self.current_hot_reload_version()?;
+        Ok(self
+            .engine
+            .compile_hot_reload_update(&previous, source, text))
+    }
+
+    pub fn compile_hot_reload_update_file(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
+        let previous = self.current_hot_reload_version()?;
+        Ok(self.engine.compile_hot_reload_update_file(&previous, path))
+    }
+
+    pub fn compile_hot_reload_update_dir(
+        &self,
+        root: impl AsRef<Path>,
+    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
+        let previous = self.current_hot_reload_version()?;
+        Ok(self.engine.compile_hot_reload_update_dir(&previous, root))
+    }
+
     pub fn call(
         &mut self,
         entry: &str,
@@ -90,6 +120,13 @@ impl Runtime {
         } else {
             vm.run_program_with_host_and_budget(&self.program, entry, args, &mut host, &mut budget)
         }
+    }
+
+    fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
+        self.hot_reload
+            .as_ref()
+            .map(HotReloadRuntime::current)
+            .ok_or_else(|| EngineError::new(EngineErrorKind::RuntimeNotHotReloadEnabled))
     }
 }
 
