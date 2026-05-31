@@ -1993,6 +1993,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   suggestions now include a related declaration label pointing at the candidate
   binding, and candidate ranking lives in a focused HIR binding helper module
   instead of expanding the main binding lowerer file.
+- Improved M16 member-access diagnostics. Unknown field and method diagnostics
+  now rank completion candidates by typo similarity and surface the closest
+  `did you mean` label through the existing focused analysis diagnostics
+  candidate helper.
 
 ## Next
 

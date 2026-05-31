@@ -6,6 +6,8 @@ use crate::{
     type_fact_from_expr,
 };
 
+use super::candidates::ranked_names;
+
 pub fn member_access_diagnostics(
     expr: &Expr,
     scope: &ExprFactScope,
@@ -182,7 +184,7 @@ fn diagnose_call(
         "analysis::unknown_method",
         format!("unknown method `{name}` for `{}`", receiver.display_name()),
         expr,
-        candidates(facts, &receiver, CompletionKind::Method),
+        ranked_member_candidates(facts, &receiver, &name, CompletionKind::Method),
     ));
     true
 }
@@ -204,7 +206,7 @@ fn diagnose_field_access(
         "analysis::unknown_field",
         format!("unknown field `{field}` for `{}`", receiver.display_name()),
         expr,
-        candidates(facts, &receiver, CompletionKind::Field),
+        ranked_member_candidates(facts, &receiver, field, CompletionKind::Field),
     ));
 }
 
@@ -226,7 +228,7 @@ fn diagnose_path_field_access(
         "analysis::unknown_field",
         format!("unknown field `{field}` for `{}`", receiver.display_name()),
         expr,
-        candidates(facts, &receiver, CompletionKind::Field),
+        ranked_member_candidates(facts, &receiver, &field, CompletionKind::Field),
     ));
 }
 
@@ -308,6 +310,15 @@ fn candidates(facts: &RegistryFacts, receiver: &TypeFact, kind: CompletionKind) 
         .collect()
 }
 
+fn ranked_member_candidates(
+    facts: &RegistryFacts,
+    receiver: &TypeFact,
+    name: &str,
+    kind: CompletionKind,
+) -> Vec<String> {
+    ranked_names(name, candidates(facts, receiver, kind))
+}
+
 fn unknown_member_diagnostic(
     code: &'static str,
     message: String,
@@ -318,10 +329,13 @@ fn unknown_member_diagnostic(
         .with_code(code)
         .with_span(expr.span)
         .with_label(expr.span, "unknown member access");
-    if !candidates.is_empty() {
+    if let Some(candidate) = candidates.first() {
+        diagnostic = diagnostic.with_label(expr.span, format!("did you mean `{candidate}`?"));
+    }
+    if candidates.len() > 1 {
         diagnostic = diagnostic.with_label(
             expr.span,
-            format!("available candidates: {}", candidates.join(", ")),
+            format!("similar candidates: {}", candidates.join(", ")),
         );
     }
     diagnostic
@@ -341,7 +355,7 @@ mod tests {
             r#"
             fn main(player) {
                 player.level;
-                player.missing;
+                player.levle;
             }
             "#,
         );
@@ -356,12 +370,12 @@ mod tests {
             diagnostics[0].code.as_deref(),
             Some("analysis::unknown_field")
         );
-        assert!(diagnostics[0].message.contains("missing"));
+        assert!(diagnostics[0].message.contains("levle"));
         assert!(
             diagnostics[0]
                 .labels
                 .iter()
-                .any(|label| label.message.contains("level"))
+                .any(|label| label.message == "did you mean `level`?")
         );
     }
 
@@ -371,7 +385,7 @@ mod tests {
             r#"
             fn main(player) {
                 player.grant_exp(10);
-                player.reset();
+                player.grant_xp(10);
             }
             "#,
         );
@@ -386,12 +400,12 @@ mod tests {
             diagnostics[0].code.as_deref(),
             Some("analysis::unknown_method")
         );
-        assert!(diagnostics[0].message.contains("reset"));
+        assert!(diagnostics[0].message.contains("grant_xp"));
         assert!(
             diagnostics[0]
                 .labels
                 .iter()
-                .any(|label| label.message.contains("grant_exp"))
+                .any(|label| label.message == "did you mean `grant_exp`?")
         );
     }
 
