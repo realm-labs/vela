@@ -2406,6 +2406,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   native registration, argument conversion, collection conversion, dynamic
   result conversion, and typed callback error tests into a focused
   `tests::typed_native` module.
+- Kept M14 host-aware typed native Engine API coverage reviewable by splitting
+  typed host/context-native registration, conversion-failure, and PatchTx
+  mutation tests into a focused `tests::typed_host` module.
 
 ## Next
 
