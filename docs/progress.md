@@ -2297,6 +2297,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `last`, `contains`, and `index_of` now keep Option-returning lookup and
   equality search behavior separate from mutation, ordering, transforms, and
   aggregation helpers.
+- Split M13 array transform helpers into a focused VM module. Array `join`,
+  `distinct`, `reverse`, and `slice` now keep deterministic materialization,
+  equality-based de-duplication, and range validation separate from lookup,
+  mutation, ordering, grouping, and numeric aggregation helpers.
 
 ## Next
 

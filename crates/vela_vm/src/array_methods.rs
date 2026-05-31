@@ -4,84 +4,18 @@ mod higher_order;
 mod lookup;
 mod mutation;
 mod ordering;
+mod transform;
 
 pub(crate) use higher_order::{all, any, count, filter, find, map};
 pub(crate) use lookup::{contains, first, index_of, last};
 pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{max, min, sort, sort_by};
+pub(crate) use transform::{distinct, join, reverse, slice};
 
 use crate::heap::HeapValue;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::script_object::ScriptFields;
-use crate::{
-    HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot, values_equal,
-};
-
-pub(crate) fn join(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("join", args, 1)?;
-    let values = array_values(receiver, heap, "method join")?;
-    let separator = string_value(&args[0], heap, "method join")?;
-    let mut parts = Vec::with_capacity(values.len());
-    for value in values {
-        parts.push(string_value(&value, heap, "method join")?.to_owned());
-    }
-    Ok(Value::String(parts.join(separator)))
-}
-
-pub(crate) fn distinct(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("distinct", args, 0)?;
-    let values = array_values(receiver, heap, "method distinct")?;
-    let mut distinct = Vec::new();
-    'values: for value in values {
-        for existing in &distinct {
-            if values_equal(existing, &value, heap)? {
-                continue 'values;
-            }
-        }
-        distinct.push(value);
-    }
-    Ok(Value::Array(distinct))
-}
-
-pub(crate) fn reverse(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("reverse", args, 0)?;
-    let mut values = array_values(receiver, heap, "method reverse")?;
-    values.reverse();
-    Ok(Value::Array(values))
-}
-
-pub(crate) fn slice(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("slice", args, 2)?;
-    let values = array_values(receiver, heap, "method slice")?;
-    let start = index_value(&args[0], "method slice")?;
-    let end = index_value(&args[1], "method slice")?;
-    if start > end {
-        return type_error("method slice");
-    }
-    if start > values.len() {
-        return Err(index_out_of_bounds(start, values.len()));
-    }
-    if end > values.len() {
-        return Err(index_out_of_bounds(end, values.len()));
-    }
-    Ok(Value::Array(values[start..end].to_vec()))
-}
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 pub(crate) fn sum(
     receiver: &Value,
@@ -188,7 +122,7 @@ fn group_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String
     string_value(value, heap, "method group_by").map(str::to_owned)
 }
 
-fn string_value<'a>(
+pub(super) fn string_value<'a>(
     value: &'a Value,
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
