@@ -2245,6 +2245,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `filter`, `find`, `any`, `all`, and `count` now keep callback argument
   shaping and truthiness routing outside the general map mutation and
   introspection helpers.
+- Split M13 set higher-order helpers into a focused VM module. Set
+  `map`, `filter`, `find`, `any`, `all`, and `count` now keep callback
+  dispatch and truthiness handling separate from set mutation, algebra, and
+  scalar keying internals.
 
 ## Next
 
