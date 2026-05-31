@@ -91,6 +91,14 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
         Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown))
     );
     assert_eq!(
+        local_fact(bindings, &facts, "map_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "set_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
         local_fact(bindings, &facts, "no_else_score"),
         Some(TypeFact::Int)
     );

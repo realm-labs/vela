@@ -2223,6 +2223,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   workflow. Compiling a compatible update from the active runtime now proves
   the current `ProgramVersion` and calls remain unchanged until the host invokes
   `Runtime::apply_hot_update`, then switch only after that explicit apply step.
+- Extended the shared M13/M17 conformance fixture across map and set standard
+  library workflows. The fixture now executes map `set`/`remove`/`get_or`/
+  `merge` plus set construction, union, intersection, difference, symmetric
+  difference, subset/superset, disjoint, and membership checks through the HIR,
+  compiler, and VM path.
 
 ## Next
 

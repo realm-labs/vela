@@ -114,6 +114,34 @@ fn main() {
     let result: int = result_bonus(true)?;
     let mapped: map = {"gold": reward.count, "quest": quest_score}
         .map_values(|key, value| key.len() + value);
+    let mutable_rewards: map = {"gold": 1, "xp": 2};
+    mutable_rewards.set("quest", 4);
+    let removed_reward = mutable_rewards.remove("xp");
+    let merged_rewards: map = mutable_rewards.merge({"gold": 5, "gem": 6});
+    let map_score: int = option.unwrap_or(removed_reward, 0)
+        + mutable_rewards.get_or("missing", 7)
+        + merged_rewards["gold"]
+        + merged_rewards["gem"]
+        + merged_rewards.len();
+    let player_tags: set = set.from_array(["daily", "quest", "raid"]);
+    let event_tags: set = set.from_array(["quest", "bonus", "daily"]);
+    let required_tags: set = set.from_array(["daily", "quest"]);
+    let set_score: int = {
+        let shared = player_tags.intersection(event_tags);
+        let unique = player_tags.difference(event_tags);
+        if required_tags.is_subset(player_tags)
+            && player_tags.is_superset(required_tags)
+            && player_tags.is_disjoint(set.from_array(["bonus"]))
+            && player_tags.union(event_tags).len() == 4
+            && player_tags.symmetric_difference(event_tags).len() == 2
+            && shared.has("quest")
+            && unique.has("raid")
+        {
+            shared.len() + unique.len()
+        } else {
+            0
+        }
+    };
     let player: Player = Player {
         stats: Stats {
             level: 2,
@@ -169,6 +197,8 @@ fn main() {
         + result
         + mapped["gold"]
         + mapped["quest"]
+        + map_score
+        + set_score
         + nested_score
         + indexed_record_score
         + no_else_score
