@@ -2264,6 +2264,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Split M13 string affix helpers into a focused VM module. `strip_prefix` and
   `strip_suffix` keep their Option-returning behavior and managed-heap coverage
   separate from search, trim, case, slice, parsing, and splitting helpers.
+- Split M13 string text-transform helpers into a focused VM module.
+  `to_upper`, `to_lower`, `trim`, `replace`, and `repeat` now keep their
+  deterministic string materialization and repeat overflow guard separate from
+  search, affix, slice, parsing, and splitting helpers.
 
 ## Next
 
