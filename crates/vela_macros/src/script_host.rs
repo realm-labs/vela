@@ -1,11 +1,11 @@
-use std::collections::BTreeSet;
+mod emission;
+mod schema;
 
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Fields, Result, parse2};
+use syn::{DeriveInput, Result, parse2};
 
-use crate::attrs::{error, inferred_type_hint, parse_script_attrs, spanned_error};
-use crate::hash::StableHasher;
+use crate::attrs::{error, parse_script_attrs, spanned_error};
 
 #[derive(Clone, Copy)]
 pub(crate) enum GeneratedMethod {
@@ -41,19 +41,6 @@ impl GeneratedMethod {
     }
 }
 
-#[derive(Clone, Debug)]
-struct FieldMeta {
-    rust_name: String,
-    script_name: String,
-    id: u32,
-    readable: bool,
-    writable: bool,
-    type_hint: Option<String>,
-    docs: Option<String>,
-    attrs: Vec<(String, String)>,
-    permissions: Vec<String>,
-}
-
 pub(crate) fn expand(input: TokenStream, generated_method: GeneratedMethod) -> TokenStream {
     match expand_result(input, generated_method) {
         Ok(tokens) => tokens,
@@ -78,8 +65,8 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let module_name = attrs.module;
     let docs = attrs.docs;
     let type_attrs = attrs.attrs;
-    let fields = collect_fields(&input)?;
-    let schema_hash = schema_hash(&type_name, module_name.as_deref(), &type_attrs, &fields);
+    let fields = schema::collect_fields(&input)?;
+    let schema_hash = schema::schema_hash(&type_name, module_name.as_deref(), &type_attrs, &fields);
 
     let ident = input.ident;
     let method = generated_method.ident();
@@ -91,10 +78,10 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
             desc = desc.attr(#name, #value);
         }
     });
-    let field_tokens = fields.iter().map(field_tokens);
+    let field_tokens = fields.iter().map(emission::field_tokens);
     let field_helper_tokens = match generated_method {
         GeneratedMethod::Host => {
-            let helpers = fields.iter().map(field_helper_tokens);
+            let helpers = fields.iter().map(emission::field_helper_tokens);
             quote! { #(#helpers)* }
         }
         GeneratedMethod::Reflect => quote! {},
@@ -127,156 +114,6 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
 
         #trait_impl
     })
-}
-
-fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
-    let Data::Struct(data) = &input.data else {
-        return Err(spanned_error(input, "ScriptHost only supports structs"));
-    };
-    let Fields::Named(fields) = &data.fields else {
-        return Err(spanned_error(
-            input,
-            "ScriptHost requires named struct fields",
-        ));
-    };
-
-    let mut seen_ids = BTreeSet::new();
-    let mut seen_names = BTreeSet::new();
-    let mut result = Vec::new();
-    for field in &fields.named {
-        let attrs = parse_script_attrs(&field.attrs)?;
-        if attrs.skip || !attrs.has_script_attr {
-            continue;
-        }
-        let ident = field
-            .ident
-            .as_ref()
-            .ok_or_else(|| spanned_error(field, "ScriptHost requires named struct fields"))?;
-        let id = attrs.id.ok_or_else(|| {
-            error(
-                ident.span(),
-                "script-exposed fields require #[script(id = N)]",
-            )
-        })?;
-        if !seen_ids.insert(id) {
-            return Err(error(ident.span(), "duplicate script field id"));
-        }
-
-        let rust_name = ident.to_string();
-        let script_name = attrs.field_name(&rust_name);
-        if !seen_names.insert(script_name.clone()) {
-            return Err(error(ident.span(), "duplicate script field name"));
-        }
-        result.push(FieldMeta {
-            script_name,
-            rust_name,
-            id,
-            readable: attrs.get,
-            writable: attrs.set,
-            type_hint: attrs.type_hint.or_else(|| inferred_type_hint(&field.ty)),
-            docs: attrs.docs,
-            attrs: attrs.attrs,
-            permissions: attrs.permissions,
-        });
-    }
-
-    Ok(result)
-}
-
-fn field_tokens(field: &FieldMeta) -> TokenStream {
-    let id = field.id;
-    let script_name = &field.script_name;
-    let rust_name = &field.rust_name;
-    let readable = field.readable;
-    let writable = field.writable;
-    let permission_tokens = field
-        .permissions
-        .iter()
-        .map(|permission| quote! { .require_permission(#permission) });
-    let hint_tokens = field
-        .type_hint
-        .as_ref()
-        .map(|hint| quote! { .type_hint(#hint) });
-    let docs_tokens = field.docs.as_ref().map(|docs| quote! { .docs(#docs) });
-    let attr_tokens = field.attrs.iter().map(|(name, value)| {
-        quote! {
-            .attr(#name, #value)
-        }
-    });
-
-    quote! {
-        ::vela_reflect::FieldDesc::new(::vela_common::FieldId::new(#id), #script_name)
-            .access(
-                ::vela_reflect::FieldAccess::new()
-                    .readable(#readable)
-                    .writable(#writable)
-                    .reflect_readable(#readable)
-                    .reflect_writable(#writable)
-                    #(#permission_tokens)*
-            )
-            .attr("rust_name", #rust_name)
-            #(#attr_tokens)*
-            #hint_tokens
-            #docs_tokens
-    }
-}
-
-fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
-    let id = field.id;
-    let field_id_ident = format_ident!("vela_field_id_{}", field.rust_name);
-    let field_path_ident = format_ident!("vela_field_path_{}", field.rust_name);
-    let field_proxy_ident = format_ident!("vela_field_proxy_{}", field.rust_name);
-
-    quote! {
-        #[must_use]
-        pub const fn #field_id_ident() -> ::vela_engine::FieldId {
-            ::vela_engine::FieldId::new(#id)
-        }
-
-        #[must_use]
-        pub fn #field_path_ident(host_ref: ::vela_engine::HostRef) -> ::vela_engine::HostPath {
-            ::vela_engine::HostPath::new(host_ref).field(Self::#field_id_ident())
-        }
-
-        #[must_use]
-        pub fn #field_proxy_ident(host_ref: ::vela_engine::HostRef) -> ::vela_engine::PathProxy {
-            ::vela_engine::PathProxy::new(Self::#field_path_ident(host_ref))
-        }
-    }
-}
-
-fn schema_hash(
-    type_name: &str,
-    module_name: Option<&str>,
-    attrs: &[(String, String)],
-    fields: &[FieldMeta],
-) -> u64 {
-    let mut hasher = StableHasher::new();
-    hasher.write_str(type_name);
-    if let Some(module_name) = module_name {
-        hasher.write_str(module_name);
-    }
-    for (name, value) in attrs {
-        hasher.write_str(name);
-        hasher.write_str(value);
-    }
-    let mut fields = fields.iter().collect::<Vec<_>>();
-    fields.sort_by_key(|field| (field.id, field.script_name.as_str()));
-    for field in fields {
-        hasher.write_u32(field.id);
-        hasher.write_str(&field.script_name);
-        hasher.write_bool(field.readable);
-        hasher.write_bool(field.writable);
-        hasher.write_str(field.type_hint.as_deref().unwrap_or(""));
-        for (name, value) in &field.attrs {
-            hasher.write_str(name);
-            hasher.write_str(value);
-        }
-        for permission in &field.permissions {
-            hasher.write_str(permission);
-        }
-    }
-    hasher.finish()
 }
 
 #[cfg(test)]

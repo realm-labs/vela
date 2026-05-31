@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use super::{FunctionEffect, FunctionMeta, FunctionMode, HintKind, ParamMeta};
+use super::meta::{FunctionEffect, FunctionMeta, FunctionMode, HintKind, ParamMeta};
 
 pub(super) fn desc_tokens(function: &FunctionMeta) -> TokenStream {
     let id = function.id;

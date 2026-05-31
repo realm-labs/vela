@@ -2191,6 +2191,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   parameterless game-server fixture that parses command text with string and
   Option helpers, builds deterministic tag sets, and uses gameplay math helpers
   through the same Engine-installed standard library path as the host demos.
+- Split M14 macro metadata and host-schema generation into focused modules.
+  Script function and method parsing now live beside their emission modules,
+  and ScriptHost schema collection/hash logic is separate from token emission,
+  keeping the stable Engine API derive surface modular without behavior
+  changes.
 
 ## Next
 

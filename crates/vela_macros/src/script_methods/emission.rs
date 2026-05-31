@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use super::{HintKind, MethodEffect, MethodMeta, ParamMeta};
+use super::meta::{HintKind, MethodEffect, MethodMeta, ParamMeta};
 
 pub(super) fn method_tokens(method: &MethodMeta) -> TokenStream {
     let desc = method_desc_expr(method);
