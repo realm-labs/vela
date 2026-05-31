@@ -50,7 +50,12 @@ fn math_lerp(args: &[Value]) -> VmResult<Value> {
     let start = expect_finite_float(&args[0], "math.lerp")?;
     let end = expect_finite_float(&args[1], "math.lerp")?;
     let t = expect_finite_float(&args[2], "math.lerp")?;
-    Ok(Value::Float(start + (end - start) * t))
+    let value = start + (end - start) * t;
+    if value.is_finite() {
+        Ok(Value::Float(value))
+    } else {
+        type_error("math.lerp")
+    }
 }
 
 fn math_move_towards(args: &[Value]) -> VmResult<Value> {
@@ -550,6 +555,29 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "math.move_towards"
+            }
+        );
+    }
+
+    #[test]
+    fn math_lerp_rejects_non_finite_results() {
+        let source = r#"
+fn main() {
+    return math.lerp(1.0e308, -1.0e308, 2.0);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("math lerp non-finite source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let error = vm
+            .run(&code)
+            .expect_err("math lerp should reject non-finite results");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "math.lerp"
             }
         );
     }

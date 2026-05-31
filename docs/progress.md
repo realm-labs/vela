@@ -2161,6 +2161,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   nested lambda bodies so variables from an outer function can be carried
   through an intermediate closure into an inner returned closure, with
   compiler, VM, and shared conformance coverage.
+- Tightened M13 `math.lerp` numeric safety. The helper now rejects
+  non-finite interpolation results even when all inputs are finite, matching
+  the finite-output policy used by the other deterministic math helpers.
 
 ## Next
 
