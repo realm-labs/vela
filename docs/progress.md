@@ -2301,6 +2301,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `distinct`, `reverse`, and `slice` now keep deterministic materialization,
   equality-based de-duplication, and range validation separate from lookup,
   mutation, ordering, grouping, and numeric aggregation helpers.
+- Split M13 array aggregation helpers into a focused VM module. Array `sum`
+  and `group_by` now keep numeric total accumulation, callback mapping, and
+  protected group roots separate from lookup, mutation, ordering, and
+  transform helpers.
 
 ## Next
 
