@@ -1985,6 +1985,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   `else`. The compiler now lowers the untaken branch to `null`, analysis
   includes the null fallback in expression facts, and conformance covers the
   grammar-permitted form.
+- Strengthened M13 map introspection coverage. `map.keys()`, `map.values()`,
+  and `map.entries()` now have focused inline, managed-heap, and analysis
+  assertions proving deterministic key order and copied `MapEntry` records.
 - Split M14 script-function macro emission into a focused child module. The
   derive crate now keeps script-function parsing/validation separate from
   generated descriptor and Engine registration token construction, preserving

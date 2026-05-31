@@ -186,6 +186,18 @@ mod tests {
             TypeFact::array(TypeFact::String)
         );
         assert_eq!(
+            stdlib_method_fact(&map, "values", None)
+                .expect("values fact")
+                .returns,
+            TypeFact::array(TypeFact::Int)
+        );
+        assert_eq!(
+            stdlib_method_fact(&map, "entries", None)
+                .expect("entries fact")
+                .returns,
+            TypeFact::array(TypeFact::record("MapEntry"))
+        );
+        assert_eq!(
             stdlib_method_fact(&map, "clear", None)
                 .expect("map clear fact")
                 .returns,
@@ -1259,6 +1271,10 @@ mod tests {
         assert!(facts.iter().any(|fact| {
             fact.method == "map_values"
                 && fact.returns == TypeFact::map(TypeFact::String, TypeFact::Bool)
+        }));
+        assert!(facts.iter().any(|fact| {
+            fact.method == "entries"
+                && fact.returns == TypeFact::array(TypeFact::record("MapEntry"))
         }));
         assert!(facts.iter().any(|fact| {
             fact.method == "filter"

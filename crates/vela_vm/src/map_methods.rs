@@ -612,6 +612,70 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_map_introspection_methods() {
+        let source = r#"
+fn main() {
+    let rewards = {"xp": 6, "gold": 4, "quest": 8};
+    let keys = rewards.keys();
+    let values = rewards.values();
+    let entries = rewards.entries();
+    if keys.join(",") == "gold,quest,xp"
+        && values[0] == 4
+        && values[1] == 8
+        && values[2] == 6
+        && entries[0].key == "gold"
+        && entries[0].value == 4
+        && entries[2].key == "xp"
+        && entries[2].value == 6
+    {
+        return values[1] + entries[0].value + keys[2].len();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map introspection methods should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("map introspection methods should run");
+        assert_eq!(result, Value::Int(14));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_map_introspection_methods() {
+        let source = r#"
+fn main() {
+    let quests = {"raid": "active", "daily": "done", "world": "open"};
+    let keys = quests.keys();
+    let values = quests.values();
+    let entries = quests.entries();
+    if keys.join(",") == "daily,raid,world"
+        && entries[0].key == "daily"
+        && entries[0].value == "done"
+        && entries[1].key == "raid"
+        && entries[1].value == "active"
+        && entries[2].key == "world"
+        && entries[2].value == "open"
+    {
+        return values.join("|");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap map introspection methods should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap map introspection methods should run");
+        assert_eq!(result, Value::String("done|active|open".to_owned()));
+    }
+
+    #[test]
     fn runs_compiled_map_merge_method() {
         let source = r#"
 fn main() {
