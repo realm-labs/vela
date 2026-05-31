@@ -2114,6 +2114,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   control-flow module. Let/return/expression statements, for-in loop patching,
   break/continue handling, and value-producing block/if/match lowering now
   live outside the main compiler coordinator without changing emitted bytecode.
+- Split bytecode expression lowering into the focused compiler expression
+  module. Literal, path, field, index, call, lambda, aggregate, constructor,
+  unary, binary, and try expression lowering now live outside the main
+  compiler coordinator while preserving emitted bytecode behavior.
 
 ## Next
 
