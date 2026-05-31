@@ -800,7 +800,10 @@ impl Vm {
                 } => {
                     let values = args
                         .iter()
-                        .map(|register| frame.read(*register).cloned())
+                        .map(|arg| match arg {
+                            CallArgument::Register(register) => frame.read(*register).cloned(),
+                            CallArgument::Missing => Ok(Value::Missing),
+                        })
                         .collect::<VmResult<Vec<_>>>()?;
                     let mut receiver_value = frame.read(*receiver)?.clone();
                     let result = call_method(
@@ -831,7 +834,10 @@ impl Vm {
                 } => {
                     let values = args
                         .iter()
-                        .map(|register| frame.read(*register).cloned())
+                        .map(|arg| match arg {
+                            CallArgument::Register(register) => frame.read(*register).cloned(),
+                            CallArgument::Missing => Ok(Value::Missing),
+                        })
                         .collect::<VmResult<Vec<_>>>()?;
                     let receiver_value = frame.read(*receiver)?.clone();
                     let result = call_method_id(

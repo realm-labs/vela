@@ -2148,6 +2148,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   duplicate module names are rejected, reflected module records expose docs,
   and the game-server reflection demo now verifies module docs/attrs through
   the CLI path.
+- Filled an M9 script method call-argument gap. Statically resolved script
+  method calls now support named arguments and default parameters through the
+  same `CallArgument::Missing` path as script functions, and the shared
+  conformance fixture exercises named/default method dispatch.
 
 ## Next
 

@@ -1,7 +1,8 @@
 use vela_syntax::{Argument, Expr, ExprKind};
 
-use crate::InstructionKind;
+use crate::{CallArgument, InstructionKind};
 
+use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
@@ -106,13 +107,13 @@ impl Compiler<'_> {
         name: &str,
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
-        reject_named_args(args, "script method call")?;
-        let method_id = self.script_method_id_for_receiver(base, name);
+        let receiver_type = self.script_type_for_expr(base);
+        let method_id = receiver_type
+            .as_deref()
+            .and_then(|type_name| self.script_method_id_for_type(type_name, name));
+        let arg_registers =
+            self.compile_script_method_call_args(receiver_type.as_deref(), name, args, expr.span)?;
         let receiver = self.compile_expr(base)?;
-        let arg_registers = args
-            .iter()
-            .map(|arg| self.compile_expr(&arg.value))
-            .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
             self.emit_spanned(
@@ -147,13 +148,17 @@ impl Compiler<'_> {
         method: &str,
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
-        reject_named_args(args, "script method call")?;
-        let method_id = self.script_method_id_for_receiver_path(receiver_path, method);
+        let receiver_type = self.script_type_for_receiver_path(receiver_path);
+        let method_id = receiver_type
+            .as_deref()
+            .and_then(|type_name| self.script_method_id_for_type(type_name, method));
+        let arg_registers = self.compile_script_method_call_args(
+            receiver_type.as_deref(),
+            method,
+            args,
+            expr.span,
+        )?;
         let receiver = self.compile_path_expr(callee.span, receiver_path)?;
-        let arg_registers = args
-            .iter()
-            .map(|arg| self.compile_expr(&arg.value))
-            .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
             self.emit_spanned(
@@ -178,6 +183,51 @@ impl Compiler<'_> {
             );
         }
         Ok(dst)
+    }
+
+    fn compile_script_method_call_args(
+        &mut self,
+        receiver_type: Option<&str>,
+        method: &str,
+        args: &[Argument],
+        call_span: vela_common::Span,
+    ) -> CompileResult<Vec<CallArgument>> {
+        let Some(receiver_type) = receiver_type else {
+            reject_named_args(args, "script method call")?;
+            return self.compile_positional_method_args(args);
+        };
+        let Some(params) = self.script_method_params(receiver_type, method) else {
+            reject_named_args(args, "script method call")?;
+            return self.compile_positional_method_args(args);
+        };
+        let params = params.into_iter().skip(1).collect::<Vec<_>>();
+        let slots =
+            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
+                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+            })?;
+
+        slots
+            .into_iter()
+            .zip(params)
+            .map(|(slot, param)| {
+                if let Some(arg) = slot {
+                    self.compile_expr(&arg.value).map(CallArgument::Register)
+                } else if param.default_value_span.is_some() {
+                    Ok(CallArgument::Missing)
+                } else {
+                    unreachable!("call argument resolver rejects missing required arguments")
+                }
+            })
+            .collect()
+    }
+
+    fn compile_positional_method_args(
+        &mut self,
+        args: &[Argument],
+    ) -> CompileResult<Vec<CallArgument>> {
+        args.iter()
+            .map(|arg| self.compile_expr(&arg.value).map(CallArgument::Register))
+            .collect()
     }
 }
 

@@ -59,6 +59,7 @@ struct CompilerFacts {
     script_function_symbols: BTreeMap<HirDeclId, String>,
     script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
     script_method_ids: BTreeMap<(String, String), MethodId>,
+    script_method_signatures: BTreeMap<(String, String), Vec<ParamHint>>,
     script_field_slots: ScriptFieldSlots,
     schema_defaults: ScriptSchemaDefaults,
     type_symbols: BTreeMap<HirDeclId, String>,
@@ -101,6 +102,7 @@ pub fn compile_function_source_with_options(
         script_function_symbols,
         script_function_signatures,
         script_method_ids: BTreeMap::new(),
+        script_method_signatures: BTreeMap::new(),
         script_field_slots,
         schema_defaults,
         type_symbols,
@@ -129,6 +131,7 @@ pub fn compile_program_source_with_options(
     let script_function_signatures = semantic.script_function_signatures();
     let script_impl_methods = semantic.script_impl_methods();
     let script_method_ids = script_method_ids(&script_impl_methods);
+    let script_method_signatures = script_method_signatures(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
@@ -137,6 +140,7 @@ pub fn compile_program_source_with_options(
         script_function_symbols,
         script_function_signatures,
         script_method_ids,
+        script_method_signatures,
         script_field_slots,
         schema_defaults,
         type_symbols,
@@ -179,6 +183,7 @@ pub fn compile_module_sources_with_options(
     let script_function_signatures = semantic.script_function_signatures();
     let script_impl_methods = semantic.script_impl_methods();
     let script_method_ids = script_method_ids(&script_impl_methods);
+    let script_method_signatures = script_method_signatures(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
@@ -187,6 +192,7 @@ pub fn compile_module_sources_with_options(
         script_function_symbols,
         script_function_signatures,
         script_method_ids,
+        script_method_signatures,
         script_field_slots,
         schema_defaults,
         type_symbols,
@@ -250,6 +256,20 @@ fn script_method_ids(
             (
                 (method.target_type.clone(), method.method_name.clone()),
                 method.method_id,
+            )
+        })
+        .collect()
+}
+
+fn script_method_signatures(
+    methods: &[script_impls::ScriptImplMethod<'_>],
+) -> BTreeMap<(String, String), Vec<ParamHint>> {
+    methods
+        .iter()
+        .map(|method| {
+            (
+                (method.target_type.clone(), method.method_name.clone()),
+                method.signature.params.clone(),
             )
         })
         .collect()
@@ -942,11 +962,6 @@ impl<'ast> Compiler<'ast> {
         self.facts.type_symbols.get(declaration).cloned()
     }
 
-    fn script_method_id_for_receiver(&self, receiver: &Expr, method: &str) -> Option<MethodId> {
-        let type_name = self.script_type_for_expr(receiver)?;
-        self.script_method_id_for_type(&type_name, method)
-    }
-
     fn host_method_receiver_type(&self, callee: &Expr) -> Option<String> {
         match &callee.kind {
             ExprKind::Field { base, .. } => self.script_type_for_expr(base),
@@ -977,16 +992,11 @@ impl<'ast> Compiler<'ast> {
         self.facts.script_field_slots.record(type_name, field)
     }
 
-    fn script_method_id_for_receiver_path(
-        &self,
-        receiver_path: &[String],
-        method: &str,
-    ) -> Option<MethodId> {
+    fn script_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<String> {
         let [receiver] = receiver_path else {
             return None;
         };
-        let type_name = self.script_types.name(receiver)?;
-        self.script_method_id_for_type(&type_name, method)
+        self.script_types.name(receiver)
     }
 
     fn script_method_id_for_type(&self, type_name: &str, method: &str) -> Option<MethodId> {
@@ -994,6 +1004,13 @@ impl<'ast> Compiler<'ast> {
             .script_method_ids
             .get(&(type_name.to_owned(), method.to_owned()))
             .copied()
+    }
+
+    fn script_method_params(&self, type_name: &str, method: &str) -> Option<Vec<ParamHint>> {
+        self.facts
+            .script_method_signatures
+            .get(&(type_name.to_owned(), method.to_owned()))
+            .cloned()
     }
 
     fn script_type_for_expr(&self, expr: &Expr) -> Option<String> {
@@ -1609,6 +1626,50 @@ fn main() {
             } if lowered == method_id
         )));
         assert!(program.function("bonus").is_none());
+    }
+
+    #[test]
+    fn compiler_lowers_named_and_default_script_method_args() {
+        let program = compile_program_source(
+            SourceId::new(1),
+            r#"
+trait BonusSource {
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> int;
+}
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> int {
+        return self.level + amount * multiplier + offset;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(offset = 4, amount = 5);
+}
+"#,
+        )
+        .expect("named/default method call should compile");
+
+        let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+        let main = program.function("main").expect("main function");
+        let args = main
+            .instructions
+            .iter()
+            .find_map(|instruction| match &instruction.kind {
+                InstructionKind::CallMethodId {
+                    method_id: lowered,
+                    args,
+                    ..
+                } if *lowered == method_id => Some(args),
+                _ => None,
+            })
+            .expect("named/default method call should lower by stable id");
+        assert_eq!(args.len(), 3);
+        assert!(matches!(args[0], CallArgument::Register(_)));
+        assert_eq!(args[1], CallArgument::Missing);
+        assert!(matches!(args[2], CallArgument::Register(_)));
     }
 
     #[test]

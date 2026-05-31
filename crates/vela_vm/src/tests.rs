@@ -820,6 +820,37 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_script_method_named_and_default_args() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+trait BonusSource {
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> int;
+}
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> int {
+        return self.level + amount * multiplier + offset;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(offset = 4, amount = 5)
+        + Player { level: 3 }.bonus(amount = 2);
+}
+"#,
+    )
+    .expect("compile script method named/default args");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "main", &[]),
+        Ok(Value::Int(29))
+    );
+}
+
+#[test]
 fn runs_compiled_typed_parameter_method_id_dispatch() {
     let program = compile_program_source(
         SourceId::new(1),

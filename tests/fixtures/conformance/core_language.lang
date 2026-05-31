@@ -27,11 +27,16 @@ enum QuestState {
 
 trait Scored {
     fn score(self) -> int;
+    fn weighted(self, amount: int, multiplier: int = 2, offset: int = BASE) -> int;
 }
 
 impl Scored for Reward {
     fn score(self) -> int {
         return self.count + BASE;
+    }
+
+    fn weighted(self, amount: int, multiplier: int = 2, offset: int = BASE) -> int {
+        return self.count + amount * multiplier + offset;
     }
 }
 
@@ -86,6 +91,7 @@ fn main() {
         let local = add(bonus = 3, base = 4);
         local + reward.score()
     };
+    let named_method_score: int = reward.weighted(offset = 4, amount = 3);
 
     let parsed: int = "42".parse_int().unwrap_or(0);
     let result: int = result_bonus(true)?;
@@ -140,6 +146,7 @@ fn main() {
         + quest_score
         + streak_score
         + block_value
+        + named_method_score
         + parsed
         + result
         + mapped["gold"]

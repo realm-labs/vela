@@ -261,14 +261,14 @@ pub enum InstructionKind {
         dst: Register,
         receiver: Register,
         method: String,
-        args: Vec<Register>,
+        args: Vec<CallArgument>,
     },
     CallMethodId {
         dst: Register,
         receiver: Register,
         method: String,
         method_id: MethodId,
-        args: Vec<Register>,
+        args: Vec<CallArgument>,
     },
     TryPropagate {
         dst: Register,

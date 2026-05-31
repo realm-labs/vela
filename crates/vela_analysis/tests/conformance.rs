@@ -95,6 +95,10 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
         Some(TypeFact::Int)
     );
     assert_eq!(
+        local_fact(bindings, &facts, "named_method_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
         local_fact(bindings, &facts, "imported_reward"),
         Some(TypeFact::record("conformance.reward.RewardConfig"))
     );
