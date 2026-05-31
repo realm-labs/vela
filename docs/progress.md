@@ -2305,6 +2305,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   and `group_by` now keep numeric total accumulation, callback mapping, and
   protected group roots separate from lookup, mutation, ordering, and
   transform helpers.
+- Split M13 map mutation helpers into a focused VM module. Map `set`,
+  `remove`, `clear`, and `extend` now keep managed-heap slot conversion and
+  in-place updates separate from lookup, introspection, merge, and
+  higher-order helpers.
 
 ## Next
 

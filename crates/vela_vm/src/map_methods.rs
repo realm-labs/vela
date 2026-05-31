@@ -4,14 +4,13 @@ use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::script_object::ScriptFields;
 use crate::string_methods;
-use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
-    value_to_heap_slot,
-};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 mod higher_order;
+mod mutation;
 
 pub(crate) use higher_order::{all, any, count, filter, find, map_values};
+pub(crate) use mutation::{clear, extend, remove, set};
 
 pub(crate) fn has(
     receiver: &Value,
@@ -72,117 +71,6 @@ pub(crate) fn get_or(
                 .map_or_else(|| args[1].clone(), value_from_heap_slot))
         }
         _ => type_error("method get_or"),
-    }
-}
-
-pub(crate) fn set(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    expect_arity("set", args, 2)?;
-    let key = map_key(&args[0], heap.as_deref())?;
-    match receiver {
-        Value::Map(values) => {
-            values.insert(key, args[1].clone());
-            Ok(args[1].clone())
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method set");
-            };
-            let slot = value_to_heap_slot(&args[1], heap, budget)?;
-            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method set");
-            };
-            values.insert(key, slot);
-            Ok(args[1].clone())
-        }
-        _ => type_error("method set"),
-    }
-}
-
-pub(crate) fn remove(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("remove", args, 1)?;
-    let key = map_key(&args[0], heap.as_deref())?;
-    match receiver {
-        Value::Map(values) => Ok(option_value(values.remove(&key))),
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method remove");
-            };
-            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method remove");
-            };
-            Ok(option_value(
-                values.remove(&key).map(|slot| value_from_heap_slot(&slot)),
-            ))
-        }
-        _ => type_error("method remove"),
-    }
-}
-
-pub(crate) fn clear(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("clear", args, 0)?;
-    match receiver {
-        Value::Map(values) => {
-            values.clear();
-            Ok(Value::Null)
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method clear");
-            };
-            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method clear");
-            };
-            values.clear();
-            Ok(Value::Null)
-        }
-        _ => type_error("method clear"),
-    }
-}
-
-pub(crate) fn extend(
-    receiver: &mut Value,
-    args: &[Value],
-    heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    expect_arity("extend", args, 1)?;
-    let entries = map_entries(&args[0], heap.as_deref(), "method extend")?;
-    match receiver {
-        Value::Map(values) => {
-            values.extend(entries);
-            Ok(Value::Null)
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method extend");
-            };
-            let mut slots = Vec::with_capacity(entries.len());
-            for (key, value) in entries {
-                slots.push((
-                    key,
-                    value_to_heap_slot(&value, heap, budget.as_deref_mut())?,
-                ));
-            }
-            let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
-                return type_error("method extend");
-            };
-            values.extend(slots);
-            Ok(Value::Null)
-        }
-        _ => type_error("method extend"),
     }
 }
 
@@ -346,7 +234,7 @@ fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
     expect_arity(method, args, 0)
 }
 
-fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
+pub(super) fn map_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
     string_methods::string_value(value, heap, "map key").map(str::to_owned)
 }
 
