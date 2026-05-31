@@ -431,6 +431,10 @@ mod tests {
         assert_eq!(split_lines.params, Vec::<TypeFact>::new());
         assert_eq!(split_lines.returns, TypeFact::array(TypeFact::String));
 
+        let char_at = stdlib_method_fact(&TypeFact::String, "char_at", None).expect("char_at fact");
+        assert_eq!(char_at.params, vec![TypeFact::Int]);
+        assert_eq!(char_at.returns, TypeFact::option(TypeFact::String));
+
         let parse_int =
             stdlib_method_fact(&TypeFact::String, "parse_int", None).expect("parse_int fact");
         assert_eq!(parse_int.params, Vec::<TypeFact>::new());

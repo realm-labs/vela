@@ -64,6 +64,22 @@ pub(crate) fn find(
     ))))
 }
 
+pub(crate) fn char_at(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Value> {
+    expect_arity("char_at", args, 1)?;
+    let value = string_value(receiver, heap, "method char_at")?;
+    let index = index_value(&args[0], "method char_at")?;
+    Ok(option_value(
+        value
+            .chars()
+            .nth(index)
+            .map(|ch| Value::String(ch.to_string())),
+    ))
+}
+
 pub(crate) fn strip_prefix(
     receiver: &Value,
     args: &[Value],
@@ -625,6 +641,72 @@ fn main() {
             error.kind,
             crate::VmErrorKind::TypeMismatch {
                 operation: "method find"
+            }
+        );
+    }
+
+    #[test]
+    fn string_char_at_returns_character_options() {
+        let source = r#"
+fn main() {
+    let label = "xp奖励";
+    let first = label.char_at(0);
+    let reward = label.char_at(2);
+    let missing = label.char_at(99);
+    if option.unwrap_or(first, "") == "x"
+        && option.unwrap_or(reward, "") == "奖"
+        && option.is_none(missing)
+    {
+        return option.unwrap_or(label.char_at(3), "");
+    }
+    return "";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string char_at source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("string char_at should run");
+        assert_eq!(result, Value::String("励".to_owned()));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_char_at() {
+        let source = r#"
+fn main() {
+    let event = "level.up";
+    return event.char_at(5).unwrap_or("");
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string char_at source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .with_standard_natives()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string char_at should run");
+        assert_eq!(result, Value::String(".".to_owned()));
+    }
+
+    #[test]
+    fn string_char_at_rejects_negative_indexes() {
+        let source = r#"
+fn main() {
+    return "quest".char_at(-1);
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string char_at type error source should compile");
+
+        let error = Vm::new()
+            .run(&code)
+            .expect_err("string char_at should reject negative indexes");
+        assert_eq!(
+            error.kind,
+            crate::VmErrorKind::TypeMismatch {
+                operation: "method char_at"
             }
         );
     }

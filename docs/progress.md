@@ -2174,6 +2174,9 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Tightened the same M9 radix path to reject uppercase `0X` and `0B`
   prefixes at lex time, matching the lowercase-only grammar and removing the
   compiler's old uppercase-prefix fallback.
+- Added M13 `string.char_at(index)` as a Unicode-aware, Option-returning
+  string helper for safe command and event parsing. Runtime and analysis
+  coverage now expose `option<string>` results without out-of-bounds errors.
 
 ## Next
 
