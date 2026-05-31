@@ -17,6 +17,13 @@ fn main(ctx, player) {
     let reward_params = reflect.params(reward_function);
     let reward_access = reflect.access(reward_function);
     let ctx_now_access = reflect.access(ctx_now);
+    let ctx_methods = reflect.methods(ctx);
+    let ctx_emit = reflect.method(ctx, "emit");
+    let ctx_log = reflect.method(ctx, "log");
+    let ctx_emit_access = reflect.access(ctx_emit);
+    let ctx_log_access = reflect.access(ctx_log);
+    let ctx_emit_params = reflect.params(ctx_emit);
+    let ctx_log_params = reflect.params(ctx_log);
     let modules = reflect.modules();
     let functions = reflect.functions();
     let exports = reflect.exports(reward_module);
@@ -99,6 +106,25 @@ fn main(ctx, player) {
         && reflect.returns(ctx_now) == "int"
         && reflect.returns(ctx_tick) == "int"
         && ctx_now_access.required_permissions[0] == "ctx.time"
+        && ctx_methods.len() == 2
+        && reflect.has_method(ctx, "emit")
+        && reflect.has_method(ctx, "log")
+        && reflect.name(ctx_emit) == "emit"
+        && reflect.name(ctx_log) == "log"
+        && ctx_emit.owner == "Context"
+        && ctx_log.owner == "Context"
+        && ctx_emit.effects.emits_events
+        && ctx_log.effects.emits_events
+        && ctx_emit_access.reflect_callable
+        && ctx_log_access.reflect_callable
+        && ctx_emit_params.len() == 2
+        && ctx_emit_params[0].name == "event"
+        && ctx_emit_params[0].type == "string"
+        && ctx_emit_params[1].defaulted
+        && ctx_log_params.len() == 3
+        && ctx_log_params[0].name == "level"
+        && ctx_log_params[1].name == "message"
+        && ctx_log_params[2].defaulted
         && functions.len() == 3
         && functions.any(|function| reflect.id(function) == reflect.id(reward_function))
         && functions.any(|function| reflect.name(function) == "ctx.now"

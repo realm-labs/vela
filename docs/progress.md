@@ -2335,6 +2335,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   normalization, batch key extraction, and heap-slot key conversion now live
   separately from construction, lookup, mutation, combination, and
   higher-order helpers.
+- Extended the M12/M13/M17 reflection demo proof for context helpers. The
+  game-server `reflect_debug` script now verifies `Context.emit` and
+  `Context.log` method metadata, parameters, callable access, and event-effect
+  flags through the same CLI path that applies reflected event patches.
 
 ## Next
 
