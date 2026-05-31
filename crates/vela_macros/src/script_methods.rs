@@ -1,3 +1,5 @@
+mod emission;
+
 use std::collections::BTreeSet;
 
 use proc_macro2::TokenStream;
@@ -141,9 +143,10 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
     }
 
     let self_ty = item.self_ty.clone();
-    let method_tokens = methods.iter().map(method_tokens);
-    let native_registration_tokens = native_method_registration_tokens(&methods);
-    let host_method_registration_tokens = script_host_method_registration_tokens(&methods);
+    let method_tokens = methods.iter().map(emission::method_tokens);
+    let native_registration_tokens = emission::native_method_registration_tokens(&methods);
+    let host_method_registration_tokens =
+        emission::script_host_method_registration_tokens(&methods);
     Ok(quote! {
         #item
 
@@ -376,156 +379,6 @@ fn hint_for_type(ty: &Type) -> HintKind {
 
 fn is_unit_tuple(ty: &Type) -> bool {
     matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty())
-}
-
-fn method_tokens(method: &MethodMeta) -> TokenStream {
-    let desc = method_desc_expr(method);
-
-    quote! {
-        methods.push(#desc);
-    }
-}
-
-fn method_desc_expr(method: &MethodMeta) -> TokenStream {
-    let id = method.id;
-    let name = &method.name;
-    let effect = effect_tokens(method.effect);
-    let returns = hint_tokens(method.returns);
-    let params = method.params.iter().map(param_tokens);
-    let access = access_tokens(method);
-    let docs = method
-        .docs
-        .as_ref()
-        .map(|docs| quote! { desc = desc.docs(#docs); });
-    let attrs = method.attrs.iter().map(|(name, value)| {
-        quote! {
-            desc = desc.attr(#name, #value);
-        }
-    });
-
-    quote! {{
-        let mut desc = ::vela_engine::NativeMethodDesc::new(
-            owner_key.clone(),
-            ::vela_common::HostMethodId::new(#id),
-            #name,
-        )
-        .effects(#effect)
-        .returns(#returns)
-        .access(#access);
-        #(
-            desc = desc.param(#params);
-        )*
-        #(#attrs)*
-        #docs
-        desc
-    }}
-}
-
-fn native_method_registration_tokens(methods: &[MethodMeta]) -> TokenStream {
-    let mut builder = quote! { builder };
-    for method in methods.iter().filter(|method| method.callable_native) {
-        let desc = method_desc_expr(method);
-        let args_tuple = args_tuple_tokens(&method.params);
-        let ident = &method.ident;
-        builder = quote! {
-            #builder.register_typed_native_method_fn::<#args_tuple, _>(
-                #desc,
-                Self::#ident,
-            )
-        };
-    }
-
-    quote! {
-        #builder
-    }
-}
-
-fn script_host_method_registration_tokens(methods: &[MethodMeta]) -> TokenStream {
-    let mut builder = quote! { builder };
-    for method in methods {
-        let desc = method_desc_expr(method);
-        if method.callable_native {
-            let args_tuple = args_tuple_tokens(&method.params);
-            let ident = &method.ident;
-            builder = quote! {
-                #builder.register_typed_native_method_fn::<#args_tuple, _>(
-                    #desc,
-                    Self::#ident,
-                )
-            };
-        } else {
-            builder = quote! {
-                #builder.register_host_method_desc(#desc)
-            };
-        }
-    }
-
-    quote! {
-        #builder
-    }
-}
-
-fn args_tuple_tokens(params: &[ParamMeta]) -> TokenStream {
-    match params {
-        [] => quote! { () },
-        [param] => {
-            let ty = &param.ty;
-            quote! { (#ty,) }
-        }
-        params => {
-            let types = params.iter().map(|param| &param.ty);
-            quote! { (#(#types),*) }
-        }
-    }
-}
-
-fn param_tokens(param: &ParamMeta) -> TokenStream {
-    let name = &param.name;
-    let hint = hint_tokens(param.hint);
-    quote! { #name, #hint }
-}
-
-fn effect_tokens(effect: MethodEffect) -> TokenStream {
-    match effect {
-        MethodEffect::Pure => quote! { ::vela_engine::EffectSet::pure() },
-        MethodEffect::HostRead => quote! { ::vela_engine::EffectSet::host_read() },
-        MethodEffect::HostWrite => quote! { ::vela_engine::EffectSet::host_write() },
-        MethodEffect::EventEmit => quote! { ::vela_engine::EffectSet::event_emit() },
-    }
-}
-
-fn hint_tokens(hint: HintKind) -> TokenStream {
-    match hint {
-        HintKind::Any => quote! { ::vela_engine::TypeHint::Any },
-        HintKind::Null => quote! { ::vela_engine::TypeHint::Null },
-        HintKind::Bool => quote! { ::vela_engine::TypeHint::Bool },
-        HintKind::Int => quote! { ::vela_engine::TypeHint::Int },
-        HintKind::Float => quote! { ::vela_engine::TypeHint::Float },
-        HintKind::String => quote! { ::vela_engine::TypeHint::String },
-        HintKind::Array => quote! { ::vela_engine::TypeHint::Array },
-        HintKind::Map => quote! { ::vela_engine::TypeHint::Map },
-        HintKind::Set => quote! { ::vela_engine::TypeHint::Set },
-        HintKind::HostOwner => quote! { ::vela_engine::TypeHint::Host(owner_key.clone()) },
-        HintKind::Function => quote! { ::vela_engine::TypeHint::Function },
-    }
-}
-
-fn access_tokens(method: &MethodMeta) -> TokenStream {
-    let reflect_callable = method.reflect_callable;
-    let permissions = method.permissions.iter().map(|permission| {
-        quote! {
-            access = access.require_permission(#permission);
-        }
-    });
-
-    quote! {
-        {
-            let mut access =
-                ::vela_engine::FunctionAccess::public().reflect_callable(#reflect_callable);
-            #(#permissions)*
-            access
-        }
-    }
 }
 
 #[cfg(test)]

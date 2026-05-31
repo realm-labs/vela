@@ -1985,6 +1985,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   derive crate now keeps script-function parsing/validation separate from
   generated descriptor and Engine registration token construction, preserving
   existing macro output while keeping the implementation reviewable.
+- Split M14 script-method macro emission into a focused child module. Method
+  macro parsing and signature validation now stay separate from generated
+  method descriptor expressions and Engine registration chains, preserving the
+  existing host-method API while reducing macro-file responsibility.
 
 ## Next
 
