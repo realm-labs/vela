@@ -39,10 +39,8 @@ use vela_syntax::{
 #[cfg(test)]
 use crate::HostPathSegment;
 use crate::{
-    CallArgument, CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program,
-    Register,
+    CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
 };
-use call_args::resolve_script_call_arguments;
 use const_eval::evaluate_const_expr;
 use control_flow::LoopContext;
 pub use error::{CompileError, CompileErrorKind, CompileResult};
@@ -905,38 +903,6 @@ impl<'ast> Compiler<'ast> {
         Ok(())
     }
 
-    fn compile_script_call_args(
-        &mut self,
-        declaration: HirDeclId,
-        args: &[Argument],
-        call_span: Span,
-    ) -> CompileResult<Vec<CallArgument>> {
-        let params = self
-            .facts
-            .script_function_signatures
-            .get(&declaration)
-            .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("script call")))?
-            .clone();
-        let slots =
-            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
-
-        slots
-            .into_iter()
-            .zip(params)
-            .map(|(slot, param)| {
-                if let Some(arg) = slot {
-                    self.compile_expr(&arg.value).map(CallArgument::Register)
-                } else if param.default_value_span.is_some() {
-                    Ok(CallArgument::Missing)
-                } else {
-                    unreachable!("call argument resolver rejects missing required arguments")
-                }
-            })
-            .collect()
-    }
-
     fn tuple_enum_constructor_call(&self, callee: &Expr) -> Option<(String, String)> {
         let ExprKind::Path(path) = &callee.kind else {
             return None;
@@ -1165,6 +1131,7 @@ fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::CallArgument;
     use vela_common::MethodId;
 
     fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {

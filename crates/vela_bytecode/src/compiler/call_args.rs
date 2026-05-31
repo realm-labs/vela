@@ -1,8 +1,46 @@
 use std::collections::BTreeSet;
 
 use vela_common::{Diagnostic, Span};
-use vela_hir::ParamHint;
+use vela_hir::{HirDeclId, ParamHint};
 use vela_syntax::Argument;
+
+use crate::CallArgument;
+
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+
+impl Compiler<'_> {
+    pub(super) fn compile_script_call_args(
+        &mut self,
+        declaration: HirDeclId,
+        args: &[Argument],
+        call_span: Span,
+    ) -> CompileResult<Vec<CallArgument>> {
+        let params = self
+            .facts
+            .script_function_signatures
+            .get(&declaration)
+            .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("script call")))?
+            .clone();
+        let slots =
+            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
+                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+            })?;
+
+        slots
+            .into_iter()
+            .zip(params)
+            .map(|(slot, param)| {
+                if let Some(arg) = slot {
+                    self.compile_expr(&arg.value).map(CallArgument::Register)
+                } else if param.default_value_span.is_some() {
+                    Ok(CallArgument::Missing)
+                } else {
+                    unreachable!("call argument resolver rejects missing required arguments")
+                }
+            })
+            .collect()
+    }
+}
 
 pub(super) fn resolve_script_call_arguments<'ast>(
     params: &[ParamHint],

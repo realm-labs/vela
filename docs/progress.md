@@ -2126,6 +2126,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   Capture collection, nested closure compiler setup, script type fact
   propagation, and closure bytecode emission now live together outside the main
   compiler coordinator while preserving lambda runtime behavior.
+- Split bytecode script call argument lowering into the focused compiler call
+  argument module. Named/default argument resolution and register-or-missing
+  argument emission now live together outside the main compiler coordinator
+  while preserving script call bytecode behavior.
 
 ## Next
 
