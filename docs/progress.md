@@ -1973,6 +1973,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   ranges now produce an explicit non-generic `range` `TypeFact`, and analysis
   exposes the runtime-supported `range.len()` and `range.is_empty()` method
   facts instead of degrading those expressions to `unknown`.
+- Filled an M9 analysis gap for index reads. Array and map indexing now infer
+  element/value facts, including compatible union receivers, while incompatible
+  index shapes still degrade conservatively to `unknown` instead of inventing
+  static type errors.
 
 ## Next
 

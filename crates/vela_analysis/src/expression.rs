@@ -101,7 +101,10 @@ fn type_fact_from_expr_impl(
             type_fact_from_expr_impl(value, scope, facts)
         }
         ExprKind::Field { base, name } => field_access_fact(base, name, scope, facts),
-        ExprKind::Index { .. } => TypeFact::Unknown,
+        ExprKind::Index { base, index } => index_fact(
+            type_fact_from_expr_impl(base, scope, facts),
+            type_fact_from_expr_impl(index, scope, facts),
+        ),
         ExprKind::Call { callee, args } => call_fact(callee, args, scope, facts),
         ExprKind::Array(values) => TypeFact::array(collection_fact(
             values
@@ -270,6 +273,37 @@ fn registry_field_fact(
             .field_fact(&format!("{name}.{variant}"), field)
             .cloned(),
         _ => None,
+    }
+}
+
+fn index_fact(base: TypeFact, index: TypeFact) -> TypeFact {
+    match base {
+        TypeFact::Array { element } if accepts_int_index(&index) => *element,
+        TypeFact::Map { key, value } if accepts_map_key(&index, &key) => *value,
+        TypeFact::Union(facts) => TypeFact::union(
+            facts
+                .into_iter()
+                .map(|fact| index_fact(fact, index.clone()))
+                .filter(|fact| !matches!(fact, TypeFact::Unknown)),
+        ),
+        _ => TypeFact::Unknown,
+    }
+}
+
+fn accepts_int_index(index: &TypeFact) -> bool {
+    match index {
+        TypeFact::Int | TypeFact::Any | TypeFact::Unknown => true,
+        TypeFact::Union(facts) => facts.iter().any(accepts_int_index),
+        _ => false,
+    }
+}
+
+fn accepts_map_key(index: &TypeFact, key: &TypeFact) -> bool {
+    match (index, key) {
+        (TypeFact::Any | TypeFact::Unknown, _) | (_, TypeFact::Any | TypeFact::Unknown) => true,
+        (TypeFact::Union(facts), key) => facts.iter().any(|fact| accepts_map_key(fact, key)),
+        (index, TypeFact::Union(facts)) => facts.iter().any(|fact| accepts_map_key(index, fact)),
+        _ => key == index,
     }
 }
 
@@ -479,6 +513,44 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[0], &scope),
             TypeFact::Union(vec![TypeFact::Int, TypeFact::String])
+        );
+    }
+
+    #[test]
+    fn infers_index_read_facts_from_collection_receivers() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                scores[0];
+                rewards["gold"];
+                either[0];
+                scores["bad"];
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["scores"], TypeFact::array(TypeFact::Int))
+            .with_path(
+                ["rewards"],
+                TypeFact::map(TypeFact::String, TypeFact::Float),
+            )
+            .with_path(
+                ["either"],
+                TypeFact::union([
+                    TypeFact::array(TypeFact::Int),
+                    TypeFact::map(TypeFact::String, TypeFact::Float),
+                ]),
+            );
+
+        assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::Int);
+        assert_eq!(
+            type_fact_from_expr(&expressions[1], &scope),
+            TypeFact::Float
+        );
+        assert_eq!(type_fact_from_expr(&expressions[2], &scope), TypeFact::Int);
+        assert_eq!(
+            type_fact_from_expr(&expressions[3], &scope),
+            TypeFact::Unknown
         );
     }
 
