@@ -2104,6 +2104,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   such as `players[0].stats.level += 1` now lower by reading the indexed
   record, updating its nested record field path, and writing the modified
   record back through `SetIndex`, with compiler, VM, and conformance coverage.
+- Split bytecode match-pattern lowering into the focused compiler pattern
+  module. Variant tag checks, nested pattern comparisons, and pattern-local
+  binding now live outside the main compiler coordinator, preserving behavior
+  while keeping grammar-surface work modular.
+- Updated M17 validation docs to include the deterministic context-clock demo
+  script alongside the other runnable game-server demo workflows.
 
 ## Next
 
