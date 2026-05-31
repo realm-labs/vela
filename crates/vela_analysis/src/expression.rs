@@ -1,5 +1,6 @@
 mod condition_narrowing;
 mod match_narrowing;
+mod try_propagation;
 
 use std::collections::BTreeMap;
 
@@ -97,8 +98,9 @@ fn type_fact_from_expr_impl(
             type_fact_from_expr_impl(left, scope, facts),
             type_fact_from_expr_impl(right, scope, facts),
         ),
-        ExprKind::Assign { value, .. } | ExprKind::Try(value) => {
-            type_fact_from_expr_impl(value, scope, facts)
+        ExprKind::Assign { value, .. } => type_fact_from_expr_impl(value, scope, facts),
+        ExprKind::Try(value) => {
+            try_propagation::try_fact(type_fact_from_expr_impl(value, scope, facts))
         }
         ExprKind::Field { base, name } => field_access_fact(base, name, scope, facts),
         ExprKind::Index { base, index } => index_fact(
@@ -551,6 +553,61 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[3], &scope),
             TypeFact::Unknown
+        );
+    }
+
+    #[test]
+    fn infers_try_propagation_payload_facts() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                maybe?;
+                some?;
+                none?;
+                grant?;
+                failed?;
+                either?;
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["maybe"], TypeFact::option(TypeFact::Int))
+            .with_path(["some"], TypeFact::option_some(TypeFact::String))
+            .with_path(["none"], TypeFact::option_none())
+            .with_path(
+                ["grant"],
+                TypeFact::result(TypeFact::host("Reward"), TypeFact::String),
+            )
+            .with_path(["failed"], TypeFact::result_err(TypeFact::record("Error")))
+            .with_path(
+                ["either"],
+                TypeFact::union([
+                    TypeFact::option(TypeFact::Int),
+                    TypeFact::result_ok(TypeFact::String),
+                    TypeFact::option_none(),
+                ]),
+            );
+
+        assert_eq!(type_fact_from_expr(&expressions[0], &scope), TypeFact::Int);
+        assert_eq!(
+            type_fact_from_expr(&expressions[1], &scope),
+            TypeFact::String
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[2], &scope),
+            TypeFact::Never
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[3], &scope),
+            TypeFact::host("Reward")
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[4], &scope),
+            TypeFact::Never
+        );
+        assert_eq!(
+            type_fact_from_expr(&expressions[5], &scope),
+            TypeFact::union([TypeFact::Int, TypeFact::String])
         );
     }
 

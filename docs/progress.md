@@ -1977,6 +1977,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   element/value facts, including compatible union receivers, while incompatible
   index shapes still degrade conservatively to `unknown` instead of inventing
   static type errors.
+- Filled an M9 analysis gap for Option/Result-style propagation. `expr?` now
+  infers the unwrapped `Option.Some`/`Result.Ok` payload fact, treats known
+  `Option.None`/`Result.Err` paths as `never`, and keeps the propagation policy
+  in a focused analysis submodule.
 
 ## Next
 
