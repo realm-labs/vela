@@ -71,6 +71,12 @@ fn main() {
     let result: int = result_bonus(true)?;
     let mapped: map = {"gold": reward.count, "quest": quest_score}
         .map_values(|key, value| key.len() + value);
+    let no_else_score: int = {
+        let maybe = if false {
+            9;
+        };
+        if maybe == null { 6 } else { 0 }
+    };
 
     return total
         + doubled
@@ -79,5 +85,6 @@ fn main() {
         + parsed
         + result
         + mapped["gold"]
-        + mapped["quest"];
+        + mapped["quest"]
+        + no_else_score;
 }

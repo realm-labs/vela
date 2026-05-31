@@ -1164,13 +1164,13 @@ Decision:
 The compiler treats a block expression's final expression statement as the
 block value and uses `null` for empty or statement-only blocks. `if` expressions
 allocate one destination register and compile each non-returning branch to move
-its value into that destination before jumping to the common end. Statement
-`if` syntax can still omit `else`, but expression-valued `if` requires `else`
-so every non-returning path produces a value.
+its value into that destination before jumping to the common end. If an
+expression-valued `if` omits `else`, the missing branch produces `null`.
 
 Consequences:
 - Source such as `let x = { let base = 2; base + 3; };` and
-  `let y = if cond { x; } else { 0; };` now compiles and runs.
+  `let y = if cond { x; } else { 0; };` now compiles and runs. Source such as
+  `let z = if cond { x; };` produces `null` when `cond` is false.
 - The VM register model remains unchanged.
 - The syntax parser still does not preserve expression-statement terminators,
   so this first slice treats the final expression statement as a value even if
@@ -7347,3 +7347,26 @@ Consequences:
   not mutable registry handles.
 - Existing descriptor helpers such as `reflect.name`, `reflect.kind`,
   `reflect.id`, and `reflect.origin` work on list-query results.
+
+## 2026-05-31: No-Else If Expressions Produce Null
+
+Status: Accepted
+
+Context:
+The grammar allows `if` expressions to omit `else`, but bytecode lowering still
+rejected expression-valued `if` forms without an `else`. This kept a planned
+M9 grammar form from compiling even though statement-style `if` already treats
+the missing branch as no-op.
+
+Decision:
+Lower expression-valued `if` without `else` by assigning `null` to the
+destination register on the false branch. Expression analysis mirrors this by
+including `null` in the inferred fact for no-else `if` expressions.
+
+Consequences:
+- The grammar-permitted `let value = if condition { expr; };` form compiles and
+  executes.
+- Missing-else semantics are explicit and deterministic instead of an
+  unsupported compiler special case.
+- The VM instruction set stays unchanged; lowering reuses constants, jumps, and
+  branch register merging.

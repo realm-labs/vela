@@ -255,6 +255,10 @@ enum Result {
 }
 ```
 
+Control-flow expressions produce values. Empty or statement-only blocks
+evaluate to `null`, and expression-valued `if` without an `else` evaluates to
+`null` on the untaken branch.
+
 ### Dynamic Traits / Protocols
 
 Traits are runtime capabilities or protocols, not Rust traits.

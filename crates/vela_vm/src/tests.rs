@@ -1245,6 +1245,53 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_if_expression_without_else_as_null() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let missing = if false {
+        3;
+    };
+    let value = if true {
+        7;
+    };
+    if missing == null {
+        return value;
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile no-else if expression");
+
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+}
+
+#[test]
+fn runs_compiled_if_expression_without_else_false_branch_as_null() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let value = if false {
+        7;
+    };
+    if value == null {
+        return 1;
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile no-else if expression");
+
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+}
+
+#[test]
 fn runs_compiled_returning_block_initializer() {
     let code = compile_function_source(
         SourceId::new(1),

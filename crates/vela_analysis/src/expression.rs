@@ -418,9 +418,14 @@ fn if_expr_fact(
     let then_scope = scope.narrowed_by_condition(&if_expr.condition, true);
     let else_scope = scope.narrowed_by_condition(&if_expr.condition, false);
     let mut branch_facts = vec![block_fact(&if_expr.then_branch, &then_scope, facts)];
-    if let Some(else_branch) = &if_expr.else_branch {
-        branch_facts.push(else_branch_fact(else_branch, &else_scope, facts));
-    }
+    branch_facts.push(
+        if_expr
+            .else_branch
+            .as_ref()
+            .map_or(TypeFact::Null, |else_branch| {
+                else_branch_fact(else_branch, &else_scope, facts)
+            }),
+    );
     TypeFact::union(branch_facts)
 }
 
@@ -628,6 +633,22 @@ mod tests {
         assert_eq!(
             type_fact_from_expr(&expressions[0], &scope),
             TypeFact::Union(vec![TypeFact::Int, TypeFact::host("Player")])
+        );
+    }
+
+    #[test]
+    fn infers_null_fallback_for_if_expression_without_else() {
+        let expressions = function_exprs(
+            r#"
+            fn main() {
+                if enabled { 7 };
+            }
+            "#,
+        );
+
+        assert_eq!(
+            type_fact_from_expr(&expressions[0], &ExprFactScope::new()),
+            TypeFact::Union(vec![TypeFact::Int, TypeFact::Null])
         );
     }
 

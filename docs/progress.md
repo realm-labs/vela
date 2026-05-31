@@ -446,8 +446,8 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Extended `let` initializer return propagation to all-return `if` and
   `match` expression values.
 - Added compiler lowering for `if` expression values by merging branch results
-  into a stable destination register, with explicit diagnostics when an
-  expression-valued `if` omits `else`.
+  into a stable destination register and treating missing `else` branches as
+  `null`.
 - Added compiler and VM coverage proving block and `if` expression values
   compile and execute from source.
 - Added compiler lowering for `match` expression values using the existing
@@ -1981,6 +1981,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   infers the unwrapped `Option.Some`/`Result.Ok` payload fact, treats known
   `Option.None`/`Result.Err` paths as `never`, and keeps the propagation policy
   in a focused analysis submodule.
+- Filled an M9 executable/control-flow gap for expression-valued `if` without
+  `else`. The compiler now lowers the untaken branch to `null`, analysis
+  includes the null fallback in expression facts, and conformance covers the
+  grammar-permitted form.
 - Split M14 script-function macro emission into a focused child module. The
   derive crate now keeps script-function parsing/validation separate from
   generated descriptor and Engine registration token construction, preserving

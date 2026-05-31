@@ -2122,12 +2122,6 @@ impl<'ast> Compiler<'ast> {
     }
 
     fn compile_if_value_to(&mut self, if_expr: &IfExpr, dst: Register) -> CompileResult<bool> {
-        let Some(else_branch) = &if_expr.else_branch else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "if expression without else",
-            )));
-        };
-
         let condition = self.compile_expr(&if_expr.condition)?;
         let jump_to_else = self.emit_jump_if_false(condition);
 
@@ -2140,9 +2134,13 @@ impl<'ast> Compiler<'ast> {
 
         self.patch_jump(jump_to_else, self.current_offset())?;
 
-        let else_returned = match else_branch {
-            ElseBranch::Block(block) => self.compile_block_value_to(block, dst)?,
-            ElseBranch::If(if_expr) => self.compile_if_value_to(if_expr, dst)?,
+        let else_returned = match &if_expr.else_branch {
+            Some(ElseBranch::Block(block)) => self.compile_block_value_to(block, dst)?,
+            Some(ElseBranch::If(if_expr)) => self.compile_if_value_to(if_expr, dst)?,
+            None => {
+                self.emit_constant_to(dst, Constant::Null);
+                false
+            }
         };
 
         if let Some(jump_to_end) = jump_to_end {
@@ -3139,8 +3137,12 @@ fn main(player) {
             .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::unresolved_name"))
             .expect("unresolved name diagnostic");
 
-        assert_eq!(unresolved.labels.len(), 1);
-        assert!(unresolved.labels[0].message.contains("player"));
+        assert_eq!(unresolved.labels.len(), 2);
+        assert_eq!(unresolved.labels[0].message, "did you mean `player`?");
+        assert_eq!(
+            unresolved.labels[1].message,
+            "candidate `player` is declared here"
+        );
     }
 
     #[test]
@@ -4971,12 +4973,12 @@ fn main() {
     }
 
     #[test]
-    fn compiler_rejects_if_expression_without_else() {
-        let error = compile_function_source(
+    fn compiler_lowers_if_expression_without_else_to_null() {
+        let code = compile_function_source(
             SourceId::new(1),
             r#"
 fn main() {
-    let value = if true {
+    let value = if false {
         1;
     };
     return value;
@@ -4984,12 +4986,9 @@ fn main() {
 "#,
             "main",
         )
-        .expect_err("if expression without else should be rejected");
+        .expect("if expression without else should compile");
 
-        assert_eq!(
-            error.kind,
-            CompileErrorKind::UnsupportedSyntax("if expression without else")
-        );
+        assert!(code.constants.contains(&Constant::Null));
     }
 
     #[test]

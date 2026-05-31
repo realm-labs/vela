@@ -62,6 +62,10 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
         local_fact(bindings, &facts, "mapped"),
         Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown))
     );
+    assert_eq!(
+        local_fact(bindings, &facts, "no_else_score"),
+        Some(TypeFact::Int)
+    );
 }
 
 fn local_fact(
