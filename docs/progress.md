@@ -2429,6 +2429,9 @@ post-MVP reference or optional tracks, not MVP requirements.
   `script_function` and `script_methods` tests into focused metadata and
   registration modules while leaving shared derive fixtures in the integration
   test roots.
+- Kept the M8/M9 bytecode compiler module reviewable by moving the large
+  compiler unit-test suite out of `compiler.rs` and into a focused
+  `compiler::tests` module without changing compiler behavior.
 
 ## Next
 
