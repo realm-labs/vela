@@ -2526,6 +2526,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   natives now register stable `TypeKind` metadata for `null`, `bool`, `int`,
   `float`, `string`, `array`, `map`, `set`, `function`, and `closure`, plus
   non-generic `Option` and `Result` variants for reflection and tooling.
+- Strengthened M12/M13 analysis coverage for reflected standard value types.
+  Registry facts and hover metadata now explicitly prove built-in `TypeKind`
+  entries lower into non-generic analysis facts such as `array<any>`,
+  `map<any, any>`, `set<any>`, and callable function-shaped facts.
 
 ## Next
 

@@ -56,6 +56,27 @@ fn hovers_types_fields_methods_and_variants() {
 }
 
 #[test]
+fn hovers_builtin_type_kinds_without_generics() {
+    let registry = hover_registry();
+
+    let array_info = type_hover(&registry, "array").expect("array hover");
+    assert_eq!(array_info.kind, HoverKind::Type);
+    assert_eq!(array_info.fact, TypeFact::array(TypeFact::Any));
+    assert_eq!(array_info.detail.as_deref(), Some("kind: array"));
+
+    let map_info = type_hover(&registry, "map").expect("map hover");
+    assert_eq!(map_info.fact, TypeFact::map(TypeFact::Any, TypeFact::Any));
+    assert_eq!(map_info.detail.as_deref(), Some("kind: map"));
+
+    let closure_info = type_hover(&registry, "closure").expect("closure hover");
+    assert_eq!(
+        closure_info.fact,
+        TypeFact::function(Vec::new(), TypeFact::Any)
+    );
+    assert_eq!(closure_info.detail.as_deref(), Some("kind: closure"));
+}
+
+#[test]
 fn hovers_functions_traits_and_modules() {
     let registry = hover_registry();
 
@@ -130,6 +151,10 @@ fn hover_registry() -> TypeRegistry {
                     .field(FieldDesc::new(FieldId::new(2), "quest_id").type_hint("string")),
             ),
     );
+    registry.register(TypeDesc::new(TypeKey::new(TypeId::new(3), "array")).kind(TypeKind::Array));
+    registry.register(TypeDesc::new(TypeKey::new(TypeId::new(4), "map")).kind(TypeKind::Map));
+    registry
+        .register(TypeDesc::new(TypeKey::new(TypeId::new(5), "closure")).kind(TypeKind::Closure));
     registry.register_trait(
         TraitDesc::new("Damageable")
             .docs("can receive damage")

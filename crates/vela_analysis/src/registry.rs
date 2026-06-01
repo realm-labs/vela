@@ -571,6 +571,50 @@ mod tests {
     }
 
     #[test]
+    fn registry_facts_cover_builtin_type_kinds_without_generics() {
+        let mut registry = TypeRegistry::new();
+        for (id, name, kind) in [
+            (10, "null", TypeKind::Null),
+            (11, "bool", TypeKind::Bool),
+            (12, "int", TypeKind::Int),
+            (13, "float", TypeKind::Float),
+            (14, "string", TypeKind::String),
+            (15, "array", TypeKind::Array),
+            (16, "map", TypeKind::Map),
+            (17, "set", TypeKind::Set),
+            (18, "function", TypeKind::Function),
+            (19, "closure", TypeKind::Closure),
+        ] {
+            registry.register(TypeDesc::new(TypeKey::new(TypeId::new(id), name)).kind(kind));
+        }
+
+        let facts = RegistryFacts::from_registry(&registry);
+
+        assert_eq!(facts.type_fact("null"), Some(&TypeFact::Null));
+        assert_eq!(facts.type_fact("bool"), Some(&TypeFact::Bool));
+        assert_eq!(facts.type_fact("int"), Some(&TypeFact::Int));
+        assert_eq!(facts.type_fact("float"), Some(&TypeFact::Float));
+        assert_eq!(facts.type_fact("string"), Some(&TypeFact::String));
+        assert_eq!(
+            facts.type_fact("array"),
+            Some(&TypeFact::array(TypeFact::Any))
+        );
+        assert_eq!(
+            facts.type_fact("map"),
+            Some(&TypeFact::map(TypeFact::Any, TypeFact::Any))
+        );
+        assert_eq!(facts.type_fact("set"), Some(&TypeFact::set(TypeFact::Any)));
+        assert_eq!(
+            facts.type_fact("function"),
+            Some(&TypeFact::function(Vec::new(), TypeFact::Any))
+        );
+        assert_eq!(
+            facts.type_fact("closure"),
+            Some(&TypeFact::function(Vec::new(), TypeFact::Any))
+        );
+    }
+
+    #[test]
     fn registry_facts_cover_registered_trait_methods() {
         let mut registry = TypeRegistry::new();
         registry.register_trait(
