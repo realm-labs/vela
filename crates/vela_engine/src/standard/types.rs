@@ -7,6 +7,7 @@ use super::ids::{
     OPTION_SOME_VARIANT_ID, OPTION_TYPE_ID, RESULT_ERR_FIELD_ID, RESULT_ERR_VARIANT_ID,
     RESULT_OK_FIELD_ID, RESULT_OK_VARIANT_ID, RESULT_TYPE_ID, SET_TYPE_ID, STRING_TYPE_ID,
 };
+use super::methods::string_method_descs;
 
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
     let mut descs = vec![
@@ -19,12 +20,7 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
             TypeKind::Float,
             "Floating-point value type.",
         ),
-        builtin_type(
-            "string",
-            STRING_TYPE_ID,
-            TypeKind::String,
-            "String value type.",
-        ),
+        string_type_desc(),
         builtin_type(
             "array",
             ARRAY_TYPE_ID,
@@ -58,6 +54,19 @@ fn builtin_type(name: &'static str, id: TypeId, kind: TypeKind, docs: &'static s
         .origin(DeclOrigin::Host)
         .docs(docs)
         .attr("stdlib", "builtin")
+}
+
+fn string_type_desc() -> TypeDesc {
+    let mut desc = builtin_type(
+        "string",
+        STRING_TYPE_ID,
+        TypeKind::String,
+        "String value type.",
+    );
+    for method in string_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
 }
 
 fn option_type_desc() -> TypeDesc {

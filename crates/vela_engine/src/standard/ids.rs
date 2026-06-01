@@ -1,4 +1,4 @@
-use vela_common::{FieldId, FunctionId, TypeId, VariantId};
+use vela_common::{FieldId, FunctionId, HostMethodId, TypeId, VariantId};
 
 use crate::NativeFunctionId;
 
@@ -56,3 +56,28 @@ pub(crate) const RESULT_ERR_VARIANT_ID: VariantId = VariantId::new(0xff00_0605);
 pub(crate) const OPTION_SOME_FIELD_ID: FieldId = FieldId::new(0xff00_0606);
 pub(crate) const RESULT_OK_FIELD_ID: FieldId = FieldId::new(0xff00_0607);
 pub(crate) const RESULT_ERR_FIELD_ID: FieldId = FieldId::new(0xff00_0608);
+
+pub(crate) const STRING_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0700);
+pub(crate) const STRING_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0701);
+pub(crate) const STRING_CONTAINS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0702);
+pub(crate) const STRING_FIND_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0703);
+pub(crate) const STRING_STARTS_WITH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0704);
+pub(crate) const STRING_ENDS_WITH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0705);
+pub(crate) const STRING_STRIP_PREFIX_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0706);
+pub(crate) const STRING_STRIP_SUFFIX_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0707);
+pub(crate) const STRING_TO_UPPER_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0708);
+pub(crate) const STRING_TO_LOWER_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0709);
+pub(crate) const STRING_TRIM_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070a);
+pub(crate) const STRING_TRIM_START_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070b);
+pub(crate) const STRING_TRIM_END_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070c);
+pub(crate) const STRING_REPLACE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070d);
+pub(crate) const STRING_REPEAT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070e);
+pub(crate) const STRING_SLICE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_070f);
+pub(crate) const STRING_SPLIT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0710);
+pub(crate) const STRING_SPLIT_ONCE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0711);
+pub(crate) const STRING_SPLIT_LINES_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0712);
+pub(crate) const STRING_SPLIT_WHITESPACE_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0713);
+pub(crate) const STRING_CHAR_AT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0714);
+pub(crate) const STRING_PARSE_INT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0715);
+pub(crate) const STRING_PARSE_FLOAT_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0716);
+pub(crate) const STRING_PARSE_BOOL_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0717);

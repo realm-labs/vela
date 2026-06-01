@@ -2554,6 +2554,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   `ctx.now`/`ctx.elapsed_since` through `reflect.call(ReflectFunction, ...)`,
   proving required function permissions and zero-patch pure context helpers
   work through the same controlled reflection path as direct script calls.
+- Added M12/M13 reflected standard string method metadata without expanding the
+  VM dispatch modules. The Engine standard registry now installs stable
+  `MethodDesc` entries for the executable string surface (`trim`,
+  `split_once`, `parse_int`, search, transform, split, and parse helpers)
+  through a focused `standard::methods` module, and reflection tests prove
+  method discovery, params, return hints, and stdlib attributes.
 - Kept M9/M13 method dispatch architecture reviewable by replacing
   `script_methods` long parameter lists with a cohesive `ScriptMethodDispatch`
   context. String, callback, builtin, and script-impl method paths now share
@@ -2562,7 +2568,7 @@ post-MVP reference or optional tracks, not MVP requirements.
 ## Next
 
 - Continue M12/M13 with remaining reflection access/reporting polish,
-  standard-library gameplay conveniences, and string/math/context gaps.
+  standard-library gameplay conveniences, and collection/context metadata gaps.
 - Continue targeted M14/M15 slices only where they unblock embedding and
   safe-point hot reload workflows.
 - Keep M18 performance work limited to measurement scaffolding until M12-M17

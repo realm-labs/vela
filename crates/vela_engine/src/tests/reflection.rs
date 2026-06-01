@@ -157,6 +157,27 @@ fn engine_standard_natives_register_reflection_metadata() {
     let string_type = registry.type_by_name("string").expect("string type");
     assert_eq!(string_type.kind, vela_reflect::TypeKind::String);
     assert_eq!(string_type.attrs.get("stdlib"), Some("builtin"));
+    let trim = string_type
+        .methods
+        .iter()
+        .find(|method| method.name == "trim")
+        .expect("string.trim method metadata");
+    assert_eq!(trim.return_type.as_deref(), Some("string"));
+    assert_eq!(trim.attrs.get("stdlib"), Some("string"));
+    let split_once = string_type
+        .methods
+        .iter()
+        .find(|method| method.name == "split_once")
+        .expect("string.split_once method metadata");
+    assert_eq!(split_once.params[0].name, "separator");
+    assert_eq!(split_once.params[0].type_hint.as_deref(), Some("string"));
+    assert_eq!(split_once.return_type.as_deref(), Some("Option"));
+    let parse_int = string_type
+        .methods
+        .iter()
+        .find(|method| method.name == "parse_int")
+        .expect("string.parse_int method metadata");
+    assert_eq!(parse_int.return_type.as_deref(), Some("Option"));
 
     let array_type = registry.type_by_name("array").expect("array type");
     assert_eq!(array_type.kind, vela_reflect::TypeKind::Array);
@@ -280,6 +301,10 @@ fn main() {
     let result_type = reflect.type_info("Result");
     let option_variants = reflect.variants(option_type);
     let result_variants = reflect.variants(result_type);
+    let string_methods = reflect.methods(string_type);
+    let trim = reflect.method(string_type, "trim");
+    let split_once = reflect.method(string_type, "split_once");
+    let parse_int = reflect.method(string_type, "parse_int");
     let max = reflect.function("math.max");
     let sqrt = reflect.function("math.sqrt");
     let some = reflect.function("option.some");
@@ -309,6 +334,18 @@ fn main() {
         && reflect.attr(string_type, "stdlib") == "builtin"
         && reflect.attr(option_type, "stdlib") == "option"
         && reflect.attr(result_type, "stdlib") == "result"
+        && string_methods.len() >= 22
+        && reflect.has_method(string_type, "trim")
+        && reflect.has_method(string_type, "split_once")
+        && reflect.has_method(string_type, "parse_int")
+        && trim.owner == "string"
+        && reflect.returns(trim) == "string"
+        && reflect.attr(trim, "stdlib") == "string"
+        && split_once.params.len() == 1
+        && split_once.params[0].name == "separator"
+        && split_once.params[0].type == "string"
+        && reflect.returns(split_once) == "Option"
+        && reflect.returns(parse_int) == "Option"
         && option_variants.len() == 2
         && option_variants[0].name == "Some"
         && option_variants[0].fields[0].name == "0"

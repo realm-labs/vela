@@ -1,5 +1,6 @@
 mod functions;
 mod ids;
+mod methods;
 mod types;
 
 pub use ids::{
