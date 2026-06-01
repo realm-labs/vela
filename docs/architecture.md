@@ -275,6 +275,21 @@ enum Result {
 }
 ```
 
+`null`, `Option`, `Result`, and runtime errors have separate responsibilities:
+
+```text
+null        no meaningful value, void-like results, host nullable boundaries, or missing metadata
+Option.None expected absence in gameplay or lookup logic
+Result.Err  recoverable failure with a script-visible reason
+VM error    unrecoverable trap, script bug, contract violation, budget failure, or sandbox denial
+```
+
+Script and standard-library APIs should prefer `Option` for expected missing
+data and `Result` for expected recoverable failure. They should not use `null`
+as the normal "not found" or "failed" result. `null` remains the value for
+statement-only blocks, no-result native calls, reflection metadata gaps, and
+host/Rust nullable interop.
+
 Control-flow expressions produce values. Empty or statement-only blocks
 evaluate to `null`, and expression-valued `if` without an `else` evaluates to
 `null` on the untaken branch.
@@ -1730,6 +1745,12 @@ enum Result {
 ```
 
 The `?` operator should support Option/Result-style propagation.
+
+Use `Option` when absence is an ordinary script-visible branch, such as
+collection lookup or search. Use `Result` when the caller needs a recoverable
+failure reason. Runtime traps such as division by zero, type mismatch,
+permission denial, budget exhaustion, and future explicit panic-style
+operations should return VM diagnostics, not `Result.Err`.
 
 ### String
 

@@ -108,6 +108,11 @@ Option and Result are dynamic enum-shaped values, not script generics. Stdlib
 helpers and analysis TypeFacts may describe dynamic payloads, but the language
 surface remains non-generic.
 
+`null` is retained for no-value, void-like results, host nullable boundaries,
+and missing metadata. Expected absence should use `Option.None`, recoverable
+business failure should use `Result.Err`, and unrecoverable script/runtime
+failures should use VM diagnostics rather than `Result.Err`.
+
 Array, map, set, string, range, math, context, random, and gameplay helpers are
 deterministic unless an Engine-installed permissioned native explicitly provides
 controlled nondeterminism.
