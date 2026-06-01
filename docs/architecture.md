@@ -223,6 +223,7 @@ string
 array
 map
 set
+range
 function
 closure
 record / struct-like value

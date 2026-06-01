@@ -56,11 +56,10 @@ pub(crate) fn value_to_reflect(
             value, operation, None,
         )?)),
         Value::Closure(_) => Ok(reflect::ReflectValue::Closure),
-        Value::Range(_)
-        | Value::PathProxy(_)
-        | Value::Missing
-        | Value::HeapRef(_)
-        | Value::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        Value::Range(_) => Ok(reflect::ReflectValue::Range),
+        Value::PathProxy(_) | Value::Missing | Value::HeapRef(_) | Value::Iterator(_) => {
+            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+        }
         Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_) => Ok(
             reflect::ReflectValue::Host(value_to_host(value, operation, None)?),
         ),
@@ -73,6 +72,9 @@ pub(crate) fn value_from_reflect(value: reflect::ReflectValue) -> VmResult<Value
         reflect::ReflectValue::HostRef(host_ref) => Ok(Value::HostRef(host_ref)),
         reflect::ReflectValue::Closure => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "reflect closure conversion",
+        })),
+        reflect::ReflectValue::Range => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "reflect range conversion",
         })),
         reflect::ReflectValue::Record(values) => {
             let values = values

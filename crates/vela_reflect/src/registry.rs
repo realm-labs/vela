@@ -53,6 +53,7 @@ pub enum TypeKind {
     Array,
     Map,
     Set,
+    Range,
     Function,
     Closure,
     Host,

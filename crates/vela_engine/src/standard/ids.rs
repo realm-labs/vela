@@ -46,6 +46,7 @@ pub const MAP_TYPE_ID: TypeId = TypeId::new(0xff00_0506);
 pub const SET_TYPE_ID: TypeId = TypeId::new(0xff00_0507);
 pub const FUNCTION_TYPE_ID: TypeId = TypeId::new(0xff00_0508);
 pub const CLOSURE_TYPE_ID: TypeId = TypeId::new(0xff00_0509);
+pub const RANGE_TYPE_ID: TypeId = TypeId::new(0xff00_050a);
 pub const OPTION_TYPE_ID: TypeId = TypeId::new(0xff00_0600);
 pub const RESULT_TYPE_ID: TypeId = TypeId::new(0xff00_0601);
 

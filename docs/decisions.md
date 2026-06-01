@@ -7604,3 +7604,25 @@ Consequences:
   lower through configured host methods.
 - Hosts can still use method names like `set`, `max`, or `grant` without
   shadowing native module roots such as `reflect`, `math`, or `game`.
+
+## 2026-06-01: Ranges Are Reflected As Marker Values
+
+Status: Accepted
+
+Context:
+Range expressions already execute and analysis already models them as
+`TypeFact::Range`, but `reflect.type_of(1..3)` failed because ranges were not a
+registered standard type and the reflection value bridge rejected `Value::Range`.
+
+Decision:
+Add `TypeKind::Range` and a standard `range` descriptor, map range kinds through
+analysis and hot-reload schema ABI records, and represent runtime ranges in
+reflection as a marker-only `ReflectValue::Range`.
+
+Consequences:
+- Reflection can identify range values without exposing range internals as
+  mutable fields or callable host methods.
+- Hot reload schema comparisons preserve range as a stable kind instead of
+  folding it into another collection type.
+- The marker cannot be converted back into an executable script value through
+  reflection, matching the existing closure marker boundary.

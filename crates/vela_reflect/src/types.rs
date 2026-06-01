@@ -96,6 +96,7 @@ fn kind_name(kind: TypeKind) -> String {
         TypeKind::Array => "array",
         TypeKind::Map => "map",
         TypeKind::Set => "set",
+        TypeKind::Range => "range",
         TypeKind::Function => "function",
         TypeKind::Closure => "closure",
         TypeKind::Host => "host",

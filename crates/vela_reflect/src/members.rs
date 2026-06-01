@@ -60,6 +60,7 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
                 TypeKind::Array => "array",
                 TypeKind::Map => "map",
                 TypeKind::Set => "set",
+                TypeKind::Range => "range",
                 TypeKind::Function => "function",
                 TypeKind::Closure => "closure",
                 TypeKind::Host => "host",
@@ -189,6 +190,7 @@ pub(super) fn target_type<'a>(
         })),
         ReflectValue::Host(_)
         | ReflectValue::Closure
+        | ReflectValue::Range
         | ReflectValue::Record(_)
         | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
         ReflectValue::ScriptRecord { .. } | ReflectValue::ScriptEnum { .. } => {

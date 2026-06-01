@@ -21,6 +21,7 @@ fn main(ctx, player) {
     let option_value_type = reflect.type_of(option.some(1));
     let result_value_type = reflect.type_of(result.ok(1));
     let closure_value_type = reflect.type_of(|value| value);
+    let range_value_type = reflect.type_of(1..3);
     let quest_type = reflect.type_info("QuestProgress");
     let host_quest_type = reflect.type_info("HostQuestProgress");
     let damageable = reflect.trait_info("Damageable");
@@ -40,6 +41,7 @@ fn main(ctx, player) {
     let array_map = reflect.method(array_type, "map");
     let map_type = reflect.type_info("map");
     let set_type = reflect.type_info("set");
+    let range_type = reflect.type_info("range");
     let map_get = reflect.method(map_type, "get");
     let set_union = reflect.method(set_type, "union");
     let fields = reflect.fields(player);
@@ -117,6 +119,7 @@ fn main(ctx, player) {
         && reflect.has_type("array")
         && reflect.has_type("map")
         && reflect.has_type("set")
+        && reflect.has_type("range")
         && reflect.has_type("Option")
         && reflect.has_type("Result")
         && reflect.has_type("QuestProgress")
@@ -126,6 +129,7 @@ fn main(ctx, player) {
         && reflect.kind(array_type) == "array"
         && reflect.kind(map_type) == "map"
         && reflect.kind(set_type) == "set"
+        && reflect.kind(range_type) == "range"
         && reflect.kind(option_type) == "script_enum"
         && reflect.kind(result_type) == "script_enum"
         && reflect.name(null_value_type) == "null"
@@ -150,6 +154,8 @@ fn main(ctx, player) {
         && reflect.kind(result_value_type) == "script_enum"
         && reflect.name(closure_value_type) == "closure"
         && reflect.kind(closure_value_type) == "closure"
+        && reflect.name(range_value_type) == "range"
+        && reflect.kind(range_value_type) == "range"
         && reflect.attr(string_type, "stdlib") == "builtin"
         && reflect.attr(array_type, "stdlib") == "builtin"
         && reflect.attr(option_type, "stdlib") == "option"

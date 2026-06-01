@@ -2606,6 +2606,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   `closure` descriptor. The marker is not convertible back into an executable
   script value through reflection, and reflective field reads/writes/calls on
   closures remain invalid targets.
+- Added reflected standard `range` type coverage for executable range values.
+  `TypeKind::Range`, hot-reload schema ABI mapping, Engine standard metadata,
+  analysis registry facts, and the VM reflection bridge now let
+  `reflect.type_of(1..3)` resolve to the registered `range` descriptor while
+  keeping reflective field writes/calls on ranges invalid.
 
 ## Next
 

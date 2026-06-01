@@ -4,8 +4,9 @@ use vela_reflect::{DeclOrigin, FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKin
 use super::ids::{
     ARRAY_TYPE_ID, BOOL_TYPE_ID, CLOSURE_TYPE_ID, FLOAT_TYPE_ID, FUNCTION_TYPE_ID, INT_TYPE_ID,
     MAP_TYPE_ID, NULL_TYPE_ID, OPTION_NONE_VARIANT_ID, OPTION_SOME_FIELD_ID,
-    OPTION_SOME_VARIANT_ID, OPTION_TYPE_ID, RESULT_ERR_FIELD_ID, RESULT_ERR_VARIANT_ID,
-    RESULT_OK_FIELD_ID, RESULT_OK_VARIANT_ID, RESULT_TYPE_ID, SET_TYPE_ID, STRING_TYPE_ID,
+    OPTION_SOME_VARIANT_ID, OPTION_TYPE_ID, RANGE_TYPE_ID, RESULT_ERR_FIELD_ID,
+    RESULT_ERR_VARIANT_ID, RESULT_OK_FIELD_ID, RESULT_OK_VARIANT_ID, RESULT_TYPE_ID, SET_TYPE_ID,
+    STRING_TYPE_ID,
 };
 use super::methods::{
     array_method_descs, map_method_descs, option_method_descs, result_method_descs,
@@ -27,6 +28,7 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
         array_type_desc(),
         map_type_desc(),
         set_type_desc(),
+        builtin_type("range", RANGE_TYPE_ID, TypeKind::Range, "Range value type."),
         builtin_type(
             "function",
             FUNCTION_TYPE_ID,

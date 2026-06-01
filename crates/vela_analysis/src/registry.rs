@@ -357,6 +357,7 @@ fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
         TypeKind::Array => TypeFact::array(TypeFact::Any),
         TypeKind::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
         TypeKind::Set => TypeFact::set(TypeFact::Any),
+        TypeKind::Range => TypeFact::Range,
         TypeKind::Function | TypeKind::Closure => TypeFact::function(Vec::new(), TypeFact::Any),
         TypeKind::Host => TypeFact::host(&desc.key.name),
         TypeKind::ScriptStruct => TypeFact::record(&desc.key.name),
@@ -582,8 +583,9 @@ mod tests {
             (15, "array", TypeKind::Array),
             (16, "map", TypeKind::Map),
             (17, "set", TypeKind::Set),
-            (18, "function", TypeKind::Function),
-            (19, "closure", TypeKind::Closure),
+            (18, "range", TypeKind::Range),
+            (19, "function", TypeKind::Function),
+            (20, "closure", TypeKind::Closure),
         ] {
             registry.register(TypeDesc::new(TypeKey::new(TypeId::new(id), name)).kind(kind));
         }
@@ -604,6 +606,7 @@ mod tests {
             Some(&TypeFact::map(TypeFact::Any, TypeFact::Any))
         );
         assert_eq!(facts.type_fact("set"), Some(&TypeFact::set(TypeFact::Any)));
+        assert_eq!(facts.type_fact("range"), Some(&TypeFact::Range));
         assert_eq!(
             facts.type_fact("function"),
             Some(&TypeFact::function(Vec::new(), TypeFact::Any))

@@ -13,6 +13,7 @@ pub(super) fn type_detail(kind: TypeKind) -> String {
         TypeKind::Array => "kind: array".to_owned(),
         TypeKind::Map => "kind: map".to_owned(),
         TypeKind::Set => "kind: set".to_owned(),
+        TypeKind::Range => "kind: range".to_owned(),
         TypeKind::Function => "kind: function".to_owned(),
         TypeKind::Closure => "kind: closure".to_owned(),
         TypeKind::Host => "kind: host".to_owned(),

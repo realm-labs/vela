@@ -217,6 +217,10 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(set_union.params[0].type_hint.as_deref(), Some("set"));
     assert_eq!(set_union.return_type.as_deref(), Some("set"));
 
+    let range_type = registry.type_by_name("range").expect("range type");
+    assert_eq!(range_type.kind, vela_reflect::TypeKind::Range);
+    assert_eq!(range_type.attrs.get("stdlib"), Some("builtin"));
+
     let option_type = registry.type_by_name("Option").expect("Option type");
     assert_eq!(option_type.kind, vela_reflect::TypeKind::ScriptEnum);
     assert_eq!(option_type.variants.len(), 2);
@@ -398,6 +402,7 @@ fn main() {
     let option_value_type = reflect.type_of(option.some(1));
     let result_value_type = reflect.type_of(result.ok(1));
     let closure_value_type = reflect.type_of(|value| value);
+    let range_value_type = reflect.type_of(1..3);
     let option_variants = reflect.variants(option_type);
     let result_variants = reflect.variants(result_type);
     let string_methods = reflect.methods(string_type);
@@ -406,6 +411,7 @@ fn main() {
     let result_methods = reflect.methods(result_type);
     let map_type = reflect.type_info("map");
     let set_type = reflect.type_info("set");
+    let range_type = reflect.type_info("range");
     let map_methods = reflect.methods(map_type);
     let set_methods = reflect.methods(set_type);
     let trim = reflect.method(string_type, "trim");
@@ -453,7 +459,9 @@ fn main() {
         && reflect.name(result_value_type) == "Result"
         && reflect.kind(result_value_type) == "script_enum"
         && reflect.name(closure_value_type) == "closure"
-        && reflect.kind(closure_value_type) == "closure";
+        && reflect.kind(closure_value_type) == "closure"
+        && reflect.name(range_value_type) == "range"
+        && reflect.kind(range_value_type) == "range";
     return reflect.has_function("math.max")
         && reflect.has_function("math.sqrt")
         && reflect.has_function("option.some")
@@ -463,12 +471,14 @@ fn main() {
         && reflect.has_type("array")
         && reflect.has_type("map")
         && reflect.has_type("set")
+        && reflect.has_type("range")
         && reflect.has_type("Option")
         && reflect.has_type("Result")
         && reflect.kind(string_type) == "string"
         && reflect.kind(array_type) == "array"
         && reflect.kind(map_type) == "map"
         && reflect.kind(set_type) == "set"
+        && reflect.kind(range_type) == "range"
         && reflect.kind(option_type) == "script_enum"
         && reflect.kind(result_type) == "script_enum"
         && type_of_checks
