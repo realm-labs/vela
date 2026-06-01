@@ -1,6 +1,7 @@
-use vela_reflect::{
-    DeclOrigin, FieldDesc, FunctionDesc, FunctionEffectSet, MethodDesc, MethodEffectSet,
-    ModuleDesc, TraitDesc, TraitMethodDesc, TypeKind, VariantDesc,
+use vela_reflect::access::{FunctionEffectSet, MethodEffectSet};
+use vela_reflect::modules::{DeclOrigin, FunctionDesc, ModuleDesc};
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, TraitDesc, TraitMethodDesc, TypeKind, VariantDesc,
 };
 
 pub(super) fn type_detail(kind: TypeKind) -> String {

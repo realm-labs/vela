@@ -2,12 +2,13 @@ use std::fmt;
 use std::path::Path;
 
 use vela_bytecode::Program;
+use vela_bytecode::compiler::error::CompileError;
 use vela_bytecode::compiler::{
-    CompileError, compile_module_sources_with_options, compile_program_source_with_options,
+    compile_module_sources_with_options, compile_program_source_with_options,
 };
 use vela_common::SourceId;
 
-use crate::Engine;
+use crate::engine::Engine;
 
 mod loader;
 

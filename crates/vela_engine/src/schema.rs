@@ -1,6 +1,7 @@
-use vela_reflect::TypeDesc;
+use vela_reflect::registry::TypeDesc;
 
-use crate::{EngineBuilder, NativeMethodDesc};
+use crate::builder::EngineBuilder;
+use crate::method::NativeMethodDesc;
 
 pub trait ScriptHostSchema {
     fn script_host_type_desc() -> TypeDesc;

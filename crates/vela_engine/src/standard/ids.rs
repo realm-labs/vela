@@ -1,6 +1,6 @@
 use vela_common::{FieldId, FunctionId, HostMethodId, TypeId, VariantId};
 
-use crate::NativeFunctionId;
+use crate::native::NativeFunctionId;
 
 pub const MATH_MAX_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0100);
 pub const MATH_MIN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0101);

@@ -1,8 +1,8 @@
-use vela_hir::{
-    Declaration, DeclarationKind, HirTypeHint, ImportResolution, ModuleGraph, ModuleId,
-};
+use vela_hir::ids::ModuleId;
+use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
+use vela_hir::type_hint::HirTypeHint;
 
-use crate::TypeFact;
+use crate::type_fact::TypeFact;
 
 pub fn type_fact_from_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> TypeFact {
     type_fact_from_path(graph, &hint.path)
@@ -124,7 +124,7 @@ fn schema_path_matches(graph: &ModuleGraph, declaration: &Declaration, path: &[S
 mod tests {
     use super::*;
     use vela_common::SourceId;
-    use vela_hir::{ModulePath, ModuleSource};
+    use vela_hir::module_graph::{ModulePath, ModuleSource};
 
     fn graph(source: &str) -> ModuleGraph {
         let mut graph = ModuleGraph::new();

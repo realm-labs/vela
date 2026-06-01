@@ -1,7 +1,7 @@
-use crate::{
-    AccessAbi, EffectAbi, HotReloadError, HotReloadErrorKind, ModuleExportAbi, ParamAbi, SchemaAbi,
-    TraitMethodAbi,
-};
+use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
+use crate::error::{HotReloadError, HotReloadErrorKind};
+use crate::module_abi::ModuleExportAbi;
+use crate::schema_abi::SchemaAbi;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HotReloadDiagnosticDetail {

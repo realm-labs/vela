@@ -2,10 +2,13 @@ use std::error::Error;
 use std::path::Path;
 use std::sync::Arc;
 
-use vela_engine::{CallOptions, Engine, EngineHotReloadSourceErrorKind, Runtime};
-use vela_host::{MockStateAdapter, PatchTx};
-use vela_hot_reload::ProgramVersion;
-use vela_vm::Value;
+use vela_engine::engine::Engine;
+use vela_engine::reload::EngineHotReloadSourceErrorKind;
+use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::mock::MockStateAdapter;
+use vela_host::tx::PatchTx;
+use vela_hot_reload::version::ProgramVersion;
+use vela_vm::value::Value;
 
 pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn Error>> {
     let engine = crate::demo::hot_reload_engine().map_err(|error| format!("{error:?}"))?;

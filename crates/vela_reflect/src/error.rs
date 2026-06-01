@@ -1,6 +1,7 @@
 use std::fmt;
 
-use crate::{ReflectCandidate, ReflectPermission};
+use crate::candidates::ReflectCandidate;
+use crate::permissions::ReflectPermission;
 use vela_common::HostTypeId;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

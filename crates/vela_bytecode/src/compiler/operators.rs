@@ -1,4 +1,4 @@
-use vela_syntax::{AssignOp, BinaryOp};
+use vela_syntax::ast::{AssignOp, BinaryOp};
 
 use crate::{InstructionKind, Register};
 

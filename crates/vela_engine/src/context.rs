@@ -1,7 +1,11 @@
-use vela_host::{PatchTx, ScriptStateAdapter};
-use vela_vm::{ExecutionBudget, HostExecution, VmResult};
+use vela_host::adapter::ScriptStateAdapter;
+use vela_host::tx::PatchTx;
+use vela_vm::HostExecution;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::VmResult;
 
-use crate::{Engine, PermissionSet};
+use crate::engine::Engine;
+use crate::permission::PermissionSet;
 
 pub struct NativeCallContext<'ctx, 'host> {
     engine: &'ctx Engine,

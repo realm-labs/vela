@@ -1,9 +1,10 @@
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
-use crate::{
-    ReflectPolicy, ReflectResult, ReflectValue, TypeRegistry,
-    member_records::method_record_with_owner,
-};
+use crate::error::ReflectResult;
+use crate::member_records::method_record_with_owner;
+use crate::permissions::ReflectPolicy;
+use crate::registry::TypeRegistry;
+use crate::value::ReflectValue;
 
 use super::{find_method, target_type};
 

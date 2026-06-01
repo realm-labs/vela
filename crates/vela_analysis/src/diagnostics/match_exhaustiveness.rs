@@ -1,9 +1,11 @@
 use std::collections::BTreeSet;
 
 use vela_common::Diagnostic;
-use vela_syntax::{ElseBranch, Expr, ExprKind, MatchExpr, Pattern, Stmt, StmtKind};
+use vela_syntax::ast::{ElseBranch, Expr, ExprKind, MatchExpr, Pattern, Stmt, StmtKind};
 
-use crate::{ExprFactScope, RegistryFacts, TypeFact, type_fact_from_expr};
+use crate::expression::{ExprFactScope, type_fact_from_expr};
+use crate::registry::RegistryFacts;
+use crate::type_fact::TypeFact;
 
 pub fn match_exhaustiveness_diagnostics(
     expr: &Expr,
@@ -225,8 +227,9 @@ fn pattern_variant_name(pattern: &Pattern) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use vela_common::{SourceId, TypeId, VariantId};
-    use vela_reflect::{TypeDesc, TypeKey, TypeRegistry, VariantDesc};
-    use vela_syntax::{ItemKind, StmtKind, parse_source};
+    use vela_reflect::registry::{TypeDesc, TypeKey, TypeRegistry, VariantDesc};
+    use vela_syntax::ast::{ItemKind, StmtKind};
+    use vela_syntax::parser::parse_source;
 
     use super::*;
 
@@ -311,7 +314,7 @@ mod tests {
         let mut registry = TypeRegistry::new();
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestState"))
-                .kind(vela_reflect::TypeKind::ScriptEnum)
+                .kind(vela_reflect::registry::TypeKind::ScriptEnum)
                 .variant(VariantDesc::new(VariantId::new(1), "Active"))
                 .variant(VariantDesc::new(VariantId::new(2), "Finished")),
         );

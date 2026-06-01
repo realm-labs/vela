@@ -1,14 +1,26 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{HostObjectId, SourceId};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_vm::{HostExecution, VmErrorKind};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_vm::HostExecution;
+use vela_vm::error::VmErrorKind;
+use vela_vm::value::Value;
 
-use crate::{
-    CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
-    CONTEXT_TICK_FIELD_ID, CONTEXT_TIME_PERMISSION, CONTEXT_TYPE_ID, CONTROLLED_RANDOM_PERMISSION,
-    CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID, Engine,
-    PermissionSet, ReflectPermissionSet, Value, context_host_type_desc,
+use crate::clock::{
+    CONTEXT_TIME_PERMISSION, CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID,
+    CTX_TICK_FUNCTION_ID,
 };
+use crate::context_schema::{
+    CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
+    CONTEXT_TICK_FIELD_ID, CONTEXT_TYPE_ID, context_host_type_desc,
+};
+use crate::engine::Engine;
+use crate::permission::PermissionSet;
+use crate::random::CONTROLLED_RANDOM_PERMISSION;
+use vela_reflect::permissions::ReflectPermissionSet;
 
 #[test]
 fn engine_context_clock_requires_permission() {

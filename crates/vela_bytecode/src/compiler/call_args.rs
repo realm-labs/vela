@@ -1,8 +1,9 @@
 use std::collections::BTreeSet;
 
 use vela_common::{Diagnostic, Span};
-use vela_hir::{HirDeclId, ParamHint};
-use vela_syntax::Argument;
+use vela_hir::ids::HirDeclId;
+use vela_hir::type_hint::ParamHint;
+use vela_syntax::ast::Argument;
 
 use crate::CallArgument;
 

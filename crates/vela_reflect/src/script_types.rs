@@ -1,10 +1,13 @@
 use vela_common::{FieldId, MethodId, Span, TypeId, VariantId};
-use vela_hir::{Declaration, DeclarationKind, EnumVariantFieldsHint, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::type_hint::EnumVariantFieldsHint;
 
-use crate::{
-    DeclOrigin, FieldDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
-    TypeKey, TypeKind, TypeRegistry, VariantDesc, script_attrs::ReflectedScriptAttrs,
+use crate::modules::DeclOrigin;
+use crate::registry::{
+    FieldDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+    TypeKind, TypeRegistry, VariantDesc,
 };
+use crate::script_attrs::ReflectedScriptAttrs;
 
 impl TypeRegistry {
     pub fn register_script_types(&mut self, graph: &ModuleGraph) {
@@ -136,26 +139,32 @@ impl TypeRegistry {
     }
 }
 
-fn apply_type_attrs(desc: &mut TypeDesc, attrs: &[vela_hir::HirAttribute]) {
+fn apply_type_attrs(desc: &mut TypeDesc, attrs: &[vela_hir::attributes::HirAttribute]) {
     let reflected = ReflectedScriptAttrs::from_hir(attrs);
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
 }
 
-fn apply_trait_attrs(desc: &mut TraitDesc, attrs: &[vela_hir::HirAttribute]) {
+fn apply_trait_attrs(desc: &mut TraitDesc, attrs: &[vela_hir::attributes::HirAttribute]) {
     let reflected = ReflectedScriptAttrs::from_hir(attrs);
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
 }
 
-fn apply_field_attrs(mut desc: FieldDesc, attrs: &[vela_hir::HirAttribute]) -> FieldDesc {
+fn apply_field_attrs(
+    mut desc: FieldDesc,
+    attrs: &[vela_hir::attributes::HirAttribute],
+) -> FieldDesc {
     let reflected = ReflectedScriptAttrs::from_hir(attrs);
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
     desc
 }
 
-fn apply_field_type_hint(desc: FieldDesc, type_hint: &Option<vela_hir::HirTypeHint>) -> FieldDesc {
+fn apply_field_type_hint(
+    desc: FieldDesc,
+    type_hint: &Option<vela_hir::type_hint::HirTypeHint>,
+) -> FieldDesc {
     match type_hint {
         Some(hint) => desc.type_hint(hint.display()),
         None => desc,
@@ -170,7 +179,10 @@ fn apply_field_type_hint_display(desc: FieldDesc, type_hint: &str) -> FieldDesc 
     }
 }
 
-fn apply_variant_attrs(mut desc: VariantDesc, attrs: &[vela_hir::HirAttribute]) -> VariantDesc {
+fn apply_variant_attrs(
+    mut desc: VariantDesc,
+    attrs: &[vela_hir::attributes::HirAttribute],
+) -> VariantDesc {
     let reflected = ReflectedScriptAttrs::from_hir(attrs);
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
@@ -179,8 +191,8 @@ fn apply_variant_attrs(mut desc: VariantDesc, attrs: &[vela_hir::HirAttribute]) 
 
 fn apply_trait_method_attrs(
     mut desc: TraitMethodDesc,
-    signature: &vela_hir::FunctionSignature,
-    attrs: &[vela_hir::HirAttribute],
+    signature: &vela_hir::type_hint::FunctionSignature,
+    attrs: &[vela_hir::attributes::HirAttribute],
 ) -> TraitMethodDesc {
     desc = apply_trait_method_signature(desc, signature);
     let reflected = ReflectedScriptAttrs::from_hir(attrs);
@@ -191,7 +203,7 @@ fn apply_trait_method_attrs(
 
 fn apply_trait_method_signature(
     mut desc: TraitMethodDesc,
-    signature: &vela_hir::FunctionSignature,
+    signature: &vela_hir::type_hint::FunctionSignature,
 ) -> TraitMethodDesc {
     for param in &signature.params {
         let mut param_desc =
@@ -209,7 +221,7 @@ fn apply_trait_method_signature(
 
 struct VariantFieldMetadata {
     name: String,
-    attrs: Vec<vela_hir::HirAttribute>,
+    attrs: Vec<vela_hir::attributes::HirAttribute>,
     span: Span,
     type_hint: String,
     has_default: bool,
@@ -228,7 +240,7 @@ fn enum_variant_fields(fields: &EnumVariantFieldsHint) -> Vec<VariantFieldMetada
                 type_hint: field
                     .type_hint
                     .as_ref()
-                    .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                    .map_or_else(String::new, vela_hir::type_hint::HirTypeHint::display),
                 has_default: field.default_value_span.is_some(),
             })
             .collect(),
@@ -241,7 +253,7 @@ fn enum_variant_fields(fields: &EnumVariantFieldsHint) -> Vec<VariantFieldMetada
                 type_hint: field
                     .type_hint
                     .as_ref()
-                    .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                    .map_or_else(String::new, vela_hir::type_hint::HirTypeHint::display),
                 has_default: field.default_value_span.is_some(),
             })
             .collect(),
@@ -273,7 +285,7 @@ fn qualified_path_name(graph: &ModuleGraph, owner: &Declaration, path: &[String]
     }
 }
 
-fn struct_schema_hash(type_name: &str, shape: &vela_hir::StructShape) -> SchemaHash {
+fn struct_schema_hash(type_name: &str, shape: &vela_hir::type_hint::StructShape) -> SchemaHash {
     let members = shape
         .fields
         .iter()
@@ -284,14 +296,14 @@ fn struct_schema_hash(type_name: &str, shape: &vela_hir::StructShape) -> SchemaH
                 field
                     .type_hint
                     .as_ref()
-                    .map_or_else(String::new, vela_hir::HirTypeHint::display),
+                    .map_or_else(String::new, vela_hir::type_hint::HirTypeHint::display),
             )
         })
         .collect::<Vec<_>>();
     schema_hash("struct", type_name, members)
 }
 
-fn enum_schema_hash(type_name: &str, shape: &vela_hir::EnumShape) -> SchemaHash {
+fn enum_schema_hash(type_name: &str, shape: &vela_hir::type_hint::EnumShape) -> SchemaHash {
     let members = shape
         .variants
         .iter()
@@ -306,7 +318,10 @@ fn enum_schema_hash(type_name: &str, shape: &vela_hir::EnumShape) -> SchemaHash 
     schema_hash("enum", type_name, members)
 }
 
-fn enum_variant_signature(type_name: &str, variant: &vela_hir::EnumVariantHint) -> String {
+fn enum_variant_signature(
+    type_name: &str,
+    variant: &vela_hir::type_hint::EnumVariantHint,
+) -> String {
     let variant_owner = enum_variant_owner(type_name, &variant.name);
     let mut fields = enum_variant_fields(&variant.fields)
         .into_iter()
@@ -390,7 +405,7 @@ fn stable_id(kind: &str, owner: &str, member: &str) -> u32 {
 mod tests {
     use super::*;
     use vela_common::SourceId;
-    use vela_hir::{ModulePath, ModuleSource};
+    use vela_hir::module_graph::{ModulePath, ModuleSource};
 
     #[test]
     fn registers_script_struct_and_enum_metadata_from_hir() {

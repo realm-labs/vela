@@ -1,11 +1,23 @@
-use super::*;
+use crate::abi::*;
+use crate::compile::*;
+use crate::error::*;
+use crate::module_abi::*;
+use crate::policy::HotReloadPolicy;
+use crate::report::HotReloadReport;
+use crate::report_detail::HotReloadDiagnosticDetail;
+use crate::report_render::{HotReloadReportLine, HotReloadReportLineKind};
+use crate::runtime::HotReloadRuntime;
+use crate::schema_abi::*;
+use crate::symbol::ProgramVersionId;
 use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, SourceId, Span, TypeId, VariantId};
-use vela_reflect::{
-    FieldDesc, FunctionAccess, FunctionDesc, FunctionEffectSet, FunctionParamDesc, MethodAccess,
-    MethodDesc, MethodEffectSet, MethodParamDesc, ModuleDesc, SchemaHash, TraitDesc,
-    TraitMethodDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
+use vela_reflect::access::{FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
+use vela_reflect::modules::{FunctionDesc, FunctionParamDesc, ModuleDesc};
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
+    TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
-use vela_vm::{Value, Vm};
+use vela_vm::Vm;
+use vela_vm::value::Value;
 
 #[test]
 fn new_calls_enter_new_code_after_update() {

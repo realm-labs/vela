@@ -29,7 +29,7 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
     });
 
     quote! {{
-        let mut desc = ::vela_engine::NativeMethodDesc::new(
+        let mut desc = ::vela_engine::method::NativeMethodDesc::new(
             owner_key.clone(),
             ::vela_common::HostMethodId::new(#id),
             #name,
@@ -112,26 +112,26 @@ fn param_tokens(param: &ParamMeta) -> TokenStream {
 
 fn effect_tokens(effect: MethodEffect) -> TokenStream {
     match effect {
-        MethodEffect::Pure => quote! { ::vela_engine::EffectSet::pure() },
-        MethodEffect::HostRead => quote! { ::vela_engine::EffectSet::host_read() },
-        MethodEffect::HostWrite => quote! { ::vela_engine::EffectSet::host_write() },
-        MethodEffect::EventEmit => quote! { ::vela_engine::EffectSet::event_emit() },
+        MethodEffect::Pure => quote! { ::vela_engine::native::EffectSet::pure() },
+        MethodEffect::HostRead => quote! { ::vela_engine::native::EffectSet::host_read() },
+        MethodEffect::HostWrite => quote! { ::vela_engine::native::EffectSet::host_write() },
+        MethodEffect::EventEmit => quote! { ::vela_engine::native::EffectSet::event_emit() },
     }
 }
 
 fn hint_tokens(hint: HintKind) -> TokenStream {
     match hint {
-        HintKind::Any => quote! { ::vela_engine::TypeHint::Any },
-        HintKind::Null => quote! { ::vela_engine::TypeHint::Null },
-        HintKind::Bool => quote! { ::vela_engine::TypeHint::Bool },
-        HintKind::Int => quote! { ::vela_engine::TypeHint::Int },
-        HintKind::Float => quote! { ::vela_engine::TypeHint::Float },
-        HintKind::String => quote! { ::vela_engine::TypeHint::String },
-        HintKind::Array => quote! { ::vela_engine::TypeHint::Array },
-        HintKind::Map => quote! { ::vela_engine::TypeHint::Map },
-        HintKind::Set => quote! { ::vela_engine::TypeHint::Set },
-        HintKind::HostOwner => quote! { ::vela_engine::TypeHint::Host(owner_key.clone()) },
-        HintKind::Function => quote! { ::vela_engine::TypeHint::Function },
+        HintKind::Any => quote! { ::vela_engine::native::TypeHint::Any },
+        HintKind::Null => quote! { ::vela_engine::native::TypeHint::Null },
+        HintKind::Bool => quote! { ::vela_engine::native::TypeHint::Bool },
+        HintKind::Int => quote! { ::vela_engine::native::TypeHint::Int },
+        HintKind::Float => quote! { ::vela_engine::native::TypeHint::Float },
+        HintKind::String => quote! { ::vela_engine::native::TypeHint::String },
+        HintKind::Array => quote! { ::vela_engine::native::TypeHint::Array },
+        HintKind::Map => quote! { ::vela_engine::native::TypeHint::Map },
+        HintKind::Set => quote! { ::vela_engine::native::TypeHint::Set },
+        HintKind::HostOwner => quote! { ::vela_engine::native::TypeHint::Host(owner_key.clone()) },
+        HintKind::Function => quote! { ::vela_engine::native::TypeHint::Function },
     }
 }
 
@@ -146,7 +146,7 @@ fn access_tokens(method: &MethodMeta) -> TokenStream {
     quote! {
         {
             let mut access =
-                ::vela_engine::FunctionAccess::public().reflect_callable(#reflect_callable);
+                ::vela_engine::native::FunctionAccess::public().reflect_callable(#reflect_callable);
             #(#permissions)*
             access
         }

@@ -1,6 +1,7 @@
-use vela_vm::{Value, VmResult};
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::FromScriptArg;
+use crate::args::FromScriptArg;
 
 use super::{IntoNativeReturn, TypedNativeFunction, expect_arity};
 

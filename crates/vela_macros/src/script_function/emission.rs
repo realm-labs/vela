@@ -22,9 +22,9 @@ pub(super) fn desc_tokens(function: &FunctionMeta) -> TokenStream {
 
     quote! {
         {
-            let mut desc = ::vela_engine::NativeFunctionDesc::new(
+            let mut desc = ::vela_engine::native::NativeFunctionDesc::new(
                 #name,
-                ::vela_engine::NativeFunctionId::new(#id),
+                ::vela_engine::native::NativeFunctionId::new(#id),
             )
             .effects(#effect)
             .returns(#returns)
@@ -90,25 +90,25 @@ pub(super) fn register_tokens(
 
 fn effect_tokens(effect: FunctionEffect) -> TokenStream {
     match effect {
-        FunctionEffect::Pure => quote! { ::vela_engine::EffectSet::pure() },
-        FunctionEffect::HostRead => quote! { ::vela_engine::EffectSet::host_read() },
-        FunctionEffect::HostWrite => quote! { ::vela_engine::EffectSet::host_write() },
-        FunctionEffect::EventEmit => quote! { ::vela_engine::EffectSet::event_emit() },
+        FunctionEffect::Pure => quote! { ::vela_engine::native::EffectSet::pure() },
+        FunctionEffect::HostRead => quote! { ::vela_engine::native::EffectSet::host_read() },
+        FunctionEffect::HostWrite => quote! { ::vela_engine::native::EffectSet::host_write() },
+        FunctionEffect::EventEmit => quote! { ::vela_engine::native::EffectSet::event_emit() },
     }
 }
 
 fn hint_tokens(hint: HintKind) -> TokenStream {
     match hint {
-        HintKind::Any => quote! { ::vela_engine::TypeHint::Any },
-        HintKind::Null => quote! { ::vela_engine::TypeHint::Null },
-        HintKind::Bool => quote! { ::vela_engine::TypeHint::Bool },
-        HintKind::Int => quote! { ::vela_engine::TypeHint::Int },
-        HintKind::Float => quote! { ::vela_engine::TypeHint::Float },
-        HintKind::String => quote! { ::vela_engine::TypeHint::String },
-        HintKind::Array => quote! { ::vela_engine::TypeHint::Array },
-        HintKind::Map => quote! { ::vela_engine::TypeHint::Map },
-        HintKind::Set => quote! { ::vela_engine::TypeHint::Set },
-        HintKind::Function => quote! { ::vela_engine::TypeHint::Function },
+        HintKind::Any => quote! { ::vela_engine::native::TypeHint::Any },
+        HintKind::Null => quote! { ::vela_engine::native::TypeHint::Null },
+        HintKind::Bool => quote! { ::vela_engine::native::TypeHint::Bool },
+        HintKind::Int => quote! { ::vela_engine::native::TypeHint::Int },
+        HintKind::Float => quote! { ::vela_engine::native::TypeHint::Float },
+        HintKind::String => quote! { ::vela_engine::native::TypeHint::String },
+        HintKind::Array => quote! { ::vela_engine::native::TypeHint::Array },
+        HintKind::Map => quote! { ::vela_engine::native::TypeHint::Map },
+        HintKind::Set => quote! { ::vela_engine::native::TypeHint::Set },
+        HintKind::Function => quote! { ::vela_engine::native::TypeHint::Function },
     }
 }
 
@@ -123,7 +123,7 @@ fn access_tokens(function: &FunctionMeta) -> TokenStream {
     quote! {
         {
             let mut access =
-                ::vela_engine::FunctionAccess::public().reflect_callable(#reflect_callable);
+                ::vela_engine::native::FunctionAccess::public().reflect_callable(#reflect_callable);
             #(#permissions)*
             access
         }

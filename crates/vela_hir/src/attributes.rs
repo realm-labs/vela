@@ -1,4 +1,4 @@
-use vela_syntax::Attribute;
+use vela_syntax::ast::Attribute;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirAttribute {

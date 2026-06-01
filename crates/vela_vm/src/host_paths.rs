@@ -1,6 +1,6 @@
 use vela_bytecode::HostPathSegment;
 use vela_common::SymbolInterner;
-use vela_host::{HostPath, HostRef};
+use vela_host::path::{HostPath, HostRef};
 
 use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult, materialize_value};
 

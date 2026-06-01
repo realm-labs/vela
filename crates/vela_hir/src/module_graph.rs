@@ -3,19 +3,20 @@ use std::collections::{BTreeMap, btree_map::Entry};
 mod schema_diagnostics;
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::{
+use vela_syntax::ast::{
     Block, EnumItem, EnumVariantFields, FunctionItem, ImplItem, ItemKind, Param, SourceFile,
-    StructItem, TraitItem, TraitMethod, Visibility, parse_source,
+    StructItem, TraitItem, TraitMethod, Visibility,
 };
+use vela_syntax::parser::parse_source;
 
 use crate::attributes::{HirAttribute, attrs_from_syntax};
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
+use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
     ConstMetadata, EnumShape, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint,
     StructFieldHint, StructShape, TraitShape,
 };
-use crate::{HirDeclId, HirNodeId, ModuleId};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ModulePath(Vec<String>);

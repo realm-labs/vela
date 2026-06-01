@@ -1,40 +1,18 @@
 //! Function-level hot reload program versioning.
 
-mod abi;
-mod compile;
-mod error;
+pub mod abi;
+pub mod compile;
+pub mod error;
 mod function_signature;
-mod module_abi;
-mod policy;
-mod report;
-mod report_detail;
-mod report_render;
-mod runtime;
-mod schema_abi;
-mod symbol;
-mod version;
-
-pub use abi::{
-    AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi, ParamAbi, TraitAbi, TraitMethodAbi,
-};
-pub use compile::{
-    compile_initial, compile_initial_modules_with_abi_and_options, compile_initial_with_abi,
-    compile_initial_with_abi_and_options, compile_initial_with_options, compile_update,
-    compile_update_modules_with_abi_and_options_and_policy, compile_update_with_abi,
-    compile_update_with_abi_and_options, compile_update_with_abi_and_options_and_policy,
-    compile_update_with_abi_and_policy, compile_update_with_options, compile_update_with_policy,
-};
-pub use error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
-pub use module_abi::{ModuleAbi, ModuleExportAbi, ModuleExportKindAbi};
-pub use policy::HotReloadPolicy;
-pub use report::{HotReloadDiagnostic, HotReloadReport};
-pub use report_detail::HotReloadDiagnosticDetail;
-pub use report_render::{HotReloadReportLine, HotReloadReportLineKind};
-pub use runtime::HotReloadRuntime;
-pub use schema_abi::SchemaTraitImplAbi;
-pub use schema_abi::{FieldAccessAbi, SchemaAbi, SchemaFieldAbi, SchemaKindAbi, SchemaVariantAbi};
-pub use symbol::{FunctionSymbolId, ProgramVersionId};
-pub use version::{HotUpdate, ProgramVersion};
+pub mod module_abi;
+pub mod policy;
+pub mod report;
+pub mod report_detail;
+pub mod report_render;
+pub mod runtime;
+pub mod schema_abi;
+pub mod symbol;
+pub mod version;
 
 #[cfg(test)]
 mod tests;

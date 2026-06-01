@@ -2,7 +2,11 @@ use std::collections::BTreeMap;
 
 use vela_common::Span;
 
-use crate::{HostError, HostErrorKind, HostPath, HostResult, HostValue};
+use crate::{
+    error::{HostError, HostErrorKind, HostResult},
+    path::HostPath,
+    value::HostValue,
+};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct PatchOverlay {

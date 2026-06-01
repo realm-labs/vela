@@ -1,6 +1,6 @@
 use vela_common::{HostMethodId, Span};
 
-use crate::{HostPath, HostValue};
+use crate::{path::HostPath, value::HostValue};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Patch {

@@ -65,14 +65,14 @@ fn expand_result(attr: TokenStream, input: TokenStream, mode: FunctionMode) -> R
         #item
 
         #[must_use]
-        pub fn #desc_name() -> ::vela_engine::NativeFunctionDesc {
+        pub fn #desc_name() -> ::vela_engine::native::NativeFunctionDesc {
             #desc_tokens
         }
 
         #[must_use]
         pub fn #register_name(
-            builder: ::vela_engine::EngineBuilder,
-        ) -> ::vela_engine::EngineBuilder {
+            builder: ::vela_engine::builder::EngineBuilder,
+        ) -> ::vela_engine::builder::EngineBuilder {
             #register_tokens
         }
     })

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use vela_host::ScriptStateAdapter;
-use vela_reflect::{self as reflect, TypeRegistry};
+use vela_host::adapter::ScriptStateAdapter;
+use vela_reflect::registry::TypeRegistry;
+use vela_reflect::{self as reflect};
 
 use crate::{
     ExecutionBudget, HostExecution, HostNativeFunction, NativeFunction, Value, Vm, VmError,
@@ -50,8 +51,8 @@ impl ReflectedFunctionCalls {
 pub(super) fn register(
     vm: &mut Vm,
     registry: &Arc<TypeRegistry>,
-    policy: &reflect::ReflectPolicy,
-    lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
     function_calls: ReflectedFunctionCalls,
 ) {
     let get_registry = Arc::clone(registry);
@@ -61,18 +62,18 @@ pub(super) fn register(
         check_reflect_policy(
             &get_policy,
             &get_budget,
-            reflect::ReflectPermission::ReadValueFields,
+            reflect::permissions::ReflectPermission::ReadValueFields,
         )?;
         expect_arity("reflect.get", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect.get")?;
         let field = expect_string(&args[1], "reflect.get")?;
         let adapter: &dyn ScriptStateAdapter = &*host.adapter;
-        let mut ctx = reflect::ReflectContext {
+        let mut ctx = reflect::value::ReflectContext {
             registry: &get_registry,
             adapter,
             tx: &mut *host.tx,
         };
-        let value = reflect::get_with_policy(&mut ctx, &target, field, &get_policy)?;
+        let value = reflect::value::get_with_policy(&mut ctx, &target, field, &get_policy)?;
         value_from_reflect(value)
     });
 
@@ -83,19 +84,19 @@ pub(super) fn register(
         check_reflect_policy(
             &set_policy,
             &set_budget,
-            reflect::ReflectPermission::WriteValueFields,
+            reflect::permissions::ReflectPermission::WriteValueFields,
         )?;
         expect_arity("reflect.set", args, 3)?;
         let target = value_to_reflect(&args[0], "reflect.set")?;
         let field = expect_string(&args[1], "reflect.set")?;
         let value = value_to_reflect(&args[2], "reflect.set")?;
         let adapter: &dyn ScriptStateAdapter = &*host.adapter;
-        let mut ctx = reflect::ReflectContext {
+        let mut ctx = reflect::value::ReflectContext {
             registry: &set_registry,
             adapter,
             tx: &mut *host.tx,
         };
-        value_from_reflect(reflect::set_with_policy(
+        value_from_reflect(reflect::value::set_with_policy(
             &mut ctx,
             &target,
             field,
@@ -111,7 +112,7 @@ pub(super) fn register(
         check_reflect_policy(
             &call_policy,
             &call_budget,
-            reflect::ReflectPermission::CallMethods,
+            reflect::permissions::ReflectPermission::CallMethods,
         )?;
         if args.is_empty() {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
@@ -121,9 +122,11 @@ pub(super) fn register(
             }));
         }
         let target = value_to_reflect(&args[0], "reflect.call")?;
-        if let Some(function_name) =
-            reflect::callable_function_name_with_policy(&call_registry, &target, &call_policy)?
-        {
+        if let Some(function_name) = reflect::modules::callable_function_name_with_policy(
+            &call_registry,
+            &target,
+            &call_policy,
+        )? {
             return function_calls.call(&function_name, &args[1..], host, budget.as_deref_mut());
         }
         if args.len() < 2 {
@@ -139,12 +142,13 @@ pub(super) fn register(
             .map(|arg| value_to_reflect(arg, "reflect.call"))
             .collect::<VmResult<Vec<_>>>()?;
         let adapter: &dyn ScriptStateAdapter = &*host.adapter;
-        let mut ctx = reflect::ReflectContext {
+        let mut ctx = reflect::value::ReflectContext {
             registry: &call_registry,
             adapter,
             tx: &mut *host.tx,
         };
-        let value = reflect::call_with_policy(&mut ctx, &target, method, call_args, &call_policy)?;
+        let value =
+            reflect::value::call_with_policy(&mut ctx, &target, method, call_args, &call_policy)?;
         value_from_reflect(value)
     });
 }

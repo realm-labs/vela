@@ -6,8 +6,14 @@ mod tx;
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
 
 use crate::{
-    HostErrorKind, HostObjectSnapshot, HostPath, HostRef, HostValue, MockStateAdapter, PatchOp,
-    PatchTx, PathProxy, ScriptStateAdapter,
+    adapter::ScriptStateAdapter,
+    error::{HostError, HostErrorKind},
+    mock::MockStateAdapter,
+    patch::PatchOp,
+    path::{HostPath, HostRef},
+    proxy::PathProxy,
+    tx::{HostObjectSnapshot, PatchTx},
+    value::HostValue,
 };
 
 fn player_ref(generation: u32) -> HostRef {

@@ -1,5 +1,5 @@
 use vela_common::Diagnostic;
-use vela_syntax::{
+use vela_syntax::ast::{
     Argument, ConstItem, ElseBranch, Expr, ExprKind, MapEntry, RecordField, Stmt, StmtKind,
 };
 

@@ -1,10 +1,13 @@
 use super::*;
+use crate::budget::ExecutionBudgetKind;
 use crate::heap::{GcBudget, HeapSlot, HeapValue, ScriptHeap};
+use crate::iteration::IteratorState;
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
+use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
-    CompilerOptions, compile_function_source, compile_module_sources, compile_program_source,
+    compile_function_source, compile_module_sources, compile_program_source,
     compile_program_source_with_options,
 };
 use vela_bytecode::{Constant, ConstantId, HostPathSegment, Instruction, InstructionOffset};
@@ -12,14 +15,20 @@ use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Symbol,
     TypeId, VariantId,
 };
-use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
-use vela_host::{
-    HostErrorKind, HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PathProxy,
-};
-use vela_reflect::{
-    FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc,
-    MethodEffectSet, MethodParamDesc, ModuleDesc, ReflectCandidate, ReflectErrorKind, TraitDesc,
-    TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
+use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_host::error::HostErrorKind;
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::proxy::PathProxy;
+use vela_host::value::HostValue;
+use vela_reflect::access::{FieldAccess, FunctionAccess, MethodAccess, MethodEffectSet};
+use vela_reflect::candidates::ReflectCandidate;
+use vela_reflect::error::ReflectErrorKind;
+use vela_reflect::modules::{FunctionDesc, ModuleDesc};
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+    TypeKind, VariantDesc,
 };
 
 mod consts;
@@ -3743,7 +3752,7 @@ fn host_field_read_rejects_stale_generation() {
 
     assert_eq!(
         error.kind,
-        VmErrorKind::Host(vela_host::HostErrorKind::StaleGeneration {
+        VmErrorKind::Host(vela_host::error::HostErrorKind::StaleGeneration {
             expected: 2,
             actual: 3
         })
@@ -4407,7 +4416,7 @@ fn main(player) {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
-        reflect::ReflectPermissionSet::read_only(),
+        reflect::permissions::ReflectPermissionSet::read_only(),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -4417,7 +4426,7 @@ fn main(player) {
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
-            permission: reflect::ReflectPermission::WriteValueFields
+            permission: reflect::permissions::ReflectPermission::WriteValueFields
         })
     ));
     assert!(tx.patches().is_empty());
@@ -4442,7 +4451,7 @@ fn main(player) {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
-        reflect::ReflectPermissionSet::read_only(),
+        reflect::permissions::ReflectPermissionSet::read_only(),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -4452,7 +4461,7 @@ fn main(player) {
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
-            permission: reflect::ReflectPermission::CallMethods
+            permission: reflect::permissions::ReflectPermission::CallMethods
         })
     ));
     assert!(tx.patches().is_empty());
@@ -4486,11 +4495,11 @@ fn main(player) {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
-        reflect::ReflectPolicy::new(
-            reflect::ReflectPermissionSet::new()
-                .with(reflect::ReflectPermission::CallMethods)
-                .with(reflect::ReflectPermission::CallHostReadMethods)
-                .with(reflect::ReflectPermission::InspectHostPath),
+        reflect::permissions::ReflectPolicy::new(
+            reflect::permissions::ReflectPermissionSet::new()
+                .with(reflect::permissions::ReflectPermission::CallMethods)
+                .with(reflect::permissions::ReflectPermission::CallHostReadMethods)
+                .with(reflect::permissions::ReflectPermission::InspectHostPath),
         ),
     );
     let mut host = HostExecution {
@@ -4503,7 +4512,7 @@ fn main(player) {
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::MethodEffectPermissionDenied {
                 method: "grant_exp".to_owned(),
-                permission: reflect::ReflectPermission::CallHostWriteMethods
+                permission: reflect::permissions::ReflectPermission::CallHostWriteMethods
             }
         )
     ));
@@ -4527,7 +4536,8 @@ fn main(player) {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
-        reflect::ReflectPermissionSet::new().with(reflect::ReflectPermission::ReadTypeInfo),
+        reflect::permissions::ReflectPermissionSet::new()
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -4537,7 +4547,7 @@ fn main(player) {
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
-            permission: reflect::ReflectPermission::InspectHostPath
+            permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
     ));
     assert!(tx.patches().is_empty());
@@ -4562,7 +4572,8 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(script_reflection_registry()),
-        reflect::ReflectPermissionSet::new().with(reflect::ReflectPermission::ReadTypeInfo),
+        reflect::permissions::ReflectPermissionSet::new()
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -4598,8 +4609,8 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(TypeRegistry::new()),
-        reflect::ReflectPermissionSet::read_only()
-            .with(reflect::ReflectPermission::InspectHostPath),
+        reflect::permissions::ReflectPermissionSet::read_only()
+            .with(reflect::permissions::ReflectPermission::InspectHostPath),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -4633,7 +4644,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(TypeRegistry::new()),
-        reflect::ReflectPermissionSet::read_only(),
+        reflect::permissions::ReflectPermissionSet::read_only(),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -4673,7 +4684,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(TypeRegistry::new()),
-        reflect::ReflectPermissionSet::new(),
+        reflect::permissions::ReflectPermissionSet::new(),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -4683,7 +4694,7 @@ fn main() {
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
-            permission: reflect::ReflectPermission::ReadTypeInfo
+            permission: reflect::permissions::ReflectPermission::ReadTypeInfo
         })
     ));
     assert!(tx.patches().is_empty());
@@ -4711,8 +4722,9 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
-        reflect::ReflectPolicy::new(
-            reflect::ReflectPermissionSet::new().with(reflect::ReflectPermission::ReadTypeInfo),
+        reflect::permissions::ReflectPolicy::new(
+            reflect::permissions::ReflectPermissionSet::new()
+                .with(reflect::permissions::ReflectPermission::ReadTypeInfo),
         ),
     );
     let mut host = HostExecution {
@@ -4810,7 +4822,10 @@ fn main(player) {
     );
     let mut tx = PatchTx::new();
     let mut vm = Vm::new();
-    vm.register_reflection_natives_with_policy(Arc::new(registry), reflect::ReflectPolicy::all());
+    vm.register_reflection_natives_with_policy(
+        Arc::new(registry),
+        reflect::permissions::ReflectPolicy::all(),
+    );
     let mut host = HostExecution {
         adapter: &mut adapter,
         tx: &mut tx,
@@ -4849,7 +4864,7 @@ fn main(player) {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(reflection_registry()),
-        reflect::ReflectPolicy::all().with_lookup_limit(1),
+        reflect::permissions::ReflectPolicy::all().with_lookup_limit(1),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
@@ -5043,7 +5058,7 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_module_reflection_registry()),
-        reflect::ReflectPolicy::read_only().with_function_permission("game.admin"),
+        reflect::permissions::ReflectPolicy::read_only().with_function_permission("game.admin"),
     );
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -5155,10 +5170,10 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut vm = Vm::new();
-    let policy = reflect::ReflectPolicy::new(
-        reflect::ReflectPermissionSet::new()
-            .with(reflect::ReflectPermission::ReadTypeInfo)
-            .with(reflect::ReflectPermission::InspectHostPath),
+    let policy = reflect::permissions::ReflectPolicy::new(
+        reflect::permissions::ReflectPermissionSet::new()
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo)
+            .with(reflect::permissions::ReflectPermission::InspectHostPath),
     );
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_field_reflection_registry()),

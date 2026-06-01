@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
-use crate::AttrMap;
+use crate::registry::AttrMap;
 
 pub(crate) fn attrs_value(attrs: &AttrMap) -> HostValue {
     HostValue::Map(

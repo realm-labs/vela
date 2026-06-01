@@ -1,5 +1,5 @@
 use vela_common::{FieldId, FunctionId, HostMethodId};
-use vela_engine::{
+use vela_engine::context_schema::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID,
 };

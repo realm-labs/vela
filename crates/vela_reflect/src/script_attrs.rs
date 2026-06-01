@@ -1,6 +1,6 @@
-use vela_hir::HirAttribute;
+use vela_hir::attributes::HirAttribute;
 
-use crate::AttrMap;
+use crate::registry::AttrMap;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct ReflectedScriptAttrs {

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use vela_reflect::{self as reflect, TypeRegistry};
+use vela_reflect::registry::TypeRegistry;
+use vela_reflect::{self as reflect};
 
 use crate::Vm;
 
@@ -16,27 +17,32 @@ mod variants;
 
 impl Vm {
     pub fn register_reflection_natives(&mut self, registry: Arc<TypeRegistry>) {
-        self.register_reflection_natives_with_policy(registry, reflect::ReflectPolicy::all());
+        self.register_reflection_natives_with_policy(
+            registry,
+            reflect::permissions::ReflectPolicy::all(),
+        );
     }
 
     pub fn register_reflection_natives_with_permissions(
         &mut self,
         registry: Arc<TypeRegistry>,
-        permissions: reflect::ReflectPermissionSet,
+        permissions: reflect::permissions::ReflectPermissionSet,
     ) {
         self.register_reflection_natives_with_policy(
             registry,
-            reflect::ReflectPolicy::new(permissions),
+            reflect::permissions::ReflectPolicy::new(permissions),
         );
     }
 
     pub fn register_reflection_natives_with_policy(
         &mut self,
         registry: Arc<TypeRegistry>,
-        policy: reflect::ReflectPolicy,
+        policy: reflect::permissions::ReflectPolicy,
     ) {
         self.register_type_registry(Arc::clone(&registry));
-        let lookup_budget = Arc::new(reflect::ReflectLookupBudget::new(policy.lookup_limit()));
+        let lookup_budget = Arc::new(reflect::permissions::ReflectLookupBudget::new(
+            policy.lookup_limit(),
+        ));
 
         policy::register(self, &policy, &lookup_budget);
         types::register(self, &registry, &policy, &lookup_budget);

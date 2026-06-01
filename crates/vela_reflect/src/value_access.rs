@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use crate::candidates::{candidate_names, name_candidates, ranked_candidates};
-use crate::{FieldDesc, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry};
+use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
+use crate::registry::{FieldDesc, TypeRegistry};
+use crate::value::ReflectValue;
 
 pub(crate) fn get_record_field(
     field: &str,

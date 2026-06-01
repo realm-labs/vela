@@ -1,8 +1,9 @@
 use vela_common::{FunctionId, HostMethodId, SourceId, TypeId};
-use vela_reflect::{
-    FunctionDesc, FunctionEffectSet, MethodDesc, MethodEffectSet, TypeDesc, TypeKey, TypeRegistry,
-};
-use vela_syntax::{Expr, ItemKind, StmtKind, parse_source};
+use vela_reflect::access::{FunctionEffectSet, MethodEffectSet};
+use vela_reflect::modules::FunctionDesc;
+use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey, TypeRegistry};
+use vela_syntax::ast::{Expr, ItemKind, StmtKind};
+use vela_syntax::parser::parse_source;
 
 use super::*;
 

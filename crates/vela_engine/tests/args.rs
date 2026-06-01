@@ -2,10 +2,18 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
-use vela_engine::{CallOptions, Engine, FromScriptArg, IntoScriptArg, ScriptArgsExt, Value};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx, PathProxy};
-use vela_reflect::{MethodDesc, TypeDesc, TypeKey};
-use vela_vm::{VmError, VmErrorKind};
+use vela_engine::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
+use vela_engine::engine::Engine;
+use vela_engine::runtime::CallOptions;
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::proxy::PathProxy;
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey};
+use vela_vm::error::{VmError, VmErrorKind};
+use vela_vm::value::Value;
 
 #[test]
 fn script_arg_conversions_support_optional_values() {
@@ -289,7 +297,7 @@ fn main(player: Player, amount: int) {
         &engine.compiler_options(),
     )
     .expect("program should compile");
-    let mut runtime = vela_engine::Runtime::new(engine, program);
+    let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let args = vela_engine::args![vela_engine::host!(1, 42, 1), 12];

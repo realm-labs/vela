@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use vela_hir::{EnumVariantFieldsHint, HirDeclId, HirTypeHint, ModuleGraph};
+use vela_hir::ids::HirDeclId;
+use vela_hir::module_graph::ModuleGraph;
+use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint};
 
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 

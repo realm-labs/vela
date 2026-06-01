@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::HostRef;
+use crate::path::HostRef;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum HostValue {

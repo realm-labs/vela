@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
-use vela_reflect::{
-    FieldAccess, FieldDesc, SchemaHash, TraitDesc, TypeDesc, TypeKind, VariantDesc,
-};
+use vela_reflect::access::FieldAccess;
+use vela_reflect::registry::{FieldDesc, SchemaHash, TraitDesc, TypeDesc, TypeKind, VariantDesc};
 
-use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult, TraitMethodAbi};
+use crate::abi::TraitMethodAbi;
+use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchemaAbi {

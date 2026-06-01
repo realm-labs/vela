@@ -1,23 +1,14 @@
 //! Host reference, path, and patch transaction model.
 
-mod adapter;
-mod error;
-mod mock;
+pub mod adapter;
+pub mod error;
+pub mod mock;
 mod overlay;
-mod patch;
-mod path;
-mod proxy;
-mod tx;
-mod value;
-
-pub use adapter::ScriptStateAdapter;
-pub use error::{HostError, HostErrorKind, HostResult};
-pub use mock::MockStateAdapter;
-pub use patch::{Patch, PatchOp};
-pub use path::{HostPath, HostRef, PathSegment};
-pub use proxy::PathProxy;
-pub use tx::{HostObjectSnapshot, PatchTx};
-pub use value::HostValue;
+pub mod patch;
+pub mod path;
+pub mod proxy;
+pub mod tx;
+pub mod value;
 
 pub(crate) use value::{add_values, div_values, mul_values, push_value, rem_values, sub_values};
 

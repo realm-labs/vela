@@ -1,5 +1,5 @@
 use vela_common::HostMethodId;
-use vela_syntax::{Expr, ExprKind};
+use vela_syntax::ast::{Expr, ExprKind};
 
 use super::{
     CompilerOptions,

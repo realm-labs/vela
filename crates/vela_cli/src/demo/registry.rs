@@ -1,13 +1,16 @@
 use vela_common::{HostTypeId, TypeId, VariantId};
-use vela_engine::{
-    EffectSet, Engine, EngineResult, FunctionAccess, NativeFunctionDesc, PermissionSet, TypeHint,
-    context_host_type_desc,
+use vela_engine::context_schema::context_host_type_desc;
+use vela_engine::engine::Engine;
+use vela_engine::error::EngineResult;
+use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
+use vela_engine::permission::PermissionSet;
+use vela_reflect::access::{MethodAccess, MethodEffectSet};
+use vela_reflect::modules::ModuleDesc;
+use vela_reflect::permissions::ReflectPolicy;
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, SchemaHash, TraitDesc, TypeDesc, TypeKey, TypeRegistry, VariantDesc,
 };
-use vela_reflect::{
-    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, ModuleDesc, ReflectPolicy, SchemaHash,
-    TraitDesc, TypeDesc, TypeKey, TypeRegistry, VariantDesc,
-};
-use vela_vm::Value;
+use vela_vm::value::Value;
 
 use super::ids::{CONFIG_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
 

@@ -1,11 +1,10 @@
 use std::collections::BTreeSet;
 
-use vela_reflect::{MethodParamDesc, ModuleDesc, TypeDesc};
+use vela_reflect::modules::ModuleDesc;
+use vela_reflect::registry::{MethodParamDesc, TypeDesc};
 
-use crate::{
-    ContextHostNativeFunctionEntry, EngineError, EngineErrorKind, EngineResult,
-    HostNativeFunctionEntry, NativeFunctionEntry,
-};
+use crate::error::{EngineError, EngineErrorKind, EngineResult};
+use crate::native::{ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionEntry};
 
 pub(crate) fn validate_modules(modules: &[ModuleDesc]) -> EngineResult<()> {
     let mut names = BTreeSet::new();
@@ -114,7 +113,7 @@ fn validate_type_variants(desc: &TypeDesc) -> EngineResult<()> {
 
 fn validate_variant_fields(
     type_name: &str,
-    variant: &vela_reflect::VariantDesc,
+    variant: &vela_reflect::registry::VariantDesc,
 ) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
@@ -162,7 +161,7 @@ fn validate_type_traits(desc: &TypeDesc) -> EngineResult<()> {
 
 fn validate_trait_methods(
     type_name: &str,
-    trait_desc: &vela_reflect::TraitDesc,
+    trait_desc: &vela_reflect::registry::TraitDesc,
 ) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
@@ -267,7 +266,7 @@ pub(crate) fn validate_native_functions(
     Ok(())
 }
 
-fn validate_native_function_params(desc: &crate::NativeFunctionDesc) -> EngineResult<()> {
+fn validate_native_function_params(desc: &crate::native::NativeFunctionDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for param in &desc.params {
         if !names.insert(param.name.as_str()) {

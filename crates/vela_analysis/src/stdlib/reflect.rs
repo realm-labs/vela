@@ -1,4 +1,5 @@
-use crate::{TypeFact, stdlib::StdlibFunctionFact};
+use crate::stdlib::StdlibFunctionFact;
+use crate::type_fact::TypeFact;
 
 pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
     vec![

@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_syntax::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 
 use crate::{InstructionKind, Register};
 
@@ -322,7 +322,7 @@ fn record_literal_field_slot(expr: &Expr, field: &str) -> Option<(LiteralFieldSl
     Some((kind, slot))
 }
 
-fn sorted_field_slot(fields: &[vela_syntax::RecordField], field: &str) -> Option<usize> {
+fn sorted_field_slot(fields: &[vela_syntax::ast::RecordField], field: &str) -> Option<usize> {
     let mut names = fields
         .iter()
         .map(|field| field.name.as_str())

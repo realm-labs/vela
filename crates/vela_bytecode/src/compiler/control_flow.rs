@@ -1,6 +1,9 @@
 use vela_common::Span;
-use vela_hir::{HirTypeHint, LocalBindingKind};
-use vela_syntax::{Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind};
+use vela_hir::binding::LocalBindingKind;
+use vela_hir::type_hint::HirTypeHint;
+use vela_syntax::ast::{
+    Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
+};
 
 use crate::{Constant, InstructionKind, InstructionOffset, Register};
 

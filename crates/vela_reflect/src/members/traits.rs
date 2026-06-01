@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
 
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use crate::{
-    ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeRegistry,
     candidates::{candidate_names, ranked_candidates},
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
     member_records::trait_record,
+    registry::TypeRegistry,
+    value::ReflectValue,
 };
 
 use super::target_type;

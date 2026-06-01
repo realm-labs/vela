@@ -1,19 +1,25 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::{Program, compiler::CompilerOptions};
+use vela_bytecode::Program;
+use vela_bytecode::compiler::options::CompilerOptions;
 use vela_common::{FunctionId, HostMethodId};
-use vela_host::HostPath;
-use vela_hot_reload::HotReloadPolicy;
-use vela_reflect::{ReflectPolicy, TypeRegistry};
-use vela_vm::{HostExecution, Value, Vm, VmError, VmErrorKind, VmResult};
+use vela_host::path::HostPath;
+use vela_hot_reload::policy::HotReloadPolicy;
+use vela_reflect::permissions::ReflectPolicy;
+use vela_reflect::registry::TypeRegistry;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::value::Value;
+use vela_vm::{HostExecution, Vm};
 
+use crate::builder::EngineBuilder;
 use crate::compiler_options::compiler_options_from_registry;
-use crate::{
-    ContextHostNativeFunctionEntry, EngineBuilder, HostNativeFunctionEntry, NativeFunctionDesc,
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
+use crate::native::{
+    ContextHostNativeFunctionEntry, FunctionAccess, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry,
 };
-use crate::{FunctionAccess, NativeMethodDesc, NativeMethodEntry, PermissionSet};
+use crate::permission::PermissionSet;
 
 #[derive(Clone)]
 pub struct Engine {
@@ -259,7 +265,7 @@ impl Engine {
             let engine = self.clone();
             vm.register_budgeted_host_native(name.clone(), move |args, host, budget| {
                 check_permissions(&name, &access, &permissions)?;
-                let mut context = crate::NativeCallContext::new(&engine, host, budget);
+                let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
                 function(args, &mut context)
             });
         }

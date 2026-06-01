@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
 
-use vela_hir::{BindingMap, BindingResolution, HirLocalId};
-use vela_syntax::{
+use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_hir::ids::HirLocalId;
+use vela_syntax::ast::{
     Argument, Block, ElseBranch, Expr, ExprKind, IfExpr, MapEntry, MatchArm, MatchExpr, Param,
     RecordField, Stmt, StmtKind,
 };

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use vela_hot_reload::HotReloadError;
+use vela_hot_reload::error::HotReloadError;
 
 use crate::source::EngineSourceError;
 

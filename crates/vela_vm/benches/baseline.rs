@@ -4,7 +4,9 @@ use std::time::{Duration, Instant};
 
 use vela_bytecode::compiler::compile_function_source;
 use vela_common::SourceId;
-use vela_vm::{ExecutionBudget, Value, Vm};
+use vela_vm::Vm;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::value::Value;
 
 #[path = "baseline/workloads.rs"]
 mod workloads;

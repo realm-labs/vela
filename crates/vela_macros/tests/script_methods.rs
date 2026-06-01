@@ -1,11 +1,20 @@
 #![allow(clippy::result_large_err)]
 
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
-use vela_engine::{EffectSet, Engine, FunctionAccess, HostRef, NativeMethodDesc, TypeHint, Value};
-use vela_host::{HostPath, HostValue, MockStateAdapter, PatchOp, PatchTx};
+use vela_engine::engine::Engine;
+use vela_engine::method::NativeMethodDesc;
+use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::HostPath;
+use vela_host::path::HostRef;
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, script_methods};
-use vela_reflect::{FieldDesc, TypeDesc, TypeKey, TypeKind};
-use vela_vm::{HostExecution, VmResult};
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
+use vela_vm::HostExecution;
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
 #[path = "script_methods/metadata.rs"]
 mod metadata;
@@ -32,7 +41,7 @@ impl Player {
         attr = "domain=player"
     )]
     pub fn grant_exp(
-        _ctx: &mut vela_engine::NativeCallContext<'_, '_>,
+        _ctx: &mut vela_engine::context::NativeCallContext<'_, '_>,
         _player: HostRef,
         _amount: i64,
     ) {

@@ -1,14 +1,26 @@
-use vela_hot_reload::HotReloadPolicy;
-use vela_reflect::{ModuleDesc, ReflectPermissionSet, ReflectPolicy, TypeDesc, TypeRegistry};
-use vela_vm::{HostExecution, Value, VmResult};
+use vela_hot_reload::policy::HotReloadPolicy;
+use vela_reflect::modules::ModuleDesc;
+use vela_reflect::permissions::{ReflectPermissionSet, ReflectPolicy};
+use vela_reflect::registry::{TypeDesc, TypeRegistry};
+use vela_vm::HostExecution;
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::{
-    ContextHostNativeFunctionEntry, Engine, EngineResult, HostNativeFunctionEntry,
-    NativeCallContext, NativeFunctionDesc, NativeFunctionEntry, NativeMethodDesc,
-    NativeMethodEntry, PermissionSet, ScriptHostMethodMetadata, ScriptHostSchema,
-    ScriptReflectSchema, TypedContextHostNativeFunction, TypedHostNativeFunction,
-    TypedNativeFunction, TypedNativeMethodFunction, engine::EngineParts, metadata, validation,
+use crate::context::NativeCallContext;
+use crate::engine::{Engine, EngineParts};
+use crate::error::EngineResult;
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
+use crate::native::{
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry,
 };
+use crate::permission::PermissionSet;
+use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
+use crate::typed::{
+    TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
+    TypedNativeMethodFunction,
+};
+use crate::{metadata, validation};
 
 #[derive(Clone, Default)]
 pub struct EngineBuilder {
@@ -223,7 +235,7 @@ impl EngineBuilder {
         mut self,
         desc: NativeMethodDesc,
         function: impl for<'host> Fn(
-            &vela_host::HostPath,
+            &vela_host::path::HostPath,
             &[Value],
             &mut HostExecution<'host>,
         ) -> VmResult<Value>

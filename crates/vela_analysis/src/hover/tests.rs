@@ -1,8 +1,9 @@
 use vela_common::{FieldId, FunctionId, HostMethodId, SourceId, Span, TypeId, VariantId};
-use vela_reflect::{
-    DeclOrigin, FieldAccess, FieldDesc, FunctionDesc, FunctionEffectSet, FunctionParamDesc,
-    MethodDesc, MethodEffectSet, MethodParamDesc, ModuleDesc, TraitDesc, TraitMethodDesc, TypeDesc,
-    TypeKey, TypeKind, TypeRegistry, VariantDesc,
+use vela_reflect::access::{FieldAccess, FunctionEffectSet, MethodEffectSet};
+use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+    TypeKind, TypeRegistry, VariantDesc,
 };
 
 use super::*;

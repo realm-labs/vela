@@ -1,9 +1,11 @@
 use std::fmt;
 
-use vela_bytecode::compiler::{CompileError, CompileErrorKind};
+use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
 use vela_common::{Diagnostic, Label, Span};
 
-use crate::{AccessAbi, EffectAbi, ModuleExportAbi, ParamAbi, SchemaAbi, TraitMethodAbi};
+use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
+use crate::module_abi::ModuleExportAbi;
+use crate::schema_abi::SchemaAbi;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadError {

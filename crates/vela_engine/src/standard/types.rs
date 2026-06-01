@@ -1,5 +1,6 @@
 use vela_common::TypeId;
-use vela_reflect::{DeclOrigin, FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, VariantDesc};
+use vela_reflect::modules::DeclOrigin;
+use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, VariantDesc};
 
 use super::ids::{
     ARRAY_TYPE_ID, BOOL_TYPE_ID, CLOSURE_TYPE_ID, FLOAT_TYPE_ID, FUNCTION_TYPE_ID, INT_TYPE_ID,

@@ -1,10 +1,12 @@
 use std::collections::BTreeSet;
 
-use vela_hir::{DeclarationKind, HirDeclId, ModuleGraph};
+use vela_hir::ids::HirDeclId;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
-use crate::{
-    AnalysisFacts, RegistryFacts, TypeFact, stdlib_function_completion_facts, stdlib_method_facts,
-};
+use crate::facts::AnalysisFacts;
+use crate::registry::RegistryFacts;
+use crate::stdlib::{stdlib_function_completion_facts, stdlib_method_facts};
+use crate::type_fact::TypeFact;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompletionKind {
@@ -235,10 +237,11 @@ fn stdlib_function_completions() -> Vec<CompletionItem> {
 #[cfg(test)]
 mod tests {
     use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, SourceId, TypeId, VariantId};
-    use vela_hir::{ModulePath, ModuleSource};
-    use vela_reflect::{
-        FieldDesc, FunctionDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc,
-        TypeKey, TypeKind, TypeRegistry, VariantDesc,
+    use vela_hir::module_graph::{ModulePath, ModuleSource};
+    use vela_reflect::modules::FunctionDesc;
+    use vela_reflect::registry::{
+        FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+        TypeKind, TypeRegistry, VariantDesc,
     };
 
     use super::*;
@@ -1004,7 +1007,7 @@ mod tests {
         );
         registry.register_function(
             FunctionDesc::new(FunctionId::new(1), "game.reward.grant")
-                .param(vela_reflect::FunctionParamDesc::new("player").type_hint("Player"))
+                .param(vela_reflect::modules::FunctionParamDesc::new("player").type_hint("Player"))
                 .return_type("bool"),
         );
         RegistryFacts::from_registry(&registry)

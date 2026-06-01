@@ -1,6 +1,7 @@
 use vela_common::{SourceId, TypeId, VariantId};
-use vela_reflect::{TypeDesc, TypeKey, TypeRegistry, VariantDesc};
-use vela_syntax::{Expr, ItemKind, StmtKind, parse_source};
+use vela_reflect::registry::{TypeDesc, TypeKey, TypeRegistry, VariantDesc};
+use vela_syntax::ast::{Expr, ItemKind, StmtKind};
+use vela_syntax::parser::parse_source;
 
 use super::*;
 
@@ -106,7 +107,7 @@ fn enum_registry_facts() -> RegistryFacts {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestState"))
-            .kind(vela_reflect::TypeKind::ScriptEnum)
+            .kind(vela_reflect::registry::TypeKind::ScriptEnum)
             .variant(VariantDesc::new(VariantId::new(1), "Active"))
             .variant(VariantDesc::new(VariantId::new(2), "Finished")),
     );

@@ -1,4 +1,4 @@
-use vela_syntax::{Argument, Expr, ExprKind};
+use vela_syntax::ast::{Argument, Expr, ExprKind};
 
 use crate::{CallArgument, InstructionKind};
 

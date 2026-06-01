@@ -1,8 +1,8 @@
 use vela_common::SourceId;
-use vela_hir::{
-    Declaration, DeclarationKind, EnumVariantFieldsHint, ImportResolution, ModuleGraph, ModulePath,
-    ModuleSource,
+use vela_hir::module_graph::{
+    Declaration, DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
 };
+use vela_hir::type_hint::EnumVariantFieldsHint;
 
 const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.lang");
 const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.lang");

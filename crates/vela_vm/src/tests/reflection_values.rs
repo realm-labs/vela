@@ -130,7 +130,10 @@ fn main() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut vm = Vm::new();
-    vm.register_reflection_natives_with_policy(Arc::new(registry), reflect::ReflectPolicy::all());
+    vm.register_reflection_natives_with_policy(
+        Arc::new(registry),
+        reflect::permissions::ReflectPolicy::all(),
+    );
     let mut host = HostExecution {
         adapter: &mut adapter,
         tx: &mut tx,

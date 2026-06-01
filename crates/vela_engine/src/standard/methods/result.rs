@@ -1,5 +1,5 @@
 use vela_common::HostMethodId;
-use vela_reflect::MethodDesc;
+use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
 

@@ -3,13 +3,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc};
 use crate::{
-    ReflectError, ReflectErrorKind, ReflectResult,
     candidates::{candidate_names, ranked_candidates},
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
 };
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, Span, TraitId, TypeId, VariantId,
 };
-use vela_host::HostRef;
+use vela_host::path::HostRef;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TypeKey {

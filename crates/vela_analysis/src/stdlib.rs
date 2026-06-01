@@ -1,4 +1,4 @@
-use crate::TypeFact;
+use crate::type_fact::TypeFact;
 
 mod functions;
 mod methods;

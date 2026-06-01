@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
 use vela_common::{HostMethodId, Span};
-use vela_host::HostPath;
-use vela_reflect::{AttrMap, TypeKey};
-use vela_vm::{HostExecution, Value, VmResult};
+use vela_host::path::HostPath;
+use vela_reflect::registry::{AttrMap, TypeKey};
+use vela_vm::HostExecution;
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::{EffectSet, FunctionAccess, TypeHint};
+use crate::native::{EffectSet, FunctionAccess, TypeHint};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeMethodDesc {

@@ -1,6 +1,8 @@
 use vela_common::{FieldId, HostMethodId, Span, Symbol};
 
-use crate::{HostPath, HostResult, HostValue, PatchTx, ScriptStateAdapter};
+use crate::{
+    adapter::ScriptStateAdapter, error::HostResult, path::HostPath, tx::PatchTx, value::HostValue,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PathProxy {

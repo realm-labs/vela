@@ -1,8 +1,9 @@
 use vela_common::FunctionId;
-use vela_reflect::ModuleDesc;
-use vela_vm::{Value, VmError, VmErrorKind, VmResult};
+use vela_reflect::modules::ModuleDesc;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::value::Value;
 
-use crate::{
+use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 

@@ -1,13 +1,15 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
-use vela_hir::ModuleGraph;
-use vela_reflect::{
-    FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc,
-    TypeRegistry,
+use vela_hir::module_graph::ModuleGraph;
+use vela_reflect::modules::{FunctionDesc, FunctionParamDesc};
+use vela_reflect::registry::{
+    MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeRegistry,
 };
 
-use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult, ModuleAbi, SchemaAbi};
+use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+use crate::module_abi::ModuleAbi;
+use crate::schema_abi::SchemaAbi;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct HotReloadAbi {

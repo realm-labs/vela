@@ -1,14 +1,15 @@
 use vela_common::{FieldId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId};
-use vela_reflect::{
-    FieldDesc, MethodDesc, MethodParamDesc, ModuleDesc, TraitMethodDesc, TypeDesc, TypeKey,
-    VariantDesc,
+use vela_reflect::modules::ModuleDesc;
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, MethodParamDesc, TraitMethodDesc, TypeDesc, TypeKey, VariantDesc,
 };
 
-use crate::{Engine, EngineErrorKind, NativeFunctionDesc, NativeFunctionId, NativeMethodDesc};
+use vela_vm::value::Value;
 
-use vela_vm::Value;
-
-use crate::TypeHint;
+use crate::engine::Engine;
+use crate::error::EngineErrorKind;
+use crate::method::NativeMethodDesc;
+use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
 
 use super::{player_type, trait_desc_with_id};
 

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use crate::heap::HeapValue;
 use crate::script_object::ScriptFields;

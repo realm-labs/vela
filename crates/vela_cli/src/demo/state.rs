@@ -3,8 +3,11 @@ use std::error::Error;
 
 use vela_bytecode::CodeObject;
 use vela_common::{HostObjectId, HostTypeId, SymbolInterner};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, ScriptStateAdapter};
-use vela_vm::Value;
+use vela_host::adapter::ScriptStateAdapter;
+use vela_host::mock::MockStateAdapter;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::value::HostValue;
+use vela_vm::value::Value;
 
 use super::ids::{CTX_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
 

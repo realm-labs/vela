@@ -4,12 +4,14 @@ mod try_propagation;
 
 use std::collections::BTreeMap;
 
-use vela_syntax::{
+use vela_syntax::ast::{
     BinaryOp, Block, ElseBranch, Expr, ExprKind, Literal, Param, Pattern, StmtKind, TypeHint,
     UnaryOp,
 };
 
-use crate::{RegistryFacts, TypeFact, stdlib_function_fact, stdlib_method_fact};
+use crate::registry::RegistryFacts;
+use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
+use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ExprFactScope {
@@ -194,7 +196,7 @@ fn numeric_result(values: impl IntoIterator<Item = TypeFact>) -> TypeFact {
 
 fn call_fact(
     callee: &Expr,
-    args: &[vela_syntax::Argument],
+    args: &[vela_syntax::ast::Argument],
     scope: &ExprFactScope,
     facts: Option<&RegistryFacts>,
 ) -> TypeFact {
@@ -411,7 +413,7 @@ fn block_fact(block: &Block, scope: &ExprFactScope, facts: Option<&RegistryFacts
 }
 
 fn if_expr_fact(
-    if_expr: &vela_syntax::IfExpr,
+    if_expr: &vela_syntax::ast::IfExpr,
     scope: &ExprFactScope,
     facts: Option<&RegistryFacts>,
 ) -> TypeFact {
@@ -468,8 +470,11 @@ fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
 #[cfg(test)]
 mod tests {
     use vela_common::{FieldId, SourceId, TypeId, VariantId};
-    use vela_reflect::{FieldDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc};
-    use vela_syntax::{ItemKind, StmtKind, parse_source};
+    use vela_reflect::registry::{
+        FieldDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
+    };
+    use vela_syntax::ast::{ItemKind, StmtKind};
+    use vela_syntax::parser::parse_source;
 
     use super::*;
 

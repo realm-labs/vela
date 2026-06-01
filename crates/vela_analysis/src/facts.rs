@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
 
-use vela_hir::{BindingResolution, DeclarationKind, HirDeclId, HirExprId, HirLocalId, ModuleGraph};
+use vela_hir::binding::BindingResolution;
+use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId};
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
-use crate::TypeFact;
 use crate::hints::{declaration_schema_fact, type_fact_from_hint_in_module};
+use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AnalysisFacts {
@@ -126,7 +128,8 @@ fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeF
 mod tests {
     use super::*;
     use vela_common::SourceId;
-    use vela_hir::{LocalBindingKind, ModulePath, ModuleSource};
+    use vela_hir::binding::LocalBindingKind;
+    use vela_hir::module_graph::{ModulePath, ModuleSource};
 
     #[test]
     fn analysis_facts_collect_function_signature_and_local_hints() {

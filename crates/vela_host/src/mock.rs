@@ -3,9 +3,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
-    HostError, HostErrorKind, HostObjectSnapshot, HostPath, HostRef, HostResult, HostValue, Patch,
-    PatchOp, PatchTx, ScriptStateAdapter, add_values, div_values, mul_values, push_value,
-    rem_values, sub_values,
+    adapter::ScriptStateAdapter,
+    add_values, div_values,
+    error::{HostError, HostErrorKind, HostResult},
+    mul_values,
+    patch::{Patch, PatchOp},
+    path::{HostPath, HostRef},
+    push_value, rem_values, sub_values,
+    tx::{HostObjectSnapshot, PatchTx},
+    value::HostValue,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

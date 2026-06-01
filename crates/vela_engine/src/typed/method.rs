@@ -1,7 +1,9 @@
-use vela_host::HostPath;
-use vela_vm::{HostExecution, Value, VmResult};
+use vela_host::path::HostPath;
+use vela_vm::HostExecution;
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::FromScriptArg;
+use crate::args::FromScriptArg;
 
 use super::{IntoNativeReturn, TypedNativeMethodFunction, expect_arity};
 

@@ -1,10 +1,15 @@
 use std::collections::BTreeMap;
 
-use vela_host::{HostPath, HostRef, HostValue, PatchTx, ScriptStateAdapter};
+use vela_host::adapter::ScriptStateAdapter;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
 
 use crate::{
-    FieldDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult, TypeDesc,
-    TypeRegistry, candidates, descriptor_targets,
+    candidates, descriptor_targets,
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
+    permissions::ReflectPolicy,
+    registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry},
     value_access::{
         get_record_field, record_unknown_field, script_enum_field, script_enum_unknown_field,
         script_record_field, script_record_unknown_field, set_record_field,
@@ -65,7 +70,7 @@ fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Opti
     }
 }
 
-pub fn fields<'a>(registry: &'a TypeRegistry, key: &crate::TypeKey) -> Option<&'a [FieldDesc]> {
+pub fn fields<'a>(registry: &'a TypeRegistry, key: &TypeKey) -> Option<&'a [FieldDesc]> {
     registry.fields(key)
 }
 

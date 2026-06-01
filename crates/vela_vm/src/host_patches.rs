@@ -1,6 +1,8 @@
 use vela_bytecode::{HostPathSegment, Register};
 use vela_common::{FieldId, Span, SymbolInterner};
-use vela_host::{HostPath, HostValue, PatchTx};
+use vela_host::path::HostPath;
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
 
 use crate::host_paths::host_path_from_segments;
 use crate::host_values::value_to_host;

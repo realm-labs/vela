@@ -1,5 +1,5 @@
 use vela_bytecode::CodeObject;
-use vela_host::HostRef;
+use vela_host::path::HostRef;
 
 use crate::{ClosureValue, Value, VmError, VmErrorKind, VmResult};
 

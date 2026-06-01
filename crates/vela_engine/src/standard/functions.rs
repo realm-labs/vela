@@ -1,4 +1,4 @@
-use crate::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
 
 use super::ids::{
     MATH_ABS_FUNCTION_ID, MATH_CEIL_FUNCTION_ID, MATH_CLAMP_FUNCTION_ID,

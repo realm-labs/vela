@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
 use vela_common::{FunctionId, Span};
-use vela_reflect::{AttrMap, TypeKey};
-use vela_vm::{HostExecution, Value, VmResult};
+use vela_reflect::registry::{AttrMap, TypeKey};
+use vela_vm::HostExecution;
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::{NativeCallContext, PermissionSet};
+use crate::context::NativeCallContext;
+use crate::permission::PermissionSet;
 
 pub type NativeFunctionId = FunctionId;
 

@@ -1,11 +1,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::SourceId;
-use vela_hir::{
-    BindingMap, DeclarationKind, FunctionSignature, HirDeclId, ImportResolution, ModuleGraph,
-    ModuleId, ModulePath, ModuleSource, ParamHint,
+use vela_hir::binding::BindingMap;
+use vela_hir::ids::{HirDeclId, ModuleId};
+use vela_hir::module_graph::{
+    DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
 };
-use vela_syntax::{FunctionItem, ItemKind, SourceFile, parse_source};
+use vela_hir::type_hint::{FunctionSignature, ParamHint};
+use vela_syntax::ast::{FunctionItem, ItemKind, SourceFile};
+use vela_syntax::parser::parse_source;
 
 use crate::Constant;
 

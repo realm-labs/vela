@@ -1,8 +1,10 @@
 use vela_common::Diagnostic;
-use vela_syntax::{ElseBranch, Expr, ExprKind, MatchExpr, Pattern, Stmt, StmtKind};
+use vela_syntax::ast::{ElseBranch, Expr, ExprKind, MatchExpr, Pattern, Stmt, StmtKind};
 
 use super::candidates::ranked_names;
-use crate::{ExprFactScope, RegistryFacts, TypeFact, type_fact_from_expr};
+use crate::expression::{ExprFactScope, type_fact_from_expr};
+use crate::registry::RegistryFacts;
+use crate::type_fact::TypeFact;
 
 #[cfg(test)]
 mod tests;

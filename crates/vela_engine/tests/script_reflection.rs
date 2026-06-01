@@ -1,8 +1,12 @@
 use std::fs;
 use std::path::PathBuf;
 
-use vela_engine::{CallOptions, Engine, ReflectPolicy, Runtime, Value};
-use vela_host::{MockStateAdapter, PatchTx};
+use vela_engine::engine::Engine;
+use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::mock::MockStateAdapter;
+use vela_host::tx::PatchTx;
+use vela_reflect::permissions::ReflectPolicy;
+use vela_vm::value::Value;
 
 fn unique_test_dir(name: &str) -> PathBuf {
     let mut path = std::env::temp_dir();

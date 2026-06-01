@@ -2,7 +2,7 @@ use std::fmt;
 
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, Span};
 
-use crate::{HostPath, HostValue};
+use crate::{path::HostPath, value::HostValue};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HostError {

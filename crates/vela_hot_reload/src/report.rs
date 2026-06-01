@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use vela_common::{Diagnostic, Label, Span};
 
-use crate::{
-    FunctionSymbolId, HotReloadDiagnosticDetail, HotReloadError, HotReloadReportLine,
-    ProgramVersion, ProgramVersionId,
-};
+use crate::error::HotReloadError;
+use crate::report_detail::HotReloadDiagnosticDetail;
+use crate::report_render::HotReloadReportLine;
+use crate::symbol::{FunctionSymbolId, ProgramVersionId};
+use crate::version::ProgramVersion;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadReport {

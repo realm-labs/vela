@@ -2,10 +2,11 @@ use super::*;
 
 #[test]
 fn script_macros_feed_engine_builder_registration() {
-    let desc = <Player as vela_engine::ScriptHostMethodMetadata>::script_host_method_descs()
-        .into_iter()
-        .find(|desc| desc.id == HostMethodId::new(7))
-        .expect("method descriptor");
+    let desc =
+        <Player as vela_engine::schema::ScriptHostMethodMetadata>::script_host_method_descs()
+            .into_iter()
+            .find(|desc| desc.id == HostMethodId::new(7))
+            .expect("method descriptor");
     let engine = Engine::builder()
         .register_host_schema::<Player>()
         .grant_permission("player.write")

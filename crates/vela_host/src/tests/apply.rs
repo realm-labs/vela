@@ -67,7 +67,7 @@ fn apply_commits_remove_at_safe_point() {
 
     assert_eq!(
         adapter.read_path(&path),
-        Err(crate::HostError::new(HostErrorKind::MissingPath { path }))
+        Err(HostError::new(HostErrorKind::MissingPath { path }))
     );
 }
 

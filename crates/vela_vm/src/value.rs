@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{CodeObject, Constant};
-use vela_host::{HostRef, PathProxy};
+use vela_host::path::HostRef;
+use vela_host::proxy::PathProxy;
 
 use crate::heap::GcRef;
 use crate::iteration::IteratorState;

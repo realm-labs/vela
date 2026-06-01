@@ -1,4 +1,4 @@
-use vela_reflect::ModuleDesc;
+use vela_reflect::modules::ModuleDesc;
 
 pub(crate) fn standard_module_descs() -> [ModuleDesc; 4] {
     [

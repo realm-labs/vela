@@ -1,6 +1,6 @@
 use vela_bytecode::Program;
 use vela_common::MethodId;
-use vela_reflect::TypeRegistry;
+use vela_reflect::registry::TypeRegistry;
 
 use crate::callback_method_dispatch::{self, CallbackMethodDispatch};
 use crate::heap::{GcRef, HeapValue};

@@ -1,8 +1,10 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::SourceId;
-use vela_vm::VmErrorKind;
+use vela_vm::error::VmErrorKind;
+use vela_vm::value::Value;
 
-use crate::{CONTROLLED_RANDOM_PERMISSION, Engine, MATH_RANDOM_FUNCTION_ID, Value};
+use crate::engine::Engine;
+use crate::random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
 
 #[test]
 fn engine_controlled_random_requires_permission() {

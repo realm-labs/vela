@@ -1,12 +1,10 @@
 //! Shared foundations for Vela crates.
 
-mod diagnostic_render;
+pub mod diagnostic_render;
 
 use std::collections::HashMap;
 use std::fmt;
 use std::num::NonZeroU32;
-
-pub use diagnostic_render::{DiagnosticRenderer, DiagnosticSource, render_diagnostic};
 
 macro_rules! stable_id {
     ($name:ident, $inner:ty) => {

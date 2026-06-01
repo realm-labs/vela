@@ -1,9 +1,9 @@
 use vela_common::Span;
-use vela_syntax::{
+use vela_syntax::ast::{
     ConstItem, EnumItem, EnumVariantFields, ImplItem, Param, StructField, TraitItem, TypeHint,
 };
 
-use crate::{HirAttribute, HirNodeId, attributes::attrs_from_syntax};
+use crate::{attributes::HirAttribute, attributes::attrs_from_syntax, ids::HirNodeId};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
@@ -123,7 +123,7 @@ pub struct EnumVariantHint {
 
 impl EnumVariantHint {
     #[must_use]
-    pub fn from_syntax(variant: &vela_syntax::EnumVariant) -> Self {
+    pub fn from_syntax(variant: &vela_syntax::ast::EnumVariant) -> Self {
         let fields = match &variant.fields {
             EnumVariantFields::Unit => EnumVariantFieldsHint::Unit,
             EnumVariantFields::Tuple(params) => {

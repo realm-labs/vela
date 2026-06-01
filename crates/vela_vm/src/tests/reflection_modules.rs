@@ -174,7 +174,7 @@ fn main() {
     vm.register_standard_natives();
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_module_reflection_registry()),
-        reflect::ReflectPolicy::read_only(),
+        reflect::permissions::ReflectPolicy::read_only(),
     );
     let mut host = HostExecution {
         adapter: &mut adapter,

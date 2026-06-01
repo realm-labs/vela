@@ -8,8 +8,8 @@ use super::common::check_reflect_policy;
 
 pub(super) fn register(
     vm: &mut Vm,
-    policy: &reflect::ReflectPolicy,
-    lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
 ) {
     let permissions_policy = policy.clone();
     let permissions_budget = Arc::clone(lookup_budget);
@@ -17,11 +17,11 @@ pub(super) fn register(
         check_reflect_policy(
             &permissions_policy,
             &permissions_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.permissions", args, 0)?;
         Ok(Value::Array(
-            reflect::permission_names(&permissions_policy)
+            reflect::permissions::permission_names(&permissions_policy)
                 .into_iter()
                 .map(|permission| Value::String(permission.to_owned()))
                 .collect(),
@@ -34,11 +34,11 @@ pub(super) fn register(
         check_reflect_policy(
             &has_permission_policy,
             &has_permission_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.has_permission", args, 1)?;
         let permission = expect_string(&args[0], "reflect.has_permission")?;
-        Ok(Value::Bool(reflect::has_permission(
+        Ok(Value::Bool(reflect::permissions::has_permission(
             &has_permission_policy,
             permission,
         )?))

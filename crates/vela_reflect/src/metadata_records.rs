@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
-use crate::{ReflectError, ReflectErrorKind, ReflectResult, ReflectValue};
+use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
+use crate::value::ReflectValue;
 
 pub(crate) fn name(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     let Some(name) = field(target, "name") else {

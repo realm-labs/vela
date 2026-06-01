@@ -3,13 +3,20 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_common::{FieldId, HostObjectId, HostTypeId};
-use vela_engine::{
-    EffectSet, Engine, FunctionAccess, HostRef, NativeCallContext, NativeFunctionDesc,
-    NativeFunctionId, TypeHint, Value,
+use vela_engine::context::NativeCallContext;
+use vela_engine::engine::Engine;
+use vela_engine::native::{
+    EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
-use vela_host::{HostPath, HostValue, MockStateAdapter, PatchOp, PatchTx};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
 use vela_macros::{script_context_function, script_function, script_host_function};
-use vela_vm::{HostExecution, VmResult};
+use vela_vm::HostExecution;
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
 #[path = "script_function/metadata.rs"]
 mod metadata;

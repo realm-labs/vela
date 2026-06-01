@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use super::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
 use crate::{
-    ReflectValue,
     metadata::{attrs_value, docs_value, span_value},
+    value::ReflectValue,
 };
 
 pub(super) fn module_record(desc: &ModuleDesc) -> ReflectValue {

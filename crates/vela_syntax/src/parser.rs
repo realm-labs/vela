@@ -1490,7 +1490,9 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BinaryOp, ExprKind, Keyword, Literal, StmtKind, Symbol, TokenKind, lex};
+    use crate::ast::{BinaryOp, ExprKind, Literal, StmtKind};
+    use crate::lexer::lex;
+    use crate::token::{Keyword, Symbol, TokenKind};
     use std::fmt::Write as _;
 
     fn source_id() -> SourceId {

@@ -1,10 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::MethodId;
-use vela_hir::{
-    BindingMap, DeclarationKind, FunctionSignature, ImplMetadata, ModuleGraph, ModuleId, ModulePath,
-};
-use vela_syntax::{Block, ImplItem, ItemKind, Param, SourceFile, TraitItem};
+use vela_hir::binding::BindingMap;
+use vela_hir::ids::ModuleId;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
+use vela_hir::type_hint::{FunctionSignature, ImplMetadata};
+use vela_syntax::ast::{Block, ImplItem, ItemKind, Param, SourceFile, TraitItem};
 
 pub(super) struct ScriptImplMethod<'ast> {
     pub(super) target_type: String,
@@ -98,7 +99,7 @@ fn collect_methods<'ast>(
     module_path: Option<&'ast ModulePath>,
     impl_metadata: &'ast ImplMetadata,
     item: &'ast ImplItem,
-    trait_item: Option<(&'ast vela_hir::TraitShape, &'ast TraitItem)>,
+    trait_item: Option<(&'ast vela_hir::type_hint::TraitShape, &'ast TraitItem)>,
     target_type: String,
 ) -> Vec<ScriptImplMethod<'ast>> {
     let explicit_names = item
@@ -152,7 +153,7 @@ fn collect_default_methods<'ast>(
     graph: &'ast ModuleGraph,
     module_path: Option<&'ast ModulePath>,
     impl_metadata: &'ast ImplMetadata,
-    trait_shape: &'ast vela_hir::TraitShape,
+    trait_shape: &'ast vela_hir::type_hint::TraitShape,
     trait_item: &'ast TraitItem,
     target_type: &str,
     explicit_names: &BTreeSet<String>,
@@ -219,7 +220,7 @@ fn trait_declaration(
     graph: &ModuleGraph,
     owner_module: ModuleId,
     path: &[String],
-) -> Option<vela_hir::HirDeclId> {
+) -> Option<vela_hir::ids::HirDeclId> {
     if path.len() == 1 {
         let declaration = graph.module(owner_module)?.get(&path[0])?;
         return (graph.declaration(declaration)?.kind == DeclarationKind::Trait)
@@ -233,7 +234,10 @@ fn trait_declaration(
     })
 }
 
-fn declaration_qualified_name(graph: &ModuleGraph, declaration: &vela_hir::Declaration) -> String {
+fn declaration_qualified_name(
+    graph: &ModuleGraph,
+    declaration: &vela_hir::module_graph::Declaration,
+) -> String {
     let Some(module_path) = graph.module_path(declaration.module) else {
         return declaration.name.clone();
     };

@@ -2,13 +2,20 @@ use std::path::Path;
 
 use vela_bytecode::Program;
 use vela_common::SourceId;
-use vela_host::{PatchTx, ScriptStateAdapter};
-use vela_hot_reload::{
-    HotReloadReport, HotReloadResult, HotReloadRuntime, HotUpdate, ProgramVersion,
-};
-use vela_vm::{ExecutionBudget, HostExecution, Value, VmResult};
+use vela_host::adapter::ScriptStateAdapter;
+use vela_host::tx::PatchTx;
+use vela_hot_reload::error::HotReloadResult;
+use vela_hot_reload::report::HotReloadReport;
+use vela_hot_reload::runtime::HotReloadRuntime;
+use vela_hot_reload::version::{HotUpdate, ProgramVersion};
+use vela_vm::HostExecution;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::{Engine, EngineError, EngineErrorKind, EngineHotReloadSourceResult, EngineResult};
+use crate::engine::Engine;
+use crate::error::{EngineError, EngineErrorKind, EngineResult};
+use crate::reload::EngineHotReloadSourceResult;
 
 #[derive(Clone)]
 pub struct Runtime {

@@ -3,26 +3,26 @@
 #![allow(clippy::result_large_err)]
 
 mod array_methods;
-mod budget;
+pub mod budget;
 mod callback_method_dispatch;
-mod error;
+pub mod error;
 mod field_access;
 mod frame;
 pub mod heap;
-mod heap_execution;
+pub mod heap_execution;
 mod heap_values;
 mod host_patches;
 mod host_paths;
 mod host_values;
 mod indexing;
-mod iteration;
+pub mod iteration;
 mod map_methods;
 mod math_stdlib;
 mod method_runtime;
 mod numeric_ops;
 mod option_result;
 mod option_result_methods;
-mod ranges;
+pub mod ranges;
 mod record_fields;
 mod reflection;
 mod reflection_values;
@@ -35,20 +35,20 @@ mod stdlib;
 mod string_method_dispatch;
 mod string_methods;
 mod try_propagation;
-mod value;
+pub mod value;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-pub use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
+use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 use field_access::{
     enum_tag_equal, get_enum_field_value, get_enum_slot_value, get_record_field_value,
     get_record_slot_value,
 };
 pub(crate) use frame::{CallFrame, normalized_param_defaults};
 use heap::{HeapValue, ScriptHeap};
-pub use heap_execution::HeapExecution;
+use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, materialize_value,
     materialize_values, store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot,
@@ -57,9 +57,8 @@ use heap_values::{
 };
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};
-pub use iteration::IteratorState;
 use numeric_ops::{binary_numeric, compare_numeric, div_numeric, negate_numeric, rem_numeric};
-pub use ranges::RangeValue;
+use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_closure, expect_int, is_truthy, validate_jump};
@@ -68,13 +67,15 @@ use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, InstructionKind, Program, Register};
 use vela_common::{Span, SymbolInterner};
-use vela_host::{HostPath, PatchTx, ScriptStateAdapter};
+use vela_host::adapter::ScriptStateAdapter;
+use vela_host::path::HostPath;
+use vela_host::tx::PatchTx;
 #[cfg(test)]
 use vela_reflect as reflect;
-use vela_reflect::TypeRegistry;
+use vela_reflect::registry::TypeRegistry;
 
-pub use budget::{ExecutionBudget, ExecutionBudgetKind};
-pub use value::{ClosureValue, Value};
+use budget::ExecutionBudget;
+use value::{ClosureValue, Value};
 
 struct ExecutionCall<'a> {
     code: &'a CodeObject,

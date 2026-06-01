@@ -6,7 +6,7 @@ mod calls;
 mod const_eval;
 mod constructors;
 mod control_flow;
-mod error;
+pub mod error;
 mod expressions;
 mod field_slots;
 mod host_paths;
@@ -14,7 +14,7 @@ mod lambdas;
 mod map_literals;
 mod methods;
 mod operators;
-mod options;
+pub mod options;
 mod paths;
 mod patterns;
 mod schema_defaults;
@@ -28,13 +28,13 @@ use std::collections::{BTreeMap, HashMap};
 #[cfg(test)]
 use vela_common::{FieldId, HostMethodId};
 use vela_common::{MethodId, SourceId, Span};
+use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
+use vela_hir::ids::{HirDeclId, HirLocalId};
 #[cfg(test)]
-use vela_hir::ModulePath;
-use vela_hir::{
-    BindingMap, BindingResolution, FunctionSignature, HirDeclId, HirLocalId, HirTypeHint,
-    LocalBindingKind, ModuleSource, ParamHint,
-};
-use vela_syntax::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
+use vela_hir::module_graph::ModulePath;
+use vela_hir::module_graph::ModuleSource;
+use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
+use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 
 #[cfg(test)]
 use crate::HostPathSegment;
@@ -42,10 +42,10 @@ use crate::{
     CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
 };
 use control_flow::LoopContext;
-pub use error::{CompileError, CompileErrorKind, CompileResult};
+use error::{CompileError, CompileErrorKind, CompileResult};
 use field_slots::ScriptFieldSlots;
 use lambdas::LambdaCapture;
-pub use options::CompilerOptions;
+use options::CompilerOptions;
 use patterns::enum_variant_path;
 use schema_defaults::ScriptSchemaDefaults;
 use script_types::{

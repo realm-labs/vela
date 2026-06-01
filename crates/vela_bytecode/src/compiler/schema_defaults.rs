@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{Diagnostic, Span};
-use vela_hir::{HirDeclId, ModuleGraph, ModuleId};
-use vela_syntax::{Argument, EnumVariantFields, Expr, ItemKind, RecordField, SourceFile};
+use vela_hir::ids::{HirDeclId, ModuleId};
+use vela_hir::module_graph::ModuleGraph;
+use vela_syntax::ast::{Argument, EnumVariantFields, Expr, ItemKind, RecordField, SourceFile};
 
 use crate::Constant;
 

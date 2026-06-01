@@ -1,4 +1,4 @@
-use crate::ReflectErrorKind;
+use crate::error::ReflectErrorKind;
 use vela_common::Span;
 
 impl ReflectErrorKind {

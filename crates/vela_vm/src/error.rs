@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use vela_bytecode::Register;
 use vela_common::{Diagnostic, Span};
-use vela_host::{HostError, HostErrorKind};
-use vela_reflect::{ReflectError, ReflectErrorKind};
+use vela_host::error::{HostError, HostErrorKind};
+use vela_reflect::error::{ReflectError, ReflectErrorKind};
 
-use crate::ExecutionBudgetKind;
+use crate::budget::ExecutionBudgetKind;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct VmError {
@@ -240,8 +240,10 @@ impl From<ReflectError> for VmError {
 mod tests {
     use std::sync::Arc;
 
-    use vela_common::{DiagnosticSource, SourceId, Span, render_diagnostic};
-    use vela_reflect::{ReflectCandidate, ReflectErrorKind};
+    use vela_common::diagnostic_render::{DiagnosticSource, render_diagnostic};
+    use vela_common::{SourceId, Span};
+    use vela_reflect::candidates::ReflectCandidate;
+    use vela_reflect::error::ReflectErrorKind;
 
     use super::{VmError, VmErrorKind, VmStackFrame};
 

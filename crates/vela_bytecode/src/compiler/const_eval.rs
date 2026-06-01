@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_syntax::{BinaryOp, Expr, ExprKind, Literal, MapEntry, UnaryOp};
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, MapEntry, UnaryOp};
 
 use crate::Constant;
 

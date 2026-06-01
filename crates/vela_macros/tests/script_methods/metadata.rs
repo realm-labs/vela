@@ -88,7 +88,7 @@ fn script_methods_generates_native_method_metadata() {
     );
     assert_eq!(descs[0].owner, Player::vela_host_type_desc().key);
     assert_eq!(
-        <Player as vela_engine::ScriptHostMethodMetadata>::script_host_method_descs(),
+        <Player as vela_engine::schema::ScriptHostMethodMetadata>::script_host_method_descs(),
         descs,
     );
 }
@@ -105,7 +105,7 @@ fn script_methods_coexists_with_host_schema_metadata() {
             .field(
                 FieldDesc::new(FieldId::new(1), "level")
                     .access(
-                        vela_reflect::FieldAccess::new()
+                        vela_reflect::access::FieldAccess::new()
                             .readable(true)
                             .writable(true)
                             .reflect_readable(true)

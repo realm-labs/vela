@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use crate::{
-    DeclOrigin, FieldDesc, MethodDesc, TraitDesc, TraitMethodDesc, VariantDesc,
     metadata::{attrs_value, docs_value, span_value},
+    modules::DeclOrigin,
+    registry::{FieldDesc, MethodDesc, TraitDesc, TraitMethodDesc, VariantDesc},
 };
 
 pub(crate) fn method_record_with_owner(type_name: &str, method: &MethodDesc) -> HostValue {
@@ -56,7 +57,7 @@ fn method_record_from_fields(fields: BTreeMap<String, HostValue>) -> HostValue {
     }
 }
 
-fn method_param_record(param: &crate::MethodParamDesc) -> HostValue {
+fn method_param_record(param: &crate::registry::MethodParamDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert("name".to_owned(), HostValue::String(param.name.clone()));
     fields.insert(

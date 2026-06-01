@@ -1,10 +1,12 @@
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use crate::{
-    FieldDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult, ReflectValue,
-    TypeDesc, TypeRegistry, VariantDesc,
     candidates::{candidate_names, ranked_candidates},
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
     member_records::field_record_with_owner,
+    permissions::ReflectPolicy,
+    registry::{FieldDesc, TypeDesc, TypeRegistry, VariantDesc},
+    value::ReflectValue,
 };
 
 use super::{target_type, variants::find_variant};
@@ -194,7 +196,7 @@ fn find_variant_field<'a>(
         })
 }
 
-fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::ReflectCandidate> {
+fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         field,
         desc.fields
@@ -203,7 +205,10 @@ fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::ReflectCandidate
     )
 }
 
-fn variant_field_candidates(variant: &VariantDesc, field: &str) -> Vec<crate::ReflectCandidate> {
+fn variant_field_candidates(
+    variant: &VariantDesc,
+    field: &str,
+) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         field,
         variant

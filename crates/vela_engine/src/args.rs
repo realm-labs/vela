@@ -1,8 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
-use vela_host::{HostRef, PathProxy};
-use vela_vm::{Value, VmError, VmErrorKind, VmResult};
+use vela_common::{HostObjectId, HostTypeId};
+use vela_host::path::HostRef;
+use vela_host::proxy::PathProxy;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::value::Value;
 
 pub trait IntoScriptArg {
     fn into_script_arg(self) -> Value;
@@ -504,23 +507,35 @@ fn enum_payload(enum_name: &str, variant: &str, payload: Value) -> Value {
     }
 }
 
+#[doc(hidden)]
+#[must_use]
+pub fn empty_args() -> Vec<Value> {
+    Vec::new()
+}
+
+#[doc(hidden)]
+#[must_use]
+pub fn host_ref_value(type_id: u32, object_id: u64, generation: u32) -> Value {
+    Value::HostRef(HostRef::new(
+        HostTypeId::new(type_id),
+        HostObjectId::new(object_id),
+        generation,
+    ))
+}
+
 #[macro_export]
 macro_rules! args {
     () => {
-        ::std::vec::Vec::<$crate::Value>::new()
+        $crate::args::empty_args()
     };
     ($($arg:expr),+ $(,)?) => {
-        ::std::vec![$($crate::IntoScriptArg::into_script_arg($arg)),+]
+        ::std::vec![$($crate::args::IntoScriptArg::into_script_arg($arg)),+]
     };
 }
 
 #[macro_export]
 macro_rules! host {
     ($type_id:expr, $object_id:expr, $generation:expr $(,)?) => {
-        $crate::Value::HostRef($crate::HostRef::new(
-            $crate::HostTypeId::new($type_id),
-            $crate::HostObjectId::new($object_id),
-            $generation,
-        ))
+        $crate::args::host_ref_value($type_id, $object_id, $generation)
     };
 }

@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_hir::BindingResolution;
+use vela_hir::binding::BindingResolution;
 
 use crate::{Constant, InstructionKind, Register};
 

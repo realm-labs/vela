@@ -1,13 +1,14 @@
-use vela_reflect::{
-    DeclOrigin, FunctionAccess as ReflectFunctionAccess, FunctionDesc, FunctionEffectSet,
-    FunctionParamDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc, ModuleDesc,
-    TypeDesc, TypeKey, TypeRegistry,
+use vela_reflect::access::{
+    FunctionAccess as ReflectFunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet,
 };
+use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
+use vela_reflect::registry::{MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry};
 
-use crate::{
-    ContextHostNativeFunctionEntry, EngineError, EngineErrorKind, EngineResult,
-    HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry, NativeMethodDesc,
-    NativeMethodEntry, TypeHint,
+use crate::error::{EngineError, EngineErrorKind, EngineResult};
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
+use crate::native::{
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry, TypeHint,
 };
 
 pub(crate) fn inject_host_method_metadata(
@@ -136,7 +137,7 @@ fn native_function_module(name: &str) -> Option<String> {
         .filter(|module| !module.is_empty())
 }
 
-fn reflect_effects(effects: &crate::EffectSet) -> MethodEffectSet {
+fn reflect_effects(effects: &crate::native::EffectSet) -> MethodEffectSet {
     MethodEffectSet {
         reads_host: effects.reads_host,
         writes_host: effects.writes_host,
@@ -144,7 +145,7 @@ fn reflect_effects(effects: &crate::EffectSet) -> MethodEffectSet {
     }
 }
 
-fn reflect_access(access: &crate::FunctionAccess) -> MethodAccess {
+fn reflect_access(access: &crate::native::FunctionAccess) -> MethodAccess {
     access.required_permissions.iter().fold(
         MethodAccess::new()
             .public(access.public)
@@ -153,7 +154,7 @@ fn reflect_access(access: &crate::FunctionAccess) -> MethodAccess {
     )
 }
 
-fn reflect_function_effects(effects: &crate::EffectSet) -> FunctionEffectSet {
+fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffectSet {
     FunctionEffectSet {
         reads_host: effects.reads_host,
         writes_host: effects.writes_host,
@@ -161,7 +162,7 @@ fn reflect_function_effects(effects: &crate::EffectSet) -> FunctionEffectSet {
     }
 }
 
-fn reflect_function_access(access: &crate::FunctionAccess) -> ReflectFunctionAccess {
+fn reflect_function_access(access: &crate::native::FunctionAccess) -> ReflectFunctionAccess {
     access.required_permissions.iter().fold(
         ReflectFunctionAccess::new()
             .public(access.public)

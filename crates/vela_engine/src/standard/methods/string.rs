@@ -1,4 +1,4 @@
-use vela_reflect::MethodDesc;
+use vela_reflect::registry::MethodDesc;
 
 use super::{MethodSpec, ParamSpec, descs};
 use crate::standard::ids::{

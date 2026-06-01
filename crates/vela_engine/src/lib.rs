@@ -2,79 +2,26 @@
 
 #![allow(clippy::result_large_err)]
 
-mod args;
-mod builder;
-mod clock;
+pub mod args;
+pub mod builder;
+pub mod clock;
 mod compiler_options;
-mod context;
-mod context_schema;
-mod engine;
-mod error;
+pub mod context;
+pub mod context_schema;
+pub mod engine;
+pub mod error;
 mod metadata;
-mod method;
-mod native;
-mod permission;
-mod random;
-mod reload;
-mod runtime;
-mod schema;
-mod source;
-mod standard;
-mod typed;
+pub mod method;
+pub mod native;
+pub mod permission;
+pub mod random;
+pub mod reload;
+pub mod runtime;
+pub mod schema;
+pub mod source;
+pub mod standard;
+pub mod typed;
 mod validation;
-
-pub use args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
-pub use builder::EngineBuilder;
-pub use clock::{
-    CONTEXT_TIME_PERMISSION, CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID,
-    CTX_TICK_FUNCTION_ID,
-};
-pub use context::NativeCallContext;
-pub use context_schema::{
-    CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
-    CONTEXT_TICK_FIELD_ID, CONTEXT_TYPE_ID, context_host_type_desc,
-};
-pub use engine::Engine;
-pub use error::{EngineError, EngineErrorKind, EngineResult};
-pub use method::{NativeMethodDesc, NativeMethodEntry, NativeMethodParamDesc};
-pub use native::{
-    ContextHostNativeFunctionEntry, EffectSet, FunctionAccess, HostNativeFunctionEntry,
-    NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, NativeParamDesc, TypeHint,
-};
-pub use permission::PermissionSet;
-pub use random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
-pub use reload::{
-    EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
-};
-pub use runtime::{CallOptions, Runtime};
-pub use schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
-pub use source::{EngineSourceError, EngineSourceErrorKind};
-pub use standard::{
-    ARRAY_TYPE_ID, BOOL_TYPE_ID, CLOSURE_TYPE_ID, FLOAT_TYPE_ID, FUNCTION_TYPE_ID, INT_TYPE_ID,
-    MAP_TYPE_ID, MATH_ABS_FUNCTION_ID, MATH_CEIL_FUNCTION_ID, MATH_CLAMP_FUNCTION_ID,
-    MATH_DISTANCE2D_FUNCTION_ID, MATH_DISTANCE3D_FUNCTION_ID, MATH_FLOOR_FUNCTION_ID,
-    MATH_LERP_FUNCTION_ID, MATH_MAX_FUNCTION_ID, MATH_MIN_FUNCTION_ID,
-    MATH_MOVE_TOWARDS_FUNCTION_ID, MATH_POW_FUNCTION_ID, MATH_ROUND_FUNCTION_ID,
-    MATH_SIGN_FUNCTION_ID, MATH_SQRT_FUNCTION_ID, NULL_TYPE_ID, OPTION_FLATTEN_FUNCTION_ID,
-    OPTION_IS_NONE_FUNCTION_ID, OPTION_IS_SOME_FUNCTION_ID, OPTION_NONE_FUNCTION_ID,
-    OPTION_OK_OR_FUNCTION_ID, OPTION_SOME_FUNCTION_ID, OPTION_TYPE_ID,
-    OPTION_UNWRAP_OR_FUNCTION_ID, RANGE_TYPE_ID, RESULT_ERR_FUNCTION_ID,
-    RESULT_FLATTEN_FUNCTION_ID, RESULT_IS_ERR_FUNCTION_ID, RESULT_IS_OK_FUNCTION_ID,
-    RESULT_OK_FUNCTION_ID, RESULT_TO_ERROR_OPTION_FUNCTION_ID, RESULT_TO_OPTION_FUNCTION_ID,
-    RESULT_TYPE_ID, RESULT_UNWRAP_OR_FUNCTION_ID, SET_FROM_ARRAY_FUNCTION_ID, SET_TYPE_ID,
-    STRING_TYPE_ID,
-};
-pub use typed::{
-    IntoNativeReturn, TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
-    TypedNativeMethodFunction,
-};
-pub use vela_common::{FieldId, HostObjectId, HostTypeId};
-pub use vela_host::{HostPath, HostRef, PathProxy};
-pub use vela_hot_reload::{
-    HotReloadPolicy, HotReloadReport, HotReloadResult, HotUpdate, ProgramVersion,
-};
-pub use vela_reflect::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
-pub use vela_vm::Value;
 
 #[cfg(test)]
 mod tests;

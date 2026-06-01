@@ -1,8 +1,10 @@
 use std::error::Error;
 use std::path::Path;
 
-use vela_engine::{CallOptions, Engine, EngineResult, Runtime};
-use vela_host::PatchTx;
+use vela_engine::engine::Engine;
+use vela_engine::error::EngineResult;
+use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::tx::PatchTx;
 
 use self::ids::DemoIds;
 use self::registry::demo_engine;

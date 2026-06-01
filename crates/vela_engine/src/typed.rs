@@ -11,7 +11,8 @@ pub use traits::{
     TypedNativeMethodFunction,
 };
 
-use vela_vm::{Value, VmError, VmErrorKind, VmResult};
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::value::Value;
 
 pub(crate) fn expect_arity(args: &[Value], expected: usize) -> VmResult<()> {
     if args.len() == expected {

@@ -1,10 +1,11 @@
 use vela_common::Diagnostic;
-use vela_syntax::{Expr, ExprKind};
+use vela_syntax::ast::{Expr, ExprKind};
 
-use crate::{
-    CompletionKind, ExprFactScope, RegistryFacts, TypeFact, member_completions, stdlib_method_fact,
-    type_fact_from_expr,
-};
+use crate::completion::{CompletionKind, member_completions};
+use crate::expression::{ExprFactScope, type_fact_from_expr};
+use crate::registry::RegistryFacts;
+use crate::stdlib::stdlib_method_fact;
+use crate::type_fact::TypeFact;
 
 use super::candidates::ranked_names;
 
@@ -105,7 +106,7 @@ fn collect_member_access_diagnostics(
 }
 
 fn collect_if_expr_diagnostics(
-    if_expr: &vela_syntax::IfExpr,
+    if_expr: &vela_syntax::ast::IfExpr,
     scope: &ExprFactScope,
     facts: &RegistryFacts,
     diagnostics: &mut Vec<Diagnostic>,
@@ -118,10 +119,10 @@ fn collect_if_expr_diagnostics(
     }
     if let Some(else_branch) = &if_expr.else_branch {
         match else_branch {
-            vela_syntax::ElseBranch::If(if_expr) => {
+            vela_syntax::ast::ElseBranch::If(if_expr) => {
                 collect_if_expr_diagnostics(if_expr, &else_scope, facts, diagnostics);
             }
-            vela_syntax::ElseBranch::Block(block) => {
+            vela_syntax::ast::ElseBranch::Block(block) => {
                 for statement in &block.statements {
                     collect_statement_diagnostics(statement, &else_scope, facts, diagnostics);
                 }
@@ -131,34 +132,34 @@ fn collect_if_expr_diagnostics(
 }
 
 fn collect_statement_diagnostics(
-    statement: &vela_syntax::Stmt,
+    statement: &vela_syntax::ast::Stmt,
     scope: &ExprFactScope,
     facts: &RegistryFacts,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     match &statement.kind {
-        vela_syntax::StmtKind::Let {
+        vela_syntax::ast::StmtKind::Let {
             value: Some(value), ..
         }
-        | vela_syntax::StmtKind::Return(Some(value))
-        | vela_syntax::StmtKind::Expr(value) => {
+        | vela_syntax::ast::StmtKind::Return(Some(value))
+        | vela_syntax::ast::StmtKind::Expr(value) => {
             collect_member_access_diagnostics(value, scope, facts, diagnostics);
         }
-        vela_syntax::StmtKind::Block(block) => {
+        vela_syntax::ast::StmtKind::Block(block) => {
             for statement in &block.statements {
                 collect_statement_diagnostics(statement, scope, facts, diagnostics);
             }
         }
-        vela_syntax::StmtKind::For { iterable, body, .. } => {
+        vela_syntax::ast::StmtKind::For { iterable, body, .. } => {
             collect_member_access_diagnostics(iterable, scope, facts, diagnostics);
             for statement in &body.statements {
                 collect_statement_diagnostics(statement, scope, facts, diagnostics);
             }
         }
-        vela_syntax::StmtKind::Return(None)
-        | vela_syntax::StmtKind::Let { value: None, .. }
-        | vela_syntax::StmtKind::Break
-        | vela_syntax::StmtKind::Continue => {}
+        vela_syntax::ast::StmtKind::Return(None)
+        | vela_syntax::ast::StmtKind::Let { value: None, .. }
+        | vela_syntax::ast::StmtKind::Break
+        | vela_syntax::ast::StmtKind::Continue => {}
     }
 }
 
@@ -344,8 +345,9 @@ fn unknown_member_diagnostic(
 #[cfg(test)]
 mod tests {
     use vela_common::{FieldId, HostMethodId, SourceId, TypeId};
-    use vela_reflect::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
-    use vela_syntax::{ItemKind, StmtKind, parse_source};
+    use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
+    use vela_syntax::ast::{ItemKind, StmtKind};
+    use vela_syntax::parser::parse_source;
 
     use super::*;
 
@@ -523,7 +525,7 @@ mod tests {
 
     fn quest_registry_facts() -> RegistryFacts {
         use vela_common::VariantId;
-        use vela_reflect::{TypeKind, VariantDesc};
+        use vela_reflect::registry::{TypeKind, VariantDesc};
 
         let mut registry = TypeRegistry::new();
         registry.register(

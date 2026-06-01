@@ -1,7 +1,7 @@
-use vela_syntax::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
 
 use super::ExprFactScope;
-use crate::TypeFact;
+use crate::type_fact::TypeFact;
 
 pub(super) fn narrowed_by_condition(
     scope: &ExprFactScope,
@@ -85,7 +85,7 @@ fn option_result_predicate<'a>(
 
 fn path_predicate_call<'a>(
     callee: &'a Expr,
-    args: &'a [vela_syntax::Argument],
+    args: &'a [vela_syntax::ast::Argument],
 ) -> Option<(&'a [String], String)> {
     match &callee.kind {
         ExprKind::Path(callee_path) => {

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use vela_reflect::{self as reflect, TypeRegistry};
+use vela_reflect::registry::TypeRegistry;
+use vela_reflect::{self as reflect};
 
 use crate::{Value, Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
@@ -9,8 +10,8 @@ use super::common::check_reflect_policy;
 pub(super) fn register(
     vm: &mut Vm,
     registry: &Arc<TypeRegistry>,
-    policy: &reflect::ReflectPolicy,
-    lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
 ) {
     register_module_natives(vm, registry, policy, lookup_budget);
     register_function_natives(vm, registry, policy, lookup_budget);
@@ -19,8 +20,8 @@ pub(super) fn register(
 fn register_module_natives(
     vm: &mut Vm,
     registry: &Arc<TypeRegistry>,
-    policy: &reflect::ReflectPolicy,
-    lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
 ) {
     let module_registry = Arc::clone(registry);
     let module_policy = policy.clone();
@@ -29,11 +30,11 @@ fn register_module_natives(
         check_reflect_policy(
             &module_policy,
             &module_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.module", args, 1)?;
         let module_name = expect_string(&args[0], "reflect.module")?;
-        value_from_reflect(reflect::module_metadata_with_policy(
+        value_from_reflect(reflect::modules::module_with_policy(
             &module_registry,
             module_name,
             &module_policy,
@@ -47,11 +48,11 @@ fn register_module_natives(
         check_reflect_policy(
             &has_module_policy,
             &has_module_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.has_module", args, 1)?;
         let module_name = expect_string(&args[0], "reflect.has_module")?;
-        Ok(Value::Bool(reflect::has_module_with_policy(
+        Ok(Value::Bool(reflect::modules::has_module_with_policy(
             &has_module_registry,
             module_name,
             &has_module_policy,
@@ -65,10 +66,10 @@ fn register_module_natives(
         check_reflect_policy(
             &modules_policy,
             &modules_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.modules", args, 0)?;
-        value_from_reflect(reflect::module_metadata_list_with_policy(
+        value_from_reflect(reflect::modules::modules_with_policy(
             &modules_registry,
             &modules_policy,
         ))
@@ -81,11 +82,11 @@ fn register_module_natives(
         check_reflect_policy(
             &exports_policy,
             &exports_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.exports", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect.exports")?;
-        value_from_reflect(reflect::module_exports_for_target_with_policy(
+        value_from_reflect(reflect::modules::exports_for_target_with_policy(
             &exports_registry,
             &target,
             &exports_policy,
@@ -96,8 +97,8 @@ fn register_module_natives(
 fn register_function_natives(
     vm: &mut Vm,
     registry: &Arc<TypeRegistry>,
-    policy: &reflect::ReflectPolicy,
-    lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
 ) {
     let function_registry = Arc::clone(registry);
     let function_policy = policy.clone();
@@ -106,11 +107,11 @@ fn register_function_natives(
         check_reflect_policy(
             &function_policy,
             &function_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.function", args, 1)?;
         let function_name = expect_string(&args[0], "reflect.function")?;
-        value_from_reflect(reflect::function_metadata_with_policy(
+        value_from_reflect(reflect::modules::function_with_policy(
             &function_registry,
             function_name,
             &function_policy,
@@ -124,11 +125,11 @@ fn register_function_natives(
         check_reflect_policy(
             &has_function_policy,
             &has_function_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.has_function", args, 1)?;
         let function_name = expect_string(&args[0], "reflect.has_function")?;
-        Ok(Value::Bool(reflect::has_function_with_policy(
+        Ok(Value::Bool(reflect::modules::has_function_with_policy(
             &has_function_registry,
             function_name,
             &has_function_policy,
@@ -142,10 +143,10 @@ fn register_function_natives(
         check_reflect_policy(
             &functions_policy,
             &functions_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.functions", args, 0)?;
-        value_from_reflect(reflect::function_metadata_list_with_policy(
+        value_from_reflect(reflect::modules::functions_with_policy(
             &functions_registry,
             &functions_policy,
         ))

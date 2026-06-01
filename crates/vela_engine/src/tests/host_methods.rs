@@ -1,10 +1,19 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_reflect::{FieldDesc, MethodDesc, TypeDesc, TypeKey, VariantDesc};
-use vela_vm::{HostExecution, Value, VmError, VmErrorKind, VmResult};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, VariantDesc};
+use vela_vm::HostExecution;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::value::Value;
 
-use crate::{CallOptions, EffectSet, Engine, FunctionAccess, NativeMethodDesc, Runtime, TypeHint};
+use crate::engine::Engine;
+use crate::method::NativeMethodDesc;
+use crate::native::{EffectSet, FunctionAccess, TypeHint};
+use crate::runtime::{CallOptions, Runtime};
 
 use super::player_type;
 

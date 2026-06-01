@@ -1,9 +1,12 @@
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_reflect::{
-    FieldDesc, MethodDesc, ReflectContext, ReflectErrorKind, ReflectValue, TypeDesc, TypeKey,
-    TypeRegistry, call, get, set,
-};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_reflect::error::ReflectErrorKind;
+use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
+use vela_reflect::value::{ReflectContext, ReflectValue, call, get, set};
 
 fn player_ref() -> HostRef {
     HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)

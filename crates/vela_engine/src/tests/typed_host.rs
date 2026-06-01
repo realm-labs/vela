@@ -1,13 +1,18 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_reflect::TypeKey;
-use vela_vm::{HostExecution, Value, VmError, VmErrorKind, VmResult};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_reflect::registry::TypeKey;
+use vela_vm::HostExecution;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::value::Value;
 
-use crate::{
-    EffectSet, Engine, FunctionAccess, NativeCallContext, NativeFunctionDesc, NativeFunctionId,
-    TypeHint,
-};
+use crate::context::NativeCallContext;
+use crate::engine::Engine;
+use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
 
 #[test]
 fn engine_registers_typed_host_native_functions() {

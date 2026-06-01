@@ -6,7 +6,7 @@ pub mod script_methods;
 use std::collections::BTreeMap;
 
 use vela_common::{FieldId, HostMethodId, MethodId, Span};
-use vela_hir::ModuleGraph;
+use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
 

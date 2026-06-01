@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use crate::{
-    ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeRegistry,
     candidates::{candidate_names, ranked_candidates},
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
+    registry::{TypeDesc, TypeRegistry},
+    value::ReflectValue,
 };
 
 pub(crate) fn type_desc<'a>(

@@ -1,7 +1,8 @@
-use vela_syntax::{Expr, ExprKind, Pattern, RecordPatternField};
+use vela_syntax::ast::{Expr, ExprKind, Pattern, RecordPatternField};
 
 use super::{ExprFactScope, type_fact_from_expr_with_registry};
-use crate::{RegistryFacts, TypeFact};
+use crate::registry::RegistryFacts;
+use crate::type_fact::TypeFact;
 
 pub(super) fn narrowed_by_match_pattern(
     scope: &ExprFactScope,

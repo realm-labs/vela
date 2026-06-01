@@ -1,4 +1,4 @@
-use vela_syntax::{Block, Expr, Stmt, StmtKind};
+use vela_syntax::ast::{Block, Expr, Stmt, StmtKind};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum BlockValue<'ast> {

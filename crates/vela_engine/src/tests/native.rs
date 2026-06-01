@@ -2,14 +2,21 @@ use std::sync::Arc;
 
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_reflect::TypeKey;
-use vela_vm::{ExecutionBudgetKind, HostExecution, Value, VmError, VmErrorKind};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_reflect::registry::TypeKey;
+use vela_vm::HostExecution;
+use vela_vm::budget::ExecutionBudgetKind;
+use vela_vm::error::{VmError, VmErrorKind};
+use vela_vm::value::Value;
 
-use crate::{
-    CallOptions, EffectSet, Engine, FunctionAccess, NativeFunctionDesc, NativeFunctionId, Runtime,
-    ScriptArgsExt, TypeHint,
-};
+use crate::args::ScriptArgsExt;
+use crate::engine::Engine;
+use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::runtime::{CallOptions, Runtime};
 
 #[test]
 fn engine_installs_registered_native_functions_into_vm() {
@@ -447,7 +454,7 @@ fn main() {
                 limit: 4
             },
             source_span: None,
-            call_stack: Arc::from([vela_vm::VmStackFrame {
+            call_stack: Arc::from([vela_vm::error::VmStackFrame {
                 function: "main".to_owned(),
                 call_site: None,
             }]),

@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 use vela_common::{Diagnostic, Span};
 
 use crate::binding::{BindingMap, LocalBindingKind};
+use crate::ids::{HirDeclId, ModuleId};
 use crate::type_hint::{
     EnumShape, EnumVariantFieldsHint, FunctionSignature, HirTypeHint, ImplMetadata, StructShape,
 };
-use crate::{HirDeclId, ModuleId};
 
 use super::{
     DeclarationKind, ImportResolution, ModuleGraph, candidate_distance, import_binding_name,

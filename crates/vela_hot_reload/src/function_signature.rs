@@ -1,6 +1,7 @@
 use vela_bytecode::CodeObject;
 
-use crate::{HotReloadError, HotReloadErrorKind, HotReloadPolicy, HotReloadResult};
+use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+use crate::policy::HotReloadPolicy;
 
 pub(crate) fn ensure_compatible_function_signature(
     name: &str,

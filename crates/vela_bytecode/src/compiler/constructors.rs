@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use vela_common::{Diagnostic, Span};
-use vela_syntax::Argument;
+use vela_syntax::ast::Argument;
 
 use crate::Register;
 
@@ -76,7 +76,7 @@ impl Compiler<'_> {
 
     pub(super) fn compile_record_fields(
         &mut self,
-        fields: &[vela_syntax::RecordField],
+        fields: &[vela_syntax::ast::RecordField],
         defaults: Vec<SchemaFieldDefault>,
     ) -> CompileResult<Vec<(String, Register)>> {
         let mut compiled = Vec::new();
@@ -130,7 +130,7 @@ impl Compiler<'_> {
 
     fn compile_record_field(
         &mut self,
-        field: &vela_syntax::RecordField,
+        field: &vela_syntax::ast::RecordField,
     ) -> CompileResult<(String, Register)> {
         let value = if let Some(value) = &field.value {
             self.compile_expr(value)?

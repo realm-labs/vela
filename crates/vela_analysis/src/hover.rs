@@ -3,9 +3,9 @@ mod detail;
 mod tests;
 
 use vela_common::Span;
-use vela_reflect::{
-    AttrMap, FieldDesc, FunctionDesc, MethodDesc, ModuleDesc, TraitDesc, TypeDesc, TypeRegistry,
-    VariantDesc,
+use vela_reflect::modules::{FunctionDesc, ModuleDesc};
+use vela_reflect::registry::{
+    AttrMap, FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeRegistry, VariantDesc,
 };
 
 use detail::{
@@ -13,7 +13,8 @@ use detail::{
     type_detail, variant_detail,
 };
 
-use crate::{RegistryFacts, TypeFact};
+use crate::registry::RegistryFacts;
+use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HoverKind {

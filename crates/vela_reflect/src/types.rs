@@ -1,12 +1,14 @@
 use std::collections::BTreeMap;
 
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use crate::{
-    DeclOrigin, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeKind,
-    TypeRegistry,
     candidates::{candidate_names, ranked_candidates},
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
     metadata::{attrs_value, docs_value, span_value},
+    modules::DeclOrigin,
+    registry::{TypeDesc, TypeKind, TypeRegistry},
+    value::ReflectValue,
 };
 
 pub fn type_list(registry: &TypeRegistry) -> ReflectValue {
@@ -33,7 +35,7 @@ pub fn type_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<Reflec
 }
 
 pub fn type_of_value(registry: &TypeRegistry, target: &ReflectValue) -> ReflectValue {
-    crate::type_of(registry, target)
+    crate::value::type_of(registry, target)
         .map(type_record)
         .map_or(ReflectValue::Host(HostValue::Null), ReflectValue::Host)
 }
@@ -109,10 +111,11 @@ fn kind_name(kind: TypeKind) -> String {
 #[cfg(test)]
 mod tests {
     use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, Span, TypeId, VariantId};
-    use vela_host::HostRef;
+    use vela_host::path::HostRef;
 
     use super::*;
-    use crate::{FieldDesc, TypeDesc, TypeKey, VariantDesc, kind_metadata, origin_metadata};
+    use crate::members::{kind, origin};
+    use crate::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry, VariantDesc};
 
     #[test]
     fn type_query_returns_metadata_and_unknown_type_candidates() {
@@ -177,11 +180,11 @@ mod tests {
         );
         assert_eq!(type_of_metadata, metadata);
         assert_eq!(
-            kind_metadata(&registry, &metadata).expect("metadata kind"),
+            kind(&registry, &metadata).expect("metadata kind"),
             ReflectValue::Host(HostValue::String("host".to_owned()))
         );
         assert_eq!(
-            origin_metadata(&registry, &metadata).expect("metadata origin"),
+            origin(&registry, &metadata).expect("metadata origin"),
             ReflectValue::Host(HostValue::String("host".to_owned()))
         );
         assert_eq!(fields.get("field_count"), Some(&HostValue::Int(1)));
@@ -208,11 +211,11 @@ mod tests {
                 type_name: "Plyer".to_owned(),
                 candidates: vec!["Player".to_owned(), "QuestProgress".to_owned()],
                 related: vec![
-                    crate::ReflectCandidate::new(
+                    crate::candidates::ReflectCandidate::new(
                         "Player",
                         Some(Span::new(SourceId::new(7), 10, 20))
                     ),
-                    crate::ReflectCandidate::new("QuestProgress", None),
+                    crate::candidates::ReflectCandidate::new("QuestProgress", None),
                 ],
             }
         );

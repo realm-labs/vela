@@ -1,6 +1,7 @@
-use vela_vm::{Value, VmResult};
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::IntoScriptArg;
+use crate::args::IntoScriptArg;
 
 pub trait IntoNativeReturn {
     fn into_native_return(self) -> VmResult<Value>;

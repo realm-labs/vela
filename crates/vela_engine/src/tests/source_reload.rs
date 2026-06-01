@@ -1,13 +1,23 @@
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_hot_reload::{HotReloadErrorKind, HotReloadPolicy, HotReloadRuntime};
-use vela_reflect::{MethodAccess, MethodDesc, MethodEffectSet, SchemaHash, TypeDesc, TypeKey};
-use vela_vm::{HostExecution, Value};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_hot_reload::error::HotReloadErrorKind;
+use vela_hot_reload::policy::HotReloadPolicy;
+use vela_hot_reload::runtime::HotReloadRuntime;
+use vela_reflect::access::{MethodAccess, MethodEffectSet};
+use vela_reflect::registry::{MethodDesc, SchemaHash, TypeDesc, TypeKey};
+use vela_vm::HostExecution;
+use vela_vm::value::Value;
 
-use crate::{
-    CallOptions, EffectSet, Engine, EngineErrorKind, EngineHotReloadSourceErrorKind,
-    EngineSourceErrorKind, FunctionAccess, NativeFunctionDesc, NativeFunctionId, Runtime, TypeHint,
-};
+use crate::engine::Engine;
+use crate::error::EngineErrorKind;
+use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::reload::EngineHotReloadSourceErrorKind;
+use crate::runtime::{CallOptions, Runtime};
+use crate::source::EngineSourceErrorKind;
 
 use super::player_type;
 

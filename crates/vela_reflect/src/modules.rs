@@ -1,13 +1,17 @@
 use vela_common::{FunctionId, Span};
-use vela_hir::{DeclarationKind, FunctionSignature, ModuleGraph};
-use vela_host::HostValue;
-use vela_syntax::Visibility;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::type_hint::FunctionSignature;
+use vela_host::value::HostValue;
+use vela_syntax::ast::Visibility;
 
 use crate::{
-    AttrMap, FunctionAccess, FunctionEffectSet, ReflectError, ReflectErrorKind, ReflectPolicy,
-    ReflectResult, ReflectValue, TypeRegistry,
+    access::{FunctionAccess, FunctionEffectSet},
     candidates::{candidate_names, ranked_candidates},
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
+    permissions::ReflectPolicy,
+    registry::{AttrMap, TypeRegistry},
     script_attrs::ReflectedScriptAttrs,
+    value::ReflectValue,
 };
 
 mod records;
@@ -489,7 +493,10 @@ pub fn callable_function_name_with_policy(
     Ok(Some(desc.name.clone()))
 }
 
-fn module_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::ReflectCandidate> {
+fn module_candidates(
+    registry: &TypeRegistry,
+    name: &str,
+) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         name,
         registry
@@ -498,7 +505,10 @@ fn module_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::ReflectC
     )
 }
 
-fn function_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::ReflectCandidate> {
+fn function_candidates(
+    registry: &TypeRegistry,
+    name: &str,
+) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         name,
         registry
@@ -582,7 +592,10 @@ fn apply_signature(mut desc: FunctionDesc, signature: &FunctionSignature) -> Fun
     desc
 }
 
-fn apply_function_attrs(mut desc: FunctionDesc, attrs: &[vela_hir::HirAttribute]) -> FunctionDesc {
+fn apply_function_attrs(
+    mut desc: FunctionDesc,
+    attrs: &[vela_hir::attributes::HirAttribute],
+) -> FunctionDesc {
     let reflected = ReflectedScriptAttrs::from_hir(attrs);
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
@@ -619,7 +632,7 @@ mod tests {
 
     use crate::metadata::span_value;
     use vela_common::{SourceId, Span};
-    use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
+    use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 
     use super::*;
 
@@ -718,7 +731,7 @@ fn helper() {
 
         let module_value = module(&registry, "game.reward").expect("module");
         assert_eq!(
-            crate::origin_metadata(&registry, &module_value).expect("module origin helper"),
+            crate::members::origin(&registry, &module_value).expect("module origin helper"),
             ReflectValue::Host(HostValue::String("host".to_owned()))
         );
         assert_eq!(
@@ -754,7 +767,7 @@ fn helper() {
             Some(&HostValue::String("host".to_owned()))
         );
         assert_eq!(
-            crate::docs_metadata(
+            crate::members::docs(
                 &registry,
                 &ReflectValue::Host(HostValue::Record {
                     type_name: type_name.clone(),
@@ -830,7 +843,7 @@ fn helper() {
 
         let function_value = function(&registry, "game.reward.grant").expect("function");
         assert_eq!(
-            crate::origin_metadata(&registry, &function_value).expect("function origin helper"),
+            crate::members::origin(&registry, &function_value).expect("function origin helper"),
             ReflectValue::Host(HostValue::String("script".to_owned()))
         );
         let ReflectValue::Host(HostValue::Record {
@@ -903,7 +916,7 @@ fn helper() {
             ReflectErrorKind::UnknownModule {
                 module: "game.rewards".to_owned(),
                 candidates: vec!["game.reward".to_owned()],
-                related: vec![crate::ReflectCandidate::new(
+                related: vec![crate::candidates::ReflectCandidate::new(
                     "game.reward",
                     Some(module_span)
                 )],
@@ -916,7 +929,7 @@ fn helper() {
             ReflectErrorKind::UnknownFunction {
                 function: "game.reward.grnat".to_owned(),
                 candidates: vec!["game.reward.grant".to_owned()],
-                related: vec![crate::ReflectCandidate::new(
+                related: vec![crate::candidates::ReflectCandidate::new(
                     "game.reward.grant",
                     Some(function_span)
                 )],
@@ -940,7 +953,8 @@ fn helper() {
                 .access(FunctionAccess::new().require_permission("game.admin")),
         );
         let private_policy = ReflectPolicy::new(
-            crate::ReflectPermissionSet::new().with(crate::ReflectPermission::AccessPrivate),
+            crate::permissions::ReflectPermissionSet::new()
+                .with(crate::permissions::ReflectPermission::AccessPrivate),
         );
 
         let error = function_with_policy(&registry, "game.hidden", &ReflectPolicy::all())
@@ -957,7 +971,7 @@ fn helper() {
         assert_eq!(
             error.kind,
             ReflectErrorKind::PermissionDenied {
-                permission: crate::ReflectPermission::AccessPrivate
+                permission: crate::permissions::ReflectPermission::AccessPrivate
             }
         );
 
@@ -984,7 +998,8 @@ fn helper() {
             ),
         );
         let policy = ReflectPolicy::new(
-            crate::ReflectPermissionSet::new().with(crate::ReflectPermission::AccessPrivate),
+            crate::permissions::ReflectPermissionSet::new()
+                .with(crate::permissions::ReflectPermission::AccessPrivate),
         )
         .with_function_permission("game.admin");
 
@@ -1048,7 +1063,8 @@ fn helper() {
             .function_by_name("game.write_host")
             .expect("effectful function");
         let read_only_call_policy = ReflectPolicy::new(
-            crate::ReflectPermissionSet::new().with(crate::ReflectPermission::CallMethods),
+            crate::permissions::ReflectPermissionSet::new()
+                .with(crate::permissions::ReflectPermission::CallMethods),
         );
         let error = read_only_call_policy
             .require_function_call_access(effectful)
@@ -1057,7 +1073,7 @@ fn helper() {
             error.kind,
             ReflectErrorKind::FunctionEffectPermissionDenied {
                 function: "game.write_host".to_owned(),
-                permission: crate::ReflectPermission::CallHostWriteMethods,
+                permission: crate::permissions::ReflectPermission::CallHostWriteMethods,
             }
         );
     }
@@ -1193,7 +1209,8 @@ fn helper() {
         );
 
         let admin_policy = ReflectPolicy::new(
-            crate::ReflectPermissionSet::read_only().with(crate::ReflectPermission::AccessPrivate),
+            crate::permissions::ReflectPermissionSet::read_only()
+                .with(crate::permissions::ReflectPermission::AccessPrivate),
         )
         .with_function_permission("game.admin");
         assert!(has_function_with_policy(

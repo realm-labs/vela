@@ -1,6 +1,8 @@
-use vela_analysis::{AnalysisFacts, TypeFact};
+use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
-use vela_hir::{Declaration, LocalBindingKind, ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::binding::LocalBindingKind;
+use vela_hir::module_graph::{Declaration, ModuleGraph, ModulePath, ModuleSource};
 
 const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.lang");
 const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.lang");
@@ -140,7 +142,7 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
 }
 
 fn local_fact(
-    bindings: &vela_hir::BindingMap,
+    bindings: &vela_hir::binding::BindingMap,
     facts: &AnalysisFacts,
     name: &str,
 ) -> Option<TypeFact> {

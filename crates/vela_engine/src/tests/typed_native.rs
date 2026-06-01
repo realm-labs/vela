@@ -2,9 +2,11 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::SourceId;
-use vela_vm::{VmError, VmErrorKind};
+use vela_vm::error::{VmError, VmErrorKind};
+use vela_vm::value::Value;
 
-use crate::{Engine, NativeFunctionDesc, NativeFunctionId, TypeHint, Value};
+use crate::engine::Engine;
+use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
 
 #[test]
 fn engine_registers_typed_native_functions() {

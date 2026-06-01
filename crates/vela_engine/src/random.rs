@@ -1,9 +1,10 @@
 use std::sync::{Arc, Mutex};
 
 use vela_common::FunctionId;
-use vela_vm::{Value, VmError, VmErrorKind, VmResult};
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::value::Value;
 
-use crate::{
+use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 

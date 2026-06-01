@@ -1,7 +1,9 @@
 use vela_common::{FieldId, HostObjectId, HostTypeId, TypeId};
-use vela_engine::{HostPath, HostRef, PathProxy};
+use vela_host::path::{HostPath, HostRef};
+use vela_host::proxy::PathProxy;
 use vela_macros::{ScriptHost, ScriptReflect};
-use vela_reflect::{FieldAccess, FieldDesc, TypeDesc, TypeKey, TypeKind};
+use vela_reflect::access::FieldAccess;
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 
 #[allow(dead_code)]
 #[derive(ScriptHost, ScriptReflect)]
@@ -98,7 +100,7 @@ fn script_host_derive_generates_type_metadata() {
         &["player.profile".to_owned()]
     );
     assert_eq!(
-        <Player as vela_engine::ScriptHostSchema>::script_host_type_desc(),
+        <Player as vela_engine::schema::ScriptHostSchema>::script_host_type_desc(),
         desc,
     );
 }
@@ -135,7 +137,7 @@ fn script_reflect_derive_generates_matching_metadata() {
     assert_eq!(reflect_desc, host_desc);
     assert!(reflect_desc.schema_hash.is_some());
     assert_eq!(
-        <Player as vela_engine::ScriptReflectSchema>::script_reflect_type_desc(),
+        <Player as vela_engine::schema::ScriptReflectSchema>::script_reflect_type_desc(),
         reflect_desc,
     );
 }

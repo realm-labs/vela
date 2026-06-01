@@ -1,6 +1,7 @@
 use vela_common::Span;
-use vela_hir::{BindingResolution, HirLocalId};
-use vela_syntax::{AssignOp, Expr, ExprKind};
+use vela_hir::binding::BindingResolution;
+use vela_hir::ids::HirLocalId;
+use vela_syntax::ast::{AssignOp, Expr, ExprKind};
 
 use crate::{InstructionKind, Register};
 

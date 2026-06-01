@@ -1,5 +1,51 @@
 # Decisions
 
+## 2026-06-01: Prefer Canonical Module Imports Over Facade Re-exports
+
+Status: Accepted
+
+Context:
+The workspace has accumulated broad crate-root `pub use` facades. They make
+imports short, but they also hide ownership boundaries and make it unclear
+which module defines an API. The project is still pre-release, so internal
+import paths can be corrected without compatibility shims.
+
+Decision:
+Public APIs should be imported from the module that owns them. Crate roots
+should expose focused `pub mod` entries and avoid `pub use` unless the item is
+an intentional crate identity entrypoint, such as an exported macro or a small
+embedding convenience API with a documented reason.
+
+Consequences:
+- Call sites show the owning subsystem directly, such as
+  `vela_reflect::registry::TypeRegistry` or
+  `vela_hot_reload::policy::HotReloadPolicy`.
+- Refactors may update existing imports instead of preserving old facade paths.
+- Any remaining root `pub use` must be treated as deliberate API surface.
+
+## 2026-06-01: Ban Multi-level `super` Import Paths
+
+Status: Accepted
+
+Context:
+Deep relative paths such as `super::super::foo` become hard to read after
+modules are split into focused subtrees. They also make future moves more
+fragile because the import describes file placement rather than ownership.
+
+Decision:
+Rust source may use a single `super::...` when referring to a direct parent in
+a local module group. Paths that need to cross more than one module boundary
+must use an explicit `crate::...` path instead. Patterns such as
+`super::super::...` are prohibited.
+
+Consequences:
+- Cross-subsystem imports name their owning module from the crate root.
+- Shared helpers should live in a clearly named module reachable by
+  `crate::...` or in the direct parent of the modules that use them.
+- The validation scan
+  `rg -n '(super::){2,}|super\s*::\s*super' crates examples tests --glob '*.rs'`
+  must return no matches.
+
 ## 2026-05-24: Start With A Dedicated `vela_common` Crate
 
 Common IDs, spans, diagnostics, and symbol interning live in `vela_common`

@@ -1,12 +1,15 @@
 use std::collections::BTreeMap;
 
 use vela_common::{Diagnostic, Span};
-use vela_syntax::{
+use vela_syntax::ast::{
     Argument, Block, ElseBranch, Expr, ExprKind, IfExpr, MapEntry, MatchArm, MatchExpr, Param,
     Pattern, RecordField, RecordPatternField, Stmt, StmtKind,
 };
 
-use crate::{HirDeclId, HirExprId, HirLocalId, HirTypeHint};
+use crate::{
+    ids::{HirDeclId, HirExprId, HirLocalId},
+    type_hint::HirTypeHint,
+};
 
 mod name_candidates;
 

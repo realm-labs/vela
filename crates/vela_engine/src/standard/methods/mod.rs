@@ -7,7 +7,7 @@ mod set;
 mod string;
 
 use vela_common::HostMethodId;
-use vela_reflect::{MethodDesc, MethodParamDesc};
+use vela_reflect::registry::{MethodDesc, MethodParamDesc};
 
 pub(crate) use array::array_method_descs;
 pub(crate) use map::map_method_descs;

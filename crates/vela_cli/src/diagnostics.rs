@@ -1,13 +1,13 @@
 use std::path::Path;
 
-use vela_bytecode::compiler::{CompileError, CompileErrorKind};
-use vela_common::{Diagnostic, DiagnosticRenderer, DiagnosticSource, SourceId};
-use vela_engine::{
-    EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineSourceError,
-    EngineSourceErrorKind,
-};
-use vela_hot_reload::{HotReloadError, HotReloadErrorKind, HotReloadReport};
-use vela_vm::VmError;
+use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
+use vela_common::diagnostic_render::{DiagnosticRenderer, DiagnosticSource};
+use vela_common::{Diagnostic, SourceId};
+use vela_engine::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
+use vela_engine::source::{EngineSourceError, EngineSourceErrorKind};
+use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
+use vela_hot_reload::report::HotReloadReport;
+use vela_vm::error::VmError;
 
 pub(crate) fn render_engine_source_error(path: &Path, error: &EngineSourceError) -> String {
     match &error.kind {

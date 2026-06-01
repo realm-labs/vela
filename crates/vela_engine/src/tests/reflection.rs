@@ -1,17 +1,24 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
-use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_hot_reload::{AccessAbi, FunctionAbi, MethodAbi};
-use vela_reflect::{
-    FieldAccess, FieldDesc, MethodDesc, ModuleDesc, ReflectErrorKind, ReflectPermission,
-    ReflectPermissionSet, TypeDesc, TypeKey,
-};
-use vela_vm::{HostExecution, Value, VmErrorKind};
+use vela_host::mock::MockStateAdapter;
+use vela_host::patch::PatchOp;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_hot_reload::abi::{AccessAbi, FunctionAbi, MethodAbi};
+use vela_reflect::access::FieldAccess;
+use vela_reflect::error::ReflectErrorKind;
+use vela_reflect::modules::ModuleDesc;
+use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
+use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
+use vela_vm::HostExecution;
+use vela_vm::error::VmErrorKind;
+use vela_vm::value::Value;
 
-use crate::{
-    EffectSet, Engine, FunctionAccess, NativeFunctionDesc, NativeFunctionId, NativeMethodDesc,
-    ScriptHostMethodMetadata, ScriptReflectSchema, TypeHint,
-};
+use crate::engine::Engine;
+use crate::method::NativeMethodDesc;
+use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::schema::{ScriptHostMethodMetadata, ScriptReflectSchema};
 
 use super::player_type;
 
@@ -20,7 +27,7 @@ struct ReflectOnlyPlayer;
 impl ScriptReflectSchema for ReflectOnlyPlayer {
     fn script_reflect_type_desc() -> TypeDesc {
         TypeDesc::new(TypeKey::new(TypeId::new(9901), "ReflectOnlyPlayer"))
-            .kind(vela_reflect::TypeKind::Host)
+            .kind(vela_reflect::registry::TypeKind::Host)
             .host_type(HostTypeId::new(9901))
             .field(FieldDesc::new(FieldId::new(1), "level"))
     }
@@ -155,7 +162,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     let registry = engine.registry();
 
     let string_type = registry.type_by_name("string").expect("string type");
-    assert_eq!(string_type.kind, vela_reflect::TypeKind::String);
+    assert_eq!(string_type.kind, vela_reflect::registry::TypeKind::String);
     assert_eq!(string_type.attrs.get("stdlib"), Some("builtin"));
     let trim = string_type
         .methods
@@ -180,7 +187,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(parse_int.return_type.as_deref(), Some("Option"));
 
     let array_type = registry.type_by_name("array").expect("array type");
-    assert_eq!(array_type.kind, vela_reflect::TypeKind::Array);
+    assert_eq!(array_type.kind, vela_reflect::registry::TypeKind::Array);
     assert_eq!(array_type.attrs.get("stdlib"), Some("builtin"));
     let array_push = array_type
         .methods
@@ -198,7 +205,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(array_map.return_type.as_deref(), Some("array"));
 
     let map_type = registry.type_by_name("map").expect("map type");
-    assert_eq!(map_type.kind, vela_reflect::TypeKind::Map);
+    assert_eq!(map_type.kind, vela_reflect::registry::TypeKind::Map);
     let map_get = map_type
         .methods
         .iter()
@@ -208,7 +215,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(map_get.return_type.as_deref(), Some("Option"));
 
     let set_type = registry.type_by_name("set").expect("set type");
-    assert_eq!(set_type.kind, vela_reflect::TypeKind::Set);
+    assert_eq!(set_type.kind, vela_reflect::registry::TypeKind::Set);
     let set_union = set_type
         .methods
         .iter()
@@ -218,7 +225,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(set_union.return_type.as_deref(), Some("set"));
 
     let range_type = registry.type_by_name("range").expect("range type");
-    assert_eq!(range_type.kind, vela_reflect::TypeKind::Range);
+    assert_eq!(range_type.kind, vela_reflect::registry::TypeKind::Range);
     assert_eq!(range_type.attrs.get("stdlib"), Some("builtin"));
     let range_len = range_type
         .methods
@@ -235,7 +242,10 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(range_is_empty.return_type.as_deref(), Some("bool"));
 
     let option_type = registry.type_by_name("Option").expect("Option type");
-    assert_eq!(option_type.kind, vela_reflect::TypeKind::ScriptEnum);
+    assert_eq!(
+        option_type.kind,
+        vela_reflect::registry::TypeKind::ScriptEnum
+    );
     assert_eq!(option_type.variants.len(), 2);
     assert_eq!(option_type.variants[0].name, "Some");
     assert_eq!(option_type.variants[0].fields[0].name, "0");
@@ -263,7 +273,10 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(option_ok_or.return_type.as_deref(), Some("Result"));
 
     let result_type = registry.type_by_name("Result").expect("Result type");
-    assert_eq!(result_type.kind, vela_reflect::TypeKind::ScriptEnum);
+    assert_eq!(
+        result_type.kind,
+        vela_reflect::registry::TypeKind::ScriptEnum
+    );
     assert_eq!(result_type.variants.len(), 2);
     assert_eq!(result_type.variants[0].name, "Ok");
     assert_eq!(result_type.variants[0].fields[0].name, "0");
@@ -964,7 +977,7 @@ fn engine_compiler_keeps_reflect_module_calls_off_host_method_lowering() {
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(9), "set")),
         )
-        .reflection_policy(vela_reflect::ReflectPolicy::all())
+        .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
         .build()
         .expect("engine should build");
     let program = compile_program_source_with_options(

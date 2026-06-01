@@ -1,9 +1,15 @@
 use vela_common::Span;
 
 use crate::{
-    HostError, HostErrorKind, HostPath, HostRef, HostResult, HostValue, Patch, PatchOp,
-    ScriptStateAdapter, add_values, div_values, mul_values, overlay::PatchOverlay, push_value,
-    rem_values, sub_values,
+    adapter::ScriptStateAdapter,
+    add_values, div_values,
+    error::{HostError, HostErrorKind, HostResult},
+    mul_values,
+    overlay::PatchOverlay,
+    patch::{Patch, PatchOp},
+    path::{HostPath, HostRef},
+    push_value, rem_values, sub_values,
+    value::HostValue,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]

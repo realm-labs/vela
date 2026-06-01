@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{CodeObject, Program, script_methods::ScriptMethodTable};
-use vela_hir::ModuleGraph;
+use vela_hir::module_graph::ModuleGraph;
 
-use crate::{FunctionSymbolId, HotReloadAbi, ProgramVersionId};
+use crate::abi::HotReloadAbi;
+use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramVersion {

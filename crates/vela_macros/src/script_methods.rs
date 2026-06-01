@@ -49,7 +49,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
 
         impl #self_ty {
             #[must_use]
-            pub fn vela_native_method_descs() -> ::std::vec::Vec<::vela_engine::NativeMethodDesc> {
+            pub fn vela_native_method_descs() -> ::std::vec::Vec<::vela_engine::method::NativeMethodDesc> {
                 let owner_key = Self::vela_host_type_desc().key;
                 let mut methods = ::std::vec::Vec::new();
                 #(#method_tokens)*
@@ -58,29 +58,29 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
 
             #[must_use]
             pub fn vela_register_native_method_fns(
-                builder: ::vela_engine::EngineBuilder,
-            ) -> ::vela_engine::EngineBuilder {
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
                 let owner_key = Self::vela_host_type_desc().key;
                 #native_registration_tokens
             }
 
             #[must_use]
             pub fn vela_register_host_methods(
-                builder: ::vela_engine::EngineBuilder,
-            ) -> ::vela_engine::EngineBuilder {
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
                 let owner_key = Self::vela_host_type_desc().key;
                 #host_method_registration_tokens
             }
         }
 
-        impl ::vela_engine::ScriptHostMethodMetadata for #self_ty {
-            fn script_host_method_descs() -> ::std::vec::Vec<::vela_engine::NativeMethodDesc> {
+        impl ::vela_engine::schema::ScriptHostMethodMetadata for #self_ty {
+            fn script_host_method_descs() -> ::std::vec::Vec<::vela_engine::method::NativeMethodDesc> {
                 Self::vela_native_method_descs()
             }
 
             fn register_script_host_methods(
-                builder: ::vela_engine::EngineBuilder,
-            ) -> ::vela_engine::EngineBuilder {
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
                 Self::vela_register_host_methods(builder)
             }
         }

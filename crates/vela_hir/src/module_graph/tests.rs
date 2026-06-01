@@ -1,5 +1,6 @@
 use super::*;
-use crate::{BindingResolution, LocalBindingKind};
+use crate::binding::{BindingResolution, LocalBindingKind};
+use crate::type_hint::EnumVariantFieldsHint;
 fn source(id: u32, module: &str, text: &str) -> ModuleSource {
     ModuleSource::new(SourceId::new(id), ModulePath::from_dotted(module), text)
 }
@@ -1080,7 +1081,7 @@ trait Damageable {
     );
     let progress_shape = graph.enum_shape(progress).expect("Progress shape");
     assert_eq!(progress_shape.variants[0].attrs[0].name, "terminal");
-    let crate::EnumVariantFieldsHint::Record(fields) = &progress_shape.variants[0].fields else {
+    let EnumVariantFieldsHint::Record(fields) = &progress_shape.variants[0].fields else {
         panic!("expected record variant fields");
     };
     assert_eq!(fields[0].attrs[0].name, "doc");
@@ -1123,7 +1124,7 @@ enum QuestProgress {
         .iter()
         .find(|variant| variant.name == "Active")
         .expect("Active variant");
-    let crate::EnumVariantFieldsHint::Record(fields) = &active.fields else {
+    let EnumVariantFieldsHint::Record(fields) = &active.fields else {
         panic!("expected record fields");
     };
     assert_eq!(
@@ -1138,7 +1139,7 @@ enum QuestProgress {
         .iter()
         .find(|variant| variant.name == "Finished")
         .expect("Finished variant");
-    let crate::EnumVariantFieldsHint::Tuple(fields) = &finished.fields else {
+    let EnumVariantFieldsHint::Tuple(fields) = &finished.fields else {
         panic!("expected tuple fields");
     };
     assert_eq!(
@@ -1175,7 +1176,7 @@ enum QuestProgress {
     assert!(reward_shape.fields[0].default_value_span.is_some());
     assert!(reward_shape.fields[1].default_value_span.is_some());
     let progress_shape = graph.enum_shape(progress).expect("Progress shape");
-    let crate::EnumVariantFieldsHint::Record(fields) = &progress_shape.variants[0].fields else {
+    let EnumVariantFieldsHint::Record(fields) = &progress_shape.variants[0].fields else {
         panic!("expected record fields");
     };
     assert!(fields[0].default_value_span.is_none());

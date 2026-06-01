@@ -1,9 +1,9 @@
 use vela_common::Diagnostic;
-use vela_syntax::{ElseBranch, Expr, ExprKind, Stmt, StmtKind};
+use vela_syntax::ast::{ElseBranch, Expr, ExprKind, Stmt, StmtKind};
 
-use crate::{
-    ExprFactScope, RegistryEffectFact, RegistryFacts, TypeFact, type_fact_from_expr_with_registry,
-};
+use crate::expression::{ExprFactScope, type_fact_from_expr_with_registry};
+use crate::registry::{RegistryEffectFact, RegistryFacts};
+use crate::type_fact::TypeFact;
 
 #[cfg(test)]
 mod tests;

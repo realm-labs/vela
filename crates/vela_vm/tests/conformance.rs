@@ -1,7 +1,8 @@
 use vela_bytecode::compiler::compile_module_sources;
 use vela_common::SourceId;
-use vela_hir::{ModulePath, ModuleSource};
-use vela_vm::{Value, Vm};
+use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_vm::Vm;
+use vela_vm::value::Value;
 
 #[test]
 fn core_language_fixture_executes() {

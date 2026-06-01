@@ -1,18 +1,20 @@
 use std::path::Path;
 
 use vela_common::SourceId;
-use vela_hot_reload::{
-    HotReloadAbi, HotReloadResult, HotUpdate, ProgramVersion,
+use vela_hot_reload::abi::HotReloadAbi;
+use vela_hot_reload::compile::{
     compile_initial_modules_with_abi_and_options, compile_initial_with_abi_and_options,
     compile_update_modules_with_abi_and_options_and_policy,
     compile_update_with_abi_and_options_and_policy,
 };
+use vela_hot_reload::error::HotReloadResult;
+use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 
 pub use source_error::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 
-use crate::Engine;
+use crate::engine::Engine;
 use crate::source::{load_module_sources, read_source_text};
 
 mod source_error;

@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::mem;
 
-use vela_host::{HostRef, PathProxy};
+use vela_host::path::HostRef;
+use vela_host::proxy::PathProxy;
 
 use crate::script_object::ScriptFields;
 use crate::{ExecutionBudget, VmResult};
@@ -530,7 +531,7 @@ impl ScriptHeap {
 mod tests {
     use super::*;
     use vela_common::{FieldId, HostObjectId, HostTypeId};
-    use vela_host::HostPath;
+    use vela_host::path::HostPath;
 
     fn host_ref() -> HostRef {
         HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
@@ -626,7 +627,7 @@ mod tests {
         assert_eq!(
             error.kind,
             crate::VmErrorKind::BudgetExceeded {
-                budget: crate::ExecutionBudgetKind::MemoryBytes,
+                budget: crate::budget::ExecutionBudgetKind::MemoryBytes,
                 limit: 8,
             }
         );

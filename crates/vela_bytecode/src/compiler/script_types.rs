@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use vela_common::Span;
-use vela_hir::{BindingMap, BindingResolution, HirLocalId, HirTypeHint};
-use vela_syntax::{Expr, ExprKind};
+use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_hir::ids::HirLocalId;
+use vela_hir::type_hint::HirTypeHint;
+use vela_syntax::ast::{Expr, ExprKind};
 
 use super::patterns::enum_variant_path;
 

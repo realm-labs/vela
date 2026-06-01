@@ -1,6 +1,8 @@
-use vela_vm::{Value, VmResult};
+use vela_vm::error::VmResult;
+use vela_vm::value::Value;
 
-use crate::{FromScriptArg, NativeCallContext};
+use crate::args::FromScriptArg;
+use crate::context::NativeCallContext;
 
 use super::{IntoNativeReturn, TypedContextHostNativeFunction, expect_arity};
 

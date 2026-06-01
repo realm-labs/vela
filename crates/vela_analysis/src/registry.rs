@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 
-use vela_reflect::{
-    FunctionDesc, FunctionEffectSet, MethodDesc, MethodEffectSet, TraitMethodDesc, TypeDesc,
-    TypeKind, TypeRegistry,
-};
+use vela_reflect::access::{FunctionEffectSet, MethodEffectSet};
+use vela_reflect::modules::FunctionDesc;
+use vela_reflect::registry::{MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry};
 
-use crate::TypeFact;
+use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegistryMemberFact {
@@ -472,9 +471,10 @@ fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
 #[cfg(test)]
 mod tests {
     use vela_common::{FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TypeId, VariantId};
-    use vela_reflect::{
-        FieldDesc, FunctionDesc, FunctionParamDesc, MethodDesc, MethodParamDesc, TraitDesc,
-        TraitMethodDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
+    use vela_reflect::modules::{FunctionDesc, FunctionParamDesc};
+    use vela_reflect::registry::{
+        FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+        TypeKind, TypeRegistry, VariantDesc,
     };
 
     use super::*;

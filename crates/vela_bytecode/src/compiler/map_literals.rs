@@ -1,4 +1,4 @@
-use vela_syntax::{Expr, ExprKind, Literal, MapEntry};
+use vela_syntax::ast::{Expr, ExprKind, Literal, MapEntry};
 
 use crate::Register;
 

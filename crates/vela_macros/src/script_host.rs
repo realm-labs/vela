@@ -24,15 +24,15 @@ impl GeneratedMethod {
     fn trait_impl_tokens(self, ident: &Ident, method: &Ident) -> TokenStream {
         match self {
             Self::Host => quote! {
-                impl ::vela_engine::ScriptHostSchema for #ident {
-                    fn script_host_type_desc() -> ::vela_reflect::TypeDesc {
+                impl ::vela_engine::schema::ScriptHostSchema for #ident {
+                    fn script_host_type_desc() -> ::vela_reflect::registry::TypeDesc {
                         Self::#method()
                     }
                 }
             },
             Self::Reflect => quote! {
-                impl ::vela_engine::ScriptReflectSchema for #ident {
-                    fn script_reflect_type_desc() -> ::vela_reflect::TypeDesc {
+                impl ::vela_engine::schema::ScriptReflectSchema for #ident {
+                    fn script_reflect_type_desc() -> ::vela_reflect::registry::TypeDesc {
                         Self::#method()
                     }
                 }
@@ -90,15 +90,15 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     Ok(quote! {
         impl #ident {
             #[must_use]
-            pub fn #method() -> ::vela_reflect::TypeDesc {
-                let mut desc = ::vela_reflect::TypeDesc::new(
-                    ::vela_reflect::TypeKey::new(
+            pub fn #method() -> ::vela_reflect::registry::TypeDesc {
+                let mut desc = ::vela_reflect::registry::TypeDesc::new(
+                    ::vela_reflect::registry::TypeKey::new(
                         ::vela_common::TypeId::new(#type_id),
                         #type_name,
                     ),
                 )
-                .kind(::vela_reflect::TypeKind::Host)
-                .schema_hash(::vela_reflect::SchemaHash::new(#schema_hash))
+                .kind(::vela_reflect::registry::TypeKind::Host)
+                .schema_hash(::vela_reflect::registry::SchemaHash::new(#schema_hash))
                 .host_type(::vela_common::HostTypeId::new(#host_id))
                 #module_tokens
                 #docs_tokens;

@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::{HotReloadReport, HotReloadResult, HotUpdate, ProgramVersion, ProgramVersionId};
+use crate::error::HotReloadResult;
+use crate::report::HotReloadReport;
+use crate::symbol::ProgramVersionId;
+use crate::version::{HotUpdate, ProgramVersion};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadRuntime {

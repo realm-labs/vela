@@ -25,9 +25,9 @@ pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
     });
 
     quote! {
-        ::vela_reflect::FieldDesc::new(::vela_common::FieldId::new(#id), #script_name)
+        ::vela_reflect::registry::FieldDesc::new(::vela_common::FieldId::new(#id), #script_name)
             .access(
-                ::vela_reflect::FieldAccess::new()
+                ::vela_reflect::access::FieldAccess::new()
                     .readable(#readable)
                     .writable(#writable)
                     .reflect_readable(#readable)
@@ -49,18 +49,18 @@ pub(super) fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
 
     quote! {
         #[must_use]
-        pub const fn #field_id_ident() -> ::vela_engine::FieldId {
-            ::vela_engine::FieldId::new(#id)
+        pub const fn #field_id_ident() -> ::vela_common::FieldId {
+            ::vela_common::FieldId::new(#id)
         }
 
         #[must_use]
-        pub fn #field_path_ident(host_ref: ::vela_engine::HostRef) -> ::vela_engine::HostPath {
-            ::vela_engine::HostPath::new(host_ref).field(Self::#field_id_ident())
+        pub fn #field_path_ident(host_ref: ::vela_host::path::HostRef) -> ::vela_host::path::HostPath {
+            ::vela_host::path::HostPath::new(host_ref).field(Self::#field_id_ident())
         }
 
         #[must_use]
-        pub fn #field_proxy_ident(host_ref: ::vela_engine::HostRef) -> ::vela_engine::PathProxy {
-            ::vela_engine::PathProxy::new(Self::#field_path_ident(host_ref))
+        pub fn #field_proxy_ident(host_ref: ::vela_host::path::HostRef) -> ::vela_host::proxy::PathProxy {
+            ::vela_host::proxy::PathProxy::new(Self::#field_path_ident(host_ref))
         }
     }
 }

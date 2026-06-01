@@ -1,6 +1,6 @@
 use vela_common::Span;
-use vela_hir::{BindingResolution, LocalBindingKind};
-use vela_syntax::{Pattern, RecordPatternField};
+use vela_hir::binding::{BindingResolution, LocalBindingKind};
+use vela_syntax::ast::{Pattern, RecordPatternField};
 
 use crate::{InstructionKind, Register};
 

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use vela_reflect::{self as reflect, TypeRegistry};
+use vela_reflect::registry::TypeRegistry;
+use vela_reflect::{self as reflect};
 
 use crate::{Value, Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
@@ -9,8 +10,8 @@ use super::common::{check_host_ref_inspection, check_reflect_policy};
 pub(super) fn register(
     vm: &mut Vm,
     registry: &Arc<TypeRegistry>,
-    policy: &reflect::ReflectPolicy,
-    lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
 ) {
     let variants_registry = Arc::clone(registry);
     let variants_policy = policy.clone();
@@ -19,10 +20,10 @@ pub(super) fn register(
         check_reflect_policy(
             &variants_policy,
             &variants_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         if args.is_empty() {
-            return value_from_reflect(reflect::variant_metadata_list_with_policy(
+            return value_from_reflect(reflect::members::all_variants_with_policy(
                 &variants_registry,
                 &variants_policy,
             ));
@@ -30,7 +31,7 @@ pub(super) fn register(
         expect_arity("reflect.variants", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect.variants")?;
         check_host_ref_inspection(&variants_policy, &target)?;
-        value_from_reflect(reflect::variant_metadata_with_policy(
+        value_from_reflect(reflect::members::variants_with_policy(
             &variants_registry,
             &target,
             &variants_policy,
@@ -44,13 +45,13 @@ pub(super) fn register(
         check_reflect_policy(
             &variant_info_policy,
             &variant_info_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.variant_info", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect.variant_info")?;
         check_host_ref_inspection(&variant_info_policy, &target)?;
         let variant_name = expect_string(&args[1], "reflect.variant_info")?;
-        value_from_reflect(reflect::variant_info_with_policy(
+        value_from_reflect(reflect::members::variant_info_with_policy(
             &variant_info_registry,
             &target,
             variant_name,
@@ -65,13 +66,13 @@ pub(super) fn register(
         check_reflect_policy(
             &has_variant_policy,
             &has_variant_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.has_variant", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect.has_variant")?;
         check_host_ref_inspection(&has_variant_policy, &target)?;
         let variant_name = expect_string(&args[1], "reflect.has_variant")?;
-        Ok(Value::Bool(reflect::has_variant(
+        Ok(Value::Bool(reflect::members::has_variant(
             &has_variant_registry,
             &target,
             variant_name,
@@ -84,12 +85,12 @@ pub(super) fn register(
         check_reflect_policy(
             &variant_policy,
             &variant_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.variant", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect.variant")?;
         check_host_ref_inspection(&variant_policy, &target)?;
-        value_from_reflect(reflect::variant(&target)?)
+        value_from_reflect(reflect::members::variant(&target)?)
     });
 
     let variant_is_registry = Arc::clone(registry);
@@ -99,13 +100,13 @@ pub(super) fn register(
         check_reflect_policy(
             &variant_is_policy,
             &variant_is_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.variant_is", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect.variant_is")?;
         check_host_ref_inspection(&variant_is_policy, &target)?;
         let variant_name = expect_string(&args[1], "reflect.variant_is")?;
-        Ok(Value::Bool(reflect::variant_is(
+        Ok(Value::Bool(reflect::members::variant_is(
             &variant_is_registry,
             &target,
             variant_name,

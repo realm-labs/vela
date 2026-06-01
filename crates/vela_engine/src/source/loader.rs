@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use vela_common::SourceId;
-use vela_hir::{ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModulePath, ModuleSource};
 
 use super::EngineSourceError;
 

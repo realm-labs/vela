@@ -123,10 +123,10 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut vm = Vm::new();
-    let policy = reflect::ReflectPolicy::new(
-        reflect::ReflectPermissionSet::new()
-            .with(reflect::ReflectPermission::ReadTypeInfo)
-            .with(reflect::ReflectPermission::InspectHostPath),
+    let policy = reflect::permissions::ReflectPolicy::new(
+        reflect::permissions::ReflectPermissionSet::new()
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo)
+            .with(reflect::permissions::ReflectPermission::InspectHostPath),
     );
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_method_reflection_registry()),

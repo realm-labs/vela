@@ -1,4 +1,4 @@
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 mod fields;
 mod methods;
@@ -6,12 +6,13 @@ mod traits;
 mod variants;
 
 use crate::{
-    MethodDesc, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeKind,
-    TypeRegistry,
     candidates::{candidate_names, ranked_candidates},
     descriptor_targets,
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
     metadata::{attrs_value, docs_value, span_value},
-    metadata_records, type_of,
+    metadata_records,
+    registry::{MethodDesc, TypeDesc, TypeKind, TypeRegistry},
+    value::{ReflectValue, type_of},
 };
 
 pub use fields::{
@@ -214,7 +215,7 @@ pub(super) fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult
         })
 }
 
-fn method_candidates(desc: &TypeDesc, method: &str) -> Vec<crate::ReflectCandidate> {
+fn method_candidates(desc: &TypeDesc, method: &str) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         method,
         desc.methods
@@ -232,11 +233,12 @@ mod tests {
         FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Span, TypeId,
         VariantId,
     };
-    use vela_host::HostRef;
+    use vela_host::path::HostRef;
 
-    use crate::{
-        FieldDesc, MethodDesc, MethodParamDesc, ReflectPolicy, TraitDesc, TraitMethodDesc, TypeKey,
-        TypeKind, VariantDesc,
+    use crate::permissions::ReflectPolicy;
+    use crate::registry::{
+        FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeKey, TypeKind,
+        VariantDesc,
     };
 
     fn player_ref() -> HostRef {
@@ -264,9 +266,9 @@ mod tests {
                         .param(MethodParamDesc::new("amount").type_hint("int"))
                         .return_type("bool")
                         .source_span(Span::new(SourceId::new(8), 60, 80))
-                        .effects(crate::MethodEffectSet::host_write())
+                        .effects(crate::access::MethodEffectSet::host_write())
                         .access(
-                            crate::MethodAccess::new()
+                            crate::access::MethodAccess::new()
                                 .reflect_callable(true)
                                 .require_permission("player.grant_exp"),
                         )
@@ -330,7 +332,7 @@ mod tests {
         assert!(has_field(&registry, &target, "level").expect("has field"));
 
         let field_metadata = field(&registry, &target, "level").expect("field");
-        let player_type = crate::type_metadata_by_name(&registry, "Player").expect("type info");
+        let player_type = crate::types::type_by_name(&registry, "Player").expect("type info");
         let field_from_type = field(&registry, &player_type, "level").expect("type field");
         assert!(has_field(&registry, &player_type, "level").expect("type has field"));
         let ReflectValue::Host(HostValue::Record { fields, .. }) = &field_metadata else {
@@ -439,11 +441,11 @@ mod tests {
                 field: "levle".to_owned(),
                 candidates: vec!["level".to_owned(), "id".to_owned()],
                 related: vec![
-                    crate::ReflectCandidate::new(
+                    crate::candidates::ReflectCandidate::new(
                         "level",
                         Some(Span::new(SourceId::new(8), 50, 55))
                     ),
-                    crate::ReflectCandidate::new("id", None),
+                    crate::candidates::ReflectCandidate::new("id", None),
                 ],
             }
         );
@@ -462,7 +464,7 @@ mod tests {
         else {
             panic!("methods should be an array");
         };
-        let player_type = crate::type_metadata_by_name(&registry, "Player").expect("type info");
+        let player_type = crate::types::type_by_name(&registry, "Player").expect("type info");
         let ReflectValue::Host(HostValue::Array(type_methods)) =
             methods(&registry, &player_type).expect("type methods")
         else {
@@ -685,7 +687,7 @@ mod tests {
                 type_name: "Player".to_owned(),
                 method: "grant_xp".to_owned(),
                 candidates: vec!["grant_exp".to_owned()],
-                related: vec![crate::ReflectCandidate::new(
+                related: vec![crate::candidates::ReflectCandidate::new(
                     "grant_exp",
                     Some(Span::new(SourceId::new(8), 60, 80))
                 )],
@@ -720,8 +722,7 @@ mod tests {
         else {
             panic!("variants should be an array");
         };
-        let quest_type =
-            crate::type_metadata_by_name(&registry, "QuestProgress").expect("type info");
+        let quest_type = crate::types::type_by_name(&registry, "QuestProgress").expect("type info");
         assert_eq!(
             variants(&registry, &quest_type).expect("type variants"),
             ReflectValue::Host(HostValue::Array(variant_records.clone()))
@@ -754,7 +755,7 @@ mod tests {
                 type_name: "QuestProgress.Active".to_owned(),
                 field: "cout".to_owned(),
                 candidates: vec!["count".to_owned()],
-                related: vec![crate::ReflectCandidate::new("count", None)],
+                related: vec![crate::candidates::ReflectCandidate::new("count", None)],
             }
         );
         let HostValue::Record {
@@ -837,11 +838,11 @@ mod tests {
                 variant: "Actve".to_owned(),
                 candidates: vec!["Active".to_owned(), "Finished".to_owned()],
                 related: vec![
-                    crate::ReflectCandidate::new(
+                    crate::candidates::ReflectCandidate::new(
                         "Active",
                         Some(Span::new(SourceId::new(8), 90, 100))
                     ),
-                    crate::ReflectCandidate::new("Finished", None),
+                    crate::candidates::ReflectCandidate::new("Finished", None),
                 ],
             }
         );
@@ -853,11 +854,11 @@ mod tests {
                 variant: "Actve".to_owned(),
                 candidates: vec!["Active".to_owned(), "Finished".to_owned()],
                 related: vec![
-                    crate::ReflectCandidate::new(
+                    crate::candidates::ReflectCandidate::new(
                         "Active",
                         Some(Span::new(SourceId::new(8), 90, 100))
                     ),
-                    crate::ReflectCandidate::new("Finished", None),
+                    crate::candidates::ReflectCandidate::new("Finished", None),
                 ],
             }
         );
@@ -960,11 +961,11 @@ mod tests {
                 trait_name: "Damagable".to_owned(),
                 candidates: vec!["Damageable".to_owned(), "Trackable".to_owned()],
                 related: vec![
-                    crate::ReflectCandidate::new(
+                    crate::candidates::ReflectCandidate::new(
                         "Damageable",
                         Some(Span::new(SourceId::new(8), 20, 40))
                     ),
-                    crate::ReflectCandidate::new(
+                    crate::candidates::ReflectCandidate::new(
                         "Trackable",
                         Some(Span::new(SourceId::new(9), 10, 30))
                     ),
@@ -982,18 +983,19 @@ mod tests {
                 .method(MethodDesc::new(HostMethodId::new(1), "visible"))
                 .method(
                     MethodDesc::new(HostMethodId::new(2), "hidden")
-                        .access(crate::MethodAccess::new().reflect_callable(false)),
+                        .access(crate::access::MethodAccess::new().reflect_callable(false)),
                 )
                 .method(
                     MethodDesc::new(HostMethodId::new(3), "private").access(
-                        crate::MethodAccess::new()
+                        crate::access::MethodAccess::new()
                             .public(false)
                             .reflect_callable(true),
                     ),
                 )
                 .method(
-                    MethodDesc::new(HostMethodId::new(4), "admin")
-                        .access(crate::MethodAccess::new().require_permission("player.admin")),
+                    MethodDesc::new(HostMethodId::new(4), "admin").access(
+                        crate::access::MethodAccess::new().require_permission("player.admin"),
+                    ),
                 ),
         );
         let target =
@@ -1071,7 +1073,8 @@ mod tests {
         );
 
         let admin_policy = ReflectPolicy::new(
-            crate::ReflectPermissionSet::read_only().with(crate::ReflectPermission::AccessPrivate),
+            crate::permissions::ReflectPermissionSet::read_only()
+                .with(crate::permissions::ReflectPermission::AccessPrivate),
         )
         .with_method_permission("player.admin");
         let ReflectValue::Host(HostValue::Array(admin_methods)) =
@@ -1109,7 +1112,7 @@ mod tests {
                 .field(FieldDesc::new(FieldId::new(1), "level"))
                 .field(
                     FieldDesc::new(FieldId::new(2), "secret")
-                        .access(crate::FieldAccess::new().reflect_readable(false)),
+                        .access(crate::access::FieldAccess::new().reflect_readable(false)),
                 ),
         );
         let target =
@@ -1196,11 +1199,9 @@ mod tests {
             TypeDesc::new(TypeKey::new(TypeId::new(601), "Player"))
                 .host_type(HostTypeId::new(6))
                 .field(FieldDesc::new(FieldId::new(1), "level"))
-                .field(
-                    FieldDesc::new(FieldId::new(2), "title").access(
-                        crate::FieldAccess::new().require_permission("player.title.inspect"),
-                    ),
-                ),
+                .field(FieldDesc::new(FieldId::new(2), "title").access(
+                    crate::access::FieldAccess::new().require_permission("player.title.inspect"),
+                )),
         );
         let target =
             ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
@@ -1271,7 +1272,7 @@ mod tests {
                         .field(FieldDesc::new(FieldId::new(1), "count"))
                         .field(
                             FieldDesc::new(FieldId::new(2), "secret")
-                                .access(crate::FieldAccess::new().reflect_readable(false)),
+                                .access(crate::access::FieldAccess::new().reflect_readable(false)),
                         ),
                 ),
         );

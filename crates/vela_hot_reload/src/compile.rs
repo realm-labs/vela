@@ -2,17 +2,19 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::Program;
+use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
-    CompilerOptions, compile_module_sources_with_options, compile_program_source_with_options,
+    compile_module_sources_with_options, compile_program_source_with_options,
 };
 use vela_common::SourceId;
-use vela_hir::ModuleSource;
+use vela_hir::module_graph::ModuleSource;
 
-use crate::{
-    FunctionSymbolId, HotReloadAbi, HotReloadError, HotReloadErrorKind, HotReloadPolicy,
-    HotReloadResult, HotUpdate, ProgramVersion, ProgramVersionId,
-    function_signature::ensure_compatible_function_signature,
-};
+use crate::abi::HotReloadAbi;
+use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+use crate::function_signature::ensure_compatible_function_signature;
+use crate::policy::HotReloadPolicy;
+use crate::symbol::{FunctionSymbolId, ProgramVersionId};
+use crate::version::{HotUpdate, ProgramVersion};
 
 pub fn compile_initial(source: SourceId, text: &str) -> HotReloadResult<ProgramVersion> {
     compile_initial_with_abi_and_options(

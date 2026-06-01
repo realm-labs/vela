@@ -1,4 +1,4 @@
-use crate::TypeFact;
+use crate::type_fact::TypeFact;
 
 pub(super) fn try_fact(value: TypeFact) -> TypeFact {
     match value {

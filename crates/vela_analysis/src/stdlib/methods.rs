@@ -1,4 +1,5 @@
-use crate::{TypeFact, stdlib::StdlibMethodFact};
+use crate::stdlib::StdlibMethodFact;
+use crate::type_fact::TypeFact;
 
 const ARRAY_METHOD_NAMES: &[&str] = &[
     "len",

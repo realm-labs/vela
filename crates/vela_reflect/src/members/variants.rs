@@ -1,11 +1,12 @@
-use vela_host::HostValue;
+use vela_host::value::HostValue;
 
 use crate::{
-    ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult, ReflectValue, TypeDesc,
-    TypeRegistry, VariantDesc,
     candidates::{candidate_names, ranked_candidates},
+    error::{ReflectError, ReflectErrorKind, ReflectResult},
     member_records::{variant_record_with_owner, variant_record_with_owner_and_fields},
-    type_of,
+    permissions::ReflectPolicy,
+    registry::{TypeDesc, TypeRegistry, VariantDesc},
+    value::{ReflectValue, type_of},
 };
 
 use super::target_type;
@@ -180,7 +181,7 @@ fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
     }
 }
 
-fn variant_candidates(desc: &TypeDesc, variant: &str) -> Vec<crate::ReflectCandidate> {
+fn variant_candidates(desc: &TypeDesc, variant: &str) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         variant,
         desc.variants

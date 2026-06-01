@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use vela_common::Span;
-use vela_reflect::{ModuleDesc, ModuleExportDesc, ModuleExportKind};
+use vela_reflect::modules::{ModuleDesc, ModuleExportDesc, ModuleExportKind};
 
-use crate::{HotReloadError, HotReloadErrorKind, HotReloadResult};
+use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModuleAbi {

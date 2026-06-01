@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use vela_reflect::{self as reflect, TypeRegistry};
+use vela_reflect::registry::TypeRegistry;
+use vela_reflect::{self as reflect};
 
 use crate::{Value, Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
@@ -9,8 +10,8 @@ use super::common::{check_host_ref_inspection, check_reflect_policy};
 pub(super) fn register(
     vm: &mut Vm,
     registry: &Arc<TypeRegistry>,
-    policy: &reflect::ReflectPolicy,
-    lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
 ) {
     let methods_registry = Arc::clone(registry);
     let methods_policy = policy.clone();
@@ -19,10 +20,10 @@ pub(super) fn register(
         check_reflect_policy(
             &methods_policy,
             &methods_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         if args.is_empty() {
-            return value_from_reflect(reflect::method_metadata_list_with_policy(
+            return value_from_reflect(reflect::members::all_methods_with_policy(
                 &methods_registry,
                 &methods_policy,
             ));
@@ -30,7 +31,7 @@ pub(super) fn register(
         expect_arity("reflect.methods", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect.methods")?;
         check_host_ref_inspection(&methods_policy, &target)?;
-        value_from_reflect(reflect::methods_with_policy(
+        value_from_reflect(reflect::members::methods_with_policy(
             &methods_registry,
             &target,
             &methods_policy,
@@ -44,13 +45,13 @@ pub(super) fn register(
         check_reflect_policy(
             &method_policy,
             &method_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.method", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect.method")?;
         check_host_ref_inspection(&method_policy, &target)?;
         let method_name = expect_string(&args[1], "reflect.method")?;
-        value_from_reflect(reflect::method_metadata_with_policy(
+        value_from_reflect(reflect::members::method_with_policy(
             &method_registry,
             &target,
             method_name,
@@ -65,13 +66,13 @@ pub(super) fn register(
         check_reflect_policy(
             &has_method_policy,
             &has_method_budget,
-            reflect::ReflectPermission::ReadTypeInfo,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect.has_method", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect.has_method")?;
         check_host_ref_inspection(&has_method_policy, &target)?;
         let method_name = expect_string(&args[1], "reflect.has_method")?;
-        Ok(Value::Bool(reflect::has_method_with_policy(
+        Ok(Value::Bool(reflect::members::has_method_with_policy(
             &has_method_registry,
             &target,
             method_name,

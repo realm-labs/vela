@@ -177,7 +177,7 @@ fn remove_path_records_patch_and_tombstone_overlay() {
     assert_eq!(tx.read_overlay(&path), None);
     assert_eq!(
         tx.read_path(&adapter, &path),
-        Err(crate::HostError::new(HostErrorKind::MissingPath {
+        Err(HostError::new(HostErrorKind::MissingPath {
             path: path.clone()
         }))
     );

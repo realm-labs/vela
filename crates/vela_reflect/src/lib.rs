@@ -1,83 +1,46 @@
 //! Controlled reflection metadata and value access.
 
-mod access;
-mod candidates;
+pub mod access;
+pub mod candidates;
 mod descriptor_targets;
-mod error;
+pub mod error;
 mod error_diagnostics;
 mod member_records;
-mod members;
+pub mod members;
 mod metadata;
 mod metadata_records;
-mod modules;
-mod permissions;
-mod registry;
+pub mod modules;
+pub mod permissions;
+pub mod registry;
 mod script_attrs;
-mod script_types;
-mod types;
-mod value;
-mod value_access;
-
-pub use access::{FieldAccess, FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
-pub use candidates::ReflectCandidate;
-pub use error::{ReflectError, ReflectErrorKind, ReflectResult};
-pub use members::{
-    access as access_metadata, all_fields as field_metadata_list,
-    all_fields_with_policy as field_metadata_list_with_policy, all_methods as method_metadata_list,
-    all_methods_with_policy as method_metadata_list_with_policy, all_traits as trait_metadata_list,
-    all_variants as variant_metadata_list,
-    all_variants_with_policy as variant_metadata_list_with_policy, attr as attr_metadata,
-    attrs as attrs_metadata, docs as docs_metadata, effects as effects_metadata,
-    field as field_metadata, field_with_policy as field_metadata_with_policy,
-    fields_with_policy as field_metadata_for_target_with_policy, has_attr as has_attr_metadata,
-    has_field, has_field_with_policy, has_method, has_method_with_policy, has_trait, has_variant,
-    id as id_metadata, kind as kind_metadata, method as method_metadata,
-    method_with_policy as method_metadata_with_policy, methods, methods_with_policy,
-    name as name_metadata, origin as origin_metadata, owner as owner_metadata,
-    params as params_metadata, required_permissions as required_permissions_metadata,
-    returns as returns_metadata, source_span as source_span_metadata,
-    trait_by_name as trait_metadata_by_name, traits as trait_metadata, variant, variant_info,
-    variant_info_with_policy, variant_is, variants as variant_metadata,
-    variants_with_policy as variant_metadata_with_policy,
-};
-pub use modules::{
-    DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
-    callable_function_name_with_policy, exports as module_exports,
-    exports_for_target as module_exports_for_target,
-    exports_for_target_with_policy as module_exports_for_target_with_policy,
-    exports_with_policy as module_exports_with_policy, function as function_metadata,
-    function_with_policy as function_metadata_with_policy, functions as function_metadata_list,
-    functions_with_policy as function_metadata_list_with_policy, has_function,
-    has_function_with_policy, has_module, has_module_with_policy, module as module_metadata,
-    module_with_policy as module_metadata_with_policy, modules as module_metadata_list,
-    modules_with_policy as module_metadata_list_with_policy,
-};
-pub use permissions::{
-    ReflectLookupBudget, ReflectPermission, ReflectPermissionSet, ReflectPolicy, has_permission,
-    permission_names,
-};
-pub use registry::{
-    AttrMap, FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc,
-    TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
-};
-pub use types::{
-    has_type, type_by_name as type_metadata_by_name, type_list as type_metadata_list,
-    type_of_value as type_metadata_of,
-};
-pub use value::{
-    ReflectContext, ReflectValue, call, call_with_policy, fields, get, get_with_policy, implements,
-    set, set_with_policy, type_of,
-};
+pub mod script_types;
+pub mod types;
+pub mod value;
+pub mod value_access;
 
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
-    use super::*;
-    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
-    use vela_host::{
-        HostObjectSnapshot, HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx,
+    use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
+    use crate::candidates::ReflectCandidate;
+    use crate::error::ReflectErrorKind;
+    use crate::members::trait_by_name as trait_metadata_by_name;
+    use crate::permissions::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
+    use crate::registry::{
+        FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry,
     };
+    use crate::types::type_by_name as type_metadata_by_name;
+    use crate::value::{
+        ReflectContext, ReflectValue, call, call_with_policy, fields, get, get_with_policy,
+        implements, set, set_with_policy, type_of,
+    };
+    use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
+    use vela_host::mock::MockStateAdapter;
+    use vela_host::patch::PatchOp;
+    use vela_host::path::{HostPath, HostRef};
+    use vela_host::tx::{HostObjectSnapshot, PatchTx};
+    use vela_host::value::HostValue;
 
     fn player_ref() -> HostRef {
         HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
@@ -541,7 +504,7 @@ mod tests {
 
         assert!(matches!(error.kind, ReflectErrorKind::Host(_)));
         assert_eq!(
-            vela_host::PatchTx::require_fresh_ref(
+            vela_host::tx::PatchTx::require_fresh_ref(
                 stale_ref,
                 &HostObjectSnapshot {
                     type_id: fresh_ref.type_id,
@@ -551,7 +514,7 @@ mod tests {
             )
             .expect_err("stale ref")
             .kind,
-            vela_host::HostErrorKind::StaleGeneration {
+            vela_host::error::HostErrorKind::StaleGeneration {
                 expected: 2,
                 actual: 3
             }

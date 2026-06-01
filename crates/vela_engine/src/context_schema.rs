@@ -1,7 +1,7 @@
 use vela_common::{FieldId, HostMethodId, HostTypeId, TypeId};
-use vela_reflect::{
-    FieldDesc, MethodAccess, MethodDesc, MethodEffectSet, MethodParamDesc, SchemaHash, TypeDesc,
-    TypeKey,
+use vela_reflect::access::{MethodAccess, MethodEffectSet};
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey,
 };
 
 pub const CONTEXT_TYPE_ID: TypeId = TypeId::new(0xff00_1000);
