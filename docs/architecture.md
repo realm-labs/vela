@@ -933,9 +933,17 @@ pub enum TypeHint {
 }
 ```
 
-`TypeHint` is public metadata and syntax-facing documentation. It is not the
-complete internal analysis type system. Keeping it small preserves the
-no-generics language rule and keeps host schemas stable.
+`TypeHint` is public metadata and syntax-facing documentation. Script-local
+parameter, local, field, and return annotations do not enforce runtime value
+types by themselves; a function annotated `fn f(name: string) -> string` can
+still receive or return a different script value unless a host/native/schema
+boundary explicitly performs conversion or validation.
+
+Hints are still meaningful. They feed reflection metadata, hot-reload ABI
+checks, diagnostics, completions, hover, dispatch hints, field-slot lowering,
+and host schema documentation. They are not the complete internal analysis type
+system. Keeping them small preserves the no-generics language rule and keeps
+host schemas stable.
 
 ### TypeFacts
 

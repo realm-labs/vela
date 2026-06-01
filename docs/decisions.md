@@ -108,6 +108,12 @@ Option and Result are dynamic enum-shaped values, not script generics. Stdlib
 helpers and analysis TypeFacts may describe dynamic payloads, but the language
 surface remains non-generic.
 
+Script type hints are advisory metadata for analysis, reflection, dispatch
+hints, and ABI. They do not enforce script-local runtime value types unless a
+host, native, or schema boundary explicitly performs conversion or validation.
+Function return annotations are optional and have the same metadata-first
+semantics.
+
 `null` is retained for no-value, void-like results, host nullable boundaries,
 and missing metadata. Expected absence should use `Option.None`, recoverable
 business failure should use `Result.Err`, and unrecoverable script/runtime
