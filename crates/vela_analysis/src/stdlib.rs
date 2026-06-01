@@ -1099,6 +1099,12 @@ mod tests {
                 .returns,
             TypeFact::Int
         );
+        assert_eq!(
+            stdlib_function_fact("ctx.elapsed_since", &[TypeFact::Int])
+                .expect("ctx.elapsed_since fact")
+                .returns,
+            TypeFact::Int
+        );
     }
 
     #[test]
@@ -1446,6 +1452,11 @@ mod tests {
                 .iter()
                 .any(|fact| fact.name == "ctx.tick" && fact.returns == TypeFact::Int)
         );
+        assert!(facts.iter().any(|fact| {
+            fact.name == "ctx.elapsed_since"
+                && fact.params == [TypeFact::Int]
+                && fact.returns == TypeFact::Int
+        }));
         assert!(facts.iter().any(|fact| {
             fact.name == "reflect.types"
                 && fact.returns == TypeFact::array(TypeFact::record("ReflectType"))

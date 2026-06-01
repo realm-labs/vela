@@ -6,8 +6,8 @@ use vela_vm::{HostExecution, VmErrorKind};
 use crate::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID, CONTEXT_TIME_PERMISSION, CONTEXT_TYPE_ID, CONTROLLED_RANDOM_PERMISSION,
-    CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID, Engine, PermissionSet, Value,
-    context_host_type_desc,
+    CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID, Engine,
+    PermissionSet, Value, context_host_type_desc,
 };
 
 #[test]
@@ -30,6 +30,31 @@ fn main() {
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "ctx.now".to_owned(),
+            permission: CONTEXT_TIME_PERMISSION.to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_context_elapsed_since_requires_permission() {
+    let engine = Engine::builder()
+        .with_context_clock(1_700_000_000, 42)
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return ctx.elapsed_since(1699999990);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert!(matches!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Err(error) if error.kind == VmErrorKind::PermissionDenied {
+            native: "ctx.elapsed_since".to_owned(),
             permission: CONTEXT_TIME_PERMISSION.to_owned(),
         }
     ));
@@ -93,7 +118,7 @@ fn engine_context_clock_returns_configured_values() {
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx.now() + ctx.tick();
+    return ctx.elapsed_since(1699999990) + ctx.tick();
 }
 "#,
     )
@@ -101,7 +126,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(1_700_000_042))
+        Ok(Value::Int(52))
     );
 }
 
@@ -119,6 +144,9 @@ fn engine_context_clock_registers_metadata() {
     let tick = registry
         .function_by_name("ctx.tick")
         .expect("ctx.tick metadata");
+    let elapsed = registry
+        .function_by_name("ctx.elapsed_since")
+        .expect("ctx.elapsed_since metadata");
 
     assert_eq!(now.id, CTX_NOW_FUNCTION_ID);
     assert_eq!(now.module.as_deref(), Some("ctx"));
@@ -136,6 +164,17 @@ fn engine_context_clock_registers_metadata() {
     assert!(tick.access.reflect_visible);
     assert_eq!(
         tick.access.required_permissions(),
+        &[CONTEXT_TIME_PERMISSION.to_owned()]
+    );
+    assert_eq!(elapsed.id, CTX_ELAPSED_SINCE_FUNCTION_ID);
+    assert_eq!(elapsed.module.as_deref(), Some("ctx"));
+    assert_eq!(elapsed.params.len(), 1);
+    assert_eq!(elapsed.params[0].name, "start");
+    assert_eq!(elapsed.params[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(elapsed.return_type.as_deref(), Some("int"));
+    assert!(elapsed.access.reflect_visible);
+    assert_eq!(
+        elapsed.access.required_permissions(),
         &[CONTEXT_TIME_PERMISSION.to_owned()]
     );
 }

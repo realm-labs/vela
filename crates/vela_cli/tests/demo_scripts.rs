@@ -82,7 +82,7 @@ fn context_event_demo_runs_through_cli() {
 fn context_clock_demo_runs_through_cli() {
     assert_eq!(
         run_demo("context_clock.lang"),
-        "result=Int(1700000042) level=Int(9) patches=0\n"
+        "result=Int(52) level=Int(9) patches=0\n"
     );
 }
 

@@ -145,6 +145,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         ),
         StdlibFunctionFact::new("ctx.now", Vec::new(), TypeFact::Int),
         StdlibFunctionFact::new("ctx.tick", Vec::new(), TypeFact::Int),
+        StdlibFunctionFact::new("ctx.elapsed_since", vec![TypeFact::Int], TypeFact::Int),
         StdlibFunctionFact::new(
             "set.from_array",
             vec![TypeFact::array(TypeFact::Any)],
@@ -352,6 +353,14 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 Vec::new(),
+                TypeFact::Int,
+            ))
+        }
+        "ctx.elapsed_since" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "ctx.elapsed_since",
+                args.to_vec(),
                 TypeFact::Int,
             ))
         }
@@ -566,6 +575,7 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "math.sign" => Some("math.sign"),
         "ctx.now" => Some("ctx.now"),
         "ctx.tick" => Some("ctx.tick"),
+        "ctx.elapsed_since" => Some("ctx.elapsed_since"),
         _ => None,
     }
 }

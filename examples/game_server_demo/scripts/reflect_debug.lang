@@ -28,10 +28,13 @@ fn main(ctx, player) {
     let main_function = reflect.function("main");
     let ctx_now = reflect.function("ctx.now");
     let ctx_tick = reflect.function("ctx.tick");
+    let ctx_elapsed = reflect.function("ctx.elapsed_since");
     let reward_params = reflect.params(reward_function);
     let main_params = reflect.params(main_function);
     let reward_access = reflect.access(reward_function);
     let ctx_now_access = reflect.access(ctx_now);
+    let ctx_elapsed_access = reflect.access(ctx_elapsed);
+    let ctx_elapsed_params = reflect.params(ctx_elapsed);
     let ctx_methods = reflect.methods(ctx);
     let ctx_emit = reflect.method(ctx, "emit");
     let ctx_log = reflect.method(ctx, "log");
@@ -116,6 +119,7 @@ fn main(ctx, player) {
         && reflect.has_function("main")
         && reflect.has_function("ctx.now")
         && reflect.has_function("ctx.tick")
+        && reflect.has_function("ctx.elapsed_since")
         && !reflect.has_function("game.reward.missing")
         && reflect.name(reward_function) == "game.reward.grant"
         && reflect.kind(reward_function) == "function"
@@ -144,15 +148,22 @@ fn main(ctx, player) {
         && exports.len() == 1
         && exports[0] == "game.reward.grant"
         && reflect.exports("game.reward")[0] == exports[0]
-        && ctx_exports.len() == 2
+        && ctx_exports.len() == 3
         && ctx_exports.contains("ctx.now")
         && ctx_exports.contains("ctx.tick")
+        && ctx_exports.contains("ctx.elapsed_since")
         && math_exports.is_empty()
         && reflect.name(ctx_now) == "ctx.now"
         && reflect.name(ctx_tick) == "ctx.tick"
+        && reflect.name(ctx_elapsed) == "ctx.elapsed_since"
         && reflect.returns(ctx_now) == "int"
         && reflect.returns(ctx_tick) == "int"
+        && reflect.returns(ctx_elapsed) == "int"
         && ctx_now_access.required_permissions[0] == "ctx.time"
+        && ctx_elapsed_access.required_permissions[0] == "ctx.time"
+        && ctx_elapsed_params.len() == 1
+        && ctx_elapsed_params[0].name == "start"
+        && ctx_elapsed_params[0].type == "int"
         && ctx_methods.len() == 2
         && reflect.has_method(ctx, "emit")
         && reflect.has_method(ctx, "log")
@@ -172,11 +183,13 @@ fn main(ctx, player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
-        && functions.len() == 4
+        && functions.len() == 5
         && functions.any(|function| reflect.id(function) == reflect.id(reward_function))
         && functions.any(|function| reflect.name(function) == "main"
             && reflect.origin(function) == "script")
         && functions.any(|function| reflect.name(function) == "ctx.now"
+            && reflect.returns(function) == "int")
+        && functions.any(|function| reflect.name(function) == "ctx.elapsed_since"
             && reflect.returns(function) == "int") {
         reflect.set(player, "level", 12);
         reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());

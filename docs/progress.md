@@ -2435,6 +2435,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Kept the M8 HIR module graph reviewable by moving its inline graph,
   import-resolution, binding, schema, and diagnostic unit tests into a focused
   `module_graph::tests` module while preserving behavior.
+- Added M13 `ctx.elapsed_since(start)` as a permissioned deterministic context
+  time helper. Engine clock registration, reflection metadata, analysis facts,
+  completions, and game-server context/reflection demos now cover elapsed-time
+  gameplay workflows without growing the crate root or central VM modules.
 
 ## Next
 
