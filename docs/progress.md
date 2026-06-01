@@ -2457,6 +2457,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   VM module into focused modules. Record/enum heap access, arithmetic and
   comparison semantics, arity/type checks, truthiness, and jump validation now
   live outside the dispatch root without changing behavior.
+- Kept the M12 reflection member surface reviewable by extracting method and
+  trait metadata queries from the large member module into focused
+  `members::methods` and `members::traits` submodules. Public reflection
+  exports and policy behavior are unchanged.
 
 ## Next
 

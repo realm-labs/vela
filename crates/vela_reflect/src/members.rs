@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
-
 use vela_host::HostValue;
+
+mod methods;
+mod traits;
 
 use crate::{
     FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult,
@@ -8,12 +9,17 @@ use crate::{
     candidates::{candidate_names, ranked_candidates},
     descriptor_targets,
     member_records::{
-        field_record_with_owner, method_record_with_owner, trait_record, variant_record_with_owner,
-        variant_record_with_owner_and_fields,
+        field_record_with_owner, variant_record_with_owner, variant_record_with_owner_and_fields,
     },
     metadata::{attrs_value, docs_value, span_value},
     metadata_records, type_of,
 };
+
+pub use methods::{
+    all_methods, all_methods_with_policy, has_method, has_method_with_policy, method,
+    method_with_policy, methods, methods_with_policy,
+};
+pub use traits::{all_traits, has_trait, trait_by_name, traits};
 
 pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
@@ -283,152 +289,6 @@ pub fn has_field_with_policy(
     }))
 }
 
-pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
-        desc.methods
-            .iter()
-            .map(|method| method_record_with_owner(&desc.key.name, method))
-            .collect(),
-    )))
-}
-
-pub fn method(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    let method = find_method(desc, name)?;
-    Ok(ReflectValue::Host(method_record_with_owner(
-        &desc.key.name,
-        method,
-    )))
-}
-
-pub fn method_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-    policy: &ReflectPolicy,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    let method = find_method(desc, name)?;
-    policy.require_method_access(&desc.key.name, method)?;
-    Ok(ReflectValue::Host(method_record_with_owner(
-        &desc.key.name,
-        method,
-    )))
-}
-
-pub fn methods_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    policy: &ReflectPolicy,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
-        desc.methods
-            .iter()
-            .filter(|method| policy.require_method_access(&desc.key.name, method).is_ok())
-            .map(|method| method_record_with_owner(&desc.key.name, method))
-            .collect(),
-    )))
-}
-
-pub fn all_methods(registry: &TypeRegistry) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .flat_map(|desc| {
-                desc.methods
-                    .iter()
-                    .map(|method| method_record_with_owner(&desc.key.name, method))
-            })
-            .collect(),
-    ))
-}
-
-pub fn all_methods_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .flat_map(|desc| {
-                desc.methods
-                    .iter()
-                    .filter(|method| policy.require_method_access(&desc.key.name, method).is_ok())
-                    .map(|method| method_record_with_owner(&desc.key.name, method))
-            })
-            .collect(),
-    ))
-}
-
-pub fn has_method(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-) -> ReflectResult<bool> {
-    let desc = target_type(registry, target)?;
-    Ok(desc.methods.iter().any(|method| method.name == name))
-}
-
-pub fn has_method_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-    policy: &ReflectPolicy,
-) -> ReflectResult<bool> {
-    let desc = target_type(registry, target)?;
-    Ok(desc.methods.iter().any(|method| {
-        method.name == name && policy.require_method_access(&desc.key.name, method).is_ok()
-    }))
-}
-
-pub fn traits(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
-        desc.traits.iter().map(trait_record).collect(),
-    )))
-}
-
-pub fn all_traits(registry: &TypeRegistry) -> ReflectValue {
-    let mut traits = BTreeMap::new();
-    for desc in registry.traits() {
-        traits.insert(desc.name.clone(), desc);
-    }
-    for desc in registry
-        .types()
-        .flat_map(|type_desc| type_desc.traits.iter())
-    {
-        traits.entry(desc.name.clone()).or_insert(desc);
-    }
-    ReflectValue::Host(HostValue::Array(
-        traits.into_values().map(trait_record).collect(),
-    ))
-}
-
-pub fn trait_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
-    let desc = registry.trait_metadata_by_name(name).ok_or_else(|| {
-        let candidates = registry.known_trait_candidates();
-        let related = ranked_candidates(
-            name,
-            candidates
-                .iter()
-                .map(|(candidate, span)| (candidate.as_str(), *span)),
-        );
-        ReflectError::new(ReflectErrorKind::UnknownTrait {
-            trait_name: name.to_owned(),
-            candidates: candidate_names(&related),
-            related,
-        })
-    })?;
-    Ok(ReflectValue::Host(trait_record(desc)))
-}
-
-pub fn has_trait(registry: &TypeRegistry, name: &str) -> bool {
-    registry.trait_metadata_by_name(name).is_some()
-}
-
 pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     Ok(ReflectValue::Host(HostValue::Array(
@@ -565,7 +425,7 @@ pub fn variant_is(
     }))
 }
 
-fn target_type<'a>(
+pub(super) fn target_type<'a>(
     registry: &'a TypeRegistry,
     target: &ReflectValue,
 ) -> ReflectResult<&'a TypeDesc> {
@@ -653,7 +513,7 @@ fn find_variant_field<'a>(
         })
 }
 
-fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a MethodDesc> {
+pub(super) fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a MethodDesc> {
     desc.methods
         .iter()
         .find(|candidate| candidate.name == method)
@@ -722,6 +582,8 @@ fn variant_candidates(desc: &TypeDesc, variant: &str) -> Vec<crate::ReflectCandi
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::*;
     use vela_common::{
         FieldId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Span, TypeId,
