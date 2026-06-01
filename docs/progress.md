@@ -2448,6 +2448,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   execution, has analysis/completion facts, is listed in the architecture
   standard-library contract, and the game-server gameplay helper demo now uses
   it to parse reward commands.
+- Extended the M12/M17 reflection demo proof across copied metadata helper
+  APIs. The game-server reflection script now verifies `reflect.attrs`,
+  `reflect.has_attr`, `reflect.required_permissions`, `reflect.effects`, and
+  `reflect.source_span` through the runnable CLI path.
 
 ## Next
 
