@@ -16,6 +16,7 @@ fn main() {
     let marker = "!".repeat(2);
     let distance = math.distance2d(0, 0, 3, 4);
     let diagonal = math.distance3d(0, 0, 0, 1, 2, 2);
+    let root = math.sqrt(81);
     let step = math.move_towards(0, 10, count);
     let clamped = math.clamp(count + math.sign(-1), 1, 10);
     let bounded = math.max(math.min(clamped, 10), math.abs(-2));
@@ -33,6 +34,7 @@ fn main() {
         && math.floor(distance) == 5
         && math.round(diagonal) == 3
         && math.ceil(math.pow(2, 0.5)) == 2
+        && math.round(root) == 9
         && math.floor(rate) == 2
         && bounded == 2
     {

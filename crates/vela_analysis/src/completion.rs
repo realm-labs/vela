@@ -768,6 +768,14 @@ mod tests {
             TypeFact::function(vec![number.clone(), number.clone()], number),
         )));
         assert!(completions.contains(&CompletionItem::new(
+            "math.sqrt",
+            CompletionKind::Function,
+            TypeFact::function(
+                vec![TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])],
+                TypeFact::Float
+            ),
+        )));
+        assert!(completions.contains(&CompletionItem::new(
             "math.sign",
             CompletionKind::Function,
             TypeFact::function(

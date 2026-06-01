@@ -2421,6 +2421,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   the Engine test hub to shared helpers and splitting native function/runtime
   budget tests into `tests::native` plus host-path method lowering/callable
   method tests into `tests::host_methods`.
+- Added M13 `math.sqrt(value)` as a deterministic finite numeric helper for
+  gameplay formulas. Runtime, managed-heap execution, Engine standard-native
+  registration, analysis facts, completions, and the game-server gameplay
+  helper demo now cover the helper through focused math stdlib modules.
 
 ## Next
 
