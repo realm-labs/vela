@@ -2616,6 +2616,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   `range.len` and `range.is_empty` descriptors with stable stdlib ownership,
   and the Engine reflection test plus runnable demo prove method discovery,
   params, returns, and attrs match the executable VM range helpers.
+- Extended the shared M9/M17 conformance fixture across logical
+  short-circuiting, unary operators, and local `-=`, `*=`, `/=`, and `%=`
+  compound assignments. The same fixture now proves HIR resolution, analysis
+  facts, compiler lowering, and VM execution for those grammar forms instead
+  of relying only on smaller unit tests.
 
 ## Next
 

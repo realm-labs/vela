@@ -78,6 +78,21 @@ fn main() {
         }
         total += value;
     }
+    let compound_score: int = 20;
+    compound_score -= 3;
+    compound_score *= 2;
+    compound_score /= 4;
+    compound_score %= 5;
+    let logical_score: int = {
+        let short_or = if true || (1 / 0 == 0) { 4 } else { 0 };
+        let short_and = if false && (1 / 0 == 0) { 0 } else { 6 };
+        let negated = -BASE + 5;
+        if !false {
+            short_or + short_and + negated
+        } else {
+            0
+        }
+    };
 
     let doubled: int = values
         .filter(|value| value % 2 == 1)
@@ -192,6 +207,8 @@ fn main() {
     let imported_const_score: int = imported_counts.sum() + imported_table["gem"];
 
     return total
+        + compound_score
+        + logical_score
         + doubled
         + quest_score
         + streak_score

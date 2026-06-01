@@ -87,6 +87,14 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(local_fact(bindings, &facts, "total"), Some(TypeFact::Int));
     assert_eq!(
+        local_fact(bindings, &facts, "compound_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "logical_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
         local_fact(bindings, &facts, "mapped"),
         Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown))
     );
