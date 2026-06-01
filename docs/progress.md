@@ -2488,6 +2488,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   unknown member/type/trait/variant candidate, and implements-helper coverage
   into a focused `tests::reflection_members` submodule. The central VM test
   hub now keeps shared fixtures instead of absorbing another reflection slice.
+- Continued the same M12 VM-boundary split by moving script record
+  `reflect.get`/`reflect.set`, managed-heap metadata records, script trait
+  implementation reflection, and reflective host-method patch coverage into a
+  focused `tests::reflection_values` submodule.
 
 ## Next
 
