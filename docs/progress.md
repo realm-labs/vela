@@ -2432,6 +2432,9 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Kept the M8/M9 bytecode compiler module reviewable by moving the large
   compiler unit-test suite out of `compiler.rs` and into a focused
   `compiler::tests` module without changing compiler behavior.
+- Kept the M8 HIR module graph reviewable by moving its inline graph,
+  import-resolution, binding, schema, and diagnostic unit tests into a focused
+  `module_graph::tests` module while preserving behavior.
 
 ## Next
 
