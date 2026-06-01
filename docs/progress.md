@@ -2409,6 +2409,10 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Kept M14 host-aware typed native Engine API coverage reviewable by splitting
   typed host/context-native registration, conversion-failure, and PatchTx
   mutation tests into a focused `tests::typed_host` module.
+- Kept M12/M14 Engine reflection coverage reviewable by splitting reflect
+  schema metadata, native/module/method reflection descriptors, permissioned
+  metadata lists, lookup budgets, and reflective PatchTx call tests into a
+  focused `tests::reflection` module.
 
 ## Next
 
