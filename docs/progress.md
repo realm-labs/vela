@@ -2479,6 +2479,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   tests into a focused `stdlib::function_tests` submodule. The coverage now
   explicitly includes the remaining math completion/fact helpers
   `math.ceil` and `math.abs` alongside set and context helpers.
+- Kept M12 VM-boundary reflection coverage reviewable by moving module,
+  function, export-policy, and unknown-name reflection tests into a focused
+  `tests::reflection_modules` submodule. Shared VM fixtures remain in the test
+  hub, while module/function reflection assertions no longer grow the central
+  VM test file.
 
 ## Next
 
