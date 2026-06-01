@@ -1130,6 +1130,25 @@ mod tests {
             TypeFact::Any
         );
         assert_eq!(
+            stdlib_function_fact("reflect.call", &[TypeFact::record("ReflectFunction")])
+                .expect("reflect.call function descriptor fact")
+                .returns,
+            TypeFact::Any
+        );
+        assert_eq!(
+            stdlib_function_fact(
+                "reflect.call",
+                &[
+                    TypeFact::record("ReflectFunction"),
+                    TypeFact::Int,
+                    TypeFact::String,
+                ]
+            )
+            .expect("reflect.call function descriptor args fact")
+            .returns,
+            TypeFact::Any
+        );
+        assert_eq!(
             stdlib_function_fact(
                 "reflect.implements",
                 &[TypeFact::host("Player"), TypeFact::record("ReflectTrait"),]

@@ -176,6 +176,11 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Any,
         ),
         fact(
+            "reflect.call",
+            vec![record("ReflectFunction")],
+            TypeFact::Any,
+        ),
+        fact(
             "reflect.implements",
             vec![TypeFact::Any, trait_target()],
             TypeFact::Bool,
@@ -250,6 +255,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         "reflect.has_variant" | "reflect.variant_is" if args.len() == 2 => TypeFact::Bool,
         "reflect.get" if args.len() == 2 => TypeFact::Any,
         "reflect.set" if args.len() == 3 => TypeFact::Any,
+        "reflect.call" if is_reflect_function_call(args) => TypeFact::Any,
         "reflect.call" if args.len() >= 2 => TypeFact::Any,
         "reflect.implements" if args.len() == 2 => TypeFact::Bool,
         _ => return None,
@@ -296,6 +302,13 @@ fn maybe_source_span() -> TypeFact {
 
 fn module_target() -> TypeFact {
     TypeFact::union([TypeFact::String, record("ReflectModule")])
+}
+
+fn is_reflect_function_call(args: &[TypeFact]) -> bool {
+    matches!(
+        args.first(),
+        Some(TypeFact::Record { name }) if name == "ReflectFunction"
+    )
 }
 
 fn record(name: &'static str) -> TypeFact {

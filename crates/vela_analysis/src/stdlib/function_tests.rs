@@ -262,6 +262,11 @@ fn function_completion_facts_enumerate_global_api_surface() {
             && fact.returns == TypeFact::Any
     }));
     assert!(facts.iter().any(|fact| {
+        fact.name == "reflect.call"
+            && fact.params == vec![TypeFact::record("ReflectFunction")]
+            && fact.returns == TypeFact::Any
+    }));
+    assert!(facts.iter().any(|fact| {
         fact.name == "reflect.implements"
             && fact.params
                 == vec![

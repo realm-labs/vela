@@ -2545,6 +2545,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `reflect.call(function, args...)`; VM dispatch reuses installed pure and
   host-native tables, enforces function callability, explicit permissions, and
   host/event effect permissions, and keeps host mutation inside `PatchTx`.
+- Aligned M12/M13 analysis stdlib facts with reflected native-function calls.
+  Completion metadata now exposes the `ReflectFunction` descriptor form of
+  `reflect.call`, and function fact lookup recognizes zero-argument descriptor
+  calls without widening the existing host-method call shape.
 
 ## Next
 
