@@ -7446,3 +7446,28 @@ Consequences:
   not mutate the declaration or bypass `PatchTx`.
 - Record and enum const evaluation remains a separate explicit feature because
   schema-aware construction has stronger metadata and default-field rules.
+
+## 2026-06-01: Engine Standard Math Natives Publish Reflection Metadata
+
+Status: Accepted
+
+Context:
+`EngineBuilder::with_standard_natives()` installed deterministic math helpers
+into the VM, but the Engine TypeRegistry did not publish descriptors for those
+helpers. Reflection therefore saw an empty `math` module even though scripts
+could call functions such as `math.max` and `math.sqrt`.
+
+Decision:
+Keep standard-native execution in the VM stdlib modules, and let the Engine
+publish stable `NativeFunctionDesc` metadata for deterministic math helpers
+when standard natives are enabled. Permission-gated `math.random` remains a
+separate Engine native installed only through `with_controlled_random`, so it
+can stay hidden from reflection unless its own access policy allows it.
+
+Consequences:
+- Admin/debug reflection can inspect deterministic math functions and module
+  exports through the same TypeRegistry path as host-registered natives.
+- Standard math descriptors have stable IDs without adding duplicate VM native
+  registration or moving stdlib execution into the Engine.
+- Hosts can still override or add explicit native descriptors without exposing
+  real Rust references or changing the no-generics script boundary.

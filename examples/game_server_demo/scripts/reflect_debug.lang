@@ -29,11 +29,15 @@ fn main(ctx, player) {
     let ctx_now = reflect.function("ctx.now");
     let ctx_tick = reflect.function("ctx.tick");
     let ctx_elapsed = reflect.function("ctx.elapsed_since");
+    let math_max = reflect.function("math.max");
+    let math_sqrt = reflect.function("math.sqrt");
     let reward_params = reflect.params(reward_function);
     let main_params = reflect.params(main_function);
+    let math_max_params = reflect.params(math_max);
     let reward_access = reflect.access(reward_function);
     let reward_attrs = reflect.attrs(reward_module);
     let reward_effects = reflect.effects(reward_function);
+    let math_max_effects = reflect.effects(math_max);
     let ctx_now_access = reflect.access(ctx_now);
     let ctx_now_permissions = reflect.required_permissions(ctx_now);
     let ctx_elapsed_access = reflect.access(ctx_elapsed);
@@ -137,6 +141,8 @@ fn main(ctx, player) {
         && reflect.has_function("ctx.now")
         && reflect.has_function("ctx.tick")
         && reflect.has_function("ctx.elapsed_since")
+        && reflect.has_function("math.max")
+        && reflect.has_function("math.sqrt")
         && !reflect.has_function("game.reward.missing")
         && reflect.name(reward_function) == "game.reward.grant"
         && reflect.kind(reward_function) == "function"
@@ -155,6 +161,18 @@ fn main(ctx, player) {
         && reward_params[0].type == "Player"
         && reward_params[1].name == "item_id"
         && reward_params[1].type == "string"
+        && reflect.name(math_max) == "math.max"
+        && reflect.kind(math_max) == "function"
+        && reflect.origin(math_max) == "host"
+        && reflect.attr(math_max, "stdlib") == "math"
+        && reflect.returns(math_max) == "any"
+        && reflect.returns(math_sqrt) == "float"
+        && !math_max_effects.reads_host
+        && !math_max_effects.writes_host
+        && !math_max_effects.emits_events
+        && math_max_params.len() == 2
+        && math_max_params[0].name == "left"
+        && math_max_params[1].name == "right"
         && reflect.name(main_function) == "main"
         && reflect.kind(main_function) == "function"
         && reflect.origin(main_function) == "script"
@@ -173,7 +191,10 @@ fn main(ctx, player) {
         && ctx_exports.contains("ctx.now")
         && ctx_exports.contains("ctx.tick")
         && ctx_exports.contains("ctx.elapsed_since")
-        && math_exports.is_empty()
+        && math_exports.len() == 14
+        && math_exports.contains("math.max")
+        && math_exports.contains("math.sqrt")
+        && math_exports.contains("math.distance3d")
         && reflect.name(ctx_now) == "ctx.now"
         && reflect.name(ctx_tick) == "ctx.tick"
         && reflect.name(ctx_elapsed) == "ctx.elapsed_since"
@@ -208,14 +229,16 @@ fn main(ctx, player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
-        && functions.len() == 5
+        && functions.len() == 19
         && functions.any(|function| reflect.id(function) == reflect.id(reward_function))
         && functions.any(|function| reflect.name(function) == "main"
             && reflect.origin(function) == "script")
         && functions.any(|function| reflect.name(function) == "ctx.now"
             && reflect.returns(function) == "int")
         && functions.any(|function| reflect.name(function) == "ctx.elapsed_since"
-            && reflect.returns(function) == "int") {
+            && reflect.returns(function) == "int")
+        && functions.any(|function| reflect.name(function) == "math.max"
+            && reflect.attr(function, "stdlib") == "math") {
         reflect.set(player, "level", 12);
         reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
         let metadata_score = reflect.get(player, "level") + fields.len() + reward_params.len();

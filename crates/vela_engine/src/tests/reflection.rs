@@ -141,6 +141,72 @@ fn engine_registers_native_function_reflection_metadata() {
 }
 
 #[test]
+fn engine_standard_natives_register_math_reflection_metadata() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
+        .build()
+        .expect("engine should build with standard natives");
+    let registry = engine.registry();
+
+    let math = registry.module_by_name("math").expect("math module");
+    assert_eq!(math.exports.len(), 14);
+    assert!(math.exports.iter().any(|export| export.name == "math.max"));
+    assert!(math.exports.iter().any(|export| export.name == "math.sqrt"));
+
+    let max = registry.function_by_name("math.max").expect("math.max");
+    assert_eq!(max.module.as_deref(), Some("math"));
+    assert_eq!(max.params.len(), 2);
+    assert_eq!(max.params[0].name, "left");
+    assert_eq!(max.params[1].name, "right");
+    assert_eq!(max.return_type.as_deref(), Some("any"));
+    assert_eq!(max.attrs.get("stdlib"), Some("math"));
+    assert!(max.access.reflect_visible);
+
+    let sqrt = registry.function_by_name("math.sqrt").expect("math.sqrt");
+    assert_eq!(sqrt.return_type.as_deref(), Some("float"));
+
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let math = reflect.module("math");
+    let max = reflect.function("math.max");
+    let sqrt = reflect.function("math.sqrt");
+    let params = reflect.params(max);
+    let exports = reflect.exports(math);
+    return reflect.has_function("math.max")
+        && reflect.has_function("math.sqrt")
+        && !reflect.has_function("math.random")
+        && exports.len() == 14
+        && exports.contains("math.max")
+        && exports.contains("math.sqrt")
+        && reflect.attr(max, "stdlib") == "math"
+        && reflect.returns(max) == "any"
+        && reflect.returns(sqrt) == "float"
+        && params.len() == 2
+        && params[0].name == "left"
+        && params[1].name == "right";
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Bool(true))
+    );
+}
+
+#[test]
 fn engine_builder_registers_module_reflection_metadata() {
     let engine = Engine::builder()
         .register_module(

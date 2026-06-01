@@ -19,6 +19,7 @@ mod reload;
 mod runtime;
 mod schema;
 mod source;
+mod standard;
 mod typed;
 mod validation;
 
@@ -48,6 +49,13 @@ pub use reload::{
 pub use runtime::{CallOptions, Runtime};
 pub use schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use source::{EngineSourceError, EngineSourceErrorKind};
+pub use standard::{
+    MATH_ABS_FUNCTION_ID, MATH_CEIL_FUNCTION_ID, MATH_CLAMP_FUNCTION_ID,
+    MATH_DISTANCE2D_FUNCTION_ID, MATH_DISTANCE3D_FUNCTION_ID, MATH_FLOOR_FUNCTION_ID,
+    MATH_LERP_FUNCTION_ID, MATH_MAX_FUNCTION_ID, MATH_MIN_FUNCTION_ID,
+    MATH_MOVE_TOWARDS_FUNCTION_ID, MATH_POW_FUNCTION_ID, MATH_ROUND_FUNCTION_ID,
+    MATH_SIGN_FUNCTION_ID, MATH_SQRT_FUNCTION_ID,
+};
 pub use typed::{
     IntoNativeReturn, TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
     TypedNativeMethodFunction,

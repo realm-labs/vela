@@ -272,6 +272,9 @@ impl EngineBuilder {
         for module in self.modules {
             registry.register_module(module);
         }
+        if self.standard_natives {
+            metadata::inject_standard_native_metadata(&mut registry);
+        }
         metadata::inject_native_function_metadata(
             &mut registry,
             &self.native_functions,

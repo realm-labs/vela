@@ -2510,6 +2510,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   now coordinates string dispatch, higher-order callback dispatch, built-in
   collection/value methods, and script impl fallback without owning every
   standard method branch itself.
+- Extended M12/M13 Engine standard-native reflection metadata for deterministic
+  math helpers. `EngineBuilder::with_standard_natives()` now registers stable
+  math function descriptors in the TypeRegistry for reflection and module
+  exports while VM execution remains owned by the standard-native VM modules;
+  the game-server reflection demo proves `math.max`/`math.sqrt` metadata
+  without exposing permission-gated `math.random`.
 
 ## Next
 

@@ -72,6 +72,20 @@ pub(crate) fn inject_native_function_metadata(
     }
 }
 
+pub(crate) fn inject_standard_native_metadata(registry: &mut TypeRegistry) {
+    for desc in crate::standard::standard_native_function_descs() {
+        if registry.function_by_name(&desc.name).is_some() {
+            continue;
+        }
+        if let Some(module_name) = native_function_module(&desc.name)
+            && registry.module_by_name(&module_name).is_none()
+        {
+            registry.register_module(ModuleDesc::new(module_name));
+        }
+        registry.register_function(reflect_function(&desc));
+    }
+}
+
 fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
     let mut reflected = FunctionDesc::new(desc.id, desc.name.clone())
         .origin(DeclOrigin::Host)
