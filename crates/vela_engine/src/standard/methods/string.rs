@@ -1,0 +1,191 @@
+use vela_reflect::MethodDesc;
+
+use super::{MethodSpec, ParamSpec, descs};
+use crate::standard::ids::{
+    STRING_CHAR_AT_METHOD_ID, STRING_CONTAINS_METHOD_ID, STRING_ENDS_WITH_METHOD_ID,
+    STRING_FIND_METHOD_ID, STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
+    STRING_PARSE_BOOL_METHOD_ID, STRING_PARSE_FLOAT_METHOD_ID, STRING_PARSE_INT_METHOD_ID,
+    STRING_REPEAT_METHOD_ID, STRING_REPLACE_METHOD_ID, STRING_SLICE_METHOD_ID,
+    STRING_SPLIT_LINES_METHOD_ID, STRING_SPLIT_METHOD_ID, STRING_SPLIT_ONCE_METHOD_ID,
+    STRING_SPLIT_WHITESPACE_METHOD_ID, STRING_STARTS_WITH_METHOD_ID, STRING_STRIP_PREFIX_METHOD_ID,
+    STRING_STRIP_SUFFIX_METHOD_ID, STRING_TO_LOWER_METHOD_ID, STRING_TO_UPPER_METHOD_ID,
+    STRING_TRIM_END_METHOD_ID, STRING_TRIM_METHOD_ID, STRING_TRIM_START_METHOD_ID,
+};
+
+pub(crate) fn string_method_descs() -> Vec<MethodDesc> {
+    descs(STRING_METHODS, "string")
+}
+
+const STRING_METHODS: &[MethodSpec] = &[
+    MethodSpec::new(
+        STRING_LEN_METHOD_ID,
+        "len",
+        &[],
+        "int",
+        "Returns the string length in characters.",
+    ),
+    MethodSpec::new(
+        STRING_IS_EMPTY_METHOD_ID,
+        "is_empty",
+        &[],
+        "bool",
+        "Returns true when the string has no characters.",
+    ),
+    MethodSpec::new(
+        STRING_CONTAINS_METHOD_ID,
+        "contains",
+        &[ParamSpec::new("needle", "string")],
+        "bool",
+        "Returns true when the string contains the needle.",
+    ),
+    MethodSpec::new(
+        STRING_FIND_METHOD_ID,
+        "find",
+        &[ParamSpec::new("needle", "string")],
+        "Option",
+        "Returns the character index of the first match, or Option.None.",
+    ),
+    MethodSpec::new(
+        STRING_STARTS_WITH_METHOD_ID,
+        "starts_with",
+        &[ParamSpec::new("prefix", "string")],
+        "bool",
+        "Returns true when the string starts with the prefix.",
+    ),
+    MethodSpec::new(
+        STRING_ENDS_WITH_METHOD_ID,
+        "ends_with",
+        &[ParamSpec::new("suffix", "string")],
+        "bool",
+        "Returns true when the string ends with the suffix.",
+    ),
+    MethodSpec::new(
+        STRING_STRIP_PREFIX_METHOD_ID,
+        "strip_prefix",
+        &[ParamSpec::new("prefix", "string")],
+        "Option",
+        "Returns the string without the prefix, or Option.None.",
+    ),
+    MethodSpec::new(
+        STRING_STRIP_SUFFIX_METHOD_ID,
+        "strip_suffix",
+        &[ParamSpec::new("suffix", "string")],
+        "Option",
+        "Returns the string without the suffix, or Option.None.",
+    ),
+    MethodSpec::new(
+        STRING_TO_UPPER_METHOD_ID,
+        "to_upper",
+        &[],
+        "string",
+        "Returns an uppercase copy.",
+    ),
+    MethodSpec::new(
+        STRING_TO_LOWER_METHOD_ID,
+        "to_lower",
+        &[],
+        "string",
+        "Returns a lowercase copy.",
+    ),
+    MethodSpec::new(
+        STRING_TRIM_METHOD_ID,
+        "trim",
+        &[],
+        "string",
+        "Returns a copy with leading and trailing whitespace removed.",
+    ),
+    MethodSpec::new(
+        STRING_TRIM_START_METHOD_ID,
+        "trim_start",
+        &[],
+        "string",
+        "Returns a copy with leading whitespace removed.",
+    ),
+    MethodSpec::new(
+        STRING_TRIM_END_METHOD_ID,
+        "trim_end",
+        &[],
+        "string",
+        "Returns a copy with trailing whitespace removed.",
+    ),
+    MethodSpec::new(
+        STRING_REPLACE_METHOD_ID,
+        "replace",
+        &[
+            ParamSpec::new("old", "string"),
+            ParamSpec::new("new", "string"),
+        ],
+        "string",
+        "Returns a copy with all matches replaced.",
+    ),
+    MethodSpec::new(
+        STRING_REPEAT_METHOD_ID,
+        "repeat",
+        &[ParamSpec::new("count", "int")],
+        "string",
+        "Returns the string repeated count times.",
+    ),
+    MethodSpec::new(
+        STRING_SLICE_METHOD_ID,
+        "slice",
+        &[ParamSpec::new("start", "int"), ParamSpec::new("end", "int")],
+        "string",
+        "Returns the substring in the character range.",
+    ),
+    MethodSpec::new(
+        STRING_SPLIT_METHOD_ID,
+        "split",
+        &[ParamSpec::new("separator", "string")],
+        "array",
+        "Returns string segments split by the separator.",
+    ),
+    MethodSpec::new(
+        STRING_SPLIT_ONCE_METHOD_ID,
+        "split_once",
+        &[ParamSpec::new("separator", "string")],
+        "Option",
+        "Returns the first split pair, or Option.None.",
+    ),
+    MethodSpec::new(
+        STRING_SPLIT_LINES_METHOD_ID,
+        "split_lines",
+        &[],
+        "array",
+        "Returns the string split into lines.",
+    ),
+    MethodSpec::new(
+        STRING_SPLIT_WHITESPACE_METHOD_ID,
+        "split_whitespace",
+        &[],
+        "array",
+        "Returns the string split on whitespace.",
+    ),
+    MethodSpec::new(
+        STRING_CHAR_AT_METHOD_ID,
+        "char_at",
+        &[ParamSpec::new("index", "int")],
+        "Option",
+        "Returns the character at the character index, or Option.None.",
+    ),
+    MethodSpec::new(
+        STRING_PARSE_INT_METHOD_ID,
+        "parse_int",
+        &[],
+        "Option",
+        "Parses the string as an integer, or Option.None.",
+    ),
+    MethodSpec::new(
+        STRING_PARSE_FLOAT_METHOD_ID,
+        "parse_float",
+        &[],
+        "Option",
+        "Parses the string as a float, or Option.None.",
+    ),
+    MethodSpec::new(
+        STRING_PARSE_BOOL_METHOD_ID,
+        "parse_bool",
+        &[],
+        "Option",
+        "Parses the string as a boolean, or Option.None.",
+    ),
+];

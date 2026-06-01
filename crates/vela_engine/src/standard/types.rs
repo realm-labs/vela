@@ -7,7 +7,7 @@ use super::ids::{
     OPTION_SOME_VARIANT_ID, OPTION_TYPE_ID, RESULT_ERR_FIELD_ID, RESULT_ERR_VARIANT_ID,
     RESULT_OK_FIELD_ID, RESULT_OK_VARIANT_ID, RESULT_TYPE_ID, SET_TYPE_ID, STRING_TYPE_ID,
 };
-use super::methods::string_method_descs;
+use super::methods::{array_method_descs, map_method_descs, set_method_descs, string_method_descs};
 
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
     let mut descs = vec![
@@ -21,14 +21,9 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
             "Floating-point value type.",
         ),
         string_type_desc(),
-        builtin_type(
-            "array",
-            ARRAY_TYPE_ID,
-            TypeKind::Array,
-            "Array collection type.",
-        ),
-        builtin_type("map", MAP_TYPE_ID, TypeKind::Map, "Map collection type."),
-        builtin_type("set", SET_TYPE_ID, TypeKind::Set, "Set collection type."),
+        array_type_desc(),
+        map_type_desc(),
+        set_type_desc(),
         builtin_type(
             "function",
             FUNCTION_TYPE_ID,
@@ -64,6 +59,35 @@ fn string_type_desc() -> TypeDesc {
         "String value type.",
     );
     for method in string_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
+}
+
+fn array_type_desc() -> TypeDesc {
+    let mut desc = builtin_type(
+        "array",
+        ARRAY_TYPE_ID,
+        TypeKind::Array,
+        "Array collection type.",
+    );
+    for method in array_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
+}
+
+fn map_type_desc() -> TypeDesc {
+    let mut desc = builtin_type("map", MAP_TYPE_ID, TypeKind::Map, "Map collection type.");
+    for method in map_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
+}
+
+fn set_type_desc() -> TypeDesc {
+    let mut desc = builtin_type("set", SET_TYPE_ID, TypeKind::Set, "Set collection type.");
+    for method in set_method_descs() {
         desc = desc.method(method);
     }
     desc

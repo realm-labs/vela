@@ -2560,6 +2560,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   `split_once`, `parse_int`, search, transform, split, and parse helpers)
   through a focused `standard::methods` module, and reflection tests prove
   method discovery, params, return hints, and stdlib attributes.
+- Extended M12/M13 reflected collection method metadata for the executable
+  `array`, `map`, and `set` standard-library surfaces. Standard method
+  descriptors now live under split `standard::methods` submodules with shared
+  spec-table builders, and Engine reflection tests prove collection method
+  discovery, callback/default parameter hints, return hints, and stdlib
+  ownership attributes without moving VM collection execution into Engine.
 - Kept M9/M13 method dispatch architecture reviewable by replacing
   `script_methods` long parameter lists with a cohesive `ScriptMethodDispatch`
   context. String, callback, builtin, and script-impl method paths now share
@@ -2568,7 +2574,8 @@ post-MVP reference or optional tracks, not MVP requirements.
 ## Next
 
 - Continue M12/M13 with remaining reflection access/reporting polish,
-  standard-library gameplay conveniences, and collection/context metadata gaps.
+  standard-library gameplay conveniences, and context/gameplay helper metadata
+  gaps.
 - Continue targeted M14/M15 slices only where they unblock embedding and
   safe-point hot reload workflows.
 - Keep M18 performance work limited to measurement scaffolding until M12-M17

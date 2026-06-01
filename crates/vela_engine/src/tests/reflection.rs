@@ -182,6 +182,40 @@ fn engine_standard_natives_register_reflection_metadata() {
     let array_type = registry.type_by_name("array").expect("array type");
     assert_eq!(array_type.kind, vela_reflect::TypeKind::Array);
     assert_eq!(array_type.attrs.get("stdlib"), Some("builtin"));
+    let array_push = array_type
+        .methods
+        .iter()
+        .find(|method| method.name == "push")
+        .expect("array.push method metadata");
+    assert_eq!(array_push.params[0].type_hint.as_deref(), Some("any"));
+    assert_eq!(array_push.return_type.as_deref(), Some("null"));
+    let array_map = array_type
+        .methods
+        .iter()
+        .find(|method| method.name == "map")
+        .expect("array.map method metadata");
+    assert_eq!(array_map.params[0].type_hint.as_deref(), Some("function"));
+    assert_eq!(array_map.return_type.as_deref(), Some("array"));
+
+    let map_type = registry.type_by_name("map").expect("map type");
+    assert_eq!(map_type.kind, vela_reflect::TypeKind::Map);
+    let map_get = map_type
+        .methods
+        .iter()
+        .find(|method| method.name == "get")
+        .expect("map.get method metadata");
+    assert_eq!(map_get.params[0].name, "key");
+    assert_eq!(map_get.return_type.as_deref(), Some("Option"));
+
+    let set_type = registry.type_by_name("set").expect("set type");
+    assert_eq!(set_type.kind, vela_reflect::TypeKind::Set);
+    let set_union = set_type
+        .methods
+        .iter()
+        .find(|method| method.name == "union")
+        .expect("set.union method metadata");
+    assert_eq!(set_union.params[0].type_hint.as_deref(), Some("set"));
+    assert_eq!(set_union.return_type.as_deref(), Some("set"));
 
     let option_type = registry.type_by_name("Option").expect("Option type");
     assert_eq!(option_type.kind, vela_reflect::TypeKind::ScriptEnum);
@@ -302,9 +336,18 @@ fn main() {
     let option_variants = reflect.variants(option_type);
     let result_variants = reflect.variants(result_type);
     let string_methods = reflect.methods(string_type);
+    let array_methods = reflect.methods(array_type);
+    let map_type = reflect.type_info("map");
+    let set_type = reflect.type_info("set");
+    let map_methods = reflect.methods(map_type);
+    let set_methods = reflect.methods(set_type);
     let trim = reflect.method(string_type, "trim");
     let split_once = reflect.method(string_type, "split_once");
     let parse_int = reflect.method(string_type, "parse_int");
+    let array_push = reflect.method(array_type, "push");
+    let array_map = reflect.method(array_type, "map");
+    let map_get = reflect.method(map_type, "get");
+    let set_union = reflect.method(set_type, "union");
     let max = reflect.function("math.max");
     let sqrt = reflect.function("math.sqrt");
     let some = reflect.function("option.some");
@@ -325,10 +368,14 @@ fn main() {
         && reflect.has_function("set.from_array")
         && reflect.has_type("string")
         && reflect.has_type("array")
+        && reflect.has_type("map")
+        && reflect.has_type("set")
         && reflect.has_type("Option")
         && reflect.has_type("Result")
         && reflect.kind(string_type) == "string"
         && reflect.kind(array_type) == "array"
+        && reflect.kind(map_type) == "map"
+        && reflect.kind(set_type) == "set"
         && reflect.kind(option_type) == "script_enum"
         && reflect.kind(result_type) == "script_enum"
         && reflect.attr(string_type, "stdlib") == "builtin"
@@ -346,6 +393,24 @@ fn main() {
         && split_once.params[0].type == "string"
         && reflect.returns(split_once) == "Option"
         && reflect.returns(parse_int) == "Option"
+        && array_methods.len() >= 28
+        && map_methods.len() >= 19
+        && set_methods.len() >= 21
+        && reflect.has_method(array_type, "push")
+        && reflect.has_method(array_type, "map")
+        && reflect.has_method(map_type, "get")
+        && reflect.has_method(map_type, "map_values")
+        && reflect.has_method(set_type, "union")
+        && reflect.has_method(set_type, "is_subset")
+        && array_push.params[0].name == "value"
+        && array_push.params[0].type == "any"
+        && reflect.returns(array_push) == "null"
+        && array_map.params[0].type == "function"
+        && reflect.returns(array_map) == "array"
+        && map_get.params[0].name == "key"
+        && reflect.returns(map_get) == "Option"
+        && set_union.params[0].type == "set"
+        && reflect.returns(set_union) == "set"
         && option_variants.len() == 2
         && option_variants[0].name == "Some"
         && option_variants[0].fields[0].name == "0"
