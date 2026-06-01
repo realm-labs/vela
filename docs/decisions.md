@@ -7575,3 +7575,32 @@ Consequences:
 - Engine installation registers native dispatch entries before reflection so
   reflective function calls see the same callable surface as normal script
   native calls.
+
+## 2026-06-01: Reflected Value Methods Do Not Drive Host Method Lowering
+
+Status: Accepted
+
+Context:
+Standard `string`, `array`, `map`, and `set` methods are now reflected as
+`MethodDesc` metadata so scripts and tools can inspect the executable standard
+library surface. The bytecode compiler also derives host method lowering
+options from the Engine `TypeRegistry`. Treating every reflected method as a
+host method made value-method metadata affect unrelated native module calls;
+for example `reflect.set(...)` could be mistaken for a host method named
+`set`.
+
+Decision:
+Compiler options only add host method lowering entries for types that have a
+host type ID. Reflected standard value methods remain registry metadata and are
+executed by VM value-method dispatch. Engine compiler options also record
+native module roots, including `reflect`, so dotted native module calls are not
+rewritten into host method calls when a host type happens to define the same
+method name.
+
+Consequences:
+- Reflection metadata for standard value methods no longer changes bytecode
+  lowering of native module calls.
+- Field-path host method calls such as `player.inventory.add(...)` continue to
+  lower through configured host methods.
+- Hosts can still use method names like `set`, `max`, or `grant` without
+  shadowing native module roots such as `reflect`, `math`, or `game`.

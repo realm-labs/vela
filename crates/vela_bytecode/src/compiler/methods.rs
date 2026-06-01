@@ -32,6 +32,9 @@ pub(super) fn host_method_call<'ast>(
             if path.len() < 2 {
                 return None;
             }
+            if options.is_native_module_root(&path[0]) {
+                return None;
+            }
             let method_name = path.last()?;
             let method = options.host_method(receiver_type, method_name)?;
             let path = host_method_path_receiver(options, &path[..path.len() - 1])?;

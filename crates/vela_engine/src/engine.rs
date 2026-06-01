@@ -134,7 +134,11 @@ impl Engine {
 
     #[must_use]
     pub fn compiler_options(&self) -> CompilerOptions {
-        compiler_options_from_registry(&self.registry)
+        let mut options = compiler_options_from_registry(&self.registry);
+        if self.reflection_policy.is_some() {
+            options = options.with_native_module_root("reflect");
+        }
+        options
     }
 
     #[must_use]

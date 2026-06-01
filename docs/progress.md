@@ -2572,6 +2572,13 @@ post-MVP reference or optional tracks, not MVP requirements.
   function export injection, so `reflect.module`, `reflect.docs`, `reflect.attr`,
   and `reflect.exports` report module ownership instead of blank auto-created
   containers.
+- Fixed the Engine compiler boundary introduced by reflected standard value
+  methods. Compiler options now reserve native module roots such as `reflect`
+  and only lower host methods from host-backed type descriptors, preserving
+  field-path host calls while keeping `reflect.set(...)` and other native
+  module calls from being mistaken for value or host methods. The runnable
+  `reflect_debug` demo now also verifies standard module docs/attrs and
+  standard string/collection method metadata.
 - Kept M9/M13 method dispatch architecture reviewable by replacing
   `script_methods` long parameter lists with a cohesive `ScriptMethodDispatch`
   context. String, callback, builtin, and script-impl method paths now share

@@ -3,6 +3,11 @@ use vela_reflect::TypeRegistry;
 
 pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> CompilerOptions {
     let mut options = CompilerOptions::new();
+    for module in registry.modules() {
+        if let Some(root) = module.name.split('.').next() {
+            options = options.with_native_module_root(root);
+        }
+    }
     for desc in registry.types() {
         options = options.with_host_type(desc.key.name.clone());
         for field in &desc.fields {
@@ -13,10 +18,16 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
                 options = options.with_host_variant_field(field.name.clone(), field.id);
             }
         }
-        for method in &desc.methods {
-            options = options
-                .with_host_method(method.name.clone(), method.id)
-                .with_host_method_for_type(desc.key.name.clone(), method.name.clone(), method.id);
+        if desc.host_type_id.is_some() {
+            for method in &desc.methods {
+                options = options
+                    .with_host_method(method.name.clone(), method.id)
+                    .with_host_method_for_type(
+                        desc.key.name.clone(),
+                        method.name.clone(),
+                        method.id,
+                    );
+            }
         }
     }
     options

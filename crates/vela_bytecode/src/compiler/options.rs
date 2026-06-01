@@ -9,6 +9,7 @@ pub struct CompilerOptions {
     pub(super) host_methods: HashMap<String, HostMethodId>,
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
     pub(super) host_types: HashSet<String>,
+    pub(super) native_module_roots: HashSet<String>,
 }
 
 impl CompilerOptions {
@@ -42,6 +43,12 @@ impl CompilerOptions {
     }
 
     #[must_use]
+    pub fn with_native_module_root(mut self, root: impl Into<String>) -> Self {
+        self.native_module_roots.insert(root.into());
+        self
+    }
+
+    #[must_use]
     pub fn with_host_method_for_type(
         mut self,
         type_name: impl Into<String>,
@@ -67,5 +74,9 @@ impl CompilerOptions {
             })
             .copied()
             .or_else(|| self.host_methods.get(name).copied())
+    }
+
+    pub(super) fn is_native_module_root(&self, root: &str) -> bool {
+        self.native_module_roots.contains(root)
     }
 }

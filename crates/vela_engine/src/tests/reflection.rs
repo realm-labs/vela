@@ -1,10 +1,10 @@
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
 use vela_hot_reload::{AccessAbi, FunctionAbi, MethodAbi};
 use vela_reflect::{
-    FieldAccess, FieldDesc, ModuleDesc, ReflectErrorKind, ReflectPermission, ReflectPermissionSet,
-    TypeDesc, TypeKey,
+    FieldAccess, FieldDesc, MethodDesc, ModuleDesc, ReflectErrorKind, ReflectPermission,
+    ReflectPermissionSet, TypeDesc, TypeKey,
 };
 use vela_vm::{HostExecution, Value, VmErrorKind};
 
@@ -830,6 +830,51 @@ fn main(player) {
         })
     ));
     assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn engine_compiler_keeps_reflect_module_calls_off_host_method_lowering() {
+    let engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(9), "set")),
+        )
+        .reflection_policy(vela_reflect::ReflectPolicy::all())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    reflect.set(player, "level", 12);
+    return reflect.get(player, "level");
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("reflect.set should compile as a native module call");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(
+        HostPath::new(host_ref).field(FieldId::new(1)),
+        HostValue::Int(7),
+    );
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(Value::Int(12))
+    );
+    assert_eq!(tx.patches().len(), 1);
 }
 
 #[test]
