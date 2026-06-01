@@ -90,6 +90,10 @@ pub enum ReflectErrorKind {
         method: String,
         permission: ReflectPermission,
     },
+    FunctionEffectPermissionDenied {
+        function: String,
+        permission: ReflectPermission,
+    },
     FunctionPermissionDenied {
         function: String,
         permission: String,

@@ -54,6 +54,7 @@ fn main(ctx, player) {
     let reward_effects = reflect.effects(reward_function);
     let math_max_effects = reflect.effects(math_max);
     let math_max_access = reflect.access(math_max);
+    let reflected_max = reflect.call(math_max, 4, 9);
     let option_some_effects = reflect.effects(option_some);
     let option_some_access = reflect.access(option_some);
     let ctx_now_access = reflect.access(ctx_now);
@@ -230,6 +231,7 @@ fn main(ctx, player) {
         && !math_max_effects.emits_events
         && math_max_access.reflect_visible
         && math_max_access.reflect_callable
+        && reflected_max == 9
         && math_max_params.len() == 2
         && math_max_params[0].name == "left"
         && math_max_params[1].name == "right"

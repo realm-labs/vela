@@ -20,6 +20,9 @@ impl ReflectErrorKind {
             Self::FunctionNotReflectCallable { .. } => "reflect::function_not_reflect_callable",
             Self::MethodPermissionDenied { .. } => "reflect::method_permission_denied",
             Self::MethodEffectPermissionDenied { .. } => "reflect::method_effect_permission_denied",
+            Self::FunctionEffectPermissionDenied { .. } => {
+                "reflect::function_effect_permission_denied"
+            }
             Self::FunctionPermissionDenied { .. } => "reflect::function_permission_denied",
             Self::FieldPermissionDenied { .. } => "reflect::field_permission_denied",
             Self::LookupBudgetExceeded { .. } => "reflect::lookup_budget_exceeded",
@@ -96,6 +99,15 @@ impl ReflectErrorKind {
             Self::MethodEffectPermissionDenied { method, permission } => {
                 format!(
                     "method `{method}` requires reflection effect permission `{}`",
+                    permission.as_str()
+                )
+            }
+            Self::FunctionEffectPermissionDenied {
+                function,
+                permission,
+            } => {
+                format!(
+                    "function `{function}` requires reflection effect permission `{}`",
                     permission.as_str()
                 )
             }

@@ -205,6 +205,9 @@ impl Engine {
         if self.standard_natives {
             vm.register_standard_natives();
         }
+        self.install_native_functions(vm);
+        self.install_host_native_functions(vm);
+        self.install_context_host_native_functions(vm);
         if let Some(policy) = &self.reflection_policy {
             let policy = policy
                 .clone()
@@ -215,6 +218,9 @@ impl Engine {
         } else {
             vm.register_type_registry(registry);
         }
+    }
+
+    fn install_native_functions(&self, vm: &mut Vm) {
         for entry in self.native_functions.values() {
             let name = entry.desc.name.clone();
             let access = entry.desc.access.clone();
@@ -225,6 +231,9 @@ impl Engine {
                 function(args)
             });
         }
+    }
+
+    fn install_host_native_functions(&self, vm: &mut Vm) {
         for entry in self.host_native_functions.values() {
             let name = entry.desc.name.clone();
             let access = entry.desc.access.clone();
@@ -235,6 +244,9 @@ impl Engine {
                 function(args, host)
             });
         }
+    }
+
+    fn install_context_host_native_functions(&self, vm: &mut Vm) {
         for entry in self.context_host_native_functions.values() {
             let name = entry.desc.name.clone();
             let access = entry.desc.access.clone();

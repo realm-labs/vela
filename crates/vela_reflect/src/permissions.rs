@@ -283,6 +283,14 @@ impl ReflectPolicy {
                 },
             ));
         }
+        if let Some(permission) = missing_function_effect_permission(function, &self.permissions) {
+            return Err(ReflectError::new(
+                ReflectErrorKind::FunctionEffectPermissionDenied {
+                    function: function.name.clone(),
+                    permission,
+                },
+            ));
+        }
         Ok(())
     }
 
@@ -387,6 +395,25 @@ fn missing_method_effect_permission(
         return Some(ReflectPermission::CallHostWriteMethods);
     }
     if method.effects.emits_events && !permissions.contains(ReflectPermission::CallEventMethods) {
+        return Some(ReflectPermission::CallEventMethods);
+    }
+    None
+}
+
+fn missing_function_effect_permission(
+    function: &FunctionDesc,
+    permissions: &ReflectPermissionSet,
+) -> Option<ReflectPermission> {
+    if function.effects.reads_host && !permissions.contains(ReflectPermission::CallHostReadMethods)
+    {
+        return Some(ReflectPermission::CallHostReadMethods);
+    }
+    if function.effects.writes_host
+        && !permissions.contains(ReflectPermission::CallHostWriteMethods)
+    {
+        return Some(ReflectPermission::CallHostWriteMethods);
+    }
+    if function.effects.emits_events && !permissions.contains(ReflectPermission::CallEventMethods) {
         return Some(ReflectPermission::CallEventMethods);
     }
     None

@@ -469,6 +469,26 @@ pub fn functions_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) ->
     ))
 }
 
+pub fn callable_function_name_with_policy(
+    registry: &TypeRegistry,
+    target: &ReflectValue,
+    policy: &ReflectPolicy,
+) -> ReflectResult<Option<String>> {
+    let Some(name) = function_target_name(target)? else {
+        return Ok(None);
+    };
+    let desc = registry.function_by_name(name).ok_or_else(|| {
+        let related = function_candidates(registry, name);
+        ReflectError::new(ReflectErrorKind::UnknownFunction {
+            function: name.to_owned(),
+            candidates: candidate_names(&related),
+            related,
+        })
+    })?;
+    policy.require_function_call_access(desc)?;
+    Ok(Some(desc.name.clone()))
+}
+
 fn module_candidates(registry: &TypeRegistry, name: &str) -> Vec<crate::ReflectCandidate> {
     ranked_candidates(
         name,
@@ -504,6 +524,26 @@ fn visible_export_names(
         })
         .map(|export| export.name.clone())
         .collect()
+}
+
+fn function_target_name(target: &ReflectValue) -> ReflectResult<Option<&str>> {
+    match target {
+        ReflectValue::Host(HostValue::Record { type_name, fields })
+            if type_name == "ReflectFunction" =>
+        {
+            match fields.get("name") {
+                Some(HostValue::String(name)) => Ok(Some(name.as_str())),
+                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+            }
+        }
+        ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectFunction" => {
+            match fields.get("name") {
+                Some(ReflectValue::Host(HostValue::String(name))) => Ok(Some(name.as_str())),
+                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+            }
+        }
+        _ => Ok(None),
+    }
 }
 
 fn module_target_name(target: &ReflectValue) -> ReflectResult<&str> {
@@ -970,6 +1010,15 @@ fn helper() {
             FunctionDesc::new(FunctionId::new(2), "game.callable")
                 .access(FunctionAccess::new().reflect_callable(true)),
         );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(3), "game.write_host")
+                .effects(FunctionEffectSet {
+                    reads_host: false,
+                    writes_host: true,
+                    emits_events: false,
+                })
+                .access(FunctionAccess::new().reflect_callable(true)),
+        );
         let policy = ReflectPolicy::all();
 
         let inspectable = registry
@@ -994,6 +1043,23 @@ fn helper() {
         policy
             .require_function_call_access(callable)
             .expect("callable function");
+
+        let effectful = registry
+            .function_by_name("game.write_host")
+            .expect("effectful function");
+        let read_only_call_policy = ReflectPolicy::new(
+            crate::ReflectPermissionSet::new().with(crate::ReflectPermission::CallMethods),
+        );
+        let error = read_only_call_policy
+            .require_function_call_access(effectful)
+            .expect_err("host-writing function needs effect permission");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FunctionEffectPermissionDenied {
+                function: "game.write_host".to_owned(),
+                permission: crate::ReflectPermission::CallHostWriteMethods,
+            }
+        );
     }
 
     #[test]

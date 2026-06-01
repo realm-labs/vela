@@ -2540,6 +2540,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   records, hot-reload function access ABI checks track callability changes, and
   the runnable reflection demo verifies callable metadata for host and stdlib
   functions.
+- Extended M12 controlled reflection calls to reflect-callable native
+  functions. Scripts can now call copied `ReflectFunction` descriptors through
+  `reflect.call(function, args...)`; VM dispatch reuses installed pure and
+  host-native tables, enforces function callability, explicit permissions, and
+  host/event effect permissions, and keeps host mutation inside `PatchTx`.
 
 ## Next
 

@@ -42,7 +42,8 @@ pub use members::{
 };
 pub use modules::{
     DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
-    exports as module_exports, exports_for_target as module_exports_for_target,
+    callable_function_name_with_policy, exports as module_exports,
+    exports_for_target as module_exports_for_target,
     exports_for_target_with_policy as module_exports_for_target_with_policy,
     exports_with_policy as module_exports_with_policy, function as function_metadata,
     function_with_policy as function_metadata_with_policy, functions as function_metadata_list,

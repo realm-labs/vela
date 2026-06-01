@@ -1,20 +1,58 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use vela_host::ScriptStateAdapter;
 use vela_reflect::{self as reflect, TypeRegistry};
 
 use crate::{
-    Vm, VmError, VmErrorKind, VmResult, expect_arity, expect_string, value_from_reflect,
-    value_to_reflect,
+    ExecutionBudget, HostExecution, HostNativeFunction, NativeFunction, Value, Vm, VmError,
+    VmErrorKind, VmResult, expect_arity, expect_string, value_from_reflect, value_to_reflect,
 };
 
 use super::common::check_reflect_policy;
+
+#[derive(Clone, Default)]
+pub(super) struct ReflectedFunctionCalls {
+    natives: HashMap<String, NativeFunction>,
+    host_natives: HashMap<String, HostNativeFunction>,
+}
+
+impl ReflectedFunctionCalls {
+    pub(super) fn new(
+        natives: HashMap<String, NativeFunction>,
+        host_natives: HashMap<String, HostNativeFunction>,
+    ) -> Self {
+        Self {
+            natives,
+            host_natives,
+        }
+    }
+
+    fn call(
+        &self,
+        name: &str,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<Value> {
+        if let Some(native) = self.natives.get(name) {
+            return native(args);
+        }
+        if let Some(native) = self.host_natives.get(name) {
+            return native(args, host, budget);
+        }
+        Err(VmError::new(VmErrorKind::UnknownNative {
+            name: name.to_owned(),
+        }))
+    }
+}
 
 pub(super) fn register(
     vm: &mut Vm,
     registry: &Arc<TypeRegistry>,
     policy: &reflect::ReflectPolicy,
     lookup_budget: &Arc<reflect::ReflectLookupBudget>,
+    function_calls: ReflectedFunctionCalls,
 ) {
     let get_registry = Arc::clone(registry);
     let get_policy = policy.clone();
@@ -69,12 +107,25 @@ pub(super) fn register(
     let call_registry = Arc::clone(registry);
     let call_policy = policy.clone();
     let call_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.call", move |args, host| {
+    vm.register_budgeted_host_native("reflect.call", move |args, host, mut budget| {
         check_reflect_policy(
             &call_policy,
             &call_budget,
             reflect::ReflectPermission::CallMethods,
         )?;
+        if args.is_empty() {
+            return Err(VmError::new(VmErrorKind::ArityMismatch {
+                name: "reflect.call".to_owned(),
+                expected: 1,
+                actual: args.len(),
+            }));
+        }
+        let target = value_to_reflect(&args[0], "reflect.call")?;
+        if let Some(function_name) =
+            reflect::callable_function_name_with_policy(&call_registry, &target, &call_policy)?
+        {
+            return function_calls.call(&function_name, &args[1..], host, budget.as_deref_mut());
+        }
         if args.len() < 2 {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
                 name: "reflect.call".to_owned(),
@@ -82,7 +133,6 @@ pub(super) fn register(
                 actual: args.len(),
             }));
         }
-        let target = value_to_reflect(&args[0], "reflect.call")?;
         let method = expect_string(&args[1], "reflect.call")?;
         let call_args = args[2..]
             .iter()

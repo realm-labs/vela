@@ -7548,3 +7548,30 @@ Consequences:
   overloading metadata visibility.
 - Hot reload rejects changes to reflective function callability unless the host
   restarts or explicitly accepts a new ABI.
+
+## 2026-06-01: Reflect Call Uses Function Descriptors For Native Calls
+
+Status: Accepted
+
+Context:
+`reflect.call` could record host-method calls through `PatchTx`, but reflected
+native functions were query-only even when their descriptors marked them
+`reflect_callable`. The previous metadata split made callability visible but
+did not provide a controlled dispatch path.
+
+Decision:
+Support native-function reflection calls through copied `ReflectFunction`
+descriptors: `reflect.call(reflect.function("name"), args...)`. The VM captures
+the installed pure and host-native dispatch tables when reflection natives are
+registered, then checks `reflect_callable`, explicit function permissions, and
+declared host/event effects before invoking the native. The existing
+host-method form `reflect.call(host_ref, "method", args...)` remains unchanged.
+
+Consequences:
+- Scripts cannot call arbitrary strings or mutate type structure; they call a
+  descriptor that resolves back through the current `TypeRegistry`.
+- Host-mutating reflective function calls still execute through the registered
+  host-native path and must record changes in the active `PatchTx`.
+- Engine installation registers native dispatch entries before reflection so
+  reflective function calls see the same callable surface as normal script
+  native calls.
