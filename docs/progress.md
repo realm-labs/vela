@@ -2501,6 +2501,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   whose contents are const-evaluable, VM execution materializes fresh copied
   values in inline and managed-heap modes, and focused `tests::consts`
   coverage proves const maps/arrays execute without module-load side effects.
+- Extended the M9 aggregate-const proof across imports and the runnable
+  conformance fixture. Cross-module const arrays/maps now flow through HIR
+  import resolution, aliasing, normal local method/index use, and the managed
+  core-language fixture without adding module-load execution.
 
 ## Next
 

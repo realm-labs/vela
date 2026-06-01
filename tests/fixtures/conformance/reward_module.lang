@@ -1,4 +1,6 @@
 pub const BASE_REWARD = 4
+pub const REWARD_COUNTS = [BASE_REWARD, BASE_REWARD + 1]
+pub const REWARD_TABLE = {"gold": BASE_REWARD, "gem": BASE_REWARD + 2}
 
 pub struct RewardConfig {
     item: string,

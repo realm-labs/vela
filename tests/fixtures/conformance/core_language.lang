@@ -3,6 +3,8 @@
    /* fn hidden() { return 999; } */
 */
 use conformance.reward.BASE_REWARD as REWARD_BASE
+use conformance.reward.REWARD_COUNTS
+use conformance.reward.REWARD_TABLE
 use conformance.reward.RewardConfig as ConfigReward
 use conformance.reward.RewardOutcome as Outcome
 use conformance.reward.reward_bonus
@@ -185,6 +187,9 @@ fn main() {
         Outcome.Skipped(reason) => reason.len(),
         _ => 0,
     };
+    let imported_counts: array = REWARD_COUNTS;
+    let imported_table: map = REWARD_TABLE;
+    let imported_const_score: int = imported_counts.sum() + imported_table["gem"];
 
     return total
         + doubled
@@ -203,5 +208,6 @@ fn main() {
         + indexed_record_score
         + no_else_score
         + imported_bonus
-        + imported_match;
+        + imported_match
+        + imported_const_score;
 }

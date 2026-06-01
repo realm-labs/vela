@@ -81,3 +81,49 @@ fn main() {
         Constant::String("quest".to_owned()),
     )])));
 }
+
+#[test]
+fn runs_cross_module_imported_aggregate_const_reads() {
+    let program = compile_module_sources(&[
+        ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.main"),
+            r#"
+use game.tuning.REWARDS
+use game.tuning.LABELS as META
+
+fn main() {
+    let rewards = REWARDS;
+    rewards.push(9);
+    let fresh = REWARDS;
+    return fresh.sum() * 100 + rewards.sum() + META["xp"];
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_dotted("game.tuning"),
+            r#"
+use game.base.BASE
+
+pub const REWARDS = [BASE, BASE + 2, 7];
+pub const LABELS = {"xp": BASE + 5};
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(3),
+            ModulePath::from_dotted("game.base"),
+            r#"
+pub const BASE = 3;
+"#,
+        ),
+    ])
+    .expect("compile imported aggregate const source");
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    assert_eq!(
+        vm.run_program(&program, "game.main.main", &[]),
+        Ok(Value::Int(1532))
+    );
+}
