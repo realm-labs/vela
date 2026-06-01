@@ -38,7 +38,24 @@ pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&
         ReflectValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
         ReflectValue::ScriptRecord { type_name, .. } => registry.type_by_name(type_name),
         ReflectValue::ScriptEnum { enum_name, .. } => registry.type_by_name(enum_name),
-        ReflectValue::Host(_) | ReflectValue::Record(_) => None,
+        ReflectValue::Host(value) => type_of_host_value(registry, value),
+        // Generic records are the reflect-layer representation for script maps.
+        ReflectValue::Record(_) => registry.type_by_name("map"),
+    }
+}
+
+fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Option<&'a TypeDesc> {
+    match value {
+        HostValue::Null => registry.type_by_name("null"),
+        HostValue::Bool(_) => registry.type_by_name("bool"),
+        HostValue::Int(_) => registry.type_by_name("int"),
+        HostValue::Float(_) => registry.type_by_name("float"),
+        HostValue::String(_) => registry.type_by_name("string"),
+        HostValue::Array(_) => registry.type_by_name("array"),
+        HostValue::Map(_) => registry.type_by_name("map"),
+        HostValue::Record { type_name, .. } => registry.type_by_name(type_name),
+        HostValue::Enum { enum_name, .. } => registry.type_by_name(enum_name),
+        HostValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
     }
 }
 

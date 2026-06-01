@@ -10,6 +10,15 @@ fn main(ctx, player) {
     let array_type = reflect.type_info("array");
     let option_type = reflect.type_info("Option");
     let result_type = reflect.type_info("Result");
+    let null_value_type = reflect.type_of(null);
+    let bool_value_type = reflect.type_of(true);
+    let int_value_type = reflect.type_of(42);
+    let float_value_type = reflect.type_of(1.5);
+    let string_value_type = reflect.type_of("quest");
+    let array_value_type = reflect.type_of(["quest"]);
+    let map_value_type = reflect.type_of({"quest": 1});
+    let option_value_type = reflect.type_of(option.some(1));
+    let result_value_type = reflect.type_of(result.ok(1));
     let quest_type = reflect.type_info("QuestProgress");
     let host_quest_type = reflect.type_info("HostQuestProgress");
     let damageable = reflect.trait_info("Damageable");
@@ -117,6 +126,24 @@ fn main(ctx, player) {
         && reflect.kind(set_type) == "set"
         && reflect.kind(option_type) == "script_enum"
         && reflect.kind(result_type) == "script_enum"
+        && reflect.name(null_value_type) == "null"
+        && reflect.kind(null_value_type) == "null"
+        && reflect.name(bool_value_type) == "bool"
+        && reflect.kind(bool_value_type) == "bool"
+        && reflect.name(int_value_type) == "int"
+        && reflect.kind(int_value_type) == "int"
+        && reflect.name(float_value_type) == "float"
+        && reflect.kind(float_value_type) == "float"
+        && reflect.name(string_value_type) == "string"
+        && reflect.kind(string_value_type) == "string"
+        && reflect.name(array_value_type) == "array"
+        && reflect.kind(array_value_type) == "array"
+        && reflect.name(map_value_type) == "map"
+        && reflect.kind(map_value_type) == "map"
+        && reflect.name(option_value_type) == "Option"
+        && reflect.kind(option_value_type) == "script_enum"
+        && reflect.name(result_value_type) == "Result"
+        && reflect.kind(result_value_type) == "script_enum"
         && reflect.attr(string_type, "stdlib") == "builtin"
         && reflect.attr(array_type, "stdlib") == "builtin"
         && reflect.attr(option_type, "stdlib") == "option"

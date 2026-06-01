@@ -2589,6 +2589,13 @@ post-MVP reference or optional tracks, not MVP requirements.
   `or_else`, and `filter`, plus `Result` methods such as `map`, `map_err`,
   `to_option`, `to_error_option`, and `flatten`; the runnable reflection demo
   proves script-visible method params, returns, and stdlib attrs.
+- Tightened M12 `reflect.type_of` coverage for standard copied values.
+  Reflection now resolves existing `HostValue` shapes for `null`, booleans,
+  ints, floats, strings, arrays, maps, copied script records/enums, and nested
+  host refs through the registered `TypeRegistry` descriptors, so
+  script-visible `reflect.type_of(42)`, `reflect.type_of(["tag"])`, and
+  `reflect.type_of(option.some(value))` return real type metadata instead of
+  `null`.
 
 ## Next
 

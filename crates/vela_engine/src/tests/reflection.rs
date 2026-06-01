@@ -380,13 +380,22 @@ fn engine_standard_natives_register_reflection_metadata() {
         r#"
 fn main() {
     let math = reflect.module("math");
-    let option = reflect.module("option");
-    let result = reflect.module("result");
+    let option_module = reflect.module("option");
+    let result_module = reflect.module("result");
     let set = reflect.module("set");
     let string_type = reflect.type_info("string");
     let array_type = reflect.type_info("array");
     let option_type = reflect.type_info("Option");
     let result_type = reflect.type_info("Result");
+    let null_value_type = reflect.type_of(null);
+    let bool_value_type = reflect.type_of(true);
+    let int_value_type = reflect.type_of(42);
+    let float_value_type = reflect.type_of(1.5);
+    let string_value_type = reflect.type_of("quest");
+    let array_value_type = reflect.type_of(["quest"]);
+    let map_value_type = reflect.type_of({"quest": 1});
+    let option_value_type = reflect.type_of(option.some(1));
+    let result_value_type = reflect.type_of(result.ok(1));
     let option_variants = reflect.variants(option_type);
     let result_variants = reflect.variants(result_type);
     let string_methods = reflect.methods(string_type);
@@ -418,9 +427,27 @@ fn main() {
     let ok_params = reflect.params(ok);
     let set_params = reflect.params(set_from_array);
     let math_exports = reflect.exports(math);
-    let option_exports = reflect.exports(option);
-    let result_exports = reflect.exports(result);
+    let option_exports = reflect.exports(option_module);
+    let result_exports = reflect.exports(result_module);
     let set_exports = reflect.exports(set);
+    let type_of_checks = reflect.name(null_value_type) == "null"
+        && reflect.kind(null_value_type) == "null"
+        && reflect.name(bool_value_type) == "bool"
+        && reflect.kind(bool_value_type) == "bool"
+        && reflect.name(int_value_type) == "int"
+        && reflect.kind(int_value_type) == "int"
+        && reflect.name(float_value_type) == "float"
+        && reflect.kind(float_value_type) == "float"
+        && reflect.name(string_value_type) == "string"
+        && reflect.kind(string_value_type) == "string"
+        && reflect.name(array_value_type) == "array"
+        && reflect.kind(array_value_type) == "array"
+        && reflect.name(map_value_type) == "map"
+        && reflect.kind(map_value_type) == "map"
+        && reflect.name(option_value_type) == "Option"
+        && reflect.kind(option_value_type) == "script_enum"
+        && reflect.name(result_value_type) == "Result"
+        && reflect.kind(result_value_type) == "script_enum";
     return reflect.has_function("math.max")
         && reflect.has_function("math.sqrt")
         && reflect.has_function("option.some")
@@ -438,13 +465,14 @@ fn main() {
         && reflect.kind(set_type) == "set"
         && reflect.kind(option_type) == "script_enum"
         && reflect.kind(result_type) == "script_enum"
+        && type_of_checks
         && reflect.docs(math) == "Deterministic math standard-library helpers."
-        && reflect.docs(option) == "Option standard-library propagation helpers."
-        && reflect.docs(result) == "Result standard-library propagation helpers."
+        && reflect.docs(option_module) == "Option standard-library propagation helpers."
+        && reflect.docs(result_module) == "Result standard-library propagation helpers."
         && reflect.docs(set) == "Set standard-library construction helpers."
         && reflect.attr(math, "stdlib") == "math"
-        && reflect.attr(option, "stdlib") == "option"
-        && reflect.attr(result, "stdlib") == "result"
+        && reflect.attr(option_module, "stdlib") == "option"
+        && reflect.attr(result_module, "stdlib") == "result"
         && reflect.attr(set, "stdlib") == "set"
         && reflect.attr(string_type, "stdlib") == "builtin"
         && reflect.attr(option_type, "stdlib") == "option"
