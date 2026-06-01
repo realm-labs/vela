@@ -112,6 +112,7 @@ impl FunctionEffectSet {
 pub struct FunctionAccess {
     pub public: bool,
     pub reflect_visible: bool,
+    pub reflect_callable: bool,
     required_permissions: Vec<String>,
 }
 
@@ -134,6 +135,12 @@ impl FunctionAccess {
     }
 
     #[must_use]
+    pub fn reflect_callable(mut self, reflect_callable: bool) -> Self {
+        self.reflect_callable = reflect_callable;
+        self
+    }
+
+    #[must_use]
     pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
         self.required_permissions.push(permission.into());
         self.required_permissions.sort();
@@ -152,6 +159,7 @@ impl Default for FunctionAccess {
         Self {
             public: true,
             reflect_visible: true,
+            reflect_callable: false,
             required_permissions: Vec::new(),
         }
     }

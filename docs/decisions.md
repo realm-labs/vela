@@ -7524,3 +7524,27 @@ Consequences:
   than script-language generic types.
 - Hot-reload schema ABI records can distinguish built-in kind changes instead
   of collapsing them into host or script schema kinds.
+
+## 2026-06-01: Function Reflection Separates Visibility From Callability
+
+Status: Accepted
+
+Context:
+The Engine native descriptor already had a `reflect_callable` bit, but the
+reflected `FunctionAccess` metadata only exposed `reflect_visible`. Engine
+metadata therefore collapsed callable status into visibility, leaving no stable
+registry fact for future controlled reflective native-function calls.
+
+Decision:
+Add `reflect_callable` to reflected function access metadata while keeping
+`reflect_visible` as the query/listing gate. Engine native functions now publish
+visible descriptors with independent callability, and hot-reload function
+access ABI records include both visibility and callability.
+
+Consequences:
+- Admin/debug reflection can inspect a function without implying it is safe to
+  call through reflection.
+- Future reflective function dispatch can require `reflect_callable` without
+  overloading metadata visibility.
+- Hot reload rejects changes to reflective function callability unless the host
+  restarts or explicitly accepts a new ABI.

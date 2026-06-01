@@ -292,7 +292,7 @@ fn rejected_report_render_lines_include_detail_and_hint() {
                 HotReloadReportLineKind::Detail,
                 Some(0),
                 None,
-                "method access: old=(public=true reflective=true permissions=[]) new=(public=true reflective=false permissions=[admin.reload])",
+                "method access: old=(public=true reflective=true callable=true permissions=[]) new=(public=true reflective=false callable=false permissions=[admin.reload])",
             ),
             HotReloadReportLine::new(
                 HotReloadReportLineKind::RepairHint,
@@ -958,6 +958,28 @@ fn function_effect_and_access_abi_changes_are_rejected() {
             function: "game.reward.grant".to_owned(),
             old: AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
             new: AccessAbi::new(true, true, vec!["reward.write".to_owned()]),
+            source_span: None,
+        }
+    );
+
+    let changed_callability = HotReloadAbi::empty().function(FunctionAbi::new(
+        "game.reward.grant",
+        EffectAbi::host_read(),
+        AccessAbi::function(true, true, false, vec!["reward.read".to_owned()]),
+    ));
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(4),
+        "fn main() { return 4; }",
+        changed_callability,
+    )
+    .expect_err("function callability change should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedFunctionAccess {
+            function: "game.reward.grant".to_owned(),
+            old: AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
+            new: AccessAbi::function(true, true, false, vec!["reward.read".to_owned()]),
             source_span: None,
         }
     );
@@ -1686,7 +1708,7 @@ fn module_abi_manifest_can_be_built_from_type_registry() {
         .function(FunctionAbi::new(
             "grant_reward",
             EffectAbi::pure(),
-            AccessAbi::public(),
+            AccessAbi::function(true, true, false, Vec::new()),
         ))
         .module(
             ModuleAbi::new("game.reward").export(ModuleExportAbi::function("grant_reward", 77)),

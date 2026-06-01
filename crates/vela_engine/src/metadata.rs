@@ -153,7 +153,8 @@ fn reflect_function_access(access: &crate::FunctionAccess) -> ReflectFunctionAcc
     access.required_permissions.iter().fold(
         ReflectFunctionAccess::new()
             .public(access.public)
-            .reflect_visible(access.reflect_callable),
+            .reflect_visible(true)
+            .reflect_callable(access.reflect_callable),
         |access, permission| access.require_permission(permission),
     )
 }

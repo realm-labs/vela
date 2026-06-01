@@ -374,9 +374,10 @@ fn render_effect_abi(effect: &EffectAbi) -> String {
 
 fn render_access_abi(access: &AccessAbi) -> String {
     format!(
-        "public={} reflective={} permissions=[{}]",
+        "public={} reflective={} callable={} permissions=[{}]",
         access.public,
         access.reflective,
+        access.callable,
         access.required_permissions.join(", ")
     )
 }

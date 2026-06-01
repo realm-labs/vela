@@ -837,6 +837,7 @@ fn helper() {
                 fields: BTreeMap::from([
                     ("public".to_owned(), HostValue::Bool(true)),
                     ("reflect_visible".to_owned(), HostValue::Bool(true)),
+                    ("reflect_callable".to_owned(), HostValue::Bool(false)),
                     (
                         "required_permissions".to_owned(),
                         HostValue::Array(vec![HostValue::String("reward.grant".to_owned())])
@@ -956,6 +957,43 @@ fn helper() {
         };
 
         assert_eq!(function.get("public"), Some(&HostValue::Bool(false)));
+    }
+
+    #[test]
+    fn function_call_policy_requires_reflect_callable_metadata() {
+        let mut registry = TypeRegistry::new();
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "game.inspectable")
+                .access(FunctionAccess::new().reflect_visible(true)),
+        );
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(2), "game.callable")
+                .access(FunctionAccess::new().reflect_callable(true)),
+        );
+        let policy = ReflectPolicy::all();
+
+        let inspectable = registry
+            .function_by_name("game.inspectable")
+            .expect("inspectable function");
+        policy
+            .require_function_access(inspectable)
+            .expect("visible function can be inspected");
+        let error = policy
+            .require_function_call_access(inspectable)
+            .expect_err("visible function is not callable");
+        assert_eq!(
+            error.kind,
+            ReflectErrorKind::FunctionNotReflectCallable {
+                function: "game.inspectable".to_owned()
+            }
+        );
+
+        let callable = registry
+            .function_by_name("game.callable")
+            .expect("callable function");
+        policy
+            .require_function_call_access(callable)
+            .expect("callable function");
     }
 
     #[test]

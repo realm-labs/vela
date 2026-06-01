@@ -2534,6 +2534,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   standard IDs, native function descriptors, and reflected type descriptors
   into focused `standard` submodules while preserving the public Engine
   re-exports and VM-owned standard-native execution.
+- Tightened M12 function reflection metadata by separating function
+  `reflect_visible` from `reflect_callable`. Engine native and standard-native
+  descriptors now expose callable status through copied `ReflectFunctionAccess`
+  records, hot-reload function access ABI checks track callability changes, and
+  the runnable reflection demo verifies callable metadata for host and stdlib
+  functions.
 
 ## Next
 

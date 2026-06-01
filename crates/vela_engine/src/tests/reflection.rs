@@ -1,7 +1,7 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
 use vela_host::{HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PatchTx};
-use vela_hot_reload::{FunctionAbi, MethodAbi};
+use vela_hot_reload::{AccessAbi, FunctionAbi, MethodAbi};
 use vela_reflect::{
     FieldAccess, FieldDesc, ModuleDesc, ReflectErrorKind, ReflectPermission, ReflectPermissionSet,
     TypeDesc, TypeKey,
@@ -127,6 +127,7 @@ fn engine_registers_native_function_reflection_metadata() {
     assert!(function.effects.reads_host);
     assert!(!function.effects.writes_host);
     assert!(function.access.reflect_visible);
+    assert!(function.access.reflect_callable);
     assert_eq!(
         function.access.required_permissions(),
         &["game.add".to_owned()]
@@ -137,6 +138,10 @@ fn engine_registers_native_function_reflection_metadata() {
     assert_eq!(function.source_span, Some(source_span));
 
     let function_abi = FunctionAbi::from_function(function);
+    assert_eq!(
+        function_abi.access,
+        AccessAbi::function(true, true, true, vec!["game.add".to_owned()])
+    );
     assert_eq!(function_abi.source_span, Some(source_span));
 }
 
@@ -199,6 +204,7 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(max.return_type.as_deref(), Some("any"));
     assert_eq!(max.attrs.get("stdlib"), Some("math"));
     assert!(max.access.reflect_visible);
+    assert!(max.access.reflect_callable);
 
     let sqrt = registry.function_by_name("math.sqrt").expect("math.sqrt");
     assert_eq!(sqrt.return_type.as_deref(), Some("float"));

@@ -119,6 +119,10 @@ fn function_access_record(desc: &FunctionDesc) -> HostValue {
                 HostValue::Bool(desc.access.reflect_visible),
             ),
             (
+                "reflect_callable".to_owned(),
+                HostValue::Bool(desc.access.reflect_callable),
+            ),
+            (
                 "required_permissions".to_owned(),
                 HostValue::Array(
                     desc.access

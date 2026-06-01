@@ -79,6 +79,9 @@ pub enum ReflectErrorKind {
     FunctionNotReflectVisible {
         function: String,
     },
+    FunctionNotReflectCallable {
+        function: String,
+    },
     MethodPermissionDenied {
         method: String,
         permission: String,

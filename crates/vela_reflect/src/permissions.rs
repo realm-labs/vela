@@ -274,6 +274,18 @@ impl ReflectPolicy {
         Ok(())
     }
 
+    pub fn require_function_call_access(&self, function: &FunctionDesc) -> ReflectResult<()> {
+        self.require_function_access(function)?;
+        if !function.access.reflect_callable {
+            return Err(ReflectError::new(
+                ReflectErrorKind::FunctionNotReflectCallable {
+                    function: function.name.clone(),
+                },
+            ));
+        }
+        Ok(())
+    }
+
     pub fn require_field_read_access(
         &self,
         type_name: &str,

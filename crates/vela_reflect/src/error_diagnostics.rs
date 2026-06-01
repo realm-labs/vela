@@ -17,6 +17,7 @@ impl ReflectErrorKind {
             Self::PermissionDenied { .. } => "reflect::permission_denied",
             Self::MethodNotReflectCallable { .. } => "reflect::method_not_reflect_callable",
             Self::FunctionNotReflectVisible { .. } => "reflect::function_not_reflect_visible",
+            Self::FunctionNotReflectCallable { .. } => "reflect::function_not_reflect_callable",
             Self::MethodPermissionDenied { .. } => "reflect::method_permission_denied",
             Self::MethodEffectPermissionDenied { .. } => "reflect::method_effect_permission_denied",
             Self::FunctionPermissionDenied { .. } => "reflect::function_permission_denied",
@@ -85,6 +86,9 @@ impl ReflectErrorKind {
             }
             Self::FunctionNotReflectVisible { function } => {
                 format!("function `{function}` is not reflect-visible")
+            }
+            Self::FunctionNotReflectCallable { function } => {
+                format!("function `{function}` is not reflect-callable")
             }
             Self::MethodPermissionDenied { method, permission } => {
                 format!("method `{method}` requires permission `{permission}`")

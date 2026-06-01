@@ -53,7 +53,9 @@ fn main(ctx, player) {
     let reward_attrs = reflect.attrs(reward_module);
     let reward_effects = reflect.effects(reward_function);
     let math_max_effects = reflect.effects(math_max);
+    let math_max_access = reflect.access(math_max);
     let option_some_effects = reflect.effects(option_some);
+    let option_some_access = reflect.access(option_some);
     let ctx_now_access = reflect.access(ctx_now);
     let ctx_now_permissions = reflect.required_permissions(ctx_now);
     let ctx_elapsed_access = reflect.access(ctx_elapsed);
@@ -210,6 +212,7 @@ fn main(ctx, player) {
         && reward_function.effects.writes_host == false
         && reward_effects.writes_host == false
         && reward_access.reflect_visible
+        && reward_access.reflect_callable
         && reward_access.required_permissions.is_empty()
         && reward_params.len() == 2
         && reward_params[0].name == "player"
@@ -225,6 +228,8 @@ fn main(ctx, player) {
         && !math_max_effects.reads_host
         && !math_max_effects.writes_host
         && !math_max_effects.emits_events
+        && math_max_access.reflect_visible
+        && math_max_access.reflect_callable
         && math_max_params.len() == 2
         && math_max_params[0].name == "left"
         && math_max_params[1].name == "right"
@@ -267,6 +272,7 @@ fn main(ctx, player) {
         && option_some_params[0].name == "value"
         && !option_some_effects.reads_host
         && !option_some_effects.writes_host
+        && option_some_access.reflect_callable
         && reflect.name(result_ok) == "result.ok"
         && reflect.kind(result_ok) == "function"
         && reflect.origin(result_ok) == "host"

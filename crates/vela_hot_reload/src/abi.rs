@@ -200,9 +200,10 @@ impl FunctionAbi {
                 function.effects.writes_host,
                 function.effects.emits_events,
             ),
-            AccessAbi::new(
+            AccessAbi::function(
                 function.access.public,
                 function.access.reflect_visible,
+                function.access.reflect_callable,
                 function.access.required_permissions().to_vec(),
             ),
         );
@@ -717,6 +718,7 @@ impl EffectAbi {
 pub struct AccessAbi {
     pub public: bool,
     pub reflective: bool,
+    pub callable: bool,
     pub required_permissions: Vec<String>,
 }
 
@@ -733,6 +735,24 @@ impl AccessAbi {
         Self {
             public,
             reflective,
+            callable: reflective,
+            required_permissions,
+        }
+    }
+
+    #[must_use]
+    pub fn function(
+        public: bool,
+        reflect_visible: bool,
+        reflect_callable: bool,
+        mut required_permissions: Vec<String>,
+    ) -> Self {
+        required_permissions.sort();
+        required_permissions.dedup();
+        Self {
+            public,
+            reflective: reflect_visible,
+            callable: reflect_callable,
             required_permissions,
         }
     }
