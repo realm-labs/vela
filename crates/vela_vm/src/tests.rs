@@ -1,5 +1,5 @@
 use super::*;
-use crate::heap::{GcBudget, HeapValue, ScriptHeap};
+use crate::heap::{GcBudget, HeapSlot, HeapValue, ScriptHeap};
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use vela_bytecode::compiler::{
     CompilerOptions, compile_function_source, compile_module_sources, compile_program_source,
     compile_program_source_with_options,
 };
-use vela_bytecode::{ConstantId, HostPathSegment, Instruction, InstructionOffset};
+use vela_bytecode::{Constant, ConstantId, HostPathSegment, Instruction, InstructionOffset};
 use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Symbol,
     TypeId, VariantId,

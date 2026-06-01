@@ -2439,6 +2439,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   time helper. Engine clock registration, reflection metadata, analysis facts,
   completions, and game-server context/reflection demos now cover elapsed-time
   gameplay workflows without growing the crate root or central VM modules.
+- Kept the M7/M13 VM heap boundary reviewable by extracting heap value
+  allocation, slot conversion, materialization, managed-heap result cleanup,
+  and equality helpers from the central VM module into a focused
+  `heap_values` module without changing execution behavior.
 
 ## Next
 
