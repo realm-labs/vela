@@ -228,6 +228,22 @@ fn engine_standard_natives_register_reflection_metadata() {
     );
     assert_eq!(option_type.variants[1].name, "None");
     assert_eq!(option_type.attrs.get("stdlib"), Some("option"));
+    let option_map = option_type
+        .methods
+        .iter()
+        .find(|method| method.name == "map")
+        .expect("Option.map method metadata");
+    assert_eq!(option_map.params[0].name, "callback");
+    assert_eq!(option_map.params[0].type_hint.as_deref(), Some("function"));
+    assert_eq!(option_map.return_type.as_deref(), Some("Option"));
+    assert_eq!(option_map.attrs.get("stdlib"), Some("option"));
+    let option_ok_or = option_type
+        .methods
+        .iter()
+        .find(|method| method.name == "ok_or")
+        .expect("Option.ok_or method metadata");
+    assert_eq!(option_ok_or.params[0].name, "error");
+    assert_eq!(option_ok_or.return_type.as_deref(), Some("Result"));
 
     let result_type = registry.type_by_name("Result").expect("Result type");
     assert_eq!(result_type.kind, vela_reflect::TypeKind::ScriptEnum);
@@ -245,6 +261,24 @@ fn engine_standard_natives_register_reflection_metadata() {
         Some("any")
     );
     assert_eq!(result_type.attrs.get("stdlib"), Some("result"));
+    let result_map_err = result_type
+        .methods
+        .iter()
+        .find(|method| method.name == "map_err")
+        .expect("Result.map_err method metadata");
+    assert_eq!(result_map_err.params[0].name, "callback");
+    assert_eq!(
+        result_map_err.params[0].type_hint.as_deref(),
+        Some("function")
+    );
+    assert_eq!(result_map_err.return_type.as_deref(), Some("Result"));
+    assert_eq!(result_map_err.attrs.get("stdlib"), Some("result"));
+    let result_to_error = result_type
+        .methods
+        .iter()
+        .find(|method| method.name == "to_error_option")
+        .expect("Result.to_error_option method metadata");
+    assert_eq!(result_to_error.return_type.as_deref(), Some("Option"));
 
     let math = registry.module_by_name("math").expect("math module");
     assert_eq!(
@@ -357,6 +391,8 @@ fn main() {
     let result_variants = reflect.variants(result_type);
     let string_methods = reflect.methods(string_type);
     let array_methods = reflect.methods(array_type);
+    let option_methods = reflect.methods(option_type);
+    let result_methods = reflect.methods(result_type);
     let map_type = reflect.type_info("map");
     let set_type = reflect.type_info("set");
     let map_methods = reflect.methods(map_type);
@@ -368,6 +404,10 @@ fn main() {
     let array_map = reflect.method(array_type, "map");
     let map_get = reflect.method(map_type, "get");
     let set_union = reflect.method(set_type, "union");
+    let option_map = reflect.method(option_type, "map");
+    let option_ok_or = reflect.method(option_type, "ok_or");
+    let result_map_err = reflect.method(result_type, "map_err");
+    let result_to_error = reflect.method(result_type, "to_error_option");
     let max = reflect.function("math.max");
     let sqrt = reflect.function("math.sqrt");
     let some = reflect.function("option.some");
@@ -424,12 +464,18 @@ fn main() {
         && array_methods.len() >= 28
         && map_methods.len() >= 19
         && set_methods.len() >= 21
+        && option_methods.len() >= 9
+        && result_methods.len() >= 10
         && reflect.has_method(array_type, "push")
         && reflect.has_method(array_type, "map")
         && reflect.has_method(map_type, "get")
         && reflect.has_method(map_type, "map_values")
         && reflect.has_method(set_type, "union")
         && reflect.has_method(set_type, "is_subset")
+        && reflect.has_method(option_type, "map")
+        && reflect.has_method(option_type, "ok_or")
+        && reflect.has_method(result_type, "map_err")
+        && reflect.has_method(result_type, "to_error_option")
         && array_push.params[0].name == "value"
         && array_push.params[0].type == "any"
         && reflect.returns(array_push) == "null"
@@ -439,6 +485,17 @@ fn main() {
         && reflect.returns(map_get) == "Option"
         && set_union.params[0].type == "set"
         && reflect.returns(set_union) == "set"
+        && option_map.params[0].name == "callback"
+        && option_map.params[0].type == "function"
+        && reflect.returns(option_map) == "Option"
+        && reflect.attr(option_map, "stdlib") == "option"
+        && option_ok_or.params[0].name == "error"
+        && reflect.returns(option_ok_or) == "Result"
+        && result_map_err.params[0].name == "callback"
+        && result_map_err.params[0].type == "function"
+        && reflect.returns(result_map_err) == "Result"
+        && reflect.attr(result_map_err, "stdlib") == "result"
+        && reflect.returns(result_to_error) == "Option"
         && option_variants.len() == 2
         && option_variants[0].name == "Some"
         && option_variants[0].fields[0].name == "0"

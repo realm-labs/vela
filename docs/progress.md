@@ -2583,6 +2583,12 @@ post-MVP reference or optional tracks, not MVP requirements.
   `script_methods` long parameter lists with a cohesive `ScriptMethodDispatch`
   context. String, callback, builtin, and script-impl method paths now share
   one dispatch state object instead of local `too_many_arguments` allowances.
+- Added reflected M13 Option/Result value-method metadata without moving
+  execution out of the focused VM modules. Engine standard type descriptors now
+  expose non-generic `Option` methods such as `map`, `ok_or`, `and_then`,
+  `or_else`, and `filter`, plus `Result` methods such as `map`, `map_err`,
+  `to_option`, `to_error_option`, and `flatten`; the runnable reflection demo
+  proves script-visible method params, returns, and stdlib attrs.
 
 ## Next
 

@@ -21,6 +21,10 @@ fn main(ctx, player) {
     let option_variants = reflect.variants(option_type);
     let result_variants = reflect.variants(result_type);
     let reflected_variants = reflect.variants();
+    let option_map = reflect.method(option_type, "map");
+    let option_ok_or = reflect.method(option_type, "ok_or");
+    let result_map_err = reflect.method(result_type, "map_err");
+    let result_to_error = reflect.method(result_type, "to_error_option");
     let string_trim = reflect.method(string_type, "trim");
     let array_map = reflect.method(array_type, "map");
     let map_type = reflect.type_info("map");
@@ -117,6 +121,21 @@ fn main(ctx, player) {
         && reflect.attr(array_type, "stdlib") == "builtin"
         && reflect.attr(option_type, "stdlib") == "option"
         && reflect.attr(result_type, "stdlib") == "result"
+        && reflect.has_method(option_type, "map")
+        && reflect.has_method(option_type, "ok_or")
+        && reflect.has_method(result_type, "map_err")
+        && reflect.has_method(result_type, "to_error_option")
+        && option_map.params[0].name == "callback"
+        && option_map.params[0].type == "function"
+        && reflect.returns(option_map) == "Option"
+        && reflect.attr(option_map, "stdlib") == "option"
+        && option_ok_or.params[0].name == "error"
+        && reflect.returns(option_ok_or) == "Result"
+        && result_map_err.params[0].name == "callback"
+        && result_map_err.params[0].type == "function"
+        && reflect.returns(result_map_err) == "Result"
+        && reflect.attr(result_map_err, "stdlib") == "result"
+        && reflect.returns(result_to_error) == "Option"
         && reflect.has_method(string_type, "trim")
         && reflect.has_method(array_type, "map")
         && reflect.has_method(map_type, "get")

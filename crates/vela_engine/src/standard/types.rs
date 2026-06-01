@@ -7,7 +7,10 @@ use super::ids::{
     OPTION_SOME_VARIANT_ID, OPTION_TYPE_ID, RESULT_ERR_FIELD_ID, RESULT_ERR_VARIANT_ID,
     RESULT_OK_FIELD_ID, RESULT_OK_VARIANT_ID, RESULT_TYPE_ID, SET_TYPE_ID, STRING_TYPE_ID,
 };
-use super::methods::{array_method_descs, map_method_descs, set_method_descs, string_method_descs};
+use super::methods::{
+    array_method_descs, map_method_descs, option_method_descs, result_method_descs,
+    set_method_descs, string_method_descs,
+};
 
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
     let mut descs = vec![
@@ -94,7 +97,7 @@ fn set_type_desc() -> TypeDesc {
 }
 
 fn option_type_desc() -> TypeDesc {
-    TypeDesc::new(TypeKey::new(OPTION_TYPE_ID, "Option"))
+    let mut desc = TypeDesc::new(TypeKey::new(OPTION_TYPE_ID, "Option"))
         .kind(TypeKind::ScriptEnum)
         .schema_hash(SchemaHash::new(0xff00_0600_0000_0001))
         .origin(DeclOrigin::Host)
@@ -105,11 +108,15 @@ fn option_type_desc() -> TypeDesc {
                 .origin(DeclOrigin::Host)
                 .field(FieldDesc::new(OPTION_SOME_FIELD_ID, "0").type_hint("any")),
         )
-        .variant(VariantDesc::new(OPTION_NONE_VARIANT_ID, "None").origin(DeclOrigin::Host))
+        .variant(VariantDesc::new(OPTION_NONE_VARIANT_ID, "None").origin(DeclOrigin::Host));
+    for method in option_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
 }
 
 fn result_type_desc() -> TypeDesc {
-    TypeDesc::new(TypeKey::new(RESULT_TYPE_ID, "Result"))
+    let mut desc = TypeDesc::new(TypeKey::new(RESULT_TYPE_ID, "Result"))
         .kind(TypeKind::ScriptEnum)
         .schema_hash(SchemaHash::new(0xff00_0601_0000_0001))
         .origin(DeclOrigin::Host)
@@ -124,5 +131,9 @@ fn result_type_desc() -> TypeDesc {
             VariantDesc::new(RESULT_ERR_VARIANT_ID, "Err")
                 .origin(DeclOrigin::Host)
                 .field(FieldDesc::new(RESULT_ERR_FIELD_ID, "0").type_hint("any")),
-        )
+        );
+    for method in result_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
 }
