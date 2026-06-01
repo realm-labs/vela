@@ -2466,6 +2466,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `members::fields` and `members::variants` submodules. `members.rs` now
   serves as the shared metadata and test hub instead of owning every member
   query implementation.
+- Extended the M12/M17 game-server reflection proof to cover existence
+  helpers. The runnable `reflect_debug` script now verifies
+  `reflect.has_type(name)` and `reflect.has_trait(name)` for host, script, and
+  missing metadata through the CLI demo path.
 
 ## Next
 

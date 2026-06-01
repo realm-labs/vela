@@ -62,6 +62,11 @@ fn main(ctx, player) {
         && reflect.id(player) == 100
         && reflected_types.any(|type_info| type_info.name == "Player"
             && reflect.kind(type_info) == "host")
+        && reflect.has_type("Player")
+        && reflect.has_type("Config")
+        && reflect.has_type("QuestProgress")
+        && reflect.has_type("HostQuestProgress")
+        && !reflect.has_type("MissingType")
         && reflect.has_field(config_type, "kill_rewards")
         && reflect.field(config_type, "exp_to_next_level").type == "int"
         && reflect.kind(quest_type) == "script_enum"
@@ -88,6 +93,8 @@ fn main(ctx, player) {
         && reflect.variant(quest) == "Active"
         && reflect.variant_is(quest, "Active")
         && reflect.implements(player_type, damageable)
+        && reflect.has_trait("Damageable")
+        && !reflect.has_trait("MissingTrait")
         && fields.len() == 6
         && reflect.fields(player_type).len() == fields.len()
         && fields[1].owner == "Player"
