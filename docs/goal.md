@@ -86,9 +86,11 @@ JIT decisions, not the baseline required for the MVP.
 
 ## Milestones
 
-These milestones start after the completed M0-M6 prototype. The completed
-history remains in [progress.md](progress.md); the plan below only tracks the
-remaining work needed for the complete non-JIT, non-async interpreter.
+These milestones start after the completed M0-M6 prototype. Current
+implementation status lives in [progress.md](progress.md), and detailed
+historical progress is archived under [archive](archive/). The plan below only
+tracks the remaining work needed for the complete non-JIT, non-async
+interpreter.
 
 ### M7: Runtime Safety, Budgets, And GC
 
