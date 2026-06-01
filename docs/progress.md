@@ -2475,6 +2475,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `modules::records` submodule. Query, policy, and script registration
   behavior are unchanged, but future module metadata work no longer has to grow
   the central module reflection file.
+- Kept M13 analysis stdlib coverage reviewable by moving global/function fact
+  tests into a focused `stdlib::function_tests` submodule. The coverage now
+  explicitly includes the remaining math completion/fact helpers
+  `math.ceil` and `math.abs` alongside set and context helpers.
 
 ## Next
 
