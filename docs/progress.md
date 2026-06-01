@@ -2452,6 +2452,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   APIs. The game-server reflection script now verifies `reflect.attrs`,
   `reflect.has_attr`, `reflect.required_permissions`, `reflect.effects`, and
   `reflect.source_span` through the runnable CLI path.
+- Kept the M7/M9/M10 VM execution boundary reviewable by extracting field
+  access, numeric operation, and runtime expectation helpers from the central
+  VM module into focused modules. Record/enum heap access, arithmetic and
+  comparison semantics, arity/type checks, truthiness, and jump validation now
+  live outside the dispatch root without changing behavior.
 
 ## Next
 

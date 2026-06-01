@@ -1,6 +1,5 @@
-use crate::{
-    HeapExecution, HeapValue, Value, VmError, VmErrorKind, VmResult, get_enum_field_value,
-};
+use crate::field_access::get_enum_field_value;
+use crate::{HeapExecution, HeapValue, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) enum TryPropagation {
     Continue(Value),

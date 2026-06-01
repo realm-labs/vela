@@ -13,7 +13,9 @@ use vela_common::{
     TypeId, VariantId,
 };
 use vela_hir::{ModuleGraph, ModulePath, ModuleSource};
-use vela_host::{HostErrorKind, HostPath, HostValue, MockStateAdapter, PatchOp, PathProxy};
+use vela_host::{
+    HostErrorKind, HostPath, HostRef, HostValue, MockStateAdapter, PatchOp, PathProxy,
+};
 use vela_reflect::{
     FieldAccess, FieldDesc, FunctionAccess, FunctionDesc, MethodAccess, MethodDesc,
     MethodEffectSet, MethodParamDesc, ModuleDesc, ReflectCandidate, ReflectErrorKind, TraitDesc,

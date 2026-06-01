@@ -6,6 +6,7 @@ mod array_methods;
 mod budget;
 mod callback_method_dispatch;
 mod error;
+mod field_access;
 pub mod heap;
 mod heap_execution;
 mod heap_values;
@@ -17,12 +18,14 @@ mod iteration;
 mod map_methods;
 mod math_stdlib;
 mod method_runtime;
+mod numeric_ops;
 mod option_result;
 mod option_result_methods;
 mod ranges;
 mod record_fields;
 mod reflection;
 mod reflection_values;
+mod runtime_checks;
 mod script_methods;
 mod script_object;
 mod set_methods;
@@ -37,6 +40,10 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 pub use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
+use field_access::{
+    enum_tag_equal, get_enum_field_value, get_enum_slot_value, get_record_field_value,
+    get_record_slot_value,
+};
 use heap::{GcRef, HeapValue, ScriptHeap};
 pub use heap_execution::HeapExecution;
 use heap_values::{
@@ -48,14 +55,17 @@ use heap_values::{
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};
 pub use iteration::IteratorState;
+use numeric_ops::{binary_numeric, compare_numeric, div_numeric, negate_numeric, rem_numeric};
 pub use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
+pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
+use runtime_checks::{expect_closure, expect_int, is_truthy, validate_jump};
 use script_methods::{call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, InstructionKind, Program, Register};
 use vela_common::{Span, SymbolInterner};
-use vela_host::{HostPath, HostRef, PatchTx, ScriptStateAdapter};
+use vela_host::{HostPath, PatchTx, ScriptStateAdapter};
 #[cfg(test)]
 use vela_reflect as reflect;
 use vela_reflect::TypeRegistry;
@@ -1505,332 +1515,6 @@ fn normalized_param_defaults(code: &CodeObject) -> Vec<bool> {
     let mut defaults = code.param_defaults.clone();
     defaults.resize(code.params.len(), false);
     defaults
-}
-
-fn get_record_field_value(
-    value: &Value,
-    field: &str,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    match value {
-        Value::Record { type_name, fields } => fields.get(field).cloned().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownRecordField {
-                type_name: type_name.clone(),
-                field: field.to_owned(),
-            })
-        }),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Record { type_name, fields }) =
-                heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "record field",
-                }));
-            };
-            fields.get(field).map(value_from_heap_slot).ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownRecordField {
-                    type_name: type_name.clone(),
-                    field: field.to_owned(),
-                })
-            })
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "record field",
-        })),
-    }
-}
-
-fn get_record_slot_value(
-    value: &Value,
-    field: &str,
-    slot: usize,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    match value {
-        Value::Record { type_name, fields } => {
-            fields.get_slot(slot, field).cloned().ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownRecordField {
-                    type_name: type_name.clone(),
-                    field: field.to_owned(),
-                })
-            })
-        }
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Record { type_name, fields }) =
-                heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "record slot",
-                }));
-            };
-            fields
-                .get_slot(slot, field)
-                .map(value_from_heap_slot)
-                .ok_or_else(|| {
-                    VmError::new(VmErrorKind::UnknownRecordField {
-                        type_name: type_name.clone(),
-                        field: field.to_owned(),
-                    })
-                })
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "record slot",
-        })),
-    }
-}
-
-fn get_enum_field_value(
-    value: &Value,
-    field: &str,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    match value {
-        Value::Enum {
-            enum_name,
-            variant,
-            fields,
-        } => fields.get(field).cloned().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownEnumField {
-                enum_name: enum_name.clone(),
-                variant: variant.clone(),
-                field: field.to_owned(),
-            })
-        }),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Enum {
-                enum_name,
-                variant,
-                fields,
-            }) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "enum field",
-                }));
-            };
-            fields.get(field).map(value_from_heap_slot).ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownEnumField {
-                    enum_name: enum_name.clone(),
-                    variant: variant.clone(),
-                    field: field.to_owned(),
-                })
-            })
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "enum field",
-        })),
-    }
-}
-
-fn get_enum_slot_value(
-    value: &Value,
-    field: &str,
-    slot: usize,
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    match value {
-        Value::Enum {
-            enum_name,
-            variant,
-            fields,
-        } => fields.get_slot(slot, field).cloned().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownEnumField {
-                enum_name: enum_name.clone(),
-                variant: variant.clone(),
-                field: field.to_owned(),
-            })
-        }),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Enum {
-                enum_name,
-                variant,
-                fields,
-            }) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "enum slot",
-                }));
-            };
-            fields
-                .get_slot(slot, field)
-                .map(value_from_heap_slot)
-                .ok_or_else(|| {
-                    VmError::new(VmErrorKind::UnknownEnumField {
-                        enum_name: enum_name.clone(),
-                        variant: variant.clone(),
-                        field: field.to_owned(),
-                    })
-                })
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "enum slot",
-        })),
-    }
-}
-
-fn enum_tag_equal(
-    value: &Value,
-    enum_name: &str,
-    variant: &str,
-    heap: Option<&HeapExecution<'_>>,
-) -> bool {
-    match value {
-        Value::Enum {
-            enum_name: value_enum,
-            variant: value_variant,
-            ..
-        } => value_enum == enum_name && value_variant == variant,
-        Value::HeapRef(reference) => matches!(
-            heap.and_then(|heap| heap.heap.get(*reference)),
-            Some(HeapValue::Enum {
-                enum_name: value_enum,
-                variant: value_variant,
-                ..
-            }) if value_enum == enum_name && value_variant == variant
-        ),
-        _ => false,
-    }
-}
-
-fn binary_numeric(
-    lhs: &Value,
-    rhs: &Value,
-    operation: &'static str,
-    int_op: impl FnOnce(i64, i64) -> i64,
-) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(int_op(*lhs, *rhs))),
-        (Value::Float(lhs), Value::Float(rhs)) => {
-            Ok(Value::Float(int_op_float(*lhs, *rhs, operation)?))
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn negate_numeric(value: &Value) -> VmResult<Value> {
-    match value {
-        Value::Int(value) => value.checked_neg().map(Value::Int).ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "negate",
-            })
-        }),
-        Value::Float(value) => Ok(Value::Float(-value)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "negate",
-        })),
-    }
-}
-
-fn int_op_float(lhs: f64, rhs: f64, operation: &'static str) -> VmResult<f64> {
-    match operation {
-        "add" => Ok(lhs + rhs),
-        "sub" => Ok(lhs - rhs),
-        "mul" => Ok(lhs * rhs),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn div_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (Value::Int(_), Value::Int(0)) => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs / rhs)),
-        (Value::Float(_), Value::Float(rhs)) if *rhs == 0.0 => {
-            Err(VmError::new(VmErrorKind::DivisionByZero))
-        }
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs / rhs)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation: "div" })),
-    }
-}
-
-fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
-    match (lhs, rhs) {
-        (Value::Int(_), Value::Int(0)) => Err(VmError::new(VmErrorKind::DivisionByZero)),
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs % rhs)),
-        (Value::Float(_), Value::Float(rhs)) if *rhs == 0.0 => {
-            Err(VmError::new(VmErrorKind::DivisionByZero))
-        }
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs % rhs)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation: "rem" })),
-    }
-}
-
-fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> {
-    match value {
-        Value::HostRef(value) => Ok(*value),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureValue> {
-    match value {
-        Value::Closure(closure) => Ok(closure.clone()),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a str> {
-    match value {
-        Value::String(value) => Ok(value),
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::HeapRef(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn expect_int(value: &Value, operation: &'static str) -> VmResult<i64> {
-    match value {
-        Value::Int(value) => Ok(*value),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
-    if args.len() == expected {
-        Ok(())
-    } else {
-        Err(VmError::new(VmErrorKind::ArityMismatch {
-            name: name.to_owned(),
-            expected,
-            actual: args.len(),
-        }))
-    }
-}
-
-fn compare_numeric(
-    lhs: &Value,
-    rhs: &Value,
-    operation: &'static str,
-    compare: impl FnOnce(f64, f64) -> bool,
-) -> VmResult<bool> {
-    match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(compare(*lhs as f64, *rhs as f64)),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(compare(*lhs, *rhs)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
-}
-
-fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
-}
-
-fn validate_jump(code: &CodeObject, offset: usize) -> VmResult<()> {
-    if offset <= code.instructions.len() {
-        Ok(())
-    } else {
-        Err(VmError::new(VmErrorKind::InstructionOutOfBounds { offset }))
-    }
 }
 
 #[cfg(test)]
