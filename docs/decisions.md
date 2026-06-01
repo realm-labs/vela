@@ -7471,3 +7471,29 @@ Consequences:
   registration or moving stdlib execution into the Engine.
 - Hosts can still override or add explicit native descriptors without exposing
   real Rust references or changing the no-generics script boundary.
+
+## 2026-06-01: Engine Standard Helper Natives Share Descriptor Metadata
+
+Status: Accepted
+
+Context:
+After deterministic math helpers became visible to Engine reflection,
+`with_standard_natives()` still left Option/Result propagation helpers and
+`set.from_array` callable but absent from module and function metadata. That
+made the standard library look partial to admin/debug scripts even though the
+VM execution surface was installed.
+
+Decision:
+Keep VM stdlib execution in the focused `vela_vm` modules and extend the
+Engine's standard descriptor list with stable IDs for `option`, `result`, and
+`set` helper functions. The Option/Result descriptors use dynamic `any`
+payload and return hints rather than script generics; `set.from_array` is
+described as `array -> set`.
+
+Consequences:
+- Reflection reports standard propagation and set-construction helpers through
+  the same TypeRegistry module/export path as math helpers.
+- The metadata remains non-generic and does not introduce a separate runtime
+  representation for Option, Result, or set values.
+- Hosts can still add explicit native descriptors, and the Engine metadata
+  injector skips names that are already registered.

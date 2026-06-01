@@ -17,8 +17,36 @@ pub const MATH_CEIL_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_010b)
 pub const MATH_ROUND_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_010c);
 pub const MATH_ABS_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_010d);
 
+pub const OPTION_SOME_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0200);
+pub const OPTION_NONE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0201);
+pub const OPTION_IS_SOME_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0202);
+pub const OPTION_IS_NONE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0203);
+pub const OPTION_UNWRAP_OR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0204);
+pub const OPTION_OK_OR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0205);
+pub const OPTION_FLATTEN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0206);
+
+pub const RESULT_OK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0300);
+pub const RESULT_ERR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0301);
+pub const RESULT_IS_OK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0302);
+pub const RESULT_IS_ERR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0303);
+pub const RESULT_UNWRAP_OR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0304);
+pub const RESULT_TO_OPTION_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0305);
+pub const RESULT_TO_ERROR_OPTION_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0306);
+pub const RESULT_FLATTEN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0307);
+
+pub const SET_FROM_ARRAY_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0400);
+
 pub(crate) fn standard_native_function_descs() -> Vec<NativeFunctionDesc> {
-    vec![
+    let mut descs = Vec::new();
+    descs.extend(math_descs());
+    descs.extend(option_descs());
+    descs.extend(result_descs());
+    descs.push(set_from_array_desc());
+    descs
+}
+
+fn math_descs() -> [NativeFunctionDesc; 14] {
+    [
         math_binary(
             "math.max",
             MATH_MAX_FUNCTION_ID,
@@ -67,6 +95,69 @@ pub(crate) fn standard_native_function_descs() -> Vec<NativeFunctionDesc> {
         math_unary("math.round", MATH_ROUND_FUNCTION_ID, TypeHint::Int),
         math_unary("math.abs", MATH_ABS_FUNCTION_ID, TypeHint::Any),
     ]
+}
+
+fn option_descs() -> [NativeFunctionDesc; 7] {
+    [
+        option_desc("option.some", OPTION_SOME_FUNCTION_ID)
+            .param("value", TypeHint::Any)
+            .returns(TypeHint::Any),
+        option_desc("option.none", OPTION_NONE_FUNCTION_ID).returns(TypeHint::Any),
+        option_desc("option.is_some", OPTION_IS_SOME_FUNCTION_ID)
+            .param("option", TypeHint::Any)
+            .returns(TypeHint::Bool),
+        option_desc("option.is_none", OPTION_IS_NONE_FUNCTION_ID)
+            .param("option", TypeHint::Any)
+            .returns(TypeHint::Bool),
+        option_desc("option.unwrap_or", OPTION_UNWRAP_OR_FUNCTION_ID)
+            .param("option", TypeHint::Any)
+            .param("fallback", TypeHint::Any)
+            .returns(TypeHint::Any),
+        option_desc("option.ok_or", OPTION_OK_OR_FUNCTION_ID)
+            .param("option", TypeHint::Any)
+            .param("error", TypeHint::Any)
+            .returns(TypeHint::Any),
+        option_desc("option.flatten", OPTION_FLATTEN_FUNCTION_ID)
+            .param("option", TypeHint::Any)
+            .returns(TypeHint::Any),
+    ]
+}
+
+fn result_descs() -> [NativeFunctionDesc; 8] {
+    [
+        result_desc("result.ok", RESULT_OK_FUNCTION_ID)
+            .param("value", TypeHint::Any)
+            .returns(TypeHint::Any),
+        result_desc("result.err", RESULT_ERR_FUNCTION_ID)
+            .param("error", TypeHint::Any)
+            .returns(TypeHint::Any),
+        result_desc("result.is_ok", RESULT_IS_OK_FUNCTION_ID)
+            .param("result", TypeHint::Any)
+            .returns(TypeHint::Bool),
+        result_desc("result.is_err", RESULT_IS_ERR_FUNCTION_ID)
+            .param("result", TypeHint::Any)
+            .returns(TypeHint::Bool),
+        result_desc("result.unwrap_or", RESULT_UNWRAP_OR_FUNCTION_ID)
+            .param("result", TypeHint::Any)
+            .param("fallback", TypeHint::Any)
+            .returns(TypeHint::Any),
+        result_desc("result.to_option", RESULT_TO_OPTION_FUNCTION_ID)
+            .param("result", TypeHint::Any)
+            .returns(TypeHint::Any),
+        result_desc("result.to_error_option", RESULT_TO_ERROR_OPTION_FUNCTION_ID)
+            .param("result", TypeHint::Any)
+            .returns(TypeHint::Any),
+        result_desc("result.flatten", RESULT_FLATTEN_FUNCTION_ID)
+            .param("result", TypeHint::Any)
+            .returns(TypeHint::Any),
+    ]
+}
+
+fn set_from_array_desc() -> NativeFunctionDesc {
+    stdlib_desc("set.from_array", SET_FROM_ARRAY_FUNCTION_ID, "set")
+        .param("values", TypeHint::Array)
+        .returns(TypeHint::Set)
+        .docs("Set standard-library construction helper.")
 }
 
 fn math_unary(name: &'static str, id: NativeFunctionId, returns: TypeHint) -> NativeFunctionDesc {
@@ -122,9 +213,24 @@ fn math_distance3d() -> NativeFunctionDesc {
 }
 
 fn math_desc(name: &'static str, id: NativeFunctionId) -> NativeFunctionDesc {
+    stdlib_desc(name, id, "math").docs("Deterministic math standard-library helper.")
+}
+
+fn option_desc(name: &'static str, id: NativeFunctionId) -> NativeFunctionDesc {
+    stdlib_desc(name, id, "option").docs("Option standard-library propagation helper.")
+}
+
+fn result_desc(name: &'static str, id: NativeFunctionId) -> NativeFunctionDesc {
+    stdlib_desc(name, id, "result").docs("Result standard-library propagation helper.")
+}
+
+fn stdlib_desc(
+    name: &'static str,
+    id: NativeFunctionId,
+    namespace: &'static str,
+) -> NativeFunctionDesc {
     NativeFunctionDesc::new(name, id)
         .effects(EffectSet::pure())
         .access(FunctionAccess::public().reflect_callable(true))
-        .docs("Deterministic math standard-library helper.")
-        .attr("stdlib", "math")
+        .attr("stdlib", namespace)
 }

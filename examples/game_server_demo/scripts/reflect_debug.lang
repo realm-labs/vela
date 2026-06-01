@@ -24,6 +24,9 @@ fn main(ctx, player) {
     let reward_module = reflect.module("game.reward");
     let ctx_module = reflect.module("ctx");
     let math_module = reflect.module("math");
+    let option_module = reflect.module("option");
+    let result_module = reflect.module("result");
+    let set_module = reflect.module("set");
     let reward_function = reflect.function("game.reward.grant");
     let main_function = reflect.function("main");
     let ctx_now = reflect.function("ctx.now");
@@ -31,13 +34,20 @@ fn main(ctx, player) {
     let ctx_elapsed = reflect.function("ctx.elapsed_since");
     let math_max = reflect.function("math.max");
     let math_sqrt = reflect.function("math.sqrt");
+    let option_some = reflect.function("option.some");
+    let result_ok = reflect.function("result.ok");
+    let set_from_array = reflect.function("set.from_array");
     let reward_params = reflect.params(reward_function);
     let main_params = reflect.params(main_function);
     let math_max_params = reflect.params(math_max);
+    let option_some_params = reflect.params(option_some);
+    let result_ok_params = reflect.params(result_ok);
+    let set_from_array_params = reflect.params(set_from_array);
     let reward_access = reflect.access(reward_function);
     let reward_attrs = reflect.attrs(reward_module);
     let reward_effects = reflect.effects(reward_function);
     let math_max_effects = reflect.effects(math_max);
+    let option_some_effects = reflect.effects(option_some);
     let ctx_now_access = reflect.access(ctx_now);
     let ctx_now_permissions = reflect.required_permissions(ctx_now);
     let ctx_elapsed_access = reflect.access(ctx_elapsed);
@@ -58,6 +68,9 @@ fn main(ctx, player) {
     let exports = reflect.exports(reward_module);
     let ctx_exports = reflect.exports(ctx_module);
     let math_exports = reflect.exports(math_module);
+    let option_exports = reflect.exports(option_module);
+    let result_exports = reflect.exports(result_module);
+    let set_exports = reflect.exports(set_module);
     let permissions = reflect.permissions();
     let player_type_of = reflect.type_of(player);
 
@@ -121,6 +134,9 @@ fn main(ctx, player) {
         && reflect.has_module("game.reward")
         && reflect.has_module("ctx")
         && reflect.has_module("math")
+        && reflect.has_module("option")
+        && reflect.has_module("result")
+        && reflect.has_module("set")
         && !reflect.has_module("game.missing")
         && !reflect.has_function("math.random")
         && reflect.name(reward_module) == "game.reward"
@@ -135,7 +151,13 @@ fn main(ctx, player) {
         && reflect.kind(ctx_module) == "module"
         && reflect.name(math_module) == "math"
         && reflect.kind(math_module) == "module"
-        && modules.len() == 3
+        && reflect.name(option_module) == "option"
+        && reflect.kind(option_module) == "module"
+        && reflect.name(result_module) == "result"
+        && reflect.kind(result_module) == "module"
+        && reflect.name(set_module) == "set"
+        && reflect.kind(set_module) == "module"
+        && modules.len() == 6
         && reflect.has_function("game.reward.grant")
         && reflect.has_function("main")
         && reflect.has_function("ctx.now")
@@ -143,6 +165,9 @@ fn main(ctx, player) {
         && reflect.has_function("ctx.elapsed_since")
         && reflect.has_function("math.max")
         && reflect.has_function("math.sqrt")
+        && reflect.has_function("option.some")
+        && reflect.has_function("result.ok")
+        && reflect.has_function("set.from_array")
         && !reflect.has_function("game.reward.missing")
         && reflect.name(reward_function) == "game.reward.grant"
         && reflect.kind(reward_function) == "function"
@@ -195,6 +220,38 @@ fn main(ctx, player) {
         && math_exports.contains("math.max")
         && math_exports.contains("math.sqrt")
         && math_exports.contains("math.distance3d")
+        && option_exports.len() == 7
+        && option_exports.contains("option.some")
+        && option_exports.contains("option.unwrap_or")
+        && result_exports.len() == 8
+        && result_exports.contains("result.ok")
+        && result_exports.contains("result.to_option")
+        && set_exports.len() == 1
+        && set_exports.contains("set.from_array")
+        && reflect.name(option_some) == "option.some"
+        && reflect.kind(option_some) == "function"
+        && reflect.origin(option_some) == "host"
+        && reflect.attr(option_some, "stdlib") == "option"
+        && reflect.returns(option_some) == "any"
+        && option_some_params.len() == 1
+        && option_some_params[0].name == "value"
+        && !option_some_effects.reads_host
+        && !option_some_effects.writes_host
+        && reflect.name(result_ok) == "result.ok"
+        && reflect.kind(result_ok) == "function"
+        && reflect.origin(result_ok) == "host"
+        && reflect.attr(result_ok, "stdlib") == "result"
+        && reflect.returns(result_ok) == "any"
+        && result_ok_params.len() == 1
+        && result_ok_params[0].name == "value"
+        && reflect.name(set_from_array) == "set.from_array"
+        && reflect.kind(set_from_array) == "function"
+        && reflect.origin(set_from_array) == "host"
+        && reflect.attr(set_from_array, "stdlib") == "set"
+        && reflect.returns(set_from_array) == "set"
+        && set_from_array_params.len() == 1
+        && set_from_array_params[0].name == "values"
+        && set_from_array_params[0].type == "array"
         && reflect.name(ctx_now) == "ctx.now"
         && reflect.name(ctx_tick) == "ctx.tick"
         && reflect.name(ctx_elapsed) == "ctx.elapsed_since"
@@ -229,7 +286,7 @@ fn main(ctx, player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
-        && functions.len() == 19
+        && functions.len() == 35
         && functions.any(|function| reflect.id(function) == reflect.id(reward_function))
         && functions.any(|function| reflect.name(function) == "main"
             && reflect.origin(function) == "script")
@@ -238,7 +295,13 @@ fn main(ctx, player) {
         && functions.any(|function| reflect.name(function) == "ctx.elapsed_since"
             && reflect.returns(function) == "int")
         && functions.any(|function| reflect.name(function) == "math.max"
-            && reflect.attr(function, "stdlib") == "math") {
+            && reflect.attr(function, "stdlib") == "math")
+        && functions.any(|function| reflect.name(function) == "option.some"
+            && reflect.attr(function, "stdlib") == "option")
+        && functions.any(|function| reflect.name(function) == "result.ok"
+            && reflect.attr(function, "stdlib") == "result")
+        && functions.any(|function| reflect.name(function) == "set.from_array"
+            && reflect.attr(function, "stdlib") == "set") {
         reflect.set(player, "level", 12);
         reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
         let metadata_score = reflect.get(player, "level") + fields.len() + reward_params.len();

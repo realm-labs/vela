@@ -2516,6 +2516,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   exports while VM execution remains owned by the standard-native VM modules;
   the game-server reflection demo proves `math.max`/`math.sqrt` metadata
   without exposing permission-gated `math.random`.
+- Extended the same M12/M13 standard-native reflection metadata to
+  Option/Result propagation helpers and `set.from_array`. Engine-installed
+  standard natives now publish stable descriptors and module exports for
+  `option`, `result`, and `set` without adding script-language generics or
+  moving VM stdlib execution into the Engine facade.
 
 ## Next
 

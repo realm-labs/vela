@@ -141,7 +141,7 @@ fn engine_registers_native_function_reflection_metadata() {
 }
 
 #[test]
-fn engine_standard_natives_register_math_reflection_metadata() {
+fn engine_standard_natives_register_reflection_metadata() {
     let engine = Engine::builder()
         .with_standard_natives()
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
@@ -166,27 +166,120 @@ fn engine_standard_natives_register_math_reflection_metadata() {
     let sqrt = registry.function_by_name("math.sqrt").expect("math.sqrt");
     assert_eq!(sqrt.return_type.as_deref(), Some("float"));
 
+    let option = registry.module_by_name("option").expect("option module");
+    assert_eq!(option.exports.len(), 7);
+    assert!(
+        option
+            .exports
+            .iter()
+            .any(|export| export.name == "option.some")
+    );
+    assert!(
+        option
+            .exports
+            .iter()
+            .any(|export| export.name == "option.unwrap_or")
+    );
+
+    let result = registry.module_by_name("result").expect("result module");
+    assert_eq!(result.exports.len(), 8);
+    assert!(
+        result
+            .exports
+            .iter()
+            .any(|export| export.name == "result.ok")
+    );
+    assert!(
+        result
+            .exports
+            .iter()
+            .any(|export| export.name == "result.to_option")
+    );
+
+    let set = registry.module_by_name("set").expect("set module");
+    assert_eq!(set.exports.len(), 1);
+    assert_eq!(set.exports[0].name, "set.from_array");
+
+    let option_some = registry
+        .function_by_name("option.some")
+        .expect("option.some");
+    assert_eq!(option_some.module.as_deref(), Some("option"));
+    assert_eq!(option_some.params[0].name, "value");
+    assert_eq!(option_some.return_type.as_deref(), Some("any"));
+    assert_eq!(option_some.attrs.get("stdlib"), Some("option"));
+
+    let result_ok = registry.function_by_name("result.ok").expect("result.ok");
+    assert_eq!(result_ok.module.as_deref(), Some("result"));
+    assert_eq!(result_ok.params[0].name, "value");
+    assert_eq!(result_ok.return_type.as_deref(), Some("any"));
+    assert_eq!(result_ok.attrs.get("stdlib"), Some("result"));
+
+    let set_from_array = registry
+        .function_by_name("set.from_array")
+        .expect("set.from_array");
+    assert_eq!(set_from_array.module.as_deref(), Some("set"));
+    assert_eq!(set_from_array.params[0].name, "values");
+    assert_eq!(set_from_array.params[0].type_hint.as_deref(), Some("array"));
+    assert_eq!(set_from_array.return_type.as_deref(), Some("set"));
+    assert_eq!(set_from_array.attrs.get("stdlib"), Some("set"));
+
     let program = compile_program_source(
         SourceId::new(1),
         r#"
 fn main() {
     let math = reflect.module("math");
+    let option = reflect.module("option");
+    let result = reflect.module("result");
+    let set = reflect.module("set");
     let max = reflect.function("math.max");
     let sqrt = reflect.function("math.sqrt");
+    let some = reflect.function("option.some");
+    let ok = reflect.function("result.ok");
+    let set_from_array = reflect.function("set.from_array");
     let params = reflect.params(max);
-    let exports = reflect.exports(math);
+    let some_params = reflect.params(some);
+    let ok_params = reflect.params(ok);
+    let set_params = reflect.params(set_from_array);
+    let math_exports = reflect.exports(math);
+    let option_exports = reflect.exports(option);
+    let result_exports = reflect.exports(result);
+    let set_exports = reflect.exports(set);
     return reflect.has_function("math.max")
         && reflect.has_function("math.sqrt")
+        && reflect.has_function("option.some")
+        && reflect.has_function("result.ok")
+        && reflect.has_function("set.from_array")
         && !reflect.has_function("math.random")
-        && exports.len() == 14
-        && exports.contains("math.max")
-        && exports.contains("math.sqrt")
+        && math_exports.len() == 14
+        && math_exports.contains("math.max")
+        && math_exports.contains("math.sqrt")
+        && option_exports.len() == 7
+        && option_exports.contains("option.some")
+        && option_exports.contains("option.unwrap_or")
+        && result_exports.len() == 8
+        && result_exports.contains("result.ok")
+        && result_exports.contains("result.to_option")
+        && set_exports.len() == 1
+        && set_exports.contains("set.from_array")
         && reflect.attr(max, "stdlib") == "math"
+        && reflect.attr(some, "stdlib") == "option"
+        && reflect.attr(ok, "stdlib") == "result"
+        && reflect.attr(set_from_array, "stdlib") == "set"
         && reflect.returns(max) == "any"
         && reflect.returns(sqrt) == "float"
+        && reflect.returns(some) == "any"
+        && reflect.returns(ok) == "any"
+        && reflect.returns(set_from_array) == "set"
         && params.len() == 2
         && params[0].name == "left"
-        && params[1].name == "right";
+        && params[1].name == "right"
+        && some_params.len() == 1
+        && some_params[0].name == "value"
+        && ok_params.len() == 1
+        && ok_params[0].name == "value"
+        && set_params.len() == 1
+        && set_params[0].name == "values"
+        && set_params[0].type == "array";
 }
 "#,
     )
