@@ -221,6 +221,16 @@ pub fn on_kill(ctx, player, monster) {
 
 The language is dynamically typed, with lightweight hints and metadata.
 
+Function overloading is not part of the language. A module may contain only one
+function for a given name, and a type or trait may contain only one method for a
+given receiver/name pair. Parameter count, type hints, default values, and
+native Rust signatures do not create overload sets.
+
+Different value categories may independently define the same method name, such
+as string and array helpers, because dispatch starts from the receiver category
+or reflected receiver type. That is receiver-based method dispatch, not
+same-scope overload resolution.
+
 Supported value categories:
 
 ```text
@@ -515,6 +525,11 @@ Host functions are Rust functions registered into the Vela engine as native
 callables. They are used for logging, deterministic utility APIs, event context
 helpers, config access, controlled random, metrics, and host-provided services.
 
+Native functions follow the same no-overload rule as script functions. Each
+public native callable has one canonical module/name and one stable ID. Hosts
+should use explicit names such as `spawn_monster` and `spawn_monster_at`
+instead of registering multiple signatures under the same script-visible name.
+
 There are three registration shapes:
 
 ```text
@@ -730,6 +745,7 @@ CallHostMethod(player.inventory, add, ["gold", 100])
 
 ```text
 function module/name/stable_id must be unique
+function overloading is unsupported; duplicate script-visible names are invalid
 registered signatures must be deterministic and serializable into TypeRegistry
 effects must be declared up front
 permission checks happen before native call dispatch
@@ -1519,7 +1535,7 @@ combat.on_kill(player, monster)
 Internally uses:
 
 ```text
-FunctionSymbolId("combat.on_kill/3")
+FunctionSymbolId("combat.on_kill")
 ```
 
 At call time:

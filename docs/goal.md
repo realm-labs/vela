@@ -25,6 +25,7 @@ The language should provide:
 The first phase does not include:
 
 - Script-language generics.
+- Function overloading by arity, type hint, or native signature.
 - A Rust-style borrow checker in the script language.
 - Real Rust references exposed to script code.
 - Arbitrary monkey patching of types or methods.

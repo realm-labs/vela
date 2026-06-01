@@ -7,6 +7,8 @@ decision history lives in
 ## Standing Constraints
 
 - Script-language generics are not supported.
+- Function overloading by arity, type hint, or native signature is not
+  supported.
 - Scripts never receive real Rust `&mut T` references.
 - Host mutation must go through `HostRef`, `HostPath`, `PathProxy`, and
   `PatchTx`.
@@ -48,6 +50,14 @@ There is no separate public IR crate yet. `HIR + TypeFacts + bytecode` is the
 current semantic pipeline; a lower IR/MIR should only be introduced when
 optimization, CFG/data-flow, register allocation, or lowering complexity
 requires it.
+
+### Function Identity
+
+Vela does not support function overloading. A module has one function per
+script-visible name, and a type or trait has one method per receiver/name pair.
+Arity, type hints, default values, and native Rust signatures do not create
+overload sets. Resolver, reflection, native registration, and hot-reload ABI
+logic should model each function name as a single callable.
 
 ### Runtime And Heap
 
