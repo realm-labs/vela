@@ -1,4 +1,5 @@
 use vela_common::FunctionId;
+use vela_reflect::ModuleDesc;
 use vela_vm::{Value, VmError, VmErrorKind, VmResult};
 
 use crate::{
@@ -9,6 +10,13 @@ pub const CONTEXT_TIME_PERMISSION: &str = "ctx.time";
 pub const CTX_NOW_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0002);
 pub const CTX_TICK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0003);
 pub const CTX_ELAPSED_SINCE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0004);
+
+pub(crate) fn context_module_desc() -> ModuleDesc {
+    ModuleDesc::new("ctx")
+        .docs("Deterministic context helpers.")
+        .attr("stdlib", "context")
+        .attr("domain", "gameplay")
+}
 
 pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry; 3] {
     [

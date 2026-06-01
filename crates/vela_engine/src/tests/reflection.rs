@@ -247,6 +247,11 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(result_type.attrs.get("stdlib"), Some("result"));
 
     let math = registry.module_by_name("math").expect("math module");
+    assert_eq!(
+        math.docs.as_deref(),
+        Some("Deterministic math standard-library helpers.")
+    );
+    assert_eq!(math.attrs.get("stdlib"), Some("math"));
     assert_eq!(math.exports.len(), 14);
     assert!(math.exports.iter().any(|export| export.name == "math.max"));
     assert!(math.exports.iter().any(|export| export.name == "math.sqrt"));
@@ -265,6 +270,11 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(sqrt.return_type.as_deref(), Some("float"));
 
     let option = registry.module_by_name("option").expect("option module");
+    assert_eq!(
+        option.docs.as_deref(),
+        Some("Option standard-library propagation helpers.")
+    );
+    assert_eq!(option.attrs.get("stdlib"), Some("option"));
     assert_eq!(option.exports.len(), 7);
     assert!(
         option
@@ -280,6 +290,11 @@ fn engine_standard_natives_register_reflection_metadata() {
     );
 
     let result = registry.module_by_name("result").expect("result module");
+    assert_eq!(
+        result.docs.as_deref(),
+        Some("Result standard-library propagation helpers.")
+    );
+    assert_eq!(result.attrs.get("stdlib"), Some("result"));
     assert_eq!(result.exports.len(), 8);
     assert!(
         result
@@ -295,6 +310,11 @@ fn engine_standard_natives_register_reflection_metadata() {
     );
 
     let set = registry.module_by_name("set").expect("set module");
+    assert_eq!(
+        set.docs.as_deref(),
+        Some("Set standard-library construction helpers.")
+    );
+    assert_eq!(set.attrs.get("stdlib"), Some("set"));
     assert_eq!(set.exports.len(), 1);
     assert_eq!(set.exports[0].name, "set.from_array");
 
@@ -378,6 +398,14 @@ fn main() {
         && reflect.kind(set_type) == "set"
         && reflect.kind(option_type) == "script_enum"
         && reflect.kind(result_type) == "script_enum"
+        && reflect.docs(math) == "Deterministic math standard-library helpers."
+        && reflect.docs(option) == "Option standard-library propagation helpers."
+        && reflect.docs(result) == "Result standard-library propagation helpers."
+        && reflect.docs(set) == "Set standard-library construction helpers."
+        && reflect.attr(math, "stdlib") == "math"
+        && reflect.attr(option, "stdlib") == "option"
+        && reflect.attr(result, "stdlib") == "result"
+        && reflect.attr(set, "stdlib") == "set"
         && reflect.attr(string_type, "stdlib") == "builtin"
         && reflect.attr(option_type, "stdlib") == "option"
         && reflect.attr(result_type, "stdlib") == "result"

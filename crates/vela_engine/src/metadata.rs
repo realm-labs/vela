@@ -66,13 +66,18 @@ pub(crate) fn inject_native_function_metadata(
         if let Some(module_name) = native_function_module(&desc.name)
             && registry.module_by_name(&module_name).is_none()
         {
-            registry.register_module(ModuleDesc::new(module_name));
+            registry.register_module(native_module_desc(&module_name));
         }
         registry.register_function(reflect_function(desc));
     }
 }
 
 pub(crate) fn inject_standard_native_metadata(registry: &mut TypeRegistry) {
+    for desc in crate::standard::standard_module_descs() {
+        if registry.module_by_name(&desc.name).is_none() {
+            registry.register_module(desc);
+        }
+    }
     for desc in crate::standard::standard_type_descs() {
         if registry.type_by_name(&desc.key.name).is_some() {
             continue;
@@ -89,6 +94,13 @@ pub(crate) fn inject_standard_native_metadata(registry: &mut TypeRegistry) {
             registry.register_module(ModuleDesc::new(module_name));
         }
         registry.register_function(reflect_function(&desc));
+    }
+}
+
+fn native_module_desc(module_name: &str) -> ModuleDesc {
+    match module_name {
+        "ctx" => crate::clock::context_module_desc(),
+        _ => ModuleDesc::new(module_name),
     }
 }
 

@@ -173,6 +173,28 @@ fn engine_context_clock_registers_metadata() {
         .expect("engine should build");
 
     let registry = engine.registry();
+    let module = registry.module_by_name("ctx").expect("ctx module metadata");
+    assert_eq!(
+        module.docs.as_deref(),
+        Some("Deterministic context helpers.")
+    );
+    assert_eq!(module.attrs.get("stdlib"), Some("context"));
+    assert_eq!(module.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(module.exports.len(), 3);
+    assert!(module.exports.iter().any(|export| export.name == "ctx.now"));
+    assert!(
+        module
+            .exports
+            .iter()
+            .any(|export| export.name == "ctx.tick")
+    );
+    assert!(
+        module
+            .exports
+            .iter()
+            .any(|export| export.name == "ctx.elapsed_since")
+    );
+
     let now = registry
         .function_by_name("ctx.now")
         .expect("ctx.now metadata");
