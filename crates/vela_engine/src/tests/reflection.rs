@@ -382,7 +382,7 @@ fn main() {
     let math = reflect.module("math");
     let option_module = reflect.module("option");
     let result_module = reflect.module("result");
-    let set = reflect.module("set");
+    let set_module = reflect.module("set");
     let string_type = reflect.type_info("string");
     let array_type = reflect.type_info("array");
     let option_type = reflect.type_info("Option");
@@ -394,6 +394,7 @@ fn main() {
     let string_value_type = reflect.type_of("quest");
     let array_value_type = reflect.type_of(["quest"]);
     let map_value_type = reflect.type_of({"quest": 1});
+    let set_value_type = reflect.type_of(set.from_array(["quest"]));
     let option_value_type = reflect.type_of(option.some(1));
     let result_value_type = reflect.type_of(result.ok(1));
     let option_variants = reflect.variants(option_type);
@@ -429,7 +430,7 @@ fn main() {
     let math_exports = reflect.exports(math);
     let option_exports = reflect.exports(option_module);
     let result_exports = reflect.exports(result_module);
-    let set_exports = reflect.exports(set);
+    let set_exports = reflect.exports(set_module);
     let type_of_checks = reflect.name(null_value_type) == "null"
         && reflect.kind(null_value_type) == "null"
         && reflect.name(bool_value_type) == "bool"
@@ -444,6 +445,8 @@ fn main() {
         && reflect.kind(array_value_type) == "array"
         && reflect.name(map_value_type) == "map"
         && reflect.kind(map_value_type) == "map"
+        && reflect.name(set_value_type) == "set"
+        && reflect.kind(set_value_type) == "set"
         && reflect.name(option_value_type) == "Option"
         && reflect.kind(option_value_type) == "script_enum"
         && reflect.name(result_value_type) == "Result"
@@ -469,11 +472,11 @@ fn main() {
         && reflect.docs(math) == "Deterministic math standard-library helpers."
         && reflect.docs(option_module) == "Option standard-library propagation helpers."
         && reflect.docs(result_module) == "Result standard-library propagation helpers."
-        && reflect.docs(set) == "Set standard-library construction helpers."
+        && reflect.docs(set_module) == "Set standard-library construction helpers."
         && reflect.attr(math, "stdlib") == "math"
         && reflect.attr(option_module, "stdlib") == "option"
         && reflect.attr(result_module, "stdlib") == "result"
-        && reflect.attr(set, "stdlib") == "set"
+        && reflect.attr(set_module, "stdlib") == "set"
         && reflect.attr(string_type, "stdlib") == "builtin"
         && reflect.attr(option_type, "stdlib") == "option"
         && reflect.attr(result_type, "stdlib") == "result"

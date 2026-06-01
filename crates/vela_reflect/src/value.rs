@@ -16,6 +16,7 @@ pub enum ReflectValue {
     Host(HostValue),
     HostRef(HostRef),
     Record(BTreeMap<String, ReflectValue>),
+    Set(Vec<ReflectValue>),
     ScriptRecord {
         type_name: String,
         fields: BTreeMap<String, ReflectValue>,
@@ -41,6 +42,7 @@ pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&
         ReflectValue::Host(value) => type_of_host_value(registry, value),
         // Generic records are the reflect-layer representation for script maps.
         ReflectValue::Record(_) => registry.type_by_name("map"),
+        ReflectValue::Set(_) => registry.type_by_name("set"),
     }
 }
 
@@ -137,6 +139,7 @@ fn get_impl(
             })
         }
         ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+        ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
 
@@ -235,6 +238,7 @@ fn set_impl(
             })
         }
         ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+        ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
 
@@ -330,7 +334,7 @@ pub fn implements(
             };
             Ok(type_implements(desc, trait_name))
         }
-        ReflectValue::Host(_) | ReflectValue::Record(_) => {
+        ReflectValue::Host(_) | ReflectValue::Record(_) | ReflectValue::Set(_) => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
     }

@@ -171,6 +171,7 @@ fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
         ReflectValue::Host(_)
         | ReflectValue::HostRef(_)
         | ReflectValue::Record(_)
+        | ReflectValue::Set(_)
         | ReflectValue::ScriptRecord { .. } => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }

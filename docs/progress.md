@@ -2596,6 +2596,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   script-visible `reflect.type_of(42)`, `reflect.type_of(["tag"])`, and
   `reflect.type_of(option.some(value))` return real type metadata instead of
   `null`.
+- Added a focused reflect-layer representation for script-owned set values so
+  `reflect.type_of(set.from_array([...]))` resolves to the registered standard
+  `set` descriptor. Sets remain script values, not host-owned state, and
+  reflective field writes/calls on sets continue to be rejected as invalid
+  targets.
 
 ## Next
 

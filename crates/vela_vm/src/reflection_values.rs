@@ -19,6 +19,11 @@ pub(crate) fn value_to_reflect(
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(reflect::ReflectValue::Record(values))
         }
+        Value::Set(values) => values
+            .iter()
+            .map(|value| value_to_reflect(value, operation))
+            .collect::<VmResult<Vec<_>>>()
+            .map(reflect::ReflectValue::Set),
         Value::Record {
             type_name,
             fields: values,
@@ -50,8 +55,7 @@ pub(crate) fn value_to_reflect(
         Value::Array(_) => Ok(reflect::ReflectValue::Host(value_to_host(
             value, operation, None,
         )?)),
-        Value::Set(_)
-        | Value::Range(_)
+        Value::Range(_)
         | Value::Closure(_)
         | Value::PathProxy(_)
         | Value::Missing
@@ -74,6 +78,11 @@ pub(crate) fn value_from_reflect(value: reflect::ReflectValue) -> VmResult<Value
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(Value::Map(values))
         }
+        reflect::ReflectValue::Set(values) => values
+            .into_iter()
+            .map(value_from_reflect)
+            .collect::<VmResult<Vec<_>>>()
+            .map(Value::Set),
         reflect::ReflectValue::ScriptRecord { type_name, fields } => {
             let fields = fields
                 .into_iter()
