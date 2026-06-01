@@ -119,6 +119,22 @@ narrowing, Option/Result predicate narrowing, and pattern diagnostics are
 analysis/tooling data. They should not change VM semantics unless a separate
 compiler/runtime decision says so.
 
+### Debugger Support
+
+Debugger support is a post-MVP runtime and Debug Adapter Protocol capability,
+not a script-language feature. Runtime debug hooks may expose source
+breakpoints, stepping, stack frames, watches, safe HostRef display, PatchTx
+preview, and hot-reload breakpoint rebinding, but they must respect reflection,
+host access, PatchTx, and TypeRegistry boundaries.
+
+### Cranelift JIT
+
+Cranelift JIT is a mandatory post-MVP backend after interpreter optimization,
+inline caches, debugger contracts, and conformance are stable. JIT must remain
+disableable, must be semantically equivalent to VM execution, and must preserve
+ExecutionBudget, GC roots, PatchTx, reflection policy, hot reload invalidation,
+and debugger-visible frame/source metadata.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

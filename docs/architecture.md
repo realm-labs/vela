@@ -1984,19 +1984,56 @@ The parser may use context to disambiguate blocks from map literals, but LSP
 completion should prefer record fields only after a known type path followed by
 `{` or when expected type information exists.
 
+## Debugger Architecture
+
+Debugger support is a post-MVP runtime and adapter capability, not a
+script-language feature. The first target is an IDEA/Kotlin/Java-like
+experience through runtime debug hooks plus a Debug Adapter Protocol boundary;
+a dedicated JetBrains plugin can build on that boundary later.
+
+Debugger-visible behavior should include:
+
+```text
+source breakpoints and conditional breakpoints
+step into, step over, step out, pause, and continue
+call stack with source spans, function names, and ProgramVersion identity
+parameters, locals, captures, and watch/evaluate expressions
+safe HostRef display through reflection and host access policy
+PatchTx preview without applying host mutations
+runtime exception and host error breakpoints
+hot reload breakpoint rebinding across ProgramVersion changes
+```
+
+Debug operations must use the same safety boundaries as scripts:
+
+```text
+do not expose real Rust references
+do not bypass PatchTx or ScriptStateAdapter for host mutation
+do not mutate TypeRegistry or runtime type structure
+respect reflection permissions and host read/write/call policies
+charge or suspend execution budgets through explicit debugger policy
+resume only at VM safe points or well-defined debug suspension points
+```
+
+The VM, bytecode compiler, and future optimized backends must preserve enough
+debug metadata to reconstruct source locations, frame values, GC roots,
+captured variables, and side-exit state. JIT and inline-cache fast paths must
+either support debugger suspension directly or side-exit to an equivalent
+bytecode VM frame before exposing state.
+
 ## Performance Architecture Contract
 
 Performance work must preserve the language and embedding contracts. The
-optimized interpreter, inline caches, specialization, and any future JIT are
+optimized interpreter, inline caches, specialization, and Cranelift JIT are
 implementation choices behind the same VM semantics.
 
 Stable runtime facts:
 
 ```text
 FieldId, MethodId, VariantId, FunctionId, TraitId, ShapeId, and TypeKey are stable handles
-bytecode offsets and source spans remain available for diagnostics and profiling
-ProgramVersion owns bytecode, registry snapshots, profile data, inline-cache state, and optional compiled code
-call frames expose registers and roots for GC, debugging, deoptimization, and hot reload lifetime tracking
+bytecode offsets, source spans, and source maps remain available for diagnostics, profiling, and debugging
+ProgramVersion owns bytecode, registry snapshots, debug metadata, profile data, inline-cache state, and compiled code
+call frames expose registers, frame maps, and roots for GC, debugging, deoptimization, and hot reload lifetime tracking
 host mutation flows through HostRef, HostPath, PathProxy, PatchTx, and ScriptStateAdapter only
 ```
 
@@ -2008,6 +2045,7 @@ guards validate dynamic value tags, shapes, schemas, methods, fields, and Progra
 guard failure is a normal slow-path transition, not a correctness failure
 optimized code must charge or preserve ExecutionBudget behavior
 optimized code must report or preserve GC roots before allocation, calls, and safe points
+optimized code must preserve debugger-visible source locations, frame state, and safe suspension points
 optimized code must not bypass PatchTx, reflection policy, permissions, or host access checks
 hot reload invalidates version-owned caches and compiled code at safe points
 dynamic type hints and TypeFacts guide optimization but are not correctness guarantees
@@ -2073,22 +2111,39 @@ Inline caches are still interpreter technology. They should be version-owned,
 cheap to invalidate, and safe to disable for deterministic debugging or
 performance investigations.
 
-### Phase 4: Optional Cranelift JIT
+### Phase 4: Debugger Contracts
+
+```text
+runtime debug hooks and suspension points
+source breakpoint binding and conditional breakpoint evaluation
+frame maps for parameters, locals, captures, registers, and GC roots
+watch/evaluate through controlled reflection and host policies
+PatchTx preview and host error breakpoints
+Debug Adapter Protocol boundary for IDE integration
+hot reload breakpoint rebinding through ProgramVersion metadata
+```
+
+Debugger support must stay disableable for normal gameplay execution. Optimized
+interpreter paths, inline caches, and later JIT code must preserve the metadata
+needed to reconstruct a bytecode-equivalent debug frame.
+
+### Phase 5: Cranelift JIT
 
 ```text
 baseline native compilation for restricted hot functions
 tag, shape, schema, method, field, and version guards
 side exits or deoptimization back to the bytecode VM
-compiled frame root maps for GC
+compiled frame root maps for GC, debugging, and deoptimization
 budget checks in compiled code or side exits to checked VM helpers
 host calls routed through existing NativeCallContext and PatchTx helpers
-runtime option to disable JIT
+runtime option to enable or disable JIT
 ```
 
 JIT is not part of the MVP, and it is not required to meet the non-JIT Lua
-comparison target. If added later, Cranelift should be introduced as an
-optional backend after interpreter correctness, conformance, and profiling data
-are already stable.
+comparison target. Cranelift is a post-MVP backend milestone after interpreter
+correctness, conformance, profiling data, inline caches, and debugger
+contracts are stable. It must remain disableable, and VM execution remains the
+correctness baseline.
 
 ## Security And Sandbox
 

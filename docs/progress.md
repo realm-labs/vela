@@ -11,8 +11,9 @@ M12/M13 reflection and standard-library completion, with targeted M14/M15
 Engine API and hot-reload source workflow work as it unblocks embedding.
 
 Post-MVP performance remains a separate track: optimize the non-JIT bytecode
-interpreter toward Lua 5.x comparable gameplay workloads before considering
-optional JIT work.
+interpreter toward Lua 5.x comparable gameplay workloads, then add debugger
+runtime/DAP support and Cranelift JIT once the interpreter, inline-cache, and
+conformance contracts are stable.
 
 ## Milestone Status
 
@@ -31,7 +32,10 @@ optional JIT work.
 | M16 | Partial | Runtime diagnostics and common rendering have started. |
 | M17 | Partial | Conformance fixture and demo harnesses exist; game-server demo can still expand. |
 | M18 | Partial | First VM baseline harness exists; official baselines remain. |
-| M19-M22 | Not started | Interpreter optimization, inline caches, optional JIT evaluation, and release hardening. |
+| M19-M20 | Not started | Interpreter optimization plus inline caches and specialization. |
+| M21 | Not started | Debugger runtime hooks and DAP integration. |
+| M22 | Not started | Cranelift JIT backend after interpreter/cache/debug contracts are stable. |
+| M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
 
 ## Active Capabilities
 
@@ -66,6 +70,8 @@ optional JIT work.
 - Expand M16/M17 diagnostics, fixtures, and game-server demo coverage.
 - Keep M18+ performance work benchmark-driven and separate from semantic
   changes.
+- Plan M21 debugger and M22 Cranelift JIT from stable source-span, frame-map,
+  GC-root, budget, PatchTx, hot-reload, and conformance contracts.
 
 ## Update Rules
 

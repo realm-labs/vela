@@ -17,8 +17,8 @@ The language should provide:
 7. Practical performance: the MVP should keep the bytecode VM, stable IDs,
    field slots, native standard library functions, and GC boundaries ready for
    optimization. After the MVP, the non-JIT interpreter should target
-   Lua-comparable performance on representative gameplay workloads before any
-   optional JIT work.
+   Lua-comparable performance on representative gameplay workloads before
+   post-MVP Cranelift JIT work.
 
 ## Non-Goals
 
@@ -35,6 +35,10 @@ The first phase does not include:
 - Complex async or coroutine hot reload.
 - A full IDE or LSP implementation.
 - Performance that exceeds LuaJIT at the outset.
+
+These are first-phase non-goals. The post-MVP roadmap includes a debugger
+runtime/DAP milestone and a Cranelift JIT milestone after the interpreter,
+baseline, and inline-cache work are stable.
 
 ## Design Principles
 
@@ -83,15 +87,18 @@ Post-MVP performance work is a first-class roadmap track. The initial release
 should not depend on JIT, but the optimized interpreter should eventually be
 measured against Lua 5.x on equivalent gameplay-style workloads. LuaJIT and
 Node.js remain useful upper-reference points for hot scalar loops and future
-JIT decisions, not the baseline required for the MVP.
+JIT decisions, not the baseline required for the MVP. Cranelift JIT is a
+post-MVP backend milestone after the optimized interpreter and inline-cache
+work, and debugger support is planned as runtime debug hooks plus Debug Adapter
+Protocol integration rather than script-language syntax.
 
 ## Milestones
 
 These milestones start after the completed M0-M6 prototype. Current
 implementation status lives in [progress.md](progress.md), and detailed
-historical progress is archived under [archive](archive/). The plan below only
-tracks the remaining work needed for the complete non-JIT, non-async
-interpreter.
+historical progress is archived under [archive](archive/). The plan below
+tracks the first complete non-JIT, non-async interpreter plus post-MVP
+debugger, JIT, and release-hardening work.
 
 ### M7: Runtime Safety, Budgets, And GC
 
@@ -372,7 +379,9 @@ lossless CST or equivalent token tree with comments, newlines, and spans
 diagnostics with primary span, related labels, call stack, candidates, hints
 semantic diagnostics for unresolved names, fields, methods, variants, effects
 runtime diagnostics mapped back to source spans and function stack frames
+frame metadata for parameters, locals, captures, bytecode offsets, and roots
 TypeFact inference for locals, host refs, arrays, maps, enums, and null checks
+diagnostic/debug shared data for future debugger and DAP integration
 flow narrowing for if, match, and Option/Result-style checks
 completion data for bindings, modules, fields, methods, variants, stdlib APIs
 snapshot tests for diagnostic rendering
@@ -509,10 +518,41 @@ hot reload cannot expose stale FieldId, MethodId, shape, or function targets
 benchmark reports separate interpreter-only and cache-enabled results
 ```
 
-### M21: Optional Cranelift Baseline JIT
+### M21: Debugger Runtime And DAP Integration
 
-Goal: evaluate native code generation only after the optimized interpreter and
-inline-cache work establish clear remaining bottlenecks.
+Goal: provide a comfortable IDE-style debugging experience through runtime
+debug hooks and Debug Adapter Protocol integration without making debugging a
+script-language feature.
+
+Scope:
+
+```text
+source breakpoints and conditional breakpoints
+step into, step over, step out, pause, and continue
+call stack and frame inspection with source spans and bytecode offsets
+locals, parameters, captured values, and watch/evaluate expressions
+safe HostRef display through reflection and host access policy
+PatchTx preview without applying host mutations
+runtime exception and host error breakpoints
+hot reload breakpoint rebinding across ProgramVersion changes
+Debug Adapter Protocol server or adapter boundary for IDE integration
+```
+
+Acceptance:
+
+```text
+debugger can pause at source breakpoints and resume deterministically
+single-step behavior matches VM instruction/source-span mapping
+watch/evaluate respects reflection permissions and cannot expose Rust references
+PatchTx preview never applies mutations by itself
+hot reload preserves or reports breakpoint rebinding across compatible updates
+debug hooks can be disabled for normal gameplay execution
+```
+
+### M22: Cranelift JIT
+
+Goal: add Cranelift native code generation after the optimized interpreter,
+inline caches, debugger contracts, and performance baselines are stable.
 
 Scope:
 
@@ -520,24 +560,24 @@ Scope:
 Cranelift baseline JIT for a restricted hot-function subset
 guards for dynamic value tags, shapes, schemas, and method targets
 deoptimization or side exits back to the bytecode VM
-compiled frame root reporting for GC
+compiled frame root reporting for GC, debugging, and deoptimization
 ExecutionBudget checks in compiled code or mandatory side exits
 PatchTx, permissions, reflection, and host calls routed through existing helpers
 ProgramVersion ownership of compiled code and invalidation metadata
-JIT disabled-by-default runtime option
+JIT enable/disable runtime option
 ```
 
 Acceptance:
 
 ```text
-JIT is optional and never required for correctness
+JIT is not required for correctness and can be disabled
 unsupported functions continue through the bytecode VM
 compiled code and VM code produce identical results on conformance fixtures
 hot reload drops or invalidates compiled artifacts at safe points
-budget, GC, and PatchTx invariants hold under compiled execution
+budget, GC, debugger, and PatchTx invariants hold under compiled execution
 ```
 
-### M22: Performance Hardening And Release Targets
+### M23: Performance Hardening And Release Targets
 
 Goal: turn the measured and optimized runtime into a release-quality scripting
 engine with documented performance expectations.
@@ -582,9 +622,11 @@ This list keeps the remaining roadmap shape, not a completed-work ledger.
    gameplay workload performance.
 9. Add M20 inline caches and specialization for fields, methods, stdlib calls,
    and hot bytecode offsets.
-10. Evaluate M21 optional Cranelift JIT only after non-JIT targets and
-    conformance are stable.
-11. Finish M22 release hardening, public docs, validation gates, and
+10. Add M21 debugger runtime hooks and DAP integration after source-span,
+    frame, and TypeFact foundations are stable.
+11. Implement M22 Cranelift JIT after interpreter, inline-cache, debugger, and
+    conformance contracts are stable.
+12. Finish M23 release hardening, public docs, validation gates, and
     performance target reporting.
 
 ## Key Risks
@@ -596,8 +638,8 @@ Risk: the language drifts into a mixture of Rust, Python, Lua, and JavaScript.
 Control:
 
 ```text
-The complete interpreter excludes script generics, JIT, script async, and
-script macros.
+The first complete interpreter excludes script generics, JIT, script async,
+and script macros.
 Rust host derive macros are allowed only to reduce embedding boilerplate.
 Every syntax feature must serve game server logic or the host patch model.
 ```
@@ -650,7 +692,7 @@ Control:
 Close the interpreter loop first.
 Optimize only after benchmarks exist.
 Prioritize FieldId, shapes, native standard library fast paths, heap reductions,
-and inline caches before considering JIT.
+debugger contracts, and inline caches before implementing Cranelift JIT.
 ```
 
 ## Final Acceptance Demo

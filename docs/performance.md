@@ -124,7 +124,7 @@ Rust profile and target triple
 Vela commit or ProgramVersion build identity
 warmup, iteration, repeat, and input-size parameters
 min, mean, median, p95, and checksum
-whether managed heap, caches, or JIT are enabled
+whether managed heap, debugger hooks, caches, or JIT are enabled
 external runtime versions when comparing other languages
 ```
 
@@ -137,17 +137,25 @@ in [architecture.md](architecture.md):
 2. Optimize the M19 interpreter and managed heap path without changing
    semantics.
 3. Add M20 inline caches and specialization with guarded slow-path fallback.
-4. Evaluate M21 optional Cranelift JIT only after non-JIT targets and
-   conformance are stable.
-5. Harden M22 release targets and regression thresholds.
+4. Add M21 debugger runtime and DAP contracts before optimized backends rely on
+   frame metadata.
+5. Implement M22 Cranelift JIT after non-JIT targets, inline caches, debugger
+   contracts, and conformance are stable.
+6. Harden M23 release targets and regression thresholds.
 
 Optimized paths must never bypass:
 
 ```text
 ExecutionBudget
 memory budget and GC roots
+debugger breakpoints, stepping, frame maps, and safe suspension points when enabled
 PatchTx and ScriptStateAdapter
 permissions and reflection policy
 hot reload ProgramVersion ownership
 source-spanned diagnostics where errors can still occur
 ```
+
+JIT benchmark reports must separate interpreter-only, cache-enabled, and
+JIT-enabled runs. Cranelift optimization work must not trade away breakpoint
+accuracy, single-step behavior, stack/frame inspection, GC root reporting,
+budget checks, PatchTx routing, or hot-reload invalidation.
