@@ -2417,6 +2417,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   compile-file/dir loading, source-error reporting, ABI preservation,
   runtime update application, and configured hot-reload policy tests into a
   focused `tests::source_reload` module.
+- Kept M14 Engine native-call and host-method coverage reviewable by reducing
+  the Engine test hub to shared helpers and splitting native function/runtime
+  budget tests into `tests::native` plus host-path method lowering/callable
+  method tests into `tests::host_methods`.
 
 ## Next
 

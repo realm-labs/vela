@@ -6,7 +6,11 @@ use vela_reflect::{
 
 use crate::{Engine, EngineErrorKind, NativeFunctionDesc, NativeFunctionId, NativeMethodDesc};
 
-use super::{TypeHint, Value, player_type, trait_desc_with_id};
+use vela_vm::Value;
+
+use crate::TypeHint;
+
+use super::{player_type, trait_desc_with_id};
 
 #[test]
 fn engine_rejects_native_methods_for_unknown_owner_types() {
