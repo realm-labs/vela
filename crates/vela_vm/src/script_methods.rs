@@ -10,40 +10,49 @@ use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
 };
 
-#[allow(clippy::too_many_arguments)]
+pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
+    pub(crate) vm: &'a Vm,
+    pub(crate) program: Option<&'a Program>,
+    pub(crate) host: Option<&'a mut HostExecution<'host>>,
+    pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
+    pub(crate) budget: Option<&'a mut ExecutionBudget>,
+    pub(crate) caller_roots: Vec<GcRef>,
+}
+
 pub(crate) fn call_method(
     receiver: &mut Value,
     method: &str,
     args: &[Value],
-    vm: &Vm,
-    program: Option<&Program>,
-    mut host: Option<&mut HostExecution<'_>>,
-    mut heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
-    caller_roots: Vec<GcRef>,
+    mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
-    if let Some(result) = string_method_dispatch::call(method, receiver, args, heap.as_deref()) {
+    if let Some(result) =
+        string_method_dispatch::call(method, receiver, args, dispatch.heap.as_deref())
+    {
         return result;
     }
-    if let Some(result) = callback_method_dispatch::call(
-        method,
-        receiver,
-        args,
-        &mut CallbackMethodDispatch {
-            vm,
-            program,
-            host: host.as_deref_mut(),
-            heap: heap.as_deref_mut(),
-            budget: budget.as_deref_mut(),
-            caller_roots: &caller_roots,
-        },
-    ) {
-        return result;
+    {
+        let mut callback_dispatch = CallbackMethodDispatch {
+            vm: dispatch.vm,
+            program: dispatch.program,
+            host: dispatch.host.as_deref_mut(),
+            heap: dispatch.heap.as_deref_mut(),
+            budget: dispatch.budget.as_deref_mut(),
+            caller_roots: &dispatch.caller_roots,
+        };
+        if let Some(result) =
+            callback_method_dispatch::call(method, receiver, args, &mut callback_dispatch)
+        {
+            return result;
+        }
     }
 
-    if let Some(result) =
-        script_builtin_methods::call(receiver, method, args, &mut heap, &mut budget)
-    {
+    if let Some(result) = script_builtin_methods::call(
+        receiver,
+        method,
+        args,
+        &mut dispatch.heap,
+        &mut dispatch.budget,
+    ) {
         return result;
     }
 
@@ -52,62 +61,44 @@ pub(crate) fn call_method(
         ScriptMethodLookup::Name(method),
         method,
         args,
-        vm,
-        program,
-        host,
-        heap,
-        budget,
-        &caller_roots,
+        &mut dispatch,
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn call_method_id(
     receiver: &Value,
     method: &str,
     method_id: MethodId,
     args: &[Value],
-    vm: &Vm,
-    program: Option<&Program>,
-    host: Option<&mut HostExecution<'_>>,
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-    caller_roots: Vec<GcRef>,
+    mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
     call_script_impl_method(
         receiver,
         ScriptMethodLookup::Id(method_id),
         method,
         args,
-        vm,
-        program,
-        host,
-        heap,
-        budget,
-        &caller_roots,
+        &mut dispatch,
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 fn call_script_impl_method(
     receiver: &Value,
     lookup: ScriptMethodLookup<'_>,
     method: &str,
     args: &[Value],
-    vm: &Vm,
-    program: Option<&Program>,
-    host: Option<&mut HostExecution<'_>>,
-    mut heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-    caller_roots: &[GcRef],
+    dispatch: &mut ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
-    let type_name =
-        receiver_type_name(receiver, heap.as_deref(), vm.type_registry()).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownMethod {
-                method: method.to_owned(),
-            })
-        })?;
-    let Some(function) = program.and_then(|program| match lookup {
+    let type_name = receiver_type_name(
+        receiver,
+        dispatch.heap.as_deref(),
+        dispatch.vm.type_registry(),
+    )
+    .ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: method.to_owned(),
+        })
+    })?;
+    let Some(function) = dispatch.program.and_then(|program| match lookup {
         ScriptMethodLookup::Name(name) => program.script_method(&type_name, name),
         ScriptMethodLookup::Id(method_id) => program.script_method_by_id(&type_name, method_id),
     }) else {
@@ -119,18 +110,21 @@ fn call_script_impl_method(
     let mut values = Vec::with_capacity(args.len() + 1);
     values.push(receiver.clone());
     values.extend(args.iter().cloned());
-    let protected_root_len = heap
+    let protected_root_len = dispatch
+        .heap
         .as_deref_mut()
-        .map(|heap| heap.push_protected_roots(caller_roots.to_vec()));
-    let result = vm.execute_code_object(
+        .map(|heap| heap.push_protected_roots(dispatch.caller_roots.clone()));
+    let result = dispatch.vm.execute_code_object(
         function,
-        program,
+        dispatch.program,
         &values,
-        host,
-        heap.as_deref_mut(),
-        budget,
+        dispatch.host.as_deref_mut(),
+        dispatch.heap.as_deref_mut(),
+        dispatch.budget.as_deref_mut(),
     );
-    if let (Some(heap), Some(protected_root_len)) = (heap, protected_root_len) {
+    if let (Some(heap), Some(protected_root_len)) =
+        (dispatch.heap.as_deref_mut(), protected_root_len)
+    {
         heap.truncate_protected_roots(protected_root_len);
     }
     result

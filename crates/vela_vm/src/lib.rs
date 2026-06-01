@@ -61,7 +61,7 @@ pub use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_closure, expect_int, is_truthy, validate_jump};
-use script_methods::{call_method, call_method_id};
+use script_methods::{ScriptMethodDispatch, call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CallArgument, CodeObject, InstructionKind, Program, Register};
@@ -833,12 +833,14 @@ impl Vm {
                         &mut receiver_value,
                         method,
                         &values,
-                        self,
-                        program,
-                        host.as_deref_mut(),
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                        frame.heap_roots(),
+                        ScriptMethodDispatch {
+                            vm: self,
+                            program,
+                            host: host.as_deref_mut(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            caller_roots: frame.heap_roots(),
+                        },
                     )?;
                     let result = store_value_in_heap_if_needed(
                         result,
@@ -868,12 +870,14 @@ impl Vm {
                         method,
                         *method_id,
                         &values,
-                        self,
-                        program,
-                        host.as_deref_mut(),
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                        frame.heap_roots(),
+                        ScriptMethodDispatch {
+                            vm: self,
+                            program,
+                            host: host.as_deref_mut(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            caller_roots: frame.heap_roots(),
+                        },
                     )?;
                     let result = store_value_in_heap_if_needed(
                         result,

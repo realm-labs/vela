@@ -2554,6 +2554,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `ctx.now`/`ctx.elapsed_since` through `reflect.call(ReflectFunction, ...)`,
   proving required function permissions and zero-patch pure context helpers
   work through the same controlled reflection path as direct script calls.
+- Kept M9/M13 method dispatch architecture reviewable by replacing
+  `script_methods` long parameter lists with a cohesive `ScriptMethodDispatch`
+  context. String, callback, builtin, and script-impl method paths now share
+  one dispatch state object instead of local `too_many_arguments` allowances.
 
 ## Next
 
