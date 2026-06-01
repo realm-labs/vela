@@ -2549,6 +2549,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   Completion metadata now exposes the `ReflectFunction` descriptor form of
   `reflect.call`, and function fact lookup recognizes zero-argument descriptor
   calls without widening the existing host-method call shape.
+- Extended the M12/M13 context reflection proof for permissioned descriptor
+  calls. Engine tests and the runnable reflection demo now execute
+  `ctx.now`/`ctx.elapsed_since` through `reflect.call(ReflectFunction, ...)`,
+  proving required function permissions and zero-patch pure context helpers
+  work through the same controlled reflection path as direct script calls.
 
 ## Next
 

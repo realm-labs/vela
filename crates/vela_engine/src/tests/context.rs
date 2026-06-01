@@ -7,7 +7,7 @@ use crate::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID, CONTEXT_TIME_PERMISSION, CONTEXT_TYPE_ID, CONTROLLED_RANDOM_PERMISSION,
     CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID, Engine,
-    PermissionSet, Value, context_host_type_desc,
+    PermissionSet, ReflectPermissionSet, Value, context_host_type_desc,
 };
 
 #[test]
@@ -128,6 +128,41 @@ fn main() {
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(52))
     );
+}
+
+#[test]
+fn engine_reflect_call_invokes_permissioned_context_clock_functions() {
+    let engine = Engine::builder()
+        .grant_permission(CONTEXT_TIME_PERMISSION)
+        .with_context_clock(1_700_000_000, 42)
+        .reflection_permissions(ReflectPermissionSet::all())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let now = reflect.function("ctx.now");
+    let elapsed = reflect.function("ctx.elapsed_since");
+    return reflect.call(now) + reflect.call(elapsed, 1699999990);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Int(1_700_000_010))
+    );
+    assert!(tx.patches().is_empty());
 }
 
 #[test]

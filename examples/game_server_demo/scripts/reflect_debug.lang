@@ -62,6 +62,8 @@ fn main(ctx, player) {
     let ctx_elapsed_access = reflect.access(ctx_elapsed);
     let ctx_elapsed_params = reflect.params(ctx_elapsed);
     let ctx_elapsed_permissions = reflect.required_permissions(ctx_elapsed);
+    let reflected_now = reflect.call(ctx_now);
+    let reflected_elapsed = reflect.call(ctx_elapsed, 1699999990);
     let main_source_span = reflect.source_span(main_function);
     let ctx_methods = reflect.methods(ctx);
     let ctx_emit = reflect.method(ctx, "emit");
@@ -300,6 +302,8 @@ fn main(ctx, player) {
         && ctx_now_permissions[0] == "ctx.time"
         && ctx_elapsed_access.required_permissions[0] == "ctx.time"
         && ctx_elapsed_permissions[0] == "ctx.time"
+        && reflected_now == 1700000000
+        && reflected_elapsed == 10
         && ctx_elapsed_params.len() == 1
         && ctx_elapsed_params[0].name == "start"
         && ctx_elapsed_params[0].type == "int"
