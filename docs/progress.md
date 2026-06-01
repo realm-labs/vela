@@ -2601,6 +2601,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   `set` descriptor. Sets remain script values, not host-owned state, and
   reflective field writes/calls on sets continue to be rejected as invalid
   targets.
+- Added marker-only reflection for script closure values so
+  `reflect.type_of(|value| value)` resolves to the registered standard
+  `closure` descriptor. The marker is not convertible back into an executable
+  script value through reflection, and reflective field reads/writes/calls on
+  closures remain invalid targets.
 
 ## Next
 

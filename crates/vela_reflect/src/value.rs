@@ -15,6 +15,7 @@ use crate::{
 pub enum ReflectValue {
     Host(HostValue),
     HostRef(HostRef),
+    Closure,
     Record(BTreeMap<String, ReflectValue>),
     Set(Vec<ReflectValue>),
     ScriptRecord {
@@ -37,6 +38,7 @@ pub struct ReflectContext<'a> {
 pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&'a TypeDesc> {
     match value {
         ReflectValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
+        ReflectValue::Closure => registry.type_by_name("closure"),
         ReflectValue::ScriptRecord { type_name, .. } => registry.type_by_name(type_name),
         ReflectValue::ScriptEnum { enum_name, .. } => registry.type_by_name(enum_name),
         ReflectValue::Host(value) => type_of_host_value(registry, value),
@@ -138,7 +140,9 @@ fn get_impl(
                 script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
             })
         }
-        ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+        ReflectValue::Host(_) | ReflectValue::Closure => {
+            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
+        }
         ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
@@ -237,7 +241,9 @@ fn set_impl(
                 })?,
             })
         }
-        ReflectValue::Host(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
+        ReflectValue::Host(_) | ReflectValue::Closure => {
+            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
+        }
         ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
@@ -334,9 +340,10 @@ pub fn implements(
             };
             Ok(type_implements(desc, trait_name))
         }
-        ReflectValue::Host(_) | ReflectValue::Record(_) | ReflectValue::Set(_) => {
-            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
-        }
+        ReflectValue::Host(_)
+        | ReflectValue::Closure
+        | ReflectValue::Record(_)
+        | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
 

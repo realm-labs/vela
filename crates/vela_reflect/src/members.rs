@@ -187,9 +187,10 @@ pub(super) fn target_type<'a>(
         ReflectValue::HostRef(host_ref) => Err(ReflectError::new(ReflectErrorKind::UnknownType {
             host_type_id: host_ref.type_id,
         })),
-        ReflectValue::Host(_) | ReflectValue::Record(_) | ReflectValue::Set(_) => {
-            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
-        }
+        ReflectValue::Host(_)
+        | ReflectValue::Closure
+        | ReflectValue::Record(_)
+        | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
         ReflectValue::ScriptRecord { .. } | ReflectValue::ScriptEnum { .. } => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }

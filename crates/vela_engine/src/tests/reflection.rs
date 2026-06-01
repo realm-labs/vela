@@ -397,6 +397,7 @@ fn main() {
     let set_value_type = reflect.type_of(set.from_array(["quest"]));
     let option_value_type = reflect.type_of(option.some(1));
     let result_value_type = reflect.type_of(result.ok(1));
+    let closure_value_type = reflect.type_of(|value| value);
     let option_variants = reflect.variants(option_type);
     let result_variants = reflect.variants(result_type);
     let string_methods = reflect.methods(string_type);
@@ -450,7 +451,9 @@ fn main() {
         && reflect.name(option_value_type) == "Option"
         && reflect.kind(option_value_type) == "script_enum"
         && reflect.name(result_value_type) == "Result"
-        && reflect.kind(result_value_type) == "script_enum";
+        && reflect.kind(result_value_type) == "script_enum"
+        && reflect.name(closure_value_type) == "closure"
+        && reflect.kind(closure_value_type) == "closure";
     return reflect.has_function("math.max")
         && reflect.has_function("math.sqrt")
         && reflect.has_function("option.some")

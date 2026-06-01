@@ -170,6 +170,7 @@ fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
         ReflectValue::Host(HostValue::Enum { variant, .. }) => Ok(variant),
         ReflectValue::Host(_)
         | ReflectValue::HostRef(_)
+        | ReflectValue::Closure
         | ReflectValue::Record(_)
         | ReflectValue::Set(_)
         | ReflectValue::ScriptRecord { .. } => {

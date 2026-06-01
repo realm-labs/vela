@@ -55,8 +55,8 @@ pub(crate) fn value_to_reflect(
         Value::Array(_) => Ok(reflect::ReflectValue::Host(value_to_host(
             value, operation, None,
         )?)),
+        Value::Closure(_) => Ok(reflect::ReflectValue::Closure),
         Value::Range(_)
-        | Value::Closure(_)
         | Value::PathProxy(_)
         | Value::Missing
         | Value::HeapRef(_)
@@ -71,6 +71,9 @@ pub(crate) fn value_from_reflect(value: reflect::ReflectValue) -> VmResult<Value
     match value {
         reflect::ReflectValue::Host(value) => Ok(value_from_host(value)),
         reflect::ReflectValue::HostRef(host_ref) => Ok(Value::HostRef(host_ref)),
+        reflect::ReflectValue::Closure => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "reflect closure conversion",
+        })),
         reflect::ReflectValue::Record(values) => {
             let values = values
                 .into_iter()
