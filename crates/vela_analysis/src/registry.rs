@@ -349,6 +349,15 @@ fn method_effect_fact(effects: &MethodEffectSet) -> RegistryEffectFact {
 
 fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
     match desc.kind {
+        TypeKind::Null => TypeFact::Null,
+        TypeKind::Bool => TypeFact::Bool,
+        TypeKind::Int => TypeFact::Int,
+        TypeKind::Float => TypeFact::Float,
+        TypeKind::String => TypeFact::String,
+        TypeKind::Array => TypeFact::array(TypeFact::Any),
+        TypeKind::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
+        TypeKind::Set => TypeFact::set(TypeFact::Any),
+        TypeKind::Function | TypeKind::Closure => TypeFact::function(Vec::new(), TypeFact::Any),
         TypeKind::Host => TypeFact::host(&desc.key.name),
         TypeKind::ScriptStruct => TypeFact::record(&desc.key.name),
         TypeKind::ScriptEnum => TypeFact::enum_type(&desc.key.name, None::<String>),

@@ -73,6 +73,12 @@ pub(crate) fn inject_native_function_metadata(
 }
 
 pub(crate) fn inject_standard_native_metadata(registry: &mut TypeRegistry) {
+    for desc in crate::standard::standard_type_descs() {
+        if registry.type_by_name(&desc.key.name).is_some() {
+            continue;
+        }
+        registry.register(desc);
+    }
     for desc in crate::standard::standard_native_function_descs() {
         if registry.function_by_name(&desc.name).is_some() {
             continue;

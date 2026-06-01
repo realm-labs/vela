@@ -5,6 +5,16 @@ use vela_reflect::{
 
 pub(super) fn type_detail(kind: TypeKind) -> String {
     match kind {
+        TypeKind::Null => "kind: null".to_owned(),
+        TypeKind::Bool => "kind: bool".to_owned(),
+        TypeKind::Int => "kind: int".to_owned(),
+        TypeKind::Float => "kind: float".to_owned(),
+        TypeKind::String => "kind: string".to_owned(),
+        TypeKind::Array => "kind: array".to_owned(),
+        TypeKind::Map => "kind: map".to_owned(),
+        TypeKind::Set => "kind: set".to_owned(),
+        TypeKind::Function => "kind: function".to_owned(),
+        TypeKind::Closure => "kind: closure".to_owned(),
         TypeKind::Host => "kind: host".to_owned(),
         TypeKind::ScriptStruct => "kind: script struct".to_owned(),
         TypeKind::ScriptEnum => "kind: script enum".to_owned(),

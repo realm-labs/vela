@@ -88,6 +88,16 @@ fn origin_value(origin: DeclOrigin) -> HostValue {
 
 fn kind_name(kind: TypeKind) -> String {
     match kind {
+        TypeKind::Null => "null",
+        TypeKind::Bool => "bool",
+        TypeKind::Int => "int",
+        TypeKind::Float => "float",
+        TypeKind::String => "string",
+        TypeKind::Array => "array",
+        TypeKind::Map => "map",
+        TypeKind::Set => "set",
+        TypeKind::Function => "function",
+        TypeKind::Closure => "closure",
         TypeKind::Host => "host",
         TypeKind::ScriptStruct => "script_struct",
         TypeKind::ScriptEnum => "script_enum",

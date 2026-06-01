@@ -6,6 +6,10 @@ enum QuestProgress {
 fn main(ctx, player) {
     let player_type = reflect.type_info("Player");
     let config_type = reflect.type_info("Config");
+    let string_type = reflect.type_info("string");
+    let array_type = reflect.type_info("array");
+    let option_type = reflect.type_info("Option");
+    let result_type = reflect.type_info("Result");
     let quest_type = reflect.type_info("QuestProgress");
     let host_quest_type = reflect.type_info("HostQuestProgress");
     let damageable = reflect.trait_info("Damageable");
@@ -14,6 +18,8 @@ fn main(ctx, player) {
     let active_variant = reflect.variant_info(quest, "Active");
     let host_active_variant = reflect.variant_info(host_quest_type, "Active");
     let quest_type_variants = reflect.variants(quest_type);
+    let option_variants = reflect.variants(option_type);
+    let result_variants = reflect.variants(result_type);
     let reflected_variants = reflect.variants();
     let fields = reflect.fields(player);
     let level = reflect.field(player, "level");
@@ -81,9 +87,21 @@ fn main(ctx, player) {
             && reflect.kind(type_info) == "host")
         && reflect.has_type("Player")
         && reflect.has_type("Config")
+        && reflect.has_type("string")
+        && reflect.has_type("array")
+        && reflect.has_type("Option")
+        && reflect.has_type("Result")
         && reflect.has_type("QuestProgress")
         && reflect.has_type("HostQuestProgress")
         && !reflect.has_type("MissingType")
+        && reflect.kind(string_type) == "string"
+        && reflect.kind(array_type) == "array"
+        && reflect.kind(option_type) == "script_enum"
+        && reflect.kind(result_type) == "script_enum"
+        && reflect.attr(string_type, "stdlib") == "builtin"
+        && reflect.attr(array_type, "stdlib") == "builtin"
+        && reflect.attr(option_type, "stdlib") == "option"
+        && reflect.attr(result_type, "stdlib") == "result"
         && reflect.has_field(config_type, "kill_rewards")
         && reflect.field(config_type, "exp_to_next_level").type == "int"
         && reflect.kind(quest_type) == "script_enum"
@@ -94,7 +112,19 @@ fn main(ctx, player) {
         && host_quest_type.variant_count == 1
         && quest_variants.len() == 2
         && quest_type_variants.len() == 2
-        && reflected_variants.len() == 3
+        && option_variants.len() == 2
+        && option_variants[0].name == "Some"
+        && option_variants[0].fields[0].name == "0"
+        && option_variants[0].fields[0].type == "any"
+        && option_variants[1].name == "None"
+        && result_variants.len() == 2
+        && result_variants[0].name == "Ok"
+        && result_variants[0].fields[0].name == "0"
+        && result_variants[0].fields[0].type == "any"
+        && result_variants[1].name == "Err"
+        && result_variants[1].fields[0].name == "0"
+        && result_variants[1].fields[0].type == "any"
+        && reflected_variants.len() == 7
         && reflect.name(active_variant) == "Active"
         && reflect.owner(active_variant) == "QuestProgress"
         && active_variant.fields.len() == 1

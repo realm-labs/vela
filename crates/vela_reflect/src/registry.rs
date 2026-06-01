@@ -45,6 +45,16 @@ impl SchemaHash {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TypeKind {
+    Null,
+    Bool,
+    Int,
+    Float,
+    String,
+    Array,
+    Map,
+    Set,
+    Function,
+    Closure,
     Host,
     ScriptStruct,
     ScriptEnum,

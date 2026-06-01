@@ -149,6 +149,43 @@ fn engine_standard_natives_register_reflection_metadata() {
         .expect("engine should build with standard natives");
     let registry = engine.registry();
 
+    let string_type = registry.type_by_name("string").expect("string type");
+    assert_eq!(string_type.kind, vela_reflect::TypeKind::String);
+    assert_eq!(string_type.attrs.get("stdlib"), Some("builtin"));
+
+    let array_type = registry.type_by_name("array").expect("array type");
+    assert_eq!(array_type.kind, vela_reflect::TypeKind::Array);
+    assert_eq!(array_type.attrs.get("stdlib"), Some("builtin"));
+
+    let option_type = registry.type_by_name("Option").expect("Option type");
+    assert_eq!(option_type.kind, vela_reflect::TypeKind::ScriptEnum);
+    assert_eq!(option_type.variants.len(), 2);
+    assert_eq!(option_type.variants[0].name, "Some");
+    assert_eq!(option_type.variants[0].fields[0].name, "0");
+    assert_eq!(
+        option_type.variants[0].fields[0].type_hint.as_deref(),
+        Some("any")
+    );
+    assert_eq!(option_type.variants[1].name, "None");
+    assert_eq!(option_type.attrs.get("stdlib"), Some("option"));
+
+    let result_type = registry.type_by_name("Result").expect("Result type");
+    assert_eq!(result_type.kind, vela_reflect::TypeKind::ScriptEnum);
+    assert_eq!(result_type.variants.len(), 2);
+    assert_eq!(result_type.variants[0].name, "Ok");
+    assert_eq!(result_type.variants[0].fields[0].name, "0");
+    assert_eq!(
+        result_type.variants[0].fields[0].type_hint.as_deref(),
+        Some("any")
+    );
+    assert_eq!(result_type.variants[1].name, "Err");
+    assert_eq!(result_type.variants[1].fields[0].name, "0");
+    assert_eq!(
+        result_type.variants[1].fields[0].type_hint.as_deref(),
+        Some("any")
+    );
+    assert_eq!(result_type.attrs.get("stdlib"), Some("result"));
+
     let math = registry.module_by_name("math").expect("math module");
     assert_eq!(math.exports.len(), 14);
     assert!(math.exports.iter().any(|export| export.name == "math.max"));
@@ -231,6 +268,12 @@ fn main() {
     let option = reflect.module("option");
     let result = reflect.module("result");
     let set = reflect.module("set");
+    let string_type = reflect.type_info("string");
+    let array_type = reflect.type_info("array");
+    let option_type = reflect.type_info("Option");
+    let result_type = reflect.type_info("Result");
+    let option_variants = reflect.variants(option_type);
+    let result_variants = reflect.variants(result_type);
     let max = reflect.function("math.max");
     let sqrt = reflect.function("math.sqrt");
     let some = reflect.function("option.some");
@@ -249,6 +292,27 @@ fn main() {
         && reflect.has_function("option.some")
         && reflect.has_function("result.ok")
         && reflect.has_function("set.from_array")
+        && reflect.has_type("string")
+        && reflect.has_type("array")
+        && reflect.has_type("Option")
+        && reflect.has_type("Result")
+        && reflect.kind(string_type) == "string"
+        && reflect.kind(array_type) == "array"
+        && reflect.kind(option_type) == "script_enum"
+        && reflect.kind(result_type) == "script_enum"
+        && reflect.attr(string_type, "stdlib") == "builtin"
+        && reflect.attr(option_type, "stdlib") == "option"
+        && reflect.attr(result_type, "stdlib") == "result"
+        && option_variants.len() == 2
+        && option_variants[0].name == "Some"
+        && option_variants[0].fields[0].name == "0"
+        && option_variants[0].fields[0].type == "any"
+        && option_variants[1].name == "None"
+        && result_variants.len() == 2
+        && result_variants[0].name == "Ok"
+        && result_variants[0].fields[0].type == "any"
+        && result_variants[1].name == "Err"
+        && result_variants[1].fields[0].type == "any"
         && !reflect.has_function("math.random")
         && math_exports.len() == 14
         && math_exports.contains("math.max")

@@ -139,6 +139,16 @@ impl SchemaTraitImplAbi {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SchemaKindAbi {
+    Null,
+    Bool,
+    Int,
+    Float,
+    String,
+    Array,
+    Map,
+    Set,
+    Function,
+    Closure,
     Host,
     ScriptStruct,
     ScriptEnum,
@@ -148,6 +158,16 @@ impl SchemaKindAbi {
     #[must_use]
     pub const fn from_type_kind(kind: TypeKind) -> Self {
         match kind {
+            TypeKind::Null => Self::Null,
+            TypeKind::Bool => Self::Bool,
+            TypeKind::Int => Self::Int,
+            TypeKind::Float => Self::Float,
+            TypeKind::String => Self::String,
+            TypeKind::Array => Self::Array,
+            TypeKind::Map => Self::Map,
+            TypeKind::Set => Self::Set,
+            TypeKind::Function => Self::Function,
+            TypeKind::Closure => Self::Closure,
             TypeKind::Host => Self::Host,
             TypeKind::ScriptStruct => Self::ScriptStruct,
             TypeKind::ScriptEnum => Self::ScriptEnum,
@@ -157,6 +177,16 @@ impl SchemaKindAbi {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::Null => "null",
+            Self::Bool => "bool",
+            Self::Int => "int",
+            Self::Float => "float",
+            Self::String => "string",
+            Self::Array => "array",
+            Self::Map => "map",
+            Self::Set => "set",
+            Self::Function => "function",
+            Self::Closure => "closure",
             Self::Host => "host",
             Self::ScriptStruct => "script_struct",
             Self::ScriptEnum => "script_enum",

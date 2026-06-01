@@ -2521,6 +2521,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   standard natives now publish stable descriptors and module exports for
   `option`, `result`, and `set` without adding script-language generics or
   moving VM stdlib execution into the Engine facade.
+- Added M12/M13 reflected standard type metadata for built-in value
+  categories and dynamic Option/Result schemas. Engine-installed standard
+  natives now register stable `TypeKind` metadata for `null`, `bool`, `int`,
+  `float`, `string`, `array`, `map`, `set`, `function`, and `closure`, plus
+  non-generic `Option` and `Result` variants for reflection and tooling.
 
 ## Next
 

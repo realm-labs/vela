@@ -52,6 +52,16 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(HostValue::String(
             match desc.kind {
+                TypeKind::Null => "null",
+                TypeKind::Bool => "bool",
+                TypeKind::Int => "int",
+                TypeKind::Float => "float",
+                TypeKind::String => "string",
+                TypeKind::Array => "array",
+                TypeKind::Map => "map",
+                TypeKind::Set => "set",
+                TypeKind::Function => "function",
+                TypeKind::Closure => "closure",
                 TypeKind::Host => "host",
                 TypeKind::ScriptStruct => "script_struct",
                 TypeKind::ScriptEnum => "script_enum",

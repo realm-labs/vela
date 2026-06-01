@@ -7497,3 +7497,30 @@ Consequences:
   representation for Option, Result, or set values.
 - Hosts can still add explicit native descriptors, and the Engine metadata
   injector skips names that are already registered.
+
+## 2026-06-01: Standard Value Categories Have Reflected Type Metadata
+
+Status: Accepted
+
+Context:
+The architecture lists built-in value categories in `TypeKind`, and the
+standard library exposes dynamic Option/Result values, but
+`EngineBuilder::with_standard_natives()` only published function descriptors.
+Reflection could therefore inspect `option.some` but not the canonical
+`Option`/`Result` shapes or built-in value categories such as `string` and
+`array`.
+
+Decision:
+Extend `vela_reflect::TypeKind` with concrete built-in value categories and
+have the Engine standard metadata injector register stable `TypeDesc` entries
+for those categories plus non-generic dynamic `Option` and `Result` enum
+schemas. Runtime values stay unchanged; this is metadata for reflection,
+analysis, hot-reload ABI manifests, and tooling.
+
+Consequences:
+- Scripts and tools can query built-in standard types through the same
+  TypeRegistry path as host and script schemas.
+- Option/Result remain dynamic enum values with `any` payload metadata rather
+  than script-language generic types.
+- Hot-reload schema ABI records can distinguish built-in kind changes instead
+  of collapsing them into host or script schema kinds.
