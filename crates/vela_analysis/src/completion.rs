@@ -571,6 +571,14 @@ mod tests {
             TypeFact::function(vec![TypeFact::String], TypeFact::array(TypeFact::String)),
         )));
         assert!(string.contains(&CompletionItem::new(
+            "split_once",
+            CompletionKind::Method,
+            TypeFact::function(
+                vec![TypeFact::String],
+                TypeFact::option(TypeFact::array(TypeFact::String))
+            ),
+        )));
+        assert!(string.contains(&CompletionItem::new(
             "split_lines",
             CompletionKind::Method,
             TypeFact::function(Vec::new(), TypeFact::array(TypeFact::String)),

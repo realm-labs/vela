@@ -12,7 +12,7 @@ pub(crate) use affix::{strip_prefix, strip_suffix};
 pub(crate) use parsing::{parse_bool, parse_float, parse_int};
 pub(crate) use search::{char_at, contains, ends_with, find, starts_with};
 pub(crate) use slicing::slice;
-pub(crate) use splitting::{split, split_lines, split_whitespace};
+pub(crate) use splitting::{split, split_lines, split_once, split_whitespace};
 pub(crate) use transform::{repeat, replace, to_lower, to_upper, trim, trim_end, trim_start};
 
 pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
@@ -465,6 +465,44 @@ fn main() {
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string split_lines should run");
         assert_eq!(result, Value::String("commit".to_owned()));
+        assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn string_split_once_returns_pair_options() {
+        let source = r#"
+fn main() {
+    let pair = "count=3".split_once("=").unwrap_or(["", "0"]);
+    let missing = "count".split_once("=").unwrap_or(["missing", "none"]);
+    if pair[0] == "count" && pair[1] == "3" && missing[1] == "none" {
+        return pair[1].parse_int().unwrap_or(0);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string split_once source should compile");
+
+        let result = Vm::new().run(&code).expect("string split_once should run");
+        assert_eq!(result, Value::Int(3));
+    }
+
+    #[test]
+    fn managed_heap_execution_runs_string_split_once() {
+        let source = r#"
+fn main() {
+    let pair = "item:gold".split_once(":").unwrap_or(["item", "none"]);
+    return pair[0] == "item" && pair[1] == "gold";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap string split_once source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap string split_once should run");
+        assert_eq!(result, Value::Bool(true));
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 

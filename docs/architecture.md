@@ -1726,6 +1726,7 @@ text.repeat(count)
 text.slice(start, end)
 text.char_at(index)
 text.split(separator)
+text.split_once(separator)
 text.split_lines()
 text.split_whitespace()
 text.parse_int()
@@ -1744,6 +1745,7 @@ math.move_towards
 math.distance2d
 math.distance3d
 math.pow
+math.sqrt
 math.sign
 math.floor
 math.ceil
@@ -1757,6 +1759,7 @@ Time should come from host context, not direct system time:
 ```rust
 ctx.now
 ctx.tick
+ctx.elapsed_since(start)
 ```
 
 ## Embedding API

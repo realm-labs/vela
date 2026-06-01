@@ -426,6 +426,14 @@ mod tests {
         assert_eq!(split.params, vec![TypeFact::String]);
         assert_eq!(split.returns, TypeFact::array(TypeFact::String));
 
+        let split_once =
+            stdlib_method_fact(&TypeFact::String, "split_once", None).expect("split_once fact");
+        assert_eq!(split_once.params, vec![TypeFact::String]);
+        assert_eq!(
+            split_once.returns,
+            TypeFact::option(TypeFact::array(TypeFact::String))
+        );
+
         let split_lines =
             stdlib_method_fact(&TypeFact::String, "split_lines", None).expect("split_lines fact");
         assert_eq!(split_lines.params, Vec::<TypeFact>::new());

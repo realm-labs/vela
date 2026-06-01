@@ -28,6 +28,7 @@ pub(crate) fn call(
             Some(string_methods::slice(receiver, args, heap))
         }
         "split" => Some(string_methods::split(receiver, args, heap)),
+        "split_once" => Some(string_methods::split_once(receiver, args, heap)),
         "split_lines" => Some(string_methods::split_lines(receiver, args, heap)),
         "split_whitespace" => Some(string_methods::split_whitespace(receiver, args, heap)),
         "char_at" => Some(string_methods::char_at(receiver, args, heap)),

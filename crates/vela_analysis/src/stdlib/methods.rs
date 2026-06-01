@@ -92,6 +92,7 @@ const STRING_METHOD_NAMES: &[&str] = &[
     "repeat",
     "slice",
     "split",
+    "split_once",
     "split_lines",
     "split_whitespace",
     "char_at",
@@ -578,6 +579,14 @@ fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
         "split" => Some(
             StdlibMethodFact::new(receiver, "split", TypeFact::array(TypeFact::String))
                 .with_params(vec![TypeFact::String]),
+        ),
+        "split_once" => Some(
+            StdlibMethodFact::new(
+                receiver,
+                "split_once",
+                TypeFact::option(TypeFact::array(TypeFact::String)),
+            )
+            .with_params(vec![TypeFact::String]),
         ),
         "split_lines" => Some(StdlibMethodFact::new(
             receiver,

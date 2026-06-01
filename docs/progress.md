@@ -2443,6 +2443,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   allocation, slot conversion, materialization, managed-heap result cleanup,
   and equality helpers from the central VM module into a focused
   `heap_values` module without changing execution behavior.
+- Added M13 `string.split_once(separator)` for command and gameplay text
+  parsing. It returns dynamic Option values, works in inline and managed-heap
+  execution, has analysis/completion facts, is listed in the architecture
+  standard-library contract, and the game-server gameplay helper demo now uses
+  it to parse reward commands.
 
 ## Next
 

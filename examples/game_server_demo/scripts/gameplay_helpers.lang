@@ -1,9 +1,12 @@
 fn main() {
     let command = "reward:gold count=3 enabled=true";
-    let parts = command.replace(":", " ").split_whitespace();
-    let item = parts[1];
-    let count_text = parts[2].strip_prefix("count=").unwrap_or("0");
-    let enabled_text = parts[3].strip_prefix("enabled=").unwrap_or("false");
+    let parts = command.split_whitespace();
+    let reward_pair = parts[0].split_once(":").unwrap_or(["reward", ""]);
+    let count_pair = parts[1].split_once("=").unwrap_or(["count", "0"]);
+    let enabled_pair = parts[2].split_once("=").unwrap_or(["enabled", "false"]);
+    let item = reward_pair[1];
+    let count_text = count_pair[1];
+    let enabled_text = enabled_pair[1];
     let count = count_text.parse_int().unwrap_or(0);
     let enabled = enabled_text.parse_bool().unwrap_or(false);
     let rate = "2.5".parse_float().unwrap_or(0.0);

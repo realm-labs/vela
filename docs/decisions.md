@@ -7396,3 +7396,27 @@ Consequences:
   the element is stored back into the collection.
 - The VM instruction set stays unchanged; the compiler composes existing
   `GetIndex`, record field, and `SetIndex` bytecode.
+
+## 2026-06-01: String Split-Once Returns Option Array Pairs
+
+Status: Accepted
+
+Context:
+Gameplay scripts often parse compact command or tag strings, and existing
+string helpers could split a whole string or strip known affixes, but there was
+no direct way to split only the first separator while preserving an explicit
+missing-separator branch.
+
+Decision:
+Add `string.split_once(separator)` as a standard string method that returns
+`Option.Some([before, after])` when the separator is present and `Option.None`
+otherwise. Use a dynamic two-element array instead of introducing tuples or
+generic result types.
+
+Consequences:
+- Scripts can parse command key/value pairs with existing Option propagation
+  and array indexing.
+- The helper preserves the no-script-generics constraint and does not add a
+  new runtime value category.
+- Inline and managed-heap execution share the same copied array/string result
+  path used by other string helpers.
