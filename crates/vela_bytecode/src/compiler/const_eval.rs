@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_syntax::{BinaryOp, Expr, ExprKind, Literal, UnaryOp};
+use vela_syntax::{BinaryOp, Expr, ExprKind, Literal, MapEntry, UnaryOp};
 
 use crate::Constant;
 
@@ -44,6 +44,16 @@ pub(super) fn evaluate_const_expr(
             };
             Ok(evaluate_binary_const(*op, left, right))
         }
+        ExprKind::Array(values) => values
+            .iter()
+            .map(|value| evaluate_const_expr(value, values_by_name))
+            .collect::<CompileResult<Option<Vec<_>>>>()
+            .map(|values| values.map(Constant::Array)),
+        ExprKind::Map(entries) => entries
+            .iter()
+            .map(|entry| evaluate_map_entry(entry, values_by_name))
+            .collect::<CompileResult<Option<Vec<_>>>>()
+            .map(|entries| entries.map(Constant::Map)),
         ExprKind::Block(_)
         | ExprKind::If(_)
         | ExprKind::Match(_)
@@ -53,11 +63,32 @@ pub(super) fn evaluate_const_expr(
         | ExprKind::Call { .. }
         | ExprKind::Index { .. }
         | ExprKind::Try(_)
-        | ExprKind::Array(_)
-        | ExprKind::Map(_)
         | ExprKind::Record { .. }
         | ExprKind::Lambda { .. }
         | ExprKind::Error => Ok(None),
+    }
+}
+
+fn evaluate_map_entry(
+    entry: &MapEntry,
+    values_by_name: &BTreeMap<String, Constant>,
+) -> CompileResult<Option<(String, Constant)>> {
+    let Some(value) = evaluate_const_expr(&entry.value, values_by_name)? else {
+        return Ok(None);
+    };
+    let Some(key) = const_map_key_name(&entry.key)? else {
+        return Ok(None);
+    };
+    Ok(Some((key, value)))
+}
+
+fn const_map_key_name(key: &Expr) -> CompileResult<Option<String>> {
+    match &key.kind {
+        ExprKind::Literal(Literal::String(value))
+        | ExprKind::Literal(Literal::Int(value))
+        | ExprKind::Literal(Literal::Float(value)) => Ok(Some(value.clone())),
+        ExprKind::Path(path) => Ok(Some(path.join("."))),
+        _ => Ok(None),
     }
 }
 

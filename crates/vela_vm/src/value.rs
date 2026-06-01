@@ -83,6 +83,13 @@ impl From<&Constant> for Value {
             Constant::Int(value) => Self::Int(*value),
             Constant::Float(value) => Self::Float(*value),
             Constant::String(value) => Self::String(value.clone()),
+            Constant::Array(values) => Self::Array(values.iter().map(Self::from).collect()),
+            Constant::Map(entries) => Self::Map(
+                entries
+                    .iter()
+                    .map(|(key, value)| (key.clone(), Self::from(value)))
+                    .collect::<BTreeMap<_, _>>(),
+            ),
         }
     }
 }

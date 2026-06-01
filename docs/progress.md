@@ -2496,6 +2496,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   HostPath method calls, indexed host method calls, direct bytecode method
   calls, managed-heap host-call argument conversion, and preview-return
   coverage into a focused `tests::host_methods` submodule.
+- Filled an M9 const-expression execution gap for copied aggregate
+  configuration data. Bytecode constants now support array and map constants
+  whose contents are const-evaluable, VM execution materializes fresh copied
+  values in inline and managed-heap modes, and focused `tests::consts`
+  coverage proves const maps/arrays execute without module-load side effects.
 
 ## Next
 

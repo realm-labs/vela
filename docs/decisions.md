@@ -7420,3 +7420,29 @@ Consequences:
   new runtime value category.
 - Inline and managed-heap execution share the same copied array/string result
   path used by other string helpers.
+
+## 2026-06-01: Const Array And Map Reads Use Copied Constants
+
+Status: Accepted
+
+Context:
+The grammar permits const initializers to be expressions, and scalar const
+expressions already lower without module-load execution. Array and map const
+initializers were still accepted by HIR but unavailable to bytecode because the
+constant pool only represented scalar values.
+
+Decision:
+Extend bytecode constants with copied array and map forms. Const evaluation now
+folds array and map literals when their contents are themselves const
+evaluable, including earlier scalar const references. Loading these constants
+creates fresh copied script values; managed-heap execution materializes them
+through the existing heap slot conversion path and charges the allocation
+budget.
+
+Consequences:
+- Configuration-style const arrays and maps can be read from scripts without
+  adding module-load side effects or host state ownership.
+- Each const read produces copied script data, so mutating a local copy does
+  not mutate the declaration or bypass `PatchTx`.
+- Record and enum const evaluation remains a separate explicit feature because
+  schema-aware construction has stronger metadata and default-field rules.

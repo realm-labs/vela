@@ -13,11 +13,24 @@ use crate::value::{ClosureValue, Value};
 pub(crate) fn value_from_constant(
     constant: &Constant,
     heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
+    mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match (constant, heap) {
         (Constant::String(value), Some(heap)) => {
             allocate_heap_value(HeapValue::String(value.clone()), heap, budget)
+        }
+        (Constant::Array(values), Some(heap)) => {
+            let values = values.iter().map(Value::from).collect::<Vec<_>>();
+            let slots = values_to_heap_slots(&values, heap, budget.as_deref_mut())?;
+            allocate_heap_value(HeapValue::Array(slots), heap, budget)
+        }
+        (Constant::Map(entries), Some(heap)) => {
+            let values = entries
+                .iter()
+                .map(|(key, value)| (key.clone(), Value::from(value)))
+                .collect::<BTreeMap<_, _>>();
+            let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
+            allocate_heap_value(HeapValue::Map(slots), heap, budget)
         }
         _ => Ok(Value::from(constant)),
     }

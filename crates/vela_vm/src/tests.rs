@@ -22,6 +22,7 @@ use vela_reflect::{
     TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
 };
 
+mod consts;
 mod host_methods;
 mod reflection_members;
 mod reflection_modules;

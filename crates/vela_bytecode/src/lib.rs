@@ -149,6 +149,8 @@ pub enum Constant {
     Int(i64),
     Float(f64),
     String(String),
+    Array(Vec<Constant>),
+    Map(Vec<(String, Constant)>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
