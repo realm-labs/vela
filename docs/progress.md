@@ -2530,6 +2530,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   Registry facts and hover metadata now explicitly prove built-in `TypeKind`
   entries lower into non-generic analysis facts such as `array<any>`,
   `map<any, any>`, `set<any>`, and callable function-shaped facts.
+- Kept the M12/M13 Engine standard metadata surface reviewable by splitting
+  standard IDs, native function descriptors, and reflected type descriptors
+  into focused `standard` submodules while preserving the public Engine
+  re-exports and VM-owned standard-native execution.
 
 ## Next
 
