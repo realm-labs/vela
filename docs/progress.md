@@ -2626,6 +2626,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   attributes from the planned grammar. HIR conformance now asserts copied
   declaration/member metadata while the VM fixture proves attributed scripts
   still execute unchanged.
+- Kept the M7/M9 VM execution core reviewable by moving call-frame register
+  storage, heap-root tracing, and parameter-default normalization into a
+  focused `frame` module. The dispatch root still owns instruction execution,
+  while frame state no longer lives at the bottom of `lib.rs`.
 
 ## Next
 

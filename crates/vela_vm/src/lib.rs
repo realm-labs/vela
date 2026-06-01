@@ -7,6 +7,7 @@ mod budget;
 mod callback_method_dispatch;
 mod error;
 mod field_access;
+mod frame;
 pub mod heap;
 mod heap_execution;
 mod heap_values;
@@ -45,7 +46,8 @@ use field_access::{
     enum_tag_equal, get_enum_field_value, get_enum_slot_value, get_record_field_value,
     get_record_slot_value,
 };
-use heap::{GcRef, HeapValue, ScriptHeap};
+pub(crate) use frame::{CallFrame, normalized_param_defaults};
+use heap::{HeapValue, ScriptHeap};
 pub use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, materialize_value,
@@ -1473,53 +1475,6 @@ impl Vm {
 
         Err(VmError::new(VmErrorKind::MissingReturn))
     }
-}
-
-#[derive(Clone, Debug)]
-struct CallFrame {
-    registers: Vec<Value>,
-}
-
-impl CallFrame {
-    fn new(register_count: u16) -> Self {
-        Self {
-            registers: vec![Value::Null; usize::from(register_count)],
-        }
-    }
-
-    fn read(&self, register: Register) -> VmResult<&Value> {
-        self.registers
-            .get(usize::from(register.0))
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))
-    }
-
-    fn write(&mut self, register: Register, value: Value) -> VmResult<()> {
-        let slot = self
-            .registers
-            .get_mut(usize::from(register.0))
-            .ok_or(VmError {
-                kind: VmErrorKind::RegisterOutOfBounds { register },
-                source_span: None,
-                call_stack: Default::default(),
-            })?;
-        *slot = value;
-        Ok(())
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn heap_roots(&self) -> Vec<GcRef> {
-        let mut roots = Vec::new();
-        self.registers
-            .iter()
-            .for_each(|value| value.trace_heap_refs(&mut roots));
-        roots
-    }
-}
-
-fn normalized_param_defaults(code: &CodeObject) -> Vec<bool> {
-    let mut defaults = code.param_defaults.clone();
-    defaults.resize(code.params.len(), false);
-    defaults
 }
 
 #[cfg(test)]
