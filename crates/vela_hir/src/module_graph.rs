@@ -1,13 +1,19 @@
-use std::collections::{BTreeMap, btree_map::Entry};
+use std::collections::BTreeMap;
 
+mod model;
+mod names;
 mod schema_diagnostics;
+mod validation;
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::ast::{
-    Block, EnumItem, EnumVariantFields, FunctionItem, ImplItem, ItemKind, Param, SourceFile,
-    StructItem, TraitItem, TraitMethod, Visibility,
-};
+use vela_syntax::ast::{Block, FunctionItem, ItemKind, Param, SourceFile, TraitMethod, Visibility};
 use vela_syntax::parser::parse_source;
+
+pub use model::{
+    Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModulePath,
+    ModuleSource, ResolvedImport,
+};
+use names::{closest_name, impl_declaration_name, import_binding_name};
 
 use crate::attributes::{HirAttribute, attrs_from_syntax};
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
@@ -17,116 +23,6 @@ use crate::type_hint::{
     ConstMetadata, EnumShape, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint,
     StructFieldHint, StructShape, TraitShape,
 };
-
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ModulePath(Vec<String>);
-
-impl ModulePath {
-    #[must_use]
-    pub fn new(segments: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        Self(segments.into_iter().map(Into::into).collect())
-    }
-
-    #[must_use]
-    pub fn from_dotted(path: &str) -> Self {
-        Self::new(path.split('.').filter(|segment| !segment.is_empty()))
-    }
-
-    #[must_use]
-    pub fn segments(&self) -> &[String] {
-        &self.0
-    }
-
-    #[must_use]
-    pub fn join(&self) -> String {
-        self.0.join(".")
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ModuleSource {
-    pub id: SourceId,
-    pub path: ModulePath,
-    pub text: String,
-}
-
-impl ModuleSource {
-    #[must_use]
-    pub fn new(id: SourceId, path: ModulePath, text: impl Into<String>) -> Self {
-        Self {
-            id,
-            path,
-            text: text.into(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Declaration {
-    pub id: HirDeclId,
-    pub node: HirNodeId,
-    pub module: ModuleId,
-    pub name: String,
-    pub kind: DeclarationKind,
-    pub visibility: Visibility,
-    pub span: Span,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DeclarationKind {
-    Const,
-    Function,
-    Struct,
-    Enum,
-    Trait,
-    Impl,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Import {
-    pub module: ModuleId,
-    pub path: Vec<String>,
-    pub alias: Option<String>,
-    pub span: Span,
-    pub resolution: Option<ImportResolution>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ImportResolution {
-    Declaration(HirDeclId),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ResolvedImport {
-    pub path: Vec<String>,
-    pub resolution: ImportResolution,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct DeclarationIndex {
-    by_name: BTreeMap<String, HirDeclId>,
-}
-
-impl DeclarationIndex {
-    #[must_use]
-    pub fn get(&self, name: &str) -> Option<HirDeclId> {
-        self.by_name.get(name).copied()
-    }
-
-    pub fn names(&self) -> impl Iterator<Item = &str> {
-        self.by_name.keys().map(String::as_str)
-    }
-
-    fn insert(&mut self, name: String, id: HirDeclId) -> Option<HirDeclId> {
-        match self.by_name.entry(name) {
-            Entry::Vacant(entry) => {
-                entry.insert(id);
-                None
-            }
-            Entry::Occupied(entry) => Some(*entry.get()),
-        }
-    }
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct HirModule {
@@ -518,126 +414,6 @@ impl ModuleGraph {
         id
     }
 
-    fn validate_import_bindings(&mut self, module: &HirModule) {
-        let mut imported_names = BTreeMap::new();
-        for import in &module.imports {
-            let Some(name) = import_binding_name(import) else {
-                continue;
-            };
-            if let Some(previous_span) = imported_names.insert(name.clone(), import.span) {
-                self.diagnostics.push(
-                    Diagnostic::error(format!("duplicate import `{name}`"))
-                        .with_code("hir::duplicate_import")
-                        .with_span(import.span)
-                        .with_label(previous_span, "previous import is here")
-                        .with_label(import.span, "duplicate import is here"),
-                );
-            }
-            if let Some(declaration) = module
-                .declarations
-                .get(&name)
-                .and_then(|declaration| self.declarations.get(&declaration))
-            {
-                self.diagnostics.push(
-                    Diagnostic::error(format!(
-                        "import `{name}` conflicts with a local declaration"
-                    ))
-                    .with_code("hir::import_conflict")
-                    .with_span(import.span)
-                    .with_label(declaration.span, "local declaration is here")
-                    .with_label(import.span, "conflicting import is here"),
-                );
-            }
-        }
-    }
-
-    fn validate_struct_shape(&mut self, item: &StructItem) {
-        self.validate_member_names(
-            &item.fields,
-            |field| (&field.name, field.span),
-            "field",
-            "hir::duplicate_field",
-        );
-    }
-
-    fn validate_enum_shape(&mut self, item: &EnumItem) {
-        self.validate_member_names(
-            &item.variants,
-            |variant| (&variant.name, variant.span),
-            "variant",
-            "hir::duplicate_variant",
-        );
-        for variant in &item.variants {
-            match &variant.fields {
-                EnumVariantFields::Unit => {}
-                EnumVariantFields::Tuple(params) => {
-                    self.validate_member_names(
-                        params,
-                        |param| (&param.name, param.span),
-                        "variant field",
-                        "hir::duplicate_variant_field",
-                    );
-                }
-                EnumVariantFields::Record(fields) => {
-                    self.validate_member_names(
-                        fields,
-                        |field| (&field.name, field.span),
-                        "variant field",
-                        "hir::duplicate_variant_field",
-                    );
-                }
-            }
-        }
-    }
-
-    fn validate_trait_shape(&mut self, item: &TraitItem) {
-        self.validate_member_names(
-            &item.methods,
-            |method| (&method.name, method.span),
-            "trait method",
-            "hir::duplicate_trait_method",
-        );
-        for method in &item.methods {
-            self.validate_member_names(
-                &method.params,
-                |param| (&param.name, param.span),
-                "parameter",
-                "hir::duplicate_parameter",
-            );
-        }
-    }
-
-    fn validate_impl_shape(&mut self, item: &ImplItem) {
-        self.validate_member_names(
-            &item.methods,
-            |method| (&method.function.name, method.function.body.span),
-            "impl method",
-            "hir::duplicate_impl_method",
-        );
-    }
-
-    fn validate_member_names<T>(
-        &mut self,
-        members: &[T],
-        member_name: impl Fn(&T) -> (&String, Span),
-        label: &str,
-        code: &'static str,
-    ) {
-        let mut names = BTreeMap::new();
-        for member in members {
-            let (name, span) = member_name(member);
-            if let Some(previous_span) = names.insert(name.clone(), span) {
-                self.diagnostics.push(
-                    Diagnostic::error(format!("duplicate {label} `{name}`"))
-                        .with_code(code)
-                        .with_span(span)
-                        .with_label(previous_span, format!("previous {label} is here"))
-                        .with_label(span, format!("duplicate {label} is here")),
-                );
-            }
-        }
-    }
-
     fn bind_function_body(
         &mut self,
         module: &HirModule,
@@ -1013,54 +789,6 @@ impl ModuleGraph {
             .first()
             .map_or_else(|| Span::new(source, 0, 0), |item| item.span)
     }
-}
-
-fn closest_name(
-    wanted: &str,
-    candidates: impl IntoIterator<Item = impl AsRef<str>>,
-) -> Option<String> {
-    candidates
-        .into_iter()
-        .map(|candidate| candidate.as_ref().to_owned())
-        .min_by_key(|candidate| candidate_distance(wanted, candidate))
-        .filter(|candidate| candidate_distance(wanted, candidate) <= 3)
-}
-
-fn impl_declaration_name(trait_path: &[String], target_path: &[String]) -> String {
-    format!(
-        "impl {} for {}",
-        trait_path.join("."),
-        target_path.join(".")
-    )
-}
-
-fn import_binding_name(import: &Import) -> Option<String> {
-    import.alias.clone().or_else(|| import.path.last().cloned())
-}
-
-fn candidate_distance(wanted: &str, candidate: &str) -> usize {
-    if wanted.contains(candidate) || candidate.contains(wanted) {
-        return 0;
-    }
-    levenshtein(wanted, candidate)
-}
-
-fn levenshtein(lhs: &str, rhs: &str) -> usize {
-    let mut previous = (0..=rhs.chars().count()).collect::<Vec<_>>();
-    let mut current = vec![0; previous.len()];
-
-    for (lhs_index, lhs_char) in lhs.chars().enumerate() {
-        current[0] = lhs_index + 1;
-        for (rhs_index, rhs_char) in rhs.chars().enumerate() {
-            let cost = usize::from(lhs_char != rhs_char);
-            current[rhs_index + 1] = (previous[rhs_index + 1] + 1)
-                .min(current[rhs_index] + 1)
-                .min(previous[rhs_index] + cost);
-        }
-        std::mem::swap(&mut previous, &mut current);
-    }
-
-    previous[rhs.chars().count()]
 }
 
 #[cfg(test)]

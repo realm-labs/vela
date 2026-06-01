@@ -8,9 +8,8 @@ use crate::type_hint::{
     EnumShape, EnumVariantFieldsHint, FunctionSignature, HirTypeHint, ImplMetadata, StructShape,
 };
 
-use super::{
-    DeclarationKind, ImportResolution, ModuleGraph, candidate_distance, import_binding_name,
-};
+use super::names::{candidate_distance, import_binding_name};
+use super::{DeclarationKind, ImportResolution, ModuleGraph};
 
 pub(super) fn validate_once(graph: &mut ModuleGraph) {
     if graph.schema_references_validated {

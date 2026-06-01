@@ -1,0 +1,137 @@
+use super::*;
+
+#[test]
+fn lexes_keywords_identifiers_and_operators_with_spans() {
+    let lexed = lex(
+        source_id(),
+        "pub fn level_up(player) { player.level += 1; 1..10; 1..=10 }",
+    );
+
+    assert!(lexed.diagnostics.is_empty());
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Keyword(Keyword::Pub));
+    assert_eq!(lexed.tokens[0].span, Span::new(source_id(), 0, 3));
+    assert_eq!(lexed.tokens[2].kind, TokenKind::Ident("level_up".into()));
+    assert!(
+        lexed
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Symbol(Symbol::PlusEqual))
+    );
+    assert!(
+        lexed
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Symbol(Symbol::DotDot))
+    );
+    assert!(
+        lexed
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Symbol(Symbol::DotDotEqual))
+    );
+}
+
+#[test]
+fn lexes_radix_ints_and_exponent_floats() {
+    let lexed = lex(source_id(), "0x2a 0b1010 1_000 3.5e+2 4.25E-1");
+
+    assert!(lexed.diagnostics.is_empty());
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Int("0x2a".into()));
+    assert_eq!(lexed.tokens[1].kind, TokenKind::Int("0b1010".into()));
+    assert_eq!(lexed.tokens[2].kind, TokenKind::Int("1_000".into()));
+    assert_eq!(lexed.tokens[3].kind, TokenKind::Float("3.5e+2".into()));
+    assert_eq!(lexed.tokens[4].kind, TokenKind::Float("4.25E-1".into()));
+}
+
+#[test]
+fn diagnoses_radix_ints_without_digits() {
+    let lexed = lex(source_id(), "0x 0x_ 0b 0b_");
+
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Int("0x".into()));
+    assert_eq!(lexed.tokens[1].kind, TokenKind::Int("0x_".into()));
+    assert_eq!(lexed.tokens[2].kind, TokenKind::Int("0b".into()));
+    assert_eq!(lexed.tokens[3].kind, TokenKind::Int("0b_".into()));
+    assert_eq!(lexed.diagnostics.len(), 4);
+    assert!(
+        lexed
+            .diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.code.as_deref() == Some("E_LEX_INT"))
+    );
+    assert_eq!(
+        lexed
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.span)
+            .collect::<Vec<_>>(),
+        vec![
+            Some(Span::new(source_id(), 0, 2)),
+            Some(Span::new(source_id(), 3, 6)),
+            Some(Span::new(source_id(), 7, 9)),
+            Some(Span::new(source_id(), 10, 13)),
+        ]
+    );
+}
+
+#[test]
+fn diagnoses_uppercase_radix_prefixes() {
+    let lexed = lex(source_id(), "0X2a 0B1010");
+
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Int("0X2a".into()));
+    assert_eq!(lexed.tokens[1].kind, TokenKind::Int("0B1010".into()));
+    assert_eq!(
+        lexed
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("E_LEX_INT"), Some("E_LEX_INT")]
+    );
+    assert_eq!(
+        lexed
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.span)
+            .collect::<Vec<_>>(),
+        vec![
+            Some(Span::new(source_id(), 0, 4)),
+            Some(Span::new(source_id(), 5, 11)),
+        ]
+    );
+}
+
+#[test]
+fn lexes_leading_shebang_as_layout() {
+    let lexed = lex(source_id(), "#!/usr/bin/env vela\nfn main() { return 1; }");
+
+    assert!(lexed.diagnostics.is_empty());
+    assert_eq!(lexed.tokens[0].kind, TokenKind::Keyword(Keyword::Fn));
+    assert_eq!(
+        lexed.tokens[0].span,
+        Span::new(source_id(), "#!/usr/bin/env vela\n".len() as u32, 22)
+    );
+}
+
+#[test]
+fn lexes_unicode_string_escapes() {
+    let lexed = lex(source_id(), r#""\u{41}\u{7a}""#);
+
+    assert!(lexed.diagnostics.is_empty());
+    assert_eq!(lexed.tokens[0].kind, TokenKind::String("Az".into()));
+}
+
+#[test]
+fn diagnoses_invalid_string_escapes() {
+    let lexed = lex(source_id(), r#""quest\qtag""#);
+
+    assert_eq!(lexed.tokens[0].kind, TokenKind::String("questqtag".into()));
+    assert_eq!(lexed.diagnostics.len(), 1);
+    assert_eq!(
+        lexed.diagnostics[0].code.as_deref(),
+        Some("E_LEX_STRING_ESCAPE")
+    );
+    assert_eq!(
+        lexed.diagnostics[0].span,
+        Some(Span::new(source_id(), 6, 8))
+    );
+}
