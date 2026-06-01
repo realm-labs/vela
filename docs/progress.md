@@ -2492,6 +2492,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `reflect.get`/`reflect.set`, managed-heap metadata records, script trait
   implementation reflection, and reflective host-method patch coverage into a
   focused `tests::reflection_values` submodule.
+- Kept M11/M14 VM host-method coverage reviewable by moving source-lowered
+  HostPath method calls, indexed host method calls, direct bytecode method
+  calls, managed-heap host-call argument conversion, and preview-return
+  coverage into a focused `tests::host_methods` submodule.
 
 ## Next
 
