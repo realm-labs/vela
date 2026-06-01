@@ -120,7 +120,7 @@ fn core_language_fixture_resolves() {
     let imports = graph
         .imports(main.module)
         .expect("core imports should exist");
-    assert_eq!(imports.len(), 4);
+    assert_eq!(imports.len(), 6);
     assert!(
         imports
             .iter()
