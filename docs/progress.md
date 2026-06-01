@@ -2461,6 +2461,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   trait metadata queries from the large member module into focused
   `members::methods` and `members::traits` submodules. Public reflection
   exports and policy behavior are unchanged.
+- Continued the M12 reflection member split by moving field and variant
+  metadata queries, policy filtering, and candidate diagnostics into focused
+  `members::fields` and `members::variants` submodules. `members.rs` now
+  serves as the shared metadata and test hub instead of owning every member
+  query implementation.
 
 ## Next
 

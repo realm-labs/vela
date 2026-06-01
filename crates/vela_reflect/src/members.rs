@@ -1,25 +1,32 @@
 use vela_host::HostValue;
 
+mod fields;
 mod methods;
 mod traits;
+mod variants;
 
 use crate::{
-    FieldDesc, MethodDesc, ReflectError, ReflectErrorKind, ReflectPolicy, ReflectResult,
-    ReflectValue, TypeDesc, TypeKind, TypeRegistry, VariantDesc,
+    MethodDesc, ReflectError, ReflectErrorKind, ReflectResult, ReflectValue, TypeDesc, TypeKind,
+    TypeRegistry,
     candidates::{candidate_names, ranked_candidates},
     descriptor_targets,
-    member_records::{
-        field_record_with_owner, variant_record_with_owner, variant_record_with_owner_and_fields,
-    },
     metadata::{attrs_value, docs_value, span_value},
     metadata_records, type_of,
 };
 
+pub use fields::{
+    all_fields, all_fields_with_policy, field, field_with_policy, fields_with_policy, has_field,
+    has_field_with_policy,
+};
 pub use methods::{
     all_methods, all_methods_with_policy, has_method, has_method_with_policy, method,
     method_with_policy, methods, methods_with_policy,
 };
 pub use traits::{all_traits, has_trait, trait_by_name, traits};
+pub use variants::{
+    all_variants, all_variants_with_policy, has_variant, variant, variant_info,
+    variant_info_with_policy, variant_is, variants, variants_with_policy,
+};
 
 pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
@@ -156,275 +163,6 @@ pub fn returns(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult
         .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 
-pub fn field(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    if let Some(variant) = active_variant_desc(desc, target)? {
-        let owner = variant_owner_name(desc, variant);
-        let field = find_variant_field(desc, variant, name)?;
-        return Ok(ReflectValue::Host(field_record_with_owner(&owner, field)));
-    }
-    let field = find_field(desc, name)?;
-    Ok(ReflectValue::Host(field_record_with_owner(
-        &desc.key.name,
-        field,
-    )))
-}
-
-pub fn field_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-    policy: &ReflectPolicy,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    if let Some(variant) = active_variant_desc(desc, target)? {
-        let owner = variant_owner_name(desc, variant);
-        let field = find_variant_field(desc, variant, name)?;
-        policy.require_field_read_access(&owner, field)?;
-        return Ok(ReflectValue::Host(field_record_with_owner(&owner, field)));
-    }
-    let field = find_field(desc, name)?;
-    policy.require_field_read_access(&desc.key.name, field)?;
-    Ok(ReflectValue::Host(field_record_with_owner(
-        &desc.key.name,
-        field,
-    )))
-}
-
-pub fn fields_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    policy: &ReflectPolicy,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    if let Some(variant) = active_variant_desc(desc, target)? {
-        let owner = variant_owner_name(desc, variant);
-        return Ok(ReflectValue::Host(HostValue::Array(
-            variant
-                .fields
-                .iter()
-                .filter(|field| policy.require_field_read_access(&owner, field).is_ok())
-                .map(|field| field_record_with_owner(&owner, field))
-                .collect(),
-        )));
-    }
-    Ok(ReflectValue::Host(HostValue::Array(
-        desc.fields
-            .iter()
-            .filter(|field| {
-                policy
-                    .require_field_read_access(&desc.key.name, field)
-                    .is_ok()
-            })
-            .map(|field| field_record_with_owner(&desc.key.name, field))
-            .collect(),
-    )))
-}
-
-pub fn all_fields(registry: &TypeRegistry) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .flat_map(|desc| {
-                desc.fields
-                    .iter()
-                    .map(|field| field_record_with_owner(&desc.key.name, field))
-            })
-            .collect(),
-    ))
-}
-
-pub fn all_fields_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .flat_map(|desc| {
-                desc.fields
-                    .iter()
-                    .filter(|field| {
-                        policy
-                            .require_field_read_access(&desc.key.name, field)
-                            .is_ok()
-                    })
-                    .map(|field| field_record_with_owner(&desc.key.name, field))
-            })
-            .collect(),
-    ))
-}
-
-pub fn has_field(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-) -> ReflectResult<bool> {
-    let desc = target_type(registry, target)?;
-    if let Some(variant) = active_variant_desc(desc, target)? {
-        return Ok(variant.fields.iter().any(|field| field.name == name));
-    }
-    Ok(desc.fields.iter().any(|field| field.name == name))
-}
-
-pub fn has_field_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-    policy: &ReflectPolicy,
-) -> ReflectResult<bool> {
-    let desc = target_type(registry, target)?;
-    if let Some(variant) = active_variant_desc(desc, target)? {
-        let owner = variant_owner_name(desc, variant);
-        return Ok(variant.fields.iter().any(|field| {
-            field.name == name && policy.require_field_read_access(&owner, field).is_ok()
-        }));
-    }
-    Ok(desc.fields.iter().any(|field| {
-        field.name == name
-            && policy
-                .require_field_read_access(&desc.key.name, field)
-                .is_ok()
-    }))
-}
-
-pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
-        desc.variants
-            .iter()
-            .map(|variant| variant_record_with_owner(&desc.key.name, variant))
-            .collect(),
-    )))
-}
-
-pub fn variants_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    policy: &ReflectPolicy,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
-        desc.variants
-            .iter()
-            .map(|variant| {
-                variant_record_with_owner_and_fields(
-                    &desc.key.name,
-                    variant,
-                    variant.fields.iter().filter(|field| {
-                        policy
-                            .require_field_read_access(&desc.key.name, field)
-                            .is_ok()
-                    }),
-                )
-            })
-            .collect(),
-    )))
-}
-
-pub fn variant_info(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    let variant = find_variant(desc, name)?;
-    Ok(ReflectValue::Host(variant_record_with_owner(
-        &desc.key.name,
-        variant,
-    )))
-}
-
-pub fn variant_info_with_policy(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-    policy: &ReflectPolicy,
-) -> ReflectResult<ReflectValue> {
-    let desc = target_type(registry, target)?;
-    let variant = find_variant(desc, name)?;
-    Ok(ReflectValue::Host(variant_record_with_owner_and_fields(
-        &desc.key.name,
-        variant,
-        variant.fields.iter().filter(|field| {
-            policy
-                .require_field_read_access(&desc.key.name, field)
-                .is_ok()
-        }),
-    )))
-}
-
-pub fn has_variant(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-) -> ReflectResult<bool> {
-    let desc = target_type(registry, target)?;
-    Ok(desc.variants.iter().any(|variant| variant.name == name))
-}
-
-pub fn all_variants(registry: &TypeRegistry) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .flat_map(|desc| {
-                desc.variants
-                    .iter()
-                    .map(|variant| variant_record_with_owner(&desc.key.name, variant))
-            })
-            .collect(),
-    ))
-}
-
-pub fn all_variants_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .flat_map(|desc| {
-                desc.variants.iter().map(|variant| {
-                    variant_record_with_owner_and_fields(
-                        &desc.key.name,
-                        variant,
-                        variant.fields.iter().filter(|field| {
-                            policy
-                                .require_field_read_access(&desc.key.name, field)
-                                .is_ok()
-                        }),
-                    )
-                })
-            })
-            .collect(),
-    ))
-}
-
-pub fn variant(target: &ReflectValue) -> ReflectResult<ReflectValue> {
-    Ok(ReflectValue::Host(HostValue::String(
-        variant_name(target)?.to_owned(),
-    )))
-}
-
-pub fn variant_is(
-    registry: &TypeRegistry,
-    target: &ReflectValue,
-    name: &str,
-) -> ReflectResult<bool> {
-    let actual = variant_name(target)?;
-    let Some(desc) = type_of(registry, target) else {
-        return Ok(actual == name);
-    };
-    if desc.variants.iter().any(|variant| variant.name == name) {
-        return Ok(actual == name);
-    }
-    let related = variant_candidates(desc, name);
-    Err(ReflectError::new(ReflectErrorKind::UnknownVariant {
-        type_name: desc.key.name.clone(),
-        variant: name.to_owned(),
-        candidates: candidate_names(&related),
-        related,
-    }))
-}
-
 pub(super) fn target_type<'a>(
     registry: &'a TypeRegistry,
     target: &ReflectValue,
@@ -448,71 +186,6 @@ pub(super) fn target_type<'a>(
     }
 }
 
-fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
-    match target {
-        ReflectValue::ScriptEnum { variant, .. } => Ok(variant),
-        ReflectValue::Host(HostValue::Enum { variant, .. }) => Ok(variant),
-        ReflectValue::Host(_)
-        | ReflectValue::HostRef(_)
-        | ReflectValue::Record(_)
-        | ReflectValue::ScriptRecord { .. } => {
-            Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
-        }
-    }
-}
-
-fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDesc> {
-    desc.fields
-        .iter()
-        .find(|candidate| candidate.name == field)
-        .ok_or_else(|| {
-            let related = field_candidates(desc, field);
-            ReflectError::new(ReflectErrorKind::UnknownField {
-                type_name: desc.key.name.clone(),
-                field: field.to_owned(),
-                candidates: candidate_names(&related),
-                related,
-            })
-        })
-}
-
-fn active_variant_desc<'a>(
-    desc: &'a TypeDesc,
-    target: &ReflectValue,
-) -> ReflectResult<Option<&'a VariantDesc>> {
-    match target {
-        ReflectValue::ScriptEnum { variant, .. } => find_variant(desc, variant).map(Some),
-        ReflectValue::Host(HostValue::Enum { variant, .. }) => {
-            find_variant(desc, variant).map(Some)
-        }
-        _ => Ok(None),
-    }
-}
-
-fn variant_owner_name(desc: &TypeDesc, variant: &VariantDesc) -> String {
-    format!("{}.{}", desc.key.name, variant.name)
-}
-
-fn find_variant_field<'a>(
-    desc: &TypeDesc,
-    variant: &'a VariantDesc,
-    field: &str,
-) -> ReflectResult<&'a FieldDesc> {
-    variant
-        .fields
-        .iter()
-        .find(|candidate| candidate.name == field)
-        .ok_or_else(|| {
-            let related = variant_field_candidates(variant, field);
-            ReflectError::new(ReflectErrorKind::UnknownField {
-                type_name: variant_owner_name(desc, variant),
-                field: field.to_owned(),
-                candidates: candidate_names(&related),
-                related,
-            })
-        })
-}
-
 pub(super) fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult<&'a MethodDesc> {
     desc.methods
         .iter()
@@ -528,55 +201,12 @@ pub(super) fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult
         })
 }
 
-fn find_variant<'a>(desc: &'a TypeDesc, variant: &str) -> ReflectResult<&'a VariantDesc> {
-    desc.variants
-        .iter()
-        .find(|candidate| candidate.name == variant)
-        .ok_or_else(|| {
-            let related = variant_candidates(desc, variant);
-            ReflectError::new(ReflectErrorKind::UnknownVariant {
-                type_name: desc.key.name.clone(),
-                variant: variant.to_owned(),
-                candidates: candidate_names(&related),
-                related,
-            })
-        })
-}
-
-fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::ReflectCandidate> {
-    ranked_candidates(
-        field,
-        desc.fields
-            .iter()
-            .map(|field| (field.name.as_str(), field.source_span)),
-    )
-}
-
-fn variant_field_candidates(variant: &VariantDesc, field: &str) -> Vec<crate::ReflectCandidate> {
-    ranked_candidates(
-        field,
-        variant
-            .fields
-            .iter()
-            .map(|field| (field.name.as_str(), field.source_span)),
-    )
-}
-
 fn method_candidates(desc: &TypeDesc, method: &str) -> Vec<crate::ReflectCandidate> {
     ranked_candidates(
         method,
         desc.methods
             .iter()
             .map(|method| (method.name.as_str(), method.source_span)),
-    )
-}
-
-fn variant_candidates(desc: &TypeDesc, variant: &str) -> Vec<crate::ReflectCandidate> {
-    ranked_candidates(
-        variant,
-        desc.variants
-            .iter()
-            .map(|variant| (variant.name.as_str(), variant.source_span)),
     )
 }
 
@@ -592,8 +222,8 @@ mod tests {
     use vela_host::HostRef;
 
     use crate::{
-        FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeKey, TypeKind,
-        VariantDesc,
+        FieldDesc, MethodDesc, MethodParamDesc, ReflectPolicy, TraitDesc, TraitMethodDesc, TypeKey,
+        TypeKind, VariantDesc,
     };
 
     fn player_ref() -> HostRef {
