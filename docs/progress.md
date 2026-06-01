@@ -2505,6 +2505,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   conformance fixture. Cross-module const arrays/maps now flow through HIR
   import resolution, aliasing, normal local method/index use, and the managed
   core-language fixture without adding module-load execution.
+- Kept the M9/M13 script-value method boundary reviewable by extracting
+  built-in receiver method dispatch into a focused VM module. `script_methods`
+  now coordinates string dispatch, higher-order callback dispatch, built-in
+  collection/value methods, and script impl fallback without owning every
+  standard method branch itself.
 
 ## Next
 
