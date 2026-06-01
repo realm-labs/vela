@@ -2413,6 +2413,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   schema metadata, native/module/method reflection descriptors, permissioned
   metadata lists, lookup budgets, and reflective PatchTx call tests into a
   focused `tests::reflection` module.
+- Kept M14/M15 Engine source and hot-reload coverage reviewable by splitting
+  compile-file/dir loading, source-error reporting, ABI preservation,
+  runtime update application, and configured hot-reload policy tests into a
+  focused `tests::source_reload` module.
 
 ## Next
 
