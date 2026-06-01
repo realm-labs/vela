@@ -221,7 +221,7 @@ fn script_method_metadata_compiles_to_patch_tx_calls() {
         .expect("engine should build from macro metadata");
     let root = unique_test_dir("script_method_metadata");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"

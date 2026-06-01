@@ -8,7 +8,7 @@ fn script_function_registers_typed_native_with_engine() {
             .expect("engine should build from macro native function");
     let root = unique_test_dir("script_function_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -36,7 +36,7 @@ fn script_function_registers_typed_set_native_with_engine() {
         .expect("engine should build from macro set native function");
     let root = unique_test_dir("script_function_set_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -72,7 +72,7 @@ fn script_function_registers_typed_hash_set_native_with_engine() {
         .expect("engine should build from macro unordered set native function");
     let root = unique_test_dir("script_function_hash_set_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -110,7 +110,7 @@ fn script_function_registers_typed_fixed_array_native_with_engine() {
     .expect("engine should build from macro fixed-array native functions");
     let root = unique_test_dir("script_function_fixed_array_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -146,7 +146,7 @@ fn script_function_registers_typed_hash_map_native_with_engine() {
         .expect("engine should build from macro map native function");
     let root = unique_test_dir("script_function_hash_map_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -184,7 +184,7 @@ fn script_function_registers_typed_btree_map_native_with_engine() {
         .expect("engine should build from macro ordered map native function");
     let root = unique_test_dir("script_function_btree_map_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -223,7 +223,7 @@ fn script_function_registers_typed_f32_native_with_engine() {
         .expect("engine should build from macro f32 native function");
     let root = unique_test_dir("script_function_f32_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -252,7 +252,7 @@ fn script_function_registers_typed_option_native_with_engine() {
             .expect("engine should build from macro option native function");
     let root = unique_test_dir("script_function_option_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -283,7 +283,7 @@ fn script_function_registers_typed_five_arg_native_with_engine() {
         .expect("engine should build from macro five-arg native function");
     let root = unique_test_dir("script_function_five_arg_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -311,7 +311,7 @@ fn script_function_registers_typed_six_arg_native_with_engine() {
         .expect("engine should build from macro six-arg native function");
     let root = unique_test_dir("script_function_six_arg_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -340,7 +340,7 @@ fn script_function_registers_typed_result_native_with_engine() {
             .expect("engine should build from macro result native function");
     let root = unique_test_dir("script_function_result_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -372,7 +372,7 @@ fn script_context_function_registers_typed_native_with_engine() {
     .expect("engine should build from macro context native function");
     let root = unique_test_dir("script_context_function_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -415,7 +415,7 @@ fn script_host_function_registers_typed_native_with_engine() {
     .expect("engine should build from macro host native function");
     let root = unique_test_dir("script_host_function_native");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"

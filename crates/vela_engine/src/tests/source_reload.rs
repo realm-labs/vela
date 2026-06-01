@@ -25,7 +25,7 @@ use super::player_type;
 fn engine_compile_file_uses_engine_compiler_options() {
     let root = unique_test_dir("compile_file");
     std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.lang");
+    let source = root.join("main.vela");
     std::fs::write(
         &source,
         r#"
@@ -80,12 +80,12 @@ fn main(player: Player) {
 }
 
 #[test]
-fn engine_compile_dir_loads_lang_modules_deterministically() {
+fn engine_compile_dir_loads_vela_modules_deterministically() {
     let root = unique_test_dir("compile_dir");
     let game_dir = root.join("game");
     std::fs::create_dir_all(&game_dir).expect("create module dir");
     std::fs::write(
-        game_dir.join("main.lang"),
+        game_dir.join("main.vela"),
         r#"
 use game.reward.grant
 
@@ -96,7 +96,7 @@ fn main() {
     )
     .expect("write main module");
     std::fs::write(
-        game_dir.join("reward.lang"),
+        game_dir.join("reward.vela"),
         r#"
 pub fn grant() {
     return 4;
@@ -105,7 +105,7 @@ pub fn grant() {
     )
     .expect("write reward module");
     std::fs::write(
-        game_dir.join("config.lang"),
+        game_dir.join("config.vela"),
         r#"
 pub const BONUS: int = 6;
 "#,
@@ -133,7 +133,7 @@ fn engine_compile_hot_reload_dir_loads_module_updates() {
     let game_dir = root.join("game");
     std::fs::create_dir_all(&game_dir).expect("create module dir");
     std::fs::write(
-        game_dir.join("main.lang"),
+        game_dir.join("main.vela"),
         r#"
 use game.reward.grant
 
@@ -144,7 +144,7 @@ fn main() {
     )
     .expect("write main module");
     std::fs::write(
-        game_dir.join("reward.lang"),
+        game_dir.join("reward.vela"),
         r#"
 pub fn grant() {
     return 4;
@@ -172,7 +172,7 @@ pub fn grant() {
     );
 
     std::fs::write(
-        game_dir.join("reward.lang"),
+        game_dir.join("reward.vela"),
         r#"
 pub fn grant() {
     return 7;
@@ -210,7 +210,7 @@ pub fn grant() {
 #[test]
 fn engine_compile_hot_reload_file_reports_source_errors() {
     let root = unique_test_dir("missing_hot_reload_file");
-    let path = root.join("missing.lang");
+    let path = root.join("missing.vela");
     let engine = Engine::builder().build().expect("engine should build");
 
     let error = engine
@@ -226,7 +226,7 @@ fn engine_compile_hot_reload_file_reports_source_errors() {
 #[test]
 fn engine_compile_file_reports_io_errors() {
     let root = unique_test_dir("missing_file");
-    let path = root.join("missing.lang");
+    let path = root.join("missing.vela");
     let engine = Engine::builder().build().expect("engine should build");
 
     let error = engine
@@ -411,7 +411,7 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
         .expect("system clock should be after epoch")
         .as_nanos();
     let path = std::env::temp_dir().join(format!(
-        "vela-runtime-hot-reload-{pid}-{unique}.lang",
+        "vela-runtime-hot-reload-{pid}-{unique}.vela",
         pid = std::process::id()
     ));
     std::fs::write(&path, "fn main() { return 5; }").expect("update file should write");

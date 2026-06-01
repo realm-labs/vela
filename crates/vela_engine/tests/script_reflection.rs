@@ -25,7 +25,7 @@ fn unique_test_dir(name: &str) -> PathBuf {
 fn runtime_reflection_includes_compiled_script_metadata() {
     let root = unique_test_dir("script_reflection");
     fs::create_dir_all(&root).expect("create temp dir");
-    let script = root.join("script_reflection.lang");
+    let script = root.join("script_reflection.vela");
     fs::write(
         &script,
         r#"
@@ -88,7 +88,7 @@ fn runtime_reflection_includes_compiled_script_modules_and_exports() {
     let game_dir = root.join("game");
     fs::create_dir_all(&game_dir).expect("create module dir");
     fs::write(
-        game_dir.join("reward.lang"),
+        game_dir.join("reward.vela"),
         r#"
 #[doc("Grant reward.")]
 #[event("reward")]
@@ -99,7 +99,7 @@ pub fn grant(player, amount: int = 1) -> bool {
     )
     .expect("write reward module");
     fs::write(
-        game_dir.join("main.lang"),
+        game_dir.join("main.vela"),
         r#"
 use game.reward.grant
 

@@ -64,7 +64,7 @@ fn unique_test_dir(name: &str) -> PathBuf {
 #[test]
 fn level_up_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("level_up.lang"),
+        run_demo("level_up.vela"),
         "result=Int(10) level=Int(10) patches=1\n"
     );
 }
@@ -72,7 +72,7 @@ fn level_up_demo_runs_through_cli() {
 #[test]
 fn context_event_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("context_event.lang"),
+        run_demo("context_event.vela"),
         "result=Int(1700000042) level=Int(9) ctx_now=Int(1700000000) \
          ctx_tick=Int(42) emits=1 logs=1 patches=2\n"
     );
@@ -81,7 +81,7 @@ fn context_event_demo_runs_through_cli() {
 #[test]
 fn context_clock_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("context_clock.lang"),
+        run_demo("context_clock.vela"),
         "result=Int(52) level=Int(9) patches=0\n"
     );
 }
@@ -89,7 +89,7 @@ fn context_clock_demo_runs_through_cli() {
 #[test]
 fn gameplay_helpers_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("gameplay_helpers.lang"),
+        run_demo("gameplay_helpers.vela"),
         "result=Int(9) level=Int(9) patches=0\n"
     );
 }
@@ -97,7 +97,7 @@ fn gameplay_helpers_demo_runs_through_cli() {
 #[test]
 fn random_permission_demo_reports_permission_denial() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
-        .arg(script_path("random_permission_denied.lang"))
+        .arg(script_path("random_permission_denied.vela"))
         .output()
         .expect("run vela_cli random permission demo");
 
@@ -107,14 +107,14 @@ fn random_permission_demo_reports_permission_denial() {
         "error[vm::permission_denied]: native `math.random` requires permission `std.random`"
     ));
     assert!(stderr.contains("native `math.random` requires permission `std.random`"));
-    assert!(stderr.contains("random_permission_denied.lang:2:12"));
+    assert!(stderr.contains("random_permission_denied.vela:2:12"));
     assert!(stderr.contains("return math.random(1, 6);"));
 }
 
 #[test]
 fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("monster_kill_reward.lang"),
+        run_demo("monster_kill_reward.vela"),
         "result=Int(2) level=Int(2) exp=Int(0) quest_count=Int(3) \
          quest_done=Bool(true) inventory_gold=Int(3) reward_calls=1 emits=3 patches=10\n"
     );
@@ -123,7 +123,7 @@ fn monster_kill_reward_demo_runs_through_cli() {
 #[test]
 fn quest_progress_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("quest_progress.lang"),
+        run_demo("quest_progress.vela"),
         "result=Int(3) level=Int(1) exp=Int(90) quest_count=Int(3) \
          quest_done=Bool(true) inventory_gold=Int(0) reward_calls=0 emits=1 patches=3\n"
     );
@@ -132,7 +132,7 @@ fn quest_progress_demo_runs_through_cli() {
 #[test]
 fn reflect_debug_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("reflect_debug.lang"),
+        run_demo("reflect_debug.vela"),
         "result=Int(22) level=Int(12) ctx_now=Int(1700000000) \
          ctx_tick=Int(42) emits=1 patches=2\n"
     );
@@ -142,8 +142,8 @@ fn reflect_debug_demo_runs_through_cli() {
 fn hot_reload_function_swap_demo_runs_through_cli() {
     assert_eq!(
         run_hot_reload_demo(
-            "hot_reload_function_swap_v1.lang",
-            "hot_reload_function_swap_v2.lang",
+            "hot_reload_function_swap_v1.vela",
+            "hot_reload_function_swap_v2.vela",
         ),
         "hot reload accepted: v0 -> v1\n\
          changed functions: kill_exp, main\n\
@@ -155,8 +155,8 @@ fn hot_reload_function_swap_demo_runs_through_cli() {
 #[test]
 fn hot_reload_demo_reports_abi_rejection() {
     let output = run_hot_reload_paths(
-        &script_path("hot_reload_function_swap_v1.lang"),
-        &script_path("hot_reload_function_swap_invalid.lang"),
+        &script_path("hot_reload_function_swap_v1.vela"),
+        &script_path("hot_reload_function_swap_invalid.vela"),
     );
 
     assert!(!output.status.success());
@@ -170,7 +170,7 @@ fn hot_reload_demo_reports_abi_rejection() {
 fn hot_reload_demo_renders_source_spans_for_abi_rejections() {
     let root = unique_test_dir("hot_reload_abi_span");
     fs::create_dir_all(&root).expect("create temp dir");
-    let updated = root.join("hot_reload_return_abi.lang");
+    let updated = root.join("hot_reload_return_abi.vela");
     fs::write(
         &updated,
         r#"
@@ -185,7 +185,7 @@ fn main() {
     )
     .expect("write ABI-invalid hot reload script");
 
-    let output = run_hot_reload_paths(&script_path("hot_reload_function_swap_v1.lang"), &updated);
+    let output = run_hot_reload_paths(&script_path("hot_reload_function_swap_v1.vela"), &updated);
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
@@ -194,7 +194,7 @@ fn main() {
         "[reload.function.return_abi_changed] kill_exp: function `kill_exp` changed return ABI"
     ));
     assert!(stderr.contains("error[reload.function.return_abi_changed]"));
-    assert!(stderr.contains("hot_reload_return_abi.lang:2:1"));
+    assert!(stderr.contains("hot_reload_return_abi.vela:2:1"));
     assert!(stderr.contains("fn kill_exp() -> float {"));
     assert!(!stderr.contains("ChangedFunctionReturnAbi"));
     fs::remove_dir_all(root).expect("clean temp dir");
@@ -204,7 +204,7 @@ fn main() {
 fn invalid_demo_script_reports_rendered_source_diagnostic() {
     let root = unique_test_dir("invalid_script");
     fs::create_dir_all(&root).expect("create temp dir");
-    let script = root.join("invalid.lang");
+    let script = root.join("invalid.vela");
     fs::write(
         &script,
         r#"
@@ -223,7 +223,7 @@ fn main() {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
     assert!(stderr.contains("error[hir::unresolved_name]: unresolved name `missing_value`"));
-    assert!(stderr.contains("invalid.lang:3:12"));
+    assert!(stderr.contains("invalid.vela:3:12"));
     assert!(stderr.contains("return missing_value;"));
     fs::remove_dir_all(root).expect("clean temp dir");
 }
@@ -232,7 +232,7 @@ fn main() {
 fn runtime_demo_error_reports_rendered_diagnostic() {
     let root = unique_test_dir("runtime_error");
     fs::create_dir_all(&root).expect("create temp dir");
-    let script = root.join("runtime_error.lang");
+    let script = root.join("runtime_error.vela");
     fs::write(
         &script,
         r#"
@@ -255,9 +255,9 @@ fn main() {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
     assert!(stderr.contains("error[vm::division_by_zero]: division by zero"));
-    assert!(stderr.contains("runtime_error.lang:3:12"));
+    assert!(stderr.contains("runtime_error.vela:3:12"));
     assert!(stderr.contains("return 10 / 0;"));
-    assert!(stderr.contains("runtime_error.lang:7:12"));
+    assert!(stderr.contains("runtime_error.vela:7:12"));
     assert!(stderr.contains("return helper();"));
     assert!(stderr.contains("while executing `helper`"));
     assert!(!stderr.contains("DivisionByZero"));

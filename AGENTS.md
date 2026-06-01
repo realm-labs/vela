@@ -62,7 +62,7 @@ cargo test --workspace
 Later milestones may also require:
 
 ```bash
-cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.lang
+cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
 cargo bench --workspace
 cargo fuzz run parser
 ```

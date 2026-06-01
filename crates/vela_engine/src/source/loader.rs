@@ -6,13 +6,15 @@ use vela_hir::module_graph::{ModulePath, ModuleSource};
 
 use super::EngineSourceError;
 
+const SOURCE_EXTENSION: &str = "vela";
+
 pub(crate) fn read_source_text(path: &Path) -> Result<String, EngineSourceError> {
     fs::read_to_string(path).map_err(|error| EngineSourceError::io(path, error))
 }
 
 pub(crate) fn load_module_sources(root: &Path) -> Result<Vec<ModuleSource>, EngineSourceError> {
     let mut files = Vec::new();
-    collect_lang_files(root, &mut files)?;
+    collect_source_files(root, &mut files)?;
     files.sort();
 
     let mut sources = Vec::with_capacity(files.len());
@@ -25,7 +27,7 @@ pub(crate) fn load_module_sources(root: &Path) -> Result<Vec<ModuleSource>, Engi
     Ok(sources)
 }
 
-fn collect_lang_files(root: &Path, files: &mut Vec<PathBuf>) -> Result<(), EngineSourceError> {
+fn collect_source_files(root: &Path, files: &mut Vec<PathBuf>) -> Result<(), EngineSourceError> {
     let entries = fs::read_dir(root).map_err(|error| EngineSourceError::io(root, error))?;
     for entry in entries {
         let entry = entry.map_err(|error| EngineSourceError::io(root, error))?;
@@ -34,9 +36,9 @@ fn collect_lang_files(root: &Path, files: &mut Vec<PathBuf>) -> Result<(), Engin
             .file_type()
             .map_err(|error| EngineSourceError::io(&path, error))?;
         if file_type.is_dir() {
-            collect_lang_files(&path, files)?;
+            collect_source_files(&path, files)?;
         } else if file_type.is_file()
-            && path.extension().and_then(|ext| ext.to_str()) == Some("lang")
+            && path.extension().and_then(|ext| ext.to_str()) == Some(SOURCE_EXTENSION)
         {
             files.push(path);
         }

@@ -56,6 +56,15 @@ Host Bridge / Reflection / PatchTx
 Rust World / ECS / Actor State / Database Adapter
 ```
 
+## File Extensions
+
+Vela source files use `.vela`.
+
+Precompiled bytecode-only artifacts use `.vbc` when that cache/artifact format
+is implemented. If a future deployment package needs bytecode plus ABI
+manifest, schema metadata, source maps, and reload metadata, it should use a
+separate package format rather than overloading `.vbc`.
+
 ## Suggested Workspace Structure
 
 ```text
@@ -1810,7 +1819,7 @@ world.apply(tx)?;
 
 ```rust
 let update = runtime
-    .compile_hot_reload_update_file("scripts/combat.lang")?
+    .compile_hot_reload_update_file("scripts/combat.vela")?
     ?;
 let report = runtime.apply_hot_update(update)?;
 
@@ -2021,14 +2030,14 @@ managed heap allocation and materialization reduction
 optimized for-in and callback paths
 GC pacing and allocation thresholds
 simple peephole optimization
-precompiled bytecode artifacts and bytecode cache
+precompiled `.vbc` bytecode artifacts and bytecode cache
 ```
 
 This is the main path toward Lua-comparable performance without JIT. The work
 should be benchmark-driven and must not make host patching, hot reload,
 reflection, or diagnostics less reliable.
 
-Precompiled bytecode artifacts improve startup, deployment validation, and
+Precompiled `.vbc` bytecode artifacts improve startup, deployment validation, and
 reload/load latency. They do not by themselves improve the execution speed of
 an already-loaded function, because that function already runs as bytecode.
 
@@ -2157,7 +2166,7 @@ examples/game_server_demo
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.lang
+cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
 ```
 
 Later:

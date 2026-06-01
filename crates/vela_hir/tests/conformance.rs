@@ -4,8 +4,8 @@ use vela_hir::module_graph::{
 };
 use vela_hir::type_hint::EnumVariantFieldsHint;
 
-const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.lang");
-const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.lang");
+const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.vela");
+const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.vela");
 
 fn conformance_graph() -> ModuleGraph {
     let mut graph = ModuleGraph::new();

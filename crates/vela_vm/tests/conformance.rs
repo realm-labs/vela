@@ -6,8 +6,8 @@ use vela_vm::value::Value;
 
 #[test]
 fn core_language_fixture_executes() {
-    let core = include_str!("../../../tests/fixtures/conformance/core_language.lang");
-    let reward = include_str!("../../../tests/fixtures/conformance/reward_module.lang");
+    let core = include_str!("../../../tests/fixtures/conformance/core_language.vela");
+    let reward = include_str!("../../../tests/fixtures/conformance/reward_module.vela");
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),

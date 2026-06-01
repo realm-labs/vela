@@ -4082,14 +4082,14 @@ Engine-derived host compiler options.
 Decision:
 Add focused Engine source-loading APIs. `compile_file(path)` compiles one file
 as a normal single-source program. `compile_dir(root)` recursively loads
-`.lang` files, sorts paths for deterministic `SourceId` allocation, derives
+`.vela` files, sorts paths for deterministic `SourceId` allocation, derives
 module paths from relative paths with the file stem as the final segment, and
 compiles with the Engine's registered host schema/method options.
 
 Consequences:
 - Hosts get a stable filesystem entrypoint without duplicating compiler-option
   wiring.
-- Multi-module source layout is predictable: `game/reward.lang` becomes
+- Multi-module source layout is predictable: `game/reward.vela` becomes
   `game.reward`.
 - Source loading remains separate from `engine.rs`, keeping filesystem concerns
   out of the core Engine install/call API.
@@ -7191,7 +7191,7 @@ while reload compilation can fail because of syntax, function signature, schema,
 trait, module, or effect ABI incompatibility.
 
 Decision:
-Keep deterministic `.lang` directory discovery in a focused engine source
+Keep deterministic `.vela` directory discovery in a focused engine source
 loader module and reuse it for normal compilation and hot reload. Add
 `EngineHotReloadSourceError` as a small boundary type that preserves either an
 `EngineSourceError` or `HotReloadError` rather than flattening both into one
@@ -7700,3 +7700,27 @@ Consequences:
   method lowering.
 - The rule follows ordinary lexical shadowing without adding script-language
   monkey patching or dynamic module mutation.
+
+## 2026-06-01: Source Files Use `.vela` And Bytecode Artifacts Use `.vbc`
+
+Status: Accepted
+
+Context:
+The pre-release examples and tests used `.lang` as a temporary source suffix.
+That suffix is generic and does not communicate that these files belong to
+Vela. Future performance work also plans precompiled bytecode artifacts, so the
+source and bytecode file names need distinct, stable conventions before the
+artifact format is implemented.
+
+Decision:
+Use `.vela` for Vela source files. Use `.vbc` for precompiled Vela bytecode-only
+artifacts when bytecode caching is implemented. A future package that contains
+bytecode plus ABI manifests, schema metadata, source maps, or reload metadata
+should use a separate package extension rather than overloading `.vbc`.
+
+Consequences:
+- Directory source loading discovers `.vela` files and no longer treats `.lang`
+  as a supported module source suffix.
+- Examples, fixtures, tests, and validation commands use `.vela`.
+- Bytecode artifact work has a reserved suffix without requiring artifact
+  serialization in the current milestone.

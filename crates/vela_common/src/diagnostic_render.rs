@@ -163,7 +163,7 @@ mod tests {
     fn renders_primary_span_and_related_labels() {
         let source = DiagnosticSource::new(
             SourceId::new(1),
-            "combat.lang",
+            "combat.vela",
             "fn main() {\n    return player.levle;\n}\n",
         );
         let diagnostic = Diagnostic::error("unknown field `levle`")
@@ -177,11 +177,11 @@ mod tests {
             lines.join("\n"),
             "\
 error[hir::unknown_field]: unknown field `levle`
-  --> combat.lang:2:19
+  --> combat.vela:2:19
    |
   2 |     return player.levle;
    |                   ^^^^^ unknown field `levle`
-  --> combat.lang:2:12
+  --> combat.vela:2:12
    |
   2 |     return player.levle;
    |            ^^^^^^ receiver is `Player`"

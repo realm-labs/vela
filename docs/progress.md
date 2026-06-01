@@ -186,7 +186,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   code runnable, deleted parameters are rejected, and newly added helper
   functions are accepted.
 - Added the `vela_cli` crate and
-  `examples/game_server_demo/scripts/level_up.lang` as an executable demo path.
+  `examples/game_server_demo/scripts/level_up.vela` as an executable demo path.
 - Verified the demo script runs through parser, bytecode compiler, VM host
   execution, `PatchTx`, and safe-point host apply.
 
@@ -545,7 +545,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   host grants `std.random`.
 - Added Engine source-loading APIs `compile_file` and `compile_dir`.
   `compile_file` uses Engine-derived compiler options for a single source
-  file, while `compile_dir` recursively loads `.lang` files, derives module
+  file, while `compile_dir` recursively loads `.vela` files, derives module
   paths from relative file paths, assigns deterministic source IDs, and
   compiles the resulting module graph.
 - Added an Engine `Runtime` wrapper with `CallOptions`. Runtime calls install
@@ -589,21 +589,21 @@ post-MVP reference or optional tracks, not MVP requirements.
 - Added runnable context/event demo coverage for `ctx.now`, `ctx.tick`, and
   `ctx.emit(...)` through the existing HostRef/PatchTx bridge, with VM
   source-level managed-heap coverage and a structured CLI demo module.
-- Added `examples/game_server_demo/scripts/monster_kill_reward.lang` as a
+- Added `examples/game_server_demo/scripts/monster_kill_reward.vela` as a
   runnable demo proving a monster kill can award exp, level up a player, record
   a reward host method call, and emit gameplay events through `PatchTx`.
 - Extended the monster-kill demo workflow to advance quest progress, complete
   the seeded quest, and emit the quest completion event in the same `PatchTx`
   safe-point path that applies exp, level, inventory, and reward changes.
-- Added `examples/game_server_demo/scripts/quest_progress.lang` as a runnable
+- Added `examples/game_server_demo/scripts/quest_progress.vela` as a runnable
   demo proving quest counters and completion flags update through host field
   patches and emit a quest completion event at the safe point.
-- Added `examples/game_server_demo/scripts/reflect_debug.lang` as a runnable
+- Added `examples/game_server_demo/scripts/reflect_debug.vela` as a runnable
   demo proving script reflection can inspect allowed host fields, check trait
   metadata, perform controlled host writes, and call host methods through
   `PatchTx`.
-- Added `examples/game_server_demo/scripts/hot_reload_function_swap_v1.lang`
-  and `hot_reload_function_swap_v2.lang` plus a `vela_cli --hot-reload`
+- Added `examples/game_server_demo/scripts/hot_reload_function_swap_v1.vela`
+  and `hot_reload_function_swap_v2.vela` plus a `vela_cli --hot-reload`
   command proving old program versions keep old code while new calls enter the
   updated version.
 - Added CLI integration tests that execute the runnable game server demo
@@ -1747,7 +1747,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   execution, reject mixed scalar domains, and expose non-generic
   analysis/completion facts.
 - Added the first M17 source fixture under
-  `tests/fixtures/conformance/core_language.lang` plus a focused VM integration
+  `tests/fixtures/conformance/core_language.vela` plus a focused VM integration
   harness. The fixture compiles and executes through the public bytecode/VM
   APIs while covering constants, typed structs/enums, trait self-method
   dispatch, named/default arguments, collection higher-order methods,
@@ -1801,7 +1801,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   while accepting defaulted field additions.
 - Added M15 Engine file/directory hot-reload source APIs. `Engine` can now
   compile initial and update `ProgramVersion`/`HotUpdate` values from single
-  files or deterministic `.lang` module directories using registry ABI,
+  files or deterministic `.vela` module directories using registry ABI,
   compiler options, and configured hot-reload policy. Shared source loading
   lives in a focused loader module, and file/directory reload errors preserve
   both source IO/path failures and hot-reload compatibility failures.
@@ -1966,7 +1966,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   analysis completion facts expose the trait argument as either a string name
   or copied trait descriptor without introducing script generics.
 - Extended the M17 reflection demo proof to exercise copied `ReflectType` and
-  `ReflectTrait` descriptor targets directly. `reflect_debug.lang` now checks
+  `ReflectTrait` descriptor targets directly. `reflect_debug.vela` now checks
   `reflect.fields(type_info)`, `reflect.traits(type_info)`, and
   `reflect.implements(type_info, trait_info)` through the stable CLI demo path
   while preserving the controlled `reflect.set`/`reflect.call` workflow.
@@ -2027,7 +2027,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   metadata queries plus analysis/demo coverage.
 - Extended the M17 reflection demo proof across module and function metadata.
   The game-server demo now registers a reflected `game.reward.grant` native
-  through the Engine API, and `reflect_debug.lang` verifies module exports,
+  through the Engine API, and `reflect_debug.vela` verifies module exports,
   function lists, params, returns, docs, attrs, origins, and access metadata
   through the CLI path.
 - Extended the shared M17 core-language conformance fixture with tuple enum
@@ -2102,7 +2102,7 @@ post-MVP reference or optional tracks, not MVP requirements.
   permissioned natives, and the CLI suite runs a dedicated context-clock script
   alongside the existing HostRef context event workflow.
 - Extended the M12/M17 reflection demo proof to cover script-visible
-  reflection permission metadata. `reflect_debug.lang` now verifies
+  reflection permission metadata. `reflect_debug.vela` now verifies
   `reflect.permissions()` and `reflect.has_permission(...)` under the
   permissioned demo Engine policy before performing controlled reflective host
   writes and calls.
@@ -2373,8 +2373,8 @@ post-MVP reference or optional tracks, not MVP requirements.
   apply.
 - Strengthened the M11/M17 game-server quest proof. The runnable demo now
   models quest progress as a `player.quest_progress` host path with
-  `HostQuestProgress.Active` variant fields, so `quest_progress.lang` and
-  `monster_kill_reward.lang` mutate quest count/done state through
+  `HostQuestProgress.Active` variant fields, so `quest_progress.vela` and
+  `monster_kill_reward.vela` mutate quest count/done state through
   `HostPath::variant_field` PatchTx segments. The reflection demo also
   verifies the host quest-progress variant metadata through the CLI path.
 - Improved M16 hot-reload diagnostic rendering in the CLI. Rejected

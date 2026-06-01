@@ -290,7 +290,7 @@ fn leaf() {
             &diagnostic,
             [DiagnosticSource::new(
                 SourceId::new(1),
-                "combat.lang",
+                "combat.vela",
                 source,
             )],
         )
@@ -350,10 +350,10 @@ fn leaf() {
             [
                 DiagnosticSource::new(
                     SourceId::new(1),
-                    "script.lang",
+                    "script.vela",
                     "fn main() { reflect.get(player, \"leve\") }",
                 ),
-                DiagnosticSource::new(SourceId::new(2), "schema.lang", "struct Player { level }"),
+                DiagnosticSource::new(SourceId::new(2), "schema.vela", "struct Player { level }"),
             ],
         )
         .join("\n");
