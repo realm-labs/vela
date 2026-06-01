@@ -1,6 +1,7 @@
 mod array;
 mod map;
 mod option;
+mod range;
 mod result;
 mod set;
 mod string;
@@ -11,6 +12,7 @@ use vela_reflect::{MethodDesc, MethodParamDesc};
 pub(crate) use array::array_method_descs;
 pub(crate) use map::map_method_descs;
 pub(crate) use option::option_method_descs;
+pub(crate) use range::range_method_descs;
 pub(crate) use result::result_method_descs;
 pub(crate) use set::set_method_descs;
 pub(crate) use string::string_method_descs;

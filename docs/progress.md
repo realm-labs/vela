@@ -2611,6 +2611,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   analysis registry facts, and the VM reflection bridge now let
   `reflect.type_of(1..3)` resolve to the registered `range` descriptor while
   keeping reflective field writes/calls on ranges invalid.
+- Filled the M12/M13 range method metadata gap without growing shared dispatch
+  files. A focused Engine standard-method module now exposes reflected
+  `range.len` and `range.is_empty` descriptors with stable stdlib ownership,
+  and the Engine reflection test plus runnable demo prove method discovery,
+  params, returns, and attrs match the executable VM range helpers.
 
 ## Next
 

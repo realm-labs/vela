@@ -44,6 +44,8 @@ fn main(ctx, player) {
     let range_type = reflect.type_info("range");
     let map_get = reflect.method(map_type, "get");
     let set_union = reflect.method(set_type, "union");
+    let range_len = reflect.method(range_type, "len");
+    let range_is_empty = reflect.method(range_type, "is_empty");
     let fields = reflect.fields(player);
     let level = reflect.field(player, "level");
     let level_access = reflect.access(level);
@@ -179,6 +181,8 @@ fn main(ctx, player) {
         && reflect.has_method(array_type, "map")
         && reflect.has_method(map_type, "get")
         && reflect.has_method(set_type, "union")
+        && reflect.has_method(range_type, "len")
+        && reflect.has_method(range_type, "is_empty")
         && reflect.returns(string_trim) == "string"
         && reflect.attr(string_trim, "stdlib") == "string"
         && string_trim.owner == "string"
@@ -192,6 +196,11 @@ fn main(ctx, player) {
         && set_union.params[0].type == "set"
         && reflect.returns(set_union) == "set"
         && reflect.attr(set_union, "stdlib") == "set"
+        && range_len.params.is_empty()
+        && reflect.returns(range_len) == "int"
+        && reflect.attr(range_len, "stdlib") == "range"
+        && range_is_empty.params.is_empty()
+        && reflect.returns(range_is_empty) == "bool"
         && reflect.has_field(config_type, "kill_rewards")
         && reflect.field(config_type, "exp_to_next_level").type == "int"
         && reflect.kind(quest_type) == "script_enum"

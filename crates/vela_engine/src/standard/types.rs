@@ -9,8 +9,8 @@ use super::ids::{
     STRING_TYPE_ID,
 };
 use super::methods::{
-    array_method_descs, map_method_descs, option_method_descs, result_method_descs,
-    set_method_descs, string_method_descs,
+    array_method_descs, map_method_descs, option_method_descs, range_method_descs,
+    result_method_descs, set_method_descs, string_method_descs,
 };
 
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
@@ -28,7 +28,7 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
         array_type_desc(),
         map_type_desc(),
         set_type_desc(),
-        builtin_type("range", RANGE_TYPE_ID, TypeKind::Range, "Range value type."),
+        range_type_desc(),
         builtin_type(
             "function",
             FUNCTION_TYPE_ID,
@@ -93,6 +93,14 @@ fn map_type_desc() -> TypeDesc {
 fn set_type_desc() -> TypeDesc {
     let mut desc = builtin_type("set", SET_TYPE_ID, TypeKind::Set, "Set collection type.");
     for method in set_method_descs() {
+        desc = desc.method(method);
+    }
+    desc
+}
+
+fn range_type_desc() -> TypeDesc {
+    let mut desc = builtin_type("range", RANGE_TYPE_ID, TypeKind::Range, "Range value type.");
+    for method in range_method_descs() {
         desc = desc.method(method);
     }
     desc

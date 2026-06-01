@@ -220,6 +220,19 @@ fn engine_standard_natives_register_reflection_metadata() {
     let range_type = registry.type_by_name("range").expect("range type");
     assert_eq!(range_type.kind, vela_reflect::TypeKind::Range);
     assert_eq!(range_type.attrs.get("stdlib"), Some("builtin"));
+    let range_len = range_type
+        .methods
+        .iter()
+        .find(|method| method.name == "len")
+        .expect("range.len method metadata");
+    assert!(range_len.params.is_empty());
+    assert_eq!(range_len.return_type.as_deref(), Some("int"));
+    let range_is_empty = range_type
+        .methods
+        .iter()
+        .find(|method| method.name == "is_empty")
+        .expect("range.is_empty method metadata");
+    assert_eq!(range_is_empty.return_type.as_deref(), Some("bool"));
 
     let option_type = registry.type_by_name("Option").expect("Option type");
     assert_eq!(option_type.kind, vela_reflect::TypeKind::ScriptEnum);
@@ -414,6 +427,7 @@ fn main() {
     let range_type = reflect.type_info("range");
     let map_methods = reflect.methods(map_type);
     let set_methods = reflect.methods(set_type);
+    let range_methods = reflect.methods(range_type);
     let trim = reflect.method(string_type, "trim");
     let split_once = reflect.method(string_type, "split_once");
     let parse_int = reflect.method(string_type, "parse_int");
@@ -421,6 +435,8 @@ fn main() {
     let array_map = reflect.method(array_type, "map");
     let map_get = reflect.method(map_type, "get");
     let set_union = reflect.method(set_type, "union");
+    let range_len = reflect.method(range_type, "len");
+    let range_is_empty = reflect.method(range_type, "is_empty");
     let option_map = reflect.method(option_type, "map");
     let option_ok_or = reflect.method(option_type, "ok_or");
     let result_map_err = reflect.method(result_type, "map_err");
@@ -508,6 +524,7 @@ fn main() {
         && array_methods.len() >= 28
         && map_methods.len() >= 19
         && set_methods.len() >= 21
+        && range_methods.len() == 2
         && option_methods.len() >= 9
         && result_methods.len() >= 10
         && reflect.has_method(array_type, "push")
@@ -516,6 +533,8 @@ fn main() {
         && reflect.has_method(map_type, "map_values")
         && reflect.has_method(set_type, "union")
         && reflect.has_method(set_type, "is_subset")
+        && reflect.has_method(range_type, "len")
+        && reflect.has_method(range_type, "is_empty")
         && reflect.has_method(option_type, "map")
         && reflect.has_method(option_type, "ok_or")
         && reflect.has_method(result_type, "map_err")
@@ -529,6 +548,11 @@ fn main() {
         && reflect.returns(map_get) == "Option"
         && set_union.params[0].type == "set"
         && reflect.returns(set_union) == "set"
+        && range_len.params.is_empty()
+        && reflect.returns(range_len) == "int"
+        && reflect.attr(range_len, "stdlib") == "range"
+        && range_is_empty.params.is_empty()
+        && reflect.returns(range_is_empty) == "bool"
         && option_map.params[0].name == "callback"
         && option_map.params[0].type == "function"
         && reflect.returns(option_map) == "Option"
