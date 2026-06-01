@@ -7626,3 +7626,31 @@ Consequences:
   folding it into another collection type.
 - The marker cannot be converted back into an executable script value through
   reflection, matching the existing closure marker boundary.
+
+## 2026-06-01: Local Receivers Shadow Native Module Roots
+
+Status: Accepted
+
+Context:
+Engine compiler options reserve native module roots such as `reflect`, `math`,
+`ctx`, and `game` so dotted native function calls are not rewritten into host
+method calls. The game-server demo also passes a local host receiver named
+`ctx`, and scripts call host methods such as `ctx.emit(...)` through the
+HostPath/PatchTx bridge. Treating every path that starts with a native module
+root as module-owned made local receivers with the same name fall back to script
+method dispatch.
+
+Decision:
+When resolving dotted host method calls, local bindings shadow native module
+roots for the root segment. A path like `ctx.emit(...)` lowers to
+`CallHostMethod` when `ctx` is a local receiver and `emit` is a configured host
+method; a module call like `ctx.now()` remains a native call when no local
+binding owns the root.
+
+Consequences:
+- Gameplay context host methods keep routing through `PatchTx` even when the
+  Engine also installs the standard `ctx` native module.
+- Native module roots still protect real module calls from accidental host
+  method lowering.
+- The rule follows ordinary lexical shadowing without adding script-language
+  monkey patching or dynamic module mutation.

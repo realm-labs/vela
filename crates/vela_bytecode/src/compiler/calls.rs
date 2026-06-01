@@ -27,9 +27,13 @@ impl Compiler<'_> {
         }
 
         let host_receiver_type = self.host_method_receiver_type(callee);
-        if let Some(call) =
-            host_method_call(&self.facts.options, callee, host_receiver_type.as_deref())
-        {
+        let path_root_is_local = path_root_is_local(callee, &self.locals);
+        if let Some(call) = host_method_call(
+            &self.facts.options,
+            callee,
+            host_receiver_type.as_deref(),
+            path_root_is_local,
+        ) {
             reject_named_args(args, "host method call")?;
             let root = self.compile_host_path_root(callee.span, call.receiver)?;
             let segments = self.compile_host_path_segments(call.segments)?;
@@ -241,6 +245,16 @@ fn local_path_method_call<'expr>(
     let (method, receiver_path) = path.split_last()?;
     (!receiver_path.is_empty() && locals.contains_key(&receiver_path[0]))
         .then_some((method.as_str(), receiver_path))
+}
+
+fn path_root_is_local(
+    callee: &Expr,
+    locals: &std::collections::HashMap<String, crate::Register>,
+) -> bool {
+    let ExprKind::Path(path) = &callee.kind else {
+        return false;
+    };
+    path.first().is_some_and(|root| locals.contains_key(root))
 }
 
 fn callable_name(callee: &Expr) -> CompileResult<String> {

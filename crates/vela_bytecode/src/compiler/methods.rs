@@ -17,6 +17,7 @@ pub(super) fn host_method_call<'ast>(
     options: &CompilerOptions,
     callee: &'ast Expr,
     receiver_type: Option<&str>,
+    path_root_is_local: bool,
 ) -> Option<HostMethodCall<'ast>> {
     match &callee.kind {
         ExprKind::Field { base, name } => {
@@ -32,7 +33,7 @@ pub(super) fn host_method_call<'ast>(
             if path.len() < 2 {
                 return None;
             }
-            if options.is_native_module_root(&path[0]) {
+            if options.is_native_module_root(&path[0]) && !path_root_is_local {
                 return None;
             }
             let method_name = path.last()?;

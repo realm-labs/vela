@@ -889,6 +889,33 @@ fn main(player) {
         } if lowered_method == method
     )));
 }
+
+#[test]
+fn compiler_lowers_local_host_method_when_root_matches_native_module() {
+    let method = HostMethodId::new(5);
+    let code = compile_function_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(ctx) {
+    ctx.emit("player.level_checked");
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new()
+            .with_native_module_root("ctx")
+            .with_host_method("emit", method),
+    )
+    .expect("local host method should shadow native module root");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        InstructionKind::CallHostMethod {
+            method: lowered_method,
+            ..
+        } if lowered_method == method
+    )));
+}
+
 #[test]
 fn compiler_lowers_configured_host_method_calls_on_field_paths() {
     let inventory = FieldId::new(3);

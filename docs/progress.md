@@ -2630,6 +2630,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   storage, heap-root tracing, and parameter-default normalization into a
   focused `frame` module. The dispatch root still owns instruction execution,
   while frame state no longer lives at the bottom of `lib.rs`.
+- Fixed the M9/M13 host-method lowering edge case where standard native module
+  roots could hide local host receivers with the same name. Local parameters
+  such as `ctx` now shadow native module roots for HostPath method lowering,
+  so the runnable context, quest, and monster reward demos keep routing
+  `ctx.emit(...)` and `ctx.log(...)` through `PatchTx`.
 
 ## Next
 
