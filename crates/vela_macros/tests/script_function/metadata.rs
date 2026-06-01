@@ -1,0 +1,186 @@
+use super::*;
+
+#[test]
+fn script_function_generates_native_function_metadata() {
+    assert_eq!(
+        vela_native_function_desc_grant_bonus(),
+        NativeFunctionDesc::new("game.grant_bonus", NativeFunctionId::new(41))
+            .param("amount", TypeHint::Int)
+            .param("multiplier", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("bonus.read"),
+            )
+            .attr("domain", "gameplay")
+            .attr("stable", "true")
+            .docs("Grants a copied bonus amount."),
+    );
+}
+
+#[test]
+fn script_function_generates_set_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_count_labels(),
+        NativeFunctionDesc::new("game.count_labels", NativeFunctionId::new(44))
+            .param("labels", TypeHint::Set)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Counts copied unique labels from a script set."),
+    );
+}
+
+#[test]
+fn script_function_generates_hash_set_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_count_unordered_labels(),
+        NativeFunctionDesc::new("game.count_unordered_labels", NativeFunctionId::new(51))
+            .param("labels", TypeHint::Set)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Counts copied unordered labels from a script set."),
+    );
+}
+
+#[test]
+fn script_function_generates_fixed_array_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_sum_weights(),
+        NativeFunctionDesc::new("game.sum_weights", NativeFunctionId::new(52))
+            .param("weights", TypeHint::Array)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Sums a copied fixed weight array."),
+    );
+    assert_eq!(
+        vela_native_function_desc_default_weights(),
+        NativeFunctionDesc::new("game.default_weights", NativeFunctionId::new(53))
+            .returns(TypeHint::Array)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Returns a copied fixed weight array."),
+    );
+}
+
+#[test]
+fn script_function_generates_hash_map_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_score_total(),
+        NativeFunctionDesc::new("game.score_total", NativeFunctionId::new(45))
+            .param("scores", TypeHint::Map)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Sums copied score values from a script map."),
+    );
+}
+
+#[test]
+fn script_function_generates_btree_map_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_ordered_score_summary(),
+        NativeFunctionDesc::new("game.ordered_score_summary", NativeFunctionId::new(50))
+            .param("scores", TypeHint::Map)
+            .returns(TypeHint::Map)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Adds a copied total entry to an ordered script map."),
+    );
+}
+
+#[test]
+fn script_function_generates_f32_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_scale_weight(),
+        NativeFunctionDesc::new("game.scale_weight", NativeFunctionId::new(46))
+            .param("weight", TypeHint::Float)
+            .returns(TypeHint::Float)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Scales a copied encounter weight."),
+    );
+}
+
+#[test]
+fn script_function_generates_option_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_optional_bonus(),
+        NativeFunctionDesc::new("game.optional_bonus", NativeFunctionId::new(47))
+            .param("bonus", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Applies an optional copied bonus."),
+    );
+}
+
+#[test]
+fn script_function_generates_five_arg_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_sum5(),
+        NativeFunctionDesc::new("game.sum5", NativeFunctionId::new(48))
+            .param("a", TypeHint::Int)
+            .param("b", TypeHint::Int)
+            .param("c", TypeHint::Int)
+            .param("d", TypeHint::Int)
+            .param("e", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Sums five copied script integers."),
+    );
+}
+
+#[test]
+fn script_function_generates_result_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_checked_bonus(),
+        NativeFunctionDesc::new("game.checked_bonus", NativeFunctionId::new(49))
+            .param("ok", TypeHint::Bool)
+            .returns(TypeHint::Any)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Returns a dynamic copied Result bonus."),
+    );
+}
+
+#[test]
+fn script_context_function_generates_native_function_metadata() {
+    assert_eq!(
+        vela_native_function_desc_set_level(),
+        NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(42))
+            .param("player", TypeHint::Any)
+            .param("level", TypeHint::Int)
+            .returns(TypeHint::Bool)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Sets a copied player level through PatchTx."),
+    );
+}
+
+#[test]
+fn script_host_function_generates_native_function_metadata() {
+    assert_eq!(
+        vela_native_function_desc_set_score(),
+        NativeFunctionDesc::new("game.set_score", NativeFunctionId::new(43))
+            .param("player", TypeHint::Any)
+            .param("score", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Sets a copied player score through host execution."),
+    );
+}

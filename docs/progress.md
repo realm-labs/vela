@@ -2425,6 +2425,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   gameplay formulas. Runtime, managed-heap execution, Engine standard-native
   registration, analysis facts, completions, and the game-server gameplay
   helper demo now cover the helper through focused math stdlib modules.
+- Kept M14 macro integration coverage reviewable by splitting
+  `script_function` and `script_methods` tests into focused metadata and
+  registration modules while leaving shared derive fixtures in the integration
+  test roots.
 
 ## Next
 
