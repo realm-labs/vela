@@ -2470,6 +2470,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   helpers. The runnable `reflect_debug` script now verifies
   `reflect.has_type(name)` and `reflect.has_trait(name)` for host, script, and
   missing metadata through the CLI demo path.
+- Kept the M12 module/function reflection surface reviewable by extracting
+  copied `ReflectModule`/`ReflectFunction` record construction into a focused
+  `modules::records` submodule. Query, policy, and script registration
+  behavior are unchanged, but future module metadata work no longer has to grow
+  the central module reflection file.
 
 ## Next
 
