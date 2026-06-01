@@ -2484,6 +2484,10 @@ post-MVP reference or optional tracks, not MVP requirements.
   `tests::reflection_modules` submodule. Shared VM fixtures remain in the test
   hub, while module/function reflection assertions no longer grow the central
   VM test file.
+- Continued the M12 VM-boundary reflection test split by moving member-policy,
+  unknown member/type/trait/variant candidate, and implements-helper coverage
+  into a focused `tests::reflection_members` submodule. The central VM test
+  hub now keeps shared fixtures instead of absorbing another reflection slice.
 
 ## Next
 
