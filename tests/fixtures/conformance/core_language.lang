@@ -1,3 +1,4 @@
+#!/usr/bin/env vela
 /* Grammar conformance: nested block comments must be layout.
    The inner comment deliberately contains item-like text:
    /* fn hidden() { return 999; } */
@@ -11,7 +12,11 @@ use conformance.reward.reward_bonus
 
 const BASE = 2
 
+#[doc("Core reward")]
+#[domain("conformance")]
+#[rule(kind = conformance.reward.Rule, tags = ["core", "fixture"], config = { enabled: true, limit: 3 })]
 struct Reward {
+    #[doc("Reward item")]
     item: string,
     count: int,
 }
@@ -27,11 +32,14 @@ struct Player {
 
 enum QuestState {
     Active { id: string, count: int },
+    #[terminal]
     Done { id: string },
     Streak(kind: string = "weekly", count: int),
 }
 
+#[doc("Scored contract")]
 trait Scored {
+    #[doc("Score reward")]
     fn score(self) -> int;
     fn weighted(self, amount: int, multiplier: int = 2, offset: int = BASE) -> int;
 }
@@ -62,13 +70,16 @@ fn add(base, amount = 1, bonus = amount + BASE) {
     return base + amount + bonus;
 }
 
+#[doc("Core conformance entry")]
 fn main() {
     let reward: Reward = Reward { item: "gold", count: 5 };
     /* Nested comments inside executable bodies must not affect lowering:
        /* let impossible = missing_symbol; */
     */
+    #[trace("values")]
     let values: array = [1, 2, 3, 4, 5];
     let total: int = 0;
+    #[audit]
     for value in values {
         if value == 2 {
             continue;

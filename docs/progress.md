@@ -2621,6 +2621,11 @@ post-MVP reference or optional tracks, not MVP requirements.
   compound assignments. The same fixture now proves HIR resolution, analysis
   facts, compiler lowering, and VM execution for those grammar forms instead
   of relying only on smaller unit tests.
+- Extended the same M17 conformance fixture across leading shebang layout,
+  structured declaration attributes, member attributes, and statement
+  attributes from the planned grammar. HIR conformance now asserts copied
+  declaration/member metadata while the VM fixture proves attributed scripts
+  still execute unchanged.
 
 ## Next
 
