@@ -311,6 +311,20 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
         fields.get("fields"),
         Some(HostValue::Array(raw_fields)) if raw_fields.len() == 2
     ));
+    let Some(HostValue::Array(raw_fields)) = fields.get("fields") else {
+        panic!("raw variant fields should be an array");
+    };
+    let HostValue::Record {
+        fields: raw_field_fields,
+        ..
+    } = &raw_fields[0]
+    else {
+        panic!("raw variant field metadata should be a record");
+    };
+    assert_eq!(
+        raw_field_fields.get("owner"),
+        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+    );
 
     let ReflectValue::Host(HostValue::Array(policy_variants)) =
         variants_with_policy(&registry, &target, &ReflectPolicy::read_only())
@@ -345,6 +359,10 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
         fields.get("name"),
         Some(&HostValue::String("count".to_owned()))
     );
+    assert_eq!(
+        fields.get("owner"),
+        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+    );
     let HostValue::Record {
         fields: all_variant_fields,
         ..
@@ -360,10 +378,32 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
         panic!("variant fields should be an array");
     };
     assert_eq!(all_policy_fields.len(), 1);
+    let HostValue::Record {
+        fields: all_policy_field_fields,
+        ..
+    } = &all_policy_fields[0]
+    else {
+        panic!("all variant field metadata should be a record");
+    };
+    assert_eq!(
+        all_policy_field_fields.get("owner"),
+        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+    );
     let Some(HostValue::Array(policy_variant_fields)) = policy_variant.get("fields") else {
         panic!("variant info fields should be an array");
     };
     assert_eq!(policy_variant_fields.len(), 1);
+    let HostValue::Record {
+        fields: policy_variant_field_fields,
+        ..
+    } = &policy_variant_fields[0]
+    else {
+        panic!("variant info field metadata should be a record");
+    };
+    assert_eq!(
+        policy_variant_field_fields.get("owner"),
+        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+    );
     assert!(
         has_field_with_policy(&registry, &target, "count", &ReflectPolicy::read_only())
             .expect("has visible active variant field")

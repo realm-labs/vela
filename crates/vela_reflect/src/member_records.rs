@@ -199,22 +199,29 @@ pub(crate) fn variant_record_with_owner_and_fields<'a>(
     variant: &VariantDesc,
     variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
 ) -> HostValue {
-    let mut fields = variant_record_fields(variant, variant_fields);
+    let mut fields = variant_record_fields(type_name, variant, variant_fields);
     fields.insert("owner".to_owned(), HostValue::String(type_name.to_owned()));
     variant_record_from_fields(fields)
 }
 
 fn variant_record_fields<'a>(
+    type_name: &str,
     variant: &VariantDesc,
     variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
 ) -> BTreeMap<String, HostValue> {
+    let field_owner = format!("{type_name}.{}", variant.name);
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), HostValue::Int(i64::from(variant.id.get())));
     fields.insert("name".to_owned(), HostValue::String(variant.name.clone()));
     fields.insert("origin".to_owned(), origin_value(variant.origin));
     fields.insert(
         "fields".to_owned(),
-        HostValue::Array(variant_fields.into_iter().map(field_record).collect()),
+        HostValue::Array(
+            variant_fields
+                .into_iter()
+                .map(|field| field_record_with_owner(&field_owner, field))
+                .collect(),
+        ),
     );
     fields.insert("docs".to_owned(), docs_value(variant.docs.as_deref()));
     fields.insert("attrs".to_owned(), attrs_value(&variant.attrs));
@@ -227,10 +234,6 @@ fn variant_record_from_fields(fields: BTreeMap<String, HostValue>) -> HostValue 
         type_name: "ReflectVariant".to_owned(),
         fields,
     }
-}
-
-fn field_record(field: &FieldDesc) -> HostValue {
-    field_record_from_fields(field_record_fields(field))
 }
 
 pub(crate) fn field_record_with_owner(type_name: &str, field: &FieldDesc) -> HostValue {
