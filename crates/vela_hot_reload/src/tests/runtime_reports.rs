@@ -1,4 +1,6 @@
 use super::*;
+use vela_bytecode::compiler::options::CompilerOptions;
+use vela_hir::module_graph::{ModulePath, ModuleSource};
 
 #[test]
 fn new_calls_enter_new_code_after_update() {
@@ -166,6 +168,44 @@ fn main() {
             ),
         ]
     );
+}
+
+#[test]
+fn accepted_module_update_report_renders_module_impact() {
+    let initial = compile_initial_modules_with_abi_and_options(
+        &module_sources(4),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+    .expect("compile initial modules");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let update = compile_update_modules_with_abi_and_options_and_policy(
+        &runtime.current(),
+        &module_sources(7),
+        runtime.current().abi().clone(),
+        &CompilerOptions::default(),
+        &HotReloadPolicy::default(),
+    )
+    .expect("compile module update");
+
+    let report = runtime.apply_hot_update_report(update);
+    let lines = report.render_lines();
+
+    assert_eq!(report.changed_functions, ["game.reward.grant"]);
+    assert_eq!(report.changed_modules, ["game.reward"]);
+    assert_eq!(report.impacted_modules, ["game.main", "game.reward"]);
+    assert!(lines.contains(&HotReloadReportLine::new(
+        HotReloadReportLineKind::ChangedModules,
+        None,
+        None,
+        "changed modules: game.reward",
+    )));
+    assert!(lines.contains(&HotReloadReportLine::new(
+        HotReloadReportLineKind::ImpactedModules,
+        None,
+        None,
+        "impacted modules: game.main, game.reward",
+    )));
 }
 
 #[test]
@@ -454,4 +494,31 @@ fn rejected_compile_report_carries_source_span_and_labels() {
             && line.span.is_some()
     }));
     assert_eq!(runtime.current().id, ProgramVersionId(0));
+}
+
+fn module_sources(reward: i64) -> Vec<ModuleSource> {
+    vec![
+        ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.main"),
+            r#"
+use game.reward.grant
+
+fn main() {
+    return grant() + 1;
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_dotted("game.reward"),
+            format!(
+                r#"
+pub fn grant() {{
+    return {reward};
+}}
+"#
+            ),
+        ),
+    ]
 }

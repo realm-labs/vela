@@ -5,6 +5,7 @@ use vela_bytecode::{CodeObject, Program, script_methods::ScriptMethodTable};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::abi::HotReloadAbi;
+use crate::report::AcceptedHotReloadChanges;
 use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -74,6 +75,7 @@ pub struct HotUpdate {
     pub(crate) script_methods: ScriptMethodTable,
     pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
+    pub(crate) changes: AcceptedHotReloadChanges,
 }
 
 impl HotUpdate {
@@ -82,12 +84,14 @@ impl HotUpdate {
         script_methods: ScriptMethodTable,
         script_metadata: Option<ModuleGraph>,
         abi: HotReloadAbi,
+        changes: AcceptedHotReloadChanges,
     ) -> Self {
         Self {
             functions,
             script_methods,
             script_metadata,
             abi,
+            changes,
         }
     }
 }

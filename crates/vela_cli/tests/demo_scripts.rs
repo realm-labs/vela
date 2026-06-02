@@ -179,7 +179,7 @@ fn hot_reload_function_swap_demo_runs_through_cli() {
             "hot_reload_function_swap_v2.vela",
         ),
         "hot reload accepted: v0 -> v1\n\
-         changed functions: kill_exp, main\n\
+         changed functions: kill_exp\n\
          safe_point=check_reload abi=checked old_version=0 new_version=1 old_before=Int(20) \
          old_after=Int(20) new_after=Int(30)\n"
     );

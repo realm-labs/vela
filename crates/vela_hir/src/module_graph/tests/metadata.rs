@@ -454,3 +454,43 @@ impl Damageable for Player {
     );
     assert!(bindings.expression_count() >= 3);
 }
+
+#[test]
+fn graph_tracks_source_hashes_and_dependent_modules() {
+    let mut graph = ModuleGraph::new();
+    let main = graph.add_source(source(
+        1,
+        "game.main",
+        r#"
+use game.reward.grant
+
+fn main() {
+    return grant();
+}
+"#,
+    ));
+    let reward = graph.add_source(source(
+        2,
+        "game.reward",
+        r#"
+pub fn grant() {
+    return 4;
+}
+"#,
+    ));
+    graph.resolve_imports();
+
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    assert!(graph.module_source_hash(main).is_some());
+    assert!(graph.module_source_hash(reward).is_some());
+
+    let impacted = graph.dependent_modules([reward]);
+    let mut impacted_names = impacted
+        .iter()
+        .filter_map(|module| graph.module_path(*module))
+        .map(ModulePath::join)
+        .collect::<Vec<_>>();
+    impacted_names.sort();
+
+    assert_eq!(impacted_names, ["game.main", "game.reward"]);
+}

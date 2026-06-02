@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use vela_bytecode::Program;
@@ -7,12 +7,14 @@ use vela_bytecode::compiler::{
     compile_module_sources_with_options, compile_program_source_with_options,
 };
 use vela_common::SourceId;
-use vela_hir::module_graph::ModuleSource;
+use vela_hir::ids::ModuleId;
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 
 use crate::abi::HotReloadAbi;
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use crate::function_signature::ensure_compatible_function_signature;
 use crate::policy::HotReloadPolicy;
+use crate::report::AcceptedHotReloadChanges;
 use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 use crate::version::{HotUpdate, ProgramVersion};
 
@@ -193,15 +195,22 @@ fn update_from_program(
     let script_methods = program.script_methods().clone();
     let script_metadata = program.script_metadata().cloned();
     let mut functions = BTreeMap::new();
+    let mut changed_functions = Vec::new();
     for (name, code) in program.functions {
-        if let Some(old_code) = previous.functions.get(&FunctionSymbolId::new(&name)) {
+        let symbol = FunctionSymbolId::new(&name);
+        if let Some(old_code) = previous.functions.get(&symbol) {
             ensure_compatible_function_signature(&name, old_code, &code, policy)?;
+            if old_code.as_ref() != &code {
+                changed_functions.push(symbol.clone());
+            }
         } else if !policy.allow_new_functions() {
             return Err(HotReloadError::new(HotReloadErrorKind::NewFunctionDenied {
                 function: name,
             }));
+        } else {
+            changed_functions.push(symbol.clone());
         }
-        functions.insert(FunctionSymbolId::new(name), Arc::new(code));
+        functions.insert(symbol, Arc::new(code));
     }
     for old_name in previous.functions.keys() {
         if !functions.contains_key(old_name) {
@@ -211,10 +220,53 @@ fn update_from_program(
         }
     }
     previous.abi().ensure_compatible_update(&abi)?;
+    let (changed_modules, impacted_modules) =
+        module_changes(previous.script_metadata.as_ref(), script_metadata.as_ref());
+    let changes =
+        AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
     Ok(HotUpdate::new(
         functions,
         script_methods,
         script_metadata,
         abi,
+        changes,
     ))
+}
+
+fn module_changes(
+    previous: Option<&ModuleGraph>,
+    next: Option<&ModuleGraph>,
+) -> (Vec<String>, Vec<String>) {
+    let Some(next) = next else {
+        return (Vec::new(), Vec::new());
+    };
+    let changed = changed_module_ids(previous, next);
+    let impacted = next.dependent_modules(changed.iter().copied());
+    (module_names(next, &changed), module_names(next, &impacted))
+}
+
+fn changed_module_ids(previous: Option<&ModuleGraph>, next: &ModuleGraph) -> BTreeSet<ModuleId> {
+    next.module_ids()
+        .filter(|module| {
+            let Some(next_path) = next.module_path(*module) else {
+                return false;
+            };
+            let Some(previous) = previous else {
+                return true;
+            };
+            let Some(previous_module) = previous.module_id(next_path) else {
+                return true;
+            };
+            previous.module_source_hash(previous_module) != next.module_source_hash(*module)
+        })
+        .collect()
+}
+
+fn module_names(graph: &ModuleGraph, modules: &BTreeSet<ModuleId>) -> Vec<String> {
+    modules
+        .iter()
+        .filter_map(|module| graph.module_path(*module))
+        .map(|path| path.join())
+        .filter(|name| !name.is_empty())
+        .collect()
 }

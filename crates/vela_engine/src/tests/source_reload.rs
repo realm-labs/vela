@@ -192,7 +192,12 @@ pub fn grant() {
     assert!(report.accepted);
     assert_eq!(
         report.changed_functions,
-        vec!["game.main.main".to_owned(), "game.reward.grant".to_owned()]
+        vec!["game.reward.grant".to_owned()]
+    );
+    assert_eq!(report.changed_modules, vec!["game.reward".to_owned()]);
+    assert_eq!(
+        report.impacted_modules,
+        vec!["game.main".to_owned(), "game.reward".to_owned()]
     );
     assert_eq!(
         runtime.call(

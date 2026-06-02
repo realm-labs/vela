@@ -111,6 +111,11 @@ Function, method, module, trait, schema, effect, access, parameter, return, and
 source-span metadata participate in ABI validation. Engine registries are the
 source for host/native ABI manifests.
 
+Accepted hot-reload reports distinguish actual bytecode-changed functions from
+source-changed modules. Module impact is derived from deterministic source
+hashes and reverse import dependencies so hosts can invalidate module-scoped
+caches without treating every recompiled function as changed.
+
 ### Standard Library And Dynamic Types
 
 Option and Result are dynamic enum-shaped values, not script generics. Stdlib

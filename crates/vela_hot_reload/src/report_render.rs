@@ -34,6 +34,8 @@ impl HotReloadReportLine {
 pub enum HotReloadReportLineKind {
     Summary,
     ChangedFunctions,
+    ChangedModules,
+    ImpactedModules,
     Diagnostic,
     Detail,
     RepairHint,
@@ -61,6 +63,22 @@ pub(crate) fn render_lines(report: &HotReloadReport) -> Vec<HotReloadReportLine>
                 None,
                 None,
                 format!("changed functions: {}", report.changed_functions.join(", ")),
+            ));
+        }
+        if !report.changed_modules.is_empty() {
+            lines.push(HotReloadReportLine::new(
+                HotReloadReportLineKind::ChangedModules,
+                None,
+                None,
+                format!("changed modules: {}", report.changed_modules.join(", ")),
+            ));
+        }
+        if !report.impacted_modules.is_empty() {
+            lines.push(HotReloadReportLine::new(
+                HotReloadReportLineKind::ImpactedModules,
+                None,
+                None,
+                format!("impacted modules: {}", report.impacted_modules.join(", ")),
             ));
         }
         return lines;

@@ -14,6 +14,8 @@ pub struct HotReloadReport {
     pub from_version: ProgramVersionId,
     pub to_version: Option<ProgramVersionId>,
     pub changed_functions: Vec<String>,
+    pub changed_modules: Vec<String>,
+    pub impacted_modules: Vec<String>,
     pub errors: Vec<HotReloadDiagnostic>,
     version: Option<Arc<ProgramVersion>>,
 }
@@ -23,18 +25,18 @@ impl HotReloadReport {
     pub(crate) fn accepted(
         from_version: ProgramVersionId,
         version: Arc<ProgramVersion>,
-        changed_functions: impl IntoIterator<Item = FunctionSymbolId>,
+        changes: AcceptedHotReloadChanges,
     ) -> Self {
-        let mut changed_functions = changed_functions
-            .into_iter()
-            .map(|function| function.0)
-            .collect::<Vec<_>>();
-        changed_functions.sort();
+        let changed_functions = sorted_functions(changes.changed_functions);
+        let changed_modules = sorted_strings(changes.changed_modules);
+        let impacted_modules = sorted_strings(changes.impacted_modules);
         Self {
             accepted: true,
             from_version,
             to_version: Some(version.id),
             changed_functions,
+            changed_modules,
+            impacted_modules,
             errors: Vec::new(),
             version: Some(version),
         }
@@ -47,6 +49,8 @@ impl HotReloadReport {
             from_version,
             to_version: None,
             changed_functions: Vec::new(),
+            changed_modules: Vec::new(),
+            impacted_modules: Vec::new(),
             errors: vec![HotReloadDiagnostic::from_error(error)],
             version: None,
         }
@@ -61,6 +65,39 @@ impl HotReloadReport {
     pub fn render_lines(&self) -> Vec<HotReloadReportLine> {
         crate::report_render::render_lines(self)
     }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct AcceptedHotReloadChanges {
+    pub changed_functions: Vec<FunctionSymbolId>,
+    pub changed_modules: Vec<String>,
+    pub impacted_modules: Vec<String>,
+}
+
+impl AcceptedHotReloadChanges {
+    #[must_use]
+    pub fn new(
+        changed_functions: Vec<FunctionSymbolId>,
+        changed_modules: Vec<String>,
+        impacted_modules: Vec<String>,
+    ) -> Self {
+        Self {
+            changed_functions,
+            changed_modules,
+            impacted_modules,
+        }
+    }
+}
+
+fn sorted_functions(functions: Vec<FunctionSymbolId>) -> Vec<String> {
+    sorted_strings(functions.into_iter().map(|function| function.0))
+}
+
+fn sorted_strings(strings: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut strings = strings.into_iter().collect::<Vec<_>>();
+    strings.sort();
+    strings.dedup();
+    strings
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 mod model;
 mod names;
@@ -29,6 +29,7 @@ struct HirModule {
     id: ModuleId,
     path: ModulePath,
     source: SourceId,
+    source_hash: Option<u64>,
     declarations: DeclarationIndex,
     imports: Vec<Import>,
 }
@@ -64,7 +65,8 @@ impl ModuleGraph {
 
     pub fn add_source(&mut self, source: ModuleSource) -> ModuleId {
         let parsed = parse_source(source.id, &source.text);
-        self.add_parsed_source(source.id, source.path, parsed)
+        let source_hash = stable_source_hash(&source.text);
+        self.add_parsed_source_with_hash(source.id, source.path, parsed, Some(source_hash))
     }
 
     pub fn add_parsed_source(
@@ -72,6 +74,16 @@ impl ModuleGraph {
         source: SourceId,
         path: ModulePath,
         parsed: SourceFile,
+    ) -> ModuleId {
+        self.add_parsed_source_with_hash(source, path, parsed, None)
+    }
+
+    pub fn add_parsed_source_with_hash(
+        &mut self,
+        source: SourceId,
+        path: ModulePath,
+        parsed: SourceFile,
+        source_hash: Option<u64>,
     ) -> ModuleId {
         let module = self.next_module_id();
         let module_span = self.module_span(source, &parsed);
@@ -95,6 +107,7 @@ impl ModuleGraph {
             id: module,
             path,
             source,
+            source_hash,
             declarations: DeclarationIndex::default(),
             imports: Vec::new(),
         };
@@ -305,6 +318,22 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn module_id(&self, path: &ModulePath) -> Option<ModuleId> {
+        self.module_by_path.get(path).copied()
+    }
+
+    pub fn module_ids(&self) -> impl Iterator<Item = ModuleId> + '_ {
+        self.modules.iter().map(|module| module.id)
+    }
+
+    #[must_use]
+    pub fn module_source_hash(&self, module: ModuleId) -> Option<u64> {
+        self.modules
+            .get(usize::try_from(module.get()).ok()?)
+            .and_then(|module| module.source_hash)
+    }
+
+    #[must_use]
     pub fn declaration(&self, declaration: HirDeclId) -> Option<&Declaration> {
         self.declarations.get(&declaration)
     }
@@ -371,6 +400,28 @@ impl ModuleGraph {
         self.modules
             .get(usize::try_from(module.get()).ok()?)
             .map(|module| module.imports.as_slice())
+    }
+
+    pub fn dependent_modules(
+        &self,
+        roots: impl IntoIterator<Item = ModuleId>,
+    ) -> BTreeSet<ModuleId> {
+        let mut impacted = roots.into_iter().collect::<BTreeSet<_>>();
+        let mut pending = impacted.iter().copied().collect::<Vec<_>>();
+
+        while let Some(changed) = pending.pop() {
+            for module in &self.modules {
+                if impacted.contains(&module.id) {
+                    continue;
+                }
+                if self.module_imports_module(module, changed) {
+                    impacted.insert(module.id);
+                    pending.push(module.id);
+                }
+            }
+        }
+
+        impacted
     }
 
     #[must_use]
@@ -500,6 +551,16 @@ impl ModuleGraph {
                 Some(ImportBinding { name, declaration })
             })
             .collect()
+    }
+
+    fn module_imports_module(&self, module: &HirModule, imported_module: ModuleId) -> bool {
+        module.imports.iter().any(|import| {
+            let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
+                return false;
+            };
+            self.declaration(declaration)
+                .is_some_and(|declaration| declaration.module == imported_module)
+        })
     }
 
     fn qualified_declarations_with(&self, current: &HirModule) -> Vec<(Vec<String>, HirDeclId)> {
@@ -789,6 +850,16 @@ impl ModuleGraph {
             .first()
             .map_or_else(|| Span::new(source, 0, 0), |item| item.span)
     }
+}
+
+#[must_use]
+pub fn stable_source_hash(text: &str) -> u64 {
+    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+
+    text.as_bytes().iter().fold(FNV_OFFSET, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
+    })
 }
 
 #[cfg(test)]

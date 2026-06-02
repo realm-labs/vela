@@ -58,7 +58,7 @@ impl HotReloadRuntime {
     #[must_use]
     pub fn apply_hot_update_report(&mut self, update: HotUpdate) -> HotReloadReport {
         let from_version = self.current.id;
-        let changed_functions = update.functions.keys().cloned().collect::<Vec<_>>();
+        let changes = update.changes;
         let mut functions = self.current.functions.clone();
         for (name, function) in update.functions {
             functions.insert(name, function);
@@ -71,7 +71,7 @@ impl HotReloadRuntime {
             abi: update.abi,
         });
         self.current = Arc::clone(&next);
-        HotReloadReport::accepted(from_version, next, changed_functions)
+        HotReloadReport::accepted(from_version, next, changes)
     }
 
     #[must_use]
