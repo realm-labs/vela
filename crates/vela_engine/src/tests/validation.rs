@@ -483,6 +483,42 @@ fn engine_rejects_empty_type_attribute_names() {
 }
 
 #[test]
+fn engine_rejects_empty_field_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .field(FieldDesc::new(FieldId::new(1), "level").type_hint("")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "field Player.level".to_owned(),
+            type_name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_generic_field_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .field(FieldDesc::new(FieldId::new(1), "inventory").type_hint("Array<Item>")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "field Player.inventory".to_owned(),
+            type_name: "Array<Item>".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_type_ids() {
     let result = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
@@ -596,6 +632,26 @@ fn engine_rejects_empty_variant_field_attribute_names() {
 }
 
 #[test]
+fn engine_rejects_generic_variant_field_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
+                VariantDesc::new(VariantId::new(1), "Gold")
+                    .field(FieldDesc::new(FieldId::new(1), "count").type_hint("Option<int>")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "variant field Reward.Gold.count".to_owned(),
+            type_name: "Option<int>".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_empty_trait_attribute_names() {
     let result = Engine::builder()
         .register_type(
@@ -629,6 +685,52 @@ fn engine_rejects_empty_trait_method_attribute_names() {
         Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
             descriptor: "trait method Player.Damageable.damage".to_owned(),
             name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_generic_trait_method_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
+                trait_desc_with_id(TraitId::new(1), "Rewardable").method(
+                    TraitMethodDesc::new(MethodId::new(1), "reward")
+                        .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
+                        .return_type("Result<int>"),
+                ),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "trait method Player.Rewardable.reward return".to_owned(),
+            type_name: "Result<int>".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_generic_trait_method_param_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
+                trait_desc_with_id(TraitId::new(1), "Rewardable").method(
+                    TraitMethodDesc::new(MethodId::new(1), "reward")
+                        .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
+                        .return_type("Result"),
+                ),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "trait method Player.Rewardable.reward parameter items".to_owned(),
+            type_name: "Array<Item>".to_owned(),
         }
     ));
 }
@@ -990,6 +1092,48 @@ fn engine_rejects_empty_host_method_attribute_names() {
         Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
             descriptor: "host method Player.grant_exp".to_owned(),
             name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_generic_host_method_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1)).method(
+                MethodDesc::new(HostMethodId::new(1), "grant_rewards")
+                    .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
+                    .return_type("Result<int>"),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "host method Player.grant_rewards return".to_owned(),
+            type_name: "Result<int>".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_generic_host_method_param_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1)).method(
+                MethodDesc::new(HostMethodId::new(1), "grant_rewards")
+                    .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
+                    .return_type("Result"),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
+            descriptor: "host method Player.grant_rewards parameter items".to_owned(),
+            type_name: "Array<Item>".to_owned(),
         }
     ));
 }

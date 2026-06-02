@@ -148,6 +148,10 @@ fn validate_type_desc(
 
     for method in &desc.methods {
         validate_schema_member_name(&desc.key.name, "host method", &method.name)?;
+        validate_raw_type_hint(
+            &format!("host method {}.{} return", desc.key.name, method.name),
+            method.return_type.as_deref(),
+        )?;
         validate_attr_names(
             &format!("host method {}.{}", desc.key.name, method.name),
             &method.attrs,
@@ -181,6 +185,10 @@ fn validate_type_fields(desc: &TypeDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for field in &desc.fields {
         validate_schema_member_name(&desc.key.name, "field", &field.name)?;
+        validate_raw_type_hint(
+            &format!("field {}.{}", desc.key.name, field.name),
+            field.type_hint.as_deref(),
+        )?;
         validate_attr_names(
             &format!("field {}.{}", desc.key.name, field.name),
             &field.attrs,
@@ -243,6 +251,13 @@ fn validate_variant_fields(
     let mut names = BTreeSet::new();
     for field in &variant.fields {
         validate_schema_member_name(type_name, "variant field", &field.name)?;
+        validate_raw_type_hint(
+            &format!(
+                "variant field {}.{}.{}",
+                type_name, variant.name, field.name
+            ),
+            field.type_hint.as_deref(),
+        )?;
         validate_attr_names(
             &format!(
                 "variant field {}.{}.{}",
@@ -315,6 +330,13 @@ fn validate_trait_methods(
     let mut names = BTreeSet::new();
     for method in &trait_desc.methods {
         validate_schema_member_name(type_name, "trait method", &method.name)?;
+        validate_raw_type_hint(
+            &format!(
+                "trait method {}.{}.{} return",
+                type_name, trait_desc.name, method.name
+            ),
+            method.return_type.as_deref(),
+        )?;
         validate_attr_names(
             &format!(
                 "trait method {}.{}.{}",
@@ -356,6 +378,10 @@ fn validate_host_method_params(
     let mut names = BTreeSet::new();
     for param in params {
         validate_schema_member_name(type_name, "host method parameter", &param.name)?;
+        validate_raw_type_hint(
+            &format!("host method {type_name}.{method} parameter {}", param.name),
+            param.type_hint.as_deref(),
+        )?;
         if !names.insert(param.name.as_str()) {
             return Err(EngineError::new(
                 EngineErrorKind::DuplicateHostMethodParamName {
@@ -378,6 +404,13 @@ fn validate_trait_method_params(
     let mut names = BTreeSet::new();
     for param in params {
         validate_schema_member_name(type_name, "trait method parameter", &param.name)?;
+        validate_raw_type_hint(
+            &format!(
+                "trait method {type_name}.{trait_name}.{method} parameter {}",
+                param.name
+            ),
+            param.type_hint.as_deref(),
+        )?;
         if !names.insert(param.name.as_str()) {
             return Err(EngineError::new(
                 EngineErrorKind::DuplicateTraitMethodParamName {
@@ -616,6 +649,24 @@ fn validate_attr_names(descriptor: &str, attrs: &AttrMap) -> EngineResult<()> {
                 name: name.to_owned(),
             }));
         }
+    }
+    Ok(())
+}
+
+fn validate_raw_type_hint(descriptor: &str, hint: Option<&str>) -> EngineResult<()> {
+    let Some(hint) = hint else {
+        return Ok(());
+    };
+    if hint.is_empty()
+        || hint.trim() != hint
+        || hint.contains('<')
+        || hint.contains('>')
+        || !is_valid_dotted_name(hint)
+    {
+        return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
+            descriptor: descriptor.to_owned(),
+            type_name: hint.to_owned(),
+        }));
     }
     Ok(())
 }

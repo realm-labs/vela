@@ -55,6 +55,10 @@ pub enum EngineErrorKind {
         descriptor: String,
         type_name: String,
     },
+    InvalidTypeHintName {
+        descriptor: String,
+        type_name: String,
+    },
     InvalidAttributeName {
         descriptor: String,
         name: String,
@@ -187,6 +191,12 @@ impl fmt::Display for EngineError {
                 type_name,
             } => {
                 write!(formatter, "unknown type hint {type_name} in {descriptor}")
+            }
+            EngineErrorKind::InvalidTypeHintName {
+                descriptor,
+                type_name,
+            } => {
+                write!(formatter, "invalid type hint {type_name} in {descriptor}")
             }
             EngineErrorKind::InvalidAttributeName { descriptor, name } => {
                 write!(formatter, "invalid attribute name {name} in {descriptor}")
