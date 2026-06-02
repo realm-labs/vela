@@ -29,6 +29,7 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
         .register_host_type::<Player>()
         .register_host_type::<Monster>()
         .register_host_type::<Inventory>()
+        .register_host_type::<ItemStack>()
         .register_host_type::<Config>()
         .register_host_methods::<Player>()
         .register_module(
@@ -48,15 +49,6 @@ pub(crate) fn demo_support_type_registry(ids: DemoIds) -> TypeRegistry {
     registry.register(
         context_host_type_desc()
             .field(FieldDesc::new(ids.config_field, "config").type_hint("Config")),
-    );
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(104), "ItemStack"))
-            .schema_hash(SchemaHash::new(0x1000_0000_0000_0005))
-            .field(
-                FieldDesc::new(ids.count_field, "count")
-                    .writable(true)
-                    .type_hint("int"),
-            ),
     );
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(106), "HostQuestProgress"))
@@ -171,7 +163,12 @@ struct Inventory {
 }
 
 #[allow(dead_code)]
-struct ItemStack;
+#[derive(ScriptHost)]
+#[script(id = 104, host_id = 6, name = "ItemStack")]
+struct ItemStack {
+    #[script(get, set, id = 16, hint = "int")]
+    count: i64,
+}
 
 #[allow(dead_code)]
 struct HostQuestProgress;
