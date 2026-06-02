@@ -197,7 +197,7 @@ fn record_type_name(target: &ReflectValue) -> Option<&str> {
     }
 }
 
-fn is_reflect_metadata_record(type_name: &str) -> bool {
+pub(crate) fn is_reflect_metadata_record(type_name: &str) -> bool {
     type_name.starts_with("Reflect")
 }
 

@@ -6,10 +6,10 @@ before this compaction lives in
 
 ## Current Focus
 
-M0-M11 are complete enough as a runnable prototype. Current work is centered on
-the current checkpoint queue below: first close or precisely narrow M12, then
-advance M13 standard-library completion, with targeted M14/M15 Engine API and
-hot-reload source workflow work as it unblocks embedding.
+M0-M12 are complete enough as a runnable prototype. Current work is centered on
+the current checkpoint queue below: advance M13 standard-library completion,
+with targeted M14/M15 Engine API and hot-reload source workflow work as it
+unblocks embedding.
 
 Post-MVP performance remains a separate track: optimize the non-JIT bytecode
 interpreter toward Lua 5.x comparable gameplay workloads, then add debugger
@@ -26,7 +26,7 @@ conformance contracts are stable.
 | M9 | Complete enough | Broad executable language surface works; conformance catches edge cases. |
 | M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist. |
 | M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx overlays, and rollback-safe host boundaries exist. |
-| M12 | In progress | Reflection metadata surface and permission-aware queries are still being polished. |
+| M12 | Complete enough | Reflection metadata, permission-aware queries, lookup budgets, candidate spans, and schema-safe mutation denial are covered. |
 | M13 | In progress | Standard library helpers are broad but still need final gameplay/string/math/context polish. |
 | M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices. |
 | M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist. |
@@ -44,22 +44,13 @@ Use this queue to choose the next implementation task. Work on the first
 checkpoint that is not satisfied, and update this section when a checkpoint
 closes or exposes a more specific gap.
 
-1. M12 reflection and permissions:
-   - Audit current reflection tests against the M12 checkpoint in
-     [goal.md](goal.md): metadata categories, permissioned get/set/call,
-     lookup budgets, candidate spans, and schema-safe mutation denial.
-   - If covered, mark M12 `Complete enough` and move broad diagnostic polish to
-     M16.
-   - If not covered, add the smallest missing edge-case test and implementation
-     before doing more broad M12 work.
-   - Validation: `cargo test -p vela_reflect -p vela_vm -p vela_engine reflect`.
-2. M13 standard library:
+1. M13 standard library:
    - Complete one missing stdlib family at a time: collection helpers,
      string helpers, Option/Result propagation, math helpers, context helpers,
      random/time permission checks, or lambda TypeFact metadata.
    - Validation: targeted stdlib/compiler/VM tests plus the relevant
      game-server demo script when the helper affects gameplay examples.
-3. M14/M15 embedding and reload:
+2. M14/M15 embedding and reload:
    - Advance only when it unblocks the demo or conformance workflow: Engine API
      registration, native descriptors, context helpers, macros, safe-point
      reload, ABI/schema/effect checks, or source-file update workflows.
@@ -119,6 +110,8 @@ closes or exposes a more specific gap.
 - Script-defined struct and enum fields expose writable reflection metadata,
   and copy-returning `reflect.set` respects `reflect_writable` plus field
   permissions for script values.
+- Reflection metadata records are read-only at the `reflect.set` boundary, so
+  copied descriptors cannot be rewritten into schema-mutation stand-ins.
 - Global `reflect.fields()` metadata includes enum variant payload fields with
   policy filtering and `Type.Variant` ownership.
 - Standard Option/Result enum variants and payload fields expose copied docs
@@ -136,8 +129,8 @@ closes or exposes a more specific gap.
 
 ## Current Gaps
 
-- Finish M12/M13 polish around reflection metadata, permissions, standard
-  library completeness, and gameplay helper coverage.
+- Finish M13 polish around standard library completeness and gameplay helper
+  coverage.
 - Continue hardening M14/M15 embedding and production safe-point reload
   workflows.
 - Expand M16/M17 diagnostics, fixtures, and game-server demo coverage.

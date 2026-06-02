@@ -8,6 +8,7 @@ use vela_host::value::HostValue;
 use crate::{
     candidates, descriptor_targets,
     error::{ReflectError, ReflectErrorKind, ReflectResult},
+    metadata_records,
     permissions::ReflectPolicy,
     registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry},
     value_access::{
@@ -264,6 +265,9 @@ fn set_impl(
             || record_unknown_field(field, fields),
         )?)),
         ReflectValue::ScriptRecord { type_name, fields } => {
+            if metadata_records::is_reflect_metadata_record(type_name) {
+                return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
+            }
             if let Some(policy) = policy
                 && let Some(field_desc) = script_record_field(ctx.registry, type_name, field)
             {

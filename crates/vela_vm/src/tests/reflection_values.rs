@@ -70,6 +70,34 @@ fn main() {
 }
 
 #[test]
+fn compiled_source_reflect_set_rejects_metadata_records() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let player_type = reflect.type_info("Player");
+    return reflect.set(player_type, "name", "Monster");
+}
+"#,
+    )
+    .expect("compile metadata reflect set source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(reflection_registry()));
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        vm.run_program_with_host(&program, "main", &[], &mut host),
+        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::InvalidTarget)
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn compiled_source_reflect_get_script_record_unknown_field_reports_schema() {
     let program = compile_program_source(
         SourceId::new(1),

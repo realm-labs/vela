@@ -98,6 +98,36 @@ fn reflect_set_script_record_returns_updated_copy() {
 }
 
 #[test]
+fn reflect_set_metadata_record_is_not_a_schema_mutation_path() {
+    let registry = TypeRegistry::new();
+    let adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let record = ReflectValue::ScriptRecord {
+        type_name: "ReflectType".to_owned(),
+        fields: BTreeMap::from([(
+            "name".to_owned(),
+            ReflectValue::Host(HostValue::String("Player".to_owned())),
+        )]),
+    };
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = set(
+        &mut ctx,
+        &record,
+        "name",
+        ReflectValue::Host(HostValue::String("Monster".to_owned())),
+    )
+    .expect_err("reflection metadata records are not writable");
+
+    assert_eq!(error.kind, ReflectErrorKind::InvalidTarget);
+    assert!(ctx.tx.patches().is_empty());
+}
+
+#[test]
 fn reflect_set_script_record_rejects_unknown_fields() {
     let field_span = Span::new(SourceId::new(7), 20, 25);
     let mut registry = TypeRegistry::new();
