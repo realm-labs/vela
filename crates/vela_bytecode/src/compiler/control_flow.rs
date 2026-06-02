@@ -175,6 +175,7 @@ impl Compiler<'_> {
         let previous_locals = self.locals.clone();
         let previous_hir_locals = self.hir_locals.clone();
         let previous_script_types = self.script_types.clone();
+        let previous_value_types = self.value_types.clone();
 
         let loop_start = self.current_offset();
         let done_jump = self.emit_iter_next(iterator, item_register);
@@ -212,6 +213,7 @@ impl Compiler<'_> {
         self.locals = previous_locals;
         self.hir_locals = previous_hir_locals;
         self.script_types = previous_script_types;
+        self.value_types = previous_value_types;
 
         Ok(false)
     }
@@ -344,6 +346,7 @@ impl Compiler<'_> {
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
+            let previous_value_types = self.value_types.clone();
             self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
@@ -364,6 +367,7 @@ impl Compiler<'_> {
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
             self.script_types = previous_script_types;
+            self.value_types = previous_value_types;
             all_arms_return &= arm_returned;
             if !arm_returned {
                 end_jumps.push(self.emit_jump());
@@ -399,6 +403,7 @@ impl Compiler<'_> {
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
+            let previous_value_types = self.value_types.clone();
             self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
@@ -413,6 +418,7 @@ impl Compiler<'_> {
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
             self.script_types = previous_script_types;
+            self.value_types = previous_value_types;
             all_arms_return &= arm_returned;
             if !arm_returned {
                 end_jumps.push(self.emit_jump());

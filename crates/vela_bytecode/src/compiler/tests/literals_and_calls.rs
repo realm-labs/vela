@@ -282,6 +282,59 @@ fn main() {
 }
 
 #[test]
+fn compiler_does_not_leak_named_value_method_receiver_facts_from_for_body() {
+    let err = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let value = 1;
+    for item in [] {
+        value = "reward:gold";
+    }
+    return value.contains(needle = ":");
+}
+"#,
+        &CompilerOptions::new()
+            .with_required_value_method_params_for_type("string", "contains", ["needle"])
+            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+    )
+    .expect_err("for body value receiver facts must not leak after loop scope");
+
+    assert_eq!(
+        err.kind,
+        CompileErrorKind::UnsupportedSyntax("script method call")
+    );
+}
+
+#[test]
+fn compiler_does_not_leak_named_value_method_receiver_facts_from_match_arm() {
+    let err = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let value = 1;
+    match value {
+        1 => {
+            value = "reward:gold";
+        }
+        _ => {}
+    }
+    return value.contains(needle = ":");
+}
+"#,
+        &CompilerOptions::new()
+            .with_required_value_method_params_for_type("string", "contains", ["needle"])
+            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+    )
+    .expect_err("match arm value receiver facts must not leak after match scope");
+
+    assert_eq!(
+        err.kind,
+        CompileErrorKind::UnsupportedSyntax("script method call")
+    );
+}
+
+#[test]
 fn compiler_rejects_ambiguous_named_value_method_args_without_receiver_type() {
     compile_program_source_with_options(
         SourceId::new(1),
