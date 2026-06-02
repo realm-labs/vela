@@ -8,6 +8,7 @@ use crate::version::{HotUpdate, ProgramVersion};
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotReloadRuntime {
     current: Arc<ProgramVersion>,
+    pending: Option<HotReloadResult<HotUpdate>>,
 }
 
 impl HotReloadRuntime {
@@ -15,12 +16,36 @@ impl HotReloadRuntime {
     pub fn new(initial: ProgramVersion) -> Self {
         Self {
             current: Arc::new(initial),
+            pending: None,
         }
     }
 
     #[must_use]
     pub fn current(&self) -> Arc<ProgramVersion> {
         Arc::clone(&self.current)
+    }
+
+    #[must_use]
+    pub fn has_pending_update(&self) -> bool {
+        self.pending.is_some()
+    }
+
+    pub fn stage_hot_update(&mut self, update: HotUpdate) -> Option<HotReloadResult<HotUpdate>> {
+        self.stage_hot_update_result(Ok(update))
+    }
+
+    pub fn stage_hot_update_result(
+        &mut self,
+        update: HotReloadResult<HotUpdate>,
+    ) -> Option<HotReloadResult<HotUpdate>> {
+        self.pending.replace(update)
+    }
+
+    #[must_use]
+    pub fn check_reload(&mut self) -> Option<HotReloadReport> {
+        self.pending
+            .take()
+            .map(|update| self.apply_hot_update_result_report(update))
     }
 
     pub fn apply_hot_update(&mut self, update: HotUpdate) -> HotReloadResult<Arc<ProgramVersion>> {

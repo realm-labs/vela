@@ -21,6 +21,78 @@ fn new_calls_enter_new_code_after_update() {
 }
 
 #[test]
+fn staged_update_waits_for_check_reload_safe_point() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let update = compile_update(
+        &runtime.current(),
+        SourceId::new(2),
+        "fn main() { return 30; }",
+    )
+    .expect("compile update");
+
+    assert_eq!(runtime.stage_hot_update(update), None);
+    assert!(runtime.has_pending_update());
+    assert_eq!(
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        Ok(Value::Int(20))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("safe point should consume pending update");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, ["main"]);
+    assert!(!runtime.has_pending_update());
+    assert_eq!(
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        Ok(Value::Int(30))
+    );
+}
+
+#[test]
+fn staged_rejected_update_reports_at_check_reload_safe_point() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let old = runtime.current();
+    let policy = HotReloadPolicy::locked_down();
+    let update = compile_update_with_policy(
+        &old,
+        SourceId::new(2),
+        r#"
+fn helper() {
+    return 5;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        &policy,
+    );
+
+    assert_eq!(runtime.stage_hot_update_result(update), None);
+    assert!(runtime.has_pending_update());
+
+    let report = runtime
+        .check_reload()
+        .expect("safe point should report pending rejection");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(runtime.current().id, old.id);
+    assert!(!runtime.has_pending_update());
+    assert_eq!(report.errors[0].code, "reload.function.new_denied");
+    assert_eq!(
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        Ok(Value::Int(20))
+    );
+}
+
+#[test]
 fn apply_hot_update_report_summarizes_accepted_changes() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");

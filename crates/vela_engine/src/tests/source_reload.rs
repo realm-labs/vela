@@ -356,6 +356,50 @@ fn runtime_applies_engine_hot_reload_updates() {
 }
 
 #[test]
+fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .expect("initial hot reload compile");
+    let update = engine
+        .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .expect("compatible update should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    runtime
+        .stage_hot_update(update)
+        .expect("stage pending update");
+    assert!(
+        runtime
+            .has_pending_hot_update()
+            .expect("hot reload runtime should report pending update")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("pending report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["main".to_owned()]);
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("pending update should be consumed")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_compiles_hot_reload_update_from_active_version() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine

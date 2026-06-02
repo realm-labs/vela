@@ -62,6 +62,47 @@ impl Runtime {
         self.apply_hot_update_result_report(Ok(update))
     }
 
+    pub fn stage_hot_update(&mut self, update: HotUpdate) -> EngineResult<()> {
+        self.stage_hot_update_result(Ok(update))
+    }
+
+    pub fn stage_hot_update_result(
+        &mut self,
+        update: HotReloadResult<HotUpdate>,
+    ) -> EngineResult<()> {
+        let Some(hot_reload) = self.hot_reload.as_mut() else {
+            return Err(EngineError::new(
+                EngineErrorKind::RuntimeNotHotReloadEnabled,
+            ));
+        };
+        let _replaced = hot_reload.stage_hot_update_result(update);
+        Ok(())
+    }
+
+    pub fn has_pending_hot_update(&self) -> EngineResult<bool> {
+        let Some(hot_reload) = self.hot_reload.as_ref() else {
+            return Err(EngineError::new(
+                EngineErrorKind::RuntimeNotHotReloadEnabled,
+            ));
+        };
+        Ok(hot_reload.has_pending_update())
+    }
+
+    pub fn check_reload(&mut self) -> EngineResult<Option<HotReloadReport>> {
+        let Some(hot_reload) = self.hot_reload.as_mut() else {
+            return Err(EngineError::new(
+                EngineErrorKind::RuntimeNotHotReloadEnabled,
+            ));
+        };
+        let Some(report) = hot_reload.check_reload() else {
+            return Ok(None);
+        };
+        if let Some(version) = report.version() {
+            self.program = version.to_program();
+        }
+        Ok(Some(report))
+    }
+
     pub fn apply_hot_update_result_report(
         &mut self,
         update: HotReloadResult<HotUpdate>,

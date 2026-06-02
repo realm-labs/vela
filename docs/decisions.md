@@ -98,6 +98,11 @@ Hot reload replaces function-level or module-level code objects at safe points.
 Old ProgramVersion handles keep old code alive, rejected updates do not advance
 versions, and reports carry copied diagnostics plus ABI details.
 
+Compiled updates may be staged before a safe point. Staging never advances the
+active ProgramVersion; hosts must call the runtime reload check at event, tick,
+or patch-apply safe points to consume the pending update and receive the
+accepted or rejected report.
+
 Function, method, module, trait, schema, effect, access, parameter, return, and
 source-span metadata participate in ABI validation. Engine registries are the
 source for host/native ABI manifests.
