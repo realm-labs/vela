@@ -277,11 +277,19 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(max.params[1].name, "right");
     assert_eq!(max.return_type.as_deref(), Some("any"));
     assert_eq!(max.attrs.get("stdlib"), Some("math"));
+    assert_eq!(
+        max.docs.as_deref(),
+        Some("Returns the larger numeric value.")
+    );
     assert!(max.access.reflect_visible);
     assert!(max.access.reflect_callable);
 
     let sqrt = registry.function_by_name("math.sqrt").expect("math.sqrt");
     assert_eq!(sqrt.return_type.as_deref(), Some("float"));
+    assert_eq!(
+        sqrt.docs.as_deref(),
+        Some("Returns the square root as a float.")
+    );
 
     let option = registry.module_by_name("option").expect("option module");
     assert_eq!(
@@ -339,12 +347,20 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(option_some.params[0].name, "value");
     assert_eq!(option_some.return_type.as_deref(), Some("any"));
     assert_eq!(option_some.attrs.get("stdlib"), Some("option"));
+    assert_eq!(
+        option_some.docs.as_deref(),
+        Some("Wraps a value in Option.Some.")
+    );
 
     let result_ok = registry.function_by_name("result.ok").expect("result.ok");
     assert_eq!(result_ok.module.as_deref(), Some("result"));
     assert_eq!(result_ok.params[0].name, "value");
     assert_eq!(result_ok.return_type.as_deref(), Some("any"));
     assert_eq!(result_ok.attrs.get("stdlib"), Some("result"));
+    assert_eq!(
+        result_ok.docs.as_deref(),
+        Some("Wraps a success value in Result.Ok.")
+    );
 
     let set_from_array = registry
         .function_by_name("set.from_array")
@@ -354,6 +370,10 @@ fn engine_standard_natives_register_reflection_metadata() {
     assert_eq!(set_from_array.params[0].type_hint.as_deref(), Some("array"));
     assert_eq!(set_from_array.return_type.as_deref(), Some("set"));
     assert_eq!(set_from_array.attrs.get("stdlib"), Some("set"));
+    assert_eq!(
+        set_from_array.docs.as_deref(),
+        Some("Builds a set from array values.")
+    );
 
     let program = compile_program_source(
         SourceId::new(1),
@@ -553,6 +573,11 @@ fn main() {
         && reflect.attr(some, "stdlib") == "option"
         && reflect.attr(ok, "stdlib") == "result"
         && reflect.attr(set_from_array, "stdlib") == "set"
+        && reflect.docs(max) == "Returns the larger numeric value."
+        && reflect.docs(sqrt) == "Returns the square root as a float."
+        && reflect.docs(some) == "Wraps a value in Option.Some."
+        && reflect.docs(ok) == "Wraps a success value in Result.Ok."
+        && reflect.docs(set_from_array) == "Builds a set from array values."
         && reflect.returns(max) == "any"
         && reflect.returns(sqrt) == "float"
         && reflect.returns(some) == "any"
