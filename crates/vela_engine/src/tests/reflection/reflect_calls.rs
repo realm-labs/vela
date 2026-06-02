@@ -46,6 +46,48 @@ fn main() {
 }
 
 #[test]
+fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.add", NativeFunctionId::new(95))
+                .param("lhs", TypeHint::Int)
+                .param("rhs", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .access(FunctionAccess::public().reflect_callable(true)),
+            |_| Ok(Value::Int(0)),
+        )
+        .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let add = reflect.function("game.add");
+    return reflect.call(add, 2, 3);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+            permission: ReflectPermission::CallMethods,
+        })
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn engine_reflect_call_rejects_non_callable_native_functions() {
     let engine = Engine::builder()
         .register_native_fn(
