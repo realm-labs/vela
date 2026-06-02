@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_reflect::access::{FunctionEffectSet, MethodEffectSet};
+use vela_reflect::access::{FunctionEffectSet, MethodAccess, MethodEffectSet};
 use vela_reflect::modules::FunctionDesc;
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
@@ -46,6 +46,27 @@ impl RegistryFieldAccessFact {
             reflect_readable: field.access.reflect_readable,
             reflect_writable: field.access.reflect_writable,
             required_permissions: field.access.required_permissions().to_vec(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RegistryMethodAccessFact {
+    pub owner: String,
+    pub name: String,
+    pub public: bool,
+    pub reflect_callable: bool,
+    pub required_permissions: Vec<String>,
+}
+
+impl RegistryMethodAccessFact {
+    fn new(owner: impl Into<String>, name: impl Into<String>, access: &MethodAccess) -> Self {
+        Self {
+            owner: owner.into(),
+            name: name.into(),
+            public: access.public,
+            reflect_callable: access.reflect_callable,
+            required_permissions: access.required_permissions().to_vec(),
         }
     }
 }
@@ -155,6 +176,7 @@ pub struct RegistryFacts {
     trait_methods: BTreeMap<(String, String), TypeFact>,
     functions: BTreeMap<String, TypeFact>,
     method_effects: BTreeMap<(String, String), RegistryEffectFact>,
+    method_access: BTreeMap<(String, String), RegistryMethodAccessFact>,
     trait_method_effects: BTreeMap<(String, String), RegistryEffectFact>,
     function_effects: BTreeMap<String, RegistryEffectFact>,
 }
@@ -184,13 +206,16 @@ impl RegistryFacts {
             }
 
             for method in &desc.methods {
-                facts.methods.insert(
-                    (desc.key.name.clone(), method.name.clone()),
-                    method_desc_fact(registry, method),
-                );
-                facts.method_effects.insert(
-                    (desc.key.name.clone(), method.name.clone()),
-                    method_effect_fact(&method.effects),
+                let key = (desc.key.name.clone(), method.name.clone());
+                facts
+                    .methods
+                    .insert(key.clone(), method_desc_fact(registry, method));
+                facts
+                    .method_effects
+                    .insert(key.clone(), method_effect_fact(&method.effects));
+                facts.method_access.insert(
+                    key,
+                    RegistryMethodAccessFact::new(&desc.key.name, &method.name, &method.access),
                 );
             }
 
@@ -322,6 +347,16 @@ impl RegistryFacts {
     #[must_use]
     pub fn method_effect_fact(&self, owner: &str, method: &str) -> Option<&RegistryEffectFact> {
         self.method_effects
+            .get(&(owner.to_owned(), method.to_owned()))
+    }
+
+    #[must_use]
+    pub fn method_access_fact(
+        &self,
+        owner: &str,
+        method: &str,
+    ) -> Option<&RegistryMethodAccessFact> {
+        self.method_access
             .get(&(owner.to_owned(), method.to_owned()))
     }
 
@@ -511,6 +546,7 @@ fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
 #[cfg(test)]
 mod tests {
     use vela_common::{FieldId, FunctionId, HostMethodId, HostTypeId, MethodId, TypeId, VariantId};
+    use vela_reflect::access::{MethodAccess, MethodEffectSet};
     use vela_reflect::modules::{FunctionDesc, FunctionParamDesc};
     use vela_reflect::registry::{
         FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
@@ -528,7 +564,9 @@ mod tests {
             .method(
                 MethodDesc::new(HostMethodId::new(1), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("int"))
-                    .return_type("bool"),
+                    .return_type("bool")
+                    .effects(MethodEffectSet::host_write())
+                    .access(MethodAccess::new().require_permission("player.reward")),
             )
             .trait_impl(
                 TraitDesc::new("Damageable").method(
@@ -586,6 +624,16 @@ mod tests {
         assert_eq!(
             facts.method_fact("Player", "grant_exp"),
             Some(&TypeFact::function(vec![TypeFact::Int], TypeFact::Bool))
+        );
+        assert_eq!(
+            facts.method_effect_fact("Player", "grant_exp"),
+            Some(&RegistryEffectFact::host_write())
+        );
+        assert!(
+            facts
+                .method_access_fact("Player", "grant_exp")
+                .is_some_and(|access| access.reflect_callable
+                    && access.required_permissions == vec!["player.reward".to_owned()])
         );
         assert_eq!(
             facts.function_fact("game.reward.grant"),

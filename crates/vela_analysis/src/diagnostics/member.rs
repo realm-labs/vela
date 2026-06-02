@@ -3,7 +3,9 @@ use vela_syntax::ast::{Expr, ExprKind};
 
 use crate::completion::{CompletionKind, member_completions};
 use crate::expression::{ExprFactScope, type_fact_from_expr};
-use crate::registry::{RegistryFacts, RegistryFieldAccessFact};
+use crate::registry::{
+    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryMethodAccessFact,
+};
 use crate::stdlib::stdlib_method_fact;
 use crate::type_fact::TypeFact;
 
@@ -182,12 +184,14 @@ fn diagnose_call(
         return true;
     }
 
+    let candidates = ranked_member_candidates(facts, &receiver, &name, CompletionKind::Method);
+    let access_labels = method_candidate_access_labels(facts, &receiver, &candidates);
     diagnostics.push(unknown_member_diagnostic(
         "analysis::unknown_method",
         format!("unknown method `{name}` for `{}`", receiver.display_name()),
         expr,
-        ranked_member_candidates(facts, &receiver, &name, CompletionKind::Method),
-        Vec::new(),
+        candidates,
+        access_labels,
     ));
     true
 }
@@ -376,6 +380,49 @@ fn field_access_label(access: &RegistryFieldAccessFact) -> String {
     label
 }
 
+fn method_candidate_access_labels(
+    facts: &RegistryFacts,
+    receiver: &TypeFact,
+    candidates: &[String],
+) -> Vec<String> {
+    let TypeFact::Host { name: owner } = receiver else {
+        return Vec::new();
+    };
+    candidates
+        .iter()
+        .filter_map(|candidate| {
+            let access = facts.method_access_fact(owner, candidate)?;
+            let effects = facts.method_effect_fact(owner, candidate);
+            Some(method_access_label(access, effects))
+        })
+        .collect()
+}
+
+fn method_access_label(
+    access: &RegistryMethodAccessFact,
+    effects: Option<&RegistryEffectFact>,
+) -> String {
+    let callable_hint = if access.reflect_callable {
+        "reflect-callable"
+    } else {
+        "not reflect-callable"
+    };
+    let visibility_hint = if access.public { "public" } else { "private" };
+    let effect_hint =
+        effects.map_or_else(|| "unknown".to_owned(), RegistryEffectFact::display_name);
+    let mut label = format!(
+        "candidate `{}.{}` is {visibility_hint} and {callable_hint} with effects {effect_hint}",
+        access.owner, access.name
+    );
+    if !access.required_permissions.is_empty() {
+        label.push_str(&format!(
+            "; requires permission {}",
+            access.required_permissions.join(", ")
+        ));
+    }
+    label
+}
+
 fn field_owner(receiver: &TypeFact) -> Option<String> {
     match receiver {
         TypeFact::Host { name } | TypeFact::Record { name } => Some(name.clone()),
@@ -447,6 +494,7 @@ fn unknown_member_diagnostic(
 #[cfg(test)]
 mod tests {
     use vela_common::{FieldId, HostMethodId, SourceId, TypeId};
+    use vela_reflect::access::{MethodAccess, MethodEffectSet};
     use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
     use vela_syntax::ast::{ItemKind, StmtKind};
     use vela_syntax::parser::parse_source;
@@ -535,6 +583,17 @@ mod tests {
                 .labels
                 .iter()
                 .any(|label| label.message == "did you mean `grant_exp`?")
+        );
+        assert!(diagnostics[0].labels.iter().any(|label| {
+            label.message.contains(
+                "candidate `Player.grant_exp` is public and reflect-callable with effects reads_host, writes_host",
+            )
+        }));
+        assert!(
+            diagnostics[0]
+                .labels
+                .iter()
+                .any(|label| { label.message.contains("requires permission player.reward") })
         );
     }
 
@@ -685,7 +744,11 @@ mod tests {
                         .writable(true),
                 )
                 .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("map"))
-                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp")),
+                .method(
+                    MethodDesc::new(HostMethodId::new(1), "grant_exp")
+                        .effects(MethodEffectSet::host_write())
+                        .access(MethodAccess::new().require_permission("player.reward")),
+                ),
         );
         RegistryFacts::from_registry(&registry)
     }

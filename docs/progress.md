@@ -80,6 +80,8 @@ conformance contracts are stable.
   known read-only host field assignment targets with script-author write hints.
 - Unknown host-field diagnostics include ranked candidate labels with copied
   read/write access hints for likely field names.
+- Unknown host-method diagnostics include ranked candidate labels with copied
+  method access, effect, and permission hints for likely method names.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
