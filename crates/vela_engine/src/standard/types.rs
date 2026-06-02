@@ -117,9 +117,21 @@ fn option_type_desc() -> TypeDesc {
         .variant(
             VariantDesc::new(OPTION_SOME_VARIANT_ID, "Some")
                 .origin(DeclOrigin::Host)
-                .field(FieldDesc::new(OPTION_SOME_FIELD_ID, "0").type_hint("any")),
+                .docs("Carries a present Option payload.")
+                .attr("stdlib", "option")
+                .field(
+                    FieldDesc::new(OPTION_SOME_FIELD_ID, "0")
+                        .type_hint("any")
+                        .docs("Dynamic Option.Some payload value.")
+                        .attr("stdlib", "option"),
+                ),
         )
-        .variant(VariantDesc::new(OPTION_NONE_VARIANT_ID, "None").origin(DeclOrigin::Host));
+        .variant(
+            VariantDesc::new(OPTION_NONE_VARIANT_ID, "None")
+                .origin(DeclOrigin::Host)
+                .docs("Represents expected absence without a payload.")
+                .attr("stdlib", "option"),
+        );
     for method in option_method_descs() {
         desc = desc.method(method);
     }
@@ -136,12 +148,26 @@ fn result_type_desc() -> TypeDesc {
         .variant(
             VariantDesc::new(RESULT_OK_VARIANT_ID, "Ok")
                 .origin(DeclOrigin::Host)
-                .field(FieldDesc::new(RESULT_OK_FIELD_ID, "0").type_hint("any")),
+                .docs("Carries a successful Result payload.")
+                .attr("stdlib", "result")
+                .field(
+                    FieldDesc::new(RESULT_OK_FIELD_ID, "0")
+                        .type_hint("any")
+                        .docs("Dynamic Result.Ok payload value.")
+                        .attr("stdlib", "result"),
+                ),
         )
         .variant(
             VariantDesc::new(RESULT_ERR_VARIANT_ID, "Err")
                 .origin(DeclOrigin::Host)
-                .field(FieldDesc::new(RESULT_ERR_FIELD_ID, "0").type_hint("any")),
+                .docs("Carries a recoverable Result error payload.")
+                .attr("stdlib", "result")
+                .field(
+                    FieldDesc::new(RESULT_ERR_FIELD_ID, "0")
+                        .type_hint("any")
+                        .docs("Dynamic Result.Err payload value.")
+                        .attr("stdlib", "result"),
+                ),
         );
     for method in result_method_descs() {
         desc = desc.method(method);

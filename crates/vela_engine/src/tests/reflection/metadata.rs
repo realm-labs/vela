@@ -251,12 +251,30 @@ fn engine_standard_natives_register_reflection_metadata() {
     );
     assert_eq!(option_type.variants.len(), 2);
     assert_eq!(option_type.variants[0].name, "Some");
+    assert_eq!(
+        option_type.variants[0].docs.as_deref(),
+        Some("Carries a present Option payload.")
+    );
+    assert_eq!(option_type.variants[0].attrs.get("stdlib"), Some("option"));
     assert_eq!(option_type.variants[0].fields[0].name, "0");
     assert_eq!(
         option_type.variants[0].fields[0].type_hint.as_deref(),
         Some("any")
     );
+    assert_eq!(
+        option_type.variants[0].fields[0].docs.as_deref(),
+        Some("Dynamic Option.Some payload value.")
+    );
+    assert_eq!(
+        option_type.variants[0].fields[0].attrs.get("stdlib"),
+        Some("option")
+    );
     assert_eq!(option_type.variants[1].name, "None");
+    assert_eq!(
+        option_type.variants[1].docs.as_deref(),
+        Some("Represents expected absence without a payload.")
+    );
+    assert_eq!(option_type.variants[1].attrs.get("stdlib"), Some("option"));
     assert_eq!(option_type.attrs.get("stdlib"), Some("option"));
     let option_map = option_type
         .methods
@@ -282,16 +300,42 @@ fn engine_standard_natives_register_reflection_metadata() {
     );
     assert_eq!(result_type.variants.len(), 2);
     assert_eq!(result_type.variants[0].name, "Ok");
+    assert_eq!(
+        result_type.variants[0].docs.as_deref(),
+        Some("Carries a successful Result payload.")
+    );
+    assert_eq!(result_type.variants[0].attrs.get("stdlib"), Some("result"));
     assert_eq!(result_type.variants[0].fields[0].name, "0");
     assert_eq!(
         result_type.variants[0].fields[0].type_hint.as_deref(),
         Some("any")
     );
+    assert_eq!(
+        result_type.variants[0].fields[0].docs.as_deref(),
+        Some("Dynamic Result.Ok payload value.")
+    );
+    assert_eq!(
+        result_type.variants[0].fields[0].attrs.get("stdlib"),
+        Some("result")
+    );
     assert_eq!(result_type.variants[1].name, "Err");
+    assert_eq!(
+        result_type.variants[1].docs.as_deref(),
+        Some("Carries a recoverable Result error payload.")
+    );
+    assert_eq!(result_type.variants[1].attrs.get("stdlib"), Some("result"));
     assert_eq!(result_type.variants[1].fields[0].name, "0");
     assert_eq!(
         result_type.variants[1].fields[0].type_hint.as_deref(),
         Some("any")
+    );
+    assert_eq!(
+        result_type.variants[1].fields[0].docs.as_deref(),
+        Some("Dynamic Result.Err payload value.")
+    );
+    assert_eq!(
+        result_type.variants[1].fields[0].attrs.get("stdlib"),
+        Some("result")
     );
     assert_eq!(result_type.attrs.get("stdlib"), Some("result"));
     let result_map_err = result_type
@@ -602,14 +646,28 @@ fn main() {
         && reflect.returns(result_to_error) == "Option"
         && option_variants.len() == 2
         && option_variants[0].name == "Some"
+        && reflect.docs(option_variants[0]) == "Carries a present Option payload."
+        && reflect.attr(option_variants[0], "stdlib") == "option"
         && option_variants[0].fields[0].name == "0"
         && option_variants[0].fields[0].type == "any"
+        && reflect.docs(option_variants[0].fields[0]) == "Dynamic Option.Some payload value."
+        && reflect.attr(option_variants[0].fields[0], "stdlib") == "option"
         && option_variants[1].name == "None"
+        && reflect.docs(option_variants[1]) == "Represents expected absence without a payload."
+        && reflect.attr(option_variants[1], "stdlib") == "option"
         && result_variants.len() == 2
         && result_variants[0].name == "Ok"
+        && reflect.docs(result_variants[0]) == "Carries a successful Result payload."
+        && reflect.attr(result_variants[0], "stdlib") == "result"
         && result_variants[0].fields[0].type == "any"
+        && reflect.docs(result_variants[0].fields[0]) == "Dynamic Result.Ok payload value."
+        && reflect.attr(result_variants[0].fields[0], "stdlib") == "result"
         && result_variants[1].name == "Err"
+        && reflect.docs(result_variants[1]) == "Carries a recoverable Result error payload."
+        && reflect.attr(result_variants[1], "stdlib") == "result"
         && result_variants[1].fields[0].type == "any"
+        && reflect.docs(result_variants[1].fields[0]) == "Dynamic Result.Err payload value."
+        && reflect.attr(result_variants[1].fields[0], "stdlib") == "result"
         && !reflect.has_function("math.random")
         && math_exports.len() == 14
         && math_exports.contains("math.max")

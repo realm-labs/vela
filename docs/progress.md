@@ -92,6 +92,8 @@ conformance contracts are stable.
   permissions for script values.
 - Global `reflect.fields()` metadata includes enum variant payload fields with
   policy filtering and `Type.Variant` ownership.
+- Standard Option/Result enum variants and payload fields expose copied docs
+  and stdlib attrs through direct registry metadata and script reflection.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
