@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use vela_reflect::modules::ModuleDesc;
-use vela_reflect::registry::{MethodParamDesc, TypeDesc};
+use vela_reflect::registry::{AttrMap, MethodParamDesc, TypeDesc};
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
@@ -63,6 +63,7 @@ fn validate_module_desc(module: &ModuleDesc, names: &mut BTreeSet<String>) -> En
             name: module.name.clone(),
         }));
     }
+    validate_attr_names(&format!("module {}", module.name), &module.attrs)?;
     if !names.insert(module.name.clone()) {
         return Err(EngineError::new(EngineErrorKind::DuplicateModuleName {
             name: module.name.clone(),
@@ -132,6 +133,7 @@ fn validate_type_desc(
             name: desc.key.name.clone(),
         }));
     }
+    validate_attr_names(&format!("type {}", desc.key.name), &desc.attrs)?;
     if let Some(host_type_id) = desc.host_type_id
         && !host_ids.insert(host_type_id)
     {
@@ -146,6 +148,10 @@ fn validate_type_desc(
 
     for method in &desc.methods {
         validate_schema_member_name(&desc.key.name, "host method", &method.name)?;
+        validate_attr_names(
+            &format!("host method {}.{}", desc.key.name, method.name),
+            &method.attrs,
+        )?;
         if !host_method_ids.insert(method.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodId {
                 id: method.id.get(),
@@ -175,6 +181,10 @@ fn validate_type_fields(desc: &TypeDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for field in &desc.fields {
         validate_schema_member_name(&desc.key.name, "field", &field.name)?;
+        validate_attr_names(
+            &format!("field {}.{}", desc.key.name, field.name),
+            &field.attrs,
+        )?;
         validate_permission_names(
             &format!("field {}.{}", desc.key.name, field.name),
             field
@@ -204,6 +214,10 @@ fn validate_type_variants(desc: &TypeDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for variant in &desc.variants {
         validate_schema_member_name(&desc.key.name, "variant", &variant.name)?;
+        validate_attr_names(
+            &format!("variant {}.{}", desc.key.name, variant.name),
+            &variant.attrs,
+        )?;
         if !ids.insert(variant.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateVariantId {
                 type_name: desc.key.name.clone(),
@@ -229,6 +243,13 @@ fn validate_variant_fields(
     let mut names = BTreeSet::new();
     for field in &variant.fields {
         validate_schema_member_name(type_name, "variant field", &field.name)?;
+        validate_attr_names(
+            &format!(
+                "variant field {}.{}.{}",
+                type_name, variant.name, field.name
+            ),
+            &field.attrs,
+        )?;
         validate_permission_names(
             &format!(
                 "variant field {}.{}.{}",
@@ -265,6 +286,10 @@ fn validate_type_traits(desc: &TypeDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for trait_desc in &desc.traits {
         validate_schema_member_name(&desc.key.name, "trait", &trait_desc.name)?;
+        validate_attr_names(
+            &format!("trait {}.{}", desc.key.name, trait_desc.name),
+            &trait_desc.attrs,
+        )?;
         if !ids.insert(trait_desc.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateTraitId {
                 type_name: desc.key.name.clone(),
@@ -290,6 +315,13 @@ fn validate_trait_methods(
     let mut names = BTreeSet::new();
     for method in &trait_desc.methods {
         validate_schema_member_name(type_name, "trait method", &method.name)?;
+        validate_attr_names(
+            &format!(
+                "trait method {}.{}.{}",
+                type_name, trait_desc.name, method.name
+            ),
+            &method.attrs,
+        )?;
         if !ids.insert(method.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateTraitMethodId {
                 type_name: type_name.to_owned(),
@@ -400,6 +432,10 @@ pub(crate) fn validate_native_method_type_hints(
         .iter()
         .chain(native_methods.iter().map(|entry| &entry.desc))
     {
+        validate_attr_names(
+            &format!("host method {}.{}", desc.owner.name, desc.name),
+            &desc.attrs,
+        )?;
         validate_type_hint(
             &desc.returns,
             &format!("host method {}.{} return", desc.owner.name, desc.name),
@@ -444,6 +480,7 @@ fn validate_native_function_desc(
             },
         ));
     }
+    validate_attr_names(&format!("native function {}", desc.name), &desc.attrs)?;
     validate_type_hint(
         &desc.returns,
         &format!("native function {} return", desc.name),
@@ -565,6 +602,18 @@ fn validate_permission_names<'a>(
             return Err(EngineError::new(EngineErrorKind::InvalidPermissionName {
                 descriptor: descriptor.to_owned(),
                 name: permission.to_owned(),
+            }));
+        }
+    }
+    Ok(())
+}
+
+fn validate_attr_names(descriptor: &str, attrs: &AttrMap) -> EngineResult<()> {
+    for (name, _) in attrs.iter() {
+        if name.is_empty() {
+            return Err(EngineError::new(EngineErrorKind::InvalidAttributeName {
+                descriptor: descriptor.to_owned(),
+                name: name.to_owned(),
             }));
         }
     }

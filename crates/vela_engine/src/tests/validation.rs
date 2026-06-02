@@ -70,6 +70,21 @@ fn engine_rejects_empty_granted_permissions() {
 }
 
 #[test]
+fn engine_rejects_empty_module_attribute_names() {
+    let result = Engine::builder()
+        .register_module(ModuleDesc::new("game.reward").attr("", "bad"))
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "module game.reward".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_names_across_host_and_pure_natives() {
     let result = Engine::builder()
         .register_native_fn(
@@ -142,6 +157,24 @@ fn engine_rejects_empty_native_function_required_permissions() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
+            descriptor: "native function game.grant_reward".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_native_function_attribute_names() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.grant_reward", NativeFunctionId::new(39)).attr("", "bad"),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
             descriptor: "native function game.grant_reward".to_owned(),
             name: "".to_owned(),
         }
@@ -435,6 +468,21 @@ fn engine_rejects_malformed_type_names() {
 }
 
 #[test]
+fn engine_rejects_empty_type_attribute_names() {
+    let result = Engine::builder()
+        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).attr("", "bad"))
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "type Player".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_type_ids() {
     let result = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
@@ -486,6 +534,100 @@ fn engine_rejects_empty_field_required_permissions() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
             descriptor: "field Player.level".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_field_attribute_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .field(FieldDesc::new(FieldId::new(1), "level").attr("", "bad")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "field Player.level".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_variant_attribute_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+                .variant(VariantDesc::new(VariantId::new(1), "Gold").attr("", "bad")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "variant Reward.Gold".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_variant_field_attribute_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
+                VariantDesc::new(VariantId::new(1), "Gold")
+                    .field(FieldDesc::new(FieldId::new(1), "count").attr("", "bad")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "variant field Reward.Gold.count".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_trait_attribute_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .trait_impl(trait_desc_with_id(TraitId::new(1), "Damageable").attr("", "bad")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "trait Player.Damageable".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_trait_method_attribute_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
+                trait_desc_with_id(TraitId::new(1), "Damageable")
+                    .method(TraitMethodDesc::new(MethodId::new(1), "damage").attr("", "bad")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "trait method Player.Damageable.damage".to_owned(),
             name: "".to_owned(),
         }
     ));
@@ -835,6 +977,24 @@ fn engine_rejects_empty_host_method_required_permissions() {
 }
 
 #[test]
+fn engine_rejects_empty_host_method_attribute_names() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp").attr("", "bad")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
+            descriptor: "host method Player.grant_exp".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_empty_native_method_required_permissions() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let result = Engine::builder()
@@ -848,6 +1008,25 @@ fn engine_rejects_empty_native_method_required_permissions() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
+            descriptor: "host method Player.grant_exp".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_native_method_attribute_names() {
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let result = Engine::builder()
+        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_host_method_desc(
+            NativeMethodDesc::new(player_key, HostMethodId::new(45), "grant_exp").attr("", "bad"),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
             descriptor: "host method Player.grant_exp".to_owned(),
             name: "".to_owned(),
         }
