@@ -76,9 +76,10 @@ closes or exposes a more specific gap.
 - Reflection covers types, fields, methods, variants, traits, modules,
   functions, attributes, permissions, source spans, controlled reads/writes,
   and controlled calls.
-- Engine API registers schemas, native functions, context helpers, standard
-  natives, reflection permissions, compiler options, hot-reload policies, and
-  a focused embedding prelude for common host setup imports.
+- Engine API registers host types through `register_host_type::<T>()`, native
+  functions, context helpers, standard natives, reflection permissions,
+  compiler options, hot-reload policies, and a focused embedding prelude for
+  common host setup imports.
 - Macro-generated context native registrations flow through Engine permission
   checks and `NativeCallContext` budget charging before host patches are
   recorded.

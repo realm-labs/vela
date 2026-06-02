@@ -8,7 +8,7 @@ fn script_macros_feed_engine_builder_registration() {
             .find(|desc| desc.id == HostMethodId::new(7))
             .expect("method descriptor");
     let engine = Engine::builder()
-        .register_host_schema::<Player>()
+        .register_host_type::<Player>()
         .grant_permission("player.write")
         .register_native_method_fn(desc, |_, _, _| Ok(Value::Null))
         .build()
@@ -30,7 +30,7 @@ fn script_macros_feed_engine_builder_registration() {
 fn script_methods_generate_callable_native_registration() {
     let engine = Player::vela_register_native_method_fns(
         Engine::builder()
-            .register_host_schema::<Player>()
+            .register_host_type::<Player>()
             .grant_permission("player.write"),
     )
     .build()
@@ -62,7 +62,7 @@ fn script_methods_generate_callable_native_registration() {
 #[test]
 fn script_methods_feed_stable_engine_registration_api() {
     let engine = Engine::builder()
-        .register_host_schema::<Player>()
+        .register_host_type::<Player>()
         .register_host_methods::<Player>()
         .grant_permission("player.write")
         .build()
@@ -132,7 +132,7 @@ fn script_methods_feed_stable_engine_registration_api() {
 fn script_methods_generate_callable_result_native_registration() {
     let engine = Player::vela_register_native_method_fns(
         Engine::builder()
-            .register_host_schema::<Player>()
+            .register_host_type::<Player>()
             .grant_permission("player.write"),
     )
     .build()
@@ -178,7 +178,7 @@ fn script_methods_generate_callable_result_native_registration() {
 fn script_methods_generate_callable_option_native_registration() {
     let engine = Player::vela_register_native_method_fns(
         Engine::builder()
-            .register_host_schema::<Player>()
+            .register_host_type::<Player>()
             .grant_permission("player.write"),
     )
     .build()
@@ -215,7 +215,7 @@ fn script_methods_generate_callable_option_native_registration() {
 #[test]
 fn script_method_metadata_compiles_to_patch_tx_calls() {
     let engine = Engine::builder()
-        .register_host_schema::<Player>()
+        .register_host_type::<Player>()
         .register_host_method_metadata::<Player>()
         .build()
         .expect("engine should build from macro metadata");

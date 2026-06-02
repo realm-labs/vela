@@ -58,7 +58,7 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_host_schema<T: ScriptHostSchema>(self) -> Self {
+    pub fn register_host_type<T: ScriptHostSchema>(self) -> Self {
         self.register_type(T::script_host_type_desc())
     }
 
