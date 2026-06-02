@@ -5,11 +5,14 @@ fn main() {
     let required = reflect.required_permissions(random);
     let effects = reflect.effects(random);
     let functions = reflect.functions();
+    let math_exports = reflect.exports("math");
     let first = reflect.call(random, 1, 6);
     let second = reflect.call(random, 10, 12);
 
     if reflect.has_function("math.random")
         && functions.any(|function| reflect.name(function) == "math.random")
+        && math_exports.len() == 15
+        && math_exports.contains("math.random")
         && reflect.name(random) == "math.random"
         && reflect.kind(random) == "function"
         && reflect.origin(random) == "host"

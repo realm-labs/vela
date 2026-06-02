@@ -80,9 +80,16 @@ fn engine_controlled_random_registers_metadata() {
         .expect("engine should build");
 
     let registry = engine.registry();
+    let math = registry.module_by_name("math").expect("math module");
     let function = registry
         .function_by_name("math.random")
         .expect("math.random metadata");
+    assert_eq!(math.exports.len(), 1);
+    assert!(
+        math.exports
+            .iter()
+            .any(|export| export.name == "math.random")
+    );
     assert_eq!(function.id, MATH_RANDOM_FUNCTION_ID);
     assert_eq!(function.module.as_deref(), Some("math"));
     assert_eq!(function.params.len(), 2);
