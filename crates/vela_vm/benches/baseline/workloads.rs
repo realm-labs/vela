@@ -9,6 +9,7 @@ pub(crate) enum ExecutionMode {
     Inline,
     ManagedHeap,
     HostPatchTx,
+    GcPacing,
 }
 
 pub(crate) const WORKLOADS: &[Workload] = &[
@@ -93,6 +94,23 @@ fn main() {
         ResultState.Blocked(reason) => reason.len(),
         _ => 0,
     }
+}
+"#,
+    },
+    Workload {
+        name: "gc_pacing",
+        mode: ExecutionMode::GcPacing,
+        source: r#"
+fn main() {
+    let total = 0;
+    for batch in 0..24 {
+        let values = [];
+        for item in 0..16 {
+            values.push("gc".repeat((item % 4) + 1));
+        }
+        total += values.len() + batch;
+    }
+    return total;
 }
 "#,
     },

@@ -70,6 +70,7 @@ scalar_branch_loop          VM dispatch, arithmetic, branches, range for-in
 stdlib_collections          array, map, set, Option, and stdlib method dispatch
 host_patch_tx               HostRef reads, nested HostPath writes, PatchTx overlay
 managed_heap_materialization records, enums, strings, Option helpers, heap mode
+gc_pacing                   safe-point GC under managed heap allocation pressure
 ```
 
 ## Targets

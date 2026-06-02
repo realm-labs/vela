@@ -13,6 +13,8 @@ use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::Vm;
 use vela_vm::budget::ExecutionBudget;
+use vela_vm::heap::{GcBudget, GcConfig, HeapValue, ScriptHeap};
+use vela_vm::heap_execution::HeapExecution;
 use vela_vm::value::Value;
 
 #[path = "baseline/workloads.rs"]
@@ -33,6 +35,8 @@ const LEVEL_FIELD: FieldId = FieldId::new(1);
 const EXP_FIELD: FieldId = FieldId::new(2);
 const INVENTORY_FIELD: FieldId = FieldId::new(3);
 const GOLD_FIELD: FieldId = FieldId::new(4);
+const GC_SEEDED_GARBAGE_OBJECTS: usize = 128;
+const GC_SAFE_POINT_SWEEP_SLOTS: usize = 16;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let params = BenchParams::from_args();
@@ -143,6 +147,10 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error
             Ok(vm.run_with_managed_heap_and_budget(code, &mut budget)?)
         }
         CompiledWorkload::Function {
+            mode: ExecutionMode::GcPacing,
+            code,
+        } => run_gc_pacing(vm, code),
+        CompiledWorkload::Function {
             mode: ExecutionMode::HostPatchTx,
             ..
         } => unreachable!("host patch workload compiles to a program"),
@@ -165,7 +173,7 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
             program: Box::new(program),
         })
         .map_err(|error| format!("{error:?}")),
-        ExecutionMode::ManagedHeap => {
+        ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
             compile_function_source(SourceId::new(1), workload.source, "main")
                 .map(|code| CompiledWorkload::Function {
                     mode: workload.mode,
@@ -179,6 +187,44 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
                 code,
             })
             .map_err(|error| format!("{error:?}")),
+    }
+}
+
+fn run_gc_pacing(vm: &Vm, code: &CodeObject) -> Result<Value, Box<dyn Error>> {
+    let mut heap = ScriptHeap::new();
+    heap.set_gc_config(GcConfig {
+        max_pause_micros: 50,
+        heap_growth_factor: 1.0,
+    });
+    seed_gc_garbage(&mut heap);
+
+    let mut budget = ExecutionBudget::unbounded();
+    let (value, gc_checksum) = {
+        let mut heap_execution = HeapExecution::new(&mut heap)
+            .with_safe_point_gc_budget(GcBudget::sweep_slots(GC_SAFE_POINT_SWEEP_SLOTS));
+        let value = vm.run_with_heap_and_budget(code, &mut heap_execution, &mut budget)?;
+        let stats = heap_execution.last_gc_step().cloned();
+        let gc_checksum = stats.map_or(0, |stats| {
+            (stats.marked as u64)
+                ^ ((stats.sweep_slots_visited as u64) << 8)
+                ^ ((stats.swept as u64) << 24)
+                ^ ((stats.bytes_freed as u64) << 32)
+                ^ u64::from(stats.complete)
+        });
+        (value, gc_checksum)
+    };
+
+    Ok(Value::Int(
+        value_checksum(&value) as i64
+            + gc_checksum as i64
+            + heap.live_object_count() as i64
+            + heap.allocated_bytes() as i64,
+    ))
+}
+
+fn seed_gc_garbage(heap: &mut ScriptHeap) {
+    for index in 0..GC_SEEDED_GARBAGE_OBJECTS {
+        let _ = heap.allocate(HeapValue::String(format!("garbage:{index:03}")));
     }
 }
 
@@ -300,6 +346,7 @@ impl ExecutionMode {
             Self::Inline => "inline",
             Self::ManagedHeap => "managed_heap",
             Self::HostPatchTx => "host_patch_tx",
+            Self::GcPacing => "gc_pacing",
         }
     }
 }
