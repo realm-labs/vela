@@ -8,7 +8,9 @@ pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
 pub use crate::permission::PermissionSet;
-pub use crate::runtime::{CallOptions, PatchApplySafePointReport, Runtime};
+pub use crate::runtime::{
+    CallOptions, PatchApplySafePointError, PatchApplySafePointReport, Runtime,
+};
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::{args, host};
 pub use vela_common::{

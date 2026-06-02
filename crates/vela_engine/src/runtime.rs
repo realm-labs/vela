@@ -1,9 +1,9 @@
-use std::path::Path;
+use std::{fmt, path::Path};
 
 use vela_bytecode::Program;
 use vela_common::SourceId;
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::error::HostResult;
+use vela_host::error::HostError;
 use vela_host::tx::PatchTx;
 use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::report::HotReloadReport;
@@ -102,9 +102,14 @@ impl Runtime {
         &mut self,
         tx: PatchTx,
         adapter: &mut impl ScriptStateAdapter,
-    ) -> HostResult<PatchApplySafePointReport> {
+    ) -> Result<PatchApplySafePointReport, PatchApplySafePointError> {
         let before_apply_reload = self.check_optional_reload();
-        tx.apply(adapter)?;
+        if let Err(host_error) = tx.apply(adapter) {
+            return Err(PatchApplySafePointError {
+                host_error,
+                before_apply_reload,
+            });
+        }
         let after_apply_reload = self.check_optional_reload();
         Ok(PatchApplySafePointReport {
             before_apply_reload,
@@ -218,6 +223,28 @@ impl Runtime {
 pub struct PatchApplySafePointReport {
     pub before_apply_reload: Option<HotReloadReport>,
     pub after_apply_reload: Option<HotReloadReport>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PatchApplySafePointError {
+    pub host_error: HostError,
+    pub before_apply_reload: Option<HotReloadReport>,
+}
+
+impl fmt::Display for PatchApplySafePointError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "host patch apply failed at safe point: {}",
+            self.host_error
+        )
+    }
+}
+
+impl std::error::Error for PatchApplySafePointError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.host_error)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

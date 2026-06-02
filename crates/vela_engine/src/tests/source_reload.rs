@@ -1,4 +1,5 @@
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_host::error::HostErrorKind;
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
@@ -556,6 +557,80 @@ fn main(player: Player) {
             &mut next_tx,
         ),
         Ok(Value::Int(113))
+    );
+}
+
+#[test]
+fn runtime_safe_point_error_keeps_before_apply_reload_report() {
+    let engine = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+fn main(player: Player) {
+    player.level += 1;
+    return player.level;
+}
+"#,
+        )
+        .expect("initial hot reload compile");
+    let update = engine
+        .compile_hot_reload_update(
+            &initial,
+            SourceId::new(2),
+            r#"
+fn main(player: Player) {
+    player.level += 2;
+    return player.level;
+}
+"#,
+        )
+        .expect("compatible update should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let level_path = HostPath::new(host_ref).field(FieldId::new(1));
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(level_path.clone(), HostValue::Int(10));
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(Value::Int(11))
+    );
+    runtime
+        .stage_hot_update(update)
+        .expect("stage pending update");
+    adapter.deny_write(level_path.clone());
+
+    let error = runtime
+        .apply_patch_tx_at_safe_point(tx, &mut adapter)
+        .expect_err("denied host write should fail patch apply");
+
+    assert!(matches!(
+        error.host_error.kind,
+        HostErrorKind::PermissionDenied {
+            path,
+            action: "write",
+        } if path == level_path
+    ));
+    let before = error
+        .before_apply_reload
+        .expect("pending reload report should be preserved on host error");
+    assert!(before.accepted);
+    assert_eq!(before.changed_functions, vec!["main".to_owned()]);
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("reload report was consumed before patch apply")
     );
 }
 
