@@ -93,6 +93,11 @@ type structure. TypeRegistry descriptors are the source for reflected types,
 fields, methods, traits, variants, modules, functions, source spans, docs,
 attributes, effects, access, and required permissions.
 
+Function descriptors keep public export status separate from reflection
+visibility and reflective callability. Private functions may be visible to
+authorized reflection tooling without becoming public API or reflective call
+targets, and hot-reload ABI checks compare those access bits explicitly.
+
 Reflective reads, writes, and calls resolve descriptor metadata to stable IDs
 and route host interaction through PatchTx. Private, effectful, host path, and
 field-level operations require explicit reflection permissions.

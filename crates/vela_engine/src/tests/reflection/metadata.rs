@@ -104,16 +104,11 @@ fn engine_registers_native_function_reflection_metadata() {
 
 #[test]
 fn engine_native_private_functions_are_hidden_from_reflection() {
-    let private_access = FunctionAccess {
-        public: false,
-        reflect_callable: false,
-        required_permissions: Default::default(),
-    };
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game.private_roll", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
-                .access(private_access),
+                .access(FunctionAccess::private()),
             |_| Ok(Value::Int(4)),
         )
         .reflection_permissions(ReflectPermissionSet::all())
@@ -135,6 +130,66 @@ fn main() {
     let exports = reflect.exports(game);
     return !reflect.has_function("game.private_roll")
         && !exports.contains("game.private_roll");
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Bool(true))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn engine_native_private_functions_can_remain_reflect_visible() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.debug_probe", NativeFunctionId::new(23))
+                .returns(TypeHint::Bool)
+                .access(
+                    FunctionAccess::private()
+                        .reflect_visible(true)
+                        .reflect_callable(false),
+                ),
+            |_| Ok(Value::Bool(true)),
+        )
+        .reflection_permissions(ReflectPermissionSet::all())
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.registry();
+    let function = registry
+        .function_by_name("game.debug_probe")
+        .expect("native function metadata");
+    assert!(!function.public);
+    assert!(function.access.reflect_visible);
+    assert!(!function.access.reflect_callable);
+
+    let function_abi = FunctionAbi::from_function(function);
+    assert_eq!(
+        function_abi.access,
+        AccessAbi::function(false, true, false, Vec::new())
+    );
+
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let debug = reflect.function("game.debug_probe");
+    return reflect.has_function("game.debug_probe")
+        && !debug.public
+        && debug.access.reflect_visible
+        && !debug.access.reflect_callable;
 }
 "#,
     )

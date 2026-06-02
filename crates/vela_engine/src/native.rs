@@ -140,6 +140,7 @@ impl EffectSet {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionAccess {
     pub public: bool,
+    pub reflect_visible: bool,
     pub reflect_callable: bool,
     pub required_permissions: PermissionSet,
 }
@@ -151,8 +152,24 @@ impl FunctionAccess {
     }
 
     #[must_use]
+    pub fn private() -> Self {
+        Self {
+            public: false,
+            reflect_visible: false,
+            reflect_callable: false,
+            required_permissions: PermissionSet::new(),
+        }
+    }
+
+    #[must_use]
     pub fn reflect_callable(mut self, reflect_callable: bool) -> Self {
         self.reflect_callable = reflect_callable;
+        self
+    }
+
+    #[must_use]
+    pub fn reflect_visible(mut self, reflect_visible: bool) -> Self {
+        self.reflect_visible = reflect_visible;
         self
     }
 
@@ -167,6 +184,7 @@ impl Default for FunctionAccess {
     fn default() -> Self {
         Self {
             public: true,
+            reflect_visible: true,
             reflect_callable: false,
             required_permissions: PermissionSet::new(),
         }

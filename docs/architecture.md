@@ -577,6 +577,7 @@ pub struct NativeFunctionId(pub u64);
 
 pub struct FunctionAccess {
     pub public: bool,
+    pub reflect_visible: bool,
     pub reflect_callable: bool,
     pub required_permissions: PermissionSet,
 }
