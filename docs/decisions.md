@@ -35,6 +35,11 @@ Public APIs should be imported from the module that owns them. Crate roots
 should expose focused `pub mod` entries and avoid broad `pub use` facades unless
 the item is an intentional crate identity entrypoint.
 
+`vela_engine::prelude` is the embedding convenience import surface. It may
+re-export common Engine, Runtime, native descriptor, host-handle, reflection
+permission, and schema descriptor types needed to write host setup code, while
+the crate root remains a focused module index.
+
 Rust source may use one direct-parent `super::...` reference inside a local
 module group. Multi-level `super::super` paths are prohibited; cross-subsystem
 imports should use explicit `crate::...` paths.

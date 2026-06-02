@@ -14,6 +14,7 @@ mod metadata;
 pub mod method;
 pub mod native;
 pub mod permission;
+pub mod prelude;
 pub mod random;
 pub mod reload;
 pub mod runtime;

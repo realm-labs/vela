@@ -56,7 +56,8 @@ conformance contracts are stable.
   functions, attributes, permissions, source spans, controlled reads/writes,
   and controlled calls.
 - Engine API registers schemas, native functions, context helpers, standard
-  natives, reflection permissions, compiler options, and hot-reload policies.
+  natives, reflection permissions, compiler options, hot-reload policies, and
+  a focused embedding prelude for common host setup imports.
 - Hot reload validates function, method, module, trait, schema, effect, access,
   stable-ID schema rename compatibility, and source diagnostics before version
   advancement.
