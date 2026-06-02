@@ -951,6 +951,56 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
 }
 
 #[test]
+fn runtime_stages_source_file_private_helper_addition_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_private_helper");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &path,
+        r#"
+fn helper() {
+    return 7;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("write helper update");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("helper update should stage");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged helper report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["helper", "main"]);
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(7))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_file_rejection");
     std::fs::create_dir_all(&root).expect("create temp source dir");
