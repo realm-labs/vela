@@ -36,6 +36,7 @@ pub struct EngineBuilder {
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
     context_clock: bool,
+    controlled_random: bool,
 }
 
 impl EngineBuilder {
@@ -132,6 +133,7 @@ impl EngineBuilder {
 
     #[must_use]
     pub fn with_controlled_random(mut self, seed: u64) -> Self {
+        self.controlled_random = true;
         self.native_functions
             .push(crate::random::controlled_math_random(seed));
         self
@@ -274,7 +276,8 @@ impl EngineBuilder {
         validation::validate_types(&types, self.standard_natives)?;
         let module_options = validation::ModuleValidationOptions::default()
             .include_standard_modules(self.standard_natives)
-            .include_context_module(self.context_clock);
+            .include_context_module(self.context_clock)
+            .include_math_module(self.controlled_random);
         validation::validate_modules(&self.modules, module_options)?;
         validation::validate_native_functions(
             &self.native_functions,

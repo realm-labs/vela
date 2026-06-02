@@ -13,6 +13,7 @@ use crate::native::{
 pub(crate) struct ModuleValidationOptions {
     include_standard_modules: bool,
     include_context_module: bool,
+    include_math_module: bool,
 }
 
 impl ModuleValidationOptions {
@@ -23,6 +24,11 @@ impl ModuleValidationOptions {
 
     pub(crate) const fn include_context_module(mut self, include: bool) -> Self {
         self.include_context_module = include;
+        self
+    }
+
+    pub(crate) const fn include_math_module(mut self, include: bool) -> Self {
+        self.include_math_module = include;
         self
     }
 }
@@ -39,6 +45,9 @@ pub(crate) fn validate_modules(
     }
     if options.include_context_module {
         validate_module_desc(&crate::clock::context_module_desc(), &mut names)?;
+    }
+    if options.include_math_module && !options.include_standard_modules {
+        validate_module_desc(&ModuleDesc::new("math"), &mut names)?;
     }
     for module in modules {
         validate_module_desc(module, &mut names)?;
