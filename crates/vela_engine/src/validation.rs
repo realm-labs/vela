@@ -9,15 +9,36 @@ use crate::native::{
     NativeFunctionEntry,
 };
 
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct ModuleValidationOptions {
+    include_standard_modules: bool,
+    include_context_module: bool,
+}
+
+impl ModuleValidationOptions {
+    pub(crate) const fn include_standard_modules(mut self, include: bool) -> Self {
+        self.include_standard_modules = include;
+        self
+    }
+
+    pub(crate) const fn include_context_module(mut self, include: bool) -> Self {
+        self.include_context_module = include;
+        self
+    }
+}
+
 pub(crate) fn validate_modules(
     modules: &[ModuleDesc],
-    include_standard_modules: bool,
+    options: ModuleValidationOptions,
 ) -> EngineResult<()> {
     let mut names = BTreeSet::new();
-    if include_standard_modules {
+    if options.include_standard_modules {
         for module in crate::standard::standard_module_descs() {
             validate_module_desc(&module, &mut names)?;
         }
+    }
+    if options.include_context_module {
+        validate_module_desc(&crate::clock::context_module_desc(), &mut names)?;
     }
     for module in modules {
         validate_module_desc(module, &mut names)?;

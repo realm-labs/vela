@@ -35,6 +35,7 @@ pub struct EngineBuilder {
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
+    context_clock: bool,
 }
 
 impl EngineBuilder {
@@ -138,6 +139,7 @@ impl EngineBuilder {
 
     #[must_use]
     pub fn with_context_clock(mut self, now: i64, tick: i64) -> Self {
+        self.context_clock = true;
         self.native_functions
             .extend(crate::clock::context_clock_functions(now, tick));
         self
@@ -270,7 +272,10 @@ impl EngineBuilder {
             &self.native_methods,
         )?;
         validation::validate_types(&types, self.standard_natives)?;
-        validation::validate_modules(&self.modules, self.standard_natives)?;
+        let module_options = validation::ModuleValidationOptions::default()
+            .include_standard_modules(self.standard_natives)
+            .include_context_module(self.context_clock);
+        validation::validate_modules(&self.modules, module_options)?;
         validation::validate_native_functions(
             &self.native_functions,
             &self.host_native_functions,
