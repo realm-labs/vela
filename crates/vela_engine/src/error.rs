@@ -51,6 +51,10 @@ pub enum EngineErrorKind {
         member_kind: String,
         name: String,
     },
+    UnknownTypeHint {
+        descriptor: String,
+        type_name: String,
+    },
     DuplicateHostTypeId {
         id: u32,
     },
@@ -169,6 +173,12 @@ impl fmt::Display for EngineError {
                     formatter,
                     "invalid {member_kind} name {name} on type {type_name}"
                 )
+            }
+            EngineErrorKind::UnknownTypeHint {
+                descriptor,
+                type_name,
+            } => {
+                write!(formatter, "unknown type hint {type_name} in {descriptor}")
             }
             EngineErrorKind::DuplicateHostTypeId { id } => {
                 write!(formatter, "duplicate host type id {id}")

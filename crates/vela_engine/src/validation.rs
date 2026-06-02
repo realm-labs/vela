@@ -4,9 +4,10 @@ use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{MethodParamDesc, TypeDesc};
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry,
+    NativeFunctionEntry, TypeHint,
 };
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -331,14 +332,16 @@ pub(crate) fn validate_native_functions(
     functions: &[NativeFunctionEntry],
     host_functions: &[HostNativeFunctionEntry],
     context_host_functions: &[ContextHostNativeFunctionEntry],
+    types: &[TypeDesc],
     include_standard_natives: bool,
 ) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
+    let type_hints = TypeHintLookup::new(types, include_standard_natives);
 
     if include_standard_natives {
         for desc in crate::standard::standard_native_function_descs() {
-            validate_native_function_desc(&desc, &mut ids, &mut names)?;
+            validate_native_function_desc(&desc, &mut ids, &mut names, &type_hints)?;
         }
     }
 
@@ -348,9 +351,39 @@ pub(crate) fn validate_native_functions(
         .chain(host_functions.iter().map(|entry| &entry.desc))
         .chain(context_host_functions.iter().map(|entry| &entry.desc))
     {
-        validate_native_function_desc(desc, &mut ids, &mut names)?;
+        validate_native_function_desc(desc, &mut ids, &mut names, &type_hints)?;
     }
 
+    Ok(())
+}
+
+pub(crate) fn validate_native_method_type_hints(
+    host_method_metadata: &[NativeMethodDesc],
+    native_methods: &[NativeMethodEntry],
+    types: &[TypeDesc],
+    include_standard_types: bool,
+) -> EngineResult<()> {
+    let type_hints = TypeHintLookup::new(types, include_standard_types);
+    for desc in host_method_metadata
+        .iter()
+        .chain(native_methods.iter().map(|entry| &entry.desc))
+    {
+        validate_type_hint(
+            &desc.returns,
+            &format!("host method {}.{} return", desc.owner.name, desc.name),
+            &type_hints,
+        )?;
+        for param in &desc.params {
+            validate_type_hint(
+                &param.hint,
+                &format!(
+                    "host method {}.{} parameter {}",
+                    desc.owner.name, desc.name, param.name
+                ),
+                &type_hints,
+            )?;
+        }
+    }
     Ok(())
 }
 
@@ -358,6 +391,7 @@ fn validate_native_function_desc(
     desc: &NativeFunctionDesc,
     ids: &mut BTreeSet<crate::native::NativeFunctionId>,
     names: &mut BTreeSet<String>,
+    type_hints: &TypeHintLookup,
 ) -> EngineResult<()> {
     if !is_valid_dotted_name(&desc.name) {
         return Err(EngineError::new(
@@ -378,10 +412,18 @@ fn validate_native_function_desc(
             },
         ));
     }
-    validate_native_function_params(desc)
+    validate_type_hint(
+        &desc.returns,
+        &format!("native function {} return", desc.name),
+        type_hints,
+    )?;
+    validate_native_function_params(desc, type_hints)
 }
 
-fn validate_native_function_params(desc: &NativeFunctionDesc) -> EngineResult<()> {
+fn validate_native_function_params(
+    desc: &NativeFunctionDesc,
+    type_hints: &TypeHintLookup,
+) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for param in &desc.params {
         if !is_valid_simple_name(&param.name) {
@@ -392,6 +434,11 @@ fn validate_native_function_params(desc: &NativeFunctionDesc) -> EngineResult<()
                 },
             ));
         }
+        validate_type_hint(
+            &param.hint,
+            &format!("native function {} parameter {}", desc.name, param.name),
+            type_hints,
+        )?;
         if !names.insert(param.name.as_str()) {
             return Err(EngineError::new(
                 EngineErrorKind::DuplicateNativeFunctionParamName {
@@ -402,6 +449,75 @@ fn validate_native_function_params(desc: &NativeFunctionDesc) -> EngineResult<()
         }
     }
     Ok(())
+}
+
+struct TypeHintLookup {
+    types: BTreeSet<vela_reflect::registry::TypeKey>,
+    traits: BTreeSet<String>,
+}
+
+impl TypeHintLookup {
+    fn new(types: &[TypeDesc], include_standard_types: bool) -> Self {
+        let mut lookup = Self {
+            types: BTreeSet::new(),
+            traits: BTreeSet::new(),
+        };
+        if include_standard_types {
+            for desc in crate::standard::standard_type_descs() {
+                lookup.insert(&desc);
+            }
+        }
+        for desc in types {
+            lookup.insert(desc);
+        }
+        lookup
+    }
+
+    fn insert(&mut self, desc: &TypeDesc) {
+        self.types.insert(desc.key.clone());
+        self.traits
+            .extend(desc.traits.iter().map(|trait_desc| trait_desc.name.clone()));
+    }
+}
+
+fn validate_type_hint(
+    hint: &TypeHint,
+    descriptor: &str,
+    lookup: &TypeHintLookup,
+) -> EngineResult<()> {
+    match hint {
+        TypeHint::Record(key) | TypeHint::Enum(key) => {
+            if lookup.types.contains(key) {
+                Ok(())
+            } else {
+                Err(EngineError::new(EngineErrorKind::UnknownTypeHint {
+                    descriptor: descriptor.to_owned(),
+                    type_name: key.name.clone(),
+                }))
+            }
+        }
+        TypeHint::Trait(name) => {
+            if lookup.traits.contains(name) {
+                Ok(())
+            } else {
+                Err(EngineError::new(EngineErrorKind::UnknownTypeHint {
+                    descriptor: descriptor.to_owned(),
+                    type_name: name.clone(),
+                }))
+            }
+        }
+        TypeHint::Any
+        | TypeHint::Null
+        | TypeHint::Bool
+        | TypeHint::Int
+        | TypeHint::Float
+        | TypeHint::String
+        | TypeHint::Array
+        | TypeHint::Map
+        | TypeHint::Set
+        | TypeHint::Host(_)
+        | TypeHint::Function => Ok(()),
+    }
 }
 
 fn is_valid_dotted_name(name: &str) -> bool {

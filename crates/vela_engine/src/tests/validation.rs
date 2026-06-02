@@ -1,7 +1,8 @@
 use vela_common::{FieldId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{
-    FieldDesc, MethodDesc, MethodParamDesc, TraitMethodDesc, TypeDesc, TypeKey, VariantDesc,
+    FieldDesc, MethodDesc, MethodParamDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind,
+    VariantDesc,
 };
 
 use vela_vm::value::Value;
@@ -146,6 +147,81 @@ fn engine_rejects_malformed_native_function_param_names() {
         Err(error) if error.kind == EngineErrorKind::InvalidNativeFunctionParamName {
             function: "game.grant_reward".to_owned(),
             name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_unknown_native_function_param_type_hints() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.grant_reward", NativeFunctionId::new(34)).param(
+                "player",
+                TypeHint::Record(TypeKey::new(TypeId::new(99), "Missing")),
+            ),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::UnknownTypeHint {
+            descriptor: "native function game.grant_reward parameter player".to_owned(),
+            type_name: "Missing".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_unknown_native_function_return_type_hints() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.find_player", NativeFunctionId::new(35))
+                .returns(TypeHint::Enum(TypeKey::new(TypeId::new(99), "Missing"))),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::UnknownTypeHint {
+            descriptor: "native function game.find_player return".to_owned(),
+            type_name: "Missing".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_accepts_registered_native_function_record_type_hints() {
+    let reward_key = TypeKey::new(TypeId::new(77), "Reward");
+    let result = Engine::builder()
+        .register_type(TypeDesc::new(reward_key.clone()).kind(TypeKind::ScriptStruct))
+        .register_native_fn(
+            NativeFunctionDesc::new("game.inspect_reward", NativeFunctionId::new(36))
+                .param("reward", TypeHint::Record(reward_key.clone()))
+                .returns(TypeHint::Record(reward_key)),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn engine_rejects_unknown_native_function_trait_type_hints() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.inspect_damageable", NativeFunctionId::new(37))
+                .param("target", TypeHint::Trait("Damageable".to_owned())),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::UnknownTypeHint {
+            descriptor: "native function game.inspect_damageable parameter target".to_owned(),
+            type_name: "Damageable".to_owned(),
         }
     ));
 }
@@ -741,6 +817,28 @@ fn engine_rejects_duplicate_native_method_param_names() {
             type_name: "Player".to_owned(),
             method: "grant_exp".to_owned(),
             name: "amount".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_unknown_native_method_param_type_hints() {
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let result = Engine::builder()
+        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_host_method_desc(
+            NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp").param(
+                "target",
+                TypeHint::Record(TypeKey::new(TypeId::new(99), "Missing")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::UnknownTypeHint {
+            descriptor: "host method Player.grant_exp parameter target".to_owned(),
+            type_name: "Missing".to_owned(),
         }
     ));
 }

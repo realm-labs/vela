@@ -273,6 +273,12 @@ impl EngineBuilder {
             &self.host_method_metadata,
             &self.native_methods,
         )?;
+        validation::validate_native_method_type_hints(
+            &self.host_method_metadata,
+            &self.native_methods,
+            &types,
+            self.standard_natives,
+        )?;
         validation::validate_types(&types, self.standard_natives)?;
         let module_options = validation::ModuleValidationOptions::default()
             .include_standard_modules(self.standard_natives)
@@ -283,6 +289,7 @@ impl EngineBuilder {
             &self.native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
+            &types,
             self.standard_natives,
         )?;
 
