@@ -296,6 +296,7 @@ fn infers_value_fact_for_single_arg_map_callbacks() {
                 rewards.map_values(|amount| amount);
                 rewards.map_values(|key, amount| key);
                 rewards.filter(|amount| amount > 4);
+                rewards.count(|| true);
             }
             "#,
     );
@@ -314,6 +315,7 @@ fn infers_value_fact_for_single_arg_map_callbacks() {
         type_fact_from_expr(&expressions[2], &scope),
         TypeFact::map(TypeFact::String, TypeFact::Int)
     );
+    assert_eq!(type_fact_from_expr(&expressions[3], &scope), TypeFact::Int);
 }
 
 #[test]

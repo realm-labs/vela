@@ -178,6 +178,34 @@ fn update(player) {
 }
 
 #[test]
+fn parses_zero_arg_lambda_expression() {
+    let parsed = parse_source(
+        source_id(),
+        r#"
+fn main() {
+    let predicate = || true;
+}
+"#,
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let StmtKind::Let {
+        value: Some(lambda),
+        ..
+    } = &function.body.statements[0].kind
+    else {
+        panic!("expected lambda let");
+    };
+    let ExprKind::Lambda { params, .. } = &lambda.kind else {
+        panic!("expected lambda");
+    };
+    assert!(params.is_empty());
+}
+
+#[test]
 fn parser_recovers_after_bad_item() {
     let parsed = parse_source(source_id(), "bogus @@@\nfn next() {}");
 

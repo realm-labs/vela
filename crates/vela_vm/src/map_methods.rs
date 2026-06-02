@@ -179,6 +179,33 @@ fn main() {
     }
 
     #[test]
+    fn runs_compiled_map_zero_arg_callbacks() {
+        let source = r#"
+fn main() {
+    let rewards = {"gold": 4, "xp": 6};
+    let mapped = rewards.map_values(|| 1);
+    let filtered = rewards.filter(|| true);
+    if mapped["gold"] == 1
+        && mapped["xp"] == 1
+        && filtered.len() == 2
+        && rewards.any(|| true)
+        && rewards.all(|| true)
+    {
+        return rewards.count(|| true);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("map zero-arg callback source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        let result = vm.run(&code).expect("map zero-arg callbacks should run");
+        assert_eq!(result, Value::Int(2));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_map_find_method() {
         let source = r#"
 fn main() {

@@ -138,14 +138,19 @@ pub(super) fn method_fact(
     receiver: &TypeFact,
     method: &str,
     lambda_return: Option<&TypeFact>,
+    lambda_param_count: Option<usize>,
 ) -> Option<StdlibMethodFact> {
     match receiver {
         TypeFact::Array { element } => {
             array_method_fact((**element).clone(), method, lambda_return)
         }
-        TypeFact::Map { key, value } => {
-            map_method_fact((**key).clone(), (**value).clone(), method, lambda_return)
-        }
+        TypeFact::Map { key, value } => map_method_fact(
+            (**key).clone(),
+            (**value).clone(),
+            method,
+            lambda_return,
+            lambda_param_count,
+        ),
         TypeFact::Set { element } => set_method_fact((**element).clone(), method, lambda_return),
         TypeFact::String => string_method_fact(method),
         TypeFact::Range => range_method_fact(method),
@@ -189,7 +194,7 @@ pub(super) fn method_facts(
 ) -> Vec<StdlibMethodFact> {
     method_names(receiver)
         .iter()
-        .filter_map(|method| method_fact(receiver, method, lambda_return))
+        .filter_map(|method| method_fact(receiver, method, lambda_return, None))
         .collect()
 }
 

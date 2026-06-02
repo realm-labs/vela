@@ -137,6 +137,7 @@ pub(super) fn map_method_fact(
     value: TypeFact,
     method: &str,
     lambda_return: Option<&TypeFact>,
+    lambda_param_count: Option<usize>,
 ) -> Option<StdlibMethodFact> {
     let receiver = TypeFact::map(key.clone(), value.clone());
     match method {
@@ -187,13 +188,14 @@ pub(super) fn map_method_fact(
         ),
         "map_values" => {
             let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
+            let lambda_params = map_lambda_params(key.clone(), value, lambda_param_count);
             Some(
                 StdlibMethodFact::new(
                     receiver,
                     "map_values",
                     TypeFact::map(key.clone(), mapped.clone()),
                 )
-                .with_lambda(vec![key, value], mapped),
+                .with_lambda(lambda_params, mapped),
             )
         }
         "filter" => Some(
@@ -202,7 +204,10 @@ pub(super) fn map_method_fact(
                 "filter",
                 TypeFact::map(key.clone(), value.clone()),
             )
-            .with_lambda(vec![key, value], TypeFact::Bool),
+            .with_lambda(
+                map_lambda_params(key.clone(), value.clone(), lambda_param_count),
+                TypeFact::Bool,
+            ),
         ),
         "find" => Some(
             StdlibMethodFact::new(
@@ -210,21 +215,42 @@ pub(super) fn map_method_fact(
                 "find",
                 TypeFact::option(TypeFact::record("MapEntry")),
             )
-            .with_lambda(vec![key.clone(), value.clone()], TypeFact::Bool),
+            .with_lambda(
+                map_lambda_params(key.clone(), value.clone(), lambda_param_count),
+                TypeFact::Bool,
+            ),
         ),
         "any" => Some(
-            StdlibMethodFact::new(receiver, "any", TypeFact::Bool)
-                .with_lambda(vec![key.clone(), value.clone()], TypeFact::Bool),
+            StdlibMethodFact::new(receiver, "any", TypeFact::Bool).with_lambda(
+                map_lambda_params(key.clone(), value.clone(), lambda_param_count),
+                TypeFact::Bool,
+            ),
         ),
         "all" => Some(
-            StdlibMethodFact::new(receiver, "all", TypeFact::Bool)
-                .with_lambda(vec![key.clone(), value.clone()], TypeFact::Bool),
+            StdlibMethodFact::new(receiver, "all", TypeFact::Bool).with_lambda(
+                map_lambda_params(key.clone(), value.clone(), lambda_param_count),
+                TypeFact::Bool,
+            ),
         ),
         "count" => Some(
-            StdlibMethodFact::new(receiver, "count", TypeFact::Int)
-                .with_lambda(vec![key, value], TypeFact::Bool),
+            StdlibMethodFact::new(receiver, "count", TypeFact::Int).with_lambda(
+                map_lambda_params(key, value, lambda_param_count),
+                TypeFact::Bool,
+            ),
         ),
         _ => None,
+    }
+}
+
+fn map_lambda_params(
+    key: TypeFact,
+    value: TypeFact,
+    lambda_param_count: Option<usize>,
+) -> Vec<TypeFact> {
+    match lambda_param_count {
+        Some(0) => Vec::new(),
+        Some(1) => vec![value],
+        _ => vec![key, value],
     }
 }
 

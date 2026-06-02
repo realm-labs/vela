@@ -10,7 +10,7 @@ use vela_syntax::ast::{
 };
 
 use crate::registry::RegistryFacts;
-use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
+use crate::stdlib::{stdlib_function_fact, stdlib_method_fact_with_lambda_arity};
 use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -220,19 +220,36 @@ fn call_fact(
             let lambda_return = args
                 .first()
                 .and_then(|arg| lambda_return_fact(&receiver, method, &arg.value, scope, facts));
-            stdlib_method_fact(&receiver, method, lambda_return.as_ref())
-                .map_or(TypeFact::Unknown, |fact| fact.returns)
+            stdlib_method_fact_with_lambda_arity(
+                &receiver,
+                method,
+                lambda_return.as_ref(),
+                first_lambda_param_count(args),
+            )
+            .map_or(TypeFact::Unknown, |fact| fact.returns)
         }
         ExprKind::Field { base, name } => {
             let receiver = type_fact_from_expr_impl(base, scope, facts);
             let lambda_return = args
                 .first()
                 .and_then(|arg| lambda_return_fact(&receiver, name, &arg.value, scope, facts));
-            stdlib_method_fact(&receiver, name, lambda_return.as_ref())
-                .map_or(TypeFact::Unknown, |fact| fact.returns)
+            stdlib_method_fact_with_lambda_arity(
+                &receiver,
+                name,
+                lambda_return.as_ref(),
+                first_lambda_param_count(args),
+            )
+            .map_or(TypeFact::Unknown, |fact| fact.returns)
         }
         _ => TypeFact::Unknown,
     }
+}
+
+fn first_lambda_param_count(args: &[vela_syntax::ast::Argument]) -> Option<usize> {
+    let ExprKind::Lambda { params, .. } = &args.first()?.value.kind else {
+        return None;
+    };
+    Some(params.len())
 }
 
 fn path_field_fact(
@@ -331,41 +348,16 @@ fn lambda_return_fact(
     let ExprKind::Lambda { params, body } = &expr.kind else {
         return None;
     };
-    let method_fact = stdlib_method_fact(receiver, method, None);
     let declared_param_count = params.len();
-    let inferred_params = method_fact
-        .and_then(|fact| fact.lambda.map(|lambda| lambda.params))
-        .map(|params| {
-            inferred_lambda_params_for_call(receiver, method, declared_param_count, params)
-        });
+    let inferred_params =
+        stdlib_method_fact_with_lambda_arity(receiver, method, None, Some(declared_param_count))
+            .and_then(|fact| fact.lambda.map(|lambda| lambda.params));
     let TypeFact::Function { returns, .. } =
         lambda_fact(params, body, scope, facts, inferred_params)
     else {
         return None;
     };
     Some(*returns)
-}
-
-fn inferred_lambda_params_for_call(
-    receiver: &TypeFact,
-    method: &str,
-    declared_param_count: usize,
-    default_params: Vec<TypeFact>,
-) -> Vec<TypeFact> {
-    if !matches!(
-        method,
-        "map_values" | "filter" | "find" | "any" | "all" | "count"
-    ) {
-        return default_params;
-    }
-    let TypeFact::Map { value, .. } = receiver else {
-        return default_params;
-    };
-    match declared_param_count {
-        0 => Vec::new(),
-        1 => vec![(**value).clone()],
-        _ => default_params,
-    }
 }
 
 fn lambda_fact(

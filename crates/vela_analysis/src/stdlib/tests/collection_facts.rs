@@ -80,6 +80,43 @@ fn map_lambda_methods_expose_key_and_value_parameter_facts() {
 }
 
 #[test]
+fn map_lambda_methods_expose_value_only_parameter_facts_by_arity() {
+    let receiver = TypeFact::map(TypeFact::String, TypeFact::Int);
+
+    let mapped = stdlib_method_fact_with_lambda_arity(
+        &receiver,
+        "map_values",
+        Some(&TypeFact::Bool),
+        Some(1),
+    )
+    .expect("map_values fact");
+    assert_eq!(
+        mapped.lambda.expect("map_values lambda").params,
+        vec![TypeFact::Int]
+    );
+    assert_eq!(
+        mapped.params,
+        vec![TypeFact::function(vec![TypeFact::Int], TypeFact::Bool)]
+    );
+    assert_eq!(
+        mapped.returns,
+        TypeFact::map(TypeFact::String, TypeFact::Bool)
+    );
+
+    let filter = stdlib_method_fact_with_lambda_arity(&receiver, "filter", None, Some(0))
+        .expect("filter fact");
+    assert_eq!(
+        filter.lambda.expect("filter lambda").params,
+        Vec::<TypeFact>::new()
+    );
+    assert_eq!(
+        filter.params,
+        vec![TypeFact::function(Vec::<TypeFact>::new(), TypeFact::Bool)]
+    );
+    assert_eq!(filter.returns, receiver);
+}
+
+#[test]
 fn scalar_collection_methods_return_non_generic_facts() {
     let map = TypeFact::map(TypeFact::String, TypeFact::Int);
     let array = TypeFact::array(TypeFact::Float);

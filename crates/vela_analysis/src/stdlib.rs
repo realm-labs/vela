@@ -73,7 +73,16 @@ pub fn stdlib_method_fact(
     method: &str,
     lambda_return: Option<&TypeFact>,
 ) -> Option<StdlibMethodFact> {
-    methods::method_fact(receiver, method, lambda_return)
+    methods::method_fact(receiver, method, lambda_return, None)
+}
+
+pub fn stdlib_method_fact_with_lambda_arity(
+    receiver: &TypeFact,
+    method: &str,
+    lambda_return: Option<&TypeFact>,
+    lambda_param_count: Option<usize>,
+) -> Option<StdlibMethodFact> {
+    methods::method_fact(receiver, method, lambda_return, lambda_param_count)
 }
 
 pub fn stdlib_method_facts(

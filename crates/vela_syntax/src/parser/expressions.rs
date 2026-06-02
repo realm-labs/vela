@@ -253,7 +253,7 @@ impl Parser {
                     kind: ExprKind::Block(block),
                 }
             }
-            TokenKind::Symbol(Symbol::Pipe) => self.parse_lambda_expression(),
+            TokenKind::Symbol(Symbol::Pipe | Symbol::OrOr) => self.parse_lambda_expression(),
             _ => {
                 self.error_here("expected expression");
                 self.advance();
@@ -389,6 +389,17 @@ impl Parser {
     }
 
     pub(super) fn parse_lambda_expression(&mut self) -> Expr {
+        if let Some(start) = self.eat_symbol(Symbol::OrOr).map(|token| token.span) {
+            let body = self.parse_lambda_body();
+            return Expr {
+                span: self.join_span(start, body.span),
+                kind: ExprKind::Lambda {
+                    params: Vec::new(),
+                    body: Box::new(body),
+                },
+            };
+        }
+
         let start = self.eat_symbol(Symbol::Pipe).expect("checked").span;
         let mut params = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::Pipe) {
@@ -415,18 +426,7 @@ impl Parser {
         if self.eat_symbol(Symbol::Pipe).is_none() {
             self.error_here("expected `|`");
         }
-        let body = if self.check_symbol(Symbol::LBrace) {
-            let block = self.parse_block().unwrap_or(Block {
-                statements: Vec::new(),
-                span: self.current().span,
-            });
-            Expr {
-                span: block.span,
-                kind: ExprKind::Block(block),
-            }
-        } else {
-            self.parse_expression()
-        };
+        let body = self.parse_lambda_body();
         Expr {
             span: self.join_span(start, body.span),
             kind: ExprKind::Lambda {
@@ -434,6 +434,20 @@ impl Parser {
                 body: Box::new(body),
             },
         }
+    }
+
+    fn parse_lambda_body(&mut self) -> Expr {
+        if self.check_symbol(Symbol::LBrace) {
+            let block = self.parse_block().unwrap_or(Block {
+                statements: Vec::new(),
+                span: self.current().span,
+            });
+            return Expr {
+                span: block.span,
+                kind: ExprKind::Block(block),
+            };
+        }
+        self.parse_expression()
     }
 
     pub(super) fn parse_if_expression(&mut self) -> Expr {
