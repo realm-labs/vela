@@ -45,10 +45,18 @@ can be run with:
 cargo bench -p vela_vm --bench baseline
 ```
 
+Hot reload compile/apply and ABI rejection timing lives in
+`crates/vela_engine/benches/hot_reload.rs` and can be run with:
+
+```bash
+cargo bench -p vela_engine --bench hot_reload
+```
+
 For quick validation during implementation:
 
 ```bash
 cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_engine --bench hot_reload -- --quick
 ```
 
 The baseline harness intentionally has no external benchmarking dependency yet.
@@ -71,6 +79,8 @@ stdlib_collections          array, map, set, Option, and stdlib method dispatch
 host_patch_tx               HostRef reads, nested HostPath writes, PatchTx overlay
 managed_heap_materialization records, enums, strings, Option helpers, heap mode
 gc_pacing                   safe-point GC under managed heap allocation pressure
+hot_reload_accept           compatible update compile/apply and post-apply call
+hot_reload_abi_reject       rejected event ABI update and report generation
 ```
 
 ## Targets
