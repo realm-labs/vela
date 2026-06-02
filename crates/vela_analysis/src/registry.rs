@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use vela_reflect::access::{FunctionEffectSet, MethodEffectSet};
 use vela_reflect::modules::FunctionDesc;
-use vela_reflect::registry::{MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry};
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
+};
 
 use crate::type_fact::TypeFact;
 
@@ -19,6 +21,31 @@ impl RegistryMemberFact {
             owner: owner.into(),
             name: name.into(),
             fact,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RegistryFieldAccessFact {
+    pub owner: String,
+    pub name: String,
+    pub readable: bool,
+    pub writable: bool,
+    pub reflect_readable: bool,
+    pub reflect_writable: bool,
+    pub required_permissions: Vec<String>,
+}
+
+impl RegistryFieldAccessFact {
+    fn new(owner: impl Into<String>, name: impl Into<String>, field: &FieldDesc) -> Self {
+        Self {
+            owner: owner.into(),
+            name: name.into(),
+            readable: field.access.readable,
+            writable: field.access.writable,
+            reflect_readable: field.access.reflect_readable,
+            reflect_writable: field.access.reflect_writable,
+            required_permissions: field.access.required_permissions().to_vec(),
         }
     }
 }
@@ -122,6 +149,7 @@ pub struct RegistryFacts {
     types: BTreeMap<String, TypeFact>,
     traits: BTreeMap<String, TypeFact>,
     fields: BTreeMap<(String, String), TypeFact>,
+    field_access: BTreeMap<(String, String), RegistryFieldAccessFact>,
     variants: BTreeMap<(String, String), TypeFact>,
     methods: BTreeMap<(String, String), TypeFact>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
@@ -141,12 +169,17 @@ impl RegistryFacts {
             facts.types.insert(desc.key.name.clone(), type_fact.clone());
 
             for field in &desc.fields {
+                let key = (desc.key.name.clone(), field.name.clone());
                 facts.fields.insert(
-                    (desc.key.name.clone(), field.name.clone()),
+                    key.clone(),
                     field
                         .type_hint
                         .as_deref()
                         .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
+                );
+                facts.field_access.insert(
+                    key,
+                    RegistryFieldAccessFact::new(&desc.key.name, &field.name, field),
                 );
             }
 
@@ -174,16 +207,18 @@ impl RegistryFacts {
                     TypeFact::enum_type(&desc.key.name, Some(&variant.name)),
                 );
                 for field in &variant.fields {
+                    let owner = format!("{}.{}", desc.key.name, variant.name);
+                    let key = (owner.clone(), field.name.clone());
                     facts.fields.insert(
-                        (
-                            format!("{}.{}", desc.key.name, variant.name),
-                            field.name.clone(),
-                        ),
+                        key.clone(),
                         field
                             .type_hint
                             .as_deref()
                             .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
                     );
+                    facts
+                        .field_access
+                        .insert(key, RegistryFieldAccessFact::new(owner, &field.name, field));
                 }
             }
         }
@@ -242,6 +277,11 @@ impl RegistryFacts {
     #[must_use]
     pub fn field_fact(&self, owner: &str, field: &str) -> Option<&TypeFact> {
         self.fields.get(&(owner.to_owned(), field.to_owned()))
+    }
+
+    #[must_use]
+    pub fn field_access_fact(&self, owner: &str, field: &str) -> Option<&RegistryFieldAccessFact> {
+        self.field_access.get(&(owner.to_owned(), field.to_owned()))
     }
 
     pub fn fields(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
@@ -533,6 +573,11 @@ mod tests {
         assert_eq!(
             facts.field_fact("Player", "inventory"),
             Some(&TypeFact::record("Inventory"))
+        );
+        assert!(
+            facts
+                .field_access_fact("Player", "level")
+                .is_some_and(|access| !access.writable && access.readable)
         );
         assert_eq!(
             facts.field_fact("QuestState.Active", "quest_id"),

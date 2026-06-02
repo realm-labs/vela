@@ -3,7 +3,7 @@ use vela_syntax::ast::{Expr, ExprKind};
 
 use crate::completion::{CompletionKind, member_completions};
 use crate::expression::{ExprFactScope, type_fact_from_expr};
-use crate::registry::RegistryFacts;
+use crate::registry::{RegistryFacts, RegistryFieldAccessFact};
 use crate::stdlib::stdlib_method_fact;
 use crate::type_fact::TypeFact;
 
@@ -34,6 +34,7 @@ fn collect_member_access_diagnostics(
             collect_member_access_diagnostics(right, scope, facts, diagnostics);
         }
         ExprKind::Assign { target, value, .. } => {
+            diagnose_assignment_target(target, scope, facts, diagnostics);
             collect_member_access_diagnostics(target, scope, facts, diagnostics);
             collect_member_access_diagnostics(value, scope, facts, diagnostics);
         }
@@ -233,6 +234,40 @@ fn diagnose_path_field_access(
     ));
 }
 
+fn diagnose_assignment_target(
+    target: &Expr,
+    scope: &ExprFactScope,
+    facts: &RegistryFacts,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let Some((receiver, field)) = member_receiver_and_name(target, scope) else {
+        return;
+    };
+    if !is_precise_receiver(&receiver) {
+        return;
+    }
+    let Some(access) = field_access(facts, &receiver, &field) else {
+        return;
+    };
+    if access.writable {
+        return;
+    }
+
+    diagnostics.push(
+        Diagnostic::error(format!(
+            "field `{}.{}` is read-only for script writes",
+            access.owner, access.name
+        ))
+        .with_code("analysis::field_not_writable")
+        .with_span(target.span)
+        .with_label(target.span, "assignment targets a read-only field")
+        .with_label(
+            target.span,
+            "write through an exposed method or a writable field instead",
+        ),
+    );
+}
+
 fn member_receiver_and_name(expr: &Expr, scope: &ExprFactScope) -> Option<(TypeFact, String)> {
     match &expr.kind {
         ExprKind::Field { base, name } => Some((type_fact_from_expr(base, scope), name.clone())),
@@ -275,17 +310,31 @@ fn is_precise_receiver(receiver: &TypeFact) -> bool {
 }
 
 fn field_exists(facts: &RegistryFacts, receiver: &TypeFact, field: &str) -> bool {
+    field_owner(receiver)
+        .as_deref()
+        .and_then(|owner| facts.field_fact(owner, field))
+        .is_some()
+}
+
+fn field_access<'a>(
+    facts: &'a RegistryFacts,
+    receiver: &TypeFact,
+    field: &str,
+) -> Option<&'a RegistryFieldAccessFact> {
     match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } => {
-            facts.field_fact(name, field).is_some()
-        }
+        TypeFact::Host { name } => facts.field_access_fact(name, field),
+        _ => None,
+    }
+}
+
+fn field_owner(receiver: &TypeFact) -> Option<String> {
+    match receiver {
+        TypeFact::Host { name } | TypeFact::Record { name } => Some(name.clone()),
         TypeFact::Enum {
             name,
             variant: Some(variant),
-        } => facts
-            .field_fact(&format!("{name}.{variant}"), field)
-            .is_some(),
-        _ => false,
+        } => Some(format!("{name}.{variant}")),
+        _ => None,
     }
 }
 
@@ -513,11 +562,51 @@ mod tests {
         assert!(diagnostics[0].message.contains("missing"));
     }
 
+    #[test]
+    fn reports_read_only_host_field_assignment_hints() {
+        let exprs = function_exprs(
+            r#"
+            fn main(player) {
+                player.level = 2;
+                player.inventory = 1;
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new().with_path(["player"], TypeFact::host("Player"));
+        let facts = registry_facts();
+
+        assert!(member_access_diagnostics(&exprs[0], &scope, &facts).is_empty());
+        let diagnostics = member_access_diagnostics(&exprs[1], &scope, &facts);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::field_not_writable")
+        );
+        assert!(diagnostics[0].message.contains("Player.inventory"));
+        assert!(
+            diagnostics[0]
+                .labels
+                .iter()
+                .any(|label| label.message == "assignment targets a read-only field")
+        );
+        assert!(diagnostics[0].labels.iter().any(|label| {
+            label
+                .message
+                .contains("write through an exposed method or a writable field")
+        }));
+    }
+
     fn registry_facts() -> RegistryFacts {
         let mut registry = TypeRegistry::new();
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .field(FieldDesc::new(FieldId::new(1), "level").type_hint("int"))
+                .field(
+                    FieldDesc::new(FieldId::new(1), "level")
+                        .type_hint("int")
+                        .writable(true),
+                )
+                .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("map"))
                 .method(MethodDesc::new(HostMethodId::new(1), "grant_exp")),
         );
         RegistryFacts::from_registry(&registry)

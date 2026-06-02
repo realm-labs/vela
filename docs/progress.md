@@ -76,6 +76,8 @@ conformance contracts are stable.
   ABI correctness.
 - Analysis diagnostics can report non-exhaustive matches for known script
   enums and dynamic Option/Result facts used by propagation-style control flow.
+- Analysis diagnostics can use TypeRegistry field access metadata to flag
+  known read-only host field assignment targets with script-author write hints.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
