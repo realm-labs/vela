@@ -187,6 +187,7 @@ fn diagnose_call(
         format!("unknown method `{name}` for `{}`", receiver.display_name()),
         expr,
         ranked_member_candidates(facts, &receiver, &name, CompletionKind::Method),
+        Vec::new(),
     ));
     true
 }
@@ -204,11 +205,14 @@ fn diagnose_field_access(
         return;
     }
 
+    let candidates = ranked_member_candidates(facts, &receiver, field, CompletionKind::Field);
+    let access_labels = field_candidate_access_labels(facts, &receiver, &candidates);
     diagnostics.push(unknown_member_diagnostic(
         "analysis::unknown_field",
         format!("unknown field `{field}` for `{}`", receiver.display_name()),
         expr,
-        ranked_member_candidates(facts, &receiver, field, CompletionKind::Field),
+        candidates,
+        access_labels,
     ));
 }
 
@@ -226,11 +230,14 @@ fn diagnose_path_field_access(
         return;
     }
 
+    let candidates = ranked_member_candidates(facts, &receiver, &field, CompletionKind::Field);
+    let access_labels = field_candidate_access_labels(facts, &receiver, &candidates);
     diagnostics.push(unknown_member_diagnostic(
         "analysis::unknown_field",
         format!("unknown field `{field}` for `{}`", receiver.display_name()),
         expr,
-        ranked_member_candidates(facts, &receiver, &field, CompletionKind::Field),
+        candidates,
+        access_labels,
     ));
 }
 
@@ -327,6 +334,48 @@ fn field_access<'a>(
     }
 }
 
+fn field_candidate_access_labels(
+    facts: &RegistryFacts,
+    receiver: &TypeFact,
+    candidates: &[String],
+) -> Vec<String> {
+    let TypeFact::Host { name: owner } = receiver else {
+        return Vec::new();
+    };
+    candidates
+        .iter()
+        .filter_map(|candidate| {
+            facts
+                .field_access_fact(owner, candidate)
+                .map(field_access_label)
+        })
+        .collect()
+}
+
+fn field_access_label(access: &RegistryFieldAccessFact) -> String {
+    let read_hint = if access.readable {
+        "readable"
+    } else {
+        "not script-readable"
+    };
+    let write_hint = if access.writable {
+        "writable"
+    } else {
+        "read-only"
+    };
+    let mut label = format!(
+        "candidate `{}.{}` is {read_hint} and {write_hint}",
+        access.owner, access.name
+    );
+    if !access.required_permissions.is_empty() {
+        label.push_str(&format!(
+            "; requires permission {}",
+            access.required_permissions.join(", ")
+        ));
+    }
+    label
+}
+
 fn field_owner(receiver: &TypeFact) -> Option<String> {
     match receiver {
         TypeFact::Host { name } | TypeFact::Record { name } => Some(name.clone()),
@@ -374,6 +423,7 @@ fn unknown_member_diagnostic(
     message: String,
     expr: &Expr,
     candidates: Vec<String>,
+    extra_labels: Vec<String>,
 ) -> Diagnostic {
     let mut diagnostic = Diagnostic::error(message)
         .with_code(code)
@@ -387,6 +437,9 @@ fn unknown_member_diagnostic(
             expr.span,
             format!("similar candidates: {}", candidates.join(", ")),
         );
+    }
+    for label in extra_labels {
+        diagnostic = diagnostic.with_label(expr.span, label);
     }
     diagnostic
 }
@@ -407,6 +460,7 @@ mod tests {
             fn main(player) {
                 player.level;
                 player.levle;
+                player.inventroy;
             }
             "#,
         );
@@ -428,6 +482,30 @@ mod tests {
                 .iter()
                 .any(|label| label.message == "did you mean `level`?")
         );
+        assert!(diagnostics[0].labels.iter().any(|label| {
+            label
+                .message
+                .contains("candidate `Player.level` is readable and writable")
+        }));
+
+        let diagnostics = member_access_diagnostics(&exprs[2], &scope, &facts);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code.as_deref(),
+            Some("analysis::unknown_field")
+        );
+        assert!(
+            diagnostics[0]
+                .labels
+                .iter()
+                .any(|label| label.message == "did you mean `inventory`?")
+        );
+        assert!(diagnostics[0].labels.iter().any(|label| {
+            label
+                .message
+                .contains("candidate `Player.inventory` is readable and read-only")
+        }));
     }
 
     #[test]
