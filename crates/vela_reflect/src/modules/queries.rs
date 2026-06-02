@@ -194,6 +194,7 @@ pub fn callable_function_name_with_policy(
     target: &ReflectValue,
     policy: &ReflectPolicy,
 ) -> ReflectResult<Option<String>> {
+    policy.require(crate::permissions::ReflectPermission::CallMethods)?;
     let Some(name) = function_target_name(target)? else {
         return Ok(None);
     };

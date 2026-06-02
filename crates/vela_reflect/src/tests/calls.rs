@@ -84,6 +84,43 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_patch() {
 }
 
 #[test]
+fn reflect_call_with_policy_requires_call_methods_permission() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+            .host_type(HostTypeId::new(1))
+            .method(
+                MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                    .access(MethodAccess::new().reflect_callable(true)),
+            ),
+    );
+    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = call_with_policy(
+        &mut ctx,
+        &ReflectValue::HostRef(player_ref()),
+        "grant_exp",
+        vec![ReflectValue::Host(HostValue::Int(20))],
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("call methods permission should be required");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::PermissionDenied {
+            permission: ReflectPermission::CallMethods
+        }
+    );
+    assert!(ctx.tx.patches().is_empty());
+}
+
+#[test]
 fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission() {
     let mut registry = TypeRegistry::new();
     registry.register(
@@ -279,7 +316,11 @@ fn reflect_call_with_policy_filters_unknown_method_candidates() {
         &ReflectValue::HostRef(player_ref()),
         "grant_exp_hiddden",
         Vec::new(),
-        &ReflectPolicy::read_only(),
+        &ReflectPolicy::new(
+            ReflectPermissionSet::new()
+                .with(ReflectPermission::ReadTypeInfo)
+                .with(ReflectPermission::CallMethods),
+        ),
     )
     .expect_err("unknown method");
 

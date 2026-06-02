@@ -279,6 +279,7 @@ impl ReflectPolicy {
     }
 
     pub fn require_function_call_access(&self, function: &FunctionDesc) -> ReflectResult<()> {
+        self.require(ReflectPermission::CallMethods)?;
         self.require_function_access(function)?;
         if !function.access.reflect_callable {
             return Err(ReflectError::new(
@@ -298,6 +299,15 @@ impl ReflectPolicy {
             ));
         }
         Ok(())
+    }
+
+    pub fn require_method_call_access(
+        &self,
+        type_name: &str,
+        method: &MethodDesc,
+    ) -> ReflectResult<()> {
+        self.require(ReflectPermission::CallMethods)?;
+        self.require_method_access(type_name, method)
     }
 
     pub fn require_field_read_access(

@@ -363,7 +363,7 @@ fn call_impl(
         ctx.registry.host_method(*host_ref, method)?
     };
     if let Some(policy) = policy {
-        policy.require_method_access(&type_name, method_desc)?;
+        policy.require_method_call_access(&type_name, method_desc)?;
     }
     let args = args
         .into_iter()

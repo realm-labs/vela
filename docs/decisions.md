@@ -159,6 +159,13 @@ Array, map, set, string, range, math, context, random, and gameplay helpers are
 deterministic unless an Engine-installed permissioned native explicitly provides
 controlled nondeterminism.
 
+### Reflection Permissions
+
+The core reflection policy API owns base call authorization. Direct reflective
+method calls and reflected function invocation must require
+`reflect.call_methods` before checking callable metadata, required host
+permissions, or effect-specific call permissions.
+
 ### Analysis And Tooling
 
 TypeFacts, completions, hover, match exhaustiveness, effect diagnostics, null

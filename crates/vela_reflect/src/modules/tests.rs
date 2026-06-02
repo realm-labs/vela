@@ -7,7 +7,7 @@ use vela_host::value::HostValue;
 use crate::access::{FunctionAccess, FunctionEffectSet};
 use crate::error::ReflectErrorKind;
 use crate::metadata::span_value;
-use crate::permissions::ReflectPolicy;
+use crate::permissions::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 use crate::registry::TypeRegistry;
 use crate::value::ReflectValue;
 
@@ -433,7 +433,12 @@ fn function_call_policy_filters_unknown_candidates() {
             HostValue::String("game.reward.grant_visibel".to_owned()),
         )]),
     });
-    let error = callable_function_name_with_policy(&registry, &target, &ReflectPolicy::read_only())
+    let policy = ReflectPolicy::new(
+        ReflectPermissionSet::new()
+            .with(ReflectPermission::ReadTypeInfo)
+            .with(ReflectPermission::CallMethods),
+    );
+    let error = callable_function_name_with_policy(&registry, &target, &policy)
         .expect_err("unknown callable function");
     let ReflectErrorKind::UnknownFunction {
         candidates,
@@ -545,6 +550,36 @@ fn function_call_policy_requires_reflect_callable_metadata() {
             permission: crate::permissions::ReflectPermission::CallHostWriteMethods,
             source_span: None,
         }
+    );
+}
+
+#[test]
+fn callable_function_lookup_requires_call_methods_permission() {
+    let mut registry = TypeRegistry::new();
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(1), "game.callable")
+            .access(FunctionAccess::new().reflect_callable(true)),
+    );
+    let target = function(&registry, "game.callable").expect("callable function metadata");
+
+    let error = callable_function_name_with_policy(&registry, &target, &ReflectPolicy::read_only())
+        .expect_err("callable lookup should require call permission");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::PermissionDenied {
+            permission: ReflectPermission::CallMethods
+        }
+    );
+
+    let policy = ReflectPolicy::new(
+        ReflectPermissionSet::new()
+            .with(ReflectPermission::ReadTypeInfo)
+            .with(ReflectPermission::CallMethods),
+    );
+    assert_eq!(
+        callable_function_name_with_policy(&registry, &target, &policy),
+        Ok(Some("game.callable".to_owned()))
     );
 }
 
