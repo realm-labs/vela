@@ -51,6 +51,10 @@ pub(super) fn function_record_host(desc: &FunctionDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert(
         "id".to_owned(),
+        // TODO(reflect): stable IDs are u64, but reflection currently exposes IDs
+        // through signed script ints. Replace this lossy saturation with a deliberate
+        // unsigned/ID value surface before treating reflect.id() as a stable public
+        // identity API.
         HostValue::Int(i64::try_from(desc.id.get()).unwrap_or(i64::MAX)),
     );
     fields.insert("name".to_owned(), HostValue::String(desc.name.clone()));

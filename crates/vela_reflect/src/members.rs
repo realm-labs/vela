@@ -42,6 +42,10 @@ pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
 pub fn id(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(HostValue::Int(
+            // TODO(reflect): stable IDs are u64, but reflection currently exposes IDs
+            // through signed script ints. Replace this lossy saturation with a deliberate
+            // unsigned/ID value surface before treating reflect.id() as a stable public
+            // identity API.
             i64::try_from(desc.key.id.get()).unwrap_or(i64::MAX),
         ))),
         Err(error) => metadata_records::id(target)?
