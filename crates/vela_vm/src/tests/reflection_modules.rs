@@ -141,6 +141,111 @@ fn main() {
 }
 
 #[test]
+fn compiled_source_reflect_function_candidates_respect_policy() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return reflect.function("game.reward.hiddne");
+}
+"#,
+    )
+    .expect("compile policy unknown function reflection source");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives_with_policy(
+        Arc::new(policy_module_reflection_registry()),
+        reflect::permissions::ReflectPolicy::read_only(),
+    );
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = vm
+        .run_program_with_host(&program, "main", &[], &mut host)
+        .expect_err("unknown function should report policy-visible candidates");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
+            function: "game.reward.hiddne".to_owned(),
+            candidates: vec!["game.reward.grant".to_owned()],
+            related: vec![ReflectCandidate::new("game.reward.grant", None)],
+        })
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn compiled_source_reflect_call_function_candidates_respect_policy() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct ReflectFunction { name: string }
+
+fn main() {
+    let function = ReflectFunction { name: "game.reward.grant_visibel" };
+    return reflect.call(function);
+}
+"#,
+    )
+    .expect("compile policy unknown function call reflection source");
+    let mut registry = TypeRegistry::new();
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(1), "game.reward.grant")
+            .access(FunctionAccess::new().reflect_callable(true)),
+    );
+    registry.register_function(FunctionDesc::new(
+        FunctionId::new(2),
+        "game.reward.grant_visible",
+    ));
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(3), "game.reward.grant_hidden").access(
+            FunctionAccess::new()
+                .reflect_visible(false)
+                .reflect_callable(true),
+        ),
+    );
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(4), "game.reward.grant_write").access(
+            FunctionAccess::new()
+                .reflect_callable(true)
+                .require_permission("game.write"),
+        ),
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives_with_policy(
+        Arc::new(registry),
+        reflect::permissions::ReflectPolicy::new(
+            reflect::permissions::ReflectPermissionSet::new()
+                .with(reflect::permissions::ReflectPermission::CallMethods),
+        ),
+    );
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = vm
+        .run_program_with_host(&program, "main", &[], &mut host)
+        .expect_err("unknown function call should report callable candidates only");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
+            function: "game.reward.grant_visibel".to_owned(),
+            candidates: vec!["game.reward.grant".to_owned()],
+            related: vec![ReflectCandidate::new("game.reward.grant", None)],
+        })
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn compiled_source_reflect_exports_respect_function_policy() {
     let program = compile_program_source(
         SourceId::new(1),
