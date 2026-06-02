@@ -8,6 +8,7 @@ pub(crate) struct Workload {
 pub(crate) enum ExecutionMode {
     Inline,
     ManagedHeap,
+    HostPatchTx,
 }
 
 pub(crate) const WORKLOADS: &[Workload] = &[
@@ -50,6 +51,18 @@ fn main() {
         return values.sum() + unique.len() + tags.len();
     }
     return 0;
+}
+"#,
+    },
+    Workload {
+        name: "host_patch_tx",
+        mode: ExecutionMode::HostPatchTx,
+        source: r#"
+fn main(player) {
+    player.level += 1;
+    player.exp += 10;
+    player.inventory.gold += 3;
+    return player.level + player.exp + player.inventory.gold;
 }
 "#,
     },

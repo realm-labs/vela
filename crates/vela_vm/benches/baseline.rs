@@ -2,8 +2,15 @@ use std::error::Error;
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use vela_bytecode::compiler::compile_function_source;
-use vela_common::SourceId;
+use vela_bytecode::compiler::options::CompilerOptions;
+use vela_bytecode::compiler::{compile_function_source, compile_program_source_with_options};
+use vela_bytecode::{CodeObject, Program};
+use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
+use vela_host::mock::MockStateAdapter;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
+use vela_vm::HostExecution;
 use vela_vm::Vm;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::value::Value;
@@ -19,6 +26,13 @@ const QUICK_WARMUP: usize = 2;
 const DEFAULT_REPEATS: usize = 7;
 const DEFAULT_ITERATIONS: usize = 100;
 const DEFAULT_WARMUP: usize = 10;
+const PLAYER_TYPE: HostTypeId = HostTypeId::new(1);
+const PLAYER_OBJECT: HostObjectId = HostObjectId::new(42);
+const PLAYER_GENERATION: u32 = 1;
+const LEVEL_FIELD: FieldId = FieldId::new(1);
+const EXP_FIELD: FieldId = FieldId::new(2);
+const INVENTORY_FIELD: FieldId = FieldId::new(3);
+const GOLD_FIELD: FieldId = FieldId::new(4);
 
 fn main() -> Result<(), Box<dyn Error>> {
     let params = BenchParams::from_args();
@@ -82,12 +96,11 @@ struct BenchResult {
 }
 
 fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult, Box<dyn Error>> {
-    let code = compile_function_source(SourceId::new(1), workload.source, "main")
-        .map_err(|error| format!("{error:?}"))?;
+    let compiled = compile_workload(workload)?;
     let vm = Vm::new().with_standard_natives();
 
     for _ in 0..params.warmup {
-        let value = run_once(workload.mode, &vm, &code)?;
+        let value = run_once(&vm, &compiled)?;
         black_box(value);
     }
 
@@ -96,7 +109,7 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
     for _ in 0..params.repeats {
         let started = Instant::now();
         for _ in 0..params.iterations {
-            let value = run_once(workload.mode, &vm, &code)?;
+            let value = run_once(&vm, &compiled)?;
             checksum = mix(checksum, value_checksum(&value));
             black_box(value);
         }
@@ -106,18 +119,96 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
     Ok(summarize(samples, checksum))
 }
 
-fn run_once(
-    mode: ExecutionMode,
-    vm: &Vm,
-    code: &vela_bytecode::CodeObject,
-) -> Result<Value, Box<dyn Error>> {
-    match mode {
-        ExecutionMode::Inline => Ok(vm.run(code)?),
-        ExecutionMode::ManagedHeap => {
+enum CompiledWorkload {
+    Function {
+        mode: ExecutionMode,
+        code: CodeObject,
+    },
+    HostPatchTx {
+        program: Box<Program>,
+    },
+}
+
+fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error>> {
+    match workload {
+        CompiledWorkload::Function {
+            mode: ExecutionMode::Inline,
+            code,
+        } => Ok(vm.run(code)?),
+        CompiledWorkload::Function {
+            mode: ExecutionMode::ManagedHeap,
+            code,
+        } => {
             let mut budget = ExecutionBudget::unbounded();
             Ok(vm.run_with_managed_heap_and_budget(code, &mut budget)?)
         }
+        CompiledWorkload::Function {
+            mode: ExecutionMode::HostPatchTx,
+            ..
+        } => unreachable!("host patch workload compiles to a program"),
+        CompiledWorkload::HostPatchTx { program } => run_host_patch_tx(vm, program),
     }
+}
+
+fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
+    match workload.mode {
+        ExecutionMode::HostPatchTx => compile_program_source_with_options(
+            SourceId::new(1),
+            workload.source,
+            &CompilerOptions::new()
+                .with_host_field("level", LEVEL_FIELD)
+                .with_host_field("exp", EXP_FIELD)
+                .with_host_field("inventory", INVENTORY_FIELD)
+                .with_host_field("gold", GOLD_FIELD),
+        )
+        .map(|program| CompiledWorkload::HostPatchTx {
+            program: Box::new(program),
+        })
+        .map_err(|error| format!("{error:?}")),
+        ExecutionMode::ManagedHeap => {
+            compile_function_source(SourceId::new(1), workload.source, "main")
+                .map(|code| CompiledWorkload::Function {
+                    mode: workload.mode,
+                    code,
+                })
+                .map_err(|error| format!("{error:?}"))
+        }
+        ExecutionMode::Inline => compile_function_source(SourceId::new(1), workload.source, "main")
+            .map(|code| CompiledWorkload::Function {
+                mode: workload.mode,
+                code,
+            })
+            .map_err(|error| format!("{error:?}")),
+    }
+}
+
+fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>> {
+    let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(10));
+    adapter.insert_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
+    adapter.insert_value(
+        HostPath::new(player)
+            .field(INVENTORY_FIELD)
+            .field(GOLD_FIELD),
+        HostValue::Int(5),
+    );
+    let mut tx = PatchTx::new();
+    let mut budget = ExecutionBudget::unbounded();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+    let value = vm.run_program_with_host_and_budget(
+        program,
+        "main",
+        &[Value::HostRef(player)],
+        &mut host,
+        &mut budget,
+    )?;
+    Ok(Value::Int(
+        value_checksum(&value) as i64 + tx.patches().len() as i64,
+    ))
 }
 
 fn summarize(mut samples: Vec<Duration>, checksum: u64) -> BenchResult {
@@ -208,6 +299,7 @@ impl ExecutionMode {
         match self {
             Self::Inline => "inline",
             Self::ManagedHeap => "managed_heap",
+            Self::HostPatchTx => "host_patch_tx",
         }
     }
 }

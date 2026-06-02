@@ -68,6 +68,7 @@ Current tracked workload groups:
 ```text
 scalar_branch_loop          VM dispatch, arithmetic, branches, range for-in
 stdlib_collections          array, map, set, Option, and stdlib method dispatch
+host_patch_tx               HostRef reads, nested HostPath writes, PatchTx overlay
 managed_heap_materialization records, enums, strings, Option helpers, heap mode
 ```
 
