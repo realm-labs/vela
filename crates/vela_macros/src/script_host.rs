@@ -209,6 +209,69 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_field_type_hints() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Player {
+                    #[script(get, id = 1, hint = "")]
+                    inventory: Vec<String>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("empty field type hint should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script type hint must be a non-generic dotted name")
+        );
+    }
+
+    #[test]
+    fn rejects_generic_field_type_hints() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Player {
+                    #[script(get, id = 1, hint = "Array<Item>")]
+                    inventory: Vec<String>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("generic field type hint should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script type hint must be a non-generic dotted name")
+        );
+    }
+
+    #[test]
+    fn rejects_malformed_field_type_hints() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Player {
+                    #[script(get, id = 1, type = "game..Inventory")]
+                    inventory: Vec<String>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("malformed field type hint should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script type hint must be a non-generic dotted name")
+        );
+    }
+
+    #[test]
     fn rejects_missing_type_id() {
         let error = expand_result(
             quote! {

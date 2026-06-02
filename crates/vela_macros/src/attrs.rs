@@ -71,7 +71,7 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
                     .attrs
                     .push(parse_key_value_attr(value.parse::<LitStr>()?, "script")?);
             } else if path_name(&meta.path, "hint") || path_name(&meta.path, "type") {
-                parsed.type_hint = Some(value.parse::<LitStr>()?.value());
+                parsed.type_hint = Some(parse_type_hint(value.parse::<LitStr>()?, "script")?);
             } else if path_name(&meta.path, "permission") {
                 parsed
                     .permissions
@@ -119,6 +119,26 @@ pub(crate) fn parse_key_value_attr(literal: LitStr, context: &str) -> Result<(St
         ));
     }
     Ok((name.to_owned(), value.trim().to_owned()))
+}
+
+pub(crate) fn parse_type_hint(literal: LitStr, context: &str) -> Result<String> {
+    let hint = literal.value();
+    if hint.is_empty()
+        || hint.trim() != hint
+        || hint.contains('<')
+        || hint.contains('>')
+        || !is_valid_dotted_name(&hint)
+    {
+        return Err(error(
+            literal.span(),
+            &format!("{context} type hint must be a non-generic dotted name"),
+        ));
+    }
+    Ok(hint)
+}
+
+fn is_valid_dotted_name(name: &str) -> bool {
+    !name.is_empty() && name.split('.').all(|segment| !segment.is_empty())
 }
 
 fn parse_doc_attr(attr: &Attribute) -> Result<Option<String>> {
