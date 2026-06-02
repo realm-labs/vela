@@ -146,6 +146,25 @@ fn script_reflect_derive_generates_matching_metadata() {
 }
 
 #[test]
+fn script_reflect_derive_feeds_engine_registration_api() {
+    let engine = vela_engine::engine::Engine::builder()
+        .register_reflect_schema::<Player>()
+        .build()
+        .expect("engine should build from reflected schema");
+
+    let registry = engine.registry();
+    let player = registry
+        .type_by_name("Player")
+        .expect("reflected schema should be registered");
+    assert_eq!(player.key.id, TypeId::new(1001));
+    assert_eq!(player.kind, TypeKind::Host);
+    assert_eq!(player.fields.len(), 2);
+    assert_eq!(player.fields[0].name, "level");
+    assert_eq!(player.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(player.traits, vec![TraitDesc::new("Damageable")]);
+}
+
+#[test]
 fn script_host_schema_hash_survives_field_reordering() {
     let first = RewardConfigA::vela_host_type_desc();
     let second = RewardConfigB::vela_host_type_desc();
