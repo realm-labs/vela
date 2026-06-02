@@ -7,8 +7,9 @@ before this compaction lives in
 ## Current Focus
 
 M0-M11 are complete enough as a runnable prototype. Current work is centered on
-M12/M13 reflection and standard-library completion, with targeted M14/M15
-Engine API and hot-reload source workflow work as it unblocks embedding.
+the current checkpoint queue below: first close or precisely narrow M12, then
+advance M13 standard-library completion, with targeted M14/M15 Engine API and
+hot-reload source workflow work as it unblocks embedding.
 
 Post-MVP performance remains a separate track: optimize the non-JIT bytecode
 interpreter toward Lua 5.x comparable gameplay workloads, then add debugger
@@ -36,6 +37,34 @@ conformance contracts are stable.
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT backend after interpreter/cache/debug contracts are stable. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
+
+## Current Milestone Checkpoints
+
+Use this queue to choose the next implementation task. Work on the first
+checkpoint that is not satisfied, and update this section when a checkpoint
+closes or exposes a more specific gap.
+
+1. M12 reflection and permissions:
+   - Audit current reflection tests against the M12 checkpoint in
+     [goal.md](goal.md): metadata categories, permissioned get/set/call,
+     lookup budgets, candidate spans, and schema-safe mutation denial.
+   - If covered, mark M12 `Complete enough` and move broad diagnostic polish to
+     M16.
+   - If not covered, add the smallest missing edge-case test and implementation
+     before doing more broad M12 work.
+   - Validation: `cargo test -p vela_reflect -p vela_vm -p vela_engine reflect`.
+2. M13 standard library:
+   - Complete one missing stdlib family at a time: collection helpers,
+     string helpers, Option/Result propagation, math helpers, context helpers,
+     random/time permission checks, or lambda TypeFact metadata.
+   - Validation: targeted stdlib/compiler/VM tests plus the relevant
+     game-server demo script when the helper affects gameplay examples.
+3. M14/M15 embedding and reload:
+   - Advance only when it unblocks the demo or conformance workflow: Engine API
+     registration, native descriptors, context helpers, macros, safe-point
+     reload, ABI/schema/effect checks, or source-file update workflows.
+   - Validation: targeted engine/hot-reload tests and CLI demo runs when
+     workflow-facing.
 
 ## Active Capabilities
 

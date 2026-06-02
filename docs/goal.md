@@ -80,7 +80,7 @@ Engineering principles:
 The following goal can be used as a persistent implementation target:
 
 ```text
-/goal Treat docs/goal.md as the authoritative product roadmap, docs/architecture.md as the technical contract, and docs/progress.md as the current implementation status. Continue implementing Vela from the completed M0-M6 runnable prototype into a complete Hot Reload First dynamic scripting language for game server logic. Complete means the full planned language surface in docs/grammar.ebnf can be resolved, analyzed, compiled, and executed; script heap values are managed by a budgeted non-moving GC; scripts mutate host state only through HostRef, HostPath, PathProxy, and PatchTx; TypeRegistry and reflection cover types, modules, functions, fields, methods, traits, variants, attributes, and permissions; Rust hosts can register schemas and native functions through a stable Engine API and derive macros; hot reload performs function, schema, and effect ABI checks at safe points; the standard library covers collections, Option/Result-style propagation, math, time/context, and gameplay helpers; and examples/game_server_demo proves level-up, monster-kill rewards, quest progress, reflection, and hot reload workflows. Maintain these constraints throughout implementation: the script language has no generics; scripts never hold real Rust &mut references; host mutation must enter PatchTx; reflection can only query and perform controlled reads/writes/calls and cannot monkey patch type structure; the first complete interpreter does not implement JIT, script async/coroutines, moving GC, or a full LSP; pre-release code should not preserve backward-compatibility shims for old internal APIs, transitional behavior, or temporary artifacts, while hot reload ABI and schema compatibility checks remain required product semantics; awkward feature additions, repeated conditional patching, oversized files/functions, or growing parameter lists must trigger architectural cleanup through clearer module boundaries, dispatch models, helper types, or parameter structs. Every milestone must be runnable, tested, documented in docs/progress.md, and validated by the relevant subset of cargo fmt --all -- --check, cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace, demo script runs, and benchmark/fuzz targets once those exist. Commit appropriate verified checkpoints using Conventional Commit messages.
+/goal Treat docs/goal.md as the authoritative product roadmap, docs/architecture.md as the technical contract, and docs/progress.md as the current implementation status. Continue implementing Vela into a complete Hot Reload First dynamic scripting language for game server logic, starting from the earliest incomplete milestone checkpoint recorded in docs/progress.md. Complete means the full planned language surface in docs/grammar.ebnf can be resolved, analyzed, compiled, and executed; script heap values are managed by a budgeted non-moving GC; scripts mutate host state only through HostRef, HostPath, PathProxy, and PatchTx; TypeRegistry and reflection cover types, modules, functions, fields, methods, traits, variants, attributes, and permissions; Rust hosts can register schemas and native functions through a stable Engine API and derive macros; hot reload performs function, schema, and effect ABI checks at safe points; the standard library covers collections, Option/Result-style propagation, math, time/context, and gameplay helpers; and examples/game_server_demo proves level-up, monster-kill rewards, quest progress, reflection, and hot reload workflows. Maintain these constraints throughout implementation: the script language has no generics; scripts never hold real Rust &mut references; host mutation must enter PatchTx; reflection can only query and perform controlled reads/writes/calls and cannot monkey patch type structure; the first complete interpreter does not implement JIT, script async/coroutines, moving GC, or a full LSP; pre-release code should not preserve backward-compatibility shims for old internal APIs, transitional behavior, or temporary artifacts, while hot reload ABI and schema compatibility checks remain required product semantics; awkward feature additions, repeated conditional patching, oversized files/functions, or growing parameter lists must trigger architectural cleanup through clearer module boundaries, dispatch models, helper types, or parameter structs. For each turn, choose the smallest task that advances the current milestone checkpoint, add or run the named validation that proves it, update docs/progress.md when the checkpoint or milestone status changes, and only move to the next milestone when the current checkpoint is satisfied. Every milestone must be runnable, tested, documented in docs/progress.md, and validated by the relevant subset of cargo fmt --all -- --check, cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace, demo script runs, and benchmark/fuzz targets once those exist. Commit appropriate verified checkpoints using Conventional Commit messages.
 ```
 
 Post-MVP performance work is a first-class roadmap track. The initial release
@@ -99,6 +99,15 @@ implementation status lives in [progress.md](progress.md), and detailed
 historical progress is archived under [archive](archive/). The plan below
 tracks the first complete non-JIT, non-async interpreter plus post-MVP
 debugger, JIT, and release-hardening work.
+
+### Milestone Checkpoint Rules
+
+Each milestone has a checkpoint that defines when work may move forward.
+Acceptance lists the behavioral contract; the checkpoint names the proof that
+must exist in tests, examples, docs, or benchmarks. If a milestone is marked
+`Complete enough` in [progress.md](progress.md), future work should not return
+to it unless the current checkpoint or a regression test exposes a concrete
+gap.
 
 ### M7: Runtime Safety, Budgets, And GC
 
@@ -129,6 +138,14 @@ cyclic script objects are reclaimed
 host refs are never traced as Rust-owned objects
 ```
 
+Checkpoint:
+
+```text
+cargo test covers VM budget traps, PatchTx budget traps, managed heap roots,
+cycle collection, and host-ref exclusion from GC tracing
+docs/progress.md marks M7 complete or names the specific failing safety case
+```
+
 ### M8: Resolver, HIR, And Module Graph
 
 Goal: parsed source lowers into a stable semantic representation shared by the
@@ -156,6 +173,14 @@ unresolved names report candidate suggestions
 duplicate declarations are diagnosed with both spans
 compiler output remains equivalent for existing examples
 module top-level host mutation is rejected before bytecode generation
+```
+
+Checkpoint:
+
+```text
+cargo test covers multi-file imports, duplicate/unresolved declarations,
+top-level effect rejection, and bytecode equivalence through HIR
+docs/progress.md marks M8 complete enough or names the unresolved HIR gap
 ```
 
 ### M9: Complete Executable Language Surface
@@ -189,6 +214,14 @@ break/continue work through nested control-flow blocks
 unsupported grammar remains explicitly diagnosed, not silently miscompiled
 ```
 
+Checkpoint:
+
+```text
+grammar conformance fixtures cover every supported construct from
+docs/grammar.ebnf, and unsupported constructs have explicit diagnostics
+docs/progress.md names any grammar feature still deferred to later milestones
+```
+
 ### M10: Script Types, Shapes, Traits, And Dispatch
 
 Goal: script-defined records, enums, and traits use stable runtime metadata
@@ -218,6 +251,14 @@ host and script types can both satisfy a script trait
 enum variant additions are represented with stable VariantId values
 ```
 
+Checkpoint:
+
+```text
+cargo test covers script struct and enum registry lowering, slot access,
+trait defaults, host/script impl checks, and stable schema hashes
+docs/progress.md marks M10 complete enough or names the missing metadata path
+```
+
 ### M11: Complete Host Bridge And Patch Transactions
 
 Goal: natural script syntax can read, call, and mutate nested host state through
@@ -244,6 +285,14 @@ reads after nested writes observe overlay values
 read-only and permission-denied host paths fail before apply
 failed apply leaves adapter state unchanged
 host method calls can return script-visible copied values without exposing &mut
+```
+
+Checkpoint:
+
+```text
+cargo test covers nested HostPath reads/writes, overlay read-after-write,
+read-only and permission failures, rollback-safe apply, and copied host returns
+docs/progress.md marks M11 complete enough or names the missing host boundary
 ```
 
 ### M12: Complete Reflection And Permissions
@@ -276,6 +325,16 @@ unknown-name diagnostics include ranked candidates and related schema spans
 reflective calls respect EffectSet and MethodAccess
 ```
 
+Checkpoint:
+
+```text
+cargo test covers reflection metadata for every TypeRegistry item category,
+permissioned get/set/call, lookup budgets, candidate spans, and schema-safe
+mutation denial
+docs/progress.md lists only concrete remaining M12 edge cases, or marks M12
+complete enough and moves broad diagnostics polish to M16
+```
+
 ### M13: Standard Library And Language Conveniences
 
 Goal: common game-server logic is compact, readable, deterministic, and
@@ -304,6 +363,15 @@ collection methods work with lambdas and preserve dynamic values
 random and wall-clock APIs require explicit permissions
 monster kill reward script is readable without custom native glue
 stdlib methods expose analysis facts for lambda parameter hints
+```
+
+Checkpoint:
+
+```text
+cargo test covers array, map, set, string, Option, Result, math, context,
+random/time permission, and lambda callback behavior
+game_server_demo uses stdlib helpers without custom glue for core rewards
+docs/progress.md names the next missing stdlib family or marks M13 complete enough
 ```
 
 ### M14: Engine, Native Functions, And Rust Host Macros
@@ -338,6 +406,16 @@ native calls consume budgets and enforce permissions
 scripts never receive real Rust references from native APIs
 ```
 
+Checkpoint:
+
+```text
+cargo test covers EngineBuilder registration, compile_file/compile_dir,
+Runtime::call, native descriptors, stable ID rejection, permissioned native
+calls, signature conversion, and derive macro schema parity
+docs/progress.md names the next missing embedding surface or marks M14 complete
+enough
+```
+
 ### M15: Production Hot Reload Semantics
 
 Goal: hot reload is safe across function, module, type, reflection, and host
@@ -365,6 +443,16 @@ new calls enter updated code after a safe point
 event ABI parameter removals, reordering, and effect expansion are rejected
 new private helpers and compatible schema additions are accepted
 module top-level side effects are not re-executed during reload
+```
+
+Checkpoint:
+
+```text
+cargo test covers safe-point staging, old-frame lifetime, new-call version
+entry, source-file update workflows, function/effect/schema ABI rejection,
+compatible additions, and reload reports with repair hints
+docs/progress.md names the next missing reload workflow or marks M15 complete
+enough
 ```
 
 ### M16: Diagnostics, Error Reporting, And Tooling Foundation
@@ -395,6 +483,15 @@ runtime host errors include script call stack and source span
 match exhaustiveness hints are available when enum facts are known
 completion fixtures can suggest fields and methods from TypeRegistry
 diagnostics degrade cleanly to Any at dynamic boundaries
+```
+
+Checkpoint:
+
+```text
+cargo test snapshot fixtures cover parser, semantic, runtime, host, reflection,
+hot reload, call-stack, TypeFact, flow-narrowing, and completion diagnostics
+docs/progress.md names the next missing diagnostic family or marks M16 complete
+enough
 ```
 
 ### M17: Game Server Demo And Conformance Suite
@@ -428,6 +525,16 @@ hot reload demo proves old frames and new calls observe correct code versions
 conformance suite guards every supported grammar feature
 ```
 
+Checkpoint:
+
+```text
+cargo test and demo CLI runs cover level_up, monster_kill_reward,
+quest_progress, reflect_debug, hot_reload_function_swap, negative host/reload
+cases, and reusable parser/compiler/VM/host/reflect fixtures
+docs/progress.md names the next missing demo workflow or marks M17 complete
+enough
+```
+
 ### M18: Performance Measurement And Baselines
 
 Goal: make script performance measurable, reproducible, and comparable before
@@ -457,6 +564,16 @@ benchmark output records environment, profile, runtime options, and checksums
 Vela internal baselines separate compile/load time from repeated function calls
 external comparisons record runtime versions and environment details
 performance docs identify the top interpreter bottlenecks before optimization
+```
+
+Checkpoint:
+
+```text
+cargo bench records reproducible internal baselines with checksums and
+environment notes, and docs/performance.md records external runtime versions
+when available
+docs/progress.md marks optimization work blocked until benchmark gaps are named
+or M18 is complete enough
 ```
 
 ### M19: Non-JIT Interpreter And Heap Optimization
@@ -491,6 +608,15 @@ slow-path diagnostics remain source-spanned and debuggable
 no optimization bypasses ExecutionBudget, PatchTx, reflection policy, or GC roots
 ```
 
+Checkpoint:
+
+```text
+cargo test, cargo bench, and docs/performance.md show before/after results for
+each accepted interpreter or heap optimization
+docs/progress.md names remaining measured bottlenecks or marks M19 complete
+enough for inline caches
+```
+
 ### M20: Inline Cache And Specialization
 
 Goal: specialize common dynamic operations while preserving VM semantics and
@@ -516,6 +642,15 @@ cache misses and guard failures fall back to the generic VM path
 cache state is owned by ProgramVersion or another versioned runtime artifact
 hot reload cannot expose stale FieldId, MethodId, shape, or function targets
 benchmark reports separate interpreter-only and cache-enabled results
+```
+
+Checkpoint:
+
+```text
+cargo test covers cache hits, misses, guard failures, fallback behavior, hot
+reload invalidation, and schema invalidation
+cargo bench reports interpreter-only versus cache-enabled benchmark groups
+docs/progress.md names remaining cache families or marks M20 complete enough
 ```
 
 ### M21: Debugger Runtime And DAP Integration
@@ -549,6 +684,15 @@ hot reload preserves or reports breakpoint rebinding across compatible updates
 debug hooks can be disabled for normal gameplay execution
 ```
 
+Checkpoint:
+
+```text
+cargo test or adapter fixtures cover breakpoints, stepping, frame inspection,
+watch/evaluate permissions, PatchTx preview, exception breaks, hot-reload
+rebinding, and disabled-debug execution
+docs/progress.md names remaining debugger workflows or marks M21 complete enough
+```
+
 ### M22: Cranelift JIT
 
 Goal: add Cranelift native code generation after the optimized interpreter,
@@ -577,6 +721,15 @@ hot reload drops or invalidates compiled artifacts at safe points
 budget, GC, debugger, and PatchTx invariants hold under compiled execution
 ```
 
+Checkpoint:
+
+```text
+cargo test runs VM-versus-JIT equivalence fixtures and invariant checks for
+budgeting, GC roots, host calls, PatchTx, permissions, reflection, and reload
+invalidation
+docs/progress.md names unsupported JIT subsets or marks M22 complete enough
+```
+
 ### M23: Performance Hardening And Release Targets
 
 Goal: turn the measured and optimized runtime into a release-quality scripting
@@ -600,6 +753,14 @@ final validation passes fmt, clippy, tests, demos, and benchmarks
 public API docs compile
 performance docs state achieved target bands and known gaps
 hosts can choose deterministic interpreter-only execution without enabling JIT
+```
+
+Checkpoint:
+
+```text
+final validation passes fmt, clippy, tests, demos, benchmarks, public API docs,
+performance thresholds, and release documentation
+docs/progress.md and docs/performance.md state achieved targets and known gaps
 ```
 
 ## Remaining Task List
