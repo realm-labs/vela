@@ -65,6 +65,7 @@ dependencies = [
  "vela_engine",
  "vela_host",
  "vela_hot_reload",
+ "vela_macros",
  "vela_reflect",
  "vela_vm",
 ]

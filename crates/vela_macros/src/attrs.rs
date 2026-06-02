@@ -14,6 +14,7 @@ pub(crate) struct ScriptAttrs {
     pub(crate) module: Option<String>,
     pub(crate) docs: Option<String>,
     pub(crate) attrs: Vec<(String, String)>,
+    pub(crate) traits: Vec<String>,
     pub(crate) get: bool,
     pub(crate) set: bool,
     pub(crate) type_hint: Option<String>,
@@ -75,6 +76,11 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
                 parsed
                     .attrs
                     .push(parse_key_value_attr(value.parse::<LitStr>()?, "script")?);
+            } else if path_name(&meta.path, "implements") {
+                parsed.traits.push(parse_dotted_name(
+                    value.parse::<LitStr>()?,
+                    "script implemented trait",
+                )?);
             } else if path_name(&meta.path, "hint") || path_name(&meta.path, "type") {
                 parsed.type_hint = Some(parse_type_hint(value.parse::<LitStr>()?, "script")?);
             } else if path_name(&meta.path, "permission") {
@@ -90,6 +96,8 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
 
     parsed.permissions.sort();
     parsed.permissions.dedup();
+    parsed.traits.sort();
+    parsed.traits.dedup();
     reject_duplicate_attr_keys(&parsed.attrs, "script")?;
     if parsed.docs.is_none() && !doc_lines.is_empty() {
         parsed.docs = Some(doc_lines.join("\n"));

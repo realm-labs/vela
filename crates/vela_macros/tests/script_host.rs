@@ -3,7 +3,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::access::FieldAccess;
-use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
+use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
 
 #[allow(dead_code)]
 #[derive(ScriptHost, ScriptReflect)]
@@ -12,7 +12,8 @@ use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
     id = 1001,
     module = "game.player",
     docs = "Player host schema.",
-    attr = "domain=gameplay"
+    attr = "domain=gameplay",
+    implements = "Damageable"
 )]
 struct Player {
     #[script(
@@ -60,6 +61,7 @@ fn script_host_derive_generates_type_metadata() {
         .attr("module", "game.player")
         .attr("domain", "gameplay")
         .docs("Player host schema.")
+        .trait_impl(TraitDesc::new("Damageable"))
         .field(
             FieldDesc::new(FieldId::new(1), "level")
                 .access(
@@ -93,6 +95,7 @@ fn script_host_derive_generates_type_metadata() {
     assert_eq!(desc.host_type_id, Some(HostTypeId::new(1001)));
     assert_eq!(desc.attrs.get("module"), Some("game.player"));
     assert_eq!(desc.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(desc.traits, vec![TraitDesc::new("Damageable")]);
     assert_eq!(desc.fields[0].attrs.get("unit"), Some("level"));
     assert_eq!(desc.fields.len(), 2);
     assert_eq!(

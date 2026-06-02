@@ -1,23 +1,21 @@
-use vela_common::{HostTypeId, TypeId, VariantId};
+use vela_common::{TypeId, VariantId};
 use vela_engine::context_schema::context_host_type_desc;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::PermissionSet;
 use vela_engine::random::CONTROLLED_RANDOM_PERMISSION;
-use vela_reflect::access::{MethodAccess, MethodEffectSet};
+use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
-use vela_reflect::registry::{
-    FieldDesc, MethodDesc, SchemaHash, TraitDesc, TypeDesc, TypeKey, TypeRegistry, VariantDesc,
-};
+use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeRegistry, VariantDesc};
 use vela_vm::value::Value;
 
-use super::ids::{CONFIG_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
+use super::ids::DemoIds;
 use crate::demo::DemoEngineOptions;
 
 pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine> {
-    let registry = demo_type_registry(ids);
+    let registry = demo_support_type_registry(ids);
     let mut permissions = PermissionSet::gameplay();
     if options.allow_random {
         permissions.insert(CONTROLLED_RANDOM_PERMISSION);
@@ -28,6 +26,10 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
         .with_context_clock(1_700_000_000, 42)
         .with_controlled_random(7)
         .reflection_policy(ReflectPolicy::all())
+        .register_host_type::<Player>()
+        .register_host_type::<Monster>()
+        .register_host_type::<Config>()
+        .register_host_methods::<Player>()
         .register_module(
             ModuleDesc::new("game.reward")
                 .docs("Demo reward helper module.")
@@ -40,38 +42,11 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
     builder.build()
 }
 
-pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
+pub(crate) fn demo_support_type_registry(ids: DemoIds) -> TypeRegistry {
     let mut registry = TypeRegistry::new();
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .schema_hash(SchemaHash::new(0x1000_0000_0000_0001))
-            .host_type(HostTypeId::new(PLAYER_TYPE))
-            .field(FieldDesc::new(ids.id_field, "id"))
-            .field(FieldDesc::new(ids.level_field, "level").writable(true))
-            .field(FieldDesc::new(ids.exp_field, "exp").writable(true))
-            .field(
-                FieldDesc::new(ids.quest_progress_field, "quest_progress")
-                    .type_hint("HostQuestProgress"),
-            )
-            .field(FieldDesc::new(ids.quest_goal_field, "quest_goal"))
-            .field(FieldDesc::new(ids.inventory_field, "inventory").type_hint("Inventory"))
-            .method(
-                MethodDesc::new(ids.add_reward_method, "add_reward")
-                    .effects(MethodEffectSet::host_write())
-                    .access(MethodAccess::new().reflect_callable(true)),
-            )
-            .trait_impl(TraitDesc::new("Damageable")),
-    );
     registry.register(
         context_host_type_desc()
             .field(FieldDesc::new(ids.config_field, "config").type_hint("Config")),
-    );
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(102), "Monster"))
-            .schema_hash(SchemaHash::new(0x1000_0000_0000_0003))
-            .host_type(HostTypeId::new(MONSTER_TYPE))
-            .field(FieldDesc::new(ids.id_field, "id"))
-            .field(FieldDesc::new(ids.exp_field, "exp")),
     );
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(103), "Inventory"))
@@ -85,22 +60,6 @@ pub(crate) fn demo_type_registry(ids: DemoIds) -> TypeRegistry {
                 FieldDesc::new(ids.count_field, "count")
                     .writable(true)
                     .type_hint("int"),
-            ),
-    );
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(105), "Config"))
-            .schema_hash(SchemaHash::new(0x1000_0000_0000_0006))
-            .host_type(HostTypeId::new(CONFIG_TYPE))
-            .docs("Demo gameplay configuration exposed through context host paths.")
-            .field(
-                FieldDesc::new(ids.exp_to_next_level_field, "exp_to_next_level")
-                    .type_hint("int")
-                    .docs("Experience threshold for the next level."),
-            )
-            .field(
-                FieldDesc::new(ids.kill_rewards_field, "kill_rewards")
-                    .type_hint("array")
-                    .docs("Configured monster reward table."),
             ),
     );
     registry.register(
@@ -140,3 +99,78 @@ fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
 fn demo_reward_grant(_: Value, _: String) -> bool {
     true
 }
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(id = 100, host_id = 1, name = "Player", implements = "Damageable")]
+struct Player {
+    #[script(get, id = 7)]
+    id: i64,
+    #[script(get, set, id = 2)]
+    level: i64,
+    #[script(get, set, id = 6)]
+    exp: i64,
+    #[script(get, id = 10, hint = "HostQuestProgress")]
+    quest_progress: HostQuestProgress,
+    #[script(get, id = 11)]
+    quest_goal: i64,
+    #[script(get, id = 14, hint = "Inventory")]
+    inventory: Inventory,
+}
+
+#[script_methods]
+impl Player {
+    #[script_method(id = 9, name = "add_reward", effect = "write_host", reflect = true)]
+    #[allow(dead_code)]
+    pub fn add_reward(
+        _ctx: &mut vela_engine::context::NativeCallContext<'_, '_>,
+        _player: vela_host::path::HostRef,
+        _item_id: String,
+        _count: i64,
+    ) {
+    }
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(id = 102, host_id = 3, name = "Monster")]
+struct Monster {
+    #[script(get, id = 7)]
+    id: i64,
+    #[script(get, id = 6)]
+    exp: i64,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(
+    id = 105,
+    host_id = 4,
+    name = "Config",
+    docs = "Demo gameplay configuration exposed through context host paths."
+)]
+struct Config {
+    #[script(
+        get,
+        id = 18,
+        hint = "int",
+        docs = "Experience threshold for the next level."
+    )]
+    exp_to_next_level: i64,
+    #[script(
+        get,
+        id = 19,
+        hint = "array",
+        docs = "Configured monster reward table."
+    )]
+    kill_rewards: Vec<KillRewardConfig>,
+}
+
+#[allow(dead_code)]
+struct Inventory;
+
+#[allow(dead_code)]
+struct HostQuestProgress;
+
+#[allow(dead_code)]
+struct KillRewardConfig;

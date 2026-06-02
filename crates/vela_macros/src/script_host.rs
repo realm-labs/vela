@@ -71,8 +71,15 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let module_name = attrs.module;
     let docs = attrs.docs;
     let type_attrs = attrs.attrs;
+    let trait_names = attrs.traits;
     let fields = schema::collect_fields(&input)?;
-    let schema_hash = schema::schema_hash(&type_name, module_name.as_deref(), &type_attrs, &fields);
+    let schema_hash = schema::schema_hash(
+        &type_name,
+        module_name.as_deref(),
+        &type_attrs,
+        &trait_names,
+        &fields,
+    );
 
     let ident = input.ident;
     let method = generated_method.ident();
@@ -82,6 +89,11 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let type_attr_tokens = type_attrs.iter().map(|(name, value)| {
         quote! {
             desc = desc.attr(#name, #value);
+        }
+    });
+    let trait_tokens = trait_names.iter().map(|trait_name| {
+        quote! {
+            desc = desc.trait_impl(::vela_reflect::registry::TraitDesc::new(#trait_name));
         }
     });
     let field_tokens = fields.iter().map(emission::field_tokens);
@@ -109,6 +121,7 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
                 #module_tokens
                 #docs_tokens;
                 #(#type_attr_tokens)*
+                #(#trait_tokens)*
                 #(
                     desc = desc.field(#field_tokens);
                 )*

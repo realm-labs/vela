@@ -86,6 +86,11 @@ PathProxy wraps HostPath and requires PatchTx. Host values may represent
 primitives, arrays, maps, records, enums, and HostRef handles, but not real Rust
 references.
 
+`ScriptHost` derives may declare reflected host trait implementations with
+static `implements` metadata. This records TypeRegistry trait metadata for
+reflection and ABI/schema hashing; it does not create script monkey-patching or
+runtime trait-structure mutation.
+
 ### Reflection
 
 Reflection metadata is copied, permission-aware, and read-only with respect to

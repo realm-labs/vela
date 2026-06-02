@@ -79,6 +79,7 @@ pub(super) fn schema_hash(
     type_name: &str,
     module_name: Option<&str>,
     attrs: &[(String, String)],
+    traits: &[String],
     fields: &[FieldMeta],
 ) -> u64 {
     let mut hasher = StableHasher::new();
@@ -89,6 +90,9 @@ pub(super) fn schema_hash(
     for (name, value) in attrs {
         hasher.write_str(name);
         hasher.write_str(value);
+    }
+    for trait_name in traits {
+        hasher.write_str(trait_name);
     }
     let mut fields = fields.iter().collect::<Vec<_>>();
     fields.sort_by_key(|field| (field.id, field.script_name.as_str()));

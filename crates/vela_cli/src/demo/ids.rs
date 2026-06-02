@@ -7,7 +7,6 @@ use vela_engine::context_schema::{
 pub(crate) const PLAYER_TYPE: u32 = 1;
 pub(crate) const CTX_TYPE: u32 = CONTEXT_HOST_TYPE_ID.get();
 pub(crate) const MONSTER_TYPE: u32 = 3;
-pub(crate) const CONFIG_TYPE: u32 = 4;
 
 const LEVEL_FIELD: u32 = 2;
 const EXP_FIELD: u32 = 6;
