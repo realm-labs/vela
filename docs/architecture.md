@@ -1883,10 +1883,12 @@ at a safe point. Hosts that already have a `PatchTx` can use
 `runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a pending
 reload before and after successful host patch apply.
 
-For file-watcher workflows, hosts may compile an update from a changed `.vela`
-file inside a module root. The engine validates the changed path and recompiles
-the full root so imports, module dependency impact, and ABI checks are based on
-the same complete module graph as directory reloads.
+For full module-root workflows, hosts can call
+`runtime.stage_hot_reload_update_dir("scripts")` with the same safe-point
+semantics. For file-watcher workflows, hosts may stage an update from a changed
+`.vela` file inside a module root. The engine validates the changed path and
+recompiles the full root so imports, module dependency impact, and ABI checks
+are based on the same complete module graph as directory reloads.
 
 Hot-reload ABI manifests copy optional declaration spans from reflected schema,
 function, and method descriptors. When schema, function effect/access, or method

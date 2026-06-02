@@ -182,6 +182,15 @@ impl Runtime {
         self.stage_hot_reload_source_update_result(update)
     }
 
+    pub fn stage_hot_reload_update_dir(
+        &mut self,
+        root: impl AsRef<Path>,
+    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
+        let previous = self.current_hot_reload_version()?;
+        let update = self.engine.compile_hot_reload_update_dir(&previous, root);
+        self.stage_hot_reload_source_update_result(update)
+    }
+
     pub fn stage_hot_reload_update_changed_file(
         &mut self,
         root: impl AsRef<Path>,

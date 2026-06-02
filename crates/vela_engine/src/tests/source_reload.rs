@@ -214,6 +214,162 @@ pub fn grant() {
 }
 
 #[test]
+fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
+    let root = unique_test_dir("runtime_stage_hot_reload_dir");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir update should stage");
+    assert!(
+        runtime
+            .has_pending_hot_update()
+            .expect("dir update should be pending")
+    );
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
+    assert_eq!(report.changed_modules, vec!["game.reward"]);
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("safe point should consume dir update")
+    );
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_rejection");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let engine = Engine::builder()
+        .hot_reload_policy(HotReloadPolicy::locked_down())
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    write_reward_module_with_helper(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("hot reload rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert!(matches!(
+        report.errors[0].error.kind,
+        HotReloadErrorKind::NewFunctionDenied { ref function }
+            if function == "game.reward.helper"
+    ));
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn runtime_returns_hot_reload_dir_source_errors_immediately() {
+    let root = unique_test_dir("runtime_stage_dir_source_error");
+    let _reward_file = write_reward_modules(&root, "return grant();", 2);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let missing = root.join("missing_dir");
+
+    let error = runtime
+        .stage_hot_reload_update_dir(&missing)
+        .expect("runtime should be hot-reload enabled")
+        .expect_err("missing source root should not stage a hot reload report");
+
+    assert!(matches!(
+        error.kind,
+        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+            kind: EngineSourceErrorKind::Io { .. }
+        })
+    ));
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("source error should not stage an update")
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn engine_compile_hot_reload_changed_file_reloads_module_root() {
     let root = unique_test_dir("hot_reload_changed_file");
     let reward_file = write_reward_modules(&root, "return grant() + 1;", 4);
