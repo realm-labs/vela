@@ -742,6 +742,149 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
 }
 
 #[test]
+fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
+    let root = unique_test_dir("runtime_stage_hot_reload_file");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    std::fs::write(&path, "fn main() { return 5; }").expect("write updated source");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("file update should stage");
+    assert!(
+        runtime
+            .has_pending_hot_update()
+            .expect("file update should be pending")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged file report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["main"]);
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("safe point should consume file update")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(5))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_rejection");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let engine = Engine::builder()
+        .hot_reload_policy(HotReloadPolicy::locked_down())
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &path,
+        r#"
+fn helper() {
+    return 2;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("write rejected source");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("hot reload rejection should be staged");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert!(matches!(
+        report.errors[0].error.kind,
+        HotReloadErrorKind::NewFunctionDenied { ref function }
+            if function == "helper"
+    ));
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn runtime_returns_hot_reload_file_source_errors_immediately() {
+    let root = unique_test_dir("runtime_stage_file_source_error");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let missing = root.join("missing.vela");
+
+    let error = runtime
+        .stage_hot_reload_update_file(&missing)
+        .expect("runtime should be hot-reload enabled")
+        .expect_err("missing source should not stage a hot reload report");
+
+    assert!(matches!(
+        error.kind,
+        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+            kind: EngineSourceErrorKind::Io { .. }
+        })
+    ));
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("source error should not stage an update")
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_compiles_hot_reload_changed_file_from_active_version() {
     let root = unique_test_dir("runtime_hot_reload_changed_file");
     let reward_file = write_reward_modules(&root, "return grant();", 2);

@@ -1864,10 +1864,9 @@ world.apply(tx)?;
 ### Hot Reload
 
 ```rust
-let update = runtime
-    .compile_hot_reload_update_file("scripts/combat.vela")?
+runtime
+    .stage_hot_reload_update_file("scripts/combat.vela")?
     ?;
-runtime.stage_hot_update(update)?;
 
 if let Some(report) = runtime.check_reload()? {
     if !report.accepted {
@@ -1878,10 +1877,11 @@ if let Some(report) = runtime.check_reload()? {
 
 Runtime update compilation uses the runtime's active `ProgramVersion`, so hosts
 do not need to separately fetch the current version before compiling an update.
-Staged updates do not affect active code until the host calls
-`runtime.check_reload()` at a safe point. Hosts that already have a `PatchTx`
-can use `runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a
-pending reload before and after successful host patch apply.
+Source load and path errors are returned immediately, while accepted updates and
+ABI or policy rejections are staged until the host calls `runtime.check_reload()`
+at a safe point. Hosts that already have a `PatchTx` can use
+`runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a pending
+reload before and after successful host patch apply.
 
 For file-watcher workflows, hosts may compile an update from a changed `.vela`
 file inside a module root. The engine validates the changed path and recompiles

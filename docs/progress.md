@@ -94,9 +94,9 @@ closes or exposes a more specific gap.
 - Engine and Runtime hot-reload source workflows accept changed `.vela` file
   events inside a module root while recompiling the full root for import and
   ABI correctness.
-- Runtime changed-file reload staging keeps source path/load errors immediate
-  while deferring accepted updates and ABI/policy rejections to the next
-  explicit safe-point report.
+- Runtime source-file and changed-file reload staging keeps source path/load
+  errors immediate while deferring accepted updates and ABI/policy rejections
+  to the next explicit safe-point report.
 - Analysis diagnostics can report non-exhaustive matches for known script
   enums and dynamic Option/Result facts used by propagation-style control flow.
 - Analysis diagnostics can use TypeRegistry field access metadata to flag

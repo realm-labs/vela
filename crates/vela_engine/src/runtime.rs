@@ -173,16 +173,32 @@ impl Runtime {
             .compile_hot_reload_update_changed_file(&previous, root, changed_file))
     }
 
+    pub fn stage_hot_reload_update_file(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
+        let previous = self.current_hot_reload_version()?;
+        let update = self.engine.compile_hot_reload_update_file(&previous, path);
+        self.stage_hot_reload_source_update_result(update)
+    }
+
     pub fn stage_hot_reload_update_changed_file(
         &mut self,
         root: impl AsRef<Path>,
         changed_file: impl AsRef<Path>,
     ) -> EngineResult<EngineHotReloadSourceResult<()>> {
         let previous = self.current_hot_reload_version()?;
-        match self
-            .engine
-            .compile_hot_reload_update_changed_file(&previous, root, changed_file)
-        {
+        let update =
+            self.engine
+                .compile_hot_reload_update_changed_file(&previous, root, changed_file);
+        self.stage_hot_reload_source_update_result(update)
+    }
+
+    fn stage_hot_reload_source_update_result(
+        &mut self,
+        update: EngineHotReloadSourceResult<HotUpdate>,
+    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
+        match update {
             Ok(update) => {
                 self.stage_hot_update(update)?;
                 Ok(Ok(()))

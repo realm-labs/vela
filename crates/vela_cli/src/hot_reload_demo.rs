@@ -25,21 +25,21 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
         .ok_or("runtime must keep the initial hot reload version")?;
     let old_before = run_current_main(&mut runtime)?;
 
-    let update = match runtime
-        .compile_hot_reload_update_file(updated_path)
+    if let Err(error) = runtime
+        .stage_hot_reload_update_file(updated_path)
         .map_err(|error| format!("{error:?}"))?
     {
-        Ok(update) => Ok(update),
-        Err(error) => match error.kind {
+        match error.kind {
             EngineHotReloadSourceErrorKind::Source(error) => {
                 return Err(
                     crate::diagnostics::render_engine_source_error(updated_path, &error).into(),
                 );
             }
-            EngineHotReloadSourceErrorKind::HotReload(error) => Err(error),
-        },
-    };
-    runtime.stage_hot_update_result(update)?;
+            EngineHotReloadSourceErrorKind::HotReload(error) => {
+                return Err(format!("{error:?}").into());
+            }
+        }
+    }
     let report = runtime
         .check_reload()?
         .ok_or("staged hot reload update was not consumed at the safe point")?;
