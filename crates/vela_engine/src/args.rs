@@ -11,6 +11,10 @@ pub trait IntoScriptArg {
     fn into_script_arg(self) -> Value;
 }
 
+pub trait IntoHostArg {
+    fn into_host_ref(self) -> HostRef;
+}
+
 pub trait FromScriptArg: Sized {
     const TYPE_NAME: &'static str;
 
@@ -62,6 +66,12 @@ impl IntoScriptArg for HostRef {
     }
 }
 
+impl IntoHostArg for HostRef {
+    fn into_host_ref(self) -> HostRef {
+        self
+    }
+}
+
 impl FromScriptArg for HostRef {
     const TYPE_NAME: &'static str = "host ref";
 
@@ -76,6 +86,24 @@ impl FromScriptArg for HostRef {
 impl IntoScriptArg for &HostRef {
     fn into_script_arg(self) -> Value {
         Value::HostRef(*self)
+    }
+}
+
+impl IntoHostArg for &HostRef {
+    fn into_host_ref(self) -> HostRef {
+        *self
+    }
+}
+
+impl IntoHostArg for (u32, u64, u32) {
+    fn into_host_ref(self) -> HostRef {
+        HostRef::new(HostTypeId::new(self.0), HostObjectId::new(self.1), self.2)
+    }
+}
+
+impl IntoHostArg for (HostTypeId, HostObjectId, u32) {
+    fn into_host_ref(self) -> HostRef {
+        HostRef::new(self.0, self.1, self.2)
     }
 }
 
@@ -516,11 +544,12 @@ pub fn empty_args() -> Vec<Value> {
 #[doc(hidden)]
 #[must_use]
 pub fn host_ref_value(type_id: u32, object_id: u64, generation: u32) -> Value {
-    Value::HostRef(HostRef::new(
-        HostTypeId::new(type_id),
-        HostObjectId::new(object_id),
-        generation,
-    ))
+    host((type_id, object_id, generation))
+}
+
+#[must_use]
+pub fn host(host: impl IntoHostArg) -> Value {
+    Value::HostRef(host.into_host_ref())
 }
 
 #[macro_export]
@@ -537,5 +566,8 @@ macro_rules! args {
 macro_rules! host {
     ($type_id:expr, $object_id:expr, $generation:expr $(,)?) => {
         $crate::args::host_ref_value($type_id, $object_id, $generation)
+    };
+    ($host:expr $(,)?) => {
+        $crate::args::host($host)
     };
 }

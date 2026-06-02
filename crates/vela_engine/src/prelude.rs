@@ -1,5 +1,6 @@
 //! Common imports for embedding Vela in a Rust host.
 
+pub use crate::args::host;
 pub use crate::builder::EngineBuilder;
 pub use crate::context::NativeCallContext;
 pub use crate::engine::Engine;

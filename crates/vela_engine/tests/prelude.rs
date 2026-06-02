@@ -28,7 +28,8 @@ fn main(player: Player, amount: int) {
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
-    let args = args![host!(1, 42, 1), 12];
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let args = args![host(player), 12];
 
     let result = runtime
         .call(
@@ -41,10 +42,7 @@ fn main(player: Player, amount: int) {
         .expect("runtime call should run");
 
     assert_eq!(result, Value::Int(12));
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1)),
-    );
+    assert_eq!(tx.patches()[0].path, HostPath::new(player),);
     assert_eq!(
         tx.patches()[0].op,
         PatchOp::CallHostMethod {

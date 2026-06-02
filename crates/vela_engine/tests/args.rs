@@ -199,6 +199,16 @@ fn args_macro_converts_rust_values_and_host_refs() {
     );
     assert_eq!(vela_engine::args!(), Vec::<Value>::new());
     assert_eq!(vela_engine::host!(1, 42, 7), Value::HostRef(host_ref));
+    assert_eq!(vela_engine::host!(host_ref), Value::HostRef(host_ref));
+    assert_eq!(vela_engine::args::host(host_ref), Value::HostRef(host_ref));
+    assert_eq!(
+        vela_engine::args::host((1_u32, 42_u64, 7_u32)),
+        Value::HostRef(host_ref)
+    );
+    assert_eq!(
+        vela_engine::args::host((HostTypeId::new(1), HostObjectId::new(42), 7_u32)),
+        Value::HostRef(host_ref)
+    );
 }
 
 #[test]
