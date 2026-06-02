@@ -118,6 +118,26 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_function_names() {
+        let error = expand_result(
+            quote! { id = 1, name = "" },
+            quote! {
+                fn grant(amount: i64) -> i64 {
+                    amount
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("empty function name should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script function name cannot be empty")
+        );
+    }
+
+    #[test]
     fn rejects_function_where_clauses() {
         let error = expand_result(
             quote! { id = 1 },

@@ -95,6 +95,12 @@ pub(super) fn collect_methods(item: &mut ItemImpl) -> Result<Vec<MethodMeta>> {
             .name
             .clone()
             .unwrap_or_else(|| method.sig.ident.to_string());
+        if name.is_empty() {
+            return Err(error(
+                method.sig.ident.span(),
+                "script method name cannot be empty",
+            ));
+        }
         if !seen_names.insert(name) {
             return Err(error(
                 method.sig.ident.span(),

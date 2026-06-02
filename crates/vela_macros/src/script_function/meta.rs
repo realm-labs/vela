@@ -218,9 +218,17 @@ pub(super) fn function_meta(
     }
     reject_return_type(&item.sig.output)?;
 
+    let name = attrs.name.unwrap_or_else(|| item.sig.ident.to_string());
+    if name.is_empty() {
+        return Err(error(
+            item.sig.ident.span(),
+            "script function name cannot be empty",
+        ));
+    }
+
     Ok(FunctionMeta {
         id,
-        name: attrs.name.unwrap_or_else(|| item.sig.ident.to_string()),
+        name,
         effect: attrs.effect.unwrap_or(FunctionEffect::Pure),
         docs,
         attrs: attrs.attrs,
