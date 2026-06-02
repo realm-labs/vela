@@ -293,6 +293,20 @@ fn engine_rejects_duplicate_type_names() {
 }
 
 #[test]
+fn engine_rejects_malformed_type_names() {
+    let result = Engine::builder()
+        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "")))
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidTypeName {
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_type_ids() {
     let result = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
@@ -304,6 +318,26 @@ fn engine_rejects_duplicate_type_ids() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateTypeId { id: 1 }
+    ));
+}
+
+#[test]
+fn engine_rejects_malformed_field_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(FieldDesc::new(FieldId::new(1), "")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidSchemaMemberName {
+            type_name: "Player".to_owned(),
+            member_kind: "field".to_owned(),
+            name: "".to_owned(),
+        }
     ));
 }
 
@@ -568,6 +602,29 @@ fn engine_rejects_duplicate_host_method_ids() {
 }
 
 #[test]
+fn engine_rejects_malformed_trait_method_param_names() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
+                trait_desc_with_id(TraitId::new(1), "Damageable").method(
+                    TraitMethodDesc::new(MethodId::new(1), "damage")
+                        .param(MethodParamDesc::new("")),
+                ),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidSchemaMemberName {
+            type_name: "Player".to_owned(),
+            member_kind: "trait method parameter".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_host_method_names() {
     let result = Engine::builder()
         .register_type(
@@ -625,6 +682,25 @@ fn engine_rejects_duplicate_native_method_ids() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodId { id: 44 }
+    ));
+}
+
+#[test]
+fn engine_rejects_malformed_host_method_names() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(1), "")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidSchemaMemberName {
+            type_name: "Player".to_owned(),
+            member_kind: "host method".to_owned(),
+            name: "".to_owned(),
+        }
     ));
 }
 

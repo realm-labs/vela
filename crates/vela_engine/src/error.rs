@@ -39,6 +39,14 @@ pub enum EngineErrorKind {
     DuplicateTypeName {
         name: String,
     },
+    InvalidTypeName {
+        name: String,
+    },
+    InvalidSchemaMemberName {
+        type_name: String,
+        member_kind: String,
+        name: String,
+    },
     DuplicateHostTypeId {
         id: u32,
     },
@@ -138,6 +146,19 @@ impl fmt::Display for EngineError {
             EngineErrorKind::DuplicateTypeId { id } => write!(formatter, "duplicate type id {id}"),
             EngineErrorKind::DuplicateTypeName { name } => {
                 write!(formatter, "duplicate type name {name}")
+            }
+            EngineErrorKind::InvalidTypeName { name } => {
+                write!(formatter, "invalid type name {name}")
+            }
+            EngineErrorKind::InvalidSchemaMemberName {
+                type_name,
+                member_kind,
+                name,
+            } => {
+                write!(
+                    formatter,
+                    "invalid {member_kind} name {name} on type {type_name}"
+                )
             }
             EngineErrorKind::DuplicateHostTypeId { id } => {
                 write!(formatter, "duplicate host type id {id}")

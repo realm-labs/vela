@@ -111,6 +111,11 @@ fn validate_type_desc(
     host_method_ids: &mut BTreeSet<vela_common::HostMethodId>,
     host_method_names: &mut BTreeSet<(String, String)>,
 ) -> EngineResult<()> {
+    if !is_valid_simple_name(&desc.key.name) {
+        return Err(EngineError::new(EngineErrorKind::InvalidTypeName {
+            name: desc.key.name.clone(),
+        }));
+    }
     if !ids.insert(desc.key.id) {
         return Err(EngineError::new(EngineErrorKind::DuplicateTypeId {
             id: desc.key.id.get(),
@@ -134,6 +139,7 @@ fn validate_type_desc(
     validate_type_traits(desc)?;
 
     for method in &desc.methods {
+        validate_schema_member_name(&desc.key.name, "host method", &method.name)?;
         if !host_method_ids.insert(method.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodId {
                 id: method.id.get(),
@@ -154,6 +160,7 @@ fn validate_type_fields(desc: &TypeDesc) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     for field in &desc.fields {
+        validate_schema_member_name(&desc.key.name, "field", &field.name)?;
         if !ids.insert(field.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateFieldId {
                 type_name: desc.key.name.clone(),
@@ -174,6 +181,7 @@ fn validate_type_variants(desc: &TypeDesc) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     for variant in &desc.variants {
+        validate_schema_member_name(&desc.key.name, "variant", &variant.name)?;
         if !ids.insert(variant.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateVariantId {
                 type_name: desc.key.name.clone(),
@@ -198,6 +206,7 @@ fn validate_variant_fields(
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     for field in &variant.fields {
+        validate_schema_member_name(type_name, "variant field", &field.name)?;
         if !ids.insert(field.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateVariantFieldId {
                 type_name: type_name.to_owned(),
@@ -222,6 +231,7 @@ fn validate_type_traits(desc: &TypeDesc) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     for trait_desc in &desc.traits {
+        validate_schema_member_name(&desc.key.name, "trait", &trait_desc.name)?;
         if !ids.insert(trait_desc.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateTraitId {
                 type_name: desc.key.name.clone(),
@@ -246,6 +256,7 @@ fn validate_trait_methods(
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     for method in &trait_desc.methods {
+        validate_schema_member_name(type_name, "trait method", &method.name)?;
         if !ids.insert(method.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateTraitMethodId {
                 type_name: type_name.to_owned(),
@@ -279,6 +290,7 @@ fn validate_host_method_params(
 ) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for param in params {
+        validate_schema_member_name(type_name, "host method parameter", &param.name)?;
         if !names.insert(param.name.as_str()) {
             return Err(EngineError::new(
                 EngineErrorKind::DuplicateHostMethodParamName {
@@ -300,6 +312,7 @@ fn validate_trait_method_params(
 ) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for param in params {
+        validate_schema_member_name(type_name, "trait method parameter", &param.name)?;
         if !names.insert(param.name.as_str()) {
             return Err(EngineError::new(
                 EngineErrorKind::DuplicateTraitMethodParamName {
@@ -385,4 +398,19 @@ fn validate_native_function_params(desc: &NativeFunctionDesc) -> EngineResult<()
 
 fn is_valid_dotted_name(name: &str) -> bool {
     !name.is_empty() && name.split('.').all(|segment| !segment.is_empty())
+}
+
+fn validate_schema_member_name(type_name: &str, member_kind: &str, name: &str) -> EngineResult<()> {
+    if is_valid_simple_name(name) {
+        return Ok(());
+    }
+    Err(EngineError::new(EngineErrorKind::InvalidSchemaMemberName {
+        type_name: type_name.to_owned(),
+        member_kind: member_kind.to_owned(),
+        name: name.to_owned(),
+    }))
+}
+
+fn is_valid_simple_name(name: &str) -> bool {
+    !name.is_empty()
 }
