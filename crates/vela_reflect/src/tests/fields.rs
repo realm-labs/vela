@@ -399,8 +399,12 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
         TypeDesc::new(TypeKey::new(TypeId::new(200), "Player"))
             .kind(TypeKind::ScriptStruct)
             .field(
-                FieldDesc::new(FieldId::new(2), "level")
-                    .access(FieldAccess::new().require_permission("player.level.reflect")),
+                FieldDesc::new(FieldId::new(2), "level").access(
+                    FieldAccess::new()
+                        .writable(true)
+                        .reflect_writable(true)
+                        .require_permission("player.level.reflect"),
+                ),
             ),
     );
     let adapter = MockStateAdapter::new();
@@ -471,6 +475,49 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
 }
 
 #[test]
+fn reflect_set_with_policy_denies_non_reflect_writable_script_fields() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(203), "Player"))
+            .kind(TypeKind::ScriptStruct)
+            .field(
+                FieldDesc::new(FieldId::new(2), "level")
+                    .access(FieldAccess::new().writable(true).reflect_writable(false)),
+            ),
+    );
+    let adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let record = ReflectValue::ScriptRecord {
+        type_name: "Player".to_owned(),
+        fields: BTreeMap::from([("level".to_owned(), ReflectValue::Host(HostValue::Int(7)))]),
+    };
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = set_with_policy(
+        &mut ctx,
+        &record,
+        "level",
+        ReflectValue::Host(HostValue::Int(10)),
+        &ReflectPolicy::all(),
+    )
+    .expect_err("script field should not be reflect writable");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::FieldNotReflectWritable {
+            type_name: "Player".to_owned(),
+            field: "level".to_owned(),
+            source_span: None,
+        }
+    );
+    assert!(ctx.tx.patches().is_empty());
+}
+
+#[test]
 fn reflect_get_with_policy_filters_unknown_script_field_candidates() {
     let mut registry = TypeRegistry::new();
     registry.register(
@@ -515,6 +562,59 @@ fn reflect_get_with_policy_filters_unknown_script_field_candidates() {
             related: vec![ReflectCandidate::new("level", None)],
         }
     );
+}
+
+#[test]
+fn reflect_set_with_policy_filters_unknown_script_field_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(205), "Player"))
+            .kind(TypeKind::ScriptStruct)
+            .field(FieldDesc::new(FieldId::new(1), "level").writable(true))
+            .field(
+                FieldDesc::new(FieldId::new(2), "level_secret")
+                    .access(FieldAccess::new().writable(true).reflect_writable(false)),
+            )
+            .field(
+                FieldDesc::new(FieldId::new(3), "level_admin").access(
+                    FieldAccess::new()
+                        .writable(true)
+                        .reflect_writable(true)
+                        .require_permission("player.level.admin"),
+                ),
+            ),
+    );
+    let adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let record = ReflectValue::ScriptRecord {
+        type_name: "Player".to_owned(),
+        fields: BTreeMap::from([("level".to_owned(), ReflectValue::Host(HostValue::Int(7)))]),
+    };
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = set_with_policy(
+        &mut ctx,
+        &record,
+        "level_secrett",
+        ReflectValue::Host(HostValue::Int(10)),
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown script field");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::UnknownField {
+            type_name: "Player".to_owned(),
+            field: "level_secrett".to_owned(),
+            candidates: vec!["level".to_owned()],
+            related: vec![ReflectCandidate::new("level", None)],
+        }
+    );
+    assert!(ctx.tx.patches().is_empty());
 }
 
 #[test]
@@ -566,6 +666,52 @@ fn reflect_get_with_policy_filters_unknown_script_enum_field_candidates() {
             related: vec![ReflectCandidate::new("count", None)],
         }
     );
+}
+
+#[test]
+fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(204), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Active").field(
+                    FieldDesc::new(FieldId::new(1), "count")
+                        .access(FieldAccess::new().writable(true).reflect_writable(false)),
+                ),
+            ),
+    );
+    let adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let value = ReflectValue::ScriptEnum {
+        enum_name: "QuestProgress".to_owned(),
+        variant: "Active".to_owned(),
+        fields: BTreeMap::from([("count".to_owned(), ReflectValue::Host(HostValue::Int(7)))]),
+    };
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = set_with_policy(
+        &mut ctx,
+        &value,
+        "count",
+        ReflectValue::Host(HostValue::Int(10)),
+        &ReflectPolicy::all(),
+    )
+    .expect_err("script enum field should not be reflect writable");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::FieldNotReflectWritable {
+            type_name: "QuestProgress.Active".to_owned(),
+            field: "count".to_owned(),
+            source_span: None,
+        }
+    );
+    assert!(ctx.tx.patches().is_empty());
 }
 
 #[test]

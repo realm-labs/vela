@@ -267,7 +267,7 @@ fn set_impl(
             if let Some(policy) = policy
                 && let Some(field_desc) = script_record_field(ctx.registry, type_name, field)
             {
-                policy.require_field_permissions(type_name, field_desc)?;
+                policy.require_field_write_access(type_name, field_desc)?;
             }
             Ok(ReflectValue::ScriptRecord {
                 type_name: type_name.clone(),
@@ -279,7 +279,7 @@ fn set_impl(
                             field,
                             fields,
                             policy,
-                            FieldCandidateAccess::Permissions,
+                            FieldCandidateAccess::ScriptWrite,
                         )
                     } else {
                         script_record_unknown_field(ctx.registry, type_name, field, fields)
@@ -295,7 +295,7 @@ fn set_impl(
             if let Some(policy) = policy
                 && let Some(field_desc) = script_enum_field(ctx.registry, enum_name, variant, field)
             {
-                policy.require_field_permissions(&format!("{enum_name}.{variant}"), field_desc)?;
+                policy.require_field_write_access(&format!("{enum_name}.{variant}"), field_desc)?;
             }
             Ok(ReflectValue::ScriptEnum {
                 enum_name: enum_name.clone(),
@@ -309,7 +309,7 @@ fn set_impl(
                             field,
                             fields,
                             policy,
-                            FieldCandidateAccess::Permissions,
+                            FieldCandidateAccess::ScriptWrite,
                         )
                     } else {
                         script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)

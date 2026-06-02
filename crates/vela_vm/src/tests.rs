@@ -107,7 +107,7 @@ fn script_reflection_registry() -> TypeRegistry {
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(200), "Player"))
             .kind(TypeKind::ScriptStruct)
-            .field(FieldDesc::new(FieldId::new(20), "level"))
+            .field(FieldDesc::new(FieldId::new(20), "level").writable(true))
             .trait_impl(TraitDesc::new("Damageable")),
     );
     registry

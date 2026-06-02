@@ -32,6 +32,7 @@ impl TypeRegistry {
                                         script_field_id(&type_name, &field.name, &field.attrs),
                                         field.name.clone(),
                                     )
+                                    .writable(true)
                                     .origin(DeclOrigin::Script)
                                     .defaulted(field.default_value_span.is_some())
                                     .source_span(field.span),
@@ -78,6 +79,7 @@ impl TypeRegistry {
                                                     ),
                                                     field.name,
                                                 )
+                                                .writable(true)
                                                 .origin(DeclOrigin::Script)
                                                 .defaulted(field.has_default)
                                                 .source_span(field.span),
@@ -502,6 +504,9 @@ enum QuestProgress {
             .expect("count field");
         assert_eq!(count_field.type_hint.as_deref(), Some("int"));
         assert!(count_field.has_default);
+        assert!(count_field.writable);
+        assert!(count_field.access.writable);
+        assert!(count_field.access.reflect_writable);
         assert_eq!(count_field.origin, DeclOrigin::Script);
         assert_eq!(
             count_field.source_span.map(|span| span.source),
@@ -549,6 +554,13 @@ enum QuestProgress {
                 .find(|field| field.name == "quest_id")
                 .map(|field| field.origin),
             Some(DeclOrigin::Script)
+        );
+        assert!(
+            active
+                .fields
+                .iter()
+                .find(|field| field.name == "quest_id")
+                .is_some_and(|field| field.writable && field.access.reflect_writable)
         );
         assert!(
             active

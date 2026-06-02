@@ -97,6 +97,13 @@ Reflective reads, writes, and calls resolve descriptor metadata to stable IDs
 and route host interaction through PatchTx. Private, effectful, host path, and
 field-level operations require explicit reflection permissions.
 
+Script-owned struct and enum payload fields are reflected as writable by
+default because script values can be copied and updated without touching host
+state. Copy-returning `reflect.set` for script values still enforces
+`reflect_writable` and field-level required permissions, while HostRef
+`reflect.set` additionally requires host field writability before recording a
+PatchTx write.
+
 ### Hot Reload
 
 Hot reload replaces function-level or module-level code objects at safe points.

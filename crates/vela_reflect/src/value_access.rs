@@ -10,7 +10,7 @@ use crate::value::ReflectValue;
 pub(crate) enum FieldCandidateAccess {
     Read,
     HostWrite,
-    Permissions,
+    ScriptWrite,
 }
 
 pub(crate) fn get_record_field(
@@ -220,8 +220,8 @@ fn field_candidate_allowed(
         FieldCandidateAccess::HostWrite => {
             field.writable && policy.require_field_write_access(type_name, field).is_ok()
         }
-        FieldCandidateAccess::Permissions => {
-            policy.require_field_permissions(type_name, field).is_ok()
+        FieldCandidateAccess::ScriptWrite => {
+            policy.require_field_write_access(type_name, field).is_ok()
         }
     }
 }

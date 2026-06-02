@@ -84,6 +84,9 @@ conformance contracts are stable.
   method access, effect, and permission hints for likely method names.
 - Reflection field, method, and function access-denial diagnostics carry copied
   declaration source spans when schema metadata provides them.
+- Script-defined struct and enum fields expose writable reflection metadata,
+  and copy-returning `reflect.set` respects `reflect_writable` plus field
+  permissions for script values.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
