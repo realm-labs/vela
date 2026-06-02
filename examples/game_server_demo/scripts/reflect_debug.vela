@@ -214,25 +214,33 @@ fn main(ctx, player) {
         && option_variants.len() == 2
         && option_variants[0].name == "Some"
         && option_variants[0].fields[0].name == "0"
+        && option_variants[0].fields[0].owner == "Option.Some"
         && option_variants[0].fields[0].type == "any"
         && option_variants[1].name == "None"
         && result_variants.len() == 2
         && result_variants[0].name == "Ok"
         && result_variants[0].fields[0].name == "0"
+        && result_variants[0].fields[0].owner == "Result.Ok"
         && result_variants[0].fields[0].type == "any"
         && result_variants[1].name == "Err"
         && result_variants[1].fields[0].name == "0"
+        && result_variants[1].fields[0].owner == "Result.Err"
         && result_variants[1].fields[0].type == "any"
         && reflected_variants.len() == 7
         && reflect.name(active_variant) == "Active"
         && reflect.owner(active_variant) == "QuestProgress"
         && active_variant.fields.len() == 1
         && active_variant.fields[0].name == "count"
+        && active_variant.fields[0].owner == "QuestProgress.Active"
+        && quest_variants[0].fields[0].owner == "QuestProgress.Active"
+        && quest_type_variants[0].fields[0].owner == "QuestProgress.Active"
         && reflect.name(host_active_variant) == "Active"
         && reflect.owner(host_active_variant) == "HostQuestProgress"
         && host_active_variant.fields.len() == 2
         && host_active_variant.fields[0].name == "quest_count"
+        && host_active_variant.fields[0].owner == "HostQuestProgress.Active"
         && host_active_variant.fields[1].name == "quest_done"
+        && host_active_variant.fields[1].owner == "HostQuestProgress.Active"
         && reflect.has_variant(quest_type, "Active")
         && reflect.has_variant(host_quest_type, "Active")
         && !reflect.has_variant(quest_type, "Paused")

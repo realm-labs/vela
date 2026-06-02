@@ -310,22 +310,29 @@ fn main(player) {
         && type_variants.len() == 2
         && variants[0].owner == "QuestProgress"
         && reflect.owner(variants[0]) == "QuestProgress"
+        && variants[0].fields[0].owner == "QuestProgress.Active"
         && active.name == "Active"
         && type_active.id == active.id
         && active.owner == "QuestProgress"
         && reflect.owner(active) == "QuestProgress"
         && reflect.origin(active) == "host"
         && active.fields[0].name == "count"
+        && active.fields[0].owner == "QuestProgress.Active"
         && reflect.has_field(quest, "count")
         && !reflect.has_field(quest, "missing")
         && active_fields.len() == 1
         && active_fields[0].name == "count"
+        && active_fields[0].owner == "QuestProgress.Active"
         && active_count.name == "count"
+        && active_count.owner == "QuestProgress.Active"
         && active_count.id == active.fields[0].id
+        && type_variants[0].fields[0].owner == "QuestProgress.Active"
+        && type_active.fields[0].owner == "QuestProgress.Active"
         && reflect.has_variant(quest_type, "Active")
         && all_variants.len() == 2
         && all_variants[0].owner == "QuestProgress"
         && all_variants[0].name == "Active"
+        && all_variants[0].fields[0].owner == "QuestProgress.Active"
         && reflect.variant(quest) == "Active"
         && reflect.has_variant(quest, "Active")
         && !reflect.has_variant(quest, "Paused")
