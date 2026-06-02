@@ -6,14 +6,16 @@ use crate::error::ReflectErrorKind;
 use crate::members::trait_by_name as trait_metadata_by_name;
 use crate::permissions::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 use crate::registry::{
-    FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry,
+    FieldDesc, MethodDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
 use crate::types::type_by_name as type_metadata_by_name;
 use crate::value::{
     ReflectContext, ReflectValue, call, call_with_policy, fields, get, get_with_policy, implements,
     set, set_with_policy, type_of,
 };
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
+use vela_common::{
+    FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId, VariantId,
+};
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};

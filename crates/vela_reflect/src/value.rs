@@ -11,8 +11,10 @@ use crate::{
     permissions::ReflectPolicy,
     registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry},
     value_access::{
-        get_record_field, record_unknown_field, script_enum_field, script_enum_unknown_field,
-        script_record_field, script_record_unknown_field, set_record_field,
+        FieldCandidateAccess, get_record_field, record_unknown_field,
+        schema_unknown_field_with_policy, schema_unknown_method_with_policy, script_enum_field,
+        script_enum_unknown_field, script_enum_unknown_field_with_policy, script_record_field,
+        script_record_unknown_field, script_record_unknown_field_with_policy, set_record_field,
     },
 };
 
@@ -99,11 +101,20 @@ fn get_impl(
 ) -> ReflectResult<ReflectValue> {
     match target {
         ReflectValue::HostRef(host_ref) => {
-            let field_desc = ctx.registry.host_field(*host_ref, field)?;
-            let type_name = ctx
-                .registry
-                .type_of_host(*host_ref)
-                .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
+            let (field_desc, type_name) = if let Some(policy) = policy {
+                let desc = host_type(ctx.registry, *host_ref)?;
+                (
+                    find_field_with_policy(desc, field, policy, FieldCandidateAccess::Read)?,
+                    desc.key.name.clone(),
+                )
+            } else {
+                let field_desc = ctx.registry.host_field(*host_ref, field)?;
+                let type_name = ctx
+                    .registry
+                    .type_of_host(*host_ref)
+                    .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
+                (field_desc, type_name)
+            };
             if let Some(policy) = policy {
                 policy.require_field_read_access(&type_name, field_desc)?;
             } else if !field_desc.access.reflect_readable {
@@ -130,7 +141,18 @@ fn get_impl(
                 policy.require_field_read_access(type_name, field_desc)?;
             }
             get_record_field(field, fields, || {
-                script_record_unknown_field(ctx.registry, type_name, field, fields)
+                if let Some(policy) = policy {
+                    script_record_unknown_field_with_policy(
+                        ctx.registry,
+                        type_name,
+                        field,
+                        fields,
+                        policy,
+                        FieldCandidateAccess::Read,
+                    )
+                } else {
+                    script_record_unknown_field(ctx.registry, type_name, field, fields)
+                }
             })
         }
         ReflectValue::ScriptEnum {
@@ -144,7 +166,19 @@ fn get_impl(
                 policy.require_field_read_access(&format!("{enum_name}.{variant}"), field_desc)?;
             }
             get_record_field(field, fields, || {
-                script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
+                if let Some(policy) = policy {
+                    script_enum_unknown_field_with_policy(
+                        ctx.registry,
+                        enum_name,
+                        variant,
+                        field,
+                        fields,
+                        policy,
+                        FieldCandidateAccess::Read,
+                    )
+                } else {
+                    script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
+                }
             })
         }
         ReflectValue::Host(_) | ReflectValue::Closure | ReflectValue::Range => {
@@ -182,11 +216,20 @@ fn set_impl(
 ) -> ReflectResult<ReflectValue> {
     match target {
         ReflectValue::HostRef(host_ref) => {
-            let field_desc = ctx.registry.host_field(*host_ref, field)?;
-            let type_name = ctx
-                .registry
-                .type_of_host(*host_ref)
-                .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
+            let (field_desc, type_name) = if let Some(policy) = policy {
+                let desc = host_type(ctx.registry, *host_ref)?;
+                (
+                    find_field_with_policy(desc, field, policy, FieldCandidateAccess::HostWrite)?,
+                    desc.key.name.clone(),
+                )
+            } else {
+                let field_desc = ctx.registry.host_field(*host_ref, field)?;
+                let type_name = ctx
+                    .registry
+                    .type_of_host(*host_ref)
+                    .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
+                (field_desc, type_name)
+            };
             if !field_desc.writable {
                 return Err(ReflectError::new(ReflectErrorKind::FieldNotWritable {
                     type_name,
@@ -226,7 +269,18 @@ fn set_impl(
             Ok(ReflectValue::ScriptRecord {
                 type_name: type_name.clone(),
                 fields: set_record_field(field, fields, value, || {
-                    script_record_unknown_field(ctx.registry, type_name, field, fields)
+                    if let Some(policy) = policy {
+                        script_record_unknown_field_with_policy(
+                            ctx.registry,
+                            type_name,
+                            field,
+                            fields,
+                            policy,
+                            FieldCandidateAccess::Permissions,
+                        )
+                    } else {
+                        script_record_unknown_field(ctx.registry, type_name, field, fields)
+                    }
                 })?,
             })
         }
@@ -244,7 +298,19 @@ fn set_impl(
                 enum_name: enum_name.clone(),
                 variant: variant.clone(),
                 fields: set_record_field(field, fields, value, || {
-                    script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
+                    if let Some(policy) = policy {
+                        script_enum_unknown_field_with_policy(
+                            ctx.registry,
+                            enum_name,
+                            variant,
+                            field,
+                            fields,
+                            policy,
+                            FieldCandidateAccess::Permissions,
+                        )
+                    } else {
+                        script_enum_unknown_field(ctx.registry, enum_name, variant, field, fields)
+                    }
                 })?,
             })
         }
@@ -288,7 +354,11 @@ fn call_impl(
         .registry
         .type_of_host(*host_ref)
         .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
-    let method_desc = ctx.registry.host_method(*host_ref, method)?;
+    let method_desc = if let Some(policy) = policy {
+        find_method_with_policy(host_type(ctx.registry, *host_ref)?, method, policy)?
+    } else {
+        ctx.registry.host_method(*host_ref, method)?
+    };
     if let Some(policy) = policy {
         policy.require_method_access(&type_name, method_desc)?;
     }
@@ -353,6 +423,52 @@ pub fn implements(
         | ReflectValue::Record(_)
         | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
+}
+
+fn host_type(registry: &TypeRegistry, host_ref: HostRef) -> ReflectResult<&TypeDesc> {
+    registry.type_of_host(host_ref).ok_or_else(|| {
+        ReflectError::new(ReflectErrorKind::UnknownType {
+            host_type_id: host_ref.type_id,
+        })
+    })
+}
+
+fn find_field_with_policy<'a>(
+    desc: &'a TypeDesc,
+    field: &str,
+    policy: &ReflectPolicy,
+    access: FieldCandidateAccess,
+) -> ReflectResult<&'a FieldDesc> {
+    desc.fields
+        .iter()
+        .find(|candidate| candidate.name == field)
+        .ok_or_else(|| {
+            ReflectError::new(schema_unknown_field_with_policy(
+                &desc.key.name,
+                field,
+                &desc.fields,
+                policy,
+                access,
+            ))
+        })
+}
+
+fn find_method_with_policy<'a>(
+    desc: &'a TypeDesc,
+    method: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<&'a crate::registry::MethodDesc> {
+    desc.methods
+        .iter()
+        .find(|candidate| candidate.name == method)
+        .ok_or_else(|| {
+            ReflectError::new(schema_unknown_method_with_policy(
+                &desc.key.name,
+                method,
+                &desc.methods,
+                policy,
+            ))
+        })
 }
 
 fn type_implements(desc: &TypeDesc, trait_name: &str) -> bool {

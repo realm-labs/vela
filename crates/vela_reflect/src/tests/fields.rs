@@ -294,6 +294,101 @@ fn reflect_get_and_set_with_policy_require_field_permission() {
 }
 
 #[test]
+fn reflect_get_with_policy_filters_unknown_host_field_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(101), "Player"))
+            .host_type(HostTypeId::new(1))
+            .field(FieldDesc::new(FieldId::new(1), "level"))
+            .field(
+                FieldDesc::new(FieldId::new(2), "level_secret")
+                    .access(FieldAccess::new().reflect_readable(false)),
+            )
+            .field(
+                FieldDesc::new(FieldId::new(3), "level_admin")
+                    .access(FieldAccess::new().require_permission("player.level.admin")),
+            ),
+    );
+    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = get_with_policy(
+        &mut ctx,
+        &ReflectValue::HostRef(player_ref()),
+        "level_secrett",
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown host field");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::UnknownField {
+            type_name: "Player".to_owned(),
+            field: "level_secrett".to_owned(),
+            candidates: vec!["level".to_owned()],
+            related: vec![ReflectCandidate::new("level", None)],
+        }
+    );
+}
+
+#[test]
+fn reflect_set_with_policy_filters_unknown_host_field_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(102), "Player"))
+            .host_type(HostTypeId::new(1))
+            .field(
+                FieldDesc::new(FieldId::new(1), "level")
+                    .access(FieldAccess::new().writable(true).reflect_writable(true)),
+            )
+            .field(
+                FieldDesc::new(FieldId::new(2), "level_secret")
+                    .access(FieldAccess::new().writable(true).reflect_writable(false)),
+            )
+            .field(
+                FieldDesc::new(FieldId::new(3), "level_admin").access(
+                    FieldAccess::new()
+                        .writable(true)
+                        .reflect_writable(true)
+                        .require_permission("player.level.admin"),
+                ),
+            ),
+    );
+    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = set_with_policy(
+        &mut ctx,
+        &ReflectValue::HostRef(player_ref()),
+        "level_secrett",
+        ReflectValue::Host(HostValue::Int(10)),
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown host field");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::UnknownField {
+            type_name: "Player".to_owned(),
+            field: "level_secrett".to_owned(),
+            candidates: vec!["level".to_owned()],
+            related: vec![ReflectCandidate::new("level", None)],
+        }
+    );
+    assert!(ctx.tx.patches().is_empty());
+}
+
+#[test]
 fn reflect_get_and_set_with_policy_require_script_field_permission() {
     let mut registry = TypeRegistry::new();
     registry.register(
@@ -367,6 +462,104 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
         }
     );
     assert!(ctx.tx.patches().is_empty());
+}
+
+#[test]
+fn reflect_get_with_policy_filters_unknown_script_field_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(201), "Player"))
+            .kind(TypeKind::ScriptStruct)
+            .field(FieldDesc::new(FieldId::new(1), "level"))
+            .field(
+                FieldDesc::new(FieldId::new(2), "level_secret")
+                    .access(FieldAccess::new().reflect_readable(false)),
+            )
+            .field(
+                FieldDesc::new(FieldId::new(3), "level_admin")
+                    .access(FieldAccess::new().require_permission("player.level.admin")),
+            ),
+    );
+    let adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let record = ReflectValue::ScriptRecord {
+        type_name: "Player".to_owned(),
+        fields: BTreeMap::from([("level".to_owned(), ReflectValue::Host(HostValue::Int(7)))]),
+    };
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = get_with_policy(
+        &mut ctx,
+        &record,
+        "level_secrett",
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown script field");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::UnknownField {
+            type_name: "Player".to_owned(),
+            field: "level_secrett".to_owned(),
+            candidates: vec!["level".to_owned()],
+            related: vec![ReflectCandidate::new("level", None)],
+        }
+    );
+}
+
+#[test]
+fn reflect_get_with_policy_filters_unknown_script_enum_field_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(202), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Active")
+                    .field(FieldDesc::new(FieldId::new(1), "count"))
+                    .field(
+                        FieldDesc::new(FieldId::new(2), "count_secret")
+                            .access(FieldAccess::new().reflect_readable(false)),
+                    )
+                    .field(
+                        FieldDesc::new(FieldId::new(3), "count_admin")
+                            .access(FieldAccess::new().require_permission("quest.count.admin")),
+                    ),
+            ),
+    );
+    let adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let value = ReflectValue::ScriptEnum {
+        enum_name: "QuestProgress".to_owned(),
+        variant: "Active".to_owned(),
+        fields: BTreeMap::from([("count".to_owned(), ReflectValue::Host(HostValue::Int(7)))]),
+    };
+    let mut ctx = ReflectContext {
+        registry: &registry,
+        adapter: &adapter,
+        tx: &mut tx,
+    };
+
+    let error = get_with_policy(
+        &mut ctx,
+        &value,
+        "count_secrett",
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown script enum field");
+
+    assert_eq!(
+        error.kind,
+        ReflectErrorKind::UnknownField {
+            type_name: "QuestProgress.Active".to_owned(),
+            field: "count_secrett".to_owned(),
+            candidates: vec!["count".to_owned()],
+            related: vec![ReflectCandidate::new("count", None)],
+        }
+    );
 }
 
 #[test]
