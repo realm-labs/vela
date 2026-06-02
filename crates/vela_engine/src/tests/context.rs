@@ -307,8 +307,8 @@ fn engine_context_host_schema_lowers_patch_tx_workflows() {
         r#"
 fn main(ctx) {
     let stamp = ctx.now + ctx.tick;
-    ctx.emit("player.level_checked", stamp);
-    ctx.log("info", "player.level_checked", stamp);
+    ctx.emit(event = "player.level_checked");
+    ctx.log(message = "player.level_checked", level = "info", payload = stamp);
     return stamp;
 }
 "#,
@@ -344,10 +344,7 @@ fn main(ctx) {
         tx.patches()[0].op,
         PatchOp::CallHostMethod {
             method: CONTEXT_EMIT_METHOD_ID,
-            args: vec![
-                HostValue::String("player.level_checked".to_owned()),
-                HostValue::Int(1_700_000_042),
-            ],
+            args: vec![HostValue::String("player.level_checked".to_owned())],
         }
     );
     assert_eq!(
@@ -370,10 +367,7 @@ fn main(ctx) {
             (
                 HostPath::new(ctx),
                 CONTEXT_EMIT_METHOD_ID,
-                vec![
-                    HostValue::String("player.level_checked".to_owned()),
-                    HostValue::Int(1_700_000_042),
-                ],
+                vec![HostValue::String("player.level_checked".to_owned())],
             ),
             (
                 HostPath::new(ctx),

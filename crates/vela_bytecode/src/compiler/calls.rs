@@ -5,6 +5,7 @@ use crate::{CallArgument, InstructionKind};
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
+use vela_common::{HostMethodId, Span};
 use vela_hir::type_hint::ParamHint;
 
 impl Compiler<'_> {
@@ -35,13 +36,9 @@ impl Compiler<'_> {
             host_receiver_type.as_deref(),
             path_root_is_local,
         ) {
-            reject_named_args(args, "host method call")?;
             let root = self.compile_host_path_root(callee.span, call.receiver)?;
             let segments = self.compile_host_path_segments(call.segments)?;
-            let arg_registers = args
-                .iter()
-                .map(|arg| self.compile_expr(&arg.value))
-                .collect::<CompileResult<Vec<_>>>()?;
+            let arg_registers = self.compile_host_method_call_args(call.method, args, expr.span)?;
             let dst = self.alloc_register()?;
             self.emit_spanned(
                 InstructionKind::CallHostMethod {
@@ -99,6 +96,38 @@ impl Compiler<'_> {
             );
         }
         Ok(dst)
+    }
+
+    fn compile_host_method_call_args(
+        &mut self,
+        method: HostMethodId,
+        args: &[Argument],
+        call_span: Span,
+    ) -> CompileResult<Vec<crate::Register>> {
+        let has_named_args = args.iter().any(|arg| arg.name.is_some());
+        let Some(params) = self.facts.options.host_method_params(method) else {
+            reject_named_args(args, "host method call")?;
+            return args
+                .iter()
+                .map(|arg| self.compile_expr(&arg.value))
+                .collect();
+        };
+        if !has_named_args {
+            return args
+                .iter()
+                .map(|arg| self.compile_expr(&arg.value))
+                .collect();
+        }
+        let params = params
+            .iter()
+            .map(|param| ParamHint {
+                name: param.name.clone(),
+                span: call_span,
+                type_hint: None,
+                default_value_span: param.has_default.then_some(call_span),
+            })
+            .collect::<Vec<_>>();
+        self.compile_metadata_register_args(&params, args, call_span)
     }
 
     fn compile_script_method_call(
@@ -231,6 +260,28 @@ impl Compiler<'_> {
             .collect()
     }
 
+    fn compile_metadata_register_args(
+        &mut self,
+        params: &[ParamHint],
+        args: &[Argument],
+        call_span: Span,
+    ) -> CompileResult<Vec<crate::Register>> {
+        let slots =
+            resolve_script_call_arguments(params, args, call_span).map_err(|diagnostics| {
+                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+            })?;
+
+        let mut registers = Vec::new();
+        for (slot, param) in slots.into_iter().zip(params) {
+            if let Some(arg) = slot {
+                registers.push(self.compile_expr(&arg.value)?);
+            } else if param.default_value_span.is_none() {
+                unreachable!("call argument resolver rejects missing required arguments");
+            }
+        }
+        Ok(registers)
+    }
+
     fn compile_native_call_args(
         &mut self,
         name: &str,
@@ -253,19 +304,7 @@ impl Compiler<'_> {
                 default_value_span: None,
             })
             .collect::<Vec<_>>();
-        let slots =
-            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
-
-        slots
-            .into_iter()
-            .map(|slot| {
-                let arg =
-                    slot.expect("native argument resolver rejects missing required arguments");
-                self.compile_expr(&arg.value)
-            })
-            .collect()
+        self.compile_metadata_register_args(&params, args, call_span)
     }
 }
 

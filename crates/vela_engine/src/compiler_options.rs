@@ -26,13 +26,21 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
         }
         if desc.host_type_id.is_some() {
             for method in &desc.methods {
-                options = options
-                    .with_host_method(method.name.clone(), method.id)
-                    .with_host_method_for_type(
-                        desc.key.name.clone(),
-                        method.name.clone(),
+                options = options.with_host_method(method.name.clone(), method.id);
+                if !method.params.is_empty() {
+                    options = options.with_host_method_params(
                         method.id,
+                        method
+                            .params
+                            .iter()
+                            .map(|param| (param.name.clone(), param.has_default)),
                     );
+                }
+                options = options.with_host_method_for_type(
+                    desc.key.name.clone(),
+                    method.name.clone(),
+                    method.id,
+                );
             }
         }
     }

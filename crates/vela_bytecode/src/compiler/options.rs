@@ -8,9 +8,16 @@ pub struct CompilerOptions {
     pub(super) host_variant_fields: HashMap<String, FieldId>,
     pub(super) host_methods: HashMap<String, HostMethodId>,
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
+    pub(super) host_method_params: HashMap<HostMethodId, Vec<HostMethodParam>>,
     pub(super) host_types: HashSet<String>,
     pub(super) native_module_roots: HashSet<String>,
     pub(super) native_function_params: HashMap<String, Vec<NativeFunctionParam>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct HostMethodParam {
+    pub(super) name: String,
+    pub(super) has_default: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,6 +46,25 @@ impl CompilerOptions {
     #[must_use]
     pub fn with_host_method(mut self, name: impl Into<String>, method: HostMethodId) -> Self {
         self.host_methods.insert(name.into(), method);
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_method_params<I, S>(mut self, method: HostMethodId, params: I) -> Self
+    where
+        I: IntoIterator<Item = (S, bool)>,
+        S: Into<String>,
+    {
+        self.host_method_params.insert(
+            method,
+            params
+                .into_iter()
+                .map(|(name, has_default)| HostMethodParam {
+                    name: name.into(),
+                    has_default,
+                })
+                .collect(),
+        );
         self
     }
 
@@ -100,6 +126,10 @@ impl CompilerOptions {
 
     pub(super) fn is_native_module_root(&self, root: &str) -> bool {
         self.native_module_roots.contains(root)
+    }
+
+    pub(super) fn host_method_params(&self, method: HostMethodId) -> Option<&[HostMethodParam]> {
+        self.host_method_params.get(&method).map(Vec::as_slice)
     }
 
     pub(super) fn native_function_params(&self, name: &str) -> Option<&[NativeFunctionParam]> {

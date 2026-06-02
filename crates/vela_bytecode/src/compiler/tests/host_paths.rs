@@ -25,6 +25,89 @@ fn main(player) {
 }
 
 #[test]
+fn compiler_lowers_named_and_default_host_method_args_from_compiler_options() {
+    let method = HostMethodId::new(5);
+    let code = compile_function_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(ctx) {
+    ctx.emit(event = "player.level_checked");
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new()
+            .with_host_method("emit", method)
+            .with_host_method_params(method, [("event", false), ("payload", true)]),
+    )
+    .expect("named/default host method args should compile");
+
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::CallHostMethod {
+            method: lowered_method,
+            args,
+            ..
+        } if *lowered_method == method && args.len() == 1
+    )));
+}
+
+#[test]
+fn compiler_keeps_positional_host_method_args_variadic_with_metadata() {
+    let method = HostMethodId::new(5);
+    let code = compile_function_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(ctx) {
+    ctx.emit("player.level_checked", 10, 42);
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new()
+            .with_host_method("emit", method)
+            .with_host_method_params(method, [("event", false), ("payload", true)]),
+    )
+    .expect("positional host method args should stay variadic");
+
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::CallHostMethod {
+            method: lowered_method,
+            args,
+            ..
+        } if *lowered_method == method && args.len() == 3
+    )));
+}
+
+#[test]
+fn compiler_reports_named_host_method_arg_diagnostics_from_compiler_options() {
+    let method = HostMethodId::new(5);
+    let error = compile_function_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(ctx) {
+    ctx.emit(evnt = "player.level_checked");
+    return 1;
+}
+"#,
+        "main",
+        &CompilerOptions::new()
+            .with_host_method("emit", method)
+            .with_host_method_params(method, [("event", false), ("payload", true)]),
+    )
+    .expect_err("unknown named host method arg should fail");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        [
+            "compiler::unknown_named_argument",
+            "compiler::missing_required_argument"
+        ]
+    );
+}
+
+#[test]
 fn compiler_lowers_local_host_method_when_root_matches_native_module() {
     let method = HostMethodId::new(5);
     let code = compile_function_source_with_options(
