@@ -494,6 +494,125 @@ fn main(player) {
 }
 
 #[test]
+fn reflection_unknown_host_field_candidates_respect_read_policy() {
+    let host_ref = player_ref(3);
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return reflect.get(player, "leve");
+}
+"#,
+    )
+    .expect("compile unknown field candidate policy source");
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+            .host_type(HostTypeId::new(1))
+            .field(FieldDesc::new(FieldId::new(1), "level"))
+            .field(
+                FieldDesc::new(FieldId::new(2), "lever")
+                    .access(FieldAccess::new().reflect_readable(false)),
+            )
+            .field(
+                FieldDesc::new(FieldId::new(3), "leves")
+                    .access(FieldAccess::new().require_permission("player.admin.inspect")),
+            ),
+    );
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(
+        HostPath::new(host_ref).field(FieldId::new(1)),
+        HostValue::Int(9),
+    );
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives_with_permissions(
+        Arc::new(registry),
+        reflect::permissions::ReflectPermissionSet::read_only()
+            .with(reflect::permissions::ReflectPermission::InspectHostPath),
+    );
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = vm
+        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .expect_err("unknown field should diagnose allowed candidates only");
+    assert_eq!(
+        error.kind,
+        VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
+            type_name: "Player".to_owned(),
+            field: "leve".to_owned(),
+            candidates: vec!["level".to_owned()],
+            related: vec![ReflectCandidate::new("level", None)],
+        })
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn reflection_unknown_host_method_candidates_respect_call_policy() {
+    let host_ref = player_ref(3);
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return reflect.call(player, "visibl");
+}
+"#,
+    )
+    .expect("compile unknown method candidate policy source");
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
+            .host_type(HostTypeId::new(1))
+            .method(MethodDesc::new(HostMethodId::new(1), "visible"))
+            .method(
+                MethodDesc::new(HostMethodId::new(2), "visibly_hidden")
+                    .access(MethodAccess::new().reflect_callable(false)),
+            )
+            .method(
+                MethodDesc::new(HostMethodId::new(3), "visibly_private")
+                    .access(MethodAccess::new().public(false).reflect_callable(true)),
+            )
+            .method(
+                MethodDesc::new(HostMethodId::new(4), "visibly_admin")
+                    .access(MethodAccess::new().require_permission("player.admin.call")),
+            ),
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives_with_policy(
+        Arc::new(registry),
+        reflect::permissions::ReflectPolicy::new(
+            reflect::permissions::ReflectPermissionSet::new()
+                .with(reflect::permissions::ReflectPermission::CallMethods)
+                .with(reflect::permissions::ReflectPermission::InspectHostPath),
+        ),
+    );
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = vm
+        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .expect_err("unknown method should diagnose allowed candidates only");
+    assert_eq!(
+        error.kind,
+        VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
+            type_name: "Player".to_owned(),
+            method: "visibl".to_owned(),
+            candidates: vec!["visible".to_owned()],
+            related: vec![ReflectCandidate::new("visible", None)],
+        })
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn reflection_lookup_budget_stops_after_limit() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
