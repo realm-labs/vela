@@ -403,6 +403,22 @@ fn engine_rejects_duplicate_trait_method_param_names() {
 }
 
 #[test]
+fn engine_rejects_duplicate_host_method_ids() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
+                .method(MethodDesc::new(HostMethodId::new(1), "heal")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodId { id: 1 }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_host_method_names() {
     let result = Engine::builder()
         .register_type(
@@ -439,6 +455,27 @@ fn engine_rejects_duplicate_host_method_param_names() {
             method: "grant_exp".to_owned(),
             name: "amount".to_owned(),
         }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_native_method_ids() {
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let result = Engine::builder()
+        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_native_method_fn(
+            NativeMethodDesc::new(player_key.clone(), HostMethodId::new(44), "grant_exp"),
+            |_, _, _| Ok(Value::Null),
+        )
+        .register_native_method_fn(
+            NativeMethodDesc::new(player_key, HostMethodId::new(44), "heal"),
+            |_, _, _| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodId { id: 44 }
     ));
 }
 
