@@ -7,9 +7,10 @@ use syn::{
 
 use crate::attrs::{error, parse_key_value_attr, spanned_error};
 use crate::signature::{
-    docs_from_attrs, param_name, reject_extern_signature, reject_generic_signature,
-    reject_script_reference_param, reject_script_reference_return, reject_unsafe_signature,
-    reject_unsupported_integer_type, type_ident, wrapper_inner_type,
+    docs_from_attrs, is_mut_reference_to_type, is_shared_reference_to_type, param_name,
+    reject_extern_signature, reject_generic_signature, reject_script_reference_param,
+    reject_script_reference_return, reject_unsafe_signature, reject_unsupported_integer_type,
+    type_ident, wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -193,7 +194,22 @@ fn method_meta(
                 ));
             }
         };
-        if is_context_param(param) || is_host_execution_param(param) {
+        if is_context_type(param) {
+            if !is_context_param(param) {
+                return Err(spanned_error(
+                    input,
+                    "NativeCallContext boundary parameters must be &mut NativeCallContext",
+                ));
+            }
+            continue;
+        }
+        if is_host_execution_type(param) {
+            if !is_host_execution_param(param) {
+                return Err(spanned_error(
+                    input,
+                    "HostExecution boundary parameters must be &mut HostExecution",
+                ));
+            }
             continue;
         }
         if !skipped_receiver && (is_host_ref(&param.ty) || is_host_path(&param.ty)) {
@@ -236,11 +252,11 @@ fn reject_return_type(output: &ReturnType) -> Result<()> {
 }
 
 fn is_context_param(param: &PatType) -> bool {
-    type_ident(&param.ty).is_some_and(|ident| ident == "NativeCallContext")
+    is_mut_reference_to_type(&param.ty, "NativeCallContext")
 }
 
 fn is_host_execution_param(param: &PatType) -> bool {
-    type_ident(&param.ty).is_some_and(|ident| ident == "HostExecution")
+    is_mut_reference_to_type(&param.ty, "HostExecution")
 }
 
 fn is_host_ref(ty: &Type) -> bool {
@@ -251,6 +267,14 @@ fn is_host_path(ty: &Type) -> bool {
     type_ident(ty).is_some_and(|ident| ident == "HostPath")
 }
 
+fn is_context_type(param: &PatType) -> bool {
+    type_ident(&param.ty).is_some_and(|ident| ident == "NativeCallContext")
+}
+
+fn is_host_execution_type(param: &PatType) -> bool {
+    type_ident(&param.ty).is_some_and(|ident| ident == "HostExecution")
+}
+
 fn has_callable_native_boundary(method: &ImplItemFn) -> bool {
     let mut inputs = method.sig.inputs.iter();
     let Some(FnArg::Typed(receiver)) = inputs.next() else {
@@ -259,7 +283,7 @@ fn has_callable_native_boundary(method: &ImplItemFn) -> bool {
     let Some(FnArg::Typed(host)) = inputs.next() else {
         return false;
     };
-    is_host_path(&receiver.ty) && is_host_execution_param(host)
+    is_shared_reference_to_type(&receiver.ty, "HostPath") && is_host_execution_param(host)
 }
 
 fn return_hint(output: &ReturnType) -> HintKind {

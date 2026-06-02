@@ -217,6 +217,32 @@ mod tests {
     }
 
     #[test]
+    fn rejects_by_value_context_boundary_parameters() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1)]
+                pub fn grant(ctx: NativeCallContext, player: HostRef, amount: i64) {}
+            }
+        })
+        .expect_err("by-value context boundary should fail macro expansion");
+
+        assert!(error.to_string().contains("&mut NativeCallContext"));
+    }
+
+    #[test]
+    fn rejects_shared_host_execution_boundary_parameters() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1)]
+                pub fn grant(player: &HostPath, host: &HostExecution, amount: i64) {}
+            }
+        })
+        .expect_err("shared HostExecution boundary should fail macro expansion");
+
+        assert!(error.to_string().contains("&mut HostExecution"));
+    }
+
+    #[test]
     fn rejects_nested_script_visible_rust_reference_parameters() {
         let error = expand_result(quote! {
             impl Player {

@@ -185,6 +185,38 @@ mod tests {
     }
 
     #[test]
+    fn rejects_context_functions_with_by_value_context_param() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn emit_event(ctx: NativeCallContext) -> bool {
+                    true
+                }
+            },
+            FunctionMode::Context,
+        )
+        .expect_err("by-value context parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("&mut NativeCallContext"));
+    }
+
+    #[test]
+    fn rejects_context_functions_with_shared_context_param() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn emit_event(ctx: &NativeCallContext) -> bool {
+                    true
+                }
+            },
+            FunctionMode::Context,
+        )
+        .expect_err("shared context parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("&mut NativeCallContext"));
+    }
+
+    #[test]
     fn rejects_host_functions_without_host_execution_param() {
         let error = expand_result(
             quote! { id = 1 },
@@ -198,6 +230,38 @@ mod tests {
         .expect_err("missing host execution parameter should fail macro expansion");
 
         assert!(error.to_string().contains("HostExecution"));
+    }
+
+    #[test]
+    fn rejects_host_functions_with_by_value_host_execution_param() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn write_host(host: HostExecution) -> bool {
+                    true
+                }
+            },
+            FunctionMode::Host,
+        )
+        .expect_err("by-value host execution parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("&mut HostExecution"));
+    }
+
+    #[test]
+    fn rejects_host_functions_with_shared_host_execution_param() {
+        let error = expand_result(
+            quote! { id = 1 },
+            quote! {
+                fn write_host(host: &HostExecution) -> bool {
+                    true
+                }
+            },
+            FunctionMode::Host,
+        )
+        .expect_err("shared host execution parameter should fail macro expansion");
+
+        assert!(error.to_string().contains("&mut HostExecution"));
     }
 
     #[test]

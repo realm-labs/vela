@@ -86,6 +86,26 @@ pub(crate) fn type_ident(ty: &Type) -> Option<String> {
     }
 }
 
+pub(crate) fn is_mut_reference_to_type(ty: &Type, expected: &str) -> bool {
+    let Type::Reference(reference) = ty else {
+        return false;
+    };
+    if reference.mutability.is_none() {
+        return false;
+    }
+    type_ident(&reference.elem).is_some_and(|ident| ident == expected)
+}
+
+pub(crate) fn is_shared_reference_to_type(ty: &Type, expected: &str) -> bool {
+    let Type::Reference(reference) = ty else {
+        return false;
+    };
+    if reference.mutability.is_some() {
+        return false;
+    }
+    type_ident(&reference.elem).is_some_and(|ident| ident == expected)
+}
+
 fn unsupported_integer_type(ty: &Type) -> Option<String> {
     match ty {
         Type::Path(path) => {

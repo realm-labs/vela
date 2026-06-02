@@ -6,8 +6,9 @@ use syn::{
 
 use crate::attrs::{error, parse_key_value_attr, spanned_error};
 use crate::signature::{
-    param_name, reject_script_reference_param, reject_script_reference_return,
-    reject_unsupported_integer_type, type_ident, wrapper_inner_type,
+    is_mut_reference_to_type, param_name, reject_script_reference_param,
+    reject_script_reference_return, reject_unsupported_integer_type, type_ident,
+    wrapper_inner_type,
 };
 
 #[derive(Clone)]
@@ -90,8 +91,8 @@ impl FunctionMode {
     fn first_parameter_name(self) -> &'static str {
         match self {
             Self::Pure => "",
-            Self::Context => "NativeCallContext",
-            Self::Host => "HostExecution",
+            Self::Context => "&mut NativeCallContext",
+            Self::Host => "&mut HostExecution",
         }
     }
 
@@ -195,13 +196,13 @@ pub(super) fn function_meta(
                 "script functions cannot use Rust self receivers",
             ));
         };
-        if matches!(mode, FunctionMode::Pure) && is_context_param(param) {
+        if is_context_type(param) {
             return Err(spanned_error(
                 input,
                 "use #[script_context_function] for NativeCallContext callbacks",
             ));
         }
-        if matches!(mode, FunctionMode::Pure) && is_host_execution_param(param) {
+        if is_host_execution_type(param) {
             return Err(spanned_error(
                 input,
                 "use #[script_host_function] for HostExecution callbacks",
@@ -241,10 +242,18 @@ fn reject_return_type(output: &ReturnType) -> Result<()> {
 }
 
 fn is_context_param(param: &PatType) -> bool {
-    type_ident(&param.ty).is_some_and(|ident| ident == "NativeCallContext")
+    is_mut_reference_to_type(&param.ty, "NativeCallContext")
 }
 
 fn is_host_execution_param(param: &PatType) -> bool {
+    is_mut_reference_to_type(&param.ty, "HostExecution")
+}
+
+fn is_context_type(param: &PatType) -> bool {
+    type_ident(&param.ty).is_some_and(|ident| ident == "NativeCallContext")
+}
+
+fn is_host_execution_type(param: &PatType) -> bool {
     type_ident(&param.ty).is_some_and(|ident| ident == "HostExecution")
 }
 
