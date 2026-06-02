@@ -53,6 +53,9 @@ pub(super) fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
 
         let rust_name = ident.to_string();
         let script_name = attrs.field_name(&rust_name);
+        if script_name.is_empty() {
+            return Err(error(ident.span(), "script field name cannot be empty"));
+        }
         if !seen_names.insert(script_name.clone()) {
             return Err(error(ident.span(), "duplicate script field name"));
         }

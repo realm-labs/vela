@@ -62,6 +62,12 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
         .ok_or_else(|| error(input.ident.span(), "ScriptHost requires #[script(id = N)]"))?;
     let host_id = attrs.host_id.unwrap_or(type_id);
     let type_name = attrs.name.unwrap_or_else(|| input.ident.to_string());
+    if type_name.is_empty() {
+        return Err(error(
+            input.ident.span(),
+            "script type name cannot be empty",
+        ));
+    }
     let module_name = attrs.module;
     let docs = attrs.docs;
     let type_attrs = attrs.attrs;
@@ -161,6 +167,27 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_field_names() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Player {
+                    #[script(get, id = 1, name = "")]
+                    level: u32,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("empty field name should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script field name cannot be empty")
+        );
+    }
+
+    #[test]
     fn rejects_missing_type_id() {
         let error = expand_result(
             quote! {
@@ -174,6 +201,27 @@ mod tests {
         .expect_err("missing type ID should fail macro expansion");
 
         assert!(error.to_string().contains("requires #[script(id = N)]"));
+    }
+
+    #[test]
+    fn rejects_empty_type_names() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100, name = "")]
+                struct Player {
+                    #[script(get, id = 1)]
+                    level: u32,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("empty type name should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script type name cannot be empty")
+        );
     }
 
     #[test]
