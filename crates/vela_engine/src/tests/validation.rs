@@ -144,6 +144,36 @@ fn engine_rejects_duplicate_type_names() {
 }
 
 #[test]
+fn engine_rejects_duplicate_type_ids() {
+    let result = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Monster")).host_type(HostTypeId::new(2)),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateTypeId { id: 1 }
+    ));
+}
+
+#[test]
+fn engine_rejects_duplicate_host_type_ids() {
+    let result = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Monster")).host_type(HostTypeId::new(1)),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateHostTypeId { id: 1 }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_field_ids() {
     let result = Engine::builder()
         .register_type(
