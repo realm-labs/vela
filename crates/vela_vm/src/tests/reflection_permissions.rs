@@ -202,6 +202,74 @@ fn main(player) {
 }
 
 #[test]
+fn reflection_permissions_deny_host_ref_trait_metadata_without_inspection() {
+    let host_ref = player_ref(3);
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return reflect.traits(player);
+}
+"#,
+    )
+    .expect("compile denied host-ref trait metadata source");
+    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives_with_permissions(
+        Arc::new(reflection_registry()),
+        reflect::permissions::ReflectPermissionSet::new()
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo),
+    );
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+            permission: reflect::permissions::ReflectPermission::InspectHostPath
+        })
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn reflection_permissions_deny_host_ref_implements_without_inspection() {
+    let host_ref = player_ref(3);
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return reflect.implements(player, "Damageable");
+}
+"#,
+    )
+    .expect("compile denied host-ref implements source");
+    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut vm = Vm::new();
+    vm.register_reflection_natives_with_permissions(
+        Arc::new(reflection_registry()),
+        reflect::permissions::ReflectPermissionSet::new()
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo),
+    );
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
+            permission: reflect::permissions::ReflectPermission::InspectHostPath
+        })
+    ));
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn reflection_permissions_allow_script_metadata_without_host_inspection() {
     let program = compile_program_source(
         SourceId::new(1),
