@@ -270,6 +270,30 @@ fn engine_compile_hot_reload_changed_file_rejects_non_source_path() {
 }
 
 #[test]
+fn engine_compile_hot_reload_changed_file_rejects_parent_dir_escape() {
+    let root = unique_test_dir("hot_reload_changed_file_parent_escape");
+    let reward_file = write_reward_modules(&root, "return grant();", 4);
+    let changed = root.join("..").join("outside.vela");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+
+    let error = engine
+        .compile_hot_reload_update_changed_file(&initial, &root, &changed)
+        .expect_err("changed source path escaping the root should be rejected");
+
+    assert!(matches!(
+        error.kind,
+        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+            kind: EngineSourceErrorKind::InvalidSourcePath { .. }
+        })
+    ));
+    assert!(reward_file.exists());
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn engine_compile_hot_reload_file_reports_source_errors() {
     let root = unique_test_dir("missing_hot_reload_file");
     let path = root.join("missing.vela");

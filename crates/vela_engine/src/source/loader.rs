@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
@@ -72,7 +72,9 @@ fn module_path(root: &Path, path: &Path) -> Result<ModulePath, EngineSourceError
     let components = relative.components().collect::<Vec<_>>();
     let mut segments = Vec::new();
     for (index, component) in components.iter().enumerate() {
-        let component_path = component.as_os_str();
+        let Component::Normal(component_path) = component else {
+            return Err(EngineSourceError::invalid_path(path));
+        };
         let segment = if index + 1 == components.len() {
             Path::new(component_path)
                 .file_stem()
