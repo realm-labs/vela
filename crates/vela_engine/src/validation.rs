@@ -4,7 +4,10 @@ use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{MethodParamDesc, TypeDesc};
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::native::{ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionEntry};
+use crate::native::{
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry,
+};
 
 pub(crate) fn validate_modules(modules: &[ModuleDesc]) -> EngineResult<()> {
     let mut names = BTreeSet::new();
@@ -238,9 +241,16 @@ pub(crate) fn validate_native_functions(
     functions: &[NativeFunctionEntry],
     host_functions: &[HostNativeFunctionEntry],
     context_host_functions: &[ContextHostNativeFunctionEntry],
+    include_standard_natives: bool,
 ) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
+
+    if include_standard_natives {
+        for desc in crate::standard::standard_native_function_descs() {
+            validate_native_function_desc(&desc, &mut ids, &mut names)?;
+        }
+    }
 
     for desc in functions
         .iter()
@@ -248,25 +258,33 @@ pub(crate) fn validate_native_functions(
         .chain(host_functions.iter().map(|entry| &entry.desc))
         .chain(context_host_functions.iter().map(|entry| &entry.desc))
     {
-        if !ids.insert(desc.id) {
-            return Err(EngineError::new(
-                EngineErrorKind::DuplicateNativeFunctionId { id: desc.id.get() },
-            ));
-        }
-        if !names.insert(desc.name.as_str()) {
-            return Err(EngineError::new(
-                EngineErrorKind::DuplicateNativeFunctionName {
-                    name: desc.name.clone(),
-                },
-            ));
-        }
-        validate_native_function_params(desc)?;
+        validate_native_function_desc(desc, &mut ids, &mut names)?;
     }
 
     Ok(())
 }
 
-fn validate_native_function_params(desc: &crate::native::NativeFunctionDesc) -> EngineResult<()> {
+fn validate_native_function_desc(
+    desc: &NativeFunctionDesc,
+    ids: &mut BTreeSet<crate::native::NativeFunctionId>,
+    names: &mut BTreeSet<String>,
+) -> EngineResult<()> {
+    if !ids.insert(desc.id) {
+        return Err(EngineError::new(
+            EngineErrorKind::DuplicateNativeFunctionId { id: desc.id.get() },
+        ));
+    }
+    if !names.insert(desc.name.clone()) {
+        return Err(EngineError::new(
+            EngineErrorKind::DuplicateNativeFunctionName {
+                name: desc.name.clone(),
+            },
+        ));
+    }
+    validate_native_function_params(desc)
+}
+
+fn validate_native_function_params(desc: &NativeFunctionDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for param in &desc.params {
         if !names.insert(param.name.as_str()) {

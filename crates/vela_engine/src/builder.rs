@@ -275,6 +275,7 @@ impl EngineBuilder {
             &self.native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
+            self.standard_natives,
         )?;
 
         let mut registry = TypeRegistry::new();

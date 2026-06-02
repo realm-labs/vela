@@ -10,6 +10,7 @@ use crate::engine::Engine;
 use crate::error::EngineErrorKind;
 use crate::method::NativeMethodDesc;
 use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::standard::MATH_CLAMP_FUNCTION_ID;
 
 use super::{player_type, trait_desc_with_id};
 
@@ -111,6 +112,45 @@ fn engine_rejects_duplicate_native_function_param_names() {
             name: "amount".to_owned(),
         }
     ));
+}
+
+#[test]
+fn engine_rejects_native_function_names_that_shadow_standard_natives() {
+    let result = Engine::builder()
+        .with_standard_natives()
+        .register_native_fn(
+            NativeFunctionDesc::new("math.clamp", NativeFunctionId::new(0x1234)),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionName {
+            name: "math.clamp".to_owned()
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_native_function_ids_that_collide_with_standard_natives() {
+    let result = Engine::builder()
+        .with_standard_natives()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.custom_clamp", MATH_CLAMP_FUNCTION_ID),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    match result {
+        Err(error) => assert_eq!(
+            error.kind,
+            EngineErrorKind::DuplicateNativeFunctionId {
+                id: MATH_CLAMP_FUNCTION_ID.get()
+            }
+        ),
+        Ok(_) => panic!("standard native ID collision should fail"),
+    }
 }
 
 #[test]
