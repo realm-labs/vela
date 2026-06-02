@@ -407,6 +407,100 @@ fn main(player) {
 }
 
 #[test]
+fn script_context_function_enforces_engine_permissions_before_patching() {
+    let engine = vela_register_context_native_function_set_level(Engine::builder())
+        .build()
+        .expect("engine should build from macro context native function");
+    let root = unique_test_dir("script_context_function_permission");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.vela");
+    std::fs::write(
+        &source,
+        r#"
+fn main(player) {
+    return game.set_level(player, 9);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered context native");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut runtime = Runtime::new(engine, program);
+
+    let error = runtime
+        .call(
+            "main",
+            &[Value::HostRef(player)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect_err("missing macro-native permission should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::PermissionDenied {
+            native: "game.set_level".to_owned(),
+            permission: "player.write".to_owned(),
+        },
+    );
+    assert!(tx.patches().is_empty());
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn script_context_function_charges_runtime_instruction_budget_before_patching() {
+    let engine = vela_register_context_native_function_set_level(
+        Engine::builder().grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro context native function");
+    let root = unique_test_dir("script_context_function_budget");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.vela");
+    std::fs::write(
+        &source,
+        r#"
+fn main(player) {
+    return game.set_level(player, 9);
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered context native");
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut runtime = Runtime::new(engine, program);
+
+    let error = runtime
+        .call(
+            "main",
+            &[Value::HostRef(player)],
+            CallOptions::new(2, usize::MAX, usize::MAX, usize::MAX),
+            &mut adapter,
+            &mut tx,
+        )
+        .expect_err("macro-native budget charge should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 2,
+        },
+    );
+    assert!(tx.patches().is_empty());
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn script_host_function_registers_typed_native_with_engine() {
     let engine = vela_register_host_native_function_set_score(
         Engine::builder().grant_permission("player.write"),
