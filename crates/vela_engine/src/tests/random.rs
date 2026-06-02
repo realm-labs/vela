@@ -105,6 +105,91 @@ fn engine_controlled_random_registers_metadata() {
 }
 
 #[test]
+fn engine_controlled_random_extends_standard_math_metadata() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .with_controlled_random(1)
+        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .reflection_permissions(ReflectPermissionSet::all())
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.registry();
+    let math = registry.module_by_name("math").expect("math module");
+    let random = registry
+        .function_by_name("math.random")
+        .expect("math.random metadata");
+    let max = registry.function_by_name("math.max").expect("math.max");
+
+    assert_eq!(math.exports.len(), 15);
+    assert!(math.exports.iter().any(|export| export.name == "math.max"));
+    assert!(
+        math.exports
+            .iter()
+            .any(|export| export.name == "math.random")
+    );
+    assert_eq!(
+        math.docs.as_deref(),
+        Some("Deterministic math standard-library helpers.")
+    );
+    assert_eq!(
+        max.docs.as_deref(),
+        Some("Returns the larger numeric value.")
+    );
+    assert_eq!(
+        random.docs.as_deref(),
+        Some("Returns a deterministic seeded integer in the inclusive range.")
+    );
+    assert_eq!(
+        random.access.required_permissions(),
+        &[CONTROLLED_RANDOM_PERMISSION.to_owned()]
+    );
+    assert!(random.access.reflect_visible);
+    assert!(random.access.reflect_callable);
+    assert!(!random.effects.reads_host);
+    assert!(!random.effects.writes_host);
+    assert!(!random.effects.emits_events);
+
+    let program = compile_program_source(
+        SourceId::new(2),
+        r#"
+fn main() {
+    let math_exports = reflect.exports("math");
+    let random = reflect.function("math.random");
+    let max = reflect.function("math.max");
+    let required = reflect.required_permissions(random);
+    let effects = reflect.effects(random);
+    return math_exports.len() == 15
+        && math_exports.contains("math.max")
+        && math_exports.contains("math.random")
+        && reflect.docs(max) == "Returns the larger numeric value."
+        && reflect.docs(random) == "Returns a deterministic seeded integer in the inclusive range."
+        && required.len() == 1
+        && required[0] == "std.random"
+        && !effects.reads_host
+        && !effects.writes_host
+        && !effects.emits_events;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Bool(true))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn engine_controlled_random_reflect_call_is_seeded_and_bounded() {
     let source = r#"
 fn main() {
