@@ -96,6 +96,63 @@ fn main() {
 }
 
 #[test]
+fn script_schema_stable_id_member_renames_are_accepted_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    #[id(101)]
+    item_id: string
+    #[id(102)]
+    count: int
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Active
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script schema should compile");
+
+    let update = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+struct Reward {
+    #[id(101)]
+    item: string
+    #[id(102)]
+    quantity: int
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Started
+    #[id(202)]
+    Finished
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    )
+    .expect("stable-id script schema renames should be accepted");
+
+    let mut runtime = HotReloadRuntime::new(initial);
+    runtime.apply_hot_update(update).expect("apply update");
+    assert_eq!(
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn script_function_return_abi_changes_are_rejected_during_compile_update() {
     let initial = compile_initial(
         SourceId::new(1),

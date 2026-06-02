@@ -1,4 +1,5 @@
 use vela_common::{FieldId, MethodId, Span, TypeId, VariantId};
+use vela_hir::attributes::HirAttribute;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 
@@ -28,7 +29,7 @@ impl TypeRegistry {
                             desc.field(apply_field_attrs(
                                 apply_field_type_hint(
                                     FieldDesc::new(
-                                        stable_field_id(&type_name, &field.name),
+                                        script_field_id(&type_name, &field.name, &field.attrs),
                                         field.name.clone(),
                                     )
                                     .origin(DeclOrigin::Script)
@@ -56,22 +57,25 @@ impl TypeRegistry {
                             .source_span(declaration.span),
                         |desc, variant| {
                             let variant_owner = enum_variant_owner(&type_name, &variant.name);
+                            let variant_id =
+                                script_variant_id(&type_name, &variant.name, &variant.attrs);
                             let variant_desc =
                                 enum_variant_fields(&variant.fields).into_iter().fold(
                                     apply_variant_attrs(
-                                        VariantDesc::new(
-                                            stable_variant_id(&type_name, &variant.name),
-                                            variant.name.clone(),
-                                        )
-                                        .origin(DeclOrigin::Script)
-                                        .source_span(variant.span),
+                                        VariantDesc::new(variant_id, variant.name.clone())
+                                            .origin(DeclOrigin::Script)
+                                            .source_span(variant.span),
                                         &variant.attrs,
                                     ),
                                     |desc, field| {
                                         desc.field(apply_field_attrs(
                                             apply_field_type_hint_display(
                                                 FieldDesc::new(
-                                                    stable_field_id(&variant_owner, &field.name),
+                                                    script_field_id(
+                                                        &variant_owner,
+                                                        &field.name,
+                                                        &field.attrs,
+                                                    ),
                                                     field.name,
                                                 )
                                                 .origin(DeclOrigin::Script)
@@ -291,7 +295,7 @@ fn struct_schema_hash(type_name: &str, shape: &vela_hir::type_hint::StructShape)
         .iter()
         .map(|field| {
             (
-                stable_field_id(type_name, &field.name).get(),
+                script_field_id(type_name, &field.name, &field.attrs).get(),
                 field.name.clone(),
                 field
                     .type_hint
@@ -309,7 +313,7 @@ fn enum_schema_hash(type_name: &str, shape: &vela_hir::type_hint::EnumShape) -> 
         .iter()
         .map(|variant| {
             (
-                stable_variant_id(type_name, &variant.name).get(),
+                script_variant_id(type_name, &variant.name, &variant.attrs).get(),
                 variant.name.clone(),
                 enum_variant_signature(type_name, variant),
             )
@@ -327,7 +331,7 @@ fn enum_variant_signature(
         .into_iter()
         .map(|field| {
             (
-                stable_field_id(&variant_owner, &field.name).get(),
+                script_field_id(&variant_owner, &field.name, &field.attrs).get(),
                 field.name,
                 field.type_hint,
             )
@@ -384,6 +388,27 @@ fn stable_variant_id(type_name: &str, variant_name: &str) -> VariantId {
 
 fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
     MethodId::new(stable_id("trait_method", trait_name, method_name))
+}
+
+fn script_field_id(type_name: &str, field_name: &str, attrs: &[HirAttribute]) -> FieldId {
+    script_id_attr(attrs)
+        .map(FieldId::new)
+        .unwrap_or_else(|| stable_field_id(type_name, field_name))
+}
+
+fn script_variant_id(type_name: &str, variant_name: &str, attrs: &[HirAttribute]) -> VariantId {
+    script_id_attr(attrs)
+        .map(VariantId::new)
+        .unwrap_or_else(|| stable_variant_id(type_name, variant_name))
+}
+
+fn script_id_attr(attrs: &[HirAttribute]) -> Option<u32> {
+    attrs
+        .iter()
+        .find(|attr| attr.name == "id")
+        .and_then(|attr| attr.value.as_deref())
+        .and_then(|value| value.parse::<u32>().ok())
+        .filter(|id| *id != 0)
 }
 
 fn stable_id(kind: &str, owner: &str, member: &str) -> u32 {
@@ -622,6 +647,73 @@ enum QuestProgress {
         assert_eq!(first_active, second_active);
         assert_eq!(first_reward.schema_hash, second_reward.schema_hash);
         assert_eq!(first_progress.schema_hash, second_progress.schema_hash);
+    }
+
+    #[test]
+    fn explicit_script_member_ids_survive_renames() {
+        let mut first = ModuleGraph::new();
+        first.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.reward"),
+            r#"
+struct Reward {
+    #[id(101)]
+    item_id: string,
+    #[id(102)]
+    count: int,
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Active,
+}
+"#,
+        ));
+        let mut second = ModuleGraph::new();
+        second.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_dotted("game.reward"),
+            r#"
+struct Reward {
+    #[id(101)]
+    item: string,
+    #[id(102)]
+    quantity: int,
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Started,
+}
+"#,
+        ));
+        let mut first_registry = TypeRegistry::new();
+        let mut second_registry = TypeRegistry::new();
+
+        first_registry.register_script_types(&first);
+        second_registry.register_script_types(&second);
+
+        let first_reward = first_registry
+            .type_by_name("game.reward.Reward")
+            .expect("first Reward");
+        let second_reward = second_registry
+            .type_by_name("game.reward.Reward")
+            .expect("second Reward");
+        let first_progress = first_registry
+            .type_by_name("game.reward.QuestProgress")
+            .expect("first QuestProgress");
+        let second_progress = second_registry
+            .type_by_name("game.reward.QuestProgress")
+            .expect("second QuestProgress");
+
+        assert_eq!(first_reward.fields[0].id, FieldId::new(101));
+        assert_eq!(second_reward.fields[0].id, FieldId::new(101));
+        assert_eq!(first_reward.fields[1].id, FieldId::new(102));
+        assert_eq!(second_reward.fields[1].id, FieldId::new(102));
+        assert_eq!(first_progress.variants[0].id, VariantId::new(201));
+        assert_eq!(second_progress.variants[0].id, VariantId::new(201));
+        assert_ne!(first_reward.schema_hash, second_reward.schema_hash);
+        assert_ne!(first_progress.schema_hash, second_progress.schema_hash);
     }
 
     #[test]

@@ -60,6 +60,8 @@ conformance contracts are stable.
 - Hot reload validates function, method, module, trait, schema, effect, access,
   stable-ID schema rename compatibility, and source diagnostics before version
   advancement.
+- Script schema fields and enum variants can use explicit stable ID attributes
+  for reload-safe source renames.
 - CLI demo scripts and conformance fixtures use `.vela`.
 
 ## Current Gaps
