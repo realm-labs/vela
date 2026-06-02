@@ -80,6 +80,6 @@ const RESULT_METHODS: &[MethodSpec] = &[
     ),
 ];
 
-const fn result_id(offset: u32) -> HostMethodId {
+const fn result_id(offset: u64) -> HostMethodId {
     HostMethodId::new(0xff00_0c00 + offset)
 }

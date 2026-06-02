@@ -34,7 +34,7 @@ pub fn attrs_from_syntax(attributes: &[Attribute]) -> Vec<HirAttribute> {
 }
 
 #[must_use]
-pub fn schema_id_attr(attrs: &[HirAttribute]) -> Option<u32> {
+pub fn schema_id_attr(attrs: &[HirAttribute]) -> Option<u64> {
     attrs.iter().find_map(|attr| {
         parse_schema_id_attr(&attr.name, attr.value.as_deref()).unwrap_or_default()
     })
@@ -43,7 +43,7 @@ pub fn schema_id_attr(attrs: &[HirAttribute]) -> Option<u32> {
 pub fn parse_schema_id_attr(
     name: &str,
     value: Option<&str>,
-) -> Result<Option<u32>, SchemaIdAttrError> {
+) -> Result<Option<u64>, SchemaIdAttrError> {
     if name != "id" {
         return Ok(None);
     }
@@ -51,7 +51,7 @@ pub fn parse_schema_id_attr(
         return Err(SchemaIdAttrError::MissingValue);
     };
     let id = value
-        .parse::<u32>()
+        .parse::<u64>()
         .map_err(|_| SchemaIdAttrError::InvalidValue)?;
     if id == 0 {
         return Err(SchemaIdAttrError::Zero);

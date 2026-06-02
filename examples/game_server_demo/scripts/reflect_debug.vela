@@ -120,7 +120,8 @@ fn main(ctx, player) {
 
     if reflect.name(player_type_of) == "Player"
         && reflect.kind(player_type_of) == "host"
-        && reflect.id(player) == 100
+        && reflect.id(player) == reflect.id(player_type)
+        && reflect.id(player_type) > 0
         && reflected_types.any(|type_info| type_info.name == "Player"
             && reflect.kind(type_info) == "host")
         && reflect.has_type("Player")
@@ -214,14 +215,14 @@ fn main(ctx, player) {
         && reflect.field(config_type, "exp_to_next_level").type == "int"
         && reflect.has_type("Inventory")
         && reflect.kind(inventory_type) == "host"
-        && reflect.id(inventory_type) == 103
+        && reflect.id(inventory_type) > 0
         && inventory_fields.len() == 1
         && inventory_fields[0].owner == "Inventory"
         && inventory_fields[0].name == "items"
         && inventory_fields[0].type == "map"
         && reflect.has_type("ItemStack")
         && reflect.kind(item_stack_type) == "host"
-        && reflect.id(item_stack_type) == 104
+        && reflect.id(item_stack_type) > 0
         && item_stack_fields.len() == 1
         && item_stack_fields[0].owner == "ItemStack"
         && item_stack_fields[0].name == "count"
@@ -283,7 +284,7 @@ fn main(ctx, player) {
         && fields[1].name == "level"
         && reflect.traits(player_type)[0].name == reflect.name(damageable)
         && reflect.name(level) == "level"
-        && reflect.id(level) == 2
+        && reflect.id(level) > 0
         && level.owner == "Player"
         && level.writable
         && level_access.reflect_readable

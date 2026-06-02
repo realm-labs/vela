@@ -628,7 +628,7 @@ impl TraitAbi {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitMethodAbi {
-    pub id: u32,
+    pub id: u64,
     pub name: String,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
@@ -637,7 +637,7 @@ pub struct TraitMethodAbi {
 
 impl TraitMethodAbi {
     #[must_use]
-    pub fn new(id: u32, name: impl Into<String>) -> Self {
+    pub fn new(id: u64, name: impl Into<String>) -> Self {
         Self {
             id,
             name: name.into(),

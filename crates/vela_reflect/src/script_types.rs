@@ -351,7 +351,7 @@ fn enum_variant_owner(type_name: &str, variant: &str) -> String {
     format!("{type_name}.{variant}")
 }
 
-fn schema_hash(kind: &str, type_name: &str, mut members: Vec<(u32, String, String)>) -> SchemaHash {
+fn schema_hash(kind: &str, type_name: &str, mut members: Vec<(u64, String, String)>) -> SchemaHash {
     members.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
     let mut hash = 0xcbf2_9ce4_8422_2325;
     hash_bytes(&mut hash, kind.as_bytes());
@@ -377,19 +377,23 @@ fn hash_bytes(hash: &mut u64, bytes: &[u8]) {
 }
 
 fn stable_type_id(name: &str) -> TypeId {
-    TypeId::new(stable_id("type", name, ""))
+    TypeId::new(vela_common::stable_id("type", name, ""))
 }
 
 fn stable_field_id(type_name: &str, field_name: &str) -> FieldId {
-    FieldId::new(stable_id("field", type_name, field_name))
+    FieldId::new(vela_common::stable_id("field", type_name, field_name))
 }
 
 fn stable_variant_id(type_name: &str, variant_name: &str) -> VariantId {
-    VariantId::new(stable_id("variant", type_name, variant_name))
+    VariantId::new(vela_common::stable_id("variant", type_name, variant_name))
 }
 
 fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(stable_id("trait_method", trait_name, method_name))
+    MethodId::new(vela_common::stable_id(
+        "trait_method",
+        trait_name,
+        method_name,
+    ))
 }
 
 fn script_field_id(type_name: &str, field_name: &str, attrs: &[HirAttribute]) -> FieldId {
@@ -404,23 +408,8 @@ fn script_variant_id(type_name: &str, variant_name: &str, attrs: &[HirAttribute]
         .unwrap_or_else(|| stable_variant_id(type_name, variant_name))
 }
 
-fn script_id_attr(attrs: &[HirAttribute]) -> Option<u32> {
+fn script_id_attr(attrs: &[HirAttribute]) -> Option<u64> {
     schema_id_attr(attrs)
-}
-
-fn stable_id(kind: &str, owner: &str, member: &str) -> u32 {
-    let mut hash = 0x811c_9dc5;
-    for byte in kind
-        .bytes()
-        .chain([0])
-        .chain(owner.bytes())
-        .chain([0])
-        .chain(member.bytes())
-    {
-        hash ^= u32::from(byte);
-        hash = hash.wrapping_mul(0x0100_0193);
-    }
-    if hash == 0 { 1 } else { hash }
 }
 
 #[cfg(test)]

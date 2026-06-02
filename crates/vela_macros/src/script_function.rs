@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{ItemFn, Result, parse2};
 
-use crate::attrs::{error, spanned_error};
+use crate::attrs::spanned_error;
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
 };
@@ -46,14 +46,8 @@ fn expand_result(attr: TokenStream, input: TokenStream, mode: FunctionMode) -> R
     reject_extern_signature(&item.sig, mode.attr_name())?;
 
     let attrs = parse_script_function_attrs(attr)?;
-    let id = attrs.id.ok_or_else(|| {
-        error(
-            item.sig.ident.span(),
-            &format!("script functions require {}(id = N)", mode.attr_name()),
-        )
-    })?;
     let docs = attrs.docs.clone().or_else(|| docs_from_attrs(&item.attrs));
-    let meta = function_meta(&item, attrs, id, docs, mode)?;
+    let meta = function_meta(&item, attrs, docs, mode)?;
     let fn_ident = item.sig.ident.clone();
     let desc_name = format_ident!("vela_native_function_desc_{}", fn_ident);
     let register_name = mode.register_helper_ident(&fn_ident);
@@ -86,7 +80,7 @@ mod tests {
     use super::meta::FunctionMode;
 
     #[test]
-    fn rejects_missing_function_id() {
+    fn rejects_missing_function_name() {
         let error = expand_result(
             quote! {},
             quote! {
@@ -96,15 +90,15 @@ mod tests {
             },
             FunctionMode::Pure,
         )
-        .expect_err("missing function id should fail macro expansion");
+        .expect_err("missing function name should fail macro expansion");
 
-        assert!(error.to_string().contains("script functions require"));
+        assert!(error.to_string().contains("requires name"));
     }
 
     #[test]
     fn rejects_generic_functions() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.identity" },
             quote! {
                 fn identity<T>(value: T) -> T {
                     value
@@ -120,7 +114,7 @@ mod tests {
     #[test]
     fn rejects_empty_function_names() {
         let error = expand_result(
-            quote! { id = 1, name = "" },
+            quote! { name = "" },
             quote! {
                 fn grant(amount: i64) -> i64 {
                     amount
@@ -141,7 +135,7 @@ mod tests {
     fn rejects_malformed_function_names() {
         for name in [".grant", "game.", "game..grant"] {
             let error = expand_result(
-                quote! { id = 1, name = #name },
+                quote! { name = #name },
                 quote! {
                     fn grant(amount: i64) -> i64 {
                         amount
@@ -162,7 +156,7 @@ mod tests {
     #[test]
     fn rejects_empty_function_permissions() {
         let error = expand_result(
-            quote! { id = 1, permission = "" },
+            quote! { name = "game.grant", permission = "" },
             quote! {
                 fn grant(amount: i64) -> i64 {
                     amount
@@ -182,7 +176,7 @@ mod tests {
     #[test]
     fn rejects_duplicate_function_attrs() {
         let error = expand_result(
-            quote! { id = 1, attr = "domain=gameplay", attr = "domain=combat" },
+            quote! { name = "game.grant", attr = "domain=gameplay", attr = "domain=combat" },
             quote! {
                 fn grant(amount: i64) -> i64 {
                     amount
@@ -202,7 +196,7 @@ mod tests {
     #[test]
     fn rejects_function_where_clauses() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.grant" },
             quote! {
                 fn grant(amount: i64) -> i64
                 where
@@ -221,7 +215,7 @@ mod tests {
     #[test]
     fn rejects_unsafe_functions() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.grant" },
             quote! {
                 unsafe fn grant(amount: i64) -> i64 {
                     amount
@@ -237,7 +231,7 @@ mod tests {
     #[test]
     fn rejects_extern_functions() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.grant" },
             quote! {
                 extern "C" fn grant(amount: i64) -> i64 {
                     amount
@@ -253,7 +247,7 @@ mod tests {
     #[test]
     fn rejects_context_functions_without_context_param() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.emit_event" },
             quote! {
                 fn emit_event(amount: i64) -> bool {
                     amount > 0
@@ -269,7 +263,7 @@ mod tests {
     #[test]
     fn rejects_context_functions_with_by_value_context_param() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.emit_event" },
             quote! {
                 fn emit_event(ctx: NativeCallContext) -> bool {
                     true
@@ -285,7 +279,7 @@ mod tests {
     #[test]
     fn rejects_context_functions_with_shared_context_param() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.emit_event" },
             quote! {
                 fn emit_event(ctx: &NativeCallContext) -> bool {
                     true
@@ -301,7 +295,7 @@ mod tests {
     #[test]
     fn rejects_host_functions_without_host_execution_param() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.write_host" },
             quote! {
                 fn write_host(amount: i64) -> bool {
                     amount > 0
@@ -317,7 +311,7 @@ mod tests {
     #[test]
     fn rejects_host_functions_with_by_value_host_execution_param() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.write_host" },
             quote! {
                 fn write_host(host: HostExecution) -> bool {
                     true
@@ -333,7 +327,7 @@ mod tests {
     #[test]
     fn rejects_host_functions_with_shared_host_execution_param() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.write_host" },
             quote! {
                 fn write_host(host: &HostExecution) -> bool {
                     true
@@ -349,7 +343,7 @@ mod tests {
     #[test]
     fn rejects_script_visible_rust_reference_parameters() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.mutate_player" },
             quote! {
                 fn mutate_player(player: &mut Player) {}
             },
@@ -367,7 +361,7 @@ mod tests {
     #[test]
     fn rejects_nested_script_visible_rust_reference_parameters() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.grant" },
             quote! {
                 fn grant(names: Option<&str>) {}
             },
@@ -385,7 +379,7 @@ mod tests {
     #[test]
     fn rejects_script_visible_rust_reference_returns() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.label" },
             quote! {
                 fn label() -> Option<&'static str> {
                     Some("gold")
@@ -405,7 +399,7 @@ mod tests {
     #[test]
     fn rejects_unsupported_integer_parameters() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.grant" },
             quote! {
                 fn grant(amount: u64) -> i64 {
                     i64::try_from(amount).unwrap_or(0)
@@ -426,7 +420,7 @@ mod tests {
     #[test]
     fn rejects_unsupported_integer_parameters_inside_arrays() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.grant" },
             quote! {
                 fn grant(amounts: [usize; 2]) -> i64 {
                     0
@@ -442,7 +436,7 @@ mod tests {
     #[test]
     fn rejects_unsupported_integer_returns() {
         let error = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.grant" },
             quote! {
                 fn grant() -> Option<usize> {
                     Some(1)
@@ -458,7 +452,7 @@ mod tests {
     #[test]
     fn infers_fixed_array_signature_hints() {
         let tokens = expand_result(
-            quote! { id = 1 },
+            quote! { name = "game.weights" },
             quote! {
                 fn weights(values: [i64; 3]) -> [i64; 3] {
                     values

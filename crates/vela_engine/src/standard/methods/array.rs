@@ -191,6 +191,6 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     ),
 ];
 
-const fn array_id(offset: u32) -> HostMethodId {
+const fn array_id(offset: u64) -> HostMethodId {
     HostMethodId::new(0xff00_0800 + offset)
 }

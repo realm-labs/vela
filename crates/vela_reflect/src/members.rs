@@ -41,9 +41,9 @@ pub fn name(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
 
 pub fn id(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
-        Ok(desc) => Ok(ReflectValue::Host(HostValue::Int(i64::from(
-            desc.key.id.get(),
-        )))),
+        Ok(desc) => Ok(ReflectValue::Host(HostValue::Int(
+            i64::try_from(desc.key.id.get()).unwrap_or(i64::MAX),
+        ))),
         Err(error) => metadata_records::id(target)?
             .map(ReflectValue::Host)
             .ok_or(error),

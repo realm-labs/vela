@@ -11,6 +11,7 @@ proc-macro = true
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
+vela_common = { path = "../vela_common" }
 
 [dev-dependencies]
 vela_engine = { path = "../vela_engine" }

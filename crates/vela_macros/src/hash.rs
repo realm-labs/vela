@@ -16,7 +16,7 @@ impl StableHasher {
         }
     }
 
-    pub(crate) fn write_u32(&mut self, value: u32) {
+    pub(crate) fn write_u64(&mut self, value: u64) {
         for byte in value.to_le_bytes() {
             self.write_byte(byte);
         }

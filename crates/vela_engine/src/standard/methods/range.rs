@@ -18,6 +18,6 @@ const RANGE_METHODS: &[MethodSpec] = &[
     ),
 ];
 
-const fn range_id(offset: u32) -> HostMethodId {
+const fn range_id(offset: u64) -> HostMethodId {
     HostMethodId::new(0xff00_0d00 + offset)
 }

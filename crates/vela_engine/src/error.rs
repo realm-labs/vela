@@ -38,7 +38,7 @@ pub enum EngineErrorKind {
         name: String,
     },
     DuplicateTypeId {
-        id: u32,
+        id: u64,
     },
     DuplicateTypeName {
         name: String,
@@ -68,11 +68,11 @@ pub enum EngineErrorKind {
         name: String,
     },
     DuplicateHostTypeId {
-        id: u32,
+        id: u64,
     },
     DuplicateFieldId {
         type_name: String,
-        id: u32,
+        id: u64,
     },
     DuplicateFieldName {
         type_name: String,
@@ -80,7 +80,7 @@ pub enum EngineErrorKind {
     },
     DuplicateVariantId {
         type_name: String,
-        id: u32,
+        id: u64,
     },
     DuplicateVariantName {
         type_name: String,
@@ -89,7 +89,7 @@ pub enum EngineErrorKind {
     DuplicateVariantFieldId {
         type_name: String,
         variant: String,
-        id: u32,
+        id: u64,
     },
     DuplicateVariantFieldName {
         type_name: String,
@@ -98,7 +98,7 @@ pub enum EngineErrorKind {
     },
     DuplicateTraitId {
         type_name: String,
-        id: u32,
+        id: u64,
     },
     DuplicateTraitName {
         type_name: String,
@@ -107,7 +107,7 @@ pub enum EngineErrorKind {
     DuplicateTraitMethodId {
         type_name: String,
         trait_name: String,
-        id: u32,
+        id: u64,
     },
     DuplicateTraitMethodName {
         type_name: String,
@@ -115,7 +115,7 @@ pub enum EngineErrorKind {
         name: String,
     },
     DuplicateHostMethodId {
-        id: u32,
+        id: u64,
     },
     DuplicateHostMethodName {
         name: String,

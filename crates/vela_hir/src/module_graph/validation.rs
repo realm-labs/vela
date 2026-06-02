@@ -174,7 +174,7 @@ impl ModuleGraph {
         }
     }
 
-    fn member_schema_id(&mut self, member_name: &str, attrs: &[Attribute]) -> Option<(u32, Span)> {
+    fn member_schema_id(&mut self, member_name: &str, attrs: &[Attribute]) -> Option<(u64, Span)> {
         let mut found = None;
         for attr in attrs {
             let name = attr.path.join(".");
@@ -212,7 +212,7 @@ fn schema_id_attr_diagnostic(
 ) -> Diagnostic {
     let reason = match error {
         SchemaIdAttrError::MissingValue => "missing id value",
-        SchemaIdAttrError::InvalidValue => "id value must be a u32 integer",
+        SchemaIdAttrError::InvalidValue => "id value must be a u64 integer",
         SchemaIdAttrError::Zero => "id value must be non-zero",
     };
     Diagnostic::error(format!(

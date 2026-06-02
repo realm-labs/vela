@@ -26,17 +26,35 @@ macro_rules! stable_id {
     };
 }
 
-stable_id!(FieldId, u32);
+stable_id!(FieldId, u64);
 stable_id!(FunctionId, u64);
-stable_id!(HostMethodId, u32);
+stable_id!(HostMethodId, u64);
 stable_id!(HostObjectId, u64);
-stable_id!(HostTypeId, u32);
-stable_id!(MethodId, u32);
+stable_id!(HostTypeId, u64);
+stable_id!(MethodId, u64);
 stable_id!(ShapeId, u32);
 stable_id!(SourceId, u32);
-stable_id!(TraitId, u32);
-stable_id!(TypeId, u32);
-stable_id!(VariantId, u32);
+stable_id!(TraitId, u64);
+stable_id!(TypeId, u64);
+stable_id!(VariantId, u64);
+
+#[must_use]
+pub fn stable_id(namespace: &str, owner: &str, name: &str) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325;
+    stable_hash_bytes(&mut hash, namespace.as_bytes());
+    stable_hash_bytes(&mut hash, &[0]);
+    stable_hash_bytes(&mut hash, owner.as_bytes());
+    stable_hash_bytes(&mut hash, &[0]);
+    stable_hash_bytes(&mut hash, name.as_bytes());
+    if hash == 0 { 1 } else { hash }
+}
+
+fn stable_hash_bytes(hash: &mut u64, bytes: &[u8]) {
+    for byte in bytes {
+        *hash ^= u64::from(*byte);
+        *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]

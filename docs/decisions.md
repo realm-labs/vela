@@ -107,6 +107,16 @@ Reflective reads, writes, and calls resolve descriptor metadata to stable IDs
 and route host interaction through PatchTx. Private, effectful, host path, and
 field-level operations require explicit reflection permissions.
 
+### Macro Stable IDs
+
+User-facing host and native macros do not accept manually chosen numeric stable
+IDs. `ScriptHost` and `ScriptReflect` derive type and field IDs from the
+script-facing stable type path and field name, while `#[script_methods]` and
+native function macros derive method/function IDs from the owner path or public
+dotted function name. Optional `alias` values are the compatibility mechanism
+for rename-safe schema evolution. Low-level descriptor constructors may still
+take explicit IDs for engine internals and focused tests.
+
 Script-owned struct and enum payload fields are reflected as writable by
 default because script values can be copied and updated without touching host
 state. Copy-returning `reflect.set` for script values still enforces

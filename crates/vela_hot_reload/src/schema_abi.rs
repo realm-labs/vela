@@ -106,14 +106,14 @@ impl SchemaAbi {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchemaTraitImplAbi {
-    pub id: u32,
+    pub id: u64,
     pub name: String,
     pub methods: Vec<TraitMethodAbi>,
 }
 
 impl SchemaTraitImplAbi {
     #[must_use]
-    pub fn new(id: u32, name: impl Into<String>) -> Self {
+    pub fn new(id: u64, name: impl Into<String>) -> Self {
         Self {
             id,
             name: name.into(),
@@ -199,7 +199,7 @@ impl SchemaKindAbi {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchemaFieldAbi {
-    pub id: u32,
+    pub id: u64,
     pub name: String,
     pub type_hint: Option<String>,
     pub has_default: bool,
@@ -209,7 +209,7 @@ pub struct SchemaFieldAbi {
 
 impl SchemaFieldAbi {
     #[must_use]
-    pub fn new(id: u32, name: impl Into<String>) -> Self {
+    pub fn new(id: u64, name: impl Into<String>) -> Self {
         Self {
             id,
             name: name.into(),
@@ -259,14 +259,14 @@ impl SchemaFieldAbi {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchemaVariantAbi {
-    pub id: u32,
+    pub id: u64,
     pub name: String,
     pub fields: Vec<SchemaFieldAbi>,
 }
 
 impl SchemaVariantAbi {
     #[must_use]
-    pub fn new(id: u32, name: impl Into<String>) -> Self {
+    pub fn new(id: u64, name: impl Into<String>) -> Self {
         Self {
             id,
             name: name.into(),

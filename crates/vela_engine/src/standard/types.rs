@@ -51,7 +51,7 @@ pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
 fn builtin_type(name: &'static str, id: TypeId, kind: TypeKind, docs: &'static str) -> TypeDesc {
     TypeDesc::new(TypeKey::new(id, name))
         .kind(kind)
-        .schema_hash(SchemaHash::new(u64::from(id.get())))
+        .schema_hash(SchemaHash::new(id.get()))
         .origin(DeclOrigin::Host)
         .docs(docs)
         .attr("stdlib", "builtin")

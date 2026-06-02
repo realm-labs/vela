@@ -1,8 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::format_ident;
-use syn::{
-    FnArg, ItemFn, LitBool, LitInt, LitStr, PatType, Result, ReturnType, Type, parse::Parser,
-};
+use syn::{FnArg, ItemFn, LitBool, LitStr, PatType, Result, ReturnType, Type, parse::Parser};
 
 use crate::attrs::{
     error, parse_dotted_name, parse_key_value_attr, parse_permission, reject_duplicate_attr_keys,
@@ -65,8 +63,8 @@ pub(super) enum HintKind {
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct ScriptFunctionAttrs {
-    pub(super) id: Option<u64>,
     name: Option<String>,
+    alias: Option<String>,
     effect: Option<FunctionEffect>,
     pub(super) docs: Option<String>,
     attrs: Vec<(String, String)>,
@@ -117,11 +115,16 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
         let name = ident.to_string();
         let value = meta.value()?;
         match name.as_str() {
-            "id" => parsed.id = Some(value.parse::<LitInt>()?.base10_parse()?),
             "name" => {
                 parsed.name = Some(parse_dotted_name(
                     value.parse::<LitStr>()?,
                     "script_function name",
+                )?);
+            }
+            "alias" => {
+                parsed.alias = Some(parse_dotted_name(
+                    value.parse::<LitStr>()?,
+                    "script_function alias",
                 )?);
             }
             "effect" => {
@@ -166,7 +169,6 @@ fn parse_effect(effect: &str) -> Result<FunctionEffect> {
 pub(super) fn function_meta(
     item: &ItemFn,
     attrs: ScriptFunctionAttrs,
-    id: u64,
     docs: Option<String>,
     mode: FunctionMode,
 ) -> Result<FunctionMeta> {
@@ -230,7 +232,17 @@ pub(super) fn function_meta(
     }
     reject_return_type(&item.sig.output)?;
 
-    let name = attrs.name.unwrap_or_else(|| item.sig.ident.to_string());
+    let name = attrs.name.ok_or_else(|| {
+        error(
+            item.sig.ident.span(),
+            &format!(
+                "{} requires name = \"module.function\" for stable ID generation",
+                mode.attr_name()
+            ),
+        )
+    })?;
+    let stable_name = attrs.alias.unwrap_or_else(|| name.clone());
+    let id = vela_common::stable_id("native_function", "", &stable_name);
 
     Ok(FunctionMeta {
         id,

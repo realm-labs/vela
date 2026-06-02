@@ -5,7 +5,7 @@ fn script_macros_feed_engine_builder_registration() {
     let desc =
         <Player as vela_engine::schema::ScriptHostMethodMetadata>::script_host_method_descs()
             .into_iter()
-            .find(|desc| desc.id == HostMethodId::new(7))
+            .find(|desc| desc.id == method_id("grant_exp"))
             .expect("method descriptor");
     let engine = Engine::builder()
         .register_host_type::<Player>()
@@ -35,7 +35,7 @@ fn script_methods_generate_callable_native_registration() {
     )
     .build()
     .expect("engine should build from macro callable methods");
-    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut host = HostExecution {
@@ -45,7 +45,7 @@ fn script_methods_generate_callable_native_registration() {
 
     assert_eq!(
         engine.call_native_method(
-            HostMethodId::new(8),
+            method_id("grant_score"),
             &HostPath::new(player),
             &[Value::Int(13)],
             &mut host,
@@ -54,7 +54,7 @@ fn script_methods_generate_callable_native_registration() {
     );
     assert_eq!(
         tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
+        HostPath::new(player).field(Player::vela_field_id_level()),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
 }
@@ -76,7 +76,7 @@ fn script_methods_feed_stable_engine_registration_api() {
     assert_eq!(player_type.methods[3].name, "sum_score");
     assert_eq!(player_type.methods[4].name, "sum6_score");
 
-    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut host = HostExecution {
@@ -86,7 +86,7 @@ fn script_methods_feed_stable_engine_registration_api() {
 
     assert_eq!(
         engine.call_native_method(
-            HostMethodId::new(10),
+            method_id("sum_score"),
             &HostPath::new(player),
             &[
                 Value::Int(1),
@@ -102,7 +102,7 @@ fn script_methods_feed_stable_engine_registration_api() {
 
     assert_eq!(
         engine.call_native_method(
-            HostMethodId::new(12),
+            method_id("sum6_score"),
             &HostPath::new(player),
             &[
                 Value::Int(1),
@@ -118,12 +118,12 @@ fn script_methods_feed_stable_engine_registration_api() {
     );
     assert_eq!(
         tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
+        HostPath::new(player).field(Player::vela_field_id_level()),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(15)));
     assert_eq!(
         tx.patches()[1].path,
-        HostPath::new(player).field(FieldId::new(1)),
+        HostPath::new(player).field(Player::vela_field_id_level()),
     );
     assert_eq!(tx.patches()[1].op, PatchOp::Set(HostValue::Int(21)));
 }
@@ -137,7 +137,7 @@ fn script_methods_generate_callable_result_native_registration() {
     )
     .build()
     .expect("engine should build from macro callable methods");
-    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut host = HostExecution {
@@ -147,7 +147,7 @@ fn script_methods_generate_callable_result_native_registration() {
 
     assert_eq!(
         engine.call_native_method(
-            HostMethodId::new(11),
+            method_id("checked_preview"),
             &HostPath::new(player),
             &[Value::Bool(true)],
             &mut host,
@@ -160,7 +160,7 @@ fn script_methods_generate_callable_result_native_registration() {
     );
     assert_eq!(
         engine.call_native_method(
-            HostMethodId::new(11),
+            method_id("checked_preview"),
             &HostPath::new(player),
             &[Value::Bool(false)],
             &mut host,
@@ -183,7 +183,7 @@ fn script_methods_generate_callable_option_native_registration() {
     )
     .build()
     .expect("engine should build from macro callable methods");
-    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut host = HostExecution {
@@ -193,7 +193,7 @@ fn script_methods_generate_callable_option_native_registration() {
 
     assert_eq!(
         engine.call_native_method(
-            HostMethodId::new(9),
+            method_id("preview_bonus"),
             &HostPath::new(player),
             &[Value::Null],
             &mut host,
@@ -202,7 +202,7 @@ fn script_methods_generate_callable_option_native_registration() {
     );
     assert_eq!(
         engine.call_native_method(
-            HostMethodId::new(9),
+            method_id("preview_bonus"),
             &HostPath::new(player),
             &[Value::Int(4)],
             &mut host,
@@ -233,7 +233,7 @@ fn main(player: Player) {
     )
     .expect("write source");
     let program = engine.compile_file(&source).expect("compile source");
-    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut host = HostExecution {
@@ -253,7 +253,7 @@ fn main(player: Player) {
     assert_eq!(
         tx.patches()[0].op,
         PatchOp::CallHostMethod {
-            method: HostMethodId::new(7),
+            method: method_id("grant_exp"),
             args: vec![HostValue::Int(5)],
         },
     );

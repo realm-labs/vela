@@ -2,13 +2,13 @@ use super::*;
 
 #[test]
 fn script_methods_generates_native_method_metadata() {
-    let owner = TypeKey::new(TypeId::new(1001), "Player");
+    let owner = TypeKey::new(Player::vela_type_id(), "Player");
     let descs = Player::vela_native_method_descs();
 
     assert_eq!(descs.len(), 6);
     assert_eq!(
         descs[0],
-        NativeMethodDesc::new(owner.clone(), HostMethodId::new(7), "grant_exp")
+        NativeMethodDesc::new(owner.clone(), method_id("grant_exp"), "grant_exp")
             .param("amount", TypeHint::Int)
             .returns(TypeHint::Null)
             .effects(EffectSet::host_write())
@@ -22,7 +22,7 @@ fn script_methods_generates_native_method_metadata() {
     );
     assert_eq!(
         descs[1],
-        NativeMethodDesc::new(owner.clone(), HostMethodId::new(8), "grant_score")
+        NativeMethodDesc::new(owner.clone(), method_id("grant_score"), "grant_score")
             .param("amount", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
@@ -35,7 +35,7 @@ fn script_methods_generates_native_method_metadata() {
     );
     assert_eq!(
         descs[2],
-        NativeMethodDesc::new(owner.clone(), HostMethodId::new(9), "preview_bonus")
+        NativeMethodDesc::new(owner.clone(), method_id("preview_bonus"), "preview_bonus")
             .param("bonus", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_read())
@@ -44,7 +44,7 @@ fn script_methods_generates_native_method_metadata() {
     );
     assert_eq!(
         descs[3],
-        NativeMethodDesc::new(owner.clone(), HostMethodId::new(10), "sum_score")
+        NativeMethodDesc::new(owner.clone(), method_id("sum_score"), "sum_score")
             .param("a", TypeHint::Int)
             .param("b", TypeHint::Int)
             .param("c", TypeHint::Int)
@@ -61,7 +61,7 @@ fn script_methods_generates_native_method_metadata() {
     );
     assert_eq!(
         descs[4],
-        NativeMethodDesc::new(owner.clone(), HostMethodId::new(12), "sum6_score")
+        NativeMethodDesc::new(owner.clone(), method_id("sum6_score"), "sum6_score")
             .param("a", TypeHint::Int)
             .param("b", TypeHint::Int)
             .param("c", TypeHint::Int)
@@ -79,12 +79,16 @@ fn script_methods_generates_native_method_metadata() {
     );
     assert_eq!(
         descs[5],
-        NativeMethodDesc::new(owner.clone(), HostMethodId::new(11), "checked_preview")
-            .param("ok", TypeHint::Bool)
-            .returns(TypeHint::Any)
-            .effects(EffectSet::host_read())
-            .access(FunctionAccess::public().reflect_callable(true))
-            .docs("Previews a dynamic copied Result through a callable native method."),
+        NativeMethodDesc::new(
+            owner.clone(),
+            method_id("checked_preview"),
+            "checked_preview"
+        )
+        .param("ok", TypeHint::Bool)
+        .returns(TypeHint::Any)
+        .effects(EffectSet::host_read())
+        .access(FunctionAccess::public().reflect_callable(true))
+        .docs("Previews a dynamic copied Result through a callable native method."),
     );
     assert_eq!(descs[0].owner, Player::vela_host_type_desc().key);
     assert_eq!(
@@ -98,12 +102,13 @@ fn script_methods_coexists_with_host_schema_metadata() {
     let schema = Player::vela_host_type_desc();
     assert_eq!(
         schema,
-        TypeDesc::new(TypeKey::new(TypeId::new(1001), "Player"))
+        TypeDesc::new(TypeKey::new(Player::vela_type_id(), "Player"))
             .kind(TypeKind::Host)
             .schema_hash(schema.schema_hash.expect("schema hash should be generated"))
-            .host_type(HostTypeId::new(1001))
+            .host_type(Player::vela_host_type_id())
+            .attr("module", "game.player")
             .field(
-                FieldDesc::new(FieldId::new(1), "level")
+                FieldDesc::new(Player::vela_field_id_level(), "level")
                     .access(
                         vela_reflect::access::FieldAccess::new()
                             .readable(true)

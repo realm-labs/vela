@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 
 use syn::{
-    Attribute, FnArg, ImplItem, ImplItemFn, ItemImpl, LitBool, LitInt, LitStr, PatType, Result,
-    ReturnType, Type,
+    Attribute, FnArg, ImplItem, ImplItemFn, ItemImpl, LitBool, LitStr, PatType, Result, ReturnType,
+    Type,
 };
 
 use crate::attrs::{
@@ -18,8 +18,8 @@ use crate::signature::{
 #[derive(Clone)]
 pub(super) struct MethodMeta {
     pub(super) ident: syn::Ident,
-    pub(super) id: u32,
     pub(super) name: String,
+    pub(super) stable_name: String,
     pub(super) effect: MethodEffect,
     pub(super) docs: Option<String>,
     pub(super) attrs: Vec<(String, String)>,
@@ -63,8 +63,8 @@ pub(super) enum HintKind {
 #[derive(Clone, Debug, Default)]
 struct ScriptMethodAttrs {
     has_attr: bool,
-    id: Option<u32>,
     name: Option<String>,
+    alias: Option<String>,
     effect: Option<MethodEffect>,
     docs: Option<String>,
     attrs: Vec<(String, String)>,
@@ -73,7 +73,7 @@ struct ScriptMethodAttrs {
 }
 
 pub(super) fn collect_methods(item: &mut ItemImpl) -> Result<Vec<MethodMeta>> {
-    let mut seen_ids = BTreeSet::new();
+    let mut seen_stable_names = BTreeSet::new();
     let mut seen_names = BTreeSet::new();
     let mut methods = Vec::new();
     for impl_item in &mut item.items {
@@ -83,15 +83,6 @@ pub(super) fn collect_methods(item: &mut ItemImpl) -> Result<Vec<MethodMeta>> {
         let attrs = parse_script_method_attrs(&method.attrs)?;
         if !attrs.has_attr {
             continue;
-        }
-        let id = attrs.id.ok_or_else(|| {
-            error(
-                method.sig.ident.span(),
-                "script methods require #[script_method(id = N)]",
-            )
-        })?;
-        if !seen_ids.insert(id) {
-            return Err(error(method.sig.ident.span(), "duplicate script method id"));
         }
         let name = attrs
             .name
@@ -109,11 +100,29 @@ pub(super) fn collect_methods(item: &mut ItemImpl) -> Result<Vec<MethodMeta>> {
                 "duplicate script method name",
             ));
         }
+        let stable_name = attrs.alias.clone().unwrap_or_else(|| {
+            attrs
+                .name
+                .clone()
+                .unwrap_or_else(|| method.sig.ident.to_string())
+        });
+        if stable_name.is_empty() {
+            return Err(error(
+                method.sig.ident.span(),
+                "script method alias cannot be empty",
+            ));
+        }
+        if !seen_stable_names.insert(stable_name.clone()) {
+            return Err(error(
+                method.sig.ident.span(),
+                "duplicate script method alias",
+            ));
+        }
         let docs = attrs
             .docs
             .clone()
             .or_else(|| docs_from_attrs(&method.attrs));
-        methods.push(method_meta(method, attrs, id, docs)?);
+        methods.push(method_meta(method, attrs, stable_name, docs)?);
         method
             .attrs
             .retain(|attr| !attr.path().is_ident("script_method"));
@@ -137,8 +146,8 @@ fn parse_script_method_attrs(attrs: &[Attribute]) -> Result<ScriptMethodAttrs> {
             let name = ident.to_string();
             let value = meta.value()?;
             match name.as_str() {
-                "id" => parsed.id = Some(value.parse::<LitInt>()?.base10_parse()?),
                 "name" => parsed.name = Some(value.parse::<LitStr>()?.value()),
+                "alias" => parsed.alias = Some(value.parse::<LitStr>()?.value()),
                 "effect" => {
                     parsed.effect = Some(parse_effect(&value.parse::<LitStr>()?.value())?);
                 }
@@ -180,7 +189,7 @@ fn parse_effect(effect: &str) -> Result<MethodEffect> {
 fn method_meta(
     method: &ImplItemFn,
     attrs: ScriptMethodAttrs,
-    id: u32,
+    stable_name: String,
     docs: Option<String>,
 ) -> Result<MethodMeta> {
     reject_generic_signature(&method.sig.generics, "#[script_method]")?;
@@ -239,8 +248,8 @@ fn method_meta(
 
     Ok(MethodMeta {
         ident: method.sig.ident.clone(),
-        id,
         name: attrs.name.unwrap_or_else(|| method.sig.ident.to_string()),
+        stable_name,
         effect: attrs.effect.unwrap_or(MethodEffect::Pure),
         docs,
         attrs: attrs.attrs,

@@ -484,28 +484,32 @@ test mock state
 
 ```rust
 #[derive(ScriptHost, ScriptReflect)]
-#[script(name = "Player", id = 1001, module = "game.player")]
+#[script(path = "game.player.Player")]
 pub struct Player {
-    #[script(get, set, id = 1)]
+    #[script(get, set)]
     pub level: u32,
 
-    #[script(get, set, id = 2)]
+    #[script(get, set)]
     pub exp: u64,
 
-    #[script(get, set, id = 3)]
+    #[script(get, set)]
     pub title: String,
 
-    #[script(get, id = 4)]
+    #[script(get)]
     pub inventory: Inventory,
 }
 ```
+
+The public macro contract is the script-facing stable path plus optional
+`alias` values for compatible Rust or script-facing renames. Numeric IDs remain
+runtime handles, but host authors do not choose them in derive/function macros.
 
 ### Method Exposure
 
 ```rust
 #[script_methods]
 impl Player {
-    #[script_method(id = 1, effect = "write_host")]
+    #[script_method(effect = "write_host")]
     pub fn add_exp(
         ctx: &mut NativeCallContext,
         player: HostRef<Player>,
@@ -531,7 +535,7 @@ MethodDesc list
 read_field / write_field helpers
 method dispatch helpers
 schema_hash
-stable ID validation
+path-derived stable ID validation
 ```
 
 ## Host Function Registration
@@ -674,12 +678,18 @@ let engine = Engine::builder()
     .build()?;
 ```
 
-For simple cases, a convenience wrapper may infer descriptors from Rust function
-signatures, but production host APIs should prefer explicit stable IDs:
+For macro-exposed functions, `#[script_function]`,
+`#[script_context_function]`, and `#[script_host_function]` derive the native
+function ID from the public dotted function name and optional `alias`.
+Low-level descriptor constructors remain available for engine internals and
+tests that need explicit IDs:
 
 ```rust
 let engine = Engine::builder()
-    .register_fn("game.log", game_log)?
+    .register_native_fn(
+        NativeFunctionDesc::new("game.log", NativeFunctionId(10_001)),
+        game_log,
+    )?
     .build()?;
 ```
 
@@ -725,7 +735,6 @@ receiver as a host path or host ref, not as `&mut T` in the VM.
 #[script_methods]
 impl Inventory {
     #[script_method(
-        id = 1,
         name = "add",
         effect = "write_host",
         docs = "Adds an item stack to this inventory."
@@ -834,14 +843,16 @@ pub struct TypeKey {
 Fields, methods, variants, traits, and functions also need stable IDs:
 
 ```rust
-pub struct FieldId(pub u32);
-pub struct MethodId(pub u32);
-pub struct VariantId(pub u32);
+pub struct FieldId(pub u64);
+pub struct MethodId(pub u64);
+pub struct VariantId(pub u64);
 pub struct TraitId(pub u64);
 pub struct FunctionId(pub u64);
 ```
 
-Field order may change, but `FieldId` must not.
+Field order may change, but `FieldId` must not. Macro-generated IDs are
+deterministically derived from script-facing stable paths and aliases, while
+registration still rejects duplicate IDs.
 
 ### TypeDesc
 

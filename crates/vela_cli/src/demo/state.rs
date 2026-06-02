@@ -2,14 +2,14 @@ use std::collections::BTreeMap;
 use std::error::Error;
 
 use vela_bytecode::CodeObject;
-use vela_common::{HostObjectId, HostTypeId, SymbolInterner};
+use vela_common::{HostObjectId, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
 use vela_vm::value::Value;
 
-use super::ids::{CTX_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
+use super::ids::{DemoIds, context_type, monster_type, player_type};
 
 const PLAYER_OBJECT: u64 = 7;
 const CTX_OBJECT: u64 = 100;
@@ -37,17 +37,17 @@ pub(crate) struct DemoHostState {
 impl DemoHostState {
     pub(crate) fn new(ids: DemoIds, has_monster: bool) -> Self {
         let player = HostRef::new(
-            HostTypeId::new(PLAYER_TYPE),
+            player_type(),
             HostObjectId::new(PLAYER_OBJECT),
             PLAYER_GENERATION,
         );
         let ctx = HostRef::new(
-            HostTypeId::new(CTX_TYPE),
+            context_type(),
             HostObjectId::new(CTX_OBJECT),
             CTX_GENERATION,
         );
         let monster = HostRef::new(
-            HostTypeId::new(MONSTER_TYPE),
+            monster_type(),
             HostObjectId::new(MONSTER_OBJECT),
             MONSTER_GENERATION,
         );

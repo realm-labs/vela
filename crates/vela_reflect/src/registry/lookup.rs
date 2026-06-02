@@ -42,20 +42,5 @@ pub(super) fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult
 }
 
 pub(super) fn stable_trait_id(name: &str) -> TraitId {
-    TraitId::new(stable_reflect_id("trait", name, ""))
-}
-
-pub(super) fn stable_reflect_id(kind: &str, owner: &str, member: &str) -> u32 {
-    let mut hash = 0x811c_9dc5;
-    for byte in kind
-        .bytes()
-        .chain([0])
-        .chain(owner.bytes())
-        .chain([0])
-        .chain(member.bytes())
-    {
-        hash ^= u32::from(byte);
-        hash = hash.wrapping_mul(0x0100_0193);
-    }
-    if hash == 0 { 1 } else { hash }
+    TraitId::new(vela_common::stable_id("trait", name, ""))
 }

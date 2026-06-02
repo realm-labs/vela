@@ -1,6 +1,6 @@
 #![allow(clippy::result_large_err)]
 
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
+use vela_common::{HostMethodId, HostObjectId, stable_id};
 use vela_engine::engine::Engine;
 use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
@@ -23,9 +23,9 @@ mod registration;
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(id = 1001, name = "Player")]
+#[script(path = "game.player.Player")]
 struct Player {
-    #[script(get, set, id = 1)]
+    #[script(get, set)]
     level: u32,
 }
 
@@ -34,7 +34,6 @@ struct Player {
 impl Player {
     /// Grants copied experience through the host patch path.
     #[script_method(
-        id = 7,
         effect = "write_host",
         permission = "player.write",
         reflect = true,
@@ -48,19 +47,14 @@ impl Player {
     }
 
     /// Grants copied score through a callable native method.
-    #[script_method(
-        id = 8,
-        effect = "write_host",
-        permission = "player.write",
-        reflect = true
-    )]
+    #[script_method(effect = "write_host", permission = "player.write", reflect = true)]
     pub fn grant_score(
         receiver: &HostPath,
         host: &mut HostExecution<'_>,
         amount: i64,
     ) -> VmResult<i64> {
         host.tx.set_path(
-            receiver.clone().field(FieldId::new(1)),
+            receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(amount),
             None,
         )?;
@@ -68,7 +62,7 @@ impl Player {
     }
 
     /// Previews an optional copied bonus through a callable native method.
-    #[script_method(id = 9, effect = "read_host", reflect = true)]
+    #[script_method(effect = "read_host", reflect = true)]
     pub fn preview_bonus(
         _receiver: &HostPath,
         _host: &mut HostExecution<'_>,
@@ -78,12 +72,7 @@ impl Player {
     }
 
     /// Sums five copied method values through a callable native method.
-    #[script_method(
-        id = 10,
-        effect = "write_host",
-        permission = "player.write",
-        reflect = true
-    )]
+    #[script_method(effect = "write_host", permission = "player.write", reflect = true)]
     pub fn sum_score(
         receiver: &HostPath,
         host: &mut HostExecution<'_>,
@@ -95,7 +84,7 @@ impl Player {
     ) -> VmResult<i64> {
         let total = a + b + c + d + e;
         host.tx.set_path(
-            receiver.clone().field(FieldId::new(1)),
+            receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),
             None,
         )?;
@@ -104,12 +93,7 @@ impl Player {
 
     /// Sums six copied method values through a callable native method.
     #[allow(clippy::too_many_arguments)]
-    #[script_method(
-        id = 12,
-        effect = "write_host",
-        permission = "player.write",
-        reflect = true
-    )]
+    #[script_method(effect = "write_host", permission = "player.write", reflect = true)]
     pub fn sum6_score(
         receiver: &HostPath,
         host: &mut HostExecution<'_>,
@@ -122,7 +106,7 @@ impl Player {
     ) -> VmResult<i64> {
         let total = a + b + c + d + e + f;
         host.tx.set_path(
-            receiver.clone().field(FieldId::new(1)),
+            receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),
             None,
         )?;
@@ -130,7 +114,7 @@ impl Player {
     }
 
     /// Previews a dynamic copied Result through a callable native method.
-    #[script_method(id = 11, effect = "read_host", reflect = true)]
+    #[script_method(effect = "read_host", reflect = true)]
     pub fn checked_preview(
         _receiver: &HostPath,
         _host: &mut HostExecution<'_>,
@@ -142,6 +126,10 @@ impl Player {
             Err("blocked".to_owned())
         }
     }
+}
+
+fn method_id(name: &str) -> HostMethodId {
+    HostMethodId::new(stable_id("host_method", "game.player.Player", name))
 }
 
 fn unique_test_dir(name: &str) -> std::path::PathBuf {

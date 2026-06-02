@@ -12,8 +12,8 @@ pub(super) fn method_tokens(method: &MethodMeta) -> TokenStream {
 }
 
 fn method_desc_expr(method: &MethodMeta) -> TokenStream {
-    let id = method.id;
     let name = &method.name;
+    let stable_name = &method.stable_name;
     let effect = effect_tokens(method.effect);
     let returns = hint_tokens(method.returns);
     let params = method.params.iter().map(param_tokens);
@@ -29,9 +29,14 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
     });
 
     quote! {{
+        let method_id = ::vela_common::HostMethodId::new(::vela_common::stable_id(
+            "host_method",
+            &owner_stable_path,
+            #stable_name,
+        ));
         let mut desc = ::vela_engine::method::NativeMethodDesc::new(
             owner_key.clone(),
-            ::vela_common::HostMethodId::new(#id),
+            method_id,
             #name,
         )
         .effects(#effect)

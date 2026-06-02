@@ -9,7 +9,8 @@ use crate::hash::StableHasher;
 pub(super) struct FieldMeta {
     pub(super) rust_name: String,
     pub(super) script_name: String,
-    pub(super) id: u32,
+    pub(super) stable_name: String,
+    pub(super) id: u64,
     pub(super) readable: bool,
     pub(super) writable: bool,
     pub(super) type_hint: Option<String>,
@@ -18,7 +19,10 @@ pub(super) struct FieldMeta {
     pub(super) permissions: Vec<String>,
 }
 
-pub(super) fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
+pub(super) fn collect_fields(
+    input: &DeriveInput,
+    type_stable_path: &str,
+) -> Result<Vec<FieldMeta>> {
     let Data::Struct(data) = &input.data else {
         return Err(spanned_error(input, "ScriptHost only supports structs"));
     };
@@ -29,6 +33,7 @@ pub(super) fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
         ));
     };
 
+    let mut seen_stable_names = BTreeSet::new();
     let mut seen_ids = BTreeSet::new();
     let mut seen_names = BTreeSet::new();
     let mut result = Vec::new();
@@ -41,16 +46,6 @@ pub(super) fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
             .ident
             .as_ref()
             .ok_or_else(|| spanned_error(field, "ScriptHost requires named struct fields"))?;
-        let id = attrs.id.ok_or_else(|| {
-            error(
-                ident.span(),
-                "script-exposed fields require #[script(id = N)]",
-            )
-        })?;
-        if !seen_ids.insert(id) {
-            return Err(error(ident.span(), "duplicate script field id"));
-        }
-
         let rust_name = ident.to_string();
         let script_name = attrs.field_name(&rust_name);
         if script_name.is_empty() {
@@ -59,8 +54,17 @@ pub(super) fn collect_fields(input: &DeriveInput) -> Result<Vec<FieldMeta>> {
         if !seen_names.insert(script_name.clone()) {
             return Err(error(ident.span(), "duplicate script field name"));
         }
+        let stable_name = attrs.alias.clone().unwrap_or_else(|| script_name.clone());
+        if !seen_stable_names.insert(stable_name.clone()) {
+            return Err(error(ident.span(), "duplicate script field alias"));
+        }
+        let id = vela_common::stable_id("host_field", type_stable_path, &stable_name);
+        if !seen_ids.insert(id) {
+            return Err(error(ident.span(), "duplicate generated script field id"));
+        }
         result.push(FieldMeta {
             script_name,
+            stable_name,
             rust_name,
             id,
             readable: attrs.get,
@@ -97,8 +101,9 @@ pub(super) fn schema_hash(
     let mut fields = fields.iter().collect::<Vec<_>>();
     fields.sort_by_key(|field| (field.id, field.script_name.as_str()));
     for field in fields {
-        hasher.write_u32(field.id);
+        hasher.write_u64(field.id);
         hasher.write_str(&field.script_name);
+        hasher.write_str(&field.stable_name);
         hasher.write_bool(field.readable);
         hasher.write_bool(field.writable);
         hasher.write_str(field.type_hint.as_deref().unwrap_or(""));

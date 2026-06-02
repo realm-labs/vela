@@ -74,7 +74,7 @@ fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
     NativeFunctionDesc::new("game.reward.grant", ids.reward_grant_function)
         .param(
             "player",
-            TypeHint::Host(TypeKey::new(TypeId::new(100), "Player")),
+            TypeHint::Host(TypeKey::new(Player::vela_type_id(), "Player")),
         )
         .param("item_id", TypeHint::String)
         .returns(TypeHint::Bool)
@@ -90,25 +90,25 @@ fn demo_reward_grant(_: Value, _: String) -> bool {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(id = 100, host_id = 1, name = "Player", implements = "Damageable")]
+#[script(path = "game.player.Player", implements = "Damageable")]
 struct Player {
-    #[script(get, id = 7)]
+    #[script(get)]
     id: i64,
-    #[script(get, set, id = 2)]
+    #[script(get, set)]
     level: i64,
-    #[script(get, set, id = 6)]
+    #[script(get, set)]
     exp: i64,
-    #[script(get, id = 10, hint = "HostQuestProgress")]
+    #[script(get, hint = "HostQuestProgress")]
     quest_progress: HostQuestProgress,
-    #[script(get, id = 11)]
+    #[script(get)]
     quest_goal: i64,
-    #[script(get, id = 14, hint = "Inventory")]
+    #[script(get, hint = "Inventory")]
     inventory: Inventory,
 }
 
 #[script_methods]
 impl Player {
-    #[script_method(id = 9, name = "add_reward", effect = "write_host", reflect = true)]
+    #[script_method(name = "add_reward", effect = "write_host", reflect = true)]
     #[allow(dead_code)]
     pub fn add_reward(
         _ctx: &mut vela_engine::context::NativeCallContext<'_, '_>,
@@ -121,52 +121,40 @@ impl Player {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(id = 102, host_id = 3, name = "Monster")]
+#[script(path = "game.monster.Monster")]
 struct Monster {
-    #[script(get, id = 7)]
+    #[script(get)]
     id: i64,
-    #[script(get, id = 6)]
+    #[script(get)]
     exp: i64,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(
-    id = 105,
-    host_id = 4,
-    name = "Config",
+    path = "game.config.Config",
     docs = "Demo gameplay configuration exposed through context host paths."
 )]
 struct Config {
-    #[script(
-        get,
-        id = 18,
-        hint = "int",
-        docs = "Experience threshold for the next level."
-    )]
+    #[script(get, hint = "int", docs = "Experience threshold for the next level.")]
     exp_to_next_level: i64,
-    #[script(
-        get,
-        id = 19,
-        hint = "array",
-        docs = "Configured monster reward table."
-    )]
+    #[script(get, hint = "array", docs = "Configured monster reward table.")]
     kill_rewards: Vec<KillRewardConfig>,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(id = 103, host_id = 5, name = "Inventory")]
+#[script(path = "game.inventory.Inventory")]
 struct Inventory {
-    #[script(get, id = 15, hint = "map")]
+    #[script(get, hint = "map")]
     items: std::collections::BTreeMap<String, ItemStack>,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(id = 104, host_id = 6, name = "ItemStack")]
+#[script(path = "game.inventory.ItemStack")]
 struct ItemStack {
-    #[script(get, set, id = 16, hint = "int")]
+    #[script(get, set, hint = "int")]
     count: i64,
 }
 

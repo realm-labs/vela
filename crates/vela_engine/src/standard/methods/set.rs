@@ -139,6 +139,6 @@ const SET_METHODS: &[MethodSpec] = &[
     ),
 ];
 
-const fn set_id(offset: u32) -> HostMethodId {
+const fn set_id(offset: u64) -> HostMethodId {
     HostMethodId::new(0xff00_0a00 + offset)
 }

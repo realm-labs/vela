@@ -48,7 +48,7 @@ fn type_record(desc: &TypeDesc) -> HostValue {
     let mut fields = BTreeMap::new();
     fields.insert(
         "id".to_owned(),
-        HostValue::Int(i64::from(desc.key.id.get())),
+        HostValue::Int(i64::try_from(desc.key.id.get()).unwrap_or(i64::MAX)),
     );
     fields.insert("name".to_owned(), HostValue::String(desc.key.name.clone()));
     fields.insert("kind".to_owned(), HostValue::String(kind_name(desc.kind)));

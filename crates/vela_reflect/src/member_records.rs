@@ -17,7 +17,7 @@ pub(crate) fn method_record_with_owner(type_name: &str, method: &MethodDesc) -> 
 
 fn method_record_fields(method: &MethodDesc) -> BTreeMap<String, HostValue> {
     let mut fields = BTreeMap::new();
-    fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
+    fields.insert("id".to_owned(), id_value(method.id.get()));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
     fields.insert("origin".to_owned(), origin_value(method.origin));
     fields.insert(
@@ -120,10 +120,7 @@ fn method_access_record(method: &MethodDesc) -> HostValue {
 
 pub(crate) fn trait_record(trait_desc: &TraitDesc) -> HostValue {
     let mut fields = BTreeMap::new();
-    fields.insert(
-        "id".to_owned(),
-        HostValue::Int(i64::from(trait_desc.id.get())),
-    );
+    fields.insert("id".to_owned(), id_value(trait_desc.id.get()));
     fields.insert(
         "name".to_owned(),
         HostValue::String(trait_desc.name.clone()),
@@ -154,7 +151,7 @@ fn origin_value(origin: DeclOrigin) -> HostValue {
 
 fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> HostValue {
     let mut fields = BTreeMap::new();
-    fields.insert("id".to_owned(), HostValue::Int(i64::from(method.id.get())));
+    fields.insert("id".to_owned(), id_value(method.id.get()));
     fields.insert("name".to_owned(), HostValue::String(method.name.clone()));
     fields.insert("owner".to_owned(), HostValue::String(owner.to_owned()));
     fields.insert("origin".to_owned(), origin_value(method.origin));
@@ -211,7 +208,7 @@ fn variant_record_fields<'a>(
 ) -> BTreeMap<String, HostValue> {
     let field_owner = format!("{type_name}.{}", variant.name);
     let mut fields = BTreeMap::new();
-    fields.insert("id".to_owned(), HostValue::Int(i64::from(variant.id.get())));
+    fields.insert("id".to_owned(), id_value(variant.id.get()));
     fields.insert("name".to_owned(), HostValue::String(variant.name.clone()));
     fields.insert("origin".to_owned(), origin_value(variant.origin));
     fields.insert(
@@ -245,7 +242,7 @@ pub(crate) fn field_record_with_owner(type_name: &str, field: &FieldDesc) -> Hos
 
 fn field_record_fields(field: &FieldDesc) -> BTreeMap<String, HostValue> {
     let mut fields = BTreeMap::new();
-    fields.insert("id".to_owned(), HostValue::Int(i64::from(field.id.get())));
+    fields.insert("id".to_owned(), id_value(field.id.get()));
     fields.insert("name".to_owned(), HostValue::String(field.name.clone()));
     fields.insert("origin".to_owned(), origin_value(field.origin));
     fields.insert(
@@ -263,6 +260,10 @@ fn field_record_fields(field: &FieldDesc) -> BTreeMap<String, HostValue> {
     fields.insert("attrs".to_owned(), attrs_value(&field.attrs));
     fields.insert("source_span".to_owned(), span_value(field.source_span));
     fields
+}
+
+fn id_value(id: u64) -> HostValue {
+    HostValue::Int(i64::try_from(id).unwrap_or(i64::MAX))
 }
 
 fn field_record_from_fields(fields: BTreeMap<String, HostValue>) -> HostValue {

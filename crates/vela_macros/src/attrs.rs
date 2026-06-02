@@ -2,15 +2,15 @@ use std::collections::BTreeSet;
 
 use proc_macro2::Span;
 use quote::ToTokens;
-use syn::{Attribute, LitInt, LitStr, Meta, Result, Type, spanned::Spanned};
+use syn::{Attribute, LitStr, Meta, Result, Type, spanned::Spanned};
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct ScriptAttrs {
     pub(crate) has_script_attr: bool,
     pub(crate) skip: bool,
     pub(crate) name: Option<String>,
-    pub(crate) id: Option<u32>,
-    pub(crate) host_id: Option<u32>,
+    pub(crate) path: Option<String>,
+    pub(crate) alias: Option<String>,
     pub(crate) module: Option<String>,
     pub(crate) docs: Option<String>,
     pub(crate) attrs: Vec<(String, String)>,
@@ -59,12 +59,12 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             }
 
             let value = meta.value()?;
-            if path_name(&meta.path, "id") {
-                parsed.id = Some(value.parse::<LitInt>()?.base10_parse()?);
-            } else if path_name(&meta.path, "host_id") {
-                parsed.host_id = Some(value.parse::<LitInt>()?.base10_parse()?);
-            } else if path_name(&meta.path, "name") {
+            if path_name(&meta.path, "name") {
                 parsed.name = Some(value.parse::<LitStr>()?.value());
+            } else if path_name(&meta.path, "path") {
+                parsed.path = Some(parse_dotted_name(value.parse::<LitStr>()?, "script path")?);
+            } else if path_name(&meta.path, "alias") {
+                parsed.alias = Some(parse_dotted_name(value.parse::<LitStr>()?, "script alias")?);
             } else if path_name(&meta.path, "module") {
                 parsed.module = Some(parse_dotted_name(
                     value.parse::<LitStr>()?,

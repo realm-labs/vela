@@ -97,7 +97,11 @@ impl IntoHostArg for &HostRef {
 
 impl IntoHostArg for (u32, u64, u32) {
     fn into_host_ref(self) -> HostRef {
-        HostRef::new(HostTypeId::new(self.0), HostObjectId::new(self.1), self.2)
+        HostRef::new(
+            HostTypeId::new(u64::from(self.0)),
+            HostObjectId::new(self.1),
+            self.2,
+        )
     }
 }
 

@@ -73,6 +73,6 @@ const OPTION_METHODS: &[MethodSpec] = &[
     ),
 ];
 
-const fn option_id(offset: u32) -> HostMethodId {
+const fn option_id(offset: u64) -> HostMethodId {
     HostMethodId::new(0xff00_0b00 + offset)
 }

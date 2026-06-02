@@ -1,4 +1,4 @@
-use vela_common::{FieldId, HostObjectId, HostTypeId, TypeId};
+use vela_common::{FieldId, HostObjectId, TypeId, stable_id};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_macros::{ScriptHost, ScriptReflect};
@@ -8,24 +8,15 @@ use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
 #[allow(dead_code)]
 #[derive(ScriptHost, ScriptReflect)]
 #[script(
-    name = "Player",
-    id = 1001,
-    module = "game.player",
+    path = "game.player.Player",
     docs = "Player host schema.",
     attr = "domain=gameplay",
     implements = "Damageable"
 )]
 struct Player {
-    #[script(
-        get,
-        set,
-        id = 1,
-        hint = "int",
-        docs = "Current level.",
-        attr = "unit=level"
-    )]
+    #[script(get, set, hint = "int", docs = "Current level.", attr = "unit=level")]
     level: u32,
-    #[script(get, id = 2, name = "display_name", permission = "player.profile")]
+    #[script(get, name = "display_name", permission = "player.profile")]
     name: String,
     #[script(skip)]
     internal_revision: u64,
@@ -33,37 +24,50 @@ struct Player {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(name = "RewardConfig", id = 2001, module = "game.reward")]
+#[script(path = "game.reward.RewardConfig")]
 struct RewardConfigA {
-    #[script(get, id = 1, hint = "string")]
+    #[script(get, hint = "string")]
     item_id: String,
-    #[script(get, id = 2, hint = "int")]
+    #[script(get, hint = "int")]
     count: i64,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(name = "RewardConfig", id = 2001, module = "game.reward")]
+#[script(module = "game.reward", name = "RewardConfig")]
 struct RewardConfigB {
-    #[script(get, id = 2, hint = "int")]
+    #[script(get, hint = "int")]
     count: i64,
-    #[script(get, id = 1, hint = "string")]
+    #[script(get, hint = "string")]
     item_id: String,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(
+    path = "game.reward.RewardConfigV2",
+    alias = "game.reward.RewardConfig"
+)]
+struct RewardConfigRenamed {
+    #[script(get, hint = "string", alias = "item_id")]
+    item_key: String,
+    #[script(get, hint = "int")]
+    count: i64,
 }
 
 #[test]
 fn script_host_derive_generates_type_metadata() {
     let desc = Player::vela_host_type_desc();
-    let expected = TypeDesc::new(TypeKey::new(TypeId::new(1001), "Player"))
+    let expected = TypeDesc::new(TypeKey::new(Player::vela_type_id(), "Player"))
         .kind(TypeKind::Host)
         .schema_hash(desc.schema_hash.expect("schema hash should be generated"))
-        .host_type(HostTypeId::new(1001))
+        .host_type(Player::vela_host_type_id())
         .attr("module", "game.player")
         .attr("domain", "gameplay")
         .docs("Player host schema.")
         .trait_impl(TraitDesc::new("Damageable"))
         .field(
-            FieldDesc::new(FieldId::new(1), "level")
+            FieldDesc::new(Player::vela_field_id_level(), "level")
                 .access(
                     FieldAccess::new()
                         .readable(true)
@@ -77,7 +81,7 @@ fn script_host_derive_generates_type_metadata() {
                 .docs("Current level."),
         )
         .field(
-            FieldDesc::new(FieldId::new(2), "display_name")
+            FieldDesc::new(Player::vela_field_id_name(), "display_name")
                 .access(
                     FieldAccess::new()
                         .readable(true)
@@ -92,7 +96,11 @@ fn script_host_derive_generates_type_metadata() {
 
     assert_eq!(desc, expected);
     assert_eq!(desc.kind, TypeKind::Host);
-    assert_eq!(desc.host_type_id, Some(HostTypeId::new(1001)));
+    assert_eq!(
+        Player::vela_type_id(),
+        TypeId::new(stable_id("host_type", "", "game.player.Player")),
+    );
+    assert_eq!(desc.host_type_id, Some(Player::vela_host_type_id()));
     assert_eq!(desc.attrs.get("module"), Some("game.player"));
     assert_eq!(desc.attrs.get("domain"), Some("gameplay"));
     assert_eq!(desc.traits, vec![TraitDesc::new("Damageable")]);
@@ -110,25 +118,35 @@ fn script_host_derive_generates_type_metadata() {
 
 #[test]
 fn script_host_derive_generates_field_helpers() {
-    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 3);
+    let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 3);
 
-    assert_eq!(Player::vela_field_id_level(), FieldId::new(1));
-    assert_eq!(Player::vela_field_id_name(), FieldId::new(2));
+    assert_eq!(
+        Player::vela_field_id_level(),
+        FieldId::new(stable_id("host_field", "game.player.Player", "level")),
+    );
+    assert_eq!(
+        Player::vela_field_id_name(),
+        FieldId::new(stable_id(
+            "host_field",
+            "game.player.Player",
+            "display_name"
+        )),
+    );
     assert_eq!(
         Player::vela_field_path_level(player),
-        HostPath::new(player).field(FieldId::new(1)),
+        HostPath::new(player).field(Player::vela_field_id_level()),
     );
     assert_eq!(
         Player::vela_field_path_name(player),
-        HostPath::new(player).field(FieldId::new(2)),
+        HostPath::new(player).field(Player::vela_field_id_name()),
     );
     assert_eq!(
         Player::vela_field_proxy_level(player),
-        PathProxy::new(HostPath::new(player).field(FieldId::new(1))),
+        PathProxy::new(HostPath::new(player).field(Player::vela_field_id_level())),
     );
     assert_eq!(
         Player::vela_field_proxy_name(player),
-        PathProxy::new(HostPath::new(player).field(FieldId::new(2))),
+        PathProxy::new(HostPath::new(player).field(Player::vela_field_id_name())),
     );
 }
 
@@ -156,7 +174,7 @@ fn script_reflect_derive_feeds_engine_registration_api() {
     let player = registry
         .type_by_name("Player")
         .expect("reflected schema should be registered");
-    assert_eq!(player.key.id, TypeId::new(1001));
+    assert_eq!(player.key.id, Player::vela_type_id());
     assert_eq!(player.kind, TypeKind::Host);
     assert_eq!(player.fields.len(), 2);
     assert_eq!(player.fields[0].name, "level");
@@ -171,4 +189,18 @@ fn script_host_schema_hash_survives_field_reordering() {
 
     assert_eq!(first.schema_hash, second.schema_hash);
     assert_ne!(first.fields, second.fields);
+}
+
+#[test]
+fn script_host_alias_preserves_generated_ids_across_renames() {
+    let original = RewardConfigA::vela_host_type_desc();
+    let renamed = RewardConfigRenamed::vela_host_type_desc();
+
+    assert_eq!(renamed.key.id, original.key.id);
+    assert_eq!(renamed.host_type_id, original.host_type_id);
+    assert_eq!(renamed.key.name, "RewardConfigV2");
+    assert_eq!(
+        RewardConfigRenamed::vela_field_id_item_key(),
+        RewardConfigA::vela_field_id_item_id(),
+    );
 }

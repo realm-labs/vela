@@ -155,8 +155,9 @@ closes or exposes a more specific gap.
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
   safe-point checks.
-- Script schema fields and enum variants can use validated explicit stable ID
-  attributes for reload-safe source renames.
+- Macro-exposed host types, fields, methods, and native functions derive stable
+  `u64` IDs from script-facing paths, with `alias` preserving compatibility
+  across rename-safe host API changes.
 - CLI demo scripts and conformance fixtures use `.vela`, and the hot-reload
   demo exercises staged updates through an explicit `check_reload` safe point.
 

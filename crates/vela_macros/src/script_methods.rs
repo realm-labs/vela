@@ -50,7 +50,9 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
         impl #self_ty {
             #[must_use]
             pub fn vela_native_method_descs() -> ::std::vec::Vec<::vela_engine::method::NativeMethodDesc> {
-                let owner_key = Self::vela_host_type_desc().key;
+                let owner_desc = Self::vela_host_type_desc();
+                let owner_stable_path = Self::vela_stable_type_path();
+                let owner_key = owner_desc.key;
                 let mut methods = ::std::vec::Vec::new();
                 #(#method_tokens)*
                 methods
@@ -60,7 +62,9 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             pub fn vela_register_native_method_fns(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
-                let owner_key = Self::vela_host_type_desc().key;
+                let owner_desc = Self::vela_host_type_desc();
+                let owner_stable_path = Self::vela_stable_type_path();
+                let owner_key = owner_desc.key;
                 #native_registration_tokens
             }
 
@@ -68,7 +72,9 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             pub fn vela_register_host_methods(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
-                let owner_key = Self::vela_host_type_desc().key;
+                let owner_desc = Self::vela_host_type_desc();
+                let owner_stable_path = Self::vela_stable_type_path();
+                let owner_key = owner_desc.key;
                 #host_method_registration_tokens
             }
         }
@@ -94,29 +100,29 @@ mod tests {
     use super::expand_result;
 
     #[test]
-    fn rejects_duplicate_method_ids() {
+    fn rejects_duplicate_method_aliases() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method(alias = "grant")]
                 pub fn add_exp(player: HostRef, amount: i64) {}
 
-                #[script_method(id = 1)]
+                #[script_method(alias = "grant")]
                 pub fn set_title(player: HostRef, title: String) {}
             }
         })
-        .expect_err("duplicate method IDs should fail macro expansion");
+        .expect_err("duplicate method aliases should fail macro expansion");
 
-        assert!(error.to_string().contains("duplicate script method id"));
+        assert!(error.to_string().contains("duplicate script method alias"));
     }
 
     #[test]
     fn rejects_duplicate_method_names() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1, name = "grant")]
+                #[script_method(name = "grant")]
                 pub fn add_exp(player: HostRef, amount: i64) {}
 
-                #[script_method(id = 2, name = "grant")]
+                #[script_method(name = "grant")]
                 pub fn grant_exp(player: HostRef, amount: i64) {}
             }
         })
@@ -129,7 +135,7 @@ mod tests {
     fn rejects_empty_method_names() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1, name = "")]
+                #[script_method(name = "")]
                 pub fn add_exp(player: HostRef, amount: i64) {}
             }
         })
@@ -146,7 +152,7 @@ mod tests {
     fn rejects_empty_method_permissions() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1, permission = "")]
+                #[script_method(permission = "")]
                 pub fn add_exp(player: HostRef, amount: i64) {}
             }
         })
@@ -163,7 +169,7 @@ mod tests {
     fn rejects_duplicate_method_attrs() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1, attr = "domain=player", attr = "domain=combat")]
+                #[script_method(attr = "domain=player", attr = "domain=combat")]
                 pub fn add_exp(player: HostRef, amount: i64) {}
             }
         })
@@ -180,7 +186,7 @@ mod tests {
     fn rejects_self_receivers() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn add_exp(&mut self, amount: i64) {}
             }
         })
@@ -196,7 +202,7 @@ mod tests {
             where
                 Player: Clone,
             {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: HostRef, amount: i64) {}
             }
         })
@@ -209,7 +215,7 @@ mod tests {
     fn rejects_method_where_clauses() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: HostRef, amount: i64)
                 where
                     i64: Copy,
@@ -226,7 +232,7 @@ mod tests {
     fn rejects_unsafe_methods() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub unsafe fn grant(player: HostRef, amount: i64) {
                 }
             }
@@ -240,7 +246,7 @@ mod tests {
     fn rejects_extern_methods() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub extern "C" fn grant(player: HostRef, amount: i64) {
                 }
             }
@@ -254,7 +260,7 @@ mod tests {
     fn rejects_script_visible_rust_reference_parameters() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: HostRef, amount: &mut i64) {}
             }
         })
@@ -271,7 +277,7 @@ mod tests {
     fn rejects_by_value_context_boundary_parameters() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(ctx: NativeCallContext, player: HostRef, amount: i64) {}
             }
         })
@@ -284,7 +290,7 @@ mod tests {
     fn rejects_shared_host_execution_boundary_parameters() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: &HostPath, host: &HostExecution, amount: i64) {}
             }
         })
@@ -297,7 +303,7 @@ mod tests {
     fn rejects_nested_script_visible_rust_reference_parameters() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: HostRef, labels: Option<&str>) {}
             }
         })
@@ -314,7 +320,7 @@ mod tests {
     fn rejects_script_visible_rust_reference_returns() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn label(player: HostRef) -> &'static str {
                     "gold"
                 }
@@ -333,7 +339,7 @@ mod tests {
     fn rejects_unsupported_integer_parameters() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: HostRef, amount: Option<u128>) {}
             }
         })
@@ -351,7 +357,7 @@ mod tests {
     fn rejects_unsupported_integer_parameters_inside_arrays() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: HostRef, amounts: [usize; 2]) {}
             }
         })
@@ -364,7 +370,7 @@ mod tests {
     fn rejects_unsupported_integer_returns() {
         let error = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn grant(player: HostRef) -> isize {
                     1
                 }
@@ -379,7 +385,7 @@ mod tests {
     fn infers_fixed_array_signature_hints() {
         let tokens = expand_result(quote! {
             impl Player {
-                #[script_method(id = 1)]
+                #[script_method()]
                 pub fn weights(player: HostRef, values: [i64; 3]) -> [i64; 3] {
                     values
                 }
