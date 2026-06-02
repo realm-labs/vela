@@ -483,6 +483,66 @@ fn typed_callable_native_method_conversion_errors_before_patch() {
     assert!(tx.patches().is_empty());
 }
 
+#[test]
+fn callable_native_method_errors_roll_back_recorded_patches() {
+    let method = HostMethodId::new(12);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .grant_permission("player.fail")
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_native_method_fn(
+            NativeMethodDesc::new(owner, method, "failing_method")
+                .param("amount", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.fail")),
+            move |receiver, args, host| {
+                let [Value::Int(amount)] = args else {
+                    return Ok(Value::Null);
+                };
+                host.tx.call_method(
+                    receiver.clone(),
+                    method,
+                    vec![HostValue::Int(*amount)],
+                    None,
+                )?;
+                Err(VmError {
+                    kind: VmErrorKind::TypeMismatch {
+                        operation: "failing native method",
+                    },
+                    source_span: None,
+                    call_stack: Default::default(),
+                })
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = engine
+        .call_native_method(
+            method,
+            &HostPath::new(host_ref),
+            &[Value::Int(15)],
+            &mut host,
+        )
+        .expect_err("native method should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "failing native method",
+        }
+    );
+    assert!(tx.patches().is_empty());
+}
+
 fn typed_grant_exp(
     receiver: &HostPath,
     host: &mut HostExecution<'_>,

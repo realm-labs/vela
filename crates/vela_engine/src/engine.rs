@@ -200,7 +200,14 @@ impl Engine {
             call_stack: Default::default(),
         })?;
         check_permissions(&entry.desc.name, &entry.desc.access, &self.permissions)?;
-        (entry.function)(receiver, args, host)
+        let tx_checkpoint = host.tx.clone();
+        match (entry.function)(receiver, args, host) {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                *host.tx = tx_checkpoint;
+                Err(error)
+            }
+        }
     }
 
     pub fn install(&self, vm: &mut Vm) {
