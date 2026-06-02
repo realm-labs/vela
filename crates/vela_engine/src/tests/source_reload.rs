@@ -1001,6 +1001,69 @@ fn main() {
 }
 
 #[test]
+fn runtime_stages_source_file_defaulted_schema_addition_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_schema_addition");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(
+        &path,
+        r#"
+struct Reward {
+    item_id: string
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &path,
+        r#"
+struct Reward {
+    item_id: string
+    count: int = 1
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    )
+    .expect("write compatible schema update");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("defaulted schema addition should stage");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged schema addition report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["main"]);
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_file_rejection");
     std::fs::create_dir_all(&root).expect("create temp source dir");
