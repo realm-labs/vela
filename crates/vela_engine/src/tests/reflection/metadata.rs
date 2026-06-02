@@ -103,6 +103,59 @@ fn engine_registers_native_function_reflection_metadata() {
 }
 
 #[test]
+fn engine_native_private_functions_are_hidden_from_reflection() {
+    let private_access = FunctionAccess {
+        public: false,
+        reflect_callable: false,
+        required_permissions: Default::default(),
+    };
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.private_roll", NativeFunctionId::new(22))
+                .returns(TypeHint::Int)
+                .access(private_access),
+            |_| Ok(Value::Int(4)),
+        )
+        .reflection_permissions(ReflectPermissionSet::all())
+        .build()
+        .expect("engine should build");
+
+    let registry = engine.registry();
+    let function = registry
+        .function_by_name("game.private_roll")
+        .expect("native function metadata");
+    assert!(!function.public);
+    assert!(!function.access.reflect_visible);
+
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let game = reflect.module("game");
+    let exports = reflect.exports(game);
+    return !reflect.has_function("game.private_roll")
+        && !exports.contains("game.private_roll");
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Bool(true))
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn engine_standard_natives_register_reflection_metadata() {
     let engine = Engine::builder()
         .with_standard_natives()
