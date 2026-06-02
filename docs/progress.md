@@ -102,6 +102,8 @@ closes or exposes a more specific gap.
   until the report is consumed.
 - Runtime source-file reload staging accepts compatible defaulted script schema
   additions at safe points without activating the new version early.
+- Runtime source-file reload staging reports event handler parameter ABI
+  rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports top-level const side-effect
   compile rejections at safe points without advancing the active version.
 - Analysis diagnostics can report non-exhaustive matches for known script

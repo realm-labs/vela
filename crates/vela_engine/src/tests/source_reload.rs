@@ -1064,6 +1064,83 @@ fn main() {
 }
 
 #[test]
+fn runtime_stages_source_file_event_parameter_reorder_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_event_param_reorder");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(
+        &path,
+        r#"
+#[event("monster.kill")]
+fn on_kill(player_id: int, monster_id: int) {
+    return 1;
+}
+"#,
+    )
+    .expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &path,
+        r#"
+#[event("monster.kill")]
+fn on_kill(monster_id: int, player_id: int) {
+    return 2;
+}
+"#,
+    )
+    .expect("write incompatible event handler update");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("event ABI rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged event ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.changed_parameters");
+    let HotReloadErrorKind::ChangedFunctionParameters { function, old, new } =
+        &report.errors[0].error.kind
+    else {
+        panic!("expected changed function parameters");
+    };
+    assert_eq!(function, "on_kill");
+    assert_eq!(old, &vec!["player_id".to_owned(), "monster_id".to_owned()]);
+    assert_eq!(new, &vec!["monster_id".to_owned(), "player_id".to_owned()]);
+    assert_eq!(
+        runtime.call(
+            "on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_file_rejection");
     std::fs::create_dir_all(&root).expect("create temp source dir");
