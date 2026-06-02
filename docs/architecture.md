@@ -1824,15 +1824,16 @@ ctx.elapsed_since(start)
 
 ```rust
 let engine = Engine::builder()
-    .with_stdlib(GameStd)
+    .with_standard_natives()
     .register_host_type::<Player>()
     .register_host_type::<Monster>()
     .register_host_type::<Inventory>()
-    .register_native_fn(
-        NativeFunctionDesc::new("game.log", NativeFunctionId(10_001))
+    .register_reflect_schema::<RewardView>()
+    .register_typed_native_fn::<(String,), _>(
+        NativeFunctionDesc::new("game.log", NativeFunctionId::new(10_001))
             .param("message", TypeHint::String)
             .returns(TypeHint::Null)
-            .effects(EffectSet::pure_host_log()),
+            .effects(EffectSet::pure()),
         game_log,
     )
     .build()?;
@@ -1852,13 +1853,13 @@ let mut tx = PatchTx::new();
 
 runtime.call(
     "combat.on_kill",
-    args![host(player_id), host(monster_id)],
+    &args![host(player), host(monster)],
     CallOptions::gameplay(),
     &mut state_adapter,
     &mut tx,
 )?;
 
-world.apply(tx)?;
+tx.apply(&mut state_adapter)?;
 ```
 
 ### Hot Reload
