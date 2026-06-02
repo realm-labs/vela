@@ -16,7 +16,9 @@ use vela_vm::value::Value;
 
 use crate::engine::Engine;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::reload::EngineHotReloadSourceResult;
+use crate::reload::{
+    EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
+};
 
 #[derive(Clone)]
 pub struct Runtime {
@@ -169,6 +171,34 @@ impl Runtime {
         Ok(self
             .engine
             .compile_hot_reload_update_changed_file(&previous, root, changed_file))
+    }
+
+    pub fn stage_hot_reload_update_changed_file(
+        &mut self,
+        root: impl AsRef<Path>,
+        changed_file: impl AsRef<Path>,
+    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
+        let previous = self.current_hot_reload_version()?;
+        match self
+            .engine
+            .compile_hot_reload_update_changed_file(&previous, root, changed_file)
+        {
+            Ok(update) => {
+                self.stage_hot_update(update)?;
+                Ok(Ok(()))
+            }
+            Err(error) => match error.kind {
+                EngineHotReloadSourceErrorKind::Source(error) => {
+                    Ok(Err(EngineHotReloadSourceError {
+                        kind: EngineHotReloadSourceErrorKind::Source(error),
+                    }))
+                }
+                EngineHotReloadSourceErrorKind::HotReload(error) => {
+                    self.stage_hot_update_result(Err(error))?;
+                    Ok(Ok(()))
+                }
+            },
+        }
     }
 
     pub fn call(
