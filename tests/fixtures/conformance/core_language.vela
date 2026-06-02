@@ -216,6 +216,28 @@ fn main() {
     } else {
         0
     };
+    let option_chain = option.some("quest")
+        .map(|value| value.to_upper())
+        .filter(|value| value.starts_with("Q"))
+        .ok_or("missing");
+    let option_fallback = option.none().or_else(| | option.some("fallback"));
+    let result_chain = result.ok(["gold", "xp"])
+        .map(|values| values.join("+"))
+        .and_then(|text| result.ok(text.replace("+", ".")));
+    let mapped_err = result.err(["bad", "level"]).map_err(|errors| errors.join("."));
+    let flattened_option = option.some(option.some(["daily", "done"])).flatten();
+    let flattened_result = result.ok(result.err("nested")).flatten();
+    let option_result_helper_score: int = if option_chain.unwrap_or("") == "QUEST"
+        && option_fallback.unwrap_or("") == "fallback"
+        && result_chain.unwrap_or("") == "gold.xp"
+        && mapped_err.to_error_option().unwrap_or("") == "bad.level"
+        && flattened_option.unwrap_or([]).join(".") == "daily.done"
+        && flattened_result.to_error_option().unwrap_or("") == "nested"
+    {
+        45
+    } else {
+        0
+    };
     let result: int = result_bonus(true)?;
     let mapped: map = {"gold": reward.count, "quest": quest_score}
         .map_values(|key, value| key.len() + value);
@@ -228,6 +250,37 @@ fn main() {
         + merged_rewards["gold"]
         + merged_rewards["gem"]
         + merged_rewards.len();
+    let reward_entries = merged_rewards.entries();
+    let reward_keys = merged_rewards.keys();
+    let reward_values = merged_rewards.values();
+    let found_reward = merged_rewards.find(|key, value| key == "gem" && value == 6);
+    let found_entry = found_reward.unwrap_or(MapEntry { key: "", value: 0 });
+    let filtered_rewards = merged_rewards.filter(|key, value| key.len() >= 3 && value >= 5);
+    let mutable_map: map = {"daily": "open"};
+    mutable_map.extend({"raid": "active", "daily": "done"});
+    let map_helper_score: int = if reward_keys.join(",") == "gem,gold,quest"
+        && reward_values.sum() == 15
+        && reward_entries[0].key == "gem"
+        && reward_entries[0].value == 6
+        && found_entry.key == "gem"
+        && found_entry.value == 6
+        && filtered_rewards.len() == 2
+        && merged_rewards.any(|value| value == 6)
+        && merged_rewards.all(|key, value| key.len() >= 3 && value > 0)
+        && merged_rewards.count(|key, value| value >= 5) == 2
+        && mutable_map["daily"] == "done"
+        && mutable_map["raid"] == "active"
+    {
+        mutable_map.clear();
+        mutable_map.set("boss", "ready");
+        if mutable_map.len() == 1 && mutable_map["boss"] == "ready" {
+            50
+        } else {
+            0
+        }
+    } else {
+        0
+    };
     let player_tags: set = set.from_array(["daily", "quest", "raid"]);
     let event_tags: set = set.from_array(["quest", "bonus", "daily"]);
     let required_tags: set = set.from_array(["daily", "quest"]);
@@ -246,6 +299,36 @@ fn main() {
         } else {
             0
         }
+    };
+    let mutable_tags: set = set.from_array(["daily", "quest"]);
+    let added_tag = mutable_tags.add("raid");
+    let duplicate_tag = mutable_tags.add("quest");
+    let removed_tag = mutable_tags.remove("daily");
+    mutable_tags.extend(set.from_array(["boss", "quest"]));
+    let filtered_tags = mutable_tags.filter(|tag| tag.contains("s"));
+    let mapped_lengths = mutable_tags.map(|tag| tag.len());
+    let found_tag = mutable_tags.find(|tag| tag.starts_with("r"));
+    let set_helper_score: int = if added_tag
+        && !duplicate_tag
+        && removed_tag
+        && !mutable_tags.has("daily")
+        && mutable_tags.any(|tag| tag == "boss")
+        && mutable_tags.all(|tag| tag.len() >= 4)
+        && mutable_tags.count(|tag| tag.contains("s")) == 2
+        && filtered_tags.len() == 2
+        && found_tag.unwrap_or("") == "raid"
+        && mapped_lengths.has(4)
+        && mapped_lengths.has(5)
+    {
+        mutable_tags.clear();
+        mutable_tags.add("done");
+        if mutable_tags.len() == 1 && mutable_tags.has("done") {
+            55
+        } else {
+            0
+        }
+    } else {
+        0
     };
     let player: Player = Player {
         stats: Stats {
@@ -307,11 +390,14 @@ fn main() {
         + parsed
         + string_helper_score
         + math_helper_score
+        + option_result_helper_score
         + result
         + mapped["gold"]
         + mapped["quest"]
         + map_score
+        + map_helper_score
         + set_score
+        + set_helper_score
         + nested_score
         + indexed_record_score
         + no_else_score

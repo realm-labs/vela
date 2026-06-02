@@ -109,7 +109,15 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
         Some(TypeFact::Int)
     );
     assert_eq!(
+        local_fact(bindings, &facts, "map_helper_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
         local_fact(bindings, &facts, "set_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "set_helper_score"),
         Some(TypeFact::Int)
     );
     assert_eq!(
@@ -130,6 +138,10 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "math_helper_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "option_result_helper_score"),
         Some(TypeFact::Int)
     );
     assert_eq!(
