@@ -10,6 +10,12 @@ pub struct CompilerOptions {
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
     pub(super) host_types: HashSet<String>,
     pub(super) native_module_roots: HashSet<String>,
+    pub(super) native_function_params: HashMap<String, Vec<NativeFunctionParam>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct NativeFunctionParam {
+    pub(super) name: String,
 }
 
 impl CompilerOptions {
@@ -49,6 +55,22 @@ impl CompilerOptions {
     }
 
     #[must_use]
+    pub fn with_native_function_params<I, S>(mut self, name: impl Into<String>, params: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.native_function_params.insert(
+            name.into(),
+            params
+                .into_iter()
+                .map(|name| NativeFunctionParam { name: name.into() })
+                .collect(),
+        );
+        self
+    }
+
+    #[must_use]
     pub fn with_host_method_for_type(
         mut self,
         type_name: impl Into<String>,
@@ -78,5 +100,9 @@ impl CompilerOptions {
 
     pub(super) fn is_native_module_root(&self, root: &str) -> bool {
         self.native_module_roots.contains(root)
+    }
+
+    pub(super) fn native_function_params(&self, name: &str) -> Option<&[NativeFunctionParam]> {
+        self.native_function_params.get(name).map(Vec::as_slice)
     }
 }

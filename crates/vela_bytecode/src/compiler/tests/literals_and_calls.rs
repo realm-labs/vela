@@ -120,6 +120,53 @@ fn main() {
             if args.len() == 3 && matches!(args[1], CallArgument::Missing)
     )));
 }
+
+#[test]
+fn compiler_lowers_named_native_args_from_compiler_options() {
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.add(rhs = 3, lhs = 2);
+}
+"#,
+        &CompilerOptions::new()
+            .with_native_module_root("game")
+            .with_native_function_params("game.add", ["lhs", "rhs"]),
+    )
+    .expect("named native args should compile with descriptor metadata");
+    let main = program.function("main").expect("main function");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::CallNative { name, args, .. } if name == "game.add" && args.len() == 2
+    )));
+}
+
+#[test]
+fn compiler_reports_named_native_arg_diagnostics_from_compiler_options() {
+    let error = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.add(rsh = 3, lhs = 2);
+}
+"#,
+        &CompilerOptions::new()
+            .with_native_module_root("game")
+            .with_native_function_params("game.add", ["lhs", "rhs"]),
+    )
+    .expect_err("unknown named native arg should fail");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        [
+            "compiler::unknown_named_argument",
+            "compiler::missing_required_argument"
+        ]
+    );
+}
+
 #[test]
 fn compiler_reports_script_call_argument_diagnostics() {
     let unknown = compile_program_source(

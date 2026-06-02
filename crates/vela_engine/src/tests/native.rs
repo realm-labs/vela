@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
@@ -51,6 +51,65 @@ fn main() {
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(5))
+    );
+}
+
+#[test]
+fn engine_compiler_options_lower_named_registered_native_arguments() {
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.subtract", NativeFunctionId::new(27))
+                .param("lhs", TypeHint::Int)
+                .param("rhs", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::pure())
+                .access(FunctionAccess::public()),
+            |args| {
+                let [Value::Int(lhs), Value::Int(rhs)] = args else {
+                    return Ok(Value::Null);
+                };
+                Ok(Value::Int(lhs - rhs))
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game.subtract(rhs = 3, lhs = 10);
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("named registered native arguments should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(7))
+    );
+}
+
+#[test]
+fn engine_compiler_options_lower_named_standard_native_arguments() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return math.clamp(max = 10, value = 15, min = 1);
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("named stdlib native arguments should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(10))
     );
 }
 

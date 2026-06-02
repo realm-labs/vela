@@ -8,6 +8,12 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
             options = options.with_native_module_root(root);
         }
     }
+    for function in registry.functions() {
+        options = options.with_native_function_params(
+            function.name.clone(),
+            function.params.iter().map(|param| param.name.clone()),
+        );
+    }
     for desc in registry.types() {
         options = options.with_host_type(desc.key.name.clone());
         for field in &desc.fields {

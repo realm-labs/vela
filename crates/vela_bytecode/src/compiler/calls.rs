@@ -5,6 +5,7 @@ use crate::{CallArgument, InstructionKind};
 use super::call_args::resolve_script_call_arguments;
 use super::methods::host_method_call;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
+use vela_hir::type_hint::ParamHint;
 
 impl Compiler<'_> {
     pub(super) fn compile_call_expr(
@@ -87,11 +88,7 @@ impl Compiler<'_> {
             );
         } else {
             let fallback_name = callable_name(callee)?;
-            reject_named_args(args, "native call")?;
-            let arg_registers = args
-                .iter()
-                .map(|arg| self.compile_expr(&arg.value))
-                .collect::<CompileResult<Vec<_>>>()?;
+            let arg_registers = self.compile_native_call_args(&fallback_name, args, callee.span)?;
             self.emit_spanned(
                 InstructionKind::CallNative {
                     dst: Some(dst),
@@ -231,6 +228,43 @@ impl Compiler<'_> {
     ) -> CompileResult<Vec<CallArgument>> {
         args.iter()
             .map(|arg| self.compile_expr(&arg.value).map(CallArgument::Register))
+            .collect()
+    }
+
+    fn compile_native_call_args(
+        &mut self,
+        name: &str,
+        args: &[Argument],
+        call_span: vela_common::Span,
+    ) -> CompileResult<Vec<crate::Register>> {
+        let Some(params) = self.facts.options.native_function_params(name) else {
+            reject_named_args(args, "native call")?;
+            return args
+                .iter()
+                .map(|arg| self.compile_expr(&arg.value))
+                .collect();
+        };
+        let params = params
+            .iter()
+            .map(|param| ParamHint {
+                name: param.name.clone(),
+                span: call_span,
+                type_hint: None,
+                default_value_span: None,
+            })
+            .collect::<Vec<_>>();
+        let slots =
+            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
+                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+            })?;
+
+        slots
+            .into_iter()
+            .map(|slot| {
+                let arg =
+                    slot.expect("native argument resolver rejects missing required arguments");
+                self.compile_expr(&arg.value)
+            })
             .collect()
     }
 }
