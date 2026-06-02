@@ -202,6 +202,21 @@ fn engine_rejects_duplicate_module_names() {
 }
 
 #[test]
+fn engine_rejects_module_names_that_shadow_standard_modules() {
+    let result = Engine::builder()
+        .with_standard_natives()
+        .register_module(ModuleDesc::new("math"))
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateModuleName {
+            name: "math".to_owned()
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_type_names() {
     let result = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))

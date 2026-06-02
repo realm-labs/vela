@@ -270,7 +270,7 @@ impl EngineBuilder {
             &self.native_methods,
         )?;
         validation::validate_types(&types, self.standard_natives)?;
-        validation::validate_modules(&self.modules)?;
+        validation::validate_modules(&self.modules, self.standard_natives)?;
         validation::validate_native_functions(
             &self.native_functions,
             &self.host_native_functions,

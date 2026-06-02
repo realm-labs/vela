@@ -9,14 +9,27 @@ use crate::native::{
     NativeFunctionEntry,
 };
 
-pub(crate) fn validate_modules(modules: &[ModuleDesc]) -> EngineResult<()> {
+pub(crate) fn validate_modules(
+    modules: &[ModuleDesc],
+    include_standard_modules: bool,
+) -> EngineResult<()> {
     let mut names = BTreeSet::new();
-    for module in modules {
-        if !names.insert(module.name.as_str()) {
-            return Err(EngineError::new(EngineErrorKind::DuplicateModuleName {
-                name: module.name.clone(),
-            }));
+    if include_standard_modules {
+        for module in crate::standard::standard_module_descs() {
+            validate_module_desc(&module, &mut names)?;
         }
+    }
+    for module in modules {
+        validate_module_desc(module, &mut names)?;
+    }
+    Ok(())
+}
+
+fn validate_module_desc(module: &ModuleDesc, names: &mut BTreeSet<String>) -> EngineResult<()> {
+    if !names.insert(module.name.clone()) {
+        return Err(EngineError::new(EngineErrorKind::DuplicateModuleName {
+            name: module.name.clone(),
+        }));
     }
     Ok(())
 }
