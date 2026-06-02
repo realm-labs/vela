@@ -1291,6 +1291,83 @@ fn main() -> float {
 }
 
 #[test]
+fn runtime_stages_source_file_required_parameter_addition_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_required_param");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(
+        &path,
+        r#"
+fn main(player_id: int) {
+    return player_id;
+}
+"#,
+    )
+    .expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &path,
+        r#"
+fn main(player_id: int, amount: int) {
+    return amount;
+}
+"#,
+    )
+    .expect("write required parameter update");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("required parameter rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::Int(7)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(7))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged required parameter rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(
+        report.errors[0].code,
+        "reload.function.required_added_parameters"
+    );
+    let HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, added } =
+        &report.errors[0].error.kind
+    else {
+        panic!("expected added required parameters");
+    };
+    assert_eq!(function, "main");
+    assert_eq!(added, &vec!["amount".to_owned()]);
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::Int(7)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(7))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_file_rejection");
     std::fs::create_dir_all(&root).expect("create temp source dir");
