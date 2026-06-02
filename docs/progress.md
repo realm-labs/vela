@@ -100,6 +100,8 @@ closes or exposes a more specific gap.
 - Runtime source-file reload staging accepts default-policy private helper
   additions at safe points while keeping old calls on the previous version
   until the report is consumed.
+- Runtime source-file reload staging reports top-level const side-effect
+  compile rejections at safe points without advancing the active version.
 - Analysis diagnostics can report non-exhaustive matches for known script
   enums and dynamic Option/Result facts used by propagation-style control flow.
 - Analysis diagnostics can use TypeRegistry field access metadata to flag

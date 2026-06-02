@@ -1059,6 +1059,61 @@ fn main() {
 }
 
 #[test]
+fn runtime_stages_source_file_top_level_effect_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_top_level_effect");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &path,
+        r#"
+const BAD = register_event("monster.kill");
+
+fn main() {
+    return 2;
+}
+"#,
+    )
+    .expect("write side-effecting update");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("compile rejection should be staged as a hot reload report");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged compile rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.compile");
+    assert!(
+        report.errors[0]
+            .source_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_returns_hot_reload_file_source_errors_immediately() {
     let root = unique_test_dir("runtime_stage_file_source_error");
     std::fs::create_dir_all(&root).expect("create temp source dir");
