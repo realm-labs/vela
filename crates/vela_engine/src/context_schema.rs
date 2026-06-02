@@ -17,15 +17,21 @@ pub fn context_host_type_desc() -> TypeDesc {
         .schema_hash(SchemaHash::new(0xff00_1000_0000_0001))
         .host_type(CONTEXT_HOST_TYPE_ID)
         .docs("Standard host context object for deterministic time, events, and logging.")
+        .attr("stdlib", "context")
+        .attr("domain", "gameplay")
         .field(
             FieldDesc::new(CONTEXT_NOW_FIELD_ID, "now")
                 .type_hint("int")
-                .docs("Current deterministic context timestamp."),
+                .docs("Current deterministic context timestamp.")
+                .attr("stdlib", "context")
+                .attr("domain", "gameplay"),
         )
         .field(
             FieldDesc::new(CONTEXT_TICK_FIELD_ID, "tick")
                 .type_hint("int")
-                .docs("Current deterministic context tick."),
+                .docs("Current deterministic context tick.")
+                .attr("stdlib", "context")
+                .attr("domain", "gameplay"),
         )
         .method(
             MethodDesc::new(CONTEXT_EMIT_METHOD_ID, "emit")
@@ -38,7 +44,9 @@ pub fn context_host_type_desc() -> TypeDesc {
                 .return_type("null")
                 .effects(MethodEffectSet::event_emit())
                 .access(MethodAccess::new().reflect_callable(true))
-                .docs("Records an event emission patch for the host safe point."),
+                .docs("Records an event emission patch for the host safe point.")
+                .attr("stdlib", "context")
+                .attr("domain", "gameplay"),
         )
         .method(
             MethodDesc::new(CONTEXT_LOG_METHOD_ID, "log")
@@ -52,6 +60,8 @@ pub fn context_host_type_desc() -> TypeDesc {
                 .return_type("null")
                 .effects(MethodEffectSet::event_emit())
                 .access(MethodAccess::new().reflect_callable(true))
-                .docs("Records a log patch for the host safe point."),
+                .docs("Records a log patch for the host safe point.")
+                .attr("stdlib", "context")
+                .attr("domain", "gameplay"),
         )
 }

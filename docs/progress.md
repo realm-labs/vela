@@ -94,6 +94,8 @@ conformance contracts are stable.
   policy filtering and `Type.Variant` ownership.
 - Standard Option/Result enum variants and payload fields expose copied docs
   and stdlib attrs through direct registry metadata and script reflection.
+- Standard Context host schema metadata tags its type, time fields, and
+  event/log methods for stdlib and gameplay-domain reflection queries.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload

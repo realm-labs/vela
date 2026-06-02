@@ -6,6 +6,7 @@ enum QuestProgress {
 fn main(ctx, player) {
     let player_type = reflect.type_info("Player");
     let config_type = reflect.type_info("Config");
+    let context_type = reflect.type_info("Context");
     let string_type = reflect.type_info("string");
     let array_type = reflect.type_info("array");
     let option_type = reflect.type_info("Option");
@@ -91,6 +92,7 @@ fn main(ctx, player) {
     let reflected_elapsed = reflect.call(ctx_elapsed, 1699999990);
     let main_source_span = reflect.source_span(main_function);
     let ctx_methods = reflect.methods(ctx);
+    let ctx_fields = reflect.fields(context_type);
     let ctx_emit = reflect.method(ctx, "emit");
     let ctx_log = reflect.method(ctx, "log");
     let ctx_emit_access = reflect.access(ctx_emit);
@@ -117,6 +119,7 @@ fn main(ctx, player) {
             && reflect.kind(type_info) == "host")
         && reflect.has_type("Player")
         && reflect.has_type("Config")
+        && reflect.has_type("Context")
         && reflect.has_type("string")
         && reflect.has_type("array")
         && reflect.has_type("map")
@@ -421,12 +424,27 @@ fn main(ctx, player) {
         && ctx_elapsed_params[0].name == "start"
         && ctx_elapsed_params[0].type == "int"
         && ctx_methods.len() == 2
+        && ctx_fields.len() == 3
+        && reflect.docs(context_type) == "Standard host context object for deterministic time, events, and logging."
+        && reflect.attr(context_type, "stdlib") == "context"
+        && reflect.attr(context_type, "domain") == "gameplay"
+        && reflect.docs(ctx_fields[0]) == "Current deterministic context timestamp."
+        && reflect.attr(ctx_fields[0], "stdlib") == "context"
+        && reflect.attr(ctx_fields[0], "domain") == "gameplay"
+        && reflect.docs(ctx_fields[1]) == "Current deterministic context tick."
+        && reflect.attr(ctx_fields[1], "stdlib") == "context"
+        && reflect.attr(ctx_fields[1], "domain") == "gameplay"
+        && ctx_fields[2].name == "config"
         && reflect.has_method(ctx, "emit")
         && reflect.has_method(ctx, "log")
         && reflect.name(ctx_emit) == "emit"
         && reflect.name(ctx_log) == "log"
         && ctx_emit.owner == "Context"
         && ctx_log.owner == "Context"
+        && reflect.attr(ctx_emit, "stdlib") == "context"
+        && reflect.attr(ctx_emit, "domain") == "gameplay"
+        && reflect.attr(ctx_log, "stdlib") == "context"
+        && reflect.attr(ctx_log, "domain") == "gameplay"
         && ctx_emit.effects.emits_events
         && ctx_log.effects.emits_events
         && method_effects.writes_host
