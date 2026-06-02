@@ -3,6 +3,12 @@ use vela_bytecode::{CodeObject, Register};
 use crate::heap::GcRef;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct FrameHeapRoot {
+    pub register: Register,
+    pub reference: GcRef,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct CallFrame {
     registers: Vec<Value>,
@@ -36,10 +42,27 @@ impl CallFrame {
 
     #[allow(dead_code)]
     pub(crate) fn heap_roots(&self) -> Vec<GcRef> {
+        self.heap_root_slots()
+            .into_iter()
+            .map(|root| root.reference)
+            .collect()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn heap_root_slots(&self) -> Vec<FrameHeapRoot> {
         let mut roots = Vec::new();
         self.registers
             .iter()
-            .for_each(|value| value.trace_heap_refs(&mut roots));
+            .enumerate()
+            .filter_map(|(index, value)| Some((Register(u16::try_from(index).ok()?), value)))
+            .for_each(|(register, value)| {
+                let mut references = Vec::new();
+                value.trace_heap_refs(&mut references);
+                roots.extend(references.into_iter().map(|reference| FrameHeapRoot {
+                    register,
+                    reference,
+                }));
+            });
         roots
     }
 }

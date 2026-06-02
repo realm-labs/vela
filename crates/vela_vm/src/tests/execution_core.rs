@@ -167,9 +167,13 @@ fn call_frame_registers_expose_heap_roots_for_gc() {
         .expect("write heap root");
 
     let roots = frame.heap_roots();
+    let root_slots = frame.heap_root_slots();
     let stats = heap.collect_full(&roots);
 
     assert_eq!(roots, vec![rooted]);
+    assert_eq!(root_slots.len(), 1);
+    assert_eq!(root_slots[0].register, Register(0));
+    assert_eq!(root_slots[0].reference, rooted);
     assert_eq!(stats.marked, 1);
     assert_eq!(stats.swept, 1);
     assert!(heap.contains(rooted));

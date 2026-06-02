@@ -167,7 +167,10 @@ inspection. These maps may name parameters, locals, pattern bindings, and
 captures with their registers and source spans, but they must not affect VM
 execution or allow runtime mutation of type or host structure. Runtime stack
 frames should preserve caller bytecode offsets as observational metadata for
-stepping, profiling, and future breakpoint rebinding.
+stepping, profiling, and future breakpoint rebinding. Runtime call frames
+should also keep register-to-GC-root metadata separate from collection policy
+so debuggers and future optimized backends can inspect roots without changing
+which values the collector preserves.
 
 ### Cranelift JIT
 

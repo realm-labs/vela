@@ -54,6 +54,8 @@ conformance contracts are stable.
   execution.
 - Runtime error stack frames expose function names, call-site source spans,
   and caller bytecode offsets for debugger/tooling foundations.
+- VM call frames can report register-to-GC-root mappings while preserving the
+  existing flat root list used by collection.
 - Host mutation goes through HostRef, HostPath, PathProxy, PatchTx, overlays,
   permissions, and safe-point apply.
 - Reflection covers types, fields, methods, variants, traits, modules,
