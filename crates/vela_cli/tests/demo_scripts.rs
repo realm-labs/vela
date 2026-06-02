@@ -18,6 +18,23 @@ fn run_demo(script: &str) -> String {
     String::from_utf8(output.stdout).expect("demo stdout should be utf8")
 }
 
+fn run_demo_allow_random(script: &str) -> String {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg("--allow-random")
+        .arg(script_path(script))
+        .output()
+        .expect("run vela_cli allowed random demo");
+
+    assert!(
+        output.status.success(),
+        "allowed random demo failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
+    String::from_utf8(output.stdout).expect("stdout should be utf8")
+}
+
 fn run_hot_reload_demo(initial: &str, updated: &str) -> String {
     let initial = script_path(initial);
     let updated = script_path(updated);
@@ -96,20 +113,16 @@ fn gameplay_helpers_demo_runs_through_cli() {
 
 #[test]
 fn random_allowed_demo_runs_through_cli() {
-    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
-        .arg("--allow-random")
-        .arg(script_path("random_allowed.vela"))
-        .output()
-        .expect("run vela_cli allowed random demo");
-
-    assert!(
-        output.status.success(),
-        "allowed random demo failed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
     assert_eq!(
-        String::from_utf8(output.stdout).expect("stdout should be utf8"),
+        run_demo_allow_random("random_allowed.vela"),
+        "result=Int(310) level=Int(9) patches=0\n"
+    );
+}
+
+#[test]
+fn random_reflect_allowed_demo_runs_through_cli() {
+    assert_eq!(
+        run_demo_allow_random("random_reflect_allowed.vela"),
         "result=Int(310) level=Int(9) patches=0\n"
     );
 }

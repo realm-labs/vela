@@ -19,7 +19,12 @@ pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
             .param("max", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::pure())
-            .access(FunctionAccess::public().require_permission(CONTROLLED_RANDOM_PERMISSION))
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission(CONTROLLED_RANDOM_PERMISSION),
+            )
+            .attr("stdlib", "math")
             .docs("Returns a deterministic seeded integer in the inclusive range."),
         move |args| math_random(args, &rng),
     )

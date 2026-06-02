@@ -17,6 +17,7 @@ cargo run -p vela_cli -- examples/game_server_demo/scripts/context_event.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/context_clock.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/gameplay_helpers.vela
 cargo run -p vela_cli -- --allow-random examples/game_server_demo/scripts/random_allowed.vela
+cargo run -p vela_cli -- --allow-random examples/game_server_demo/scripts/random_reflect_allowed.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/random_permission_denied.vela # expected permission-denied failure
 cargo run -p vela_cli -- examples/game_server_demo/scripts/monster_kill_reward.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/quest_progress.vela

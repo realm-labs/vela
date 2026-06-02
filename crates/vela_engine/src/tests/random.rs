@@ -1,5 +1,9 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::SourceId;
+use vela_host::mock::MockStateAdapter;
+use vela_host::tx::PatchTx;
+use vela_reflect::permissions::ReflectPermissionSet;
+use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
 use vela_vm::value::Value;
 
@@ -85,8 +89,64 @@ fn engine_controlled_random_registers_metadata() {
     assert_eq!(function.params[0].type_hint.as_deref(), Some("int"));
     assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
     assert_eq!(function.return_type.as_deref(), Some("int"));
+    assert_eq!(function.attrs.get("stdlib"), Some("math"));
     assert_eq!(
         function.access.required_permissions(),
         &[CONTROLLED_RANDOM_PERMISSION.to_owned()]
     );
+    assert!(function.access.reflect_callable);
+}
+
+#[test]
+fn engine_controlled_random_reflect_call_is_seeded_and_bounded() {
+    let source = r#"
+fn main() {
+    let random = reflect.function("math.random");
+    let first = reflect.call(random, 1, 6);
+    let second = reflect.call(random, 10, 12);
+    if first >= 1 && first <= 6 && second >= 10 && second <= 12 {
+        return first * 100 + second;
+    }
+    return 0;
+}
+"#;
+    let program = compile_program_source(SourceId::new(1), source).expect("program should compile");
+    let first_engine = Engine::builder()
+        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .reflection_permissions(ReflectPermissionSet::all())
+        .with_controlled_random(42)
+        .build()
+        .expect("first engine should build");
+    let second_engine = Engine::builder()
+        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .reflection_permissions(ReflectPermissionSet::all())
+        .with_controlled_random(42)
+        .build()
+        .expect("second engine should build");
+    let mut first_adapter = MockStateAdapter::new();
+    let mut first_tx = PatchTx::new();
+    let mut first_host = HostExecution {
+        adapter: &mut first_adapter,
+        tx: &mut first_tx,
+    };
+    let mut second_adapter = MockStateAdapter::new();
+    let mut second_tx = PatchTx::new();
+    let mut second_host = HostExecution {
+        adapter: &mut second_adapter,
+        tx: &mut second_tx,
+    };
+
+    let first = first_engine
+        .into_vm()
+        .run_program_with_host(&program, "main", &[], &mut first_host)
+        .expect("first reflected random run should succeed");
+    let second = second_engine
+        .into_vm()
+        .run_program_with_host(&program, "main", &[], &mut second_host)
+        .expect("second reflected random run should succeed");
+
+    assert_eq!(first, second);
+    assert_ne!(first, Value::Int(0));
+    assert!(first_tx.patches().is_empty());
+    assert!(second_tx.patches().is_empty());
 }

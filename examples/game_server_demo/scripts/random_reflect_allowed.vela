@@ -1,0 +1,42 @@
+fn main() {
+    let random = reflect.function("math.random");
+    let params = reflect.params(random);
+    let access = reflect.access(random);
+    let required = reflect.required_permissions(random);
+    let effects = reflect.effects(random);
+    let functions = reflect.functions();
+    let first = reflect.call(random, 1, 6);
+    let second = reflect.call(random, 10, 12);
+
+    if reflect.has_function("math.random")
+        && functions.any(|function| reflect.name(function) == "math.random")
+        && reflect.name(random) == "math.random"
+        && reflect.kind(random) == "function"
+        && reflect.origin(random) == "host"
+        && reflect.docs(random) == "Returns a deterministic seeded integer in the inclusive range."
+        && reflect.attr(random, "stdlib") == "math"
+        && reflect.returns(random) == "int"
+        && random.module == "math"
+        && params.len() == 2
+        && params[0].name == "min"
+        && params[0].type == "int"
+        && params[1].name == "max"
+        && params[1].type == "int"
+        && access.reflect_visible
+        && access.reflect_callable
+        && access.required_permissions.len() == 1
+        && access.required_permissions[0] == "std.random"
+        && required.len() == 1
+        && required[0] == "std.random"
+        && !effects.reads_host
+        && !effects.writes_host
+        && !effects.emits_events
+        && first >= 1
+        && first <= 6
+        && second >= 10
+        && second <= 12 {
+        return first * 100 + second;
+    }
+
+    return 0;
+}
