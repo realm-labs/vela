@@ -309,6 +309,50 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_module_names() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100, module = "")]
+                struct Player {
+                    #[script(get, id = 1)]
+                    level: u32,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("empty module name should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script module must be a non-empty dotted name")
+        );
+    }
+
+    #[test]
+    fn rejects_malformed_module_names() {
+        for module in [".game", "game.", "game..player"] {
+            let error = expand_result(
+                quote! {
+                    #[script(id = 100, module = #module)]
+                    struct Player {
+                        #[script(get, id = 1)]
+                        level: u32,
+                    }
+                },
+                GeneratedMethod::Host,
+            )
+            .expect_err("malformed module name should fail macro expansion");
+
+            assert!(
+                error
+                    .to_string()
+                    .contains("script module must be a non-empty dotted name")
+            );
+        }
+    }
+
+    #[test]
     fn rejects_malformed_static_attrs() {
         let error = expand_result(
             quote! {

@@ -63,7 +63,10 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             } else if path_name(&meta.path, "name") {
                 parsed.name = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "module") {
-                parsed.module = Some(value.parse::<LitStr>()?.value());
+                parsed.module = Some(parse_dotted_name(
+                    value.parse::<LitStr>()?,
+                    "script module",
+                )?);
             } else if path_name(&meta.path, "docs") {
                 parsed.docs = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "attr") {
