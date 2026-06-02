@@ -10,7 +10,7 @@ use crate::engine::Engine;
 use crate::error::EngineErrorKind;
 use crate::method::NativeMethodDesc;
 use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
-use crate::standard::MATH_CLAMP_FUNCTION_ID;
+use crate::standard::{INT_TYPE_ID, MATH_CLAMP_FUNCTION_ID};
 
 use super::{player_type, trait_desc_with_id};
 
@@ -150,6 +150,39 @@ fn engine_rejects_native_function_ids_that_collide_with_standard_natives() {
             }
         ),
         Ok(_) => panic!("standard native ID collision should fail"),
+    }
+}
+
+#[test]
+fn engine_rejects_type_names_that_shadow_standard_types() {
+    let result = Engine::builder()
+        .with_standard_natives()
+        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(0x1234), "Option")))
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::DuplicateTypeName {
+            name: "Option".to_owned()
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_type_ids_that_collide_with_standard_types() {
+    let result = Engine::builder()
+        .with_standard_natives()
+        .register_type(TypeDesc::new(TypeKey::new(INT_TYPE_ID, "GameInt")))
+        .build();
+
+    match result {
+        Err(error) => assert_eq!(
+            error.kind,
+            EngineErrorKind::DuplicateTypeId {
+                id: INT_TYPE_ID.get()
+            }
+        ),
+        Ok(_) => panic!("standard type ID collision should fail"),
     }
 }
 

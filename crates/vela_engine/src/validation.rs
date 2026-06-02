@@ -21,53 +21,82 @@ pub(crate) fn validate_modules(modules: &[ModuleDesc]) -> EngineResult<()> {
     Ok(())
 }
 
-pub(crate) fn validate_types(types: &[TypeDesc]) -> EngineResult<()> {
+pub(crate) fn validate_types(types: &[TypeDesc], include_standard_types: bool) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     let mut host_ids = BTreeSet::new();
     let mut host_method_ids = BTreeSet::new();
     let mut host_method_names = BTreeSet::new();
 
-    for desc in types {
-        if !ids.insert(desc.key.id) {
-            return Err(EngineError::new(EngineErrorKind::DuplicateTypeId {
-                id: desc.key.id.get(),
-            }));
-        }
-        if !names.insert(desc.key.name.as_str()) {
-            return Err(EngineError::new(EngineErrorKind::DuplicateTypeName {
-                name: desc.key.name.clone(),
-            }));
-        }
-        if let Some(host_type_id) = desc.host_type_id
-            && !host_ids.insert(host_type_id)
-        {
-            return Err(EngineError::new(EngineErrorKind::DuplicateHostTypeId {
-                id: host_type_id.get(),
-            }));
-        }
-
-        validate_type_fields(desc)?;
-        validate_type_variants(desc)?;
-        validate_type_traits(desc)?;
-
-        for method in &desc.methods {
-            if !host_method_ids.insert(method.id) {
-                return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodId {
-                    id: method.id.get(),
-                }));
-            }
-            if !host_method_names.insert((desc.key.name.as_str(), method.name.as_str())) {
-                return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodName {
-                    name: method.name.clone(),
-                }));
-            }
-            validate_host_method_params(
-                desc.key.name.as_str(),
-                method.name.as_str(),
-                &method.params,
+    if include_standard_types {
+        for desc in crate::standard::standard_type_descs() {
+            validate_type_desc(
+                &desc,
+                &mut ids,
+                &mut names,
+                &mut host_ids,
+                &mut host_method_ids,
+                &mut host_method_names,
             )?;
         }
+    }
+
+    for desc in types {
+        validate_type_desc(
+            desc,
+            &mut ids,
+            &mut names,
+            &mut host_ids,
+            &mut host_method_ids,
+            &mut host_method_names,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn validate_type_desc(
+    desc: &TypeDesc,
+    ids: &mut BTreeSet<vela_common::TypeId>,
+    names: &mut BTreeSet<String>,
+    host_ids: &mut BTreeSet<vela_common::HostTypeId>,
+    host_method_ids: &mut BTreeSet<vela_common::HostMethodId>,
+    host_method_names: &mut BTreeSet<(String, String)>,
+) -> EngineResult<()> {
+    if !ids.insert(desc.key.id) {
+        return Err(EngineError::new(EngineErrorKind::DuplicateTypeId {
+            id: desc.key.id.get(),
+        }));
+    }
+    if !names.insert(desc.key.name.clone()) {
+        return Err(EngineError::new(EngineErrorKind::DuplicateTypeName {
+            name: desc.key.name.clone(),
+        }));
+    }
+    if let Some(host_type_id) = desc.host_type_id
+        && !host_ids.insert(host_type_id)
+    {
+        return Err(EngineError::new(EngineErrorKind::DuplicateHostTypeId {
+            id: host_type_id.get(),
+        }));
+    }
+
+    validate_type_fields(desc)?;
+    validate_type_variants(desc)?;
+    validate_type_traits(desc)?;
+
+    for method in &desc.methods {
+        if !host_method_ids.insert(method.id) {
+            return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodId {
+                id: method.id.get(),
+            }));
+        }
+        if !host_method_names.insert((desc.key.name.clone(), method.name.clone())) {
+            return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodName {
+                name: method.name.clone(),
+            }));
+        }
+        validate_host_method_params(desc.key.name.as_str(), method.name.as_str(), &method.params)?;
     }
 
     Ok(())
