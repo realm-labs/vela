@@ -384,6 +384,14 @@ fn validate_native_function_desc(
 fn validate_native_function_params(desc: &NativeFunctionDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for param in &desc.params {
+        if !is_valid_simple_name(&param.name) {
+            return Err(EngineError::new(
+                EngineErrorKind::InvalidNativeFunctionParamName {
+                    function: desc.name.clone(),
+                    name: param.name.clone(),
+                },
+            ));
+        }
         if !names.insert(param.name.as_str()) {
             return Err(EngineError::new(
                 EngineErrorKind::DuplicateNativeFunctionParamName {

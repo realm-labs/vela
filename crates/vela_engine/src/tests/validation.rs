@@ -132,6 +132,25 @@ fn engine_rejects_malformed_native_function_names() {
 }
 
 #[test]
+fn engine_rejects_malformed_native_function_param_names() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.grant_reward", NativeFunctionId::new(33))
+                .param("", TypeHint::Int),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidNativeFunctionParamName {
+            function: "game.grant_reward".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_native_function_names_that_shadow_standard_natives() {
     let result = Engine::builder()
         .with_standard_natives()

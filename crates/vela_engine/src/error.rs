@@ -24,6 +24,10 @@ pub enum EngineErrorKind {
         function: String,
         name: String,
     },
+    InvalidNativeFunctionParamName {
+        function: String,
+        name: String,
+    },
     InvalidNativeFunctionName {
         name: String,
     },
@@ -132,6 +136,12 @@ impl fmt::Display for EngineError {
                 write!(
                     formatter,
                     "duplicate parameter name {name} on native function {function}"
+                )
+            }
+            EngineErrorKind::InvalidNativeFunctionParamName { function, name } => {
+                write!(
+                    formatter,
+                    "invalid parameter name {name} on native function {function}"
                 )
             }
             EngineErrorKind::InvalidNativeFunctionName { name } => {
