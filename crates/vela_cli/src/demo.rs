@@ -15,8 +15,16 @@ mod registry;
 mod state;
 
 pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
+    run_script_with_options(path, DemoEngineOptions::default())
+}
+
+pub(crate) fn run_script_with_random(path: &str) -> Result<(), Box<dyn Error>> {
+    run_script_with_options(path, DemoEngineOptions { allow_random: true })
+}
+
+fn run_script_with_options(path: &str, options: DemoEngineOptions) -> Result<(), Box<dyn Error>> {
     let ids = DemoIds::new();
-    let engine = build_engine(ids).map_err(|error| format!("{error:?}"))?;
+    let engine = build_engine(ids, options).map_err(|error| format!("{error:?}"))?;
     let path = Path::new(path);
     let program = engine
         .compile_file(path)
@@ -47,9 +55,14 @@ pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
 }
 
 pub(crate) fn hot_reload_engine() -> EngineResult<Engine> {
-    build_engine(DemoIds::new())
+    build_engine(DemoIds::new(), DemoEngineOptions::default())
 }
 
-fn build_engine(ids: DemoIds) -> EngineResult<Engine> {
-    demo_engine(ids)
+fn build_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine> {
+    demo_engine(ids, options)
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct DemoEngineOptions {
+    pub(crate) allow_random: bool,
 }

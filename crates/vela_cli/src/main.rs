@@ -17,9 +17,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [flag, initial, updated] if flag == "--hot-reload" => {
             hot_reload_demo::run(initial, updated)
         }
+        [flag, path] if flag == "--allow-random" => demo::run_script_with_random(path),
         [path] => demo::run_script(path),
         _ => {
-            Err("usage: vela_cli <script-path> | vela_cli --hot-reload <initial> <updated>".into())
+            Err("usage: vela_cli <script-path> | vela_cli --allow-random <script-path> | vela_cli --hot-reload <initial> <updated>".into())
         }
     }
 }

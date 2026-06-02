@@ -4,6 +4,7 @@ use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::PermissionSet;
+use vela_engine::random::CONTROLLED_RANDOM_PERMISSION;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
@@ -13,12 +14,17 @@ use vela_reflect::registry::{
 use vela_vm::value::Value;
 
 use super::ids::{CONFIG_TYPE, DemoIds, MONSTER_TYPE, PLAYER_TYPE};
+use crate::demo::DemoEngineOptions;
 
-pub(crate) fn demo_engine(ids: DemoIds) -> EngineResult<Engine> {
+pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine> {
     let registry = demo_type_registry(ids);
+    let mut permissions = PermissionSet::gameplay();
+    if options.allow_random {
+        permissions.insert(CONTROLLED_RANDOM_PERMISSION);
+    }
     let mut builder = Engine::builder()
         .with_standard_natives()
-        .permissions(PermissionSet::gameplay())
+        .permissions(permissions)
         .with_context_clock(1_700_000_000, 42)
         .with_controlled_random(7)
         .reflection_policy(ReflectPolicy::all())

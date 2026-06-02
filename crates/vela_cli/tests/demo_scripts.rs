@@ -95,6 +95,26 @@ fn gameplay_helpers_demo_runs_through_cli() {
 }
 
 #[test]
+fn random_allowed_demo_runs_through_cli() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg("--allow-random")
+        .arg(script_path("random_allowed.vela"))
+        .output()
+        .expect("run vela_cli allowed random demo");
+
+    assert!(
+        output.status.success(),
+        "allowed random demo failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert_eq!(
+        String::from_utf8(output.stdout).expect("stdout should be utf8"),
+        "result=Int(310) level=Int(9) patches=0\n"
+    );
+}
+
+#[test]
 fn random_permission_demo_reports_permission_denial() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
         .arg(script_path("random_permission_denied.vela"))
