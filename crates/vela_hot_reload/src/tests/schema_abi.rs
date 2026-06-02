@@ -81,6 +81,95 @@ fn registry_schema_abi_accepts_defaulted_field_additions() {
 }
 
 #[test]
+fn registry_schema_abi_accepts_stable_id_field_and_variant_renames() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x1111))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(2), "count").type_hint("int")),
+    );
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .schema_hash(SchemaHash::new(0xaaaa))
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Active")
+                    .field(FieldDesc::new(FieldId::new(1), "quest_id").type_hint("string")),
+            ),
+    );
+
+    let mut new_registry = TypeRegistry::new();
+    new_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x2222))
+            .field(FieldDesc::new(FieldId::new(1), "item").type_hint("string"))
+            .field(FieldDesc::new(FieldId::new(2), "quantity").type_hint("int")),
+    );
+    new_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .schema_hash(SchemaHash::new(0xbbbb))
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Started")
+                    .field(FieldDesc::new(FieldId::new(1), "quest").type_hint("string")),
+            )
+            .variant(VariantDesc::new(VariantId::new(2), "Finished")),
+    );
+
+    HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&new_registry))
+        .expect("field and variant renames with stable IDs should be compatible");
+}
+
+#[test]
+fn registry_schema_abi_rejects_existing_field_or_variant_id_changes() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x1111))
+            .field(FieldDesc::new(FieldId::new(1), "item_id").type_hint("string")),
+    );
+
+    let mut changed_field_registry = TypeRegistry::new();
+    changed_field_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x2222))
+            .field(FieldDesc::new(FieldId::new(2), "item_id").type_hint("string")),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&changed_field_registry))
+        .expect_err("changed field ID for an existing field name should fail");
+    assert_eq!(error.code(), "reload.schema.abi_changed");
+
+    let mut old_enum_registry = TypeRegistry::new();
+    old_enum_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .schema_hash(SchemaHash::new(0xaaaa))
+            .variant(VariantDesc::new(VariantId::new(1), "Active")),
+    );
+
+    let mut changed_variant_registry = TypeRegistry::new();
+    changed_variant_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .schema_hash(SchemaHash::new(0xbbbb))
+            .variant(VariantDesc::new(VariantId::new(2), "Active")),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_enum_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&changed_variant_registry))
+        .expect_err("changed variant ID for an existing variant name should fail");
+    assert_eq!(error.code(), "reload.schema.abi_changed");
+}
+
+#[test]
 fn registry_schema_abi_rejects_required_field_additions() {
     let span = Span::new(SourceId::new(19), 20, 80);
     let mut old_registry = TypeRegistry::new();

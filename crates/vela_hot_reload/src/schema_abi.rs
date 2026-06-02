@@ -340,36 +340,38 @@ impl Default for FieldAccessAbi {
 fn fields_compatible(old: &[SchemaFieldAbi], new: &[SchemaFieldAbi]) -> bool {
     let new_fields = new
         .iter()
-        .map(|field| (field.name.as_str(), field))
+        .map(|field| (field.id, field))
         .collect::<BTreeMap<_, _>>();
-    let old_fields = old
-        .iter()
-        .map(|field| field.name.as_str())
-        .collect::<Vec<_>>();
+    let old_fields = old.iter().map(|field| field.id).collect::<Vec<_>>();
     let existing_compatible = old.iter().all(|old_field| {
         new_fields
-            .get(old_field.name.as_str())
-            .is_some_and(|new_field| *new_field == old_field)
+            .get(&old_field.id)
+            .is_some_and(|new_field| existing_field_compatible(old_field, new_field))
     });
     let additions_defaulted = new
         .iter()
-        .filter(|field| !old_fields.contains(&field.name.as_str()))
+        .filter(|field| !old_fields.contains(&field.id))
         .all(|field| field.has_default);
     existing_compatible && additions_defaulted
+}
+
+fn existing_field_compatible(old: &SchemaFieldAbi, new: &SchemaFieldAbi) -> bool {
+    old.id == new.id
+        && old.type_hint == new.type_hint
+        && old.has_default == new.has_default
+        && old.writable == new.writable
+        && old.access == new.access
 }
 
 fn variants_compatible(old: &[SchemaVariantAbi], new: &[SchemaVariantAbi]) -> bool {
     let new_variants = new
         .iter()
-        .map(|variant| (variant.name.as_str(), variant))
+        .map(|variant| (variant.id, variant))
         .collect::<BTreeMap<_, _>>();
     old.iter().all(|old_variant| {
         new_variants
-            .get(old_variant.name.as_str())
-            .is_some_and(|new_variant| {
-                old_variant.id == new_variant.id
-                    && fields_compatible(&old_variant.fields, &new_variant.fields)
-            })
+            .get(&old_variant.id)
+            .is_some_and(|new_variant| fields_compatible(&old_variant.fields, &new_variant.fields))
     })
 }
 

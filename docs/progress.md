@@ -58,7 +58,8 @@ conformance contracts are stable.
 - Engine API registers schemas, native functions, context helpers, standard
   natives, reflection permissions, compiler options, and hot-reload policies.
 - Hot reload validates function, method, module, trait, schema, effect, access,
-  and source diagnostics before version advancement.
+  stable-ID schema rename compatibility, and source diagnostics before version
+  advancement.
 - CLI demo scripts and conformance fixtures use `.vela`.
 
 ## Current Gaps
