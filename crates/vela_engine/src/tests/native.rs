@@ -114,6 +114,48 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_lower_named_standard_value_method_arguments() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let pair = "reward:gold".split_once(separator = ":").unwrap_or(["", ""]);
+    return {"gold": 4}.get_or(default = 0, key = pair[1]);
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("named stdlib value method arguments should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(4))
+    );
+}
+
+#[test]
+fn engine_compiler_options_reject_ambiguous_named_standard_value_method_arguments() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return "reward:gold".contains(needle = ":");
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect_err("ambiguous stdlib value method names should not accept named args");
+}
+
+#[test]
 fn engine_builder_installs_standard_natives_into_runtime() {
     let engine = Engine::builder()
         .with_standard_natives()

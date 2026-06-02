@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+
 use vela_bytecode::compiler::options::CompilerOptions;
+use vela_reflect::registry::MethodDesc;
 use vela_reflect::registry::TypeRegistry;
 
 pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> CompilerOptions {
     let mut options = CompilerOptions::new();
+    let mut value_method_params = HashMap::new();
     for module in registry.modules() {
         if let Some(root) = module.name.split('.').next() {
             options = options.with_native_module_root(root);
@@ -24,6 +28,7 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
                 options = options.with_host_variant_field(field.name.clone(), field.id);
             }
         }
+        collect_value_method_params(&mut value_method_params, &desc.methods);
         if desc.host_type_id.is_some() {
             for method in &desc.methods {
                 options = options.with_host_method(method.name.clone(), method.id);
@@ -44,5 +49,35 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
             }
         }
     }
+    for (method, params) in value_method_params {
+        if let Some(params) = params {
+            options = options.with_value_method_params(method, params);
+        }
+    }
     options
+}
+
+fn collect_value_method_params(
+    value_method_params: &mut HashMap<String, Option<Vec<(String, bool)>>>,
+    methods: &[MethodDesc],
+) {
+    for method in methods
+        .iter()
+        .filter(|method| method.attrs.get("stdlib").is_some())
+    {
+        let params = method
+            .params
+            .iter()
+            .map(|param| (param.name.clone(), param.has_default))
+            .collect::<Vec<_>>();
+        match value_method_params.get_mut(&method.name) {
+            Some(Some(existing)) if existing == &params => {}
+            Some(existing) => {
+                *existing = None;
+            }
+            None => {
+                value_method_params.insert(method.name.clone(), Some(params));
+            }
+        }
+    }
 }

@@ -9,6 +9,7 @@ pub struct CompilerOptions {
     pub(super) host_methods: HashMap<String, HostMethodId>,
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
     pub(super) host_method_params: HashMap<HostMethodId, Vec<HostMethodParam>>,
+    pub(super) value_method_params: HashMap<String, Vec<ValueMethodParam>>,
     pub(super) host_types: HashSet<String>,
     pub(super) native_module_roots: HashSet<String>,
     pub(super) native_function_params: HashMap<String, Vec<NativeFunctionParam>>,
@@ -16,6 +17,12 @@ pub struct CompilerOptions {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct HostMethodParam {
+    pub(super) name: String,
+    pub(super) has_default: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct ValueMethodParam {
     pub(super) name: String,
     pub(super) has_default: bool,
 }
@@ -66,6 +73,38 @@ impl CompilerOptions {
                 .collect(),
         );
         self
+    }
+
+    #[must_use]
+    pub fn with_value_method_params<I, S>(mut self, method: impl Into<String>, params: I) -> Self
+    where
+        I: IntoIterator<Item = (S, bool)>,
+        S: Into<String>,
+    {
+        self.value_method_params.insert(
+            method.into(),
+            params
+                .into_iter()
+                .map(|(name, has_default)| ValueMethodParam {
+                    name: name.into(),
+                    has_default,
+                })
+                .collect(),
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn with_required_value_method_params<I, S>(
+        self,
+        method: impl Into<String>,
+        params: I,
+    ) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.with_value_method_params(method, params.into_iter().map(|name| (name, false)))
     }
 
     #[must_use]
@@ -130,6 +169,10 @@ impl CompilerOptions {
 
     pub(super) fn host_method_params(&self, method: HostMethodId) -> Option<&[HostMethodParam]> {
         self.host_method_params.get(&method).map(Vec::as_slice)
+    }
+
+    pub(super) fn value_method_params(&self, method: &str) -> Option<&[ValueMethodParam]> {
+        self.value_method_params.get(method).map(Vec::as_slice)
     }
 
     pub(super) fn native_function_params(&self, name: &str) -> Option<&[NativeFunctionParam]> {

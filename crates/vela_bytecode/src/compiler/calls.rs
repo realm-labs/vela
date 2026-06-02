@@ -223,12 +223,10 @@ impl Compiler<'_> {
         call_span: vela_common::Span,
     ) -> CompileResult<Vec<CallArgument>> {
         let Some(receiver_type) = receiver_type else {
-            reject_named_args(args, "script method call")?;
-            return self.compile_positional_method_args(args);
+            return self.compile_value_method_call_args(method, args, call_span);
         };
         let Some(params) = self.script_method_params(receiver_type, method) else {
-            reject_named_args(args, "script method call")?;
-            return self.compile_positional_method_args(args);
+            return self.compile_value_method_call_args(method, args, call_span);
         };
         let params = params.into_iter().skip(1).collect::<Vec<_>>();
         let slots =
@@ -249,6 +247,44 @@ impl Compiler<'_> {
                 }
             })
             .collect()
+    }
+
+    fn compile_value_method_call_args(
+        &mut self,
+        method: &str,
+        args: &[Argument],
+        call_span: Span,
+    ) -> CompileResult<Vec<CallArgument>> {
+        let Some(params) = self.facts.options.value_method_params(method) else {
+            reject_named_args(args, "script method call")?;
+            return self.compile_positional_method_args(args);
+        };
+        if !args.iter().any(|arg| arg.name.is_some()) {
+            return self.compile_positional_method_args(args);
+        }
+        let params = params
+            .iter()
+            .map(|param| ParamHint {
+                name: param.name.clone(),
+                span: call_span,
+                type_hint: None,
+                default_value_span: param.has_default.then_some(call_span),
+            })
+            .collect::<Vec<_>>();
+        let slots =
+            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
+                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+            })?;
+
+        let mut registers = Vec::new();
+        for (slot, param) in slots.into_iter().zip(params) {
+            if let Some(arg) = slot {
+                registers.push(CallArgument::Register(self.compile_expr(&arg.value)?));
+            } else if param.default_value_span.is_none() {
+                unreachable!("call argument resolver rejects missing required arguments");
+            }
+        }
+        Ok(registers)
     }
 
     fn compile_positional_method_args(

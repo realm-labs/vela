@@ -144,6 +144,48 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_named_value_method_args_from_compiler_options() {
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return {"gold": 4}.get_or(default = 0, key = "gold");
+}
+"#,
+        &CompilerOptions::new().with_required_value_method_params("get_or", ["key", "default"]),
+    )
+    .expect("named value method args should compile with descriptor metadata");
+    let main = program.function("main").expect("main function");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::CallMethod { method, args, .. } if method == "get_or" && args.len() == 2
+    )));
+}
+
+#[test]
+fn compiler_reports_named_value_method_arg_diagnostics_from_compiler_options() {
+    let error = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return {"gold": 4}.get_or(defalt = 0, key = "gold");
+}
+"#,
+        &CompilerOptions::new().with_required_value_method_params("get_or", ["key", "default"]),
+    )
+    .expect_err("unknown named value method arg should fail");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        [
+            "compiler::unknown_named_argument",
+            "compiler::missing_required_argument"
+        ]
+    );
+}
+
+#[test]
 fn compiler_reports_named_native_arg_diagnostics_from_compiler_options() {
     let error = compile_program_source_with_options(
         SourceId::new(1),
