@@ -1502,6 +1502,84 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_method_effect");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let old_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key.clone())
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                        .effects(MethodEffectSet::host_read()),
+                ),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let new_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key)
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                        .effects(MethodEffectSet::host_write()),
+                ),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("method effect ABI rejection should be staged");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged method effect ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.method.effects_changed");
+    let HotReloadErrorKind::ChangedMethodEffects {
+        type_name,
+        method,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed host method effects");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(old.reads_host);
+    assert!(!old.writes_host);
+    assert!(new.reads_host);
+    assert!(new.writes_host);
+    assert!(source_span.is_none());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_file_rejection");
     std::fs::create_dir_all(&root).expect("create temp source dir");
