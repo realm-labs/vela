@@ -194,6 +194,12 @@ fn main() {
         let add = make(4);
         add(2)
     };
+    let zero_arg_lambda_score: int = {
+        let captured_bonus = || {
+            return reward.count + 9;
+        };
+        captured_bonus()
+    };
 
     let parsed: int = "42".parse_int().unwrap_or(0);
     let normalized = "  Quest.Reward Done  ".trim().replace(" ", "_").to_lower();
@@ -424,6 +430,7 @@ fn main() {
         + block_value
         + named_method_score
         + nested_lambda_score
+        + zero_arg_lambda_score
         + parsed
         + string_helper_score
         + string_utility_score
