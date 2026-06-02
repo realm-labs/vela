@@ -6,10 +6,9 @@ before this compaction lives in
 
 ## Current Focus
 
-M0-M12 are complete enough as a runnable prototype. Current work is centered on
-the current checkpoint queue below: advance M13 standard-library completion,
-with targeted M14/M15 Engine API and hot-reload source workflow work as it
-unblocks embedding.
+M0-M13 are complete enough as a runnable prototype. Current work is centered on
+the current checkpoint queue below: advance targeted M14/M15 Engine API and
+hot-reload source workflow work as it unblocks embedding.
 
 Post-MVP performance remains a separate track: optimize the non-JIT bytecode
 interpreter toward Lua 5.x comparable gameplay workloads, then add debugger
@@ -27,7 +26,7 @@ conformance contracts are stable.
 | M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist. |
 | M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx overlays, and rollback-safe host boundaries exist. |
 | M12 | Complete enough | Reflection metadata, permission-aware queries, lookup budgets, candidate spans, and schema-safe mutation denial are covered. |
-| M13 | In progress | Standard library helpers are broad but still need final gameplay/string/math/context polish. |
+| M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and demo helper coverage are validated. |
 | M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices. |
 | M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist. |
 | M16 | Partial | Runtime diagnostics, common rendering, and bytecode/runtime frame maps have started. |
@@ -44,13 +43,7 @@ Use this queue to choose the next implementation task. Work on the first
 checkpoint that is not satisfied, and update this section when a checkpoint
 closes or exposes a more specific gap.
 
-1. M13 standard library:
-   - Complete one missing stdlib family at a time: collection helpers,
-     string helpers, Option/Result propagation, math helpers, context helpers,
-     random/time permission checks, or lambda TypeFact metadata.
-   - Validation: targeted stdlib/compiler/VM tests plus the relevant
-     game-server demo script when the helper affects gameplay examples.
-2. M14/M15 embedding and reload:
+1. M14/M15 embedding and reload:
    - Advance only when it unblocks the demo or conformance workflow: Engine API
      registration, native descriptors, context helpers, macros, safe-point
      reload, ABI/schema/effect checks, or source-file update workflows.
@@ -118,6 +111,10 @@ closes or exposes a more specific gap.
   and stdlib attrs through direct registry metadata and script reflection.
 - Standard Context host schema metadata tags its type, time fields, and
   event/log methods for stdlib and gameplay-domain reflection queries.
+- Standard library runtime and analysis coverage spans arrays, maps, sets,
+  strings, Option/Result helpers and propagation, math, context time/event/log
+  helpers, controlled random permissions, lambda TypeFacts, and gameplay demo
+  helper scripts.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
@@ -129,8 +126,6 @@ closes or exposes a more specific gap.
 
 ## Current Gaps
 
-- Finish M13 polish around standard library completeness and gameplay helper
-  coverage.
 - Continue hardening M14/M15 embedding and production safe-point reload
   workflows.
 - Expand M16/M17 diagnostics, fixtures, and game-server demo coverage.
