@@ -701,6 +701,72 @@ fn main(player) {
 }
 
 #[test]
+fn host_native_error_rolls_back_patches_without_call_options() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_host_native_fn(
+            NativeFunctionDesc::new("game.direct_failing_set_level", NativeFunctionId::new(30))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            |args, host| {
+                let [Value::HostRef(player), Value::Int(level)] = args else {
+                    return Ok(Value::Null);
+                };
+                host.tx.set_path(
+                    HostPath::new(*player).field(FieldId::new(1)),
+                    HostValue::Int(*level),
+                    None,
+                )?;
+                Err(VmError {
+                    kind: VmErrorKind::TypeMismatch {
+                        operation: "direct failing host native",
+                    },
+                    source_span: None,
+                    call_stack: Default::default(),
+                })
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    game.direct_failing_set_level(player, 13);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = engine
+        .into_vm()
+        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .expect_err("host native error should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "direct failing host native"
+        }
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn runtime_call_enforces_call_options_budget() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = compile_program_source(

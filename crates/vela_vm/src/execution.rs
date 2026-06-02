@@ -232,22 +232,18 @@ impl Vm {
                                 operation: "host context",
                             })
                         })?;
-                        let tx_checkpoint = budget.as_deref().map(|_| host.tx.clone());
+                        let tx_checkpoint = host.tx.clone();
                         let result = match native(&values, host, budget.as_deref_mut()) {
                             Ok(result) => result,
                             Err(error) => {
-                                if let Some(tx_checkpoint) = tx_checkpoint {
-                                    *host.tx = tx_checkpoint;
-                                }
+                                *host.tx = tx_checkpoint;
                                 return Err(error.with_source_span_if_absent(instruction.span));
                             }
                         };
                         if let Some(budget) = budget.as_deref()
                             && let Err(error) = budget.check_patch_count(host.tx.patches().len())
                         {
-                            if let Some(tx_checkpoint) = tx_checkpoint {
-                                *host.tx = tx_checkpoint;
-                            }
+                            *host.tx = tx_checkpoint;
                             return Err(error.with_source_span_if_absent(instruction.span));
                         }
                         result
