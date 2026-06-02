@@ -22,6 +22,7 @@ mod script_impls;
 mod script_types;
 mod semantic;
 mod value_flow;
+mod value_types;
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -53,6 +54,7 @@ use script_types::{
     type_hint_script_type,
 };
 use semantic::{parse_semantic_modules, parse_semantic_source};
+use value_types::{ValueTypeFlow, expression_value_type, type_hint_value_type};
 
 #[derive(Clone, Debug)]
 struct CompilerFacts {
@@ -282,6 +284,7 @@ struct Compiler<'ast> {
     locals: HashMap<String, Register>,
     hir_locals: HashMap<HirLocalId, Register>,
     script_types: ScriptTypeFlow,
+    value_types: ValueTypeFlow,
     bindings: &'ast BindingMap,
     next_register: u16,
     param_defaults: Vec<Option<Expr>>,
@@ -330,6 +333,7 @@ impl<'ast> Compiler<'ast> {
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
         let mut script_types = ScriptTypeFlow::default();
+        let mut value_types = ValueTypeFlow::default();
         let parameter_locals = bindings
             .locals()
             .filter(|local| local.kind == LocalBindingKind::Parameter)
@@ -344,11 +348,14 @@ impl<'ast> Compiler<'ast> {
                 .type_hint
                 .as_ref()
                 .and_then(|hint| type_hint_script_type(hint, known_type_names.iter()));
+            let value_type = param.type_hint.as_ref().and_then(type_hint_value_type);
             if let Some(local) = parameter_locals.get(index).copied() {
                 hir_locals.insert(local, Register(register));
                 script_types.set_local(local, &param.name, script_type);
+                value_types.set_local(local, &param.name, value_type);
             } else {
                 script_types.set_name(&param.name, script_type);
+                value_types.set_name(&param.name, value_type);
             }
         }
 
@@ -359,6 +366,7 @@ impl<'ast> Compiler<'ast> {
             locals,
             hir_locals,
             script_types,
+            value_types,
             bindings,
             next_register: param_count,
             param_defaults: params
@@ -408,6 +416,7 @@ impl<'ast> Compiler<'ast> {
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
         let mut script_types = ScriptTypeFlow::default();
+        let mut value_types = ValueTypeFlow::default();
 
         for (index, capture) in captures.iter().enumerate() {
             let register = Register(
@@ -431,13 +440,19 @@ impl<'ast> Compiler<'ast> {
             let script_type = param.type_hint.as_ref().and_then(|hint| {
                 type_hint_script_type(&HirTypeHint::from_syntax(hint), known_type_names.iter())
             });
+            let value_type = param
+                .type_hint
+                .as_ref()
+                .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint)));
             if let Some(local) =
                 bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, param.span)
             {
                 hir_locals.insert(local, register);
                 script_types.set_local(local, &param.name, script_type);
+                value_types.set_local(local, &param.name, value_type);
             } else {
                 script_types.set_name(&param.name, script_type);
+                value_types.set_name(&param.name, value_type);
             }
         }
 
@@ -449,6 +464,7 @@ impl<'ast> Compiler<'ast> {
             locals,
             hir_locals,
             script_types,
+            value_types,
             bindings,
             next_register: capture_count
                 .checked_add(param_count)
@@ -572,6 +588,13 @@ impl<'ast> Compiler<'ast> {
         self.script_types.name(receiver)
     }
 
+    fn value_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<String> {
+        let [receiver] = receiver_path else {
+            return None;
+        };
+        self.value_types.name(receiver)
+    }
+
     fn script_method_id_for_type(&self, type_name: &str, method: &str) -> Option<MethodId> {
         self.facts
             .script_method_ids
@@ -592,6 +615,14 @@ impl<'ast> Compiler<'ast> {
             |span| self.type_symbol_at_span(span),
             |span| self.script_types.local_at_span(self.bindings, span),
             |name| self.script_types.name(name),
+        )
+    }
+
+    fn value_type_for_expr(&self, expr: &Expr) -> Option<String> {
+        expression_value_type(
+            expr,
+            |span| self.value_types.local_at_span(self.bindings, span),
+            |name| self.value_types.name(name),
         )
     }
 

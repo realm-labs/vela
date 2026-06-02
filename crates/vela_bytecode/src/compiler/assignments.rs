@@ -24,6 +24,12 @@ struct IndexedRecordFieldAssignmentTarget<'expr> {
     fields: Vec<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LocalAssignmentFacts {
+    script: Option<ScriptTypeFact>,
+    value_type: Option<String>,
+}
+
 impl Compiler<'_> {
     pub(super) fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
@@ -35,8 +41,15 @@ impl Compiler<'_> {
             let script_fact = (*op == AssignOp::Set)
                 .then(|| self.script_fact_for_expr(value))
                 .flatten();
+            let value_type = (*op == AssignOp::Set)
+                .then(|| self.value_type_for_expr(value))
+                .flatten();
+            let facts = LocalAssignmentFacts {
+                script: script_fact,
+                value_type,
+            };
             let assigned =
-                self.compile_local_assignment(*op, target.span, name, local, value, script_fact)?;
+                self.compile_local_assignment(*op, target.span, name, local, value, facts)?;
             return Ok(assigned);
         }
         if matches!(&target.kind, ExprKind::Index { .. })
@@ -76,15 +89,18 @@ impl Compiler<'_> {
         name: String,
         local: Option<HirLocalId>,
         value: &Expr,
-        script_fact: Option<ScriptTypeFact>,
+        facts: LocalAssignmentFacts,
     ) -> CompileResult<Register> {
         let target = self.local_register_at_span(target_span, &name)?;
         if let Some(local) = local {
             self.hir_locals.insert(local, target);
             self.script_types
-                .set_local_fact(local, name.clone(), script_fact);
+                .set_local_fact(local, name.clone(), facts.script);
+            self.value_types
+                .set_local(local, name.clone(), facts.value_type);
         } else {
-            self.script_types.set_name_fact(name.clone(), script_fact);
+            self.script_types.set_name_fact(name.clone(), facts.script);
+            self.value_types.set_name(name.clone(), facts.value_type);
         }
         let assigned = match op {
             AssignOp::Set => {

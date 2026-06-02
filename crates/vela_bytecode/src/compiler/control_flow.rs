@@ -9,6 +9,7 @@ use crate::{Constant, InstructionKind, InstructionOffset, Register};
 
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_flow::{BlockValue, block_value};
+use super::value_types::type_hint_value_type;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,6 +76,13 @@ impl Compiler<'_> {
                     .and_then(|value| self.script_fact_for_expr(value));
                 let script_fact =
                     merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
+                let hinted_value_type = type_hint
+                    .as_ref()
+                    .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint)));
+                let value_type = value
+                    .as_ref()
+                    .and_then(|value| self.value_type_for_expr(value));
+                let value_type = hinted_value_type.or(value_type);
                 let (register, returned) = if let Some(value) = value {
                     self.compile_let_initializer(value)?
                 } else {
@@ -87,8 +95,10 @@ impl Compiler<'_> {
                 {
                     self.hir_locals.insert(local, register);
                     self.script_types.set_local_fact(local, name, script_fact);
+                    self.value_types.set_local(local, name, value_type);
                 } else {
                     self.script_types.set_name_fact(name, script_fact);
+                    self.value_types.set_name(name, value_type);
                 }
                 Ok(returned)
             }

@@ -1,4 +1,4 @@
-use vela_syntax::ast::{Argument, BinaryOp, Expr, ExprKind, Literal};
+use vela_syntax::ast::{Argument, Expr, ExprKind};
 
 use crate::{CallArgument, InstructionKind};
 
@@ -138,7 +138,7 @@ impl Compiler<'_> {
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_expr(base);
-        let value_receiver_type = self.value_method_receiver_type(base);
+        let value_receiver_type = self.value_type_for_expr(base);
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, name));
@@ -185,12 +185,13 @@ impl Compiler<'_> {
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_receiver_path(receiver_path);
+        let value_receiver_type = self.value_type_for_receiver_path(receiver_path);
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, method));
         let arg_registers = self.compile_script_method_call_args(
             receiver_type.as_deref(),
-            receiver_type.as_deref(),
+            value_receiver_type.as_deref().or(receiver_type.as_deref()),
             method,
             args,
             expr.span,
@@ -311,24 +312,6 @@ impl Compiler<'_> {
             }
         }
         Ok(registers)
-    }
-
-    fn value_method_receiver_type(&self, expr: &Expr) -> Option<String> {
-        match &expr.kind {
-            ExprKind::Literal(Literal::Null) => Some("null".to_owned()),
-            ExprKind::Literal(Literal::Bool(_)) => Some("bool".to_owned()),
-            ExprKind::Literal(Literal::Int(_)) => Some("int".to_owned()),
-            ExprKind::Literal(Literal::Float(_)) => Some("float".to_owned()),
-            ExprKind::Literal(Literal::String(_)) => Some("string".to_owned()),
-            ExprKind::Array(_) => Some("array".to_owned()),
-            ExprKind::Map(_) => Some("map".to_owned()),
-            ExprKind::Lambda { .. } => Some("closure".to_owned()),
-            ExprKind::Binary {
-                op: BinaryOp::Range,
-                ..
-            } => Some("range".to_owned()),
-            _ => self.script_type_for_expr(expr),
-        }
     }
 
     fn compile_positional_method_args(

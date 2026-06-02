@@ -161,6 +161,35 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_lower_local_receiver_named_standard_value_method_arguments() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(text: string) {
+    let parts = ["gold"];
+    let reward = "reward:gold";
+    return text.contains(needle = ":")
+        && reward.contains(needle = ":")
+        && parts.contains(value = "gold");
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("local receiver named stdlib value method arguments should compile");
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&program, "main", &[Value::String("loot:xp".to_owned())]),
+        Ok(Value::Bool(true))
+    );
+}
+
+#[test]
 fn engine_compiler_options_reject_ambiguous_named_standard_value_method_arguments() {
     let engine = Engine::builder()
         .with_standard_natives()

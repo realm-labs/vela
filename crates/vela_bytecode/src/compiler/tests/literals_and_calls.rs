@@ -215,6 +215,73 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_named_value_method_args_from_local_value_type_flow() {
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(text: string) {
+    let parts = ["gold"];
+    let reward = "reward:gold";
+    return text.contains(needle = ":")
+        && reward.contains(needle = ":")
+        && parts.contains(value = "gold");
+}
+"#,
+        &CompilerOptions::new()
+            .with_required_value_method_params_for_type("string", "contains", ["needle"])
+            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+    )
+    .expect("local value method receiver facts should compile");
+    let main = program.function("main").expect("main function");
+
+    assert_eq!(
+        main.instructions
+            .iter()
+            .filter(|instruction| matches!(
+                &instruction.kind,
+                InstructionKind::CallMethod { method, args, .. }
+                    if method == "contains" && args.len() == 1
+            ))
+            .count(),
+        3
+    );
+}
+
+#[test]
+fn compiler_lowers_named_value_method_args_from_captured_value_type_flow() {
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let reward = "reward:gold";
+    let has_separator = |needle| reward.contains(needle = needle);
+    return has_separator(":");
+}
+"#,
+        &CompilerOptions::new().with_required_value_method_params_for_type(
+            "string",
+            "contains",
+            ["needle"],
+        ),
+    )
+    .expect("captured value method receiver facts should compile");
+    let main = program.function("main").expect("main function");
+    let lambda = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            InstructionKind::MakeClosure { code, .. } => Some(code),
+            _ => None,
+        })
+        .expect("lambda code object");
+
+    assert!(lambda.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::CallMethod { method, args, .. } if method == "contains" && args.len() == 1
+    )));
+}
+
+#[test]
 fn compiler_rejects_ambiguous_named_value_method_args_without_receiver_type() {
     compile_program_source_with_options(
         SourceId::new(1),

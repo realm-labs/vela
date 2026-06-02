@@ -57,6 +57,13 @@ impl Compiler<'_> {
                     Some(script_fact),
                 );
             }
+            if let Some(value_type) = self.value_types.local(capture.local) {
+                lambda_compiler.value_types.set_local(
+                    capture.local,
+                    &capture.name,
+                    Some(value_type),
+                );
+            }
         }
         let code = lambda_compiler.compile_lambda_body(body)?;
         let dst = self.alloc_register()?;
