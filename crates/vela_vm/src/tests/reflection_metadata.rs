@@ -283,6 +283,7 @@ fn main(player) {
     let active = reflect.variant_info(quest, "Active");
     let active_fields = reflect.fields(quest);
     let active_count = reflect.field(quest, "count");
+    let all_fields = reflect.fields();
     let type_variants = reflect.variants(quest_type);
     let type_active = reflect.variant_info(quest_type, "Active");
     let all_variants = reflect.variants();
@@ -326,6 +327,9 @@ fn main(player) {
         && active_count.name == "count"
         && active_count.owner == "QuestProgress.Active"
         && active_count.id == active.fields[0].id
+        && all_fields.len() == 3
+        && all_fields[2].owner == "QuestProgress.Active"
+        && all_fields[2].name == "count"
         && type_variants[0].fields[0].owner == "QuestProgress.Active"
         && type_active.fields[0].owner == "QuestProgress.Active"
         && reflect.has_variant(quest_type, "Active")

@@ -495,6 +495,11 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     else {
         panic!("all variants should be an array");
     };
+    let ReflectValue::Host(HostValue::Array(policy_all_fields)) =
+        all_fields_with_policy(&registry, &ReflectPolicy::read_only())
+    else {
+        panic!("all fields should be an array");
+    };
     let HostValue::Record { fields, .. } = &policy_variants[0] else {
         panic!("variant metadata should be a record");
     };
@@ -538,6 +543,22 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     assert_eq!(
         all_policy_field_fields.get("owner"),
         Some(&HostValue::String("QuestProgress.Active".to_owned()))
+    );
+    assert_eq!(policy_all_fields.len(), 1);
+    let HostValue::Record {
+        fields: all_field_fields,
+        ..
+    } = &policy_all_fields[0]
+    else {
+        panic!("all field metadata should be a record");
+    };
+    assert_eq!(
+        all_field_fields.get("owner"),
+        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+    );
+    assert_eq!(
+        all_field_fields.get("name"),
+        Some(&HostValue::String("count".to_owned()))
     );
     let Some(HostValue::Array(policy_variant_fields)) = policy_variant.get("fields") else {
         panic!("variant info fields should be an array");

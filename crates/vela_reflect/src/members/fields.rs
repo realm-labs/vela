@@ -82,14 +82,7 @@ pub fn fields_with_policy(
 
 pub fn all_fields(registry: &TypeRegistry) -> ReflectValue {
     ReflectValue::Host(HostValue::Array(
-        registry
-            .types()
-            .flat_map(|desc| {
-                desc.fields
-                    .iter()
-                    .map(|field| field_record_with_owner(&desc.key.name, field))
-            })
-            .collect(),
+        registry.types().flat_map(field_records_for_type).collect(),
     ))
 }
 
@@ -97,16 +90,7 @@ pub fn all_fields_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -
     ReflectValue::Host(HostValue::Array(
         registry
             .types()
-            .flat_map(|desc| {
-                desc.fields
-                    .iter()
-                    .filter(|field| {
-                        policy
-                            .require_field_read_access(&desc.key.name, field)
-                            .is_ok()
-                    })
-                    .map(|field| field_record_with_owner(&desc.key.name, field))
-            })
+            .flat_map(|desc| field_records_for_type_with_policy(desc, policy))
             .collect(),
     ))
 }
@@ -157,6 +141,45 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
                 related,
             })
         })
+}
+
+fn field_records_for_type(desc: &TypeDesc) -> Vec<HostValue> {
+    let mut fields = desc
+        .fields
+        .iter()
+        .map(|field| field_record_with_owner(&desc.key.name, field))
+        .collect::<Vec<_>>();
+    fields.extend(desc.variants.iter().flat_map(|variant| {
+        let owner = variant_owner_name(desc, variant);
+        variant
+            .fields
+            .iter()
+            .map(move |field| field_record_with_owner(&owner, field))
+    }));
+    fields
+}
+
+fn field_records_for_type_with_policy(desc: &TypeDesc, policy: &ReflectPolicy) -> Vec<HostValue> {
+    let mut fields = desc
+        .fields
+        .iter()
+        .filter(|field| {
+            policy
+                .require_field_read_access(&desc.key.name, field)
+                .is_ok()
+        })
+        .map(|field| field_record_with_owner(&desc.key.name, field))
+        .collect::<Vec<_>>();
+    fields.extend(desc.variants.iter().flat_map(|variant| {
+        let owner = variant_owner_name(desc, variant);
+        variant
+            .fields
+            .iter()
+            .filter(|field| policy.require_field_read_access(&owner, field).is_ok())
+            .map(|field| field_record_with_owner(&owner, field))
+            .collect::<Vec<_>>()
+    }));
+    fields
 }
 
 fn find_field_with_policy<'a>(

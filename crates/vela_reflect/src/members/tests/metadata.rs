@@ -111,7 +111,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     let ReflectValue::Host(HostValue::Array(all_fields)) = all_fields(&registry) else {
         panic!("field list should be an array");
     };
-    assert_eq!(all_fields.len(), 2);
+    assert_eq!(all_fields.len(), 3);
     let HostValue::Record {
         fields: field_list_item,
         ..
@@ -126,6 +126,21 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     assert_eq!(
         field_list_item.get("name"),
         Some(&HostValue::String("level".to_owned()))
+    );
+    let HostValue::Record {
+        fields: variant_field_list_item,
+        ..
+    } = &all_fields[2]
+    else {
+        panic!("variant field list item should be a record");
+    };
+    assert_eq!(
+        variant_field_list_item.get("owner"),
+        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+    );
+    assert_eq!(
+        variant_field_list_item.get("name"),
+        Some(&HostValue::String("count".to_owned()))
     );
 
     let error = field(&registry, &target, "levle").expect_err("unknown field");

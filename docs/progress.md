@@ -87,6 +87,8 @@ conformance contracts are stable.
 - Script-defined struct and enum fields expose writable reflection metadata,
   and copy-returning `reflect.set` respects `reflect_writable` plus field
   permissions for script values.
+- Global `reflect.fields()` metadata includes enum variant payload fields with
+  policy filtering and `Type.Variant` ownership.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload

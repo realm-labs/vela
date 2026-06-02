@@ -104,6 +104,11 @@ state. Copy-returning `reflect.set` for script values still enforces
 `reflect.set` additionally requires host field writability before recording a
 PatchTx write.
 
+Global field reflection enumerates both type-level fields and enum variant
+payload fields. Variant payload field metadata uses `Type.Variant` as the
+owner, matching targeted variant reflection, and policy filtering applies to
+each field before it appears in `reflect.fields()`.
+
 ### Hot Reload
 
 Hot reload replaces function-level or module-level code objects at safe points.
