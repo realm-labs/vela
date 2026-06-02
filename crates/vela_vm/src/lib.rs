@@ -66,7 +66,9 @@ use runtime_checks::{expect_closure, expect_int, is_truthy, validate_jump};
 use script_methods::{ScriptMethodDispatch, call_method, call_method_id};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
-use vela_bytecode::{CallArgument, CodeObject, InstructionKind, Program, Register};
+use vela_bytecode::{
+    CallArgument, CodeObject, InstructionKind, InstructionOffset, Program, Register,
+};
 use vela_common::{Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::path::HostPath;
@@ -84,11 +86,13 @@ struct ExecutionCall<'a> {
     captures: &'a [Value],
     args: &'a [Value],
     call_site: Option<Span>,
+    call_site_offset: Option<InstructionOffset>,
 }
 
 impl ExecutionCall<'_> {
     fn stack_frame(&self) -> VmStackFrame {
         VmStackFrame::new(self.code.name.clone(), self.call_site)
+            .with_bytecode_offset(self.call_site_offset)
     }
 }
 
@@ -412,6 +416,7 @@ impl Vm {
                 captures: &[],
                 args,
                 call_site: None,
+                call_site_offset: None,
             },
             host,
             heap,
@@ -467,6 +472,7 @@ impl Vm {
                 captures: &closure.captures,
                 args,
                 call_site: None,
+                call_site_offset: None,
             },
             host,
             heap,

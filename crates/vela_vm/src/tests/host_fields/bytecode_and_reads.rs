@@ -455,4 +455,12 @@ fn runtime_errors_include_script_call_stack() {
     assert!(error.call_stack[0].call_site.is_some());
     assert!(error.call_stack[1].call_site.is_some());
     assert_eq!(error.call_stack[2].call_site, None);
+    assert_eq!(
+        error
+            .call_stack
+            .iter()
+            .map(|frame| frame.bytecode_offset)
+            .collect::<Vec<_>>(),
+        [Some(InstructionOffset(0)), Some(InstructionOffset(0)), None]
+    );
 }

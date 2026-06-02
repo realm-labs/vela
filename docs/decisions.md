@@ -165,7 +165,9 @@ host access, PatchTx, and TypeRegistry boundaries.
 Bytecode code objects carry read-only frame maps for debugger and diagnostic
 inspection. These maps may name parameters, locals, pattern bindings, and
 captures with their registers and source spans, but they must not affect VM
-execution or allow runtime mutation of type or host structure.
+execution or allow runtime mutation of type or host structure. Runtime stack
+frames should preserve caller bytecode offsets as observational metadata for
+stepping, profiling, and future breakpoint rebinding.
 
 ### Cranelift JIT
 

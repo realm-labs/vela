@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use vela_bytecode::Register;
+use vela_bytecode::{InstructionOffset, Register};
 use vela_common::{Diagnostic, Span};
 use vela_host::error::{HostError, HostErrorKind};
 use vela_reflect::error::{ReflectError, ReflectErrorKind};
@@ -65,6 +65,7 @@ impl VmError {
 pub struct VmStackFrame {
     pub function: String,
     pub call_site: Option<Span>,
+    pub bytecode_offset: Option<InstructionOffset>,
 }
 
 impl VmStackFrame {
@@ -72,7 +73,16 @@ impl VmStackFrame {
         Self {
             function: function.into(),
             call_site,
+            bytecode_offset: None,
         }
+    }
+
+    pub(crate) fn with_bytecode_offset(
+        mut self,
+        bytecode_offset: Option<InstructionOffset>,
+    ) -> Self {
+        self.bytecode_offset = bytecode_offset;
+        self
     }
 }
 

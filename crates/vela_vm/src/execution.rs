@@ -87,6 +87,7 @@ impl Vm {
         let mut ip = 0_usize;
 
         while ip < code.instructions.len() {
+            let instruction_offset = InstructionOffset(ip);
             let instruction = &code.instructions[ip];
             if let Some(budget) = budget.as_deref_mut() {
                 budget.charge_instruction()?;
@@ -275,6 +276,7 @@ impl Vm {
                             captures: &[],
                             args: &values,
                             call_site: instruction.span,
+                            call_site_offset: Some(instruction_offset),
                         },
                         host.as_deref_mut(),
                         heap.as_deref_mut(),
@@ -321,6 +323,7 @@ impl Vm {
                             captures: &closure.captures,
                             args: &values,
                             call_site: instruction.span,
+                            call_site_offset: Some(instruction_offset),
                         },
                         host.as_deref_mut(),
                         heap.as_deref_mut(),
