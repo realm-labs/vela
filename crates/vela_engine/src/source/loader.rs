@@ -66,8 +66,10 @@ fn source_id(index: usize, count: usize) -> Result<SourceId, EngineSourceError> 
 }
 
 fn module_path(root: &Path, path: &Path) -> Result<ModulePath, EngineSourceError> {
-    let relative = path
-        .strip_prefix(root)
+    let normalized_root = normalized_absolute_path(root)?;
+    let normalized_path = normalized_absolute_path(path)?;
+    let relative = normalized_path
+        .strip_prefix(&normalized_root)
         .map_err(|_| EngineSourceError::invalid_path(path))?;
     let components = relative.components().collect::<Vec<_>>();
     let mut segments = Vec::new();
@@ -93,4 +95,26 @@ fn module_path(root: &Path, path: &Path) -> Result<ModulePath, EngineSourceError
         return Err(EngineSourceError::invalid_path(path));
     }
     Ok(ModulePath::new(segments))
+}
+
+fn normalized_absolute_path(path: &Path) -> Result<PathBuf, EngineSourceError> {
+    let mut normalized = if path.is_absolute() {
+        PathBuf::new()
+    } else {
+        std::env::current_dir().map_err(|error| EngineSourceError::io(Path::new("."), error))?
+    };
+    for component in path.components() {
+        match component {
+            Component::Prefix(prefix) => normalized.push(prefix.as_os_str()),
+            Component::RootDir => normalized.push(component.as_os_str()),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    return Err(EngineSourceError::invalid_path(path));
+                }
+            }
+            Component::Normal(segment) => normalized.push(segment),
+        }
+    }
+    Ok(normalized)
 }

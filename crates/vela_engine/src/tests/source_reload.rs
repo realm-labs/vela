@@ -246,6 +246,34 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
 }
 
 #[test]
+fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
+    let root = unique_test_dir("hot_reload_changed_file_normalized_root");
+    let reward_file = write_reward_modules(&root, "return grant();", 4);
+    let root_with_current_segment = root.join(".");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+
+    write_reward_module(&reward_file, 8);
+    let update = engine
+        .compile_hot_reload_update_changed_file(&initial, &root_with_current_segment, &reward_file)
+        .expect("changed file update should compile");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let report = runtime.apply_hot_update_report(update);
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&runtime.current().to_program(), "game.main.main", &[]),
+        Ok(Value::Int(8))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn engine_compile_hot_reload_changed_file_rejects_non_source_path() {
     let root = unique_test_dir("hot_reload_changed_file_invalid");
     let reward_file = write_reward_modules(&root, "return grant();", 4);
