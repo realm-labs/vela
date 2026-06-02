@@ -79,6 +79,65 @@ fn main() {
         );
     }
 }
+
+#[test]
+fn compiler_rejects_invalid_and_duplicate_schema_ids_from_hir() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    #[id(0)]
+    zero: int
+    #[id("bad")]
+    bad: int
+    #[id]
+    missing: int
+    #[id(101)]
+    item_id: string
+    #[id(101)]
+    count: int
+    #[id(102)]
+    #[id(103)]
+    bonus: int
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Active {
+        #[id(301)]
+        count: int
+        #[id(301)]
+        total: int
+    }
+    #[id(201)]
+    Started
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect_err("invalid and duplicate schema ids should fail before bytecode generation");
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected semantic diagnostics");
+    };
+    for code in [
+        "hir::invalid_schema_id",
+        "hir::duplicate_field_id",
+        "hir::duplicate_schema_id_attr",
+        "hir::duplicate_variant_id",
+        "hir::duplicate_variant_field_id",
+    ] {
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some(code)),
+            "missing diagnostic {code}: {diagnostics:?}"
+        );
+    }
+}
+
 #[test]
 fn compiler_rejects_missing_required_constructor_fields() {
     let error = compile_program_source(

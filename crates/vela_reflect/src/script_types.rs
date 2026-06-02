@@ -1,5 +1,5 @@
 use vela_common::{FieldId, MethodId, Span, TypeId, VariantId};
-use vela_hir::attributes::HirAttribute;
+use vela_hir::attributes::{HirAttribute, schema_id_attr};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 
@@ -403,12 +403,7 @@ fn script_variant_id(type_name: &str, variant_name: &str, attrs: &[HirAttribute]
 }
 
 fn script_id_attr(attrs: &[HirAttribute]) -> Option<u32> {
-    attrs
-        .iter()
-        .find(|attr| attr.name == "id")
-        .and_then(|attr| attr.value.as_deref())
-        .and_then(|value| value.parse::<u32>().ok())
-        .filter(|id| *id != 0)
+    schema_id_attr(attrs)
 }
 
 fn stable_id(kind: &str, owner: &str, member: &str) -> u32 {

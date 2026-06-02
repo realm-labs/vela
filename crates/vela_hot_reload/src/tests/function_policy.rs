@@ -153,6 +153,50 @@ fn main() {
 }
 
 #[test]
+fn script_schema_invalid_stable_ids_are_rejected_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    #[id(101)]
+    item_id: string
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script schema should compile");
+
+    let error = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+struct Reward {
+    #[id(101)]
+    item_id: string
+    #[id(101)]
+    count: int
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect_err("duplicate stable ids should be rejected before reload ABI checks");
+
+    assert_eq!(error.code(), "reload.compile");
+    assert!(
+        error
+            .source_diagnostics()
+            .iter()
+            .any(|diagnostic| { diagnostic.code.as_deref() == Some("hir::duplicate_field_id") })
+    );
+}
+
+#[test]
 fn script_function_return_abi_changes_are_rejected_during_compile_update() {
     let initial = compile_initial(
         SourceId::new(1),
