@@ -400,6 +400,80 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
 }
 
 #[test]
+fn runtime_checks_reload_around_patch_apply_safe_point() {
+    let engine = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+fn main(player: Player) {
+    player.level += 1;
+    return player.level;
+}
+"#,
+        )
+        .expect("initial hot reload compile");
+    let update = engine
+        .compile_hot_reload_update(
+            &initial,
+            SourceId::new(2),
+            r#"
+fn main(player: Player) {
+    player.level += 2;
+    return player.level + 100;
+}
+"#,
+        )
+        .expect("compatible update should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let level_path = HostPath::new(host_ref).field(FieldId::new(1));
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(level_path, HostValue::Int(10));
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(Value::Int(11))
+    );
+    runtime
+        .stage_hot_update(update)
+        .expect("stage pending update");
+
+    let safe_point = runtime
+        .apply_patch_tx_at_safe_point(tx, &mut adapter)
+        .expect("apply patches at safe point");
+
+    let before = safe_point
+        .before_apply_reload
+        .expect("pending update should be consumed before patch apply");
+    assert!(before.accepted);
+    assert_eq!(before.changed_functions, vec!["main".to_owned()]);
+    assert_eq!(safe_point.after_apply_reload, None);
+
+    let mut next_tx = PatchTx::new();
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut next_tx,
+        ),
+        Ok(Value::Int(113))
+    );
+}
+
+#[test]
 fn runtime_compiles_hot_reload_update_from_active_version() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine

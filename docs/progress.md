@@ -62,6 +62,8 @@ conformance contracts are stable.
   advancement.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
+- Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
+  safe-point checks.
 - Script schema fields and enum variants can use validated explicit stable ID
   attributes for reload-safe source renames.
 - CLI demo scripts and conformance fixtures use `.vela`.

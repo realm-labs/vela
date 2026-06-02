@@ -103,6 +103,10 @@ active ProgramVersion; hosts must call the runtime reload check at event, tick,
 or patch-apply safe points to consume the pending update and receive the
 accepted or rejected report.
 
+Patch apply safe-point helpers must continue to route host mutation through
+`PatchTx` and `ScriptStateAdapter`; reload checks may bracket the commit, but
+they must not inspect or rewrite the recorded patches.
+
 Function, method, module, trait, schema, effect, access, parameter, return, and
 source-span metadata participate in ABI validation. Engine registries are the
 source for host/native ABI manifests.

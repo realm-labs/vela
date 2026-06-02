@@ -3,6 +3,7 @@ use std::path::Path;
 use vela_bytecode::Program;
 use vela_common::SourceId;
 use vela_host::adapter::ScriptStateAdapter;
+use vela_host::error::HostResult;
 use vela_host::tx::PatchTx;
 use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::report::HotReloadReport;
@@ -94,13 +95,21 @@ impl Runtime {
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
-        let Some(report) = hot_reload.check_reload() else {
-            return Ok(None);
-        };
-        if let Some(version) = report.version() {
-            self.program = version.to_program();
-        }
-        Ok(Some(report))
+        Ok(Self::consume_reload_report(&mut self.program, hot_reload))
+    }
+
+    pub fn apply_patch_tx_at_safe_point(
+        &mut self,
+        tx: PatchTx,
+        adapter: &mut impl ScriptStateAdapter,
+    ) -> HostResult<PatchApplySafePointReport> {
+        let before_apply_reload = self.check_optional_reload();
+        tx.apply(adapter)?;
+        let after_apply_reload = self.check_optional_reload();
+        Ok(PatchApplySafePointReport {
+            before_apply_reload,
+            after_apply_reload,
+        })
     }
 
     pub fn apply_hot_update_result_report(
@@ -176,6 +185,28 @@ impl Runtime {
             .map(HotReloadRuntime::current)
             .ok_or_else(|| EngineError::new(EngineErrorKind::RuntimeNotHotReloadEnabled))
     }
+
+    fn check_optional_reload(&mut self) -> Option<HotReloadReport> {
+        let hot_reload = self.hot_reload.as_mut()?;
+        Self::consume_reload_report(&mut self.program, hot_reload)
+    }
+
+    fn consume_reload_report(
+        program: &mut Program,
+        hot_reload: &mut HotReloadRuntime,
+    ) -> Option<HotReloadReport> {
+        let report = hot_reload.check_reload()?;
+        if let Some(version) = report.version() {
+            *program = version.to_program();
+        }
+        Some(report)
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PatchApplySafePointReport {
+    pub before_apply_reload: Option<HotReloadReport>,
+    pub after_apply_reload: Option<HotReloadReport>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -1866,17 +1866,21 @@ world.apply(tx)?;
 let update = runtime
     .compile_hot_reload_update_file("scripts/combat.vela")?
     ?;
-let report = runtime.apply_hot_update(update)?;
+runtime.stage_hot_update(update)?;
 
-if !report.accepted {
-    log::error!("hot reload failed: {:#?}", report.errors);
+if let Some(report) = runtime.check_reload()? {
+    if !report.accepted {
+        log::error!("hot reload failed: {:#?}", report.errors);
+    }
 }
 ```
 
 Runtime update compilation uses the runtime's active `ProgramVersion`, so hosts
 do not need to separately fetch the current version before compiling an update.
-The update still takes effect only when the host calls `apply_hot_update` at a
-safe point.
+Staged updates do not affect active code until the host calls
+`runtime.check_reload()` at a safe point. Hosts that already have a `PatchTx`
+can use `runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a
+pending reload before and after successful host patch apply.
 
 Hot-reload ABI manifests copy optional declaration spans from reflected schema,
 function, and method descriptors. When schema, function effect/access, or method
