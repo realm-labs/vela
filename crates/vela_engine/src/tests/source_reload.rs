@@ -340,6 +340,71 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_compile_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_compile_rejection");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &reward_file,
+        r#"
+const BAD = register_event("monster.kill");
+
+pub fn grant() {
+    return 6;
+}
+"#,
+    )
+    .expect("write side-effecting module update");
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("compile rejection should be staged as a hot reload report");
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir compile rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.compile");
+    assert!(
+        report.errors[0]
+            .source_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
+    );
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_returns_hot_reload_dir_source_errors_immediately() {
     let root = unique_test_dir("runtime_stage_dir_source_error");
     let _reward_file = write_reward_modules(&root, "return grant();", 2);
