@@ -123,6 +123,54 @@ fn methods_with_policy_hide_inaccessible_methods() {
 }
 
 #[test]
+fn method_policy_filters_unknown_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(501), "Player"))
+            .host_type(HostTypeId::new(5))
+            .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
+            .method(
+                MethodDesc::new(HostMethodId::new(2), "grant_exp_hidden")
+                    .access(crate::access::MethodAccess::new().reflect_callable(false)),
+            )
+            .method(
+                MethodDesc::new(HostMethodId::new(3), "grant_exp_private").access(
+                    crate::access::MethodAccess::new()
+                        .public(false)
+                        .reflect_callable(true),
+                ),
+            )
+            .method(
+                MethodDesc::new(HostMethodId::new(4), "grant_exp_admin")
+                    .access(crate::access::MethodAccess::new().require_permission("player.admin")),
+            ),
+    );
+    let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(5), HostObjectId::new(1), 1));
+
+    let error = method_with_policy(
+        &registry,
+        &target,
+        "grant_exp_hiddden",
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown method");
+    let ReflectErrorKind::UnknownMethod {
+        candidates,
+        related,
+        ..
+    } = error.kind
+    else {
+        panic!("expected unknown method");
+    };
+
+    assert_eq!(candidates, vec!["grant_exp".to_owned()]);
+    assert_eq!(
+        related,
+        vec![crate::candidates::ReflectCandidate::new("grant_exp", None)]
+    );
+}
+
+#[test]
 fn fields_with_policy_hide_non_reflect_readable_fields() {
     let mut registry = TypeRegistry::new();
     registry.register(
@@ -211,6 +259,46 @@ fn fields_with_policy_hide_non_reflect_readable_fields() {
 }
 
 #[test]
+fn field_policy_filters_unknown_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(602), "Player"))
+            .host_type(HostTypeId::new(6))
+            .field(FieldDesc::new(FieldId::new(1), "level"))
+            .field(
+                FieldDesc::new(FieldId::new(2), "level_secret")
+                    .access(crate::access::FieldAccess::new().reflect_readable(false)),
+            )
+            .field(FieldDesc::new(FieldId::new(3), "level_admin").access(
+                crate::access::FieldAccess::new().require_permission("player.level.admin"),
+            )),
+    );
+    let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
+
+    let error = field_with_policy(
+        &registry,
+        &target,
+        "level_secrett",
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown field");
+    let ReflectErrorKind::UnknownField {
+        candidates,
+        related,
+        ..
+    } = error.kind
+    else {
+        panic!("expected unknown field");
+    };
+
+    assert_eq!(candidates, vec!["level".to_owned()]);
+    assert_eq!(
+        related,
+        vec![crate::candidates::ReflectCandidate::new("level", None)]
+    );
+}
+
+#[test]
 fn fields_with_policy_require_field_permissions() {
     let mut registry = TypeRegistry::new();
     registry.register(
@@ -275,6 +363,53 @@ fn fields_with_policy_require_field_permissions() {
         Some(&HostValue::Array(vec![HostValue::String(
             "player.title.inspect".to_owned()
         )]))
+    );
+}
+
+#[test]
+fn variant_field_policy_filters_unknown_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(702), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .variant(
+                VariantDesc::new(VariantId::new(1), "Active")
+                    .field(FieldDesc::new(FieldId::new(1), "count"))
+                    .field(
+                        FieldDesc::new(FieldId::new(2), "count_secret")
+                            .access(crate::access::FieldAccess::new().reflect_readable(false)),
+                    )
+                    .field(FieldDesc::new(FieldId::new(3), "count_admin").access(
+                        crate::access::FieldAccess::new().require_permission("quest.count.admin"),
+                    )),
+            ),
+    );
+    let target = ReflectValue::ScriptEnum {
+        enum_name: "QuestProgress".to_owned(),
+        variant: "Active".to_owned(),
+        fields: BTreeMap::new(),
+    };
+
+    let error = field_with_policy(
+        &registry,
+        &target,
+        "count_secrett",
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown variant field");
+    let ReflectErrorKind::UnknownField {
+        candidates,
+        related,
+        ..
+    } = error.kind
+    else {
+        panic!("expected unknown field");
+    };
+
+    assert_eq!(candidates, vec!["count".to_owned()]);
+    assert_eq!(
+        related,
+        vec![crate::candidates::ReflectCandidate::new("count", None)]
     );
 }
 

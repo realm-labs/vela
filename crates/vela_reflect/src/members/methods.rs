@@ -6,7 +6,7 @@ use crate::permissions::ReflectPolicy;
 use crate::registry::TypeRegistry;
 use crate::value::ReflectValue;
 
-use super::{find_method, target_type};
+use super::{find_method, find_method_with_policy, target_type};
 
 pub fn methods(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
@@ -38,7 +38,7 @@ pub fn method_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
-    let method = find_method(desc, name)?;
+    let method = find_method_with_policy(desc, name, policy)?;
     policy.require_method_access(&desc.key.name, method)?;
     Ok(ReflectValue::Host(method_record_with_owner(
         &desc.key.name,

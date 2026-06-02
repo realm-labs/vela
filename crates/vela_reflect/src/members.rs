@@ -11,6 +11,7 @@ use crate::{
     error::{ReflectError, ReflectErrorKind, ReflectResult},
     metadata::{attrs_value, docs_value, span_value},
     metadata_records,
+    permissions::ReflectPolicy,
     registry::{MethodDesc, TypeDesc, TypeKind, TypeRegistry},
     value::{ReflectValue, type_of},
 };
@@ -215,11 +216,44 @@ pub(super) fn find_method<'a>(desc: &'a TypeDesc, method: &str) -> ReflectResult
         })
 }
 
+pub(super) fn find_method_with_policy<'a>(
+    desc: &'a TypeDesc,
+    method: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<&'a MethodDesc> {
+    desc.methods
+        .iter()
+        .find(|candidate| candidate.name == method)
+        .ok_or_else(|| {
+            let related = method_candidates_with_policy(desc, method, policy);
+            ReflectError::new(ReflectErrorKind::UnknownMethod {
+                type_name: desc.key.name.clone(),
+                method: method.to_owned(),
+                candidates: candidate_names(&related),
+                related,
+            })
+        })
+}
+
 fn method_candidates(desc: &TypeDesc, method: &str) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         method,
         desc.methods
             .iter()
+            .map(|method| (method.name.as_str(), method.source_span)),
+    )
+}
+
+fn method_candidates_with_policy(
+    desc: &TypeDesc,
+    method: &str,
+    policy: &ReflectPolicy,
+) -> Vec<crate::candidates::ReflectCandidate> {
+    ranked_candidates(
+        method,
+        desc.methods
+            .iter()
+            .filter(|method| policy.require_method_access(&desc.key.name, method).is_ok())
             .map(|method| (method.name.as_str(), method.source_span)),
     )
 }

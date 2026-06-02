@@ -38,11 +38,11 @@ pub fn field_with_policy(
     let desc = target_type(registry, target)?;
     if let Some(variant) = active_variant_desc(desc, target)? {
         let owner = variant_owner_name(desc, variant);
-        let field = find_variant_field(desc, variant, name)?;
+        let field = find_variant_field_with_policy(desc, variant, name, policy)?;
         policy.require_field_read_access(&owner, field)?;
         return Ok(ReflectValue::Host(field_record_with_owner(&owner, field)));
     }
-    let field = find_field(desc, name)?;
+    let field = find_field_with_policy(desc, name, policy)?;
     policy.require_field_read_access(&desc.key.name, field)?;
     Ok(ReflectValue::Host(field_record_with_owner(
         &desc.key.name,
@@ -159,6 +159,25 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
         })
 }
 
+fn find_field_with_policy<'a>(
+    desc: &'a TypeDesc,
+    field: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<&'a FieldDesc> {
+    desc.fields
+        .iter()
+        .find(|candidate| candidate.name == field)
+        .ok_or_else(|| {
+            let related = field_candidates_with_policy(desc, field, policy);
+            ReflectError::new(ReflectErrorKind::UnknownField {
+                type_name: desc.key.name.clone(),
+                field: field.to_owned(),
+                candidates: candidate_names(&related),
+                related,
+            })
+        })
+}
+
 fn active_variant_desc<'a>(
     desc: &'a TypeDesc,
     target: &ReflectValue,
@@ -196,11 +215,50 @@ fn find_variant_field<'a>(
         })
 }
 
+fn find_variant_field_with_policy<'a>(
+    desc: &TypeDesc,
+    variant: &'a VariantDesc,
+    field: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<&'a FieldDesc> {
+    variant
+        .fields
+        .iter()
+        .find(|candidate| candidate.name == field)
+        .ok_or_else(|| {
+            let related = variant_field_candidates_with_policy(desc, variant, field, policy);
+            ReflectError::new(ReflectErrorKind::UnknownField {
+                type_name: variant_owner_name(desc, variant),
+                field: field.to_owned(),
+                candidates: candidate_names(&related),
+                related,
+            })
+        })
+}
+
 fn field_candidates(desc: &TypeDesc, field: &str) -> Vec<crate::candidates::ReflectCandidate> {
     ranked_candidates(
         field,
         desc.fields
             .iter()
+            .map(|field| (field.name.as_str(), field.source_span)),
+    )
+}
+
+fn field_candidates_with_policy(
+    desc: &TypeDesc,
+    field: &str,
+    policy: &ReflectPolicy,
+) -> Vec<crate::candidates::ReflectCandidate> {
+    ranked_candidates(
+        field,
+        desc.fields
+            .iter()
+            .filter(|candidate| {
+                policy
+                    .require_field_read_access(&desc.key.name, candidate)
+                    .is_ok()
+            })
             .map(|field| (field.name.as_str(), field.source_span)),
     )
 }
@@ -214,6 +272,23 @@ fn variant_field_candidates(
         variant
             .fields
             .iter()
+            .map(|field| (field.name.as_str(), field.source_span)),
+    )
+}
+
+fn variant_field_candidates_with_policy(
+    desc: &TypeDesc,
+    variant: &VariantDesc,
+    field: &str,
+    policy: &ReflectPolicy,
+) -> Vec<crate::candidates::ReflectCandidate> {
+    let owner = variant_owner_name(desc, variant);
+    ranked_candidates(
+        field,
+        variant
+            .fields
+            .iter()
+            .filter(|candidate| policy.require_field_read_access(&owner, candidate).is_ok())
             .map(|field| (field.name.as_str(), field.source_span)),
     )
 }
