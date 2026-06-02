@@ -40,7 +40,8 @@ use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
 #[cfg(test)]
 use crate::HostPathSegment;
 use crate::{
-    CodeObject, Constant, Instruction, InstructionKind, InstructionOffset, Program, Register,
+    CodeObject, Constant, FrameSlotInfo, FrameSlotKind, Instruction, InstructionKind,
+    InstructionOffset, Program, Register,
 };
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -330,6 +331,9 @@ impl<'ast> Compiler<'ast> {
             .iter()
             .map(|param| param.default_value.is_some())
             .collect::<Vec<_>>();
+        let mut code = CodeObject::new(code_name, 0)
+            .with_params(param_names)
+            .with_param_defaults(param_defaults);
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
         let mut script_types = ScriptTypeFlow::default();
@@ -353,16 +357,28 @@ impl<'ast> Compiler<'ast> {
                 hir_locals.insert(local, Register(register));
                 script_types.set_local(local, &param.name, script_type);
                 value_types.set_local(local, &param.name, value_type);
+                code.frame.push_slot(FrameSlotInfo::new(
+                    param.name.clone(),
+                    Register(register),
+                    FrameSlotKind::Parameter,
+                    Some(local),
+                    Some(param.span),
+                ));
             } else {
                 script_types.set_name(&param.name, script_type);
                 value_types.set_name(&param.name, value_type);
+                code.frame.push_slot(FrameSlotInfo::new(
+                    param.name.clone(),
+                    Register(register),
+                    FrameSlotKind::Parameter,
+                    None,
+                    Some(param.span),
+                ));
             }
         }
 
         Ok(Self {
-            code: CodeObject::new(code_name, 0)
-                .with_params(param_names)
-                .with_param_defaults(param_defaults),
+            code,
             locals,
             hir_locals,
             script_types,
@@ -413,6 +429,10 @@ impl<'ast> Compiler<'ast> {
             .map(|param| param.name.clone())
             .collect::<Vec<_>>();
         let param_default_flags = vec![false; params.len()];
+        let mut code = CodeObject::new(name, 0)
+            .with_params(param_names)
+            .with_param_defaults(param_default_flags)
+            .with_capture_count(capture_count);
         let mut locals = HashMap::new();
         let mut hir_locals = HashMap::new();
         let mut script_types = ScriptTypeFlow::default();
@@ -425,6 +445,14 @@ impl<'ast> Compiler<'ast> {
             );
             locals.insert(capture.name.clone(), register);
             hir_locals.insert(capture.local, register);
+            let span = bindings.local(capture.local).map(|local| local.span);
+            code.frame.push_slot(FrameSlotInfo::new(
+                capture.name.clone(),
+                register,
+                FrameSlotKind::Capture,
+                Some(capture.local),
+                span,
+            ));
         }
         let known_type_names = facts.known_type_names();
         for (index, param) in params.iter().enumerate() {
@@ -450,17 +478,28 @@ impl<'ast> Compiler<'ast> {
                 hir_locals.insert(local, register);
                 script_types.set_local(local, &param.name, script_type);
                 value_types.set_local(local, &param.name, value_type);
+                code.frame.push_slot(FrameSlotInfo::new(
+                    param.name.clone(),
+                    register,
+                    FrameSlotKind::LambdaParameter,
+                    Some(local),
+                    Some(param.span),
+                ));
             } else {
                 script_types.set_name(&param.name, script_type);
                 value_types.set_name(&param.name, value_type);
+                code.frame.push_slot(FrameSlotInfo::new(
+                    param.name.clone(),
+                    register,
+                    FrameSlotKind::LambdaParameter,
+                    None,
+                    Some(param.span),
+                ));
             }
         }
 
         Ok(Self {
-            code: CodeObject::new(name, 0)
-                .with_params(param_names)
-                .with_param_defaults(param_default_flags)
-                .with_capture_count(capture_count),
+            code,
             locals,
             hir_locals,
             script_types,
@@ -737,6 +776,29 @@ impl<'ast> Compiler<'ast> {
 
     fn current_offset(&self) -> usize {
         self.code.instructions.len()
+    }
+
+    fn record_frame_slot(
+        &mut self,
+        name: impl Into<String>,
+        register: Register,
+        kind: FrameSlotKind,
+        local: Option<HirLocalId>,
+        span: Option<Span>,
+    ) {
+        self.code
+            .frame
+            .push_slot(FrameSlotInfo::new(name, register, kind, local, span));
+    }
+}
+
+fn frame_slot_kind(kind: LocalBindingKind) -> FrameSlotKind {
+    match kind {
+        LocalBindingKind::Parameter => FrameSlotKind::Parameter,
+        LocalBindingKind::Let => FrameSlotKind::Local,
+        LocalBindingKind::For => FrameSlotKind::ForBinding,
+        LocalBindingKind::LambdaParameter => FrameSlotKind::LambdaParameter,
+        LocalBindingKind::Pattern => FrameSlotKind::PatternBinding,
     }
 }
 

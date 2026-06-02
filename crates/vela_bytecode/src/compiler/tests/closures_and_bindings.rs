@@ -1,4 +1,11 @@
 use super::*;
+use crate::{FrameSlotInfo, FrameSlotKind};
+
+fn frame_slot<'a>(code: &'a CodeObject, name: &str, kind: FrameSlotKind) -> &'a FrameSlotInfo {
+    code.frame
+        .slot(name, kind)
+        .unwrap_or_else(|| panic!("expected {kind:?} frame slot `{name}`"))
+}
 
 #[test]
 fn compiler_lowers_lambdas_with_captures() {
@@ -26,6 +33,88 @@ fn main() {
         main.instructions
             .iter()
             .any(|instruction| matches!(instruction.kind, InstructionKind::CallClosure { .. }))
+    );
+}
+
+#[test]
+fn compiler_records_frame_metadata_for_named_slots() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    let total = 1;
+    for reward in [total] {
+        let seen = reward;
+    }
+    match total {
+        value => {
+            return value;
+        }
+    }
+}
+"#,
+        "main",
+    )
+    .expect("frame metadata source should compile");
+
+    assert_eq!(
+        frame_slot(&code, "player", FrameSlotKind::Parameter).register,
+        Register(0)
+    );
+    assert_eq!(
+        frame_slot(&code, "total", FrameSlotKind::Local).register,
+        Register(1)
+    );
+    assert!(
+        frame_slot(&code, "seen", FrameSlotKind::Local)
+            .span
+            .is_some()
+    );
+    assert!(
+        frame_slot(&code, "reward", FrameSlotKind::ForBinding)
+            .local
+            .is_some()
+    );
+    assert!(
+        frame_slot(&code, "value", FrameSlotKind::PatternBinding)
+            .local
+            .is_some()
+    );
+}
+
+#[test]
+fn compiler_records_lambda_frame_metadata_for_captures_and_params() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn make_adder(base) {
+    let extra = 1;
+    return |value| value + base + extra;
+}
+"#,
+    )
+    .expect("capturing lambda should compile");
+    let make_adder = program.function("make_adder").expect("make_adder function");
+    let lambda = make_adder
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            InstructionKind::MakeClosure { code, .. } => Some(code.as_ref()),
+            _ => None,
+        })
+        .expect("lambda code object");
+
+    assert_eq!(
+        frame_slot(lambda, "base", FrameSlotKind::Capture).register,
+        Register(0)
+    );
+    assert_eq!(
+        frame_slot(lambda, "extra", FrameSlotKind::Capture).register,
+        Register(1)
+    );
+    assert_eq!(
+        frame_slot(lambda, "value", FrameSlotKind::LambdaParameter).register,
+        Register(2)
     );
 }
 #[test]

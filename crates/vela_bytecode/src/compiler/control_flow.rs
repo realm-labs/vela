@@ -10,7 +10,7 @@ use crate::{Constant, InstructionKind, InstructionOffset, Register};
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_flow::{BlockValue, block_value};
 use super::value_types::type_hint_value_type;
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct LoopContext {
@@ -94,9 +94,23 @@ impl Compiler<'_> {
                         .local_named_at(name, LocalBindingKind::Let, stmt.span)
                 {
                     self.hir_locals.insert(local, register);
+                    self.record_frame_slot(
+                        name.clone(),
+                        register,
+                        frame_slot_kind(LocalBindingKind::Let),
+                        Some(local),
+                        Some(stmt.span),
+                    );
                     self.script_types.set_local_fact(local, name, script_fact);
                     self.value_types.set_local(local, name, value_type);
                 } else {
+                    self.record_frame_slot(
+                        name.clone(),
+                        register,
+                        frame_slot_kind(LocalBindingKind::Let),
+                        None,
+                        Some(stmt.span),
+                    );
                     self.script_types.set_name_fact(name, script_fact);
                     self.value_types.set_name(name, value_type);
                 }

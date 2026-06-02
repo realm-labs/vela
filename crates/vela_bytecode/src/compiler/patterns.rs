@@ -5,7 +5,7 @@ use vela_syntax::ast::{Pattern, RecordPatternField};
 use crate::{InstructionKind, Register};
 
 use super::script_types::ScriptTypeFact;
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
 pub(crate) fn enum_variant_path(path: &[String]) -> Option<(String, String)> {
     let (variant, enum_path) = path.split_last()?;
@@ -189,8 +189,23 @@ impl Compiler<'_> {
         self.locals.insert(binding.to_owned(), register);
         if let Some(local) = self.bindings.local_named_at(binding, kind, body_span) {
             self.hir_locals.insert(local, register);
+            self.record_frame_slot(
+                binding.to_owned(),
+                register,
+                frame_slot_kind(kind),
+                Some(local),
+                Some(body_span),
+            );
             self.script_types
                 .set_local_fact(local, binding, script_fact);
+        } else {
+            self.record_frame_slot(
+                binding.to_owned(),
+                register,
+                frame_slot_kind(kind),
+                None,
+                Some(body_span),
+            );
         }
     }
 

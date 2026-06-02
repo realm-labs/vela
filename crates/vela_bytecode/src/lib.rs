@@ -6,6 +6,7 @@ pub mod script_methods;
 use std::collections::BTreeMap;
 
 use vela_common::{FieldId, HostMethodId, MethodId, Span};
+use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
@@ -94,6 +95,7 @@ pub struct CodeObject {
     pub param_defaults: Vec<bool>,
     pub capture_count: u16,
     pub register_count: u16,
+    pub frame: FrameDebugInfo,
     pub constants: Vec<Constant>,
     pub instructions: Vec<Instruction>,
 }
@@ -107,6 +109,7 @@ impl CodeObject {
             param_defaults: Vec::new(),
             capture_count: 0,
             register_count,
+            frame: FrameDebugInfo::default(),
             constants: Vec::new(),
             instructions: Vec::new(),
         }
@@ -140,6 +143,85 @@ impl CodeObject {
     pub fn push_instruction(&mut self, instruction: Instruction) {
         self.instructions.push(instruction);
     }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FrameDebugInfo {
+    pub slots: Vec<FrameSlotInfo>,
+}
+
+impl FrameDebugInfo {
+    pub fn push_slot(&mut self, slot: FrameSlotInfo) {
+        if self
+            .slots
+            .iter()
+            .any(|existing| existing.same_binding(&slot))
+        {
+            return;
+        }
+        self.slots.push(slot);
+    }
+
+    #[must_use]
+    pub fn slot(&self, name: &str, kind: FrameSlotKind) -> Option<&FrameSlotInfo> {
+        self.slots
+            .iter()
+            .find(|slot| slot.name == name && slot.kind == kind)
+    }
+
+    pub fn slots_for_register(&self, register: Register) -> impl Iterator<Item = &FrameSlotInfo> {
+        self.slots
+            .iter()
+            .filter(move |slot| slot.register == register)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FrameSlotInfo {
+    pub name: String,
+    pub register: Register,
+    pub kind: FrameSlotKind,
+    pub local: Option<HirLocalId>,
+    pub span: Option<Span>,
+}
+
+impl FrameSlotInfo {
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        register: Register,
+        kind: FrameSlotKind,
+        local: Option<HirLocalId>,
+        span: Option<Span>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            register,
+            kind,
+            local,
+            span,
+        }
+    }
+
+    fn same_binding(&self, other: &Self) -> bool {
+        if self.local.is_some() || other.local.is_some() {
+            return self.local == other.local && self.local.is_some();
+        }
+        self.name == other.name
+            && self.register == other.register
+            && self.kind == other.kind
+            && self.span == other.span
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FrameSlotKind {
+    Capture,
+    Parameter,
+    Local,
+    ForBinding,
+    LambdaParameter,
+    PatternBinding,
 }
 
 #[derive(Clone, Debug, PartialEq)]

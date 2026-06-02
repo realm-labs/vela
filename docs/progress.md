@@ -29,7 +29,7 @@ conformance contracts are stable.
 | M13 | In progress | Standard library helpers are broad but still need final gameplay/string/math/context polish. |
 | M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices. |
 | M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist. |
-| M16 | Partial | Runtime diagnostics and common rendering have started. |
+| M16 | Partial | Runtime diagnostics, common rendering, and bytecode frame maps have started. |
 | M17 | Partial | Conformance fixture and demo harnesses exist; game-server demo can still expand. |
 | M18 | Partial | Baseline harnesses cover VM scalar, stdlib, host PatchTx, managed heap, GC pacing, hot reload, and available external runtime comparisons; official baselines remain. |
 | M19-M20 | Not started | Interpreter optimization plus inline caches and specialization. |
@@ -47,6 +47,8 @@ conformance contracts are stable.
 - Bytecode compiler consumes HIR diagnostics and emits register bytecode for
   functions, closures, control flow, collections, records, enums, slots,
   host paths, method dispatch, Option/Result-style propagation, and iteration.
+- Bytecode code objects carry read-only frame metadata for named parameters,
+  locals, loop bindings, match bindings, lambda parameters, and captures.
 - VM supports managed heap execution, non-moving GC, execution budgets,
   script value methods, standard natives, reflection natives, and host-aware
   execution.
