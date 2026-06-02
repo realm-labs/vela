@@ -170,6 +170,52 @@ fn main() {
     };
 
     let parsed: int = "42".parse_int().unwrap_or(0);
+    let normalized = "  Quest.Reward Done  ".trim().replace(" ", "_").to_lower();
+    let pieces = normalized.split(".");
+    let prefix = normalized.strip_prefix("quest.");
+    let suffix = normalized.strip_suffix("_done");
+    let pair = "count=3".split_once("=").unwrap_or(["", "0"]);
+    let words = " grant\tgold 3 ".split_whitespace();
+    let lines = "start\napply\ncommit".split_lines();
+    let string_helper_score: int = if normalized.starts_with("quest")
+        && normalized.ends_with("_done")
+        && normalized.contains("reward")
+        && option.unwrap_or(normalized.find("reward"), -1) == 6
+        && pieces[0] == "quest"
+        && option.unwrap_or(option.unwrap_or(prefix, "").strip_suffix("_done"), "") == "reward"
+        && option.unwrap_or(suffix, "") == "quest.reward"
+        && pair[0] == "count"
+        && pair[1].parse_int().unwrap_or(0) == 3
+        && words.join(".") == "grant.gold.3"
+        && lines[1] == "apply"
+        && option.unwrap_or("true".parse_bool(), false)
+        && option.unwrap_or("2.5".parse_float(), 0.0) == 2.5
+        && option.unwrap_or("xp奖励".char_at(2), "") == "奖"
+        && "xp奖励".slice(2, 4) == "奖励"
+    {
+        30
+    } else {
+        0
+    };
+    let math_helper_score: int = if math.max(4, 9) == 9
+        && math.min(4, 9) == 4
+        && math.clamp(15, 1, 10) == 10
+        && math.lerp(10, 20, 0.5) == 15.0
+        && math.move_towards(0, 10, 4) == 4
+        && math.distance2d(0, 0, 3, 4) == 5.0
+        && math.distance3d(0, 0, 0, 2, 3, 6) == 7.0
+        && math.pow(2, 3) == 8
+        && math.sqrt(81) == 9.0
+        && math.sign(-2) == -1
+        && math.floor(2.9) == 2
+        && math.ceil(2.1) == 3
+        && math.round(2.5) == 3
+        && math.abs(-7) == 7
+    {
+        35
+    } else {
+        0
+    };
     let result: int = result_bonus(true)?;
     let mapped: map = {"gold": reward.count, "quest": quest_score}
         .map_values(|key, value| key.len() + value);
@@ -259,6 +305,8 @@ fn main() {
         + named_method_score
         + nested_lambda_score
         + parsed
+        + string_helper_score
+        + math_helper_score
         + result
         + mapped["gold"]
         + mapped["quest"]
