@@ -133,8 +133,30 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script function name cannot be empty")
+                .contains("script_function name must be a non-empty dotted name")
         );
+    }
+
+    #[test]
+    fn rejects_malformed_function_names() {
+        for name in [".grant", "game.", "game..grant"] {
+            let error = expand_result(
+                quote! { id = 1, name = #name },
+                quote! {
+                    fn grant(amount: i64) -> i64 {
+                        amount
+                    }
+                },
+                FunctionMode::Pure,
+            )
+            .expect_err("malformed function name should fail macro expansion");
+
+            assert!(
+                error
+                    .to_string()
+                    .contains("script_function name must be a non-empty dotted name")
+            );
+        }
     }
 
     #[test]

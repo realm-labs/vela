@@ -103,6 +103,17 @@ pub(crate) fn parse_permission(literal: LitStr, context: &str) -> Result<String>
     Ok(permission)
 }
 
+pub(crate) fn parse_dotted_name(literal: LitStr, context: &str) -> Result<String> {
+    let name = literal.value();
+    if !is_valid_dotted_name(&name) {
+        return Err(error(
+            literal.span(),
+            &format!("{context} must be a non-empty dotted name"),
+        ));
+    }
+    Ok(name)
+}
+
 pub(crate) fn parse_key_value_attr(literal: LitStr, context: &str) -> Result<(String, String)> {
     let raw = literal.value();
     let Some((name, value)) = raw.split_once('=') else {

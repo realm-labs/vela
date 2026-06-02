@@ -4,7 +4,9 @@ use syn::{
     FnArg, ItemFn, LitBool, LitInt, LitStr, PatType, Result, ReturnType, Type, parse::Parser,
 };
 
-use crate::attrs::{error, parse_key_value_attr, parse_permission, spanned_error};
+use crate::attrs::{
+    error, parse_dotted_name, parse_key_value_attr, parse_permission, spanned_error,
+};
 use crate::signature::{
     is_mut_reference_to_type, param_name, reject_script_reference_param,
     reject_script_reference_return, reject_unsupported_integer_type, type_ident,
@@ -115,7 +117,12 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
         let value = meta.value()?;
         match name.as_str() {
             "id" => parsed.id = Some(value.parse::<LitInt>()?.base10_parse()?),
-            "name" => parsed.name = Some(value.parse::<LitStr>()?.value()),
+            "name" => {
+                parsed.name = Some(parse_dotted_name(
+                    value.parse::<LitStr>()?,
+                    "script_function name",
+                )?);
+            }
             "effect" => {
                 parsed.effect = Some(parse_effect(&value.parse::<LitStr>()?.value())?);
             }
@@ -222,12 +229,6 @@ pub(super) fn function_meta(
     reject_return_type(&item.sig.output)?;
 
     let name = attrs.name.unwrap_or_else(|| item.sig.ident.to_string());
-    if name.is_empty() {
-        return Err(error(
-            item.sig.ident.span(),
-            "script function name cannot be empty",
-        ));
-    }
 
     Ok(FunctionMeta {
         id,
