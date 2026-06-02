@@ -27,6 +27,17 @@ pub(crate) fn load_module_sources(root: &Path) -> Result<Vec<ModuleSource>, Engi
     Ok(sources)
 }
 
+pub(crate) fn load_module_sources_for_changed_file(
+    root: &Path,
+    changed_file: &Path,
+) -> Result<Vec<ModuleSource>, EngineSourceError> {
+    if changed_file.extension().and_then(|ext| ext.to_str()) != Some(SOURCE_EXTENSION) {
+        return Err(EngineSourceError::invalid_path(changed_file));
+    }
+    let _changed_module = module_path(root, changed_file)?;
+    load_module_sources(root)
+}
+
 fn collect_source_files(root: &Path, files: &mut Vec<PathBuf>) -> Result<(), EngineSourceError> {
     let entries = fs::read_dir(root).map_err(|error| EngineSourceError::io(root, error))?;
     for entry in entries {

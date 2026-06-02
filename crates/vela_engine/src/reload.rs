@@ -15,7 +15,7 @@ pub use source_error::{
 };
 
 use crate::engine::Engine;
-use crate::source::{load_module_sources, read_source_text};
+use crate::source::{load_module_sources, load_module_sources_for_changed_file, read_source_text};
 
 mod source_error;
 
@@ -94,6 +94,24 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let sources =
             load_module_sources(root.as_ref()).map_err(EngineHotReloadSourceError::source)?;
+        compile_update_modules_with_abi_and_options_and_policy(
+            previous,
+            &sources,
+            self.hot_reload_abi(),
+            &self.compiler_options(),
+            self.hot_reload_policy(),
+        )
+        .map_err(EngineHotReloadSourceError::hot_reload)
+    }
+
+    pub fn compile_hot_reload_update_changed_file(
+        &self,
+        previous: &ProgramVersion,
+        root: impl AsRef<Path>,
+        changed_file: impl AsRef<Path>,
+    ) -> EngineHotReloadSourceResult<HotUpdate> {
+        let sources = load_module_sources_for_changed_file(root.as_ref(), changed_file.as_ref())
+            .map_err(EngineHotReloadSourceError::source)?;
         compile_update_modules_with_abi_and_options_and_policy(
             previous,
             &sources,

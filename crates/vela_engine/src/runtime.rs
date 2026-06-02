@@ -155,6 +155,17 @@ impl Runtime {
         Ok(self.engine.compile_hot_reload_update_dir(&previous, root))
     }
 
+    pub fn compile_hot_reload_update_changed_file(
+        &self,
+        root: impl AsRef<Path>,
+        changed_file: impl AsRef<Path>,
+    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
+        let previous = self.current_hot_reload_version()?;
+        Ok(self
+            .engine
+            .compile_hot_reload_update_changed_file(&previous, root, changed_file))
+    }
+
     pub fn call(
         &mut self,
         entry: &str,

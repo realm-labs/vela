@@ -116,6 +116,11 @@ source-changed modules. Module impact is derived from deterministic source
 hashes and reverse import dependencies so hosts can invalidate module-scoped
 caches without treating every recompiled function as changed.
 
+Changed-file hot reload events are watcher ergonomics, not partial compilation.
+The engine validates the changed `.vela` path, then recompiles the full module
+root so import resolution, dependency impact, and ABI checks always see the
+complete module graph.
+
 ### Standard Library And Dynamic Types
 
 Option and Result are dynamic enum-shaped values, not script generics. Stdlib

@@ -213,6 +213,63 @@ pub fn grant() {
 }
 
 #[test]
+fn engine_compile_hot_reload_changed_file_reloads_module_root() {
+    let root = unique_test_dir("hot_reload_changed_file");
+    let reward_file = write_reward_modules(&root, "return grant() + 1;", 4);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+
+    write_reward_module(&reward_file, 9);
+    let update = engine
+        .compile_hot_reload_update_changed_file(&initial, &root, &reward_file)
+        .expect("changed file update should compile");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let report = runtime.apply_hot_update_report(update);
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
+    assert_eq!(report.changed_modules, vec!["game.reward"]);
+    assert_eq!(
+        report.impacted_modules,
+        vec!["game.main".to_owned(), "game.reward".to_owned()]
+    );
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&runtime.current().to_program(), "game.main.main", &[]),
+        Ok(Value::Int(10))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn engine_compile_hot_reload_changed_file_rejects_non_source_path() {
+    let root = unique_test_dir("hot_reload_changed_file_invalid");
+    let reward_file = write_reward_modules(&root, "return grant();", 4);
+    let changed = root.join("ignored.txt");
+    std::fs::write(&changed, "ignored").expect("write ignored file");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+
+    let error = engine
+        .compile_hot_reload_update_changed_file(&initial, &root, &changed)
+        .expect_err("non-source watcher path should be rejected");
+
+    assert!(matches!(
+        error.kind,
+        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+            kind: EngineSourceErrorKind::InvalidSourcePath { .. }
+        })
+    ));
+    assert!(reward_file.exists());
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn engine_compile_hot_reload_file_reports_source_errors() {
     let root = unique_test_dir("missing_hot_reload_file");
     let path = root.join("missing.vela");
@@ -558,6 +615,53 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
 }
 
 #[test]
+fn runtime_compiles_hot_reload_changed_file_from_active_version() {
+    let root = unique_test_dir("runtime_hot_reload_changed_file");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    let update = runtime
+        .compile_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed file update should compile");
+    let report = runtime
+        .apply_hot_update(update)
+        .expect("runtime should apply changed file update");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
+    assert_eq!(
+        runtime.call(
+            "game.main.main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_preserves_program_when_engine_hot_reload_update_is_rejected() {
     let engine = Engine::builder()
         .hot_reload_policy(HotReloadPolicy::locked_down())
@@ -671,4 +775,43 @@ fn unique_test_dir(name: &str) -> std::path::PathBuf {
             .as_nanos()
     ));
     path
+}
+
+fn write_reward_modules(
+    root: &std::path::Path,
+    main_return: &str,
+    reward: i64,
+) -> std::path::PathBuf {
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    std::fs::write(
+        game_dir.join("main.vela"),
+        format!(
+            r#"
+use game.reward.grant
+
+fn main() {{
+    {main_return}
+}}
+"#
+        ),
+    )
+    .expect("write main module");
+    let reward_file = game_dir.join("reward.vela");
+    write_reward_module(&reward_file, reward);
+    reward_file
+}
+
+fn write_reward_module(path: &std::path::Path, reward: i64) {
+    std::fs::write(
+        path,
+        format!(
+            r#"
+pub fn grant() {{
+    return {reward};
+}}
+"#
+        ),
+    )
+    .expect("write reward module");
 }

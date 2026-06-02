@@ -62,6 +62,9 @@ conformance contracts are stable.
   advancement.
 - Hot reload reports distinguish actual bytecode-changed functions from
   source-changed modules and reverse-import impacted modules.
+- Engine and Runtime hot-reload source workflows accept changed `.vela` file
+  events inside a module root while recompiling the full root for import and
+  ABI correctness.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload

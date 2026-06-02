@@ -12,7 +12,9 @@ use crate::engine::Engine;
 
 mod loader;
 
-pub(crate) use loader::{load_module_sources, read_source_text};
+pub(crate) use loader::{
+    load_module_sources, load_module_sources_for_changed_file, read_source_text,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct EngineSourceError {

@@ -1882,6 +1882,11 @@ Staged updates do not affect active code until the host calls
 can use `runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a
 pending reload before and after successful host patch apply.
 
+For file-watcher workflows, hosts may compile an update from a changed `.vela`
+file inside a module root. The engine validates the changed path and recompiles
+the full root so imports, module dependency impact, and ABI checks are based on
+the same complete module graph as directory reloads.
+
 Hot-reload ABI manifests copy optional declaration spans from reflected schema,
 function, and method descriptors. When schema, function effect/access, or method
 effect/access ABI checks reject an update, the rejected diagnostic points at the
