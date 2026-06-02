@@ -1141,6 +1141,88 @@ fn on_kill(monster_id: int, player_id: int) {
 }
 
 #[test]
+fn runtime_stages_source_file_event_target_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_event_target");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(
+        &path,
+        r#"
+#[event("monster.kill")]
+fn on_kill(player_id: int, monster_id: int) {
+    return 1;
+}
+"#,
+    )
+    .expect("write initial source");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(
+        &path,
+        r#"
+#[event("quest.complete")]
+fn on_kill(player_id: int, monster_id: int) {
+    return 2;
+}
+"#,
+    )
+    .expect("write incompatible event target update");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("event target rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged event target rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.event_changed");
+    let HotReloadErrorKind::ChangedFunctionEvent {
+        function,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed function event");
+    };
+    assert_eq!(function, "on_kill");
+    assert_eq!(old.as_deref(), Some("monster.kill"));
+    assert_eq!(new.as_deref(), Some("quest.complete"));
+    assert!(source_span.is_some());
+    assert_eq!(
+        runtime.call(
+            "on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_file_rejection");
     std::fs::create_dir_all(&root).expect("create temp source dir");
