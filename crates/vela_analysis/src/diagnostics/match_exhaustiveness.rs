@@ -165,15 +165,11 @@ fn diagnose_match_exhaustiveness(
     facts: &RegistryFacts,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
-    let TypeFact::Enum {
-        name,
-        variant: None,
-    } = type_fact_from_expr(&match_expr.scrutinee, scope)
+    let Some(enum_shape) = enum_shape(&type_fact_from_expr(&match_expr.scrutinee, scope), facts)
     else {
         return;
     };
-    let variants = facts.variant_names(&name);
-    if variants.is_empty() || match_has_catch_all(match_expr) {
+    if enum_shape.variants.is_empty() || match_has_catch_all(match_expr) {
         return;
     }
 
@@ -183,7 +179,8 @@ fn diagnose_match_exhaustiveness(
         .filter(|arm| arm.guard.is_none())
         .filter_map(|arm| pattern_variant_name(&arm.pattern))
         .collect::<BTreeSet<_>>();
-    let missing = variants
+    let missing = enum_shape
+        .variants
         .into_iter()
         .filter(|variant| !covered.contains(variant))
         .collect::<Vec<_>>();
@@ -192,7 +189,8 @@ fn diagnose_match_exhaustiveness(
     }
 
     let mut diagnostic = Diagnostic::warning(format!(
-        "match on `{name}` does not cover all known variants"
+        "match on `{}` does not cover all known variants",
+        enum_shape.name
     ))
     .with_code("analysis::non_exhaustive_match")
     .with_span(expr.span)
@@ -207,6 +205,36 @@ fn diagnose_match_exhaustiveness(
         );
     }
     diagnostics.push(diagnostic);
+}
+
+fn enum_shape(scrutinee_fact: &TypeFact, facts: &RegistryFacts) -> Option<EnumShape> {
+    match scrutinee_fact {
+        TypeFact::Enum {
+            name,
+            variant: None,
+        } => Some(EnumShape {
+            name: name.clone(),
+            variants: facts.variant_names(name),
+        }),
+        TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
+            Some(EnumShape {
+                name: "Option".to_owned(),
+                variants: vec!["Some".to_owned(), "None".to_owned()],
+            })
+        }
+        TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
+            Some(EnumShape {
+                name: "Result".to_owned(),
+                variants: vec!["Ok".to_owned(), "Err".to_owned()],
+            })
+        }
+        _ => None,
+    }
+}
+
+struct EnumShape {
+    name: String,
+    variants: Vec<String>,
 }
 
 fn match_has_catch_all(match_expr: &MatchExpr) -> bool {
@@ -307,6 +335,49 @@ mod tests {
                 .labels
                 .iter()
                 .any(|label| label.message.contains("Active"))
+        );
+    }
+
+    #[test]
+    fn reports_non_exhaustive_matches_for_option_and_result_facts() {
+        let exprs = function_exprs(
+            r#"
+            fn main(maybe_reward, outcome) {
+                match maybe_reward {
+                    Option.Some(value) => value,
+                };
+                match outcome {
+                    Result.Err(reason) => reason,
+                };
+            }
+            "#,
+        );
+        let scope = ExprFactScope::new()
+            .with_path(["maybe_reward"], TypeFact::option(TypeFact::String))
+            .with_path(
+                ["outcome"],
+                TypeFact::result(TypeFact::Int, TypeFact::String),
+            );
+        let facts = RegistryFacts::default();
+
+        let option_diagnostics = match_exhaustiveness_diagnostics(&exprs[0], &scope, &facts);
+        let result_diagnostics = match_exhaustiveness_diagnostics(&exprs[1], &scope, &facts);
+
+        assert_eq!(option_diagnostics.len(), 1);
+        assert!(option_diagnostics[0].message.contains("Option"));
+        assert!(
+            option_diagnostics[0]
+                .labels
+                .iter()
+                .any(|label| label.message.contains("None"))
+        );
+        assert_eq!(result_diagnostics.len(), 1);
+        assert!(result_diagnostics[0].message.contains("Result"));
+        assert!(
+            result_diagnostics[0]
+                .labels
+                .iter()
+                .any(|label| label.message.contains("Ok"))
         );
     }
 

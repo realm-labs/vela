@@ -66,6 +66,8 @@ conformance contracts are stable.
 - Engine and Runtime hot-reload source workflows accept changed `.vela` file
   events inside a module root while recompiling the full root for import and
   ABI correctness.
+- Analysis diagnostics can report non-exhaustive matches for known script
+  enums and dynamic Option/Result facts used by propagation-style control flow.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
