@@ -209,6 +209,48 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_type_attrs() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100, attr = "domain=gameplay", attr = "domain=combat")]
+                struct Player {
+                    #[script(get, id = 1)]
+                    level: u32,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("duplicate type attr keys should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script attr metadata key `domain` is duplicated")
+        );
+    }
+
+    #[test]
+    fn rejects_duplicate_field_attrs() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Player {
+                    #[script(get, id = 1, attr = "unit=level", attr = "unit=rank")]
+                    level: u32,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("duplicate field attr keys should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script attr metadata key `unit` is duplicated")
+        );
+    }
+
+    #[test]
     fn rejects_empty_field_type_hints() {
         let error = expand_result(
             quote! {

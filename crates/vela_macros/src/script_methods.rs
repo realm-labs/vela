@@ -160,6 +160,23 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_method_attrs() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1, attr = "domain=player", attr = "domain=combat")]
+                pub fn add_exp(player: HostRef, amount: i64) {}
+            }
+        })
+        .expect_err("duplicate method attr keys should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script_method attr metadata key `domain` is duplicated")
+        );
+    }
+
+    #[test]
     fn rejects_self_receivers() {
         let error = expand_result(quote! {
             impl Player {

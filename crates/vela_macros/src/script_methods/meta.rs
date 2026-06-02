@@ -5,7 +5,9 @@ use syn::{
     ReturnType, Type,
 };
 
-use crate::attrs::{error, parse_key_value_attr, parse_permission, spanned_error};
+use crate::attrs::{
+    error, parse_key_value_attr, parse_permission, reject_duplicate_attr_keys, spanned_error,
+};
 use crate::signature::{
     docs_from_attrs, is_mut_reference_to_type, is_shared_reference_to_type, param_name,
     reject_extern_signature, reject_generic_signature, reject_script_reference_param,
@@ -158,6 +160,7 @@ fn parse_script_method_attrs(attrs: &[Attribute]) -> Result<ScriptMethodAttrs> {
     }
     parsed.permissions.sort();
     parsed.permissions.dedup();
+    reject_duplicate_attr_keys(&parsed.attrs, "script_method")?;
     Ok(parsed)
 }
 

@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use proc_macro2::Span;
 use quote::ToTokens;
 use syn::{Attribute, LitInt, LitStr, Meta, Result, Type, spanned::Spanned};
@@ -88,6 +90,7 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
 
     parsed.permissions.sort();
     parsed.permissions.dedup();
+    reject_duplicate_attr_keys(&parsed.attrs, "script")?;
     if parsed.docs.is_none() && !doc_lines.is_empty() {
         parsed.docs = Some(doc_lines.join("\n"));
     }
@@ -133,6 +136,19 @@ pub(crate) fn parse_key_value_attr(literal: LitStr, context: &str) -> Result<(St
         ));
     }
     Ok((name.to_owned(), value.trim().to_owned()))
+}
+
+pub(crate) fn reject_duplicate_attr_keys(attrs: &[(String, String)], context: &str) -> Result<()> {
+    let mut seen = BTreeSet::new();
+    for (name, _) in attrs {
+        if !seen.insert(name.as_str()) {
+            return Err(error(
+                Span::call_site(),
+                &format!("{context} attr metadata key `{name}` is duplicated"),
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn parse_type_hint(literal: LitStr, context: &str) -> Result<String> {

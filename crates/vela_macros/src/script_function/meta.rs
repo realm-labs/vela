@@ -5,7 +5,8 @@ use syn::{
 };
 
 use crate::attrs::{
-    error, parse_dotted_name, parse_key_value_attr, parse_permission, spanned_error,
+    error, parse_dotted_name, parse_key_value_attr, parse_permission, reject_duplicate_attr_keys,
+    spanned_error,
 };
 use crate::signature::{
     is_mut_reference_to_type, param_name, reject_script_reference_param,
@@ -145,6 +146,7 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
     parser.parse2(attr)?;
     parsed.permissions.sort();
     parsed.permissions.dedup();
+    reject_duplicate_attr_keys(&parsed.attrs, "script_function")?;
     Ok(parsed)
 }
 

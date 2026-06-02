@@ -180,6 +180,26 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_function_attrs() {
+        let error = expand_result(
+            quote! { id = 1, attr = "domain=gameplay", attr = "domain=combat" },
+            quote! {
+                fn grant(amount: i64) -> i64 {
+                    amount
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("duplicate function attr keys should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script_function attr metadata key `domain` is duplicated")
+        );
+    }
+
+    #[test]
     fn rejects_function_where_clauses() {
         let error = expand_result(
             quote! { id = 1 },
