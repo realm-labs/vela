@@ -56,6 +56,11 @@ pub(crate) fn validate_modules(
 }
 
 fn validate_module_desc(module: &ModuleDesc, names: &mut BTreeSet<String>) -> EngineResult<()> {
+    if !is_valid_dotted_name(&module.name) {
+        return Err(EngineError::new(EngineErrorKind::InvalidModuleName {
+            name: module.name.clone(),
+        }));
+    }
     if !names.insert(module.name.clone()) {
         return Err(EngineError::new(EngineErrorKind::DuplicateModuleName {
             name: module.name.clone(),
@@ -341,6 +346,13 @@ fn validate_native_function_desc(
     ids: &mut BTreeSet<crate::native::NativeFunctionId>,
     names: &mut BTreeSet<String>,
 ) -> EngineResult<()> {
+    if !is_valid_dotted_name(&desc.name) {
+        return Err(EngineError::new(
+            EngineErrorKind::InvalidNativeFunctionName {
+                name: desc.name.clone(),
+            },
+        ));
+    }
     if !ids.insert(desc.id) {
         return Err(EngineError::new(
             EngineErrorKind::DuplicateNativeFunctionId { id: desc.id.get() },
@@ -369,4 +381,8 @@ fn validate_native_function_params(desc: &NativeFunctionDesc) -> EngineResult<()
         }
     }
     Ok(())
+}
+
+fn is_valid_dotted_name(name: &str) -> bool {
+    !name.is_empty() && name.split('.').all(|segment| !segment.is_empty())
 }

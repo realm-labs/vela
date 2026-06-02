@@ -115,6 +115,23 @@ fn engine_rejects_duplicate_native_function_param_names() {
 }
 
 #[test]
+fn engine_rejects_malformed_native_function_names() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game..grant_reward", NativeFunctionId::new(32)),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidNativeFunctionName {
+            name: "game..grant_reward".to_owned()
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_native_function_names_that_shadow_standard_natives() {
     let result = Engine::builder()
         .with_standard_natives()
@@ -197,6 +214,20 @@ fn engine_rejects_duplicate_module_names() {
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateModuleName {
             name: "game.reward".to_owned()
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_malformed_module_names() {
+    let result = Engine::builder()
+        .register_module(ModuleDesc::new("game..reward"))
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidModuleName {
+            name: "game..reward".to_owned()
         }
     ));
 }

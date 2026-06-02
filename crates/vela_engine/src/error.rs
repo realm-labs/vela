@@ -24,7 +24,13 @@ pub enum EngineErrorKind {
         function: String,
         name: String,
     },
+    InvalidNativeFunctionName {
+        name: String,
+    },
     DuplicateModuleName {
+        name: String,
+    },
+    InvalidModuleName {
         name: String,
     },
     DuplicateTypeId {
@@ -120,8 +126,14 @@ impl fmt::Display for EngineError {
                     "duplicate parameter name {name} on native function {function}"
                 )
             }
+            EngineErrorKind::InvalidNativeFunctionName { name } => {
+                write!(formatter, "invalid native function name {name}")
+            }
             EngineErrorKind::DuplicateModuleName { name } => {
                 write!(formatter, "duplicate module name {name}")
+            }
+            EngineErrorKind::InvalidModuleName { name } => {
+                write!(formatter, "invalid module name {name}")
             }
             EngineErrorKind::DuplicateTypeId { id } => write!(formatter, "duplicate type id {id}"),
             EngineErrorKind::DuplicateTypeName { name } => {
