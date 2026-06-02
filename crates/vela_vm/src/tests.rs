@@ -209,6 +209,23 @@ fn member_reflection_registry() -> TypeRegistry {
     registry
 }
 
+fn policy_variant_field_reflection_registry() -> TypeRegistry {
+    let mut registry = TypeRegistry::new();
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(310), "QuestProgress"))
+            .kind(TypeKind::ScriptEnum)
+            .variant(
+                VariantDesc::new(VariantId::new(10), "Active")
+                    .field(FieldDesc::new(FieldId::new(11), "count"))
+                    .field(
+                        FieldDesc::new(FieldId::new(14), "admin_note")
+                            .access(FieldAccess::new().require_permission("quest.admin.inspect")),
+                    ),
+            ),
+    );
+    registry
+}
+
 fn player_ref(generation: u32) -> HostRef {
     HostRef::new(HostTypeId::new(1), HostObjectId::new(7), generation)
 }
