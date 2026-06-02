@@ -66,7 +66,8 @@ conformance contracts are stable.
   safe-point checks.
 - Script schema fields and enum variants can use validated explicit stable ID
   attributes for reload-safe source renames.
-- CLI demo scripts and conformance fixtures use `.vela`.
+- CLI demo scripts and conformance fixtures use `.vela`, and the hot-reload
+  demo exercises staged updates through an explicit `check_reload` safe point.
 
 ## Current Gaps
 

@@ -39,7 +39,10 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
             EngineHotReloadSourceErrorKind::HotReload(error) => Err(error),
         },
     };
-    let report = runtime.apply_hot_update_result_report(update)?;
+    runtime.stage_hot_update_result(update)?;
+    let report = runtime
+        .check_reload()?
+        .ok_or("staged hot reload update was not consumed at the safe point")?;
     let report_lines = report.render_lines();
     let new = report
         .version()
@@ -51,7 +54,7 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
         println!("{}", line.text);
     }
     println!(
-        "abi=checked old_version={} new_version={} old_before={old_before:?} \
+        "safe_point=check_reload abi=checked old_version={} new_version={} old_before={old_before:?} \
          old_after={old_after:?} new_after={new_after:?}",
         old.id.0, new.id.0,
     );
