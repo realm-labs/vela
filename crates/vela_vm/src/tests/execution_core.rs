@@ -380,6 +380,40 @@ fn truthy_case() {
 }
 
 #[test]
+fn runs_long_compiled_logical_chains_without_recursive_lowering() {
+    let and_chain = std::iter::repeat_n("true", 160)
+        .collect::<Vec<_>>()
+        .join(" && ");
+    let or_chain = std::iter::once("false")
+        .chain(std::iter::repeat_n("false", 158))
+        .chain(std::iter::once("true"))
+        .collect::<Vec<_>>()
+        .join(" || ");
+    let source = format!(
+        r#"
+fn and_case() {{
+    return {and_chain};
+}}
+
+fn or_case() {{
+    return {or_chain};
+}}
+"#
+    );
+    let program =
+        compile_program_source(SourceId::new(1), &source).expect("compile long logical chains");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "and_case", &[]),
+        Ok(Value::Bool(true))
+    );
+    assert_eq!(
+        Vm::new().run_program(&program, "or_case", &[]),
+        Ok(Value::Bool(true))
+    );
+}
+
+#[test]
 fn runs_compiled_local_assignment_source() {
     let code = compile_function_source(
         SourceId::new(1),

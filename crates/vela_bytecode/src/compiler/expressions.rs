@@ -17,6 +17,9 @@ impl Compiler<'_> {
             ExprKind::Literal(literal) => self.compile_literal(literal),
             ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
             ExprKind::Binary { op, left, right } => {
+                if matches!(op, BinaryOp::And | BinaryOp::Or) {
+                    return self.compile_logical_chain(*op, expr);
+                }
                 self.compile_binary(*op, expr.span, left, right)
             }
             ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr),
@@ -218,8 +221,6 @@ impl Compiler<'_> {
         right: &Expr,
     ) -> CompileResult<Register> {
         match op {
-            BinaryOp::And => return self.compile_logical_and(left, right),
-            BinaryOp::Or => return self.compile_logical_or(left, right),
             BinaryOp::Range => return self.compile_range(left, right, false),
             BinaryOp::RangeInclusive => return self.compile_range(left, right, true),
             _ => {}
@@ -252,34 +253,62 @@ impl Compiler<'_> {
         Ok(dst)
     }
 
-    fn compile_logical_and(&mut self, left: &Expr, right: &Expr) -> CompileResult<Register> {
-        let lhs = self.compile_expr(left)?;
-        let dst = self.alloc_register()?;
-        let false_branch = self.emit_jump_if_false(lhs);
+    fn compile_logical_chain(&mut self, op: BinaryOp, expr: &Expr) -> CompileResult<Register> {
+        let operands = logical_chain_operands(op, expr);
+        match op {
+            BinaryOp::And => self.compile_logical_and_chain(&operands),
+            BinaryOp::Or => self.compile_logical_or_chain(&operands),
+            _ => unreachable!("logical chain only supports && and ||"),
+        }
+    }
 
-        let rhs = self.compile_expr(right)?;
-        self.emit_truthy_to_bool(dst, rhs)?;
+    fn compile_logical_and_chain(&mut self, operands: &[&Expr]) -> CompileResult<Register> {
+        let dst = self.alloc_register()?;
+        let Some((last, prefix)) = operands.split_last() else {
+            self.emit_bool_constant_to(dst, true);
+            return Ok(dst);
+        };
+
+        let mut false_branches = Vec::with_capacity(prefix.len());
+        for operand in prefix {
+            let value = self.compile_expr(operand)?;
+            false_branches.push(self.emit_jump_if_false(value));
+        }
+
+        let last = self.compile_expr(last)?;
+        self.emit_truthy_to_bool(dst, last)?;
         let end = self.emit_jump();
 
-        self.patch_jump(false_branch, self.current_offset())?;
+        for false_branch in false_branches {
+            self.patch_jump(false_branch, self.current_offset())?;
+        }
         self.emit_bool_constant_to(dst, false);
         self.patch_jump(end, self.current_offset())?;
 
         Ok(dst)
     }
 
-    fn compile_logical_or(&mut self, left: &Expr, right: &Expr) -> CompileResult<Register> {
-        let lhs = self.compile_expr(left)?;
+    fn compile_logical_or_chain(&mut self, operands: &[&Expr]) -> CompileResult<Register> {
         let dst = self.alloc_register()?;
-        let rhs_branch = self.emit_jump_if_false(lhs);
+        let Some((last, prefix)) = operands.split_last() else {
+            self.emit_bool_constant_to(dst, false);
+            return Ok(dst);
+        };
 
-        self.emit_bool_constant_to(dst, true);
-        let end = self.emit_jump();
+        let mut end_jumps = Vec::with_capacity(prefix.len());
+        for operand in prefix {
+            let value = self.compile_expr(operand)?;
+            let next_operand = self.emit_jump_if_false(value);
+            self.emit_bool_constant_to(dst, true);
+            end_jumps.push(self.emit_jump());
+            self.patch_jump(next_operand, self.current_offset())?;
+        }
 
-        self.patch_jump(rhs_branch, self.current_offset())?;
-        let rhs = self.compile_expr(right)?;
-        self.emit_truthy_to_bool(dst, rhs)?;
-        self.patch_jump(end, self.current_offset())?;
+        let last = self.compile_expr(last)?;
+        self.emit_truthy_to_bool(dst, last)?;
+        for end in end_jumps {
+            self.patch_jump(end, self.current_offset())?;
+        }
 
         Ok(dst)
     }
@@ -329,4 +358,24 @@ fn sorted_field_slot(fields: &[vela_syntax::ast::RecordField], field: &str) -> O
         .collect::<Vec<_>>();
     names.sort_unstable();
     names.iter().position(|name| *name == field)
+}
+
+fn logical_chain_operands(op: BinaryOp, expr: &Expr) -> Vec<&Expr> {
+    let mut operands = Vec::new();
+    let mut stack = vec![expr];
+    while let Some(expr) = stack.pop() {
+        if let ExprKind::Binary {
+            op: expr_op,
+            left,
+            right,
+        } = &expr.kind
+            && *expr_op == op
+        {
+            stack.push(right);
+            stack.push(left);
+            continue;
+        }
+        operands.push(expr);
+    }
+    operands
 }
