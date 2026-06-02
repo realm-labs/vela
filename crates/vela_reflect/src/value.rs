@@ -122,6 +122,7 @@ fn get_impl(
                     ReflectErrorKind::FieldNotReflectReadable {
                         type_name,
                         field: field.to_owned(),
+                        source_span: field_desc.source_span,
                     },
                 ));
             }
@@ -234,6 +235,7 @@ fn set_impl(
                 return Err(ReflectError::new(ReflectErrorKind::FieldNotWritable {
                     type_name,
                     field: field.to_owned(),
+                    source_span: field_desc.source_span,
                 }));
             }
             if let Some(policy) = policy {
@@ -243,6 +245,7 @@ fn set_impl(
                     ReflectErrorKind::FieldNotReflectWritable {
                         type_name,
                         field: field.to_owned(),
+                        source_span: field_desc.source_span,
                     },
                 ));
             }

@@ -123,7 +123,8 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionNotReflectCallable {
-                function: "game.add".to_owned()
+                function: "game.add".to_owned(),
+                source_span: None,
             }
         )
     ));
@@ -267,6 +268,7 @@ fn main(player) {
             ReflectErrorKind::FunctionEffectPermissionDenied {
                 function: "game.set_level".to_owned(),
                 permission: ReflectPermission::CallHostWriteMethods,
+                source_span: None,
             }
         )
     ));

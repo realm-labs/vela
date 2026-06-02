@@ -243,7 +243,8 @@ fn fields_with_policy_hide_non_reflect_readable_fields() {
         error.kind,
         ReflectErrorKind::FieldNotReflectReadable {
             type_name: "Player".to_owned(),
-            field: "secret".to_owned()
+            field: "secret".to_owned(),
+            source_span: None,
         }
     );
 
@@ -301,13 +302,19 @@ fn field_policy_filters_unknown_candidates() {
 #[test]
 fn fields_with_policy_require_field_permissions() {
     let mut registry = TypeRegistry::new();
+    let title_span = Span::new(SourceId::new(9), 30, 45);
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(601), "Player"))
             .host_type(HostTypeId::new(6))
             .field(FieldDesc::new(FieldId::new(1), "level"))
-            .field(FieldDesc::new(FieldId::new(2), "title").access(
-                crate::access::FieldAccess::new().require_permission("player.title.inspect"),
-            )),
+            .field(
+                FieldDesc::new(FieldId::new(2), "title")
+                    .source_span(title_span)
+                    .access(
+                        crate::access::FieldAccess::new()
+                            .require_permission("player.title.inspect"),
+                    ),
+            ),
     );
     let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
 
@@ -342,7 +349,15 @@ fn fields_with_policy_require_field_permissions() {
             type_name: "Player".to_owned(),
             field: "title".to_owned(),
             permission: "player.title.inspect".to_owned(),
+            source_span: Some(title_span),
         }
+    );
+    assert_eq!(
+        error.kind.related_labels(),
+        vec![(
+            title_span,
+            "field `Player.title` is declared here".to_owned()
+        )]
     );
 
     let policy = ReflectPolicy::read_only().with_field_permission("player.title.inspect");
@@ -555,6 +570,7 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
         ReflectErrorKind::FieldNotReflectReadable {
             type_name: "QuestProgress.Active".to_owned(),
             field: "secret".to_owned(),
+            source_span: None,
         }
     );
 }

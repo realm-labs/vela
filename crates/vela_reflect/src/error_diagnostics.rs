@@ -84,19 +84,25 @@ impl ReflectErrorKind {
             Self::PermissionDenied { permission } => {
                 format!("reflection requires permission `{}`", permission.as_str())
             }
-            Self::MethodNotReflectCallable { type_name, method } => {
+            Self::MethodNotReflectCallable {
+                type_name, method, ..
+            } => {
                 format!("method `{type_name}.{method}` is not reflect-callable")
             }
-            Self::FunctionNotReflectVisible { function } => {
+            Self::FunctionNotReflectVisible { function, .. } => {
                 format!("function `{function}` is not reflect-visible")
             }
-            Self::FunctionNotReflectCallable { function } => {
+            Self::FunctionNotReflectCallable { function, .. } => {
                 format!("function `{function}` is not reflect-callable")
             }
-            Self::MethodPermissionDenied { method, permission } => {
+            Self::MethodPermissionDenied {
+                method, permission, ..
+            } => {
                 format!("method `{method}` requires permission `{permission}`")
             }
-            Self::MethodEffectPermissionDenied { method, permission } => {
+            Self::MethodEffectPermissionDenied {
+                method, permission, ..
+            } => {
                 format!(
                     "method `{method}` requires reflection effect permission `{}`",
                     permission.as_str()
@@ -105,6 +111,7 @@ impl ReflectErrorKind {
             Self::FunctionEffectPermissionDenied {
                 function,
                 permission,
+                ..
             } => {
                 format!(
                     "function `{function}` requires reflection effect permission `{}`",
@@ -114,6 +121,7 @@ impl ReflectErrorKind {
             Self::FunctionPermissionDenied {
                 function,
                 permission,
+                ..
             } => {
                 format!("function `{function}` requires permission `{permission}`")
             }
@@ -121,19 +129,26 @@ impl ReflectErrorKind {
                 type_name,
                 field,
                 permission,
+                ..
             } => {
                 format!("field `{type_name}.{field}` requires permission `{permission}`")
             }
             Self::LookupBudgetExceeded { limit } => {
                 format!("reflection lookup budget exceeded with limit {limit}")
             }
-            Self::FieldNotWritable { type_name, field } => {
+            Self::FieldNotWritable {
+                type_name, field, ..
+            } => {
                 format!("field `{type_name}.{field}` is not writable")
             }
-            Self::FieldNotReflectReadable { type_name, field } => {
+            Self::FieldNotReflectReadable {
+                type_name, field, ..
+            } => {
                 format!("field `{type_name}.{field}` is not reflect-readable")
             }
-            Self::FieldNotReflectWritable { type_name, field } => {
+            Self::FieldNotReflectWritable {
+                type_name, field, ..
+            } => {
                 format!("field `{type_name}.{field}` is not reflect-writable")
             }
             Self::InvalidTarget => "invalid reflection target".to_owned(),
@@ -144,28 +159,96 @@ impl ReflectErrorKind {
 
     #[must_use]
     pub fn related_labels(&self) -> Vec<(Span, String)> {
-        let related = match self {
+        match self {
             Self::UnknownTypeName { related, .. }
             | Self::UnknownField { related, .. }
             | Self::UnknownMethod { related, .. }
             | Self::UnknownVariant { related, .. }
             | Self::UnknownTrait { related, .. }
             | Self::UnknownModule { related, .. }
-            | Self::UnknownFunction { related, .. } => related,
-            _ => return Vec::new(),
-        };
-        related
-            .iter()
-            .filter_map(|candidate| {
-                candidate.source_span.map(|span| {
-                    (
-                        span,
-                        format!("candidate `{}` is declared here", candidate.name),
-                    )
+            | Self::UnknownFunction { related, .. } => related
+                .iter()
+                .filter_map(|candidate| {
+                    candidate.source_span.map(|span| {
+                        (
+                            span,
+                            format!("candidate `{}` is declared here", candidate.name),
+                        )
+                    })
                 })
-            })
-            .collect()
+                .collect(),
+            Self::MethodNotReflectCallable {
+                type_name,
+                method,
+                source_span,
+            } => access_label(
+                *source_span,
+                format!("method `{type_name}.{method}` is declared here"),
+            ),
+            Self::FunctionNotReflectVisible {
+                function,
+                source_span,
+            }
+            | Self::FunctionNotReflectCallable {
+                function,
+                source_span,
+            }
+            | Self::FunctionPermissionDenied {
+                function,
+                source_span,
+                ..
+            }
+            | Self::FunctionEffectPermissionDenied {
+                function,
+                source_span,
+                ..
+            } => access_label(
+                *source_span,
+                format!("function `{function}` is declared here"),
+            ),
+            Self::MethodPermissionDenied {
+                method,
+                source_span,
+                ..
+            }
+            | Self::MethodEffectPermissionDenied {
+                method,
+                source_span,
+                ..
+            } => access_label(*source_span, format!("method `{method}` is declared here")),
+            Self::FieldPermissionDenied {
+                type_name,
+                field,
+                source_span,
+                ..
+            }
+            | Self::FieldNotWritable {
+                type_name,
+                field,
+                source_span,
+            }
+            | Self::FieldNotReflectReadable {
+                type_name,
+                field,
+                source_span,
+            }
+            | Self::FieldNotReflectWritable {
+                type_name,
+                field,
+                source_span,
+            } => access_label(
+                *source_span,
+                format!("field `{type_name}.{field}` is declared here"),
+            ),
+            _ => Vec::new(),
+        }
     }
+}
+
+fn access_label(source_span: Option<Span>, label: String) -> Vec<(Span, String)> {
+    source_span
+        .map(|source_span| vec![(source_span, label)])
+        .unwrap_or_default()
 }
 
 fn unknown_name_message(kind: &str, name: &str, candidates: &[String]) -> String {

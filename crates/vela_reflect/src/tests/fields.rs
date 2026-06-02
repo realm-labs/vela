@@ -169,7 +169,8 @@ fn reflect_get_denies_non_reflect_readable_host_fields() {
         error.kind,
         ReflectErrorKind::FieldNotReflectReadable {
             type_name: "Player".to_owned(),
-            field: "secret".to_owned()
+            field: "secret".to_owned(),
+            source_span: None,
         }
     );
 }
@@ -205,7 +206,8 @@ fn reflect_set_denies_non_reflect_writable_host_fields() {
         error.kind,
         ReflectErrorKind::FieldNotReflectWritable {
             type_name: "Player".to_owned(),
-            field: "level".to_owned()
+            field: "level".to_owned(),
+            source_span: None,
         }
     );
     assert!(ctx.tx.patches().is_empty());
@@ -247,6 +249,7 @@ fn reflect_get_and_set_with_policy_require_field_permission() {
             type_name: "Player".to_owned(),
             field: "level".to_owned(),
             permission: "player.level.reflect".to_owned(),
+            source_span: None,
         }
     );
 
@@ -264,6 +267,7 @@ fn reflect_get_and_set_with_policy_require_field_permission() {
             type_name: "Player".to_owned(),
             field: "level".to_owned(),
             permission: "player.level.reflect".to_owned(),
+            source_span: None,
         }
     );
     assert!(ctx.tx.patches().is_empty());
@@ -421,6 +425,7 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
             type_name: "Player".to_owned(),
             field: "level".to_owned(),
             permission: "player.level.reflect".to_owned(),
+            source_span: None,
         }
     );
 
@@ -438,6 +443,7 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
             type_name: "Player".to_owned(),
             field: "level".to_owned(),
             permission: "player.level.reflect".to_owned(),
+            source_span: None,
         }
     );
     assert!(ctx.tx.patches().is_empty());

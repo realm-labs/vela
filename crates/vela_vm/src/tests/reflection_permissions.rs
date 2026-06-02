@@ -160,7 +160,8 @@ fn main(player) {
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::MethodEffectPermissionDenied {
                 method: "grant_exp".to_owned(),
-                permission: reflect::permissions::ReflectPermission::CallHostWriteMethods
+                permission: reflect::permissions::ReflectPermission::CallHostWriteMethods,
+                source_span: None,
             }
         )
     ));
@@ -456,6 +457,7 @@ fn main() {
         VmErrorKind::Reflect(ReflectErrorKind::FunctionPermissionDenied {
             function: "game.admin".to_owned(),
             permission: "game.admin".to_owned(),
+            source_span: None,
         })
     );
     assert!(tx.patches().is_empty());
@@ -504,6 +506,7 @@ fn main(player) {
         VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
             type_name: "Player".to_owned(),
             field: "secret".to_owned(),
+            source_span: None,
         })
     );
     assert!(tx.patches().is_empty());
@@ -556,6 +559,7 @@ fn main(player) {
             type_name: "Player".to_owned(),
             field: "title".to_owned(),
             permission: "player.title.inspect".to_owned(),
+            source_span: None,
         })
     );
     assert!(tx.patches().is_empty());

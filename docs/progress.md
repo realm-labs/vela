@@ -82,6 +82,8 @@ conformance contracts are stable.
   read/write access hints for likely field names.
 - Unknown host-method diagnostics include ranked candidate labels with copied
   method access, effect, and permission hints for likely method names.
+- Reflection field, method, and function access-denial diagnostics carry copied
+  declaration source spans when schema metadata provides them.
 - Hot reload updates can be staged during gameplay and consumed only by an
   explicit runtime safe-point check.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload

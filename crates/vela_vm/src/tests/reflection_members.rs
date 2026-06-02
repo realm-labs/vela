@@ -129,6 +129,7 @@ fn main() {
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
             type_name: "QuestProgress.Active".to_owned(),
             field: "secret".to_owned(),
+            source_span: None,
         })
     ));
     assert!(tx.patches().is_empty());

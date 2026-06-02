@@ -80,7 +80,8 @@ fn main(player) {
             .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::MethodPermissionDenied {
             method: "grant_exp".to_owned(),
-            permission: "player.grant_exp".to_owned()
+            permission: "player.grant_exp".to_owned(),
+            source_span: None,
         })
     ));
     assert!(tx.patches().is_empty());

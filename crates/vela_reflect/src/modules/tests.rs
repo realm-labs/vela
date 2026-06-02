@@ -339,7 +339,8 @@ fn function_policy_rejects_hidden_private_and_unapproved_functions() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::FunctionNotReflectVisible {
-            function: "game.hidden".to_owned()
+            function: "game.hidden".to_owned(),
+            source_span: None,
         }
     );
 
@@ -358,7 +359,8 @@ fn function_policy_rejects_hidden_private_and_unapproved_functions() {
         error.kind,
         ReflectErrorKind::FunctionPermissionDenied {
             function: "game.admin".to_owned(),
-            permission: "game.admin".to_owned()
+            permission: "game.admin".to_owned(),
+            source_span: None,
         }
     );
 }
@@ -514,7 +516,8 @@ fn function_call_policy_requires_reflect_callable_metadata() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::FunctionNotReflectCallable {
-            function: "game.inspectable".to_owned()
+            function: "game.inspectable".to_owned(),
+            source_span: None,
         }
     );
 
@@ -540,6 +543,7 @@ fn function_call_policy_requires_reflect_callable_metadata() {
         ReflectErrorKind::FunctionEffectPermissionDenied {
             function: "game.write_host".to_owned(),
             permission: crate::permissions::ReflectPermission::CallHostWriteMethods,
+            source_span: None,
         }
     );
 }

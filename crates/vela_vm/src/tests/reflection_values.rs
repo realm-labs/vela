@@ -145,6 +145,7 @@ fn main() {
             type_name: "Player".to_owned(),
             field: "level".to_owned(),
             permission: "player.level.inspect".to_owned(),
+            source_span: None,
         })
     ));
     assert!(tx.patches().is_empty());

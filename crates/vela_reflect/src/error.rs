@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::candidates::ReflectCandidate;
 use crate::permissions::ReflectPermission;
-use vela_common::HostTypeId;
+use vela_common::{HostTypeId, Span};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReflectError {
@@ -76,33 +76,41 @@ pub enum ReflectErrorKind {
     MethodNotReflectCallable {
         type_name: String,
         method: String,
+        source_span: Option<Span>,
     },
     FunctionNotReflectVisible {
         function: String,
+        source_span: Option<Span>,
     },
     FunctionNotReflectCallable {
         function: String,
+        source_span: Option<Span>,
     },
     MethodPermissionDenied {
         method: String,
         permission: String,
+        source_span: Option<Span>,
     },
     MethodEffectPermissionDenied {
         method: String,
         permission: ReflectPermission,
+        source_span: Option<Span>,
     },
     FunctionEffectPermissionDenied {
         function: String,
         permission: ReflectPermission,
+        source_span: Option<Span>,
     },
     FunctionPermissionDenied {
         function: String,
         permission: String,
+        source_span: Option<Span>,
     },
     FieldPermissionDenied {
         type_name: String,
         field: String,
         permission: String,
+        source_span: Option<Span>,
     },
     LookupBudgetExceeded {
         limit: u64,
@@ -110,14 +118,17 @@ pub enum ReflectErrorKind {
     FieldNotWritable {
         type_name: String,
         field: String,
+        source_span: Option<Span>,
     },
     FieldNotReflectReadable {
         type_name: String,
         field: String,
+        source_span: Option<Span>,
     },
     FieldNotReflectWritable {
         type_name: String,
         field: String,
+        source_span: Option<Span>,
     },
     InvalidTarget,
     InvalidValue,

@@ -610,6 +610,7 @@ fn main() {
             call_stack: Arc::from([vela_vm::error::VmStackFrame {
                 function: "main".to_owned(),
                 call_site: None,
+                bytecode_offset: None,
             }]),
         }
     );

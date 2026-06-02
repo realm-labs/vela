@@ -254,6 +254,7 @@ impl ReflectPolicy {
             return Err(ReflectError::new(
                 ReflectErrorKind::FunctionNotReflectVisible {
                     function: function.name.clone(),
+                    source_span: function.source_span,
                 },
             ));
         }
@@ -270,6 +271,7 @@ impl ReflectPolicy {
                 ReflectErrorKind::FunctionPermissionDenied {
                     function: function.name.clone(),
                     permission: permission.clone(),
+                    source_span: function.source_span,
                 },
             ));
         }
@@ -282,6 +284,7 @@ impl ReflectPolicy {
             return Err(ReflectError::new(
                 ReflectErrorKind::FunctionNotReflectCallable {
                     function: function.name.clone(),
+                    source_span: function.source_span,
                 },
             ));
         }
@@ -290,6 +293,7 @@ impl ReflectPolicy {
                 ReflectErrorKind::FunctionEffectPermissionDenied {
                     function: function.name.clone(),
                     permission,
+                    source_span: function.source_span,
                 },
             ));
         }
@@ -306,6 +310,7 @@ impl ReflectPolicy {
                 ReflectErrorKind::FieldNotReflectReadable {
                     type_name: type_name.to_owned(),
                     field: field.name.clone(),
+                    source_span: field.source_span,
                 },
             ));
         }
@@ -322,6 +327,7 @@ impl ReflectPolicy {
                 ReflectErrorKind::FieldNotReflectWritable {
                     type_name: type_name.to_owned(),
                     field: field.name.clone(),
+                    source_span: field.source_span,
                 },
             ));
         }
@@ -334,6 +340,7 @@ impl ReflectPolicy {
                 ReflectErrorKind::MethodNotReflectCallable {
                     type_name: type_name.to_owned(),
                     method: method.name.clone(),
+                    source_span: method.source_span,
                 },
             ));
         }
@@ -350,6 +357,7 @@ impl ReflectPolicy {
                 ReflectErrorKind::MethodPermissionDenied {
                     method: method.name.clone(),
                     permission: permission.clone(),
+                    source_span: method.source_span,
                 },
             ));
         }
@@ -358,6 +366,7 @@ impl ReflectPolicy {
                 ReflectErrorKind::MethodEffectPermissionDenied {
                     method: method.name.clone(),
                     permission,
+                    source_span: method.source_span,
                 },
             ));
         }
@@ -379,6 +388,7 @@ impl ReflectPolicy {
                 type_name: type_name.to_owned(),
                 field: field.name.clone(),
                 permission: permission.clone(),
+                source_span: field.source_span,
             }));
         }
         Ok(())

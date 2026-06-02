@@ -58,7 +58,8 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_patch() {
         error.kind,
         ReflectErrorKind::MethodNotReflectCallable {
             type_name: "Player".to_owned(),
-            method: "grant_exp".to_owned()
+            method: "grant_exp".to_owned(),
+            source_span: None,
         }
     );
     assert!(ctx.tx.patches().is_empty());
@@ -75,7 +76,8 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_patch() {
         error.kind,
         ReflectErrorKind::MethodPermissionDenied {
             method: "admin_grant".to_owned(),
-            permission: "player.admin".to_owned()
+            permission: "player.admin".to_owned(),
+            source_span: None,
         }
     );
     assert!(ctx.tx.patches().is_empty());
@@ -120,7 +122,8 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
         error.kind,
         ReflectErrorKind::MethodEffectPermissionDenied {
             method: "grant_exp".to_owned(),
-            permission: ReflectPermission::CallHostWriteMethods
+            permission: ReflectPermission::CallHostWriteMethods,
+            source_span: None,
         }
     );
     assert!(ctx.tx.patches().is_empty());

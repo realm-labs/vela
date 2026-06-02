@@ -98,7 +98,8 @@ fn reflect_set_read_only_host_field_fails_without_patch() {
         error.kind,
         ReflectErrorKind::FieldNotWritable {
             type_name: "Player".to_owned(),
-            field: "id".to_owned()
+            field: "id".to_owned(),
+            source_span: None,
         }
     );
     assert!(ctx.tx.patches().is_empty());
