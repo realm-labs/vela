@@ -28,6 +28,17 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
                 options = options.with_host_variant_field(field.name.clone(), field.id);
             }
         }
+        for method in desc
+            .methods
+            .iter()
+            .filter(|method| method.attrs.get("stdlib").is_some())
+        {
+            options = options.with_value_method_params_for_type(
+                desc.key.name.clone(),
+                method.name.clone(),
+                method_params(method),
+            );
+        }
         collect_value_method_params(&mut value_method_params, &desc.methods);
         if desc.host_type_id.is_some() {
             for method in &desc.methods {
@@ -57,6 +68,14 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
     options
 }
 
+fn method_params(method: &MethodDesc) -> Vec<(String, bool)> {
+    method
+        .params
+        .iter()
+        .map(|param| (param.name.clone(), param.has_default))
+        .collect()
+}
+
 fn collect_value_method_params(
     value_method_params: &mut HashMap<String, Option<Vec<(String, bool)>>>,
     methods: &[MethodDesc],
@@ -65,11 +84,7 @@ fn collect_value_method_params(
         .iter()
         .filter(|method| method.attrs.get("stdlib").is_some())
     {
-        let params = method
-            .params
-            .iter()
-            .map(|param| (param.name.clone(), param.has_default))
-            .collect::<Vec<_>>();
+        let params = method_params(method);
         match value_method_params.get_mut(&method.name) {
             Some(Some(existing)) if existing == &params => {}
             Some(existing) => {

@@ -10,6 +10,7 @@ pub struct CompilerOptions {
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
     pub(super) host_method_params: HashMap<HostMethodId, Vec<HostMethodParam>>,
     pub(super) value_method_params: HashMap<String, Vec<ValueMethodParam>>,
+    pub(super) value_method_params_by_type: HashMap<(String, String), Vec<ValueMethodParam>>,
     pub(super) host_types: HashSet<String>,
     pub(super) native_module_roots: HashSet<String>,
     pub(super) native_function_params: HashMap<String, Vec<NativeFunctionParam>>,
@@ -95,6 +96,30 @@ impl CompilerOptions {
     }
 
     #[must_use]
+    pub fn with_value_method_params_for_type<I, S>(
+        mut self,
+        type_name: impl Into<String>,
+        method: impl Into<String>,
+        params: I,
+    ) -> Self
+    where
+        I: IntoIterator<Item = (S, bool)>,
+        S: Into<String>,
+    {
+        self.value_method_params_by_type.insert(
+            (type_name.into(), method.into()),
+            params
+                .into_iter()
+                .map(|(name, has_default)| ValueMethodParam {
+                    name: name.into(),
+                    has_default,
+                })
+                .collect(),
+        );
+        self
+    }
+
+    #[must_use]
     pub fn with_required_value_method_params<I, S>(
         self,
         method: impl Into<String>,
@@ -105,6 +130,24 @@ impl CompilerOptions {
         S: Into<String>,
     {
         self.with_value_method_params(method, params.into_iter().map(|name| (name, false)))
+    }
+
+    #[must_use]
+    pub fn with_required_value_method_params_for_type<I, S>(
+        self,
+        type_name: impl Into<String>,
+        method: impl Into<String>,
+        params: I,
+    ) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.with_value_method_params_for_type(
+            type_name,
+            method,
+            params.into_iter().map(|name| (name, false)),
+        )
     }
 
     #[must_use]
@@ -173,6 +216,16 @@ impl CompilerOptions {
 
     pub(super) fn value_method_params(&self, method: &str) -> Option<&[ValueMethodParam]> {
         self.value_method_params.get(method).map(Vec::as_slice)
+    }
+
+    pub(super) fn value_method_params_for_type(
+        &self,
+        type_name: &str,
+        method: &str,
+    ) -> Option<&[ValueMethodParam]> {
+        self.value_method_params_by_type
+            .get(&(type_name.to_owned(), method.to_owned()))
+            .map(Vec::as_slice)
     }
 
     pub(super) fn native_function_params(&self, name: &str) -> Option<&[NativeFunctionParam]> {

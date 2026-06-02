@@ -1,4 +1,4 @@
-use vela_syntax::ast::{Argument, Expr, ExprKind};
+use vela_syntax::ast::{Argument, BinaryOp, Expr, ExprKind, Literal};
 
 use crate::{CallArgument, InstructionKind};
 
@@ -138,11 +138,17 @@ impl Compiler<'_> {
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_expr(base);
+        let value_receiver_type = self.value_method_receiver_type(base);
         let method_id = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_method_id_for_type(type_name, name));
-        let arg_registers =
-            self.compile_script_method_call_args(receiver_type.as_deref(), name, args, expr.span)?;
+        let arg_registers = self.compile_script_method_call_args(
+            receiver_type.as_deref(),
+            value_receiver_type.as_deref(),
+            name,
+            args,
+            expr.span,
+        )?;
         let receiver = self.compile_expr(base)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
@@ -184,6 +190,7 @@ impl Compiler<'_> {
             .and_then(|type_name| self.script_method_id_for_type(type_name, method));
         let arg_registers = self.compile_script_method_call_args(
             receiver_type.as_deref(),
+            receiver_type.as_deref(),
             method,
             args,
             expr.span,
@@ -218,15 +225,26 @@ impl Compiler<'_> {
     fn compile_script_method_call_args(
         &mut self,
         receiver_type: Option<&str>,
+        value_receiver_type: Option<&str>,
         method: &str,
         args: &[Argument],
         call_span: vela_common::Span,
     ) -> CompileResult<Vec<CallArgument>> {
         let Some(receiver_type) = receiver_type else {
-            return self.compile_value_method_call_args(method, args, call_span);
+            return self.compile_value_method_call_args(
+                value_receiver_type,
+                method,
+                args,
+                call_span,
+            );
         };
         let Some(params) = self.script_method_params(receiver_type, method) else {
-            return self.compile_value_method_call_args(method, args, call_span);
+            return self.compile_value_method_call_args(
+                value_receiver_type.or(Some(receiver_type)),
+                method,
+                args,
+                call_span,
+            );
         };
         let params = params.into_iter().skip(1).collect::<Vec<_>>();
         let slots =
@@ -251,11 +269,19 @@ impl Compiler<'_> {
 
     fn compile_value_method_call_args(
         &mut self,
+        receiver_type: Option<&str>,
         method: &str,
         args: &[Argument],
         call_span: Span,
     ) -> CompileResult<Vec<CallArgument>> {
-        let Some(params) = self.facts.options.value_method_params(method) else {
+        let params = receiver_type
+            .and_then(|receiver_type| {
+                self.facts
+                    .options
+                    .value_method_params_for_type(receiver_type, method)
+            })
+            .or_else(|| self.facts.options.value_method_params(method));
+        let Some(params) = params else {
             reject_named_args(args, "script method call")?;
             return self.compile_positional_method_args(args);
         };
@@ -285,6 +311,24 @@ impl Compiler<'_> {
             }
         }
         Ok(registers)
+    }
+
+    fn value_method_receiver_type(&self, expr: &Expr) -> Option<String> {
+        match &expr.kind {
+            ExprKind::Literal(Literal::Null) => Some("null".to_owned()),
+            ExprKind::Literal(Literal::Bool(_)) => Some("bool".to_owned()),
+            ExprKind::Literal(Literal::Int(_)) => Some("int".to_owned()),
+            ExprKind::Literal(Literal::Float(_)) => Some("float".to_owned()),
+            ExprKind::Literal(Literal::String(_)) => Some("string".to_owned()),
+            ExprKind::Array(_) => Some("array".to_owned()),
+            ExprKind::Map(_) => Some("map".to_owned()),
+            ExprKind::Lambda { .. } => Some("closure".to_owned()),
+            ExprKind::Binary {
+                op: BinaryOp::Range,
+                ..
+            } => Some("range".to_owned()),
+            _ => self.script_type_for_expr(expr),
+        }
     }
 
     fn compile_positional_method_args(

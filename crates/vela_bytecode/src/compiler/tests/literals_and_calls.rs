@@ -186,6 +186,51 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_named_value_method_args_by_receiver_type_from_compiler_options() {
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return "reward:gold".contains(needle = ":") && ["gold"].contains(value = "gold");
+}
+"#,
+        &CompilerOptions::new()
+            .with_required_value_method_params_for_type("string", "contains", ["needle"])
+            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+    )
+    .expect("receiver-specific named value method args should compile");
+    let main = program.function("main").expect("main function");
+
+    assert_eq!(
+        main.instructions
+            .iter()
+            .filter(|instruction| matches!(
+                &instruction.kind,
+                InstructionKind::CallMethod { method, args, .. }
+                    if method == "contains" && args.len() == 1
+            ))
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn compiler_rejects_ambiguous_named_value_method_args_without_receiver_type() {
+    compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(value) {
+    return value.contains(needle = ":");
+}
+"#,
+        &CompilerOptions::new()
+            .with_required_value_method_params_for_type("string", "contains", ["needle"])
+            .with_required_value_method_params_for_type("array", "contains", ["value"]),
+    )
+    .expect_err("ambiguous named method args should require receiver type evidence");
+}
+
+#[test]
 fn compiler_reports_named_native_arg_diagnostics_from_compiler_options() {
     let error = compile_program_source_with_options(
         SourceId::new(1),

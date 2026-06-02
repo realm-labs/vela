@@ -138,6 +138,29 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_lower_receiver_specific_named_standard_value_method_arguments() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return "reward:gold".contains(needle = ":") && ["gold"].contains(value = "gold");
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("receiver-specific named stdlib value method arguments should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Bool(true))
+    );
+}
+
+#[test]
 fn engine_compiler_options_reject_ambiguous_named_standard_value_method_arguments() {
     let engine = Engine::builder()
         .with_standard_natives()
@@ -146,8 +169,8 @@ fn engine_compiler_options_reject_ambiguous_named_standard_value_method_argument
     compile_program_source_with_options(
         SourceId::new(1),
         r#"
-fn main() {
-    return "reward:gold".contains(needle = ":");
+fn main(value) {
+    return value.contains(needle = ":");
 }
 "#,
         &engine.compiler_options(),
