@@ -214,7 +214,7 @@ impl VmErrorKind {
                 variant,
                 field,
             } => {
-                format!("unknown field `{field}` for enum variant `{enum_name}.{variant}`")
+                format!("unknown field `{field}` for enum variant `{enum_name}::{variant}`")
             }
             Self::IndexOutOfBounds { index, len } => {
                 format!("index {index} is out of bounds for length {len}")
@@ -361,7 +361,7 @@ fn leaf() {
                 DiagnosticSource::new(
                     SourceId::new(1),
                     "script.vela",
-                    "fn main() { reflect.get(player, \"leve\") }",
+                    "fn main() { reflect::get(player, \"leve\") }",
                 ),
                 DiagnosticSource::new(SourceId::new(2), "schema.vela", "struct Player { level }"),
             ],

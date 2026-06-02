@@ -157,7 +157,7 @@ impl Compiler<'_> {
                     }
                     let shape = self.enum_constructor_shape(&enum_name, &variant);
                     self.reject_constructor_diagnostics(record_constructor_diagnostics(
-                        &format!("{enum_name}.{variant}"),
+                        &format!("{enum_name}::{variant}"),
                         shape.as_ref(),
                         fields,
                         expr.span,
@@ -173,7 +173,7 @@ impl Compiler<'_> {
                 } else {
                     let type_name = self
                         .type_symbol_at_span(expr.span)
-                        .unwrap_or_else(|| path.join("."));
+                        .unwrap_or_else(|| path.join("::"));
                     let shape = self.record_constructor_shape(&type_name);
                     self.reject_constructor_diagnostics(record_constructor_diagnostics(
                         &type_name,

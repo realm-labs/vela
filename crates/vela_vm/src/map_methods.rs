@@ -162,8 +162,8 @@ fn main() {
     let rewards = {"gold": 4, "xp": 6, "quest": 8};
     let found = rewards.find(|key, value| key == "xp" && value == 6);
     let missing = rewards.find(|key, value| key == "missing" && value > 0);
-    let entry = option.unwrap_or(found, MapEntry { key: "", value: 0 });
-    if entry.key == "xp" && entry.value == 6 && option.is_none(missing) {
+    let entry = option::unwrap_or(found, MapEntry { key: "", value: 0 });
+    if entry.key == "xp" && entry.value == 6 && option::is_none(missing) {
         return 1;
     }
     return 0;
@@ -212,8 +212,8 @@ fn main() {
     let quests = {"boar": "done", "wolf": "active", "wyrm": "done"};
     let found = quests.find(|key, value| key.starts_with("w") && value == "done");
     let missing = quests.find(|value| value == "blocked");
-    let entry = option.unwrap_or(found, MapEntry { key: "", value: "" });
-    if entry.key == "wyrm" && entry.value == "done" && option.is_none(missing) {
+    let entry = option::unwrap_or(found, MapEntry { key: "", value: "" });
+    if entry.key == "wyrm" && entry.value == "done" && option::is_none(missing) {
         return entry.key;
     }
     return "";

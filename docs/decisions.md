@@ -113,21 +113,29 @@ User-facing host and native macros do not accept manually chosen numeric stable
 IDs. `ScriptHost` and `ScriptReflect` derive type and field IDs from the
 script-facing stable type path and field name, while `#[script_methods]` and
 native function macros derive method/function IDs from the owner path or public
-dotted function name. Optional `alias` values are the compatibility mechanism
+`::` qualified function name. Optional `alias` values are the compatibility mechanism
 for rename-safe schema evolution. Low-level descriptor constructors may still
 take explicit IDs for engine internals and focused tests.
 
 Script-owned struct and enum payload fields are reflected as writable by
 default because script values can be copied and updated without touching host
-state. Copy-returning `reflect.set` for script values still enforces
+state. Copy-returning `reflect::set` for script values still enforces
 `reflect_writable` and field-level required permissions, while HostRef
-`reflect.set` additionally requires host field writability before recording a
+`reflect::set` additionally requires host field writability before recording a
 PatchTx write.
 
 Global field reflection enumerates both type-level fields and enum variant
-payload fields. Variant payload field metadata uses `Type.Variant` as the
+payload fields. Variant payload field metadata uses `Type::Variant` as the
 owner, matching targeted variant reflection, and policy filtering applies to
-each field before it appears in `reflect.fields()`.
+each field before it appears in `reflect::fields()`.
+
+### Static Path Syntax
+
+Vela uses `::` for static namespace paths: imports, type paths, enum variant
+paths, native module functions, macro schema paths, and reflection module or
+function identities. `.` is reserved for runtime value access such as fields,
+methods, host paths, and metadata record fields. Dotted text remains valid as
+ordinary data, for example event names and permission keys.
 
 ### Hot Reload
 
@@ -171,9 +179,9 @@ Function return annotations are optional and have the same metadata-first
 semantics.
 
 `null` is retained for no-value, void-like results, host nullable boundaries,
-and missing metadata. Expected absence should use `Option.None`, recoverable
-business failure should use `Result.Err`, and unrecoverable script/runtime
-failures should use VM diagnostics rather than `Result.Err`.
+and missing metadata. Expected absence should use `Option::None`, recoverable
+business failure should use `Result::Err`, and unrecoverable script/runtime
+failures should use VM diagnostics rather than `Result::Err`.
 
 Array, map, set, string, range, math, context, random, and gameplay helpers are
 deterministic unless an Engine-installed permissioned native explicitly provides
@@ -183,7 +191,7 @@ controlled nondeterminism.
 
 The core reflection policy API owns base call authorization. Direct reflective
 method calls and reflected function invocation must require
-`reflect.call_methods` before checking callable metadata, required host
+`reflect::call_methods` before checking callable metadata, required host
 permissions, or effect-specific call permissions.
 
 ### Analysis And Tooling

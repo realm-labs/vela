@@ -3,18 +3,18 @@
    The inner comment deliberately contains item-like text:
    /* fn hidden() { return 999; } */
 */
-use conformance.reward.BASE_REWARD as REWARD_BASE
-use conformance.reward.REWARD_COUNTS
-use conformance.reward.REWARD_TABLE
-use conformance.reward.RewardConfig as ConfigReward
-use conformance.reward.RewardOutcome as Outcome
-use conformance.reward.reward_bonus
+use conformance::reward::BASE_REWARD as REWARD_BASE
+use conformance::reward::REWARD_COUNTS
+use conformance::reward::REWARD_TABLE
+use conformance::reward::RewardConfig as ConfigReward
+use conformance::reward::RewardOutcome as Outcome
+use conformance::reward::reward_bonus
 
 const BASE = 2
 
 #[doc("Core reward")]
 #[domain("conformance")]
-#[rule(kind = conformance.reward.Rule, tags = ["core", "fixture"], config = { enabled: true, limit: 3 })]
+#[rule(kind = conformance::reward::Rule, tags = ["core", "fixture"], config = { enabled: true, limit: 3 })]
 struct Reward {
     #[doc("Reward item")]
     item: string,
@@ -56,14 +56,14 @@ impl Scored for Reward {
 
 fn maybe_bonus(flag) {
     if flag {
-        return option.some(3);
+        return option::some(3);
     }
-    return option.none();
+    return option::none();
 }
 
 fn result_bonus(flag) {
     let bonus = maybe_bonus(flag)?;
-    return result.ok(bonus + 1);
+    return result::ok(bonus + 1);
 }
 
 fn add(base, amount = 1, bonus = amount + BASE) {
@@ -124,15 +124,15 @@ fn main() {
         && groups["even"].sum() == 22
         && sorted[0] == 10
         && sorted[2] == 11
-        && option.unwrap_or(found, 0) == 12
+        && option::unwrap_or(found, 0) == 12
         && helper_values.any(|value| value > 20)
         && helper_values.all(|value| value >= 10)
         && helper_values.count(|value| value % 2 == 1) == 3
-        && option.unwrap_or(helper_values.first(), 0) == 21
-        && option.unwrap_or(helper_values.last(), 0) == 13
-        && option.unwrap_or(helper_values.min(), 0) == 10
-        && option.unwrap_or(helper_values.max(), 0) == 21
-        && option.unwrap_or(helper_values.index_of(12), -1) == 3
+        && option::unwrap_or(helper_values.first(), 0) == 21
+        && option::unwrap_or(helper_values.last(), 0) == 13
+        && option::unwrap_or(helper_values.min(), 0) == 10
+        && option::unwrap_or(helper_values.max(), 0) == 21
+        && option::unwrap_or(helper_values.index_of(12), -1) == 3
         && reversed[0] == 12
         && unique.len() == 3
     {
@@ -167,15 +167,15 @@ fn main() {
         0
     };
 
-    let quest: QuestState = QuestState.Active { id: "daily", count: 2 };
+    let quest: QuestState = QuestState::Active { id: "daily", count: 2 };
     let quest_score: int = match quest {
-        QuestState.Active { id, count } if id == "daily" => count + 10,
-        QuestState.Done { id } => id.len(),
+        QuestState::Active { id, count } if id == "daily" => count + 10,
+        QuestState::Done { id } => id.len(),
         _ => 0,
     };
-    let streak: QuestState = QuestState.Streak(count = 4);
+    let streak: QuestState = QuestState::Streak(count = 4);
     let streak_score: int = match streak {
-        QuestState.Streak(kind, count) if kind == "weekly" => count * 3,
+        QuestState::Streak(kind, count) if kind == "weekly" => count * 3,
         _ => 0,
     };
 
@@ -212,17 +212,17 @@ fn main() {
     let string_helper_score: int = if normalized.starts_with("quest")
         && normalized.ends_with("_done")
         && normalized.contains("reward")
-        && option.unwrap_or(normalized.find("reward"), -1) == 6
+        && option::unwrap_or(normalized.find("reward"), -1) == 6
         && pieces[0] == "quest"
-        && option.unwrap_or(option.unwrap_or(prefix, "").strip_suffix("_done"), "") == "reward"
-        && option.unwrap_or(suffix, "") == "quest.reward"
+        && option::unwrap_or(option::unwrap_or(prefix, "").strip_suffix("_done"), "") == "reward"
+        && option::unwrap_or(suffix, "") == "quest.reward"
         && pair[0] == "count"
         && pair[1].parse_int().unwrap_or(0) == 3
         && words.join(".") == "grant.gold.3"
         && lines[1] == "apply"
-        && option.unwrap_or("true".parse_bool(), false)
-        && option.unwrap_or("2.5".parse_float(), 0.0) == 2.5
-        && option.unwrap_or("xp奖励".char_at(2), "") == "奖"
+        && option::unwrap_or("true".parse_bool(), false)
+        && option::unwrap_or("2.5".parse_float(), 0.0) == 2.5
+        && option::unwrap_or("xp奖励".char_at(2), "") == "奖"
         && "xp奖励".slice(2, 4) == "奖励"
     {
         30
@@ -239,36 +239,36 @@ fn main() {
     } else {
         0
     };
-    let math_helper_score: int = if math.max(4, 9) == 9
-        && math.min(4, 9) == 4
-        && math.clamp(15, 1, 10) == 10
-        && math.lerp(10, 20, 0.5) == 15.0
-        && math.move_towards(0, 10, 4) == 4
-        && math.distance2d(0, 0, 3, 4) == 5.0
-        && math.distance3d(0, 0, 0, 2, 3, 6) == 7.0
-        && math.pow(2, 3) == 8
-        && math.sqrt(81) == 9.0
-        && math.sign(-2) == -1
-        && math.floor(2.9) == 2
-        && math.ceil(2.1) == 3
-        && math.round(2.5) == 3
-        && math.abs(-7) == 7
+    let math_helper_score: int = if math::max(4, 9) == 9
+        && math::min(4, 9) == 4
+        && math::clamp(15, 1, 10) == 10
+        && math::lerp(10, 20, 0.5) == 15.0
+        && math::move_towards(0, 10, 4) == 4
+        && math::distance2d(0, 0, 3, 4) == 5.0
+        && math::distance3d(0, 0, 0, 2, 3, 6) == 7.0
+        && math::pow(2, 3) == 8
+        && math::sqrt(81) == 9.0
+        && math::sign(-2) == -1
+        && math::floor(2.9) == 2
+        && math::ceil(2.1) == 3
+        && math::round(2.5) == 3
+        && math::abs(-7) == 7
     {
         35
     } else {
         0
     };
-    let option_chain = option.some("quest")
+    let option_chain = option::some("quest")
         .map(|value| value.to_upper())
         .filter(|value| value.starts_with("Q"))
         .ok_or("missing");
-    let option_fallback = option.none().or_else(| | option.some("fallback"));
-    let result_chain = result.ok(["gold", "xp"])
+    let option_fallback = option::none().or_else(| | option::some("fallback"));
+    let result_chain = result::ok(["gold", "xp"])
         .map(|values| values.join("+"))
-        .and_then(|text| result.ok(text.replace("+", ".")));
-    let mapped_err = result.err(["bad", "level"]).map_err(|errors| errors.join("."));
-    let flattened_option = option.some(option.some(["daily", "done"])).flatten();
-    let flattened_result = result.ok(result.err("nested")).flatten();
+        .and_then(|text| result::ok(text.replace("+", ".")));
+    let mapped_err = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
+    let flattened_option = option::some(option::some(["daily", "done"])).flatten();
+    let flattened_result = result::ok(result::err("nested")).flatten();
     let option_result_helper_score: int = if option_chain.unwrap_or("") == "QUEST"
         && option_fallback.unwrap_or("") == "fallback"
         && result_chain.unwrap_or("") == "gold.xp"
@@ -287,7 +287,7 @@ fn main() {
     mutable_rewards.set("quest", 4);
     let removed_reward = mutable_rewards.remove("xp");
     let merged_rewards: map = mutable_rewards.merge({"gold": 5, "gem": 6});
-    let map_score: int = option.unwrap_or(removed_reward, 0)
+    let map_score: int = option::unwrap_or(removed_reward, 0)
         + mutable_rewards.get_or("missing", 7)
         + merged_rewards["gold"]
         + merged_rewards["gem"]
@@ -323,15 +323,15 @@ fn main() {
     } else {
         0
     };
-    let player_tags: set = set.from_array(["daily", "quest", "raid"]);
-    let event_tags: set = set.from_array(["quest", "bonus", "daily"]);
-    let required_tags: set = set.from_array(["daily", "quest"]);
+    let player_tags: set = set::from_array(["daily", "quest", "raid"]);
+    let event_tags: set = set::from_array(["quest", "bonus", "daily"]);
+    let required_tags: set = set::from_array(["daily", "quest"]);
     let set_score: int = {
         let shared = player_tags.intersection(event_tags);
         let unique = player_tags.difference(event_tags);
         if required_tags.is_subset(player_tags)
             && player_tags.is_superset(required_tags)
-            && player_tags.is_disjoint(set.from_array(["bonus"]))
+            && player_tags.is_disjoint(set::from_array(["bonus"]))
             && player_tags.union(event_tags).len() == 4
             && player_tags.symmetric_difference(event_tags).len() == 2
             && shared.has("quest")
@@ -342,11 +342,11 @@ fn main() {
             0
         }
     };
-    let mutable_tags: set = set.from_array(["daily", "quest"]);
+    let mutable_tags: set = set::from_array(["daily", "quest"]);
     let added_tag = mutable_tags.add("raid");
     let duplicate_tag = mutable_tags.add("quest");
     let removed_tag = mutable_tags.remove("daily");
-    mutable_tags.extend(set.from_array(["boss", "quest"]));
+    mutable_tags.extend(set::from_array(["boss", "quest"]));
     let filtered_tags = mutable_tags.filter(|tag| tag.contains("s"));
     let mapped_lengths = mutable_tags.map(|tag| tag.len());
     let found_tag = mutable_tags.find(|tag| tag.starts_with("r"));
@@ -406,13 +406,13 @@ fn main() {
     };
     let imported_reward: ConfigReward = ConfigReward { item: "gem" };
     let imported_bonus: int = reward_bonus(imported_reward.count) + REWARD_BASE;
-    let outcome: Outcome = Outcome.Granted {
+    let outcome: Outcome = Outcome::Granted {
         item: imported_reward.item,
         count: imported_reward.count,
     };
     let imported_match: int = match outcome {
-        Outcome.Granted { item, count } if item == "gem" => count + 5,
-        Outcome.Skipped(reason) => reason.len(),
+        Outcome::Granted { item, count } if item == "gem" => count + 5,
+        Outcome::Skipped(reason) => reason.len(),
         _ => 0,
     };
     let imported_counts: array = REWARD_COUNTS;

@@ -67,7 +67,7 @@ fn parses_for_in_patterns() {
         source_id(),
         r#"
 fn main(rewards) {
-    for Reward.Grant { amount } in rewards {
+    for Reward::Grant { amount } in rewards {
         total += amount;
     }
 }
@@ -134,8 +134,8 @@ fn update(player) {
     let reward = KillReward { item_id: "gold", count };
     let mapped = values.map(|entry| entry.value + 1);
     match player.quest_progress {
-        QuestProgress.Active { quest_id, count } => {
-            player.quest_progress = QuestProgress.Active { quest_id, count: count + 1 };
+        QuestProgress::Active { quest_id, count } => {
+            player.quest_progress = QuestProgress::Active { quest_id, count: count + 1 };
         },
         _ => reward,
     }

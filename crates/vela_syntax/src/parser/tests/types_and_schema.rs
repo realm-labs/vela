@@ -5,7 +5,7 @@ fn parses_type_hint_metadata_and_rejects_generics() {
     let parsed = parse_source(
         source_id(),
         r#"
-fn level_up(player: game.Player, amount: int) -> Result {
+fn level_up(player: game::Player, amount: int) -> Result {
     let next: int = player.level + amount;
     let mapper = |reward: Reward| reward.count;
     return next;

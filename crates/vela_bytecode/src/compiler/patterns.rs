@@ -12,7 +12,7 @@ pub(crate) fn enum_variant_path(path: &[String]) -> Option<(String, String)> {
     if enum_path.is_empty() {
         return None;
     }
-    Some((enum_path.join("."), variant.clone()))
+    Some((enum_path.join("::"), variant.clone()))
 }
 
 pub(crate) fn record_pattern_field_match(field: &RecordPatternField) -> Option<&Pattern> {

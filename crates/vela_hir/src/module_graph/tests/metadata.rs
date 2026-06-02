@@ -5,9 +5,9 @@ fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
-fn grant(player: game.Player, amount: int) -> Result {
+fn grant(player: game::Player, amount: int) -> Result {
     let reward: Reward = Reward { count: amount };
     let mapper = |entry: Reward| entry.count;
     return reward;
@@ -29,7 +29,7 @@ struct Reward {
             .as_ref()
             .map(HirTypeHint::display)
             .as_deref(),
-        Some("game.Player")
+        Some("game::Player")
     );
     assert_eq!(
         signature
@@ -76,7 +76,7 @@ fn unknown_schema_type_hints_report_ranked_related_candidates() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.combat",
+        "game::combat",
         r#"
 struct Player { hp: int }
 fn grant(player: Plyer) {
@@ -111,7 +111,7 @@ fn unknown_impl_schema_names_report_trait_and_target_candidates() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.combat",
+        "game::combat",
         r#"
 trait Damageable {
     fn damage(self);
@@ -155,7 +155,7 @@ fn lowers_parameter_default_metadata_and_bindings() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.rewards",
+        "game::rewards",
         r#"
 const BASE = 10
 fn grant(amount = BASE, bonus = amount + 1) {
@@ -185,7 +185,7 @@ fn rejects_side_effecting_const_initializers() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.config",
+        "game::config",
         r#"
 const SAFE_LIMIT: int = 10 + 5;
 const BAD_CALL = register_event("monster.kill");
@@ -215,7 +215,7 @@ fn lowers_attribute_metadata_for_declarations_and_members() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 #[event("monster.kill")]
 pub fn grant(player: Player) {
@@ -223,7 +223,7 @@ pub fn grant(player: Player) {
 }
 #[doc("Reward metadata")]
 #[domain("gameplay")]
-#[policy(level = 3, tags = ["reward", game.reward.Event])]
+#[policy(level = 3, tags = ["reward", game::reward::Event])]
 struct Reward {
     #[doc("Reward item id")]
     item_id: string,
@@ -258,7 +258,7 @@ trait Damageable {
     assert_eq!(reward_attrs[2].name, "policy");
     assert_eq!(
         reward_attrs[2].value.as_deref(),
-        Some("level=3,tags=[\"reward\",game.reward.Event]")
+        Some("level=3,tags=[\"reward\",game::reward::Event]")
     );
     let reward_shape = graph.struct_shape(reward).expect("Reward shape");
     assert_eq!(reward_shape.fields[0].attrs[0].name, "doc");
@@ -285,7 +285,7 @@ fn lowers_enum_shape_metadata() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.quest",
+        "game::quest",
         r#"
 enum QuestProgress {
     None,
@@ -342,7 +342,7 @@ fn lowers_schema_field_default_metadata() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.quest",
+        "game::quest",
         r#"
 struct Reward {
     item_id: string = "gold",
@@ -374,7 +374,7 @@ fn lowers_impl_metadata_and_method_bindings() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.combat",
+        "game::combat",
         r#"
 trait Damageable {
     fn damage(self, amount: int) -> int;
@@ -460,9 +460,9 @@ fn graph_tracks_source_hashes_and_dependent_modules() {
     let mut graph = ModuleGraph::new();
     let main = graph.add_source(source(
         1,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.grant
+use game::reward::grant
 
 fn main() {
     return grant();
@@ -471,7 +471,7 @@ fn main() {
     ));
     let reward = graph.add_source(source(
         2,
-        "game.reward",
+        "game::reward",
         r#"
 pub fn grant() {
     return 4;
@@ -492,5 +492,5 @@ pub fn grant() {
         .collect::<Vec<_>>();
     impacted_names.sort();
 
-    assert_eq!(impacted_names, ["game.main", "game.reward"]);
+    assert_eq!(impacted_names, ["game::main", "game::reward"]);
 }

@@ -50,7 +50,7 @@ fn managed_heap_execution_runs_native_iterator_for_in_source() {
         r#"
 fn main() {
     let names = [];
-    for value in game.names() {
+    for value in game::names() {
         names.push(value.to_upper());
     }
     return names.join(",");
@@ -60,7 +60,7 @@ fn main() {
     .expect("compile heap native iterator for-in source");
     let mut vm = Vm::new();
     vm.register_standard_natives();
-    vm.register_native("game.names", |_| {
+    vm.register_native("game::names", |_| {
         Ok(Value::Iterator(IteratorState::from_values(vec![
             Value::String("gold".to_owned()),
             Value::String("xp".to_owned()),
@@ -118,11 +118,11 @@ fn main() {
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
-    let popped_name = option.unwrap_or(popped, "");
+    let popped_name = option::unwrap_or(popped, "");
     if names.len() == 2 && popped_name == "quest" && popped_name.contains("ue") && popped_name.starts_with("que")
-        && popped_name.ends_with("st") && option.is_none(missing_pop) && option.unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
-        && option.is_none(missing_get) && option.is_none(missing_remove)
-        && rewards.has("quest") && option.unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", "fallback") == "fallback"
+        && popped_name.ends_with("st") && option::is_none(missing_pop) && option::unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
+        && option::is_none(missing_get) && option::is_none(missing_remove)
+        && rewards.has("quest") && option::unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", "fallback") == "fallback"
         && keys[0] == "quest" && keys[1] == "xp"
         && amounts[0] == "done" && amounts[1] == 6
         && entries[0].key == "quest" && entries[1].value == 6 {
@@ -412,19 +412,19 @@ enum Option {
 
 fn maybe(value) {
     if value > 0 {
-        return Option.Some(value);
+        return Option::Some(value);
     }
-    return Option.None {};
+    return Option::None {};
 }
 
 fn present() {
     let value = maybe(4)?;
-    return Option.Some(value + 1);
+    return Option::Some(value + 1);
 }
 
 fn missing() {
     let value = maybe(0)?;
-    return Option.Some(value + 1);
+    return Option::Some(value + 1);
 }
 "#,
     )
@@ -435,7 +435,7 @@ fn missing() {
         Ok(Value::Enum {
             enum_name: "Option".into(),
             variant: "Some".into(),
-            fields: ScriptFields::from_pairs("Option.Some", [("0".into(), Value::Int(5))]),
+            fields: ScriptFields::from_pairs("Option::Some", [("0".into(), Value::Int(5))]),
         })
     );
     assert_eq!(
@@ -443,7 +443,7 @@ fn missing() {
         Ok(Value::Enum {
             enum_name: "Option".into(),
             variant: "None".into(),
-            fields: ScriptFields::from_pairs("Option.None", BTreeMap::new()),
+            fields: ScriptFields::from_pairs("Option::None", BTreeMap::new()),
         })
     );
 }
@@ -460,19 +460,19 @@ enum Result {
 
 fn checked(value) {
     if value > 0 {
-        return Result.Ok(value);
+        return Result::Ok(value);
     }
-    return Result.Err("bad");
+    return Result::Err("bad");
 }
 
 fn ok_case() {
     let value = checked(3)?;
-    return Result.Ok(value + 7);
+    return Result::Ok(value + 7);
 }
 
 fn err_case() {
     let value = checked(0)?;
-    return Result.Ok(value + 7);
+    return Result::Ok(value + 7);
 }
 "#,
     )
@@ -484,7 +484,7 @@ fn err_case() {
         Ok(Value::Enum {
             enum_name: "Result".into(),
             variant: "Ok".into(),
-            fields: ScriptFields::from_pairs("Result.Ok", [("0".into(), Value::Int(10))]),
+            fields: ScriptFields::from_pairs("Result::Ok", [("0".into(), Value::Int(10))]),
         })
     );
 
@@ -495,7 +495,7 @@ fn err_case() {
             enum_name: "Result".into(),
             variant: "Err".into(),
             fields: ScriptFields::from_pairs(
-                "Result.Err",
+                "Result::Err",
                 [("0".into(), Value::String("bad".into()))],
             ),
         })

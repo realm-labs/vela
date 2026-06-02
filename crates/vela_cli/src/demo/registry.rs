@@ -33,7 +33,7 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
         .register_host_type::<Config>()
         .register_host_methods::<Player>()
         .register_module(
-            ModuleDesc::new("game.reward")
+            ModuleDesc::new("game::reward")
                 .docs("Demo reward helper module.")
                 .attr("domain", "gameplay"),
         );
@@ -71,7 +71,7 @@ pub(crate) fn demo_support_type_registry(ids: DemoIds) -> TypeRegistry {
 }
 
 fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
-    NativeFunctionDesc::new("game.reward.grant", ids.reward_grant_function)
+    NativeFunctionDesc::new("game::reward::grant", ids.reward_grant_function)
         .param(
             "player",
             TypeHint::Host(TypeKey::new(Player::vela_type_id(), "Player")),
@@ -90,7 +90,7 @@ fn demo_reward_grant(_: Value, _: String) -> bool {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game.player.Player", implements = "Damageable")]
+#[script(path = "game::player::Player", implements = "Damageable")]
 struct Player {
     #[script(get)]
     id: i64,
@@ -121,7 +121,7 @@ impl Player {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game.monster.Monster")]
+#[script(path = "game::monster::Monster")]
 struct Monster {
     #[script(get)]
     id: i64,
@@ -132,7 +132,7 @@ struct Monster {
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(
-    path = "game.config.Config",
+    path = "game::config::Config",
     docs = "Demo gameplay configuration exposed through context host paths."
 )]
 struct Config {
@@ -144,7 +144,7 @@ struct Config {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game.inventory.Inventory")]
+#[script(path = "game::inventory::Inventory")]
 struct Inventory {
     #[script(get, hint = "map")]
     items: std::collections::BTreeMap<String, ItemStack>,
@@ -152,7 +152,7 @@ struct Inventory {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game.inventory.ItemStack")]
+#[script(path = "game::inventory::ItemStack")]
 struct ItemStack {
     #[script(get, set, hint = "int")]
     count: i64,

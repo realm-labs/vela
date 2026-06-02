@@ -215,7 +215,7 @@ fn active_variant_desc<'a>(
 }
 
 fn variant_owner_name(desc: &TypeDesc, variant: &VariantDesc) -> String {
-    format!("{}.{}", desc.key.name, variant.name)
+    format!("{}::{}", desc.key.name, variant.name)
 }
 
 fn find_variant_field<'a>(

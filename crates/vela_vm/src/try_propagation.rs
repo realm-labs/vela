@@ -52,7 +52,7 @@ fn enum_tag<'a>(
 }
 
 fn is_builtin_enum(enum_name: &str, expected: &str) -> bool {
-    enum_name == expected || enum_name.rsplit('.').next() == Some(expected)
+    enum_name == expected || enum_name.rsplit("::").next() == Some(expected)
 }
 
 fn tuple_variant_field_name(index: usize) -> String {

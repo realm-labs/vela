@@ -36,7 +36,7 @@ pub(super) fn enum_tag(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Op
         _ => return None,
     };
 
-    let kind = match enum_name.rsplit('.').next() {
+    let kind = match enum_name.rsplit("::").next() {
         Some("Option") => EnumKind::Option,
         Some("Result") => EnumKind::Result,
         _ => return None,

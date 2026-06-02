@@ -88,6 +88,7 @@ pub enum Symbol {
     DotDot,
     DotDotEqual,
     Colon,
+    ColonColon,
     Semicolon,
     Arrow,
     FatArrow,

@@ -6,7 +6,7 @@ fn compiled_source_reflect_type_reports_unknown_type_candidates() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.type_info("Plyer");
+    return reflect::type_info("Plyer");
 }
 "#,
     )
@@ -36,7 +36,7 @@ fn compiled_source_reflect_trait_reports_unknown_trait_candidates() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.trait_info("Damagable");
+    return reflect::trait_info("Damagable");
 }
 "#,
     )
@@ -66,19 +66,19 @@ fn compiled_source_reflect_variants_respect_field_access() {
         SourceId::new(1),
         r#"
 fn main() {
-    let quest = QuestProgress.Active { count: 1 };
-    let variants = reflect.variants(quest);
-    let active = reflect.variant_info(quest, "Active");
-    let all_variants = reflect.variants();
-    let active_fields = reflect.fields(quest);
+    let quest = QuestProgress::Active { count: 1 };
+    let variants = reflect::variants(quest);
+    let active = reflect::variant_info(quest, "Active");
+    let all_variants = reflect::variants();
+    let active_fields = reflect::fields(quest);
     if variants[0].fields.len() == 1
         && active.fields.len() == 1
         && active_fields.len() == 1
         && active.fields[0].name == "count"
         && variants[0].fields[0].name == "count"
         && active_fields[0].name == "count"
-        && active_fields[0].owner == "QuestProgress.Active"
-        && !reflect.has_field(quest, "secret")
+        && active_fields[0].owner == "QuestProgress::Active"
+        && !reflect::has_field(quest, "secret")
         && all_variants[0].fields.len() == 1
         && all_variants[0].owner == "QuestProgress" {
         return variants.len() * 10 + all_variants.len();
@@ -109,8 +109,8 @@ fn compiled_source_reflect_field_denies_hidden_variant_fields() {
         SourceId::new(1),
         r#"
 fn main() {
-    let quest = QuestProgress.Active { count: 1 };
-    return reflect.field(quest, "secret");
+    let quest = QuestProgress::Active { count: 1 };
+    return reflect::field(quest, "secret");
 }
 "#,
     )
@@ -127,7 +127,7 @@ fn main() {
     assert!(matches!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
-            type_name: "QuestProgress.Active".to_owned(),
+            type_name: "QuestProgress::Active".to_owned(),
             field: "secret".to_owned(),
             source_span: None,
         })
@@ -141,15 +141,15 @@ fn compiled_source_reflect_variants_respect_field_permissions() {
         SourceId::new(1),
         r#"
 fn main() {
-    let quest = QuestProgress.Active { count: 1, admin_note: "hidden" };
-    let variants = reflect.variants(quest);
-    let active = reflect.variant_info(quest, "Active");
-    let fields = reflect.fields(quest);
+    let quest = QuestProgress::Active { count: 1, admin_note: "hidden" };
+    let variants = reflect::variants(quest);
+    let active = reflect::variant_info(quest, "Active");
+    let fields = reflect::fields(quest);
     if variants[0].fields.len() == 1
         && active.fields.len() == 1
         && fields.len() == 1
         && active.fields[0].name == "count"
-        && !reflect.has_field(quest, "admin_note") {
+        && !reflect::has_field(quest, "admin_note") {
         return 1;
     }
     return 0;
@@ -182,19 +182,19 @@ fn compiled_source_reflect_variants_expose_granted_field_permissions() {
         SourceId::new(1),
         r#"
 fn main() {
-    let quest = QuestProgress.Active { count: 1, admin_note: "shown" };
-    let variants = reflect.variants(quest);
-    let active = reflect.variant_info(quest, "Active");
-    let fields = reflect.fields(quest);
-    let admin = reflect.field(quest, "admin_note");
+    let quest = QuestProgress::Active { count: 1, admin_note: "shown" };
+    let variants = reflect::variants(quest);
+    let active = reflect::variant_info(quest, "Active");
+    let fields = reflect::fields(quest);
+    let admin = reflect::field(quest, "admin_note");
     if variants[0].fields.len() == 2
         && active.fields.len() == 2
         && fields.len() == 2
         && active.fields[1].name == "admin_note"
-        && active.fields[1].owner == "QuestProgress.Active"
-        && reflect.has_field(quest, "admin_note")
+        && active.fields[1].owner == "QuestProgress::Active"
+        && reflect::has_field(quest, "admin_note")
         && admin.name == "admin_note"
-        && admin.owner == "QuestProgress.Active"
+        && admin.owner == "QuestProgress::Active"
         && admin.access.required_permissions[0] == "quest.admin.inspect" {
         return 1;
     }
@@ -230,13 +230,13 @@ fn compiled_source_reflect_methods_respect_method_policy() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    let methods = reflect.methods(player);
-    let visible = reflect.method(player, "visible");
-    let all_methods = reflect.methods();
-    if reflect.has_method(player, "visible")
-        && !reflect.has_method(player, "hidden")
-        && !reflect.has_method(player, "private")
-        && !reflect.has_method(player, "admin")
+    let methods = reflect::methods(player);
+    let visible = reflect::method(player, "visible");
+    let all_methods = reflect::methods();
+    if reflect::has_method(player, "visible")
+        && !reflect::has_method(player, "hidden")
+        && !reflect::has_method(player, "private")
+        && !reflect::has_method(player, "admin")
         && visible.name == "visible" {
         return methods.len() * 10 + all_methods.len();
     }
@@ -275,7 +275,7 @@ fn compiled_source_reflect_method_reports_unknown_method_candidates() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.method(player, "grant_xp");
+    return reflect::method(player, "grant_xp");
 }
 "#,
     )
@@ -307,8 +307,8 @@ fn compiled_source_reflect_variant_is_reports_unknown_variant_candidates() {
         SourceId::new(1),
         r#"
 fn main() {
-    let quest = QuestProgress.Active { count: 1 };
-    return reflect.variant_is(quest, "Actve");
+    let quest = QuestProgress::Active { count: 1 };
+    return reflect::variant_is(quest, "Actve");
 }
 "#,
     )
@@ -343,8 +343,8 @@ fn compiled_source_reflect_variant_info_reports_unknown_variant_candidates() {
         SourceId::new(1),
         r#"
 fn main() {
-    let quest = QuestProgress.Active { count: 1 };
-    return reflect.variant_info(quest, "Actve");
+    let quest = QuestProgress::Active { count: 1 };
+    return reflect::variant_info(quest, "Actve");
 }
 "#,
     )
@@ -380,7 +380,7 @@ fn compiled_source_reflect_implements_reports_unknown_trait_candidates() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.implements(player, "Damagable");
+    return reflect::implements(player, "Damagable");
 }
 "#,
     )
@@ -411,10 +411,10 @@ fn compiled_source_reflect_implements_accepts_type_descriptor() {
         SourceId::new(1),
         r#"
 fn main() {
-    let player_type = reflect.type_info("Player");
-    let damageable = reflect.trait_info("Damageable");
-    if reflect.kind(player_type) == "host" && reflect.implements(player_type, damageable) {
-        return reflect.id(player_type);
+    let player_type = reflect::type_info("Player");
+    let damageable = reflect::trait_info("Damageable");
+    if reflect::kind(player_type) == "host" && reflect::implements(player_type, damageable) {
+        return reflect::id(player_type);
     }
     return 0;
 }

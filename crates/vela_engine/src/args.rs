@@ -284,7 +284,7 @@ where
                 enum_name,
                 variant,
                 fields,
-            } if enum_name == "Option" || enum_name.rsplit('.').next() == Some("Option") => {
+            } if enum_name == "Option" || enum_name.rsplit("::").next() == Some("Option") => {
                 match variant.as_str() {
                     "Some" => fields
                         .get("0")
@@ -326,7 +326,7 @@ where
                 enum_name,
                 variant,
                 fields,
-            } if enum_name == "Result" || enum_name.rsplit('.').next() == Some("Result") => {
+            } if enum_name == "Result" || enum_name.rsplit("::").next() == Some("Result") => {
                 let payload = fields
                     .get("0")
                     .ok_or_else(|| type_mismatch(Self::TYPE_NAME))?;

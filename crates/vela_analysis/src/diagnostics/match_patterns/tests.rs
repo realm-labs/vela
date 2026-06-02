@@ -11,8 +11,8 @@ fn reports_unknown_variants_for_known_enum_match_patterns() {
         r#"
         fn main(quest) {
             match quest {
-                QuestState.Activ => 1,
-                QuestState.Finished => 0,
+                QuestState::Activ => 1,
+                QuestState::Finished => 0,
             };
         }
         "#,
@@ -43,12 +43,12 @@ fn reports_unknown_dynamic_option_result_variants() {
         r#"
         fn main(maybe, result) {
             match maybe {
-                Option.Smoe(value) => value,
-                Option.None => 0,
+                Option::Smoe(value) => value,
+                Option::None => 0,
             };
             match result {
-                Result.Okk(value) => value,
-                Result.Err(error) => error,
+                Result::Okk(value) => value,
+                Result::Err(error) => error,
             };
         }
         "#,
@@ -86,11 +86,11 @@ fn skips_dynamic_or_different_owner_patterns() {
         r#"
         fn main(quest, unknown) {
             match quest {
-                Other.Activ => 1,
-                QuestState.Active => 0,
+                Other::Activ => 1,
+                QuestState::Active => 0,
             };
             match unknown {
-                Missing.Active => 1,
+                Missing::Active => 1,
             };
         }
         "#,

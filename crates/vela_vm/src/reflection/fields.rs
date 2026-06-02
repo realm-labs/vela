@@ -16,7 +16,7 @@ pub(super) fn register(
     let fields_registry = Arc::clone(registry);
     let fields_policy = policy.clone();
     let fields_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.fields", move |args, _host| {
+    vm.register_host_native("reflect::fields", move |args, _host| {
         check_reflect_policy(
             &fields_policy,
             &fields_budget,
@@ -28,8 +28,8 @@ pub(super) fn register(
                 &fields_policy,
             ));
         }
-        expect_arity("reflect.fields", args, 1)?;
-        let target = value_to_reflect(&args[0], "reflect.fields")?;
+        expect_arity("reflect::fields", args, 1)?;
+        let target = value_to_reflect(&args[0], "reflect::fields")?;
         check_host_ref_inspection(&fields_policy, &target)?;
         value_from_reflect(reflect::members::fields_with_policy(
             &fields_registry,
@@ -41,16 +41,16 @@ pub(super) fn register(
     let field_registry = Arc::clone(registry);
     let field_policy = policy.clone();
     let field_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.field", move |args, _host| {
+    vm.register_host_native("reflect::field", move |args, _host| {
         check_reflect_policy(
             &field_policy,
             &field_budget,
             reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
-        expect_arity("reflect.field", args, 2)?;
-        let target = value_to_reflect(&args[0], "reflect.field")?;
+        expect_arity("reflect::field", args, 2)?;
+        let target = value_to_reflect(&args[0], "reflect::field")?;
         check_host_ref_inspection(&field_policy, &target)?;
-        let field_name = expect_string(&args[1], "reflect.field")?;
+        let field_name = expect_string(&args[1], "reflect::field")?;
         value_from_reflect(reflect::members::field_with_policy(
             &field_registry,
             &target,
@@ -62,16 +62,16 @@ pub(super) fn register(
     let has_field_registry = Arc::clone(registry);
     let has_field_policy = policy.clone();
     let has_field_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.has_field", move |args, _host| {
+    vm.register_host_native("reflect::has_field", move |args, _host| {
         check_reflect_policy(
             &has_field_policy,
             &has_field_budget,
             reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
-        expect_arity("reflect.has_field", args, 2)?;
-        let target = value_to_reflect(&args[0], "reflect.has_field")?;
+        expect_arity("reflect::has_field", args, 2)?;
+        let target = value_to_reflect(&args[0], "reflect::has_field")?;
         check_host_ref_inspection(&has_field_policy, &target)?;
-        let field_name = expect_string(&args[1], "reflect.has_field")?;
+        let field_name = expect_string(&args[1], "reflect::has_field")?;
         Ok(Value::Bool(reflect::members::has_field_with_policy(
             &has_field_registry,
             &target,

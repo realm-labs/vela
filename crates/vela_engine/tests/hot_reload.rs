@@ -68,13 +68,13 @@ enum QuestProgress {
 }
 
 fn main() {
-    let quest_type = reflect.type_info("QuestProgress");
-    let quest = QuestProgress.Active { count: 1 };
+    let quest_type = reflect::type_info("QuestProgress");
+    let quest = QuestProgress::Active { count: 1 };
 
-    if reflect.kind(quest_type) == "script_enum"
-        && reflect.has_function("main")
-        && reflect.has_variant(quest_type, "Active")
-        && reflect.variant_is(quest, "Active") {
+    if reflect::kind(quest_type) == "script_enum"
+        && reflect::has_function("main")
+        && reflect::has_variant(quest_type, "Active")
+        && reflect::variant_is(quest, "Active") {
         return 1;
     }
 
@@ -102,13 +102,13 @@ enum QuestProgress {
 }
 
 fn main() {
-    let quest_type = reflect.type_info("QuestProgress");
-    let quest = QuestProgress.Finished { count: 2 };
+    let quest_type = reflect::type_info("QuestProgress");
+    let quest = QuestProgress::Finished { count: 2 };
 
-    if reflect.kind(quest_type) == "script_enum"
-        && reflect.has_function("main")
-        && reflect.has_variant(quest_type, "Finished")
-        && reflect.variant_is(quest, "Finished") {
+    if reflect::kind(quest_type) == "script_enum"
+        && reflect::has_function("main")
+        && reflect::has_variant(quest_type, "Finished")
+        && reflect::variant_is(quest, "Finished") {
         return 2;
     }
 

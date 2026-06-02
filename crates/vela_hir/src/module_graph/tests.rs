@@ -2,7 +2,7 @@ use super::*;
 use crate::binding::{BindingResolution, LocalBindingKind};
 use crate::type_hint::EnumVariantFieldsHint;
 fn source(id: u32, module: &str, text: &str) -> ModuleSource {
-    ModuleSource::new(SourceId::new(id), ModulePath::from_dotted(module), text)
+    ModuleSource::new(SourceId::new(id), ModulePath::from_qualified(module), text)
 }
 
 mod bindings;

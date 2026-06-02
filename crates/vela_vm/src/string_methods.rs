@@ -231,10 +231,10 @@ fn main() {
     let event = "xp奖励.done";
     let reward = event.find("奖励");
     let missing = event.find("missing");
-    if option.unwrap_or(reward, -1) == 2
-        && option.unwrap_or(missing, 99) == 99
+    if option::unwrap_or(reward, -1) == 2
+        && option::unwrap_or(missing, 99) == 99
     {
-        return option.unwrap_or(event.find(".done"), -1);
+        return option::unwrap_or(event.find(".done"), -1);
     }
     return -1;
 }
@@ -253,7 +253,7 @@ fn main() {
         let source = r#"
 fn main() {
     let name = "monster.wolf.alpha";
-    return option.unwrap_or(name.find("wolf"), -1);
+    return option::unwrap_or(name.find("wolf"), -1);
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -297,11 +297,11 @@ fn main() {
     let first = label.char_at(0);
     let reward = label.char_at(2);
     let missing = label.char_at(99);
-    if option.unwrap_or(first, "") == "x"
-        && option.unwrap_or(reward, "") == "奖"
-        && option.is_none(missing)
+    if option::unwrap_or(first, "") == "x"
+        && option::unwrap_or(reward, "") == "奖"
+        && option::is_none(missing)
     {
-        return option.unwrap_or(label.char_at(3), "");
+        return option::unwrap_or(label.char_at(3), "");
     }
     return "";
 }
@@ -361,12 +361,12 @@ fn main() {
 fn main() {
     let event = "quest.reward.done";
     let body = event.strip_prefix("quest.");
-    let reward = option.unwrap_or(body, "").strip_suffix(".done");
+    let reward = option::unwrap_or(body, "").strip_suffix(".done");
     let missing = event.strip_prefix("player.");
-    if option.unwrap_or(reward, "") == "reward"
-        && option.is_none(missing)
+    if option::unwrap_or(reward, "") == "reward"
+        && option::is_none(missing)
     {
-        return option.unwrap_or("奖励.done".strip_suffix(".done"), "");
+        return option::unwrap_or("奖励.done".strip_suffix(".done"), "");
     }
     return "";
 }
@@ -386,7 +386,7 @@ fn main() {
 fn main() {
     let event = "monster.wolf.alpha";
     let body = event.strip_prefix("monster.");
-    return option.unwrap_or(option.unwrap_or(body, "").strip_suffix(".alpha"), "missing");
+    return option::unwrap_or(option::unwrap_or(body, "").strip_suffix(".alpha"), "missing");
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -561,12 +561,12 @@ fn main() {
     let negative = "-7".parse_int();
     let invalid = "level-42".parse_int();
     let overflow = "9223372036854775808".parse_int();
-    if option.unwrap_or(level, 0) == 42
-        && option.unwrap_or(negative, 0) == -7
-        && option.is_none(invalid)
-        && option.is_none(overflow)
+    if option::unwrap_or(level, 0) == 42
+        && option::unwrap_or(negative, 0) == -7
+        && option::is_none(invalid)
+        && option::is_none(overflow)
     {
-        return option.unwrap_or("0".parse_int(), -1);
+        return option::unwrap_or("0".parse_int(), -1);
     }
     return -1;
 }
@@ -586,7 +586,7 @@ fn main() {
 fn main() {
     let raw = " 12 ";
     let parsed = raw.trim().parse_int();
-    return option.unwrap_or(parsed, -1);
+    return option::unwrap_or(parsed, -1);
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -609,12 +609,12 @@ fn main() {
     let exponent = "2.5e1".parse_float();
     let invalid = "rate:1.25".parse_float();
     let infinite = "1e309".parse_float();
-    if option.unwrap_or(rate, 0.0) == 1.25
-        && option.unwrap_or(exponent, 0.0) == 25.0
-        && option.is_none(invalid)
-        && option.is_none(infinite)
+    if option::unwrap_or(rate, 0.0) == 1.25
+        && option::unwrap_or(exponent, 0.0) == 25.0
+        && option::is_none(invalid)
+        && option::is_none(infinite)
     {
-        return option.unwrap_or("-0.5".parse_float(), 1.0);
+        return option::unwrap_or("-0.5".parse_float(), 1.0);
     }
     return 1.0;
 }
@@ -634,7 +634,7 @@ fn main() {
 fn main() {
     let raw = " 3.5 ";
     let parsed = raw.trim().parse_float();
-    return math.floor(option.unwrap_or(parsed, -1.0));
+    return math::floor(option::unwrap_or(parsed, -1.0));
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")
@@ -657,12 +657,12 @@ fn main() {
     let disabled = "false".parse_bool();
     let uppercase = "TRUE".parse_bool();
     let yes = "yes".parse_bool();
-    if option.unwrap_or(enabled, false)
-        && !option.unwrap_or(disabled, true)
-        && option.is_none(uppercase)
-        && option.is_none(yes)
+    if option::unwrap_or(enabled, false)
+        && !option::unwrap_or(disabled, true)
+        && option::is_none(uppercase)
+        && option::is_none(yes)
     {
-        return option.unwrap_or("false".parse_bool(), true);
+        return option::unwrap_or("false".parse_bool(), true);
     }
     return true;
 }
@@ -682,7 +682,7 @@ fn main() {
 fn main() {
     let raw = " true ";
     let parsed = raw.trim().parse_bool();
-    return option.unwrap_or(parsed, false);
+    return option::unwrap_or(parsed, false);
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")

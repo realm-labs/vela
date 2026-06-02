@@ -154,11 +154,11 @@ enum Result {
     Err(message)
 }
 fn checked(value) {
-    return Result.Ok(value);
+    return Result::Ok(value);
 }
 fn main() {
     let value = checked(10)?;
-    return Result.Ok(value + 1);
+    return Result::Ok(value + 1);
 }
 "#,
         "main",
@@ -261,9 +261,9 @@ fn compiler_evaluates_imported_scalar_const_expressions_across_modules() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.tuning.BONUS as REWARD
+use game::tuning::BONUS as REWARD
 fn main() {
     return REWARD + 1;
 }
@@ -271,15 +271,15 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.tuning"),
+            ModulePath::from_qualified("game::tuning"),
             r#"
-use game.base.BASE as START
+use game::base::BASE as START
 pub const BONUS: int = START + 1;
 "#,
         ),
         ModuleSource::new(
             SourceId::new(3),
-            ModulePath::from_dotted("game.base"),
+            ModulePath::from_qualified("game::base"),
             r#"
 pub const BASE: int = 4;
 "#,
@@ -287,7 +287,7 @@ pub const BASE: int = 4;
     ])
     .expect("imported scalar const expressions should compile across modules");
     let main = program
-        .function("game.main.main")
+        .function("game::main::main")
         .expect("qualified main function");
     assert!(main.constants.contains(&Constant::Int(5)));
 }
@@ -353,7 +353,7 @@ fn compiler_uses_hir_bindings_for_match_pattern_fields() {
 fn main(reward) {
     let amount = 100;
     match reward {
-        Reward.Granted { amount } => {
+        Reward::Granted { amount } => {
             {
                 let amount = 2;
             }

@@ -108,7 +108,7 @@ pub(crate) fn value_from_reflect(value: reflect::value::ReflectValue) -> VmResul
                 .map(|(key, value)| Ok((key, value_from_reflect(value)?)))
                 .collect::<VmResult<BTreeMap<_, _>>>()?;
             Ok(Value::Enum {
-                fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
+                fields: ScriptFields::from_pairs(&format!("{enum_name}::{variant}"), fields),
                 enum_name,
                 variant,
             })

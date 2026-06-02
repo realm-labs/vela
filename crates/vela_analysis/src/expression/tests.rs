@@ -189,8 +189,8 @@ fn option_result_predicates_narrow_branch_facts() {
     let expressions = function_exprs(
         r#"
             fn main() {
-                if option.is_some(maybe_player) { maybe_player } else { maybe_player };
-                if !result.is_err(grant_result) { grant_result } else { grant_result };
+                if option::is_some(maybe_player) { maybe_player } else { maybe_player };
+                if !result::is_err(grant_result) { grant_result } else { grant_result };
                 if maybe_player.is_none() { maybe_player } else { maybe_player };
                 if grant_result.is_ok() { grant_result } else { grant_result };
             }
@@ -446,9 +446,9 @@ fn infers_stdlib_function_facts() {
     let expressions = function_exprs(
         r#"
             fn main() {
-                option.unwrap_or(maybe, 10);
-                set.from_array(names);
-                math.pow(2, 3);
+                option::unwrap_or(maybe, 10);
+                set::from_array(names);
+                math::pow(2, 3);
             }
             "#,
     );
@@ -499,8 +499,8 @@ fn match_patterns_bind_variant_field_facts() {
         r#"
             fn main(quest) {
                 match quest {
-                    QuestState.Active { quest_id } => quest_id.len(),
-                    QuestState.Done => 0,
+                    QuestState::Active { quest_id } => quest_id.len(),
+                    QuestState::Done => 0,
                 };
             }
             "#,
@@ -521,8 +521,8 @@ fn match_patterns_narrow_scrutinee_variant_facts() {
         r#"
             fn main(quest) {
                 match quest {
-                    QuestState.Active { quest_id } => quest.quest_id,
-                    QuestState.Done => "",
+                    QuestState::Active { quest_id } => quest.quest_id,
+                    QuestState::Done => "",
                 };
             }
             "#,
@@ -543,8 +543,8 @@ fn option_match_patterns_bind_dynamic_payload_facts() {
         r#"
             fn main(maybe_player) {
                 match maybe_player {
-                    Option.Some(player) => player.level,
-                    Option.None => 0,
+                    Option::Some(player) => player.level,
+                    Option::None => 0,
                 };
             }
             "#,
@@ -565,8 +565,8 @@ fn result_match_patterns_bind_dynamic_payload_facts() {
         r#"
             fn main(grant_result) {
                 match grant_result {
-                    Result.Ok(player) => player.level,
-                    Result.Err(reason) => reason.len(),
+                    Result::Ok(player) => player.level,
+                    Result::Err(reason) => reason.len(),
                 };
             }
             "#,

@@ -218,10 +218,10 @@ fn runs_compiled_match_expression_values() {
         SourceId::new(1),
         r#"
 fn main() {
-    let damage = Damage.Physical { amount: 7 };
+    let damage = Damage::Physical { amount: 7 };
     let value = match damage {
-        Damage.Magical { amount } => amount + 100,
-        Damage.Physical { amount } => {
+        Damage::Magical { amount } => amount + 100,
+        Damage::Physical { amount } => {
             amount + 1;
         },
         _ => 0,
@@ -352,10 +352,10 @@ fn match_guards_can_read_record_pattern_bindings() {
         SourceId::new(1),
         r#"
 fn main() {
-    let damage = Damage.Physical { amount: 7 };
+    let damage = Damage::Physical { amount: 7 };
     return match damage {
-        Damage.Physical { amount } if amount > 10 => 100,
-        Damage.Physical { amount } if amount == 7 => amount + 1,
+        Damage::Physical { amount } if amount > 10 => 100,
+        Damage::Physical { amount } if amount == 7 => amount + 1,
         _ => 0,
     };
 }
@@ -377,10 +377,10 @@ enum Reward {
 }
 
 fn main() {
-    let reward = Reward.Grant { kind: "xp", amount: 7 };
+    let reward = Reward::Grant { kind: "xp", amount: 7 };
     return match reward {
-        Reward.Grant { kind: "gold", amount } => amount,
-        Reward.Grant { kind: "xp", amount } => amount + 1,
+        Reward::Grant { kind: "gold", amount } => amount,
+        Reward::Grant { kind: "xp", amount } => amount + 1,
         _ => 0,
     };
 }
@@ -407,10 +407,10 @@ enum Payload {
 }
 
 fn main() {
-    let reward = Reward.Grant { payload: Payload.Xp(7) };
+    let reward = Reward::Grant { payload: Payload::Xp(7) };
     return match reward {
-        Reward.Grant { payload: Payload.Gold(amount) } => amount,
-        Reward.Grant { payload: Payload.Xp(amount) } => amount + 1,
+        Reward::Grant { payload: Payload::Gold(amount) } => amount,
+        Reward::Grant { payload: Payload::Xp(amount) } => amount + 1,
         _ => 0,
     };
 }
@@ -436,9 +436,9 @@ enum Damage {
 }
 
 fn main() {
-    let damage = Damage.Physical(7, 2);
+    let damage = Damage::Physical(7, 2);
     return match damage {
-        Damage.Physical(amount, bonus) => amount + bonus,
+        Damage::Physical(amount, bonus) => amount + bonus,
         _ => 0,
     };
 }
@@ -460,10 +460,10 @@ enum Damage {
 }
 
 fn main() {
-    let damage = Damage.Typed("fire", 7);
+    let damage = Damage::Typed("fire", 7);
     return match damage {
-        Damage.Typed("frost", amount) => amount + 100,
-        Damage.Typed("fire", amount) => amount + 1,
+        Damage::Typed("frost", amount) => amount + 100,
+        Damage::Typed("fire", amount) => amount + 1,
         _ => 0,
     };
 }

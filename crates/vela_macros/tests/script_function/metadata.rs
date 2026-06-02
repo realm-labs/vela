@@ -4,7 +4,7 @@ use super::*;
 fn script_function_generates_native_function_metadata() {
     assert_eq!(
         vela_native_function_desc_grant_bonus(),
-        NativeFunctionDesc::new("game.grant_bonus", function_id("game.grant_bonus"))
+        NativeFunctionDesc::new("game::grant_bonus", function_id("game::grant_bonus"))
             .param("amount", TypeHint::Int)
             .param("multiplier", TypeHint::Int)
             .returns(TypeHint::Int)
@@ -24,12 +24,12 @@ fn script_function_generates_native_function_metadata() {
 fn script_function_generates_set_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_count_labels(),
-        NativeFunctionDesc::new("game.count_labels", function_id("game.count_labels"))
+        NativeFunctionDesc::new("game::count_labels", function_id("game::count_labels"))
             .param("labels", TypeHint::Set)
             .returns(TypeHint::Int)
             .effects(EffectSet::pure())
             .access(FunctionAccess::public().reflect_callable(true))
-            .docs("Counts copied unique labels from a script set."),
+            .docs("Counts copied unique labels from a script set::"),
     );
 }
 
@@ -38,14 +38,14 @@ fn script_function_generates_hash_set_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_count_unordered_labels(),
         NativeFunctionDesc::new(
-            "game.count_unordered_labels",
-            function_id("game.count_unordered_labels"),
+            "game::count_unordered_labels",
+            function_id("game::count_unordered_labels"),
         )
         .param("labels", TypeHint::Set)
         .returns(TypeHint::Int)
         .effects(EffectSet::pure())
         .access(FunctionAccess::public().reflect_callable(true))
-        .docs("Counts copied unordered labels from a script set."),
+        .docs("Counts copied unordered labels from a script set::"),
     );
 }
 
@@ -53,7 +53,7 @@ fn script_function_generates_hash_set_signature_metadata() {
 fn script_function_generates_fixed_array_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_sum_weights(),
-        NativeFunctionDesc::new("game.sum_weights", function_id("game.sum_weights"))
+        NativeFunctionDesc::new("game::sum_weights", function_id("game::sum_weights"))
             .param("weights", TypeHint::Array)
             .returns(TypeHint::Int)
             .effects(EffectSet::pure())
@@ -62,11 +62,14 @@ fn script_function_generates_fixed_array_signature_metadata() {
     );
     assert_eq!(
         vela_native_function_desc_default_weights(),
-        NativeFunctionDesc::new("game.default_weights", function_id("game.default_weights"))
-            .returns(TypeHint::Array)
-            .effects(EffectSet::pure())
-            .access(FunctionAccess::public().reflect_callable(true))
-            .docs("Returns a copied fixed weight array."),
+        NativeFunctionDesc::new(
+            "game::default_weights",
+            function_id("game::default_weights")
+        )
+        .returns(TypeHint::Array)
+        .effects(EffectSet::pure())
+        .access(FunctionAccess::public().reflect_callable(true))
+        .docs("Returns a copied fixed weight array."),
     );
 }
 
@@ -74,7 +77,7 @@ fn script_function_generates_fixed_array_signature_metadata() {
 fn script_function_generates_hash_map_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_score_total(),
-        NativeFunctionDesc::new("game.score_total", function_id("game.score_total"))
+        NativeFunctionDesc::new("game::score_total", function_id("game::score_total"))
             .param("scores", TypeHint::Map)
             .returns(TypeHint::Int)
             .effects(EffectSet::pure())
@@ -88,8 +91,8 @@ fn script_function_generates_btree_map_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_ordered_score_summary(),
         NativeFunctionDesc::new(
-            "game.ordered_score_summary",
-            function_id("game.ordered_score_summary"),
+            "game::ordered_score_summary",
+            function_id("game::ordered_score_summary"),
         )
         .param("scores", TypeHint::Map)
         .returns(TypeHint::Map)
@@ -103,7 +106,7 @@ fn script_function_generates_btree_map_signature_metadata() {
 fn script_function_generates_f32_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_scale_weight(),
-        NativeFunctionDesc::new("game.scale_weight", function_id("game.scale_weight"))
+        NativeFunctionDesc::new("game::scale_weight", function_id("game::scale_weight"))
             .param("weight", TypeHint::Float)
             .returns(TypeHint::Float)
             .effects(EffectSet::pure())
@@ -116,7 +119,7 @@ fn script_function_generates_f32_signature_metadata() {
 fn script_function_generates_option_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_optional_bonus(),
-        NativeFunctionDesc::new("game.optional_bonus", function_id("game.optional_bonus"))
+        NativeFunctionDesc::new("game::optional_bonus", function_id("game::optional_bonus"))
             .param("bonus", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::pure())
@@ -129,7 +132,7 @@ fn script_function_generates_option_signature_metadata() {
 fn script_function_generates_five_arg_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_sum5(),
-        NativeFunctionDesc::new("game.sum5", function_id("game.sum5"))
+        NativeFunctionDesc::new("game::sum5", function_id("game::sum5"))
             .param("a", TypeHint::Int)
             .param("b", TypeHint::Int)
             .param("c", TypeHint::Int)
@@ -146,7 +149,7 @@ fn script_function_generates_five_arg_signature_metadata() {
 fn script_function_generates_result_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_checked_bonus(),
-        NativeFunctionDesc::new("game.checked_bonus", function_id("game.checked_bonus"))
+        NativeFunctionDesc::new("game::checked_bonus", function_id("game::checked_bonus"))
             .param("ok", TypeHint::Bool)
             .returns(TypeHint::Any)
             .effects(EffectSet::pure())
@@ -159,7 +162,7 @@ fn script_function_generates_result_signature_metadata() {
 fn script_context_function_generates_native_function_metadata() {
     assert_eq!(
         vela_native_function_desc_set_level(),
-        NativeFunctionDesc::new("game.set_level", function_id("game.set_level"))
+        NativeFunctionDesc::new("game::set_level", function_id("game::set_level"))
             .param("player", TypeHint::Any)
             .param("level", TypeHint::Int)
             .returns(TypeHint::Bool)
@@ -177,7 +180,7 @@ fn script_context_function_generates_native_function_metadata() {
 fn script_host_function_generates_native_function_metadata() {
     assert_eq!(
         vela_native_function_desc_set_score(),
-        NativeFunctionDesc::new("game.set_score", function_id("game.set_score"))
+        NativeFunctionDesc::new("game::set_score", function_id("game::set_score"))
             .param("player", TypeHint::Any)
             .param("score", TypeHint::Int)
             .returns(TypeHint::Int)

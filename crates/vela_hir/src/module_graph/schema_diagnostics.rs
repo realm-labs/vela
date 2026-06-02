@@ -200,7 +200,7 @@ fn schema_path_diagnostics(
     if path.is_empty() || is_builtin_type_hint(path) {
         return Vec::new();
     }
-    let wanted = path.join(".");
+    let wanted = path.join("::");
     if candidates.iter().any(|candidate| {
         candidate.name == wanted && schema_kind_allowed(candidate.kind, allowed_kinds)
     }) {
@@ -250,7 +250,7 @@ fn visible_schema_candidates(graph: &ModuleGraph, module: ModuleId) -> Vec<Schem
     }
 
     for (path, declaration) in graph.qualified_declarations_for(module) {
-        insert_schema_candidate(graph, &mut candidates, path.join("."), declaration);
+        insert_schema_candidate(graph, &mut candidates, path.join("::"), declaration);
     }
 
     candidates.into_values().collect()

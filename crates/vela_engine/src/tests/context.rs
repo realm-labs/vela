@@ -32,7 +32,7 @@ fn engine_context_clock_requires_permission() {
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx.now();
+    return ctx::now();
 }
 "#,
     )
@@ -41,7 +41,7 @@ fn main() {
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "ctx.now".to_owned(),
+            native: "ctx::now".to_owned(),
             permission: CONTEXT_TIME_PERMISSION.to_owned(),
         }
     ));
@@ -57,7 +57,7 @@ fn engine_context_elapsed_since_requires_permission() {
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx.elapsed_since(1699999990);
+    return ctx::elapsed_since(1699999990);
 }
 "#,
     )
@@ -66,7 +66,7 @@ fn main() {
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "ctx.elapsed_since".to_owned(),
+            native: "ctx::elapsed_since".to_owned(),
             permission: CONTEXT_TIME_PERMISSION.to_owned(),
         }
     ));
@@ -88,7 +88,7 @@ fn gameplay_permissions_allow_context_time_but_not_random() {
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx.now() + ctx.tick();
+    return ctx::now() + ctx::tick();
 }
 "#,
     )
@@ -105,7 +105,7 @@ fn main() {
         SourceId::new(2),
         r#"
 fn main() {
-    return math.random(1, 6);
+    return math::random(1, 6);
 }
 "#,
     )
@@ -113,7 +113,7 @@ fn main() {
     assert!(matches!(
         engine.into_vm().run_program(&random_program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "math.random".to_owned(),
+            native: "math::random".to_owned(),
             permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
         }
     ));
@@ -130,7 +130,7 @@ fn engine_context_clock_returns_configured_values() {
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx.elapsed_since(1699999990) + ctx.tick();
+    return ctx::elapsed_since(1699999990) + ctx::tick();
 }
 "#,
     )
@@ -154,9 +154,9 @@ fn engine_reflect_call_invokes_permissioned_context_clock_functions() {
         SourceId::new(1),
         r#"
 fn main() {
-    let now = reflect.function("ctx.now");
-    let elapsed = reflect.function("ctx.elapsed_since");
-    return reflect.call(now) + reflect.call(elapsed, 1699999990);
+    let now = reflect::function("ctx::now");
+    let elapsed = reflect::function("ctx::elapsed_since");
+    return reflect::call(now) + reflect::call(elapsed, 1699999990);
 }
 "#,
     )
@@ -193,28 +193,33 @@ fn engine_context_clock_registers_metadata() {
     assert_eq!(module.attrs.get("stdlib"), Some("context"));
     assert_eq!(module.attrs.get("domain"), Some("gameplay"));
     assert_eq!(module.exports.len(), 3);
-    assert!(module.exports.iter().any(|export| export.name == "ctx.now"));
     assert!(
         module
             .exports
             .iter()
-            .any(|export| export.name == "ctx.tick")
+            .any(|export| export.name == "ctx::now")
     );
     assert!(
         module
             .exports
             .iter()
-            .any(|export| export.name == "ctx.elapsed_since")
+            .any(|export| export.name == "ctx::tick")
+    );
+    assert!(
+        module
+            .exports
+            .iter()
+            .any(|export| export.name == "ctx::elapsed_since")
     );
 
     let now = registry
-        .function_by_name("ctx.now")
+        .function_by_name("ctx::now")
         .expect("ctx.now metadata");
     let tick = registry
-        .function_by_name("ctx.tick")
+        .function_by_name("ctx::tick")
         .expect("ctx.tick metadata");
     let elapsed = registry
-        .function_by_name("ctx.elapsed_since")
+        .function_by_name("ctx::elapsed_since")
         .expect("ctx.elapsed_since metadata");
 
     assert_eq!(now.id, CTX_NOW_FUNCTION_ID);
@@ -317,32 +322,32 @@ fn engine_context_host_schema_metadata_is_script_reflectable() {
         SourceId::new(1),
         r#"
 fn main() {
-    let context = reflect.type_info("Context");
-    let fields = reflect.fields(context);
-    let methods = reflect.methods(context);
-    let emit = reflect.method(context, "emit");
-    let log = reflect.method(context, "log");
-    return reflect.docs(context) == "Standard host context object for deterministic time, events, and logging."
-        && reflect.attr(context, "stdlib") == "context"
-        && reflect.attr(context, "domain") == "gameplay"
+    let context = reflect::type_info("Context");
+    let fields = reflect::fields(context);
+    let methods = reflect::methods(context);
+    let emit = reflect::method(context, "emit");
+    let log = reflect::method(context, "log");
+    return reflect::docs(context) == "Standard host context object for deterministic time, events, and logging."
+        && reflect::attr(context, "stdlib") == "context"
+        && reflect::attr(context, "domain") == "gameplay"
         && fields.len() == 2
         && fields[0].name == "now"
-        && reflect.docs(fields[0]) == "Current deterministic context timestamp."
-        && reflect.attr(fields[0], "stdlib") == "context"
-        && reflect.attr(fields[0], "domain") == "gameplay"
+        && reflect::docs(fields[0]) == "Current deterministic context timestamp."
+        && reflect::attr(fields[0], "stdlib") == "context"
+        && reflect::attr(fields[0], "domain") == "gameplay"
         && fields[1].name == "tick"
-        && reflect.docs(fields[1]) == "Current deterministic context tick."
-        && reflect.attr(fields[1], "stdlib") == "context"
-        && reflect.attr(fields[1], "domain") == "gameplay"
+        && reflect::docs(fields[1]) == "Current deterministic context tick."
+        && reflect::attr(fields[1], "stdlib") == "context"
+        && reflect::attr(fields[1], "domain") == "gameplay"
         && methods.len() == 2
         && emit.owner == "Context"
-        && reflect.docs(emit) == "Records an event emission patch for the host safe point."
-        && reflect.attr(emit, "stdlib") == "context"
-        && reflect.attr(emit, "domain") == "gameplay"
+        && reflect::docs(emit) == "Records an event emission patch for the host safe point."
+        && reflect::attr(emit, "stdlib") == "context"
+        && reflect::attr(emit, "domain") == "gameplay"
         && log.owner == "Context"
-        && reflect.docs(log) == "Records a log patch for the host safe point."
-        && reflect.attr(log, "stdlib") == "context"
-        && reflect.attr(log, "domain") == "gameplay";
+        && reflect::docs(log) == "Records a log patch for the host safe point."
+        && reflect::attr(log, "stdlib") == "context"
+        && reflect::attr(log, "domain") == "gameplay";
 }
 "#,
         &engine.compiler_options(),

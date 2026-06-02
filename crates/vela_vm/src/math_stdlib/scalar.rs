@@ -3,28 +3,28 @@ use crate::{Value, VmError, VmErrorKind, VmResult, expect_arity};
 use super::{expect_finite_float, type_error};
 
 pub(crate) fn math_max(args: &[Value]) -> VmResult<Value> {
-    numeric_pair("math.max", args, i64::max, f64::max)
+    numeric_pair("math::max", args, i64::max, f64::max)
 }
 
 pub(crate) fn math_min(args: &[Value]) -> VmResult<Value> {
-    numeric_pair("math.min", args, i64::min, f64::min)
+    numeric_pair("math::min", args, i64::min, f64::min)
 }
 
 pub(crate) fn math_clamp(args: &[Value]) -> VmResult<Value> {
-    expect_arity("math.clamp", args, 3)?;
+    expect_arity("math::clamp", args, 3)?;
     match (&args[0], &args[1], &args[2]) {
         (Value::Int(value), Value::Int(min), Value::Int(max)) => {
             if min > max {
-                return type_error("math.clamp");
+                return type_error("math::clamp");
             }
             Ok(Value::Int((*value).clamp(*min, *max)))
         }
         _ => {
-            let value = expect_finite_float(&args[0], "math.clamp")?;
-            let min = expect_finite_float(&args[1], "math.clamp")?;
-            let max = expect_finite_float(&args[2], "math.clamp")?;
+            let value = expect_finite_float(&args[0], "math::clamp")?;
+            let min = expect_finite_float(&args[1], "math::clamp")?;
+            let max = expect_finite_float(&args[2], "math::clamp")?;
             if min > max {
-                return type_error("math.clamp");
+                return type_error("math::clamp");
             }
             Ok(Value::Float(value.clamp(min, max)))
         }
@@ -32,7 +32,7 @@ pub(crate) fn math_clamp(args: &[Value]) -> VmResult<Value> {
 }
 
 pub(crate) fn math_sign(args: &[Value]) -> VmResult<Value> {
-    expect_arity("math.sign", args, 1)?;
+    expect_arity("math::sign", args, 1)?;
     match &args[0] {
         Value::Int(value) => Ok(Value::Int(value.signum())),
         Value::Float(value) if value.is_finite() => Ok(Value::Int(if *value > 0.0 {
@@ -42,47 +42,47 @@ pub(crate) fn math_sign(args: &[Value]) -> VmResult<Value> {
         } else {
             0
         })),
-        _ => type_error("math.sign"),
+        _ => type_error("math::sign"),
     }
 }
 
 pub(crate) fn math_floor(args: &[Value]) -> VmResult<Value> {
-    expect_arity("math.floor", args, 1)?;
+    expect_arity("math::floor", args, 1)?;
     match &args[0] {
         Value::Int(value) => Ok(Value::Int(*value)),
-        Value::Float(value) => float_to_int(value.floor(), "math.floor").map(Value::Int),
-        _ => type_error("math.floor"),
+        Value::Float(value) => float_to_int(value.floor(), "math::floor").map(Value::Int),
+        _ => type_error("math::floor"),
     }
 }
 
 pub(crate) fn math_ceil(args: &[Value]) -> VmResult<Value> {
-    expect_arity("math.ceil", args, 1)?;
+    expect_arity("math::ceil", args, 1)?;
     match &args[0] {
         Value::Int(value) => Ok(Value::Int(*value)),
-        Value::Float(value) => float_to_int(value.ceil(), "math.ceil").map(Value::Int),
-        _ => type_error("math.ceil"),
+        Value::Float(value) => float_to_int(value.ceil(), "math::ceil").map(Value::Int),
+        _ => type_error("math::ceil"),
     }
 }
 
 pub(crate) fn math_round(args: &[Value]) -> VmResult<Value> {
-    expect_arity("math.round", args, 1)?;
+    expect_arity("math::round", args, 1)?;
     match &args[0] {
         Value::Int(value) => Ok(Value::Int(*value)),
-        Value::Float(value) => float_to_int(value.round(), "math.round").map(Value::Int),
-        _ => type_error("math.round"),
+        Value::Float(value) => float_to_int(value.round(), "math::round").map(Value::Int),
+        _ => type_error("math::round"),
     }
 }
 
 pub(crate) fn math_abs(args: &[Value]) -> VmResult<Value> {
-    expect_arity("math.abs", args, 1)?;
+    expect_arity("math::abs", args, 1)?;
     match &args[0] {
         Value::Int(value) => value.checked_abs().map(Value::Int).ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
-                operation: "math.abs",
+                operation: "math::abs",
             })
         }),
         Value::Float(value) if value.is_finite() => Ok(Value::Float(value.abs())),
-        _ => type_error("math.abs"),
+        _ => type_error("math::abs"),
     }
 }
 

@@ -240,7 +240,7 @@ impl SemanticModules {
                     let declaration = declarations.get(name)?;
                     let metadata = self.graph.declaration(declaration)?;
                     (metadata.kind == DeclarationKind::Function)
-                        .then(|| (declaration, format!("{path}.{}", metadata.name)))
+                        .then(|| (declaration, format!("{path}::{}", metadata.name)))
                 })
             })
             .collect()
@@ -273,7 +273,7 @@ impl SemanticModules {
                         metadata.kind,
                         DeclarationKind::Struct | DeclarationKind::Enum
                     )
-                    .then(|| (declaration, format!("{path}.{}", metadata.name)))
+                    .then(|| (declaration, format!("{path}::{}", metadata.name)))
                 })
             })
             .collect()
@@ -414,7 +414,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
     let mut graph = ModuleGraph::new();
     let module = graph.add_parsed_source_with_hash(
         source,
-        ModulePath::from_dotted("main"),
+        ModulePath::from_qualified("main"),
         parsed.clone(),
         Some(stable_source_hash(text)),
     );

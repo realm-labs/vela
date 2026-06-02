@@ -15,8 +15,8 @@ impl ModulePath {
     }
 
     #[must_use]
-    pub fn from_dotted(path: &str) -> Self {
-        Self::new(path.split('.').filter(|segment| !segment.is_empty()))
+    pub fn from_qualified(path: &str) -> Self {
+        Self::new(path.split("::").filter(|segment| !segment.is_empty()))
     }
 
     #[must_use]
@@ -26,7 +26,7 @@ impl ModulePath {
 
     #[must_use]
     pub fn join(&self) -> String {
-        self.0.join(".")
+        self.0.join("::")
     }
 }
 

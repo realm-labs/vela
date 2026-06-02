@@ -60,10 +60,10 @@ fn main() {
     let values = [10, 20, 30, 20];
     let rewards = [Reward { item_id: "gold", count: 2 }];
     let expected = Reward { item_id: "gold", count: 2 };
-    if option.unwrap_or(values.index_of(20), -1) == 1
-        && option.unwrap_or(values.index_of(99), -1) == -1
-        && option.unwrap_or(rewards.index_of(expected), -1) == 0
-        && option.unwrap_or([].index_of("missing"), -1) == -1
+    if option::unwrap_or(values.index_of(20), -1) == 1
+        && option::unwrap_or(values.index_of(99), -1) == -1
+        && option::unwrap_or(rewards.index_of(expected), -1) == 0
+        && option::unwrap_or([].index_of("missing"), -1) == -1
     {
         return 1;
     }
@@ -85,11 +85,11 @@ fn managed_heap_execution_runs_array_index_of_method() {
 fn main() {
     let tags = ["daily", "quest", "raid"];
     let nested = [["daily", "quest"], ["raid"]];
-    if option.unwrap_or(tags.index_of("quest"), -1) == 1
-        && option.unwrap_or(tags.index_of("bonus"), -1) == -1
-        && option.unwrap_or(nested.index_of(["raid"]), -1) == 1
+    if option::unwrap_or(tags.index_of("quest"), -1) == 1
+        && option::unwrap_or(tags.index_of("bonus"), -1) == -1
+        && option::unwrap_or(nested.index_of(["raid"]), -1) == 1
     {
-        return tags[option.unwrap_or(tags.index_of("raid"), 0)];
+        return tags[option::unwrap_or(tags.index_of("raid"), 0)];
     }
     return "";
 }

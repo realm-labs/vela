@@ -166,8 +166,8 @@ equivalent token tree with comments and newlines.
 Example script:
 
 ```rust
-use game.player.Player
-use game.reward.Reward
+use game::player::Player
+use game::reward::Reward
 
 struct KillReward {
     item_id
@@ -206,8 +206,8 @@ pub fn on_kill(ctx, player, monster) {
     }
 
     match player.quest_progress {
-        QuestProgress.Active { quest_id, count } => {
-            player.quest_progress = QuestProgress.Active {
+        QuestProgress::Active { quest_id, count } => {
+            player.quest_progress = QuestProgress::Active {
                 quest_id,
                 count: count + 1,
             }
@@ -279,14 +279,14 @@ enum Result {
 
 ```text
 null        no meaningful value, void-like results, host nullable boundaries, or missing metadata
-Option.None expected absence in gameplay or lookup logic
-Result.Err  recoverable failure with a script-visible reason
+Option::None expected absence in gameplay or lookup logic
+Result::Err  recoverable failure with a script-visible reason
 VM error    unrecoverable trap, script bug, contract violation, budget failure, or sandbox denial
 ```
 
 Script and standard-library APIs should prefer `Option` for expected missing
 data and `Result` for expected recoverable failure. They should not use `null`
-as the normal "not found" or "failed" result. `null` remains the value for
+as the normal "not found" or "failed" result:: `null` remains the value for
 statement-only blocks, no-result native calls, reflection metadata gaps, and
 host/Rust nullable interop.
 
@@ -484,7 +484,7 @@ test mock state
 
 ```rust
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "game.player.Player")]
+#[script(path = "game::player::Player")]
 pub struct Player {
     #[script(get, set)]
     pub level: u32,
@@ -553,7 +553,7 @@ There are three registration shapes:
 
 ```text
 global function       log("message")
-module function       math.clamp(value, min, max)
+module function       math::clamp(value, min, max)
 host type method      player.inventory.add(item_id, count)
 ```
 
@@ -659,7 +659,7 @@ The engine builder should support explicit descriptors for stable schemas:
 ```rust
 let engine = Engine::builder()
     .register_native_fn(
-        NativeFunctionDesc::new("game.log", NativeFunctionId(10_001))
+        NativeFunctionDesc::new("game::log", NativeFunctionId(10_001))
             .param("message", TypeHint::String)
             .returns(TypeHint::Null)
             .effects(EffectSet::pure_host_log())
@@ -667,7 +667,7 @@ let engine = Engine::builder()
         game_log,
     )
     .register_native_fn(
-        NativeFunctionDesc::new("math.clamp", NativeFunctionId(20_001))
+        NativeFunctionDesc::new("math::clamp", NativeFunctionId(20_001))
             .param("value", TypeHint::Float)
             .param("min", TypeHint::Float)
             .param("max", TypeHint::Float)
@@ -680,14 +680,14 @@ let engine = Engine::builder()
 
 For macro-exposed functions, `#[script_function]`,
 `#[script_context_function]`, and `#[script_host_function]` derive the native
-function ID from the public dotted function name and optional `alias`.
+function ID from the public `::` qualified function name and optional `alias`.
 Low-level descriptor constructors remain available for engine internals and
 tests that need explicit IDs:
 
 ```rust
 let engine = Engine::builder()
     .register_native_fn(
-        NativeFunctionDesc::new("game.log", NativeFunctionId(10_001)),
+        NativeFunctionDesc::new("game::log", NativeFunctionId(10_001)),
         game_log,
     )?
     .build()?;
@@ -796,7 +796,7 @@ Allowed:
 
 ```text
 query types, fields, methods, variants, traits, modules, and functions
-controlled reflect.get / reflect.set / reflect.call
+controlled reflect::get / reflect::set / reflect::call
 query trait implementations
 query attributes
 construct reflect paths
@@ -1032,7 +1032,7 @@ Examples:
 ```rust
 let xs = [1, 2, 3]        // TypeFact::Array { element: Int }
 let ys: array = []        // public TypeHint::Array, internal element Unknown
-let z = reflect.get(x, k) // Any unless k is a known constant and schema exists
+let z = reflect::get(x, k) // Any unless k is a known constant and schema exists
 ```
 
 ### Semantic Model For Tools
@@ -1199,57 +1199,57 @@ pub fn on_kill(ctx, player, monster) {
 First-version API:
 
 ```rust
-reflect.type_of(value)
-reflect.types()
-reflect.type_info(name)
-reflect.has_type(name)
+reflect::type_of(value)
+reflect::types()
+reflect::type_info(name)
+reflect::has_type(name)
 // type queries return copied ReflectType descriptor records
-reflect.name(type)
-reflect.kind(type)
-reflect.owner(descriptor)
-reflect.origin(descriptor)
-reflect.access(descriptor)
+reflect::name(type)
+reflect::kind(type)
+reflect::owner(descriptor)
+reflect::origin(descriptor)
+reflect::access(descriptor)
 
-reflect.fields(type)
-reflect.field(type, name)
+reflect::fields(type)
+reflect::field(type, name)
 // field queries return copied ReflectField descriptor records
 
-reflect.has_field(value, name)
-reflect.get(value, name)
-reflect.set(value, name, value)
+reflect::has_field(value, name)
+reflect::get(value, name)
+reflect::set(value, name, value)
 
-reflect.methods(type)
-reflect.method(type, name)
-reflect.has_method(value, name)
-reflect.call(value, name, args)
-reflect.params(value)
-reflect.returns(value)
+reflect::methods(type)
+reflect::method(type, name)
+reflect::has_method(value, name)
+reflect::call(value, name, args)
+reflect::params(value)
+reflect::returns(value)
 
-reflect.variants(type)
-reflect.variant(value)
-reflect.variant_info(value, name)
-reflect.variant_is(value, name)
-reflect.has_variant(value, name)
+reflect::variants(type)
+reflect::variant(value)
+reflect::variant_info(value, name)
+reflect::variant_is(value, name)
+reflect::has_variant(value, name)
 
-reflect.implements(value, trait)
-reflect.traits(type)
-reflect.trait_info(name)
-reflect.has_trait(name)
+reflect::implements(value, trait)
+reflect::traits(type)
+reflect::trait_info(name)
+reflect::has_trait(name)
 
-reflect.modules()
-reflect.module(name)
-reflect.has_module(name)
-reflect.functions()
-reflect.function(name)
-reflect.has_function(name)
-reflect.exports(module)
+reflect::modules()
+reflect::module(name)
+reflect::has_module(name)
+reflect::functions()
+reflect::function(name)
+reflect::has_function(name)
+reflect::exports(module)
 
-reflect.permissions()
-reflect.has_permission(name)
+reflect::permissions()
+reflect::has_permission(name)
 ```
 
-For `HostRef`, `reflect.set(player, "level", 10)` creates a `Patch` instead of mutating Rust directly.
-For script records and enum payload records, `reflect.set(value, name, new_value)`
+For `HostRef`, `reflect::set(player, "level", 10)` creates a `Patch` instead of mutating Rust directly.
+For script records and enum payload records, `reflect::set(value, name, new_value)`
 returns an updated copied value. It does not mutate the caller's existing local
 binding unless the script assigns the returned value, and it rejects unknown
 fields instead of adding runtime schema members.
@@ -1258,7 +1258,7 @@ Dot syntax and reflection share the same path foundation:
 
 ```text
 player.level = 10                -> compile-time FieldId, fast
-reflect.set(player, "level", 10) -> runtime FieldId lookup, slower but flexible
+reflect::set(player, "level", 10) -> runtime FieldId lookup, slower but flexible
 ```
 
 ### Reflection Permissions
@@ -1287,12 +1287,12 @@ Suggested defaults:
 | test script | yes | yes | yes | yes | yes | yes | yes | configurable | yes |
 
 Field descriptors may also carry required reflection permission names. Policy
-checks filter `reflect.fields`, `reflect.field`, `reflect.has_field`, and enum
-payload field metadata by those names. Dynamic `reflect.get` / `reflect.set`
+checks filter `reflect::fields`, `reflect::field`, `reflect::has_field`, and enum
+payload field metadata by those names. Dynamic `reflect::get` / `reflect::set`
 on host refs fail before reading or recording a patch when the active policy
 lacks a required field permission. Dynamic script record and enum payload
 reflection uses the same permission metadata when the registry knows the script
-field, while `reflect.set` still returns an updated copied value rather than
+field, while `reflect::set` still returns an updated copied value rather than
 mutating type structure.
 
 ## Struct, Record, And Enum Memory Model
@@ -1770,7 +1770,7 @@ Use `Option` when absence is an ordinary script-visible branch, such as
 collection lookup or search. Use `Result` when the caller needs a recoverable
 failure reason. Runtime traps such as division by zero, type mismatch,
 permission denial, budget exhaustion, and future explicit panic-style
-operations should return VM diagnostics, not `Result.Err`.
+operations should return VM diagnostics, not `Result::Err`.
 
 ### String
 
@@ -1804,29 +1804,29 @@ text.parse_bool()
 ### Math And Time
 
 ```text
-math.max
-math.min
-math.clamp
-math.lerp
-math.move_towards
-math.distance2d
-math.distance3d
-math.pow
-math.sqrt
-math.sign
-math.floor
-math.ceil
-math.round
-math.abs
-math.random  # only with permission
+math::max
+math::min
+math::clamp
+math::lerp
+math::move_towards
+math::distance2d
+math::distance3d
+math::pow
+math::sqrt
+math::sign
+math::floor
+math::ceil
+math::round
+math::abs
+math::random  # only with permission
 ```
 
 Time should come from host context, not direct system time:
 
 ```rust
-ctx.now
-ctx.tick
-ctx.elapsed_since(start)
+ctx::now()
+ctx::tick()
+ctx::elapsed_since(start)
 ```
 
 ## Embedding API
@@ -1841,7 +1841,7 @@ let engine = Engine::builder()
     .register_host_type::<Inventory>()
     .register_reflect_schema::<RewardView>()
     .register_typed_native_fn::<(String,), _>(
-        NativeFunctionDesc::new("game.log", NativeFunctionId::new(10_001))
+        NativeFunctionDesc::new("game::log", NativeFunctionId::new(10_001))
             .param("message", TypeHint::String)
             .returns(TypeHint::Null)
             .effects(EffectSet::pure()),
@@ -1925,7 +1925,7 @@ Examples:
 
 ```text
 FieldNotFound:
-  type: game.player.Player
+  type: game::player::Player
   field: levle
   candidates: ["level"]
 ```
@@ -1937,7 +1937,7 @@ descriptors may leave this field as `null`. Unknown reflection lookups carry
 ranked related candidates with the same optional source spans where descriptors
 have source locations, so admin/debug tooling can jump from a misspelled lookup
 to nearby schema declarations without parsing human-readable messages.
-Dynamic `reflect.get` and `reflect.set` calls on script record or enum values
+Dynamic `reflect::get` and `reflect::set` calls on script record or enum values
 preserve the script type name at the reflection boundary. If that type or
 variant exists in the registry, unknown-field diagnostics use the registered
 field metadata and related source spans rather than treating the value as an
@@ -1953,10 +1953,10 @@ and `returns` metadata. `return` matches function reflection naming, while
 
 ```text
 FieldNotWritable:
-  type: game.player.Player
+  type: game::player::Player
   field: inventory
   reason: field is read-only
-  hint: use player.inventory.add(...) instead
+  hint: player::inventory::add(...) instead
 ```
 
 ```text
@@ -1969,7 +1969,7 @@ HotReloadAbiMismatch:
 
 ```text
 StaleHostRef:
-  type: game.player.Player
+  type: game::player::Player
   object_id: 1024
   reason: generation mismatch
 ```
@@ -2220,7 +2220,7 @@ Default gameplay script settings:
 allow_io = false
 allow_network = false
 allow_random = false, or only through ctx.rng
-allow_time_now = false; use ctx.now
+allow_time_now = false; ctx::now
 host_write = only objects provided by the event context
 reflect_write = disabled by default or tightly controlled
 ```
@@ -2263,7 +2263,7 @@ ABI diff tests
 ```text
 script reads host field
 script writes host field through PatchTx
-reflect.set creates PatchTx
+reflect::set creates PatchTx
 player.level += 1 creates Add patch
 lambda parameter facts are inferred from array/map receiver facts
 host schema fields are available through TypeRegistry

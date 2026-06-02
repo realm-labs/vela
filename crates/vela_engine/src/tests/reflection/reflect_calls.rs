@@ -4,7 +4,7 @@ use super::*;
 fn engine_reflect_call_invokes_reflect_callable_native_functions() {
     let engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.add", NativeFunctionId::new(91))
+            NativeFunctionDesc::new("game::add", NativeFunctionId::new(91))
                 .param("lhs", TypeHint::Int)
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int)
@@ -23,8 +23,8 @@ fn engine_reflect_call_invokes_reflect_callable_native_functions() {
         SourceId::new(1),
         r#"
 fn main() {
-    let add = reflect.function("game.add");
-    return reflect.call(add, 2, 3);
+    let add = reflect::function("game::add");
+    return reflect::call(add, 2, 3);
 }
 "#,
     )
@@ -49,7 +49,7 @@ fn main() {
 fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
     let engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.add", NativeFunctionId::new(95))
+            NativeFunctionDesc::new("game::add", NativeFunctionId::new(95))
                 .param("lhs", TypeHint::Int)
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int)
@@ -63,8 +63,8 @@ fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
         SourceId::new(1),
         r#"
 fn main() {
-    let add = reflect.function("game.add");
-    return reflect.call(add, 2, 3);
+    let add = reflect::function("game::add");
+    return reflect::call(add, 2, 3);
 }
 "#,
     )
@@ -91,7 +91,7 @@ fn main() {
 fn engine_reflect_call_rejects_non_callable_native_functions() {
     let engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.add", NativeFunctionId::new(92))
+            NativeFunctionDesc::new("game::add", NativeFunctionId::new(92))
                 .param("lhs", TypeHint::Int)
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int),
@@ -104,8 +104,8 @@ fn engine_reflect_call_rejects_non_callable_native_functions() {
         SourceId::new(1),
         r#"
 fn main() {
-    let add = reflect.function("game.add");
-    return reflect.call(add, 2, 3);
+    let add = reflect::function("game::add");
+    return reflect::call(add, 2, 3);
 }
 "#,
     )
@@ -123,7 +123,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionNotReflectCallable {
-                function: "game.add".to_owned(),
+                function: "game::add".to_owned(),
                 source_span: None,
             }
         )
@@ -136,7 +136,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_host_native_fn(
-            NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(93))
+            NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(93))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -168,8 +168,8 @@ fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    let set_level = reflect.function("game.set_level");
-    reflect.call(set_level, player, 12);
+    let set_level = reflect::function("game::set_level");
+    reflect::call(set_level, player, 12);
     return 1;
 }
 "#,
@@ -205,7 +205,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_host_native_fn(
-            NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(94))
+            NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(94))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -245,8 +245,8 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
         SourceId::new(1),
         r#"
 fn main(player) {
-    let set_level = reflect.function("game.set_level");
-    reflect.call(set_level, player, 12);
+    let set_level = reflect::function("game::set_level");
+    reflect::call(set_level, player, 12);
     return 1;
 }
 "#,
@@ -266,7 +266,7 @@ fn main(player) {
             .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionEffectPermissionDenied {
-                function: "game.set_level".to_owned(),
+                function: "game::set_level".to_owned(),
                 permission: ReflectPermission::CallHostWriteMethods,
                 source_span: None,
             }

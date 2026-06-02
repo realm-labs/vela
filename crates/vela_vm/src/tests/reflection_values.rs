@@ -9,8 +9,8 @@ struct Player { level: int }
 
 fn main() {
     let player = Player { level: 7 };
-    if reflect.name(reflect.type_of(player)) == "Player" && reflect.implements(player, "Damageable") {
-        return reflect.get(player, "level") + reflect.fields(player).len();
+    if reflect::name(reflect::type_of(player)) == "Player" && reflect::implements(player, "Damageable") {
+        return reflect::get(player, "level") + reflect::fields(player).len();
     }
     return 0;
 }
@@ -41,10 +41,10 @@ struct Player { level: int, name: string }
 
 fn main() {
     let player = Player { level: 7, name: "hero" };
-    let updated = reflect.set(player, "level", 10);
-    if reflect.get(player, "level") == 7
-        && reflect.get(updated, "level") == 10
-        && reflect.name(updated) == "Player"
+    let updated = reflect::set(player, "level", 10);
+    if reflect::get(player, "level") == 7
+        && reflect::get(updated, "level") == 10
+        && reflect::name(updated) == "Player"
         && updated.name == "hero" {
         return 1;
     }
@@ -75,8 +75,8 @@ fn compiled_source_reflect_set_rejects_metadata_records() {
         SourceId::new(1),
         r#"
 fn main() {
-    let player_type = reflect.type_info("Player");
-    return reflect.set(player_type, "name", "Monster");
+    let player_type = reflect::type_info("Player");
+    return reflect::set(player_type, "name", "Monster");
 }
 "#,
     )
@@ -106,7 +106,7 @@ struct Player { level: int }
 
 fn main() {
     let player = Player { level: 7 };
-    return reflect.get(player, "leve");
+    return reflect::get(player, "leve");
 }
 "#,
     )
@@ -141,7 +141,7 @@ struct Player { level: int }
 
 fn main() {
     let player = Player { level: 7 };
-    return reflect.get(player, "level");
+    return reflect::get(player, "level");
 }
 "#,
     )
@@ -186,7 +186,7 @@ fn heap_execution_reflection_fields_returns_heap_metadata_records() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    let fields = reflect.fields(player);
+    let fields = reflect::fields(player);
     return fields.len() == 2
         && fields[0].owner == "Player"
         && fields[0].name == "id"
@@ -232,8 +232,8 @@ struct Player { level: int }
 
 fn main() {
     let player = Player { level: 7 };
-    if reflect.name(reflect.type_of(player)) == "Player" && reflect.implements(player, "Damageable") {
-        return reflect.get(player, "level") + reflect.fields(player).len();
+    if reflect::name(reflect::type_of(player)) == "Player" && reflect::implements(player, "Damageable") {
+        return reflect::get(player, "level") + reflect::fields(player).len();
     }
     return 0;
 }
@@ -268,7 +268,7 @@ fn main() {
 fn compiled_module_reflects_registered_script_trait_impls() {
     let sources = [ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("game"),
+        ModulePath::from_qualified("game"),
         r#"
 trait Damageable {
     fn damage(self) -> int { return self.level; }
@@ -279,8 +279,8 @@ impl Damageable for Player {}
 
 pub fn main() {
     let player = Player { level: 7 };
-    if reflect.name(reflect.type_of(player)) == "game.Player" && reflect.implements(player, "game.Damageable") {
-        return player.damage() + reflect.fields(player).len();
+    if reflect::name(reflect::type_of(player)) == "game::Player" && reflect::implements(player, "game::Damageable") {
+        return player.damage() + reflect::fields(player).len();
     }
     return 0;
 }
@@ -305,7 +305,7 @@ pub fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "game.main", &[], &mut host),
+        vm.run_program_with_host(&program, "game::main", &[], &mut host),
         Ok(Value::Int(8))
     );
 }
@@ -318,7 +318,7 @@ fn compiled_source_reflect_call_records_host_method_patch() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.call(player, "grant_exp", 20);
+    reflect::call(player, "grant_exp", 20);
     return 1;
 }
 "#,

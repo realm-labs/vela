@@ -288,13 +288,16 @@ record_pattern_field
 (* Paths                                                                     *)
 (* ========================================================================= *)
 
-path            = IDENT, { ws, ".", ws, IDENT } ;
+path            = IDENT, { ws, "::", ws, IDENT } ;
 
 (* ========================================================================= *)
 (* Parser constraints not fully represented by EBNF                          *)
 (* ========================================================================= *)
 
-(* 1. The left-hand side of assignment must be assignable:
+(* Static module/type/function paths use "::". Runtime value access uses "."
+   through field_suffix and is not part of path.
+
+   1. The left-hand side of assignment must be assignable:
       identifier, field access, index access, or a host path proxy.
 
    2. Record literals are parsed only when a path is followed by "{ ... }".

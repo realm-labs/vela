@@ -46,7 +46,7 @@ pub fn member_completions(facts: &RegistryFacts, receiver: &TypeFact) -> Vec<Com
         TypeFact::Enum {
             name,
             variant: Some(variant),
-        } => owner_field_completions(facts, &format!("{name}.{variant}")),
+        } => owner_field_completions(facts, &format!("{name}::{variant}")),
         TypeFact::Enum {
             name,
             variant: None,
@@ -133,7 +133,7 @@ fn module_completion_labels(graph: &ModuleGraph) -> BTreeSet<String> {
         };
         let segments = module_path.segments();
         for len in 1..=segments.len() {
-            modules.insert(segments[..len].join("."));
+            modules.insert(segments[..len].join("::"));
         }
     }
     modules
@@ -160,7 +160,7 @@ fn qualified_declaration_label(graph: &ModuleGraph, declaration: HirDeclId) -> S
     if module.is_empty() {
         declaration.name.clone()
     } else {
-        format!("{module}.{}", declaration.name)
+        format!("{module}::{}", declaration.name)
     }
 }
 

@@ -6,39 +6,39 @@ fn compiled_source_reflects_modules_functions_and_exports() {
         SourceId::new(1),
         r#"
 fn main() {
-    let module = reflect.module("game.reward");
-    let modules = reflect.modules();
-    let exports = reflect.exports("game.reward");
-    let module_exports = reflect.exports(module);
-    let listed_exports = reflect.exports(modules[0]);
-    let function = reflect.function("game.reward.grant");
-    let functions = reflect.functions();
-    if module.name == "game.reward"
-        && reflect.name(module) == "game.reward"
-        && reflect.kind(module) == "module"
-        && reflect.source_span(module) != null
-        && reflect.has_module("game.reward")
-        && !reflect.has_module("game.missing")
-        && reflect.has_function("game.reward.grant")
-        && !reflect.has_function("game.reward.missing")
+    let module = reflect::module("game::reward");
+    let modules = reflect::modules();
+    let exports = reflect::exports("game::reward");
+    let module_exports = reflect::exports(module);
+    let listed_exports = reflect::exports(modules[0]);
+    let function = reflect::function("game::reward::grant");
+    let functions = reflect::functions();
+    if module.name == "game::reward"
+        && reflect::name(module) == "game::reward"
+        && reflect::kind(module) == "module"
+        && reflect::source_span(module) != null
+        && reflect::has_module("game::reward")
+        && !reflect::has_module("game::missing")
+        && reflect::has_function("game::reward::grant")
+        && !reflect::has_function("game::reward::missing")
         && modules.len() == 1
-        && modules[0].name == "game.reward"
+        && modules[0].name == "game::reward"
         && exports.len() == 1
         && module_exports.len() == 1
-        && listed_exports[0] == "game.reward.grant"
+        && listed_exports[0] == "game::reward::grant"
         && functions.len() == 1
-        && functions[0].name == "game.reward.grant"
+        && functions[0].name == "game::reward::grant"
         && functions[0].id == function.id
-        && reflect.name(function) == "game.reward.grant"
-        && reflect.id(function) == function.id
-        && reflect.kind(function) == "function"
+        && reflect::name(function) == "game::reward::grant"
+        && reflect::id(function) == function.id
+        && reflect::kind(function) == "function"
         && function.id > 0
-        && reflect.docs(function) == "Grant reward."
-        && reflect.origin(function) == "script"
-        && reflect.origin(module) == "script"
-        && reflect.attr(function, "event") == "reward"
-        && reflect.source_span(function).source == 1
-        && reflect.get(function, "return") == "bool" {
+        && reflect::docs(function) == "Grant reward."
+        && reflect::origin(function) == "script"
+        && reflect::origin(module) == "script"
+        && reflect::attr(function, "event") == "reward"
+        && reflect::source_span(function).source == 1
+        && reflect::get(function, "return") == "bool" {
         return function.params.len();
     }
     return 0;
@@ -68,7 +68,7 @@ fn compiled_source_reflect_module_reports_unknown_module_candidates() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.module("game.rewards");
+    return reflect::module("game::rewards");
 }
 "#,
     )
@@ -92,12 +92,12 @@ fn main() {
             ref module,
             ref candidates,
             ref related,
-        }) if module == "game.rewards"
+        }) if module == "game::rewards"
             && candidates.len() == 1
-            && candidates[0] == "game.reward"
+            && candidates[0] == "game::reward"
             && related
                 .iter()
-                .any(|candidate| candidate.name == "game.reward")
+                .any(|candidate| candidate.name == "game::reward")
     ));
 }
 
@@ -107,7 +107,7 @@ fn compiled_source_reflect_function_reports_unknown_function_candidates() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.function("game.reward.grnat");
+    return reflect::function("game::reward::grnat");
 }
 "#,
     )
@@ -131,12 +131,12 @@ fn main() {
             ref function,
             ref candidates,
             ref related,
-        }) if function == "game.reward.grnat"
+        }) if function == "game::reward::grnat"
             && candidates.len() == 1
-            && candidates[0] == "game.reward.grant"
+            && candidates[0] == "game::reward::grant"
             && related
                 .iter()
-                .any(|candidate| candidate.name == "game.reward.grant")
+                .any(|candidate| candidate.name == "game::reward::grant")
     ));
 }
 
@@ -146,7 +146,7 @@ fn compiled_source_reflect_function_candidates_respect_policy() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.function("game.reward.hiddne");
+    return reflect::function("game::reward::hiddne");
 }
 "#,
     )
@@ -170,9 +170,9 @@ fn main() {
     assert_eq!(
         error.kind,
         VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
-            function: "game.reward.hiddne".to_owned(),
-            candidates: vec!["game.reward.grant".to_owned()],
-            related: vec![ReflectCandidate::new("game.reward.grant", None)],
+            function: "game::reward::hiddne".to_owned(),
+            candidates: vec!["game::reward::grant".to_owned()],
+            related: vec![ReflectCandidate::new("game::reward::grant", None)],
         })
     );
     assert!(tx.patches().is_empty());
@@ -186,33 +186,33 @@ fn compiled_source_reflect_call_function_candidates_respect_policy() {
 struct ReflectFunction { name: string }
 
 fn main() {
-    let function = ReflectFunction { name: "game.reward.grant_visibel" };
-    return reflect.call(function);
+    let function = ReflectFunction { name: "game::reward::grant_visibel" };
+    return reflect::call(function);
 }
 "#,
     )
     .expect("compile policy unknown function call reflection source");
     let mut registry = TypeRegistry::new();
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
             .access(FunctionAccess::new().reflect_callable(true)),
     );
     registry.register_function(FunctionDesc::new(
         FunctionId::new(2),
-        "game.reward.grant_visible",
+        "game::reward::grant_visible",
     ));
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(3), "game.reward.grant_hidden").access(
+        FunctionDesc::new(FunctionId::new(3), "game::reward::grant_hidden").access(
             FunctionAccess::new()
                 .reflect_visible(false)
                 .reflect_callable(true),
         ),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(4), "game.reward.grant_write").access(
+        FunctionDesc::new(FunctionId::new(4), "game::reward::grant_write").access(
             FunctionAccess::new()
                 .reflect_callable(true)
-                .require_permission("game.write"),
+                .require_permission("game::write"),
         ),
     );
     let mut adapter = MockStateAdapter::new();
@@ -237,9 +237,9 @@ fn main() {
     assert_eq!(
         error.kind,
         VmErrorKind::Reflect(ReflectErrorKind::UnknownFunction {
-            function: "game.reward.grant_visibel".to_owned(),
-            candidates: vec!["game.reward.grant".to_owned()],
-            related: vec![ReflectCandidate::new("game.reward.grant", None)],
+            function: "game::reward::grant_visibel".to_owned(),
+            candidates: vec!["game::reward::grant".to_owned()],
+            related: vec![ReflectCandidate::new("game::reward::grant", None)],
         })
     );
     assert!(tx.patches().is_empty());
@@ -251,17 +251,17 @@ fn compiled_source_reflect_exports_respect_function_policy() {
         SourceId::new(1),
         r#"
 fn main() {
-    let module = reflect.module("game.reward");
-    let modules = reflect.modules();
-    let exports = reflect.exports("game.reward");
-    let module_exports = reflect.exports(module);
-    let functions = reflect.functions();
-    if reflect.has_module("game.reward")
-        && !reflect.has_module("game.missing")
-        && reflect.has_function("game.reward.grant")
-        && !reflect.has_function("game.reward.hidden")
-        && !reflect.has_function("game.reward.private")
-        && !reflect.has_function("game.reward.admin") {
+    let module = reflect::module("game::reward");
+    let modules = reflect::modules();
+    let exports = reflect::exports("game::reward");
+    let module_exports = reflect::exports(module);
+    let functions = reflect::functions();
+    if reflect::has_module("game::reward")
+        && !reflect::has_module("game::missing")
+        && reflect::has_function("game::reward::grant")
+        && !reflect::has_function("game::reward::hidden")
+        && !reflect::has_function("game::reward::private")
+        && !reflect::has_function("game::reward::admin") {
         return module.exports.len() * 100
             + exports.len() * 10
             + module_exports.len() * 10000

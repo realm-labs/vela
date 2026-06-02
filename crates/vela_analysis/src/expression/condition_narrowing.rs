@@ -93,7 +93,7 @@ fn path_predicate_call<'a>(
                 let ExprKind::Path(arg_path) = &arg.value.kind else {
                     return None;
                 };
-                return Some((arg_path.as_slice(), callee_path.join(".")));
+                return Some((arg_path.as_slice(), callee_path.join("::")));
             }
             if args.is_empty()
                 && let Some((method, receiver_path)) = callee_path.split_last()
@@ -117,16 +117,16 @@ fn path_predicate_call<'a>(
 
 fn predicate_variant(name: &str, truthy: bool) -> Option<DynamicVariant> {
     match (name, truthy) {
-        ("option.is_some" | "is_some", true) | ("option.is_none" | "is_none", false) => {
+        ("option::is_some" | "is_some", true) | ("option::is_none" | "is_none", false) => {
             Some(DynamicVariant::OptionSome)
         }
-        ("option.is_some" | "is_some", false) | ("option.is_none" | "is_none", true) => {
+        ("option::is_some" | "is_some", false) | ("option::is_none" | "is_none", true) => {
             Some(DynamicVariant::OptionNone)
         }
-        ("result.is_ok" | "is_ok", true) | ("result.is_err" | "is_err", false) => {
+        ("result::is_ok" | "is_ok", true) | ("result::is_err" | "is_err", false) => {
             Some(DynamicVariant::ResultOk)
         }
-        ("result.is_ok" | "is_ok", false) | ("result.is_err" | "is_err", true) => {
+        ("result::is_ok" | "is_ok", false) | ("result::is_err" | "is_err", true) => {
             Some(DynamicVariant::ResultErr)
         }
         _ => None,

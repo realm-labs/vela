@@ -230,7 +230,7 @@ fn path_call_effect<'a>(
     scope: &ExprFactScope,
     facts: &'a RegistryFacts,
 ) -> Option<(String, &'a RegistryEffectFact)> {
-    let function_name = path.join(".");
+    let function_name = path.join("::");
     if let Some(effect) = facts.function_effect_fact(&function_name) {
         return Some((function_name, effect));
     }
@@ -240,7 +240,7 @@ fn path_call_effect<'a>(
         return None;
     }
     let receiver = scope.path_fact(receiver_path)?;
-    receiver_effect(receiver, method, facts).map(|effect| (path.join("."), effect))
+    receiver_effect(receiver, method, facts).map(|effect| (path.join("::"), effect))
 }
 
 fn receiver_effect<'a>(
@@ -255,7 +255,7 @@ fn receiver_effect<'a>(
         TypeFact::Enum {
             name,
             variant: Some(variant),
-        } => facts.method_effect_fact(&format!("{name}.{variant}"), method),
+        } => facts.method_effect_fact(&format!("{name}::{variant}"), method),
         TypeFact::Trait { name } => facts.trait_method_effect_fact(name, method),
         _ => None,
     }

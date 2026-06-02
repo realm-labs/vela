@@ -85,7 +85,7 @@ fn qualified_function_name(module: &str, name: &str) -> String {
     if module.is_empty() {
         name.to_owned()
     } else {
-        format!("{module}.{name}")
+        format!("{module}::{name}")
     }
 }
 

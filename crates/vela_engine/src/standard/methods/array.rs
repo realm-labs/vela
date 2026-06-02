@@ -88,7 +88,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "index_of",
         &[ParamSpec::new("value", "any")],
         "Option",
-        "Returns the first index of a value, or Option.None.",
+        "Returns the first index of a value, or Option::None.",
     ),
     MethodSpec::new(
         array_id(13),
@@ -130,7 +130,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "find",
         &[ParamSpec::new("callback", "function")],
         "Option",
-        "Returns the first callback match, or Option.None.",
+        "Returns the first callback match, or Option::None.",
     ),
     MethodSpec::new(
         array_id(19),

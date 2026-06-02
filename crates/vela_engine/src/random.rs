@@ -14,7 +14,7 @@ pub const MATH_RANDOM_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_000
 pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
     let rng = Arc::new(Mutex::new(SeededRandom::new(seed)));
     NativeFunctionEntry::new(
-        NativeFunctionDesc::new("math.random", MATH_RANDOM_FUNCTION_ID)
+        NativeFunctionDesc::new("math::random", MATH_RANDOM_FUNCTION_ID)
             .param("min", TypeHint::Int)
             .param("max", TypeHint::Int)
             .returns(TypeHint::Int)
@@ -31,24 +31,24 @@ pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
 }
 
 fn math_random(args: &[Value], rng: &Mutex<SeededRandom>) -> VmResult<Value> {
-    expect_arity("math.random", args, 2)?;
+    expect_arity("math::random", args, 2)?;
     let (Value::Int(min), Value::Int(max)) = (&args[0], &args[1]) else {
-        return type_error("math.random");
+        return type_error("math::random");
     };
     if min > max {
-        return type_error("math.random");
+        return type_error("math::random");
     }
 
     let range = u128::try_from(i128::from(*max) - i128::from(*min) + 1).map_err(|_| VmError {
         kind: VmErrorKind::TypeMismatch {
-            operation: "math.random",
+            operation: "math::random",
         },
         source_span: None,
         call_stack: Default::default(),
     })?;
     let mut rng = rng.lock().map_err(|_| VmError {
         kind: VmErrorKind::TypeMismatch {
-            operation: "math.random",
+            operation: "math::random",
         },
         source_span: None,
         call_stack: Default::default(),
@@ -57,14 +57,14 @@ fn math_random(args: &[Value], rng: &Mutex<SeededRandom>) -> VmResult<Value> {
     let value = i128::from(*min)
         + i128::try_from(offset).map_err(|_| VmError {
             kind: VmErrorKind::TypeMismatch {
-                operation: "math.random",
+                operation: "math::random",
             },
             source_span: None,
             call_stack: Default::default(),
         })?;
     i64::try_from(value).map(Value::Int).map_err(|_| VmError {
         kind: VmErrorKind::TypeMismatch {
-            operation: "math.random",
+            operation: "math::random",
         },
         source_span: None,
         call_stack: Default::default(),

@@ -8,7 +8,7 @@ use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
 #[allow(dead_code)]
 #[derive(ScriptHost, ScriptReflect)]
 #[script(
-    path = "game.player.Player",
+    path = "game::player::Player",
     docs = "Player host schema.",
     attr = "domain=gameplay",
     implements = "Damageable"
@@ -24,7 +24,7 @@ struct Player {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game.reward.RewardConfig")]
+#[script(path = "game::reward::RewardConfig")]
 struct RewardConfigA {
     #[script(get, hint = "string")]
     item_id: String,
@@ -34,7 +34,7 @@ struct RewardConfigA {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(module = "game.reward", name = "RewardConfig")]
+#[script(module = "game::reward", name = "RewardConfig")]
 struct RewardConfigB {
     #[script(get, hint = "int")]
     count: i64,
@@ -45,8 +45,8 @@ struct RewardConfigB {
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(
-    path = "game.reward.RewardConfigV2",
-    alias = "game.reward.RewardConfig"
+    path = "game::reward::RewardConfigV2",
+    alias = "game::reward::RewardConfig"
 )]
 struct RewardConfigRenamed {
     #[script(get, hint = "string", alias = "item_id")]
@@ -62,7 +62,7 @@ fn script_host_derive_generates_type_metadata() {
         .kind(TypeKind::Host)
         .schema_hash(desc.schema_hash.expect("schema hash should be generated"))
         .host_type(Player::vela_host_type_id())
-        .attr("module", "game.player")
+        .attr("module", "game::player")
         .attr("domain", "gameplay")
         .docs("Player host schema.")
         .trait_impl(TraitDesc::new("Damageable"))
@@ -98,10 +98,10 @@ fn script_host_derive_generates_type_metadata() {
     assert_eq!(desc.kind, TypeKind::Host);
     assert_eq!(
         Player::vela_type_id(),
-        TypeId::new(stable_id("host_type", "", "game.player.Player")),
+        TypeId::new(stable_id("host_type", "", "game::player::Player")),
     );
     assert_eq!(desc.host_type_id, Some(Player::vela_host_type_id()));
-    assert_eq!(desc.attrs.get("module"), Some("game.player"));
+    assert_eq!(desc.attrs.get("module"), Some("game::player"));
     assert_eq!(desc.attrs.get("domain"), Some("gameplay"));
     assert_eq!(desc.traits, vec![TraitDesc::new("Damageable")]);
     assert_eq!(desc.fields[0].attrs.get("unit"), Some("level"));
@@ -122,13 +122,13 @@ fn script_host_derive_generates_field_helpers() {
 
     assert_eq!(
         Player::vela_field_id_level(),
-        FieldId::new(stable_id("host_field", "game.player.Player", "level")),
+        FieldId::new(stable_id("host_field", "game::player::Player", "level")),
     );
     assert_eq!(
         Player::vela_field_id_name(),
         FieldId::new(stable_id(
             "host_field",
-            "game.player.Player",
+            "game::player::Player",
             "display_name"
         )),
     );

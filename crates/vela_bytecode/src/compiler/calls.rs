@@ -395,7 +395,7 @@ fn path_root_is_local(
 
 fn callable_name(callee: &Expr) -> CompileResult<String> {
     match &callee.kind {
-        ExprKind::Path(path) => Ok(path.join(".")),
+        ExprKind::Path(path) => Ok(path.join("::")),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "callable expression",
         ))),

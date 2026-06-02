@@ -273,13 +273,13 @@ fn qualified_type_name(graph: &ModuleGraph, declaration: &Declaration) -> String
     if module_path.segments().is_empty() {
         declaration.name.clone()
     } else {
-        format!("{}.{}", module_path.join(), declaration.name)
+        format!("{}::{}", module_path.join(), declaration.name)
     }
 }
 
 fn qualified_path_name(graph: &ModuleGraph, owner: &Declaration, path: &[String]) -> String {
     if path.len() != 1 {
-        return path.join(".");
+        return path.join("::");
     }
     let Some(module_path) = graph.module_path(owner.module) else {
         return path[0].clone();
@@ -287,7 +287,7 @@ fn qualified_path_name(graph: &ModuleGraph, owner: &Declaration, path: &[String]
     if module_path.segments().is_empty() {
         path[0].clone()
     } else {
-        format!("{}.{}", module_path.join(), path[0])
+        format!("{}::{}", module_path.join(), path[0])
     }
 }
 
@@ -348,7 +348,7 @@ fn enum_variant_signature(
 }
 
 fn enum_variant_owner(type_name: &str, variant: &str) -> String {
-    format!("{type_name}.{variant}")
+    format!("{type_name}::{variant}")
 }
 
 fn schema_hash(kind: &str, type_name: &str, mut members: Vec<(u64, String, String)>) -> SchemaHash {
@@ -423,11 +423,11 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 #[doc("Reward metadata.")]
 #[domain("gameplay")]
-#[policy(level = 3, tags = ["reward", game.reward.Event])]
+#[policy(level = 3, tags = ["reward", game::reward::Event])]
 struct Reward {
     #[doc("Reward count.")]
     count: int = 1,
@@ -447,10 +447,10 @@ enum QuestProgress {
         registry.register_script_types(&graph);
 
         let reward = registry
-            .type_by_name("game.reward.Reward")
+            .type_by_name("game::reward::Reward")
             .expect("Reward type metadata");
         let progress = registry
-            .type_by_name("game.reward.QuestProgress")
+            .type_by_name("game::reward::QuestProgress")
             .expect("QuestProgress type metadata");
         assert_eq!(reward.kind, TypeKind::ScriptStruct);
         assert_eq!(progress.kind, TypeKind::ScriptEnum);
@@ -468,7 +468,7 @@ enum QuestProgress {
         assert_eq!(reward.attrs.get("domain"), Some("gameplay"));
         assert_eq!(
             reward.attrs.get("policy"),
-            Some("level=3,tags=[\"reward\",game.reward.Event]")
+            Some("level=3,tags=[\"reward\",game::reward::Event]")
         );
         assert_eq!(
             reward
@@ -573,7 +573,7 @@ enum QuestProgress {
                 .iter()
                 .find(|field| field.name == "count")
                 .map(|field| field.id),
-            Some(stable_field_id("game.reward.Reward", "count"))
+            Some(stable_field_id("game::reward::Reward", "count"))
         );
         assert_eq!(
             progress
@@ -581,7 +581,7 @@ enum QuestProgress {
                 .iter()
                 .find(|variant| variant.name == "Active")
                 .map(|variant| variant.id),
-            Some(stable_variant_id("game.reward.QuestProgress", "Active"))
+            Some(stable_variant_id("game::reward::QuestProgress", "Active"))
         );
     }
 
@@ -590,13 +590,13 @@ enum QuestProgress {
         let mut first = ModuleGraph::new();
         first.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             "struct Reward { count, item_id }\nenum QuestProgress { None, Active }",
         ));
         let mut second = ModuleGraph::new();
         second.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             "struct Reward { item_id, count }\nenum QuestProgress { Active, None }",
         ));
         let mut first_registry = TypeRegistry::new();
@@ -606,16 +606,16 @@ enum QuestProgress {
         second_registry.register_script_types(&second);
 
         let first_reward = first_registry
-            .type_by_name("game.reward.Reward")
+            .type_by_name("game::reward::Reward")
             .expect("first Reward");
         let second_reward = second_registry
-            .type_by_name("game.reward.Reward")
+            .type_by_name("game::reward::Reward")
             .expect("second Reward");
         let first_progress = first_registry
-            .type_by_name("game.reward.QuestProgress")
+            .type_by_name("game::reward::QuestProgress")
             .expect("first QuestProgress");
         let second_progress = second_registry
-            .type_by_name("game.reward.QuestProgress")
+            .type_by_name("game::reward::QuestProgress")
             .expect("second QuestProgress");
 
         let first_count = first_reward
@@ -650,7 +650,7 @@ enum QuestProgress {
         let mut first = ModuleGraph::new();
         first.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 struct Reward {
     #[id(101)]
@@ -668,7 +668,7 @@ enum QuestProgress {
         let mut second = ModuleGraph::new();
         second.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 struct Reward {
     #[id(101)]
@@ -690,16 +690,16 @@ enum QuestProgress {
         second_registry.register_script_types(&second);
 
         let first_reward = first_registry
-            .type_by_name("game.reward.Reward")
+            .type_by_name("game::reward::Reward")
             .expect("first Reward");
         let second_reward = second_registry
-            .type_by_name("game.reward.Reward")
+            .type_by_name("game::reward::Reward")
             .expect("second Reward");
         let first_progress = first_registry
-            .type_by_name("game.reward.QuestProgress")
+            .type_by_name("game::reward::QuestProgress")
             .expect("first QuestProgress");
         let second_progress = second_registry
-            .type_by_name("game.reward.QuestProgress")
+            .type_by_name("game::reward::QuestProgress")
             .expect("second QuestProgress");
 
         assert_eq!(first_reward.fields[0].id, FieldId::new(101));
@@ -717,13 +717,13 @@ enum QuestProgress {
         let mut original = ModuleGraph::new();
         original.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             "struct Reward { count: int, item_id: string }\nenum QuestProgress { None, Active }",
         ));
         let mut changed = ModuleGraph::new();
         changed.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             "struct Reward { count: float, bonus: int }\nenum QuestProgress { None, Finished }",
         ));
         let mut original_registry = TypeRegistry::new();
@@ -733,16 +733,16 @@ enum QuestProgress {
         changed_registry.register_script_types(&changed);
 
         let original_reward = original_registry
-            .type_by_name("game.reward.Reward")
+            .type_by_name("game::reward::Reward")
             .expect("original Reward");
         let changed_reward = changed_registry
-            .type_by_name("game.reward.Reward")
+            .type_by_name("game::reward::Reward")
             .expect("changed Reward");
         let original_progress = original_registry
-            .type_by_name("game.reward.QuestProgress")
+            .type_by_name("game::reward::QuestProgress")
             .expect("original QuestProgress");
         let changed_progress = changed_registry
-            .type_by_name("game.reward.QuestProgress")
+            .type_by_name("game::reward::QuestProgress")
             .expect("changed QuestProgress");
 
         assert_ne!(original_reward.schema_hash, changed_reward.schema_hash);
@@ -754,7 +754,7 @@ enum QuestProgress {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.combat"),
+            ModulePath::from_qualified("game::combat"),
             r#"
 #[doc("Damage protocol.")]
 trait Damageable {
@@ -777,10 +777,10 @@ impl Damageable for Player {
         registry.register_script_types(&graph);
 
         let damageable = registry
-            .trait_by_name("game.combat.Damageable")
+            .trait_by_name("game::combat::Damageable")
             .expect("Damageable trait");
         let player = registry
-            .type_by_name("game.combat.Player")
+            .type_by_name("game::combat::Player")
             .expect("Player type");
 
         assert_eq!(damageable.docs.as_deref(), Some("Damage protocol."));
@@ -819,7 +819,7 @@ impl Damageable for Player {
                 .iter()
                 .map(|trait_desc| trait_desc.name.as_str())
                 .collect::<Vec<_>>(),
-            ["game.combat.Damageable"]
+            ["game::combat::Damageable"]
         );
         assert_eq!(player.traits[0].id, damageable.id);
         assert_eq!(player.traits[0].origin, DeclOrigin::Script);

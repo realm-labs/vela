@@ -223,7 +223,7 @@ fn pattern_variant_path(pattern: &Pattern) -> Option<(Option<String>, &str)> {
     };
     let (variant, owner) = path.split_last()?;
     Some((
-        (!owner.is_empty()).then(|| owner.join(".")),
+        (!owner.is_empty()).then(|| owner.join("::")),
         variant.as_str(),
     ))
 }

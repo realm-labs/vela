@@ -82,7 +82,7 @@ fn compiler_uses_hir_signatures_for_code_object_params() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
-fn main(player: game.Player, amount: int) -> int {
+fn main(player: game::Player, amount: int) -> int {
     return amount;
 }
 "#,
@@ -127,19 +127,19 @@ fn compiler_lowers_named_native_args_from_compiler_options() {
         SourceId::new(1),
         r#"
 fn main() {
-    return game.add(rhs = 3, lhs = 2);
+    return game::add(rhs = 3, lhs = 2);
 }
 "#,
         &CompilerOptions::new()
             .with_native_module_root("game")
-            .with_native_function_params("game.add", ["lhs", "rhs"]),
+            .with_native_function_params("game::add", ["lhs", "rhs"]),
     )
     .expect("named native args should compile with descriptor metadata");
     let main = program.function("main").expect("main function");
 
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallNative { name, args, .. } if name == "game.add" && args.len() == 2
+        InstructionKind::CallNative { name, args, .. } if name == "game::add" && args.len() == 2
     )));
 }
 
@@ -356,12 +356,12 @@ fn compiler_reports_named_native_arg_diagnostics_from_compiler_options() {
         SourceId::new(1),
         r#"
 fn main() {
-    return game.add(rsh = 3, lhs = 2);
+    return game::add(rsh = 3, lhs = 2);
 }
 "#,
         &CompilerOptions::new()
             .with_native_module_root("game")
-            .with_native_function_params("game.add", ["lhs", "rhs"]),
+            .with_native_function_params("game::add", ["lhs", "rhs"]),
     )
     .expect_err("unknown named native arg should fail");
 

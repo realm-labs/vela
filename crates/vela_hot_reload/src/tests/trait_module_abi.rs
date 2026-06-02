@@ -128,10 +128,10 @@ fn removed_trait_abi_is_rejected() {
 fn module_export_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(17), 40, 80);
     let old_abi = HotReloadAbi::empty().module(
-        ModuleAbi::new("game.reward").export(ModuleExportAbi::function("grant_reward", 11)),
+        ModuleAbi::new("game::reward").export(ModuleExportAbi::function("grant_reward", 11)),
     );
     let removed_export =
-        HotReloadAbi::empty().module(ModuleAbi::new("game.reward").source_span(span));
+        HotReloadAbi::empty().module(ModuleAbi::new("game::reward").source_span(span));
 
     let error = old_abi
         .ensure_compatible_update(&removed_export)
@@ -139,7 +139,7 @@ fn module_export_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedModuleAbi {
-            module: "game.reward".to_owned(),
+            module: "game::reward".to_owned(),
             old: vec![ModuleExportAbi::function("grant_reward", 11)],
             new: vec![],
             source_span: Some(Box::new(span)),
@@ -160,7 +160,7 @@ fn module_export_abi_changes_are_rejected() {
     }));
 
     let changed_export = HotReloadAbi::empty().module(
-        ModuleAbi::new("game.reward")
+        ModuleAbi::new("game::reward")
             .export(ModuleExportAbi::function("grant_reward", 12))
             .source_span(span),
     );
@@ -170,7 +170,7 @@ fn module_export_abi_changes_are_rejected() {
     assert_eq!(error.code(), "reload.module.changed_abi");
 
     let appended_export = HotReloadAbi::empty().module(
-        ModuleAbi::new("game.reward")
+        ModuleAbi::new("game::reward")
             .export(ModuleExportAbi::function("grant_reward", 11))
             .export(ModuleExportAbi::function("grant_bonus", 12)),
     );
@@ -182,7 +182,7 @@ fn module_export_abi_changes_are_rejected() {
 #[test]
 fn removed_module_abi_is_rejected() {
     let span = Span::new(SourceId::new(18), 5, 25);
-    let old_abi = HotReloadAbi::empty().module(ModuleAbi::new("game.reward").source_span(span));
+    let old_abi = HotReloadAbi::empty().module(ModuleAbi::new("game::reward").source_span(span));
 
     let error = old_abi
         .ensure_compatible_update(&HotReloadAbi::empty())
@@ -190,7 +190,7 @@ fn removed_module_abi_is_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::RemovedModuleAbi {
-            module: "game.reward".to_owned(),
+            module: "game::reward".to_owned(),
             source_span: Some(Box::new(span)),
         }
     );
@@ -206,9 +206,9 @@ fn removed_module_abi_is_rejected() {
 #[test]
 fn module_abi_manifest_can_be_built_from_type_registry() {
     let mut registry = TypeRegistry::new();
-    registry.register_module(ModuleDesc::new("game.reward"));
+    registry.register_module(ModuleDesc::new("game::reward"));
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(77), "grant_reward").module("game.reward"),
+        FunctionDesc::new(FunctionId::new(77), "grant_reward").module("game::reward"),
     );
 
     let abi = HotReloadAbi::from_registry(&registry);
@@ -219,7 +219,7 @@ fn module_abi_manifest_can_be_built_from_type_registry() {
             AccessAbi::function(true, true, false, Vec::new()),
         ))
         .module(
-            ModuleAbi::new("game.reward").export(ModuleExportAbi::function("grant_reward", 77)),
+            ModuleAbi::new("game::reward").export(ModuleExportAbi::function("grant_reward", 77)),
         );
 
     abi.ensure_compatible_update(&expected)

@@ -267,7 +267,7 @@ mod tests {
             r#"
             fn main(quest) {
                 match quest {
-                    QuestState.Active => 1,
+                    QuestState::Active => 1,
                 };
             }
             "#,
@@ -298,7 +298,7 @@ mod tests {
             r#"
             fn main(quest) {
                 match quest {
-                    QuestState.Active => 1,
+                    QuestState::Active => 1,
                     _ => 0,
                 };
             }
@@ -317,8 +317,8 @@ mod tests {
             r#"
             fn main(quest) {
                 match quest {
-                    QuestState.Active if ok => 1,
-                    QuestState.Finished => 0,
+                    QuestState::Active if ok => 1,
+                    QuestState::Finished => 0,
                 };
             }
             "#,
@@ -344,10 +344,10 @@ mod tests {
             r#"
             fn main(maybe_reward, outcome) {
                 match maybe_reward {
-                    Option.Some(value) => value,
+                    Option::Some(value) => value,
                 };
                 match outcome {
-                    Result.Err(reason) => reason,
+                    Result::Err(reason) => reason,
                 };
             }
             "#,

@@ -67,7 +67,7 @@ fn global_completions_include_types_traits_and_functions() {
         TypeFact::trait_type("Damageable"),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "game.reward.grant",
+        "game::reward::grant",
         CompletionKind::Function,
         TypeFact::function(vec![TypeFact::host("Player")], TypeFact::Bool),
     )));
@@ -439,7 +439,7 @@ fn global_completions_include_stdlib_functions() {
     let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
 
     assert!(completions.contains(&CompletionItem::new(
-        "option.unwrap_or",
+        "option::unwrap_or",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
@@ -447,7 +447,7 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "option.ok_or",
+        "option::ok_or",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
@@ -455,7 +455,7 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "option.flatten",
+        "option::flatten",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::option(TypeFact::option(TypeFact::Any))],
@@ -463,7 +463,7 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "result.to_option",
+        "result::to_option",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
@@ -471,7 +471,7 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "result.to_error_option",
+        "result::to_error_option",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
@@ -479,7 +479,7 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "result.flatten",
+        "result::flatten",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::result(
@@ -490,17 +490,17 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "math.random",
+        "math::random",
         CompletionKind::Function,
         TypeFact::function(vec![TypeFact::Int, TypeFact::Int], TypeFact::Int),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "ctx.elapsed_since",
+        "ctx::elapsed_since",
         CompletionKind::Function,
         TypeFact::function(vec![TypeFact::Int], TypeFact::Int),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "math.lerp",
+        "math::lerp",
         CompletionKind::Function,
         TypeFact::function(
             vec![number.clone(), number.clone(), number],
@@ -509,13 +509,13 @@ fn global_completions_include_stdlib_functions() {
     )));
     let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
     assert!(completions.contains(&CompletionItem::new(
-        "math.move_towards",
+        "math::move_towards",
         CompletionKind::Function,
         TypeFact::function(vec![number.clone(), number.clone(), number.clone()], number),
     )));
     let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
     assert!(completions.contains(&CompletionItem::new(
-        "math.distance2d",
+        "math::distance2d",
         CompletionKind::Function,
         TypeFact::function(
             vec![number.clone(), number.clone(), number.clone(), number],
@@ -524,7 +524,7 @@ fn global_completions_include_stdlib_functions() {
     )));
     let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
     assert!(completions.contains(&CompletionItem::new(
-        "math.distance3d",
+        "math::distance3d",
         CompletionKind::Function,
         TypeFact::function(
             vec![
@@ -540,12 +540,12 @@ fn global_completions_include_stdlib_functions() {
     )));
     let number = TypeFact::Union(vec![TypeFact::Int, TypeFact::Float]);
     assert!(completions.contains(&CompletionItem::new(
-        "math.pow",
+        "math::pow",
         CompletionKind::Function,
         TypeFact::function(vec![number.clone(), number.clone()], number),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "math.sqrt",
+        "math::sqrt",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])],
@@ -553,7 +553,7 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "math.sign",
+        "math::sign",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])],
@@ -561,7 +561,7 @@ fn global_completions_include_stdlib_functions() {
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "math.round",
+        "math::round",
         CompletionKind::Function,
         TypeFact::function(
             vec![TypeFact::Union(vec![TypeFact::Int, TypeFact::Float])],
@@ -575,7 +575,7 @@ fn local_completions_include_function_scope_bindings() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("game"),
+        ModulePath::from_qualified("game"),
         r#"
             struct Player { level: int }
             fn grant(player: Player, amount: int) -> bool {
@@ -602,7 +602,7 @@ fn local_completions_include_function_scope_bindings() {
     assert!(completions.contains(&CompletionItem::new(
         "player",
         CompletionKind::Binding,
-        TypeFact::record("game.Player"),
+        TypeFact::record("game::Player"),
     )));
     assert!(completions.contains(&CompletionItem::new(
         "rewards",
@@ -631,7 +631,7 @@ fn declaration_completions_include_script_declarations() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("game.player"),
+        ModulePath::from_qualified("game::player"),
         r#"
             pub struct Player { level: int }
             pub enum QuestState { Active { quest_id: string }, Done }
@@ -651,7 +651,7 @@ fn declaration_completions_include_script_declarations() {
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
-        ModulePath::from_dotted("game.reward"),
+        ModulePath::from_qualified("game::reward"),
         r#"
             pub fn grant(amount: int) -> int {
                 return amount + 1;
@@ -665,42 +665,42 @@ fn declaration_completions_include_script_declarations() {
     let completions = declaration_completions(&graph, &facts);
 
     assert!(completions.contains(&CompletionItem::new(
-        "game.player.Player",
+        "game::player::Player",
         CompletionKind::Type,
-        TypeFact::record("game.player.Player"),
+        TypeFact::record("game::player::Player"),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "game.player.QuestState",
+        "game::player::QuestState",
         CompletionKind::Type,
-        TypeFact::enum_type("game.player.QuestState", None::<String>),
+        TypeFact::enum_type("game::player::QuestState", None::<String>),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "game.player.Damageable",
+        "game::player::Damageable",
         CompletionKind::Trait,
-        TypeFact::trait_type("game.player.Damageable"),
+        TypeFact::trait_type("game::player::Damageable"),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "game.player.START_LEVEL",
+        "game::player::START_LEVEL",
         CompletionKind::Const,
         TypeFact::Int,
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "game.player.grant",
+        "game::player::grant",
         CompletionKind::Function,
         TypeFact::function(
-            vec![TypeFact::record("game.player.Player"), TypeFact::Int],
+            vec![TypeFact::record("game::player::Player"), TypeFact::Int],
             TypeFact::Bool,
         ),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "game.reward.grant",
+        "game::reward::grant",
         CompletionKind::Function,
         TypeFact::function(vec![TypeFact::Int], TypeFact::Int),
     )));
     assert!(
         completions
             .iter()
-            .all(|completion| completion.label != "game.player.Damageable.Player")
+            .all(|completion| completion.label != "game::player::Damageable::Player")
     );
 }
 
@@ -709,12 +709,12 @@ fn module_completions_include_module_paths_and_prefixes() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("game.player"),
+        ModulePath::from_qualified("game::player"),
         "pub fn level() { return 1; }",
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
-        ModulePath::from_dotted("game.reward"),
+        ModulePath::from_qualified("game::reward"),
         "pub fn grant() { return 2; }",
     ));
     graph.resolve_imports();
@@ -727,14 +727,14 @@ fn module_completions_include_module_paths_and_prefixes() {
         vec![
             CompletionItem::new("game", CompletionKind::Module, TypeFact::module("game")),
             CompletionItem::new(
-                "game.player",
+                "game::player",
                 CompletionKind::Module,
-                TypeFact::module("game.player"),
+                TypeFact::module("game::player"),
             ),
             CompletionItem::new(
-                "game.reward",
+                "game::reward",
                 CompletionKind::Module,
-                TypeFact::module("game.reward"),
+                TypeFact::module("game::reward"),
             ),
         ]
     );
@@ -767,7 +767,7 @@ fn registry_facts() -> RegistryFacts {
         ),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
             .param(vela_reflect::modules::FunctionParamDesc::new("player").type_hint("Player"))
             .return_type("bool"),
     );

@@ -14,8 +14,8 @@ pub(super) fn closest_name(
 pub(super) fn impl_declaration_name(trait_path: &[String], target_path: &[String]) -> String {
     format!(
         "impl {} for {}",
-        trait_path.join("."),
-        target_path.join(".")
+        trait_path.join("::"),
+        target_path.join("::")
     )
 }
 

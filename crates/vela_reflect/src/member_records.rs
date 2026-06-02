@@ -206,7 +206,7 @@ fn variant_record_fields<'a>(
     variant: &VariantDesc,
     variant_fields: impl IntoIterator<Item = &'a FieldDesc>,
 ) -> BTreeMap<String, HostValue> {
-    let field_owner = format!("{type_name}.{}", variant.name);
+    let field_owner = format!("{type_name}::{}", variant.name);
     let mut fields = BTreeMap::new();
     fields.insert("id".to_owned(), id_value(variant.id.get()));
     fields.insert("name".to_owned(), HostValue::String(variant.name.clone()));
@@ -265,7 +265,7 @@ fn field_record_fields(field: &FieldDesc) -> BTreeMap<String, HostValue> {
 fn id_value(id: u64) -> HostValue {
     // TODO(reflect): stable IDs are u64, but reflection currently exposes IDs
     // through signed script ints. Replace this lossy saturation with a deliberate
-    // unsigned/ID value surface before treating reflect.id() as a stable public
+    // unsigned/ID value surface before treating reflect::id() as a stable public
     // identity API.
     HostValue::Int(i64::try_from(id).unwrap_or(i64::MAX))
 }

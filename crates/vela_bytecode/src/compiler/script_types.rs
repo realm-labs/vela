@@ -125,7 +125,7 @@ pub(super) fn expression_script_fact(
                 let type_name = type_symbol_at_span(expr.span).unwrap_or(enum_path);
                 return Some(ScriptTypeFact::enum_variant(type_name, variant));
             }
-            let type_name = type_symbol_at_span(expr.span).unwrap_or_else(|| path.join("."));
+            let type_name = type_symbol_at_span(expr.span).unwrap_or_else(|| path.join("::"));
             Some(ScriptTypeFact::new(type_name))
         }
         ExprKind::Call { callee, .. } => {
@@ -171,7 +171,7 @@ pub(super) fn type_hint_script_type<'a>(
         if type_name == &hinted {
             return Some(type_name.clone());
         }
-        if hint.path.len() == 1 && type_name.rsplit('.').next() == Some(hinted.as_str()) {
+        if hint.path.len() == 1 && type_name.rsplit("::").next() == Some(hinted.as_str()) {
             if suffix_match.is_some() {
                 return None;
             }

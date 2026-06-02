@@ -37,11 +37,11 @@ enum Reward {
 fn main() {
     let total = 0;
     let rewards = [
-        Reward.Grant { amount: 2 },
-        Reward.Skip { amount: 100 },
-        Reward.Grant { amount: 5 },
+        Reward::Grant { amount: 2 },
+        Reward::Skip { amount: 100 },
+        Reward::Grant { amount: 5 },
     ];
-    for Reward.Grant { amount } in rewards {
+    for Reward::Grant { amount } in rewards {
         total += amount;
     }
     return total;
@@ -83,7 +83,7 @@ fn runs_compiled_for_in_over_native_iterator() {
         r#"
 fn main() {
     let total = 0;
-    for value in game.values() {
+    for value in game::values() {
         total += value;
     }
     return total;
@@ -93,7 +93,7 @@ fn main() {
     )
     .expect("compile native iterator for-in source");
     let mut vm = Vm::new();
-    vm.register_native("game.values", |_| {
+    vm.register_native("game::values", |_| {
         Ok(Value::Iterator(IteratorState::from_values(vec![
             Value::Int(2),
             Value::Int(3),

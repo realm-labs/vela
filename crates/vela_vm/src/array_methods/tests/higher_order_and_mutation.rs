@@ -11,8 +11,8 @@ fn main() {
     let missing = values.find(|value| value > 10);
     let count = values.count(|value| value > 1);
     if doubled[2] == 6 && evens[0] == 2 && evens[1] == 4
-        && option.unwrap_or(first_large, 0) == 3
-        && option.unwrap_or(missing, 9) == 9
+        && option::unwrap_or(first_large, 0) == 3
+        && option::unwrap_or(missing, 9) == 9
         && values.any(|value| value == 4)
         && values.all(|value| value > 0)
     {
@@ -43,8 +43,8 @@ fn main() {
     let missing = names.find(|name| name == "dragon");
     if lengths[0] == 4 && lengths[2] == 4
         && matches.len() == 2 && matches[1] == "wyrm"
-        && option.unwrap_or(found, "missing") == "wyrm"
-        && option.unwrap_or(missing, "missing") == "missing"
+        && option::unwrap_or(found, "missing") == "wyrm"
+        && option::unwrap_or(missing, "missing") == "missing"
         && names.any(|name| name.ends_with("f"))
         && names.all(|name| name.len() == 4)
     {
@@ -71,10 +71,10 @@ fn runs_compiled_array_endpoint_methods() {
 fn main() {
     let values = [10, 20, 30];
     let empty = [];
-    if option.unwrap_or(values.first(), 0) == 10
-        && option.unwrap_or(values.last(), 0) == 30
-        && option.unwrap_or(empty.first(), 7) == 7
-        && option.unwrap_or(empty.last(), 9) == 9
+    if option::unwrap_or(values.first(), 0) == 10
+        && option::unwrap_or(values.last(), 0) == 30
+        && option::unwrap_or(empty.first(), 7) == 7
+        && option::unwrap_or(empty.last(), 9) == 9
     {
         return 1;
     }
@@ -96,12 +96,12 @@ fn managed_heap_execution_runs_array_endpoint_methods() {
 fn main() {
     let names = ["boar", "wolf", "wyrm"];
     let empty = [];
-    if option.unwrap_or(names.first(), "missing") == "boar"
-        && option.unwrap_or(names.last(), "missing") == "wyrm"
-        && option.unwrap_or(empty.first(), "empty") == "empty"
-        && option.unwrap_or(empty.last(), "empty") == "empty"
+    if option::unwrap_or(names.first(), "missing") == "boar"
+        && option::unwrap_or(names.last(), "missing") == "wyrm"
+        && option::unwrap_or(empty.first(), "empty") == "empty"
+        && option::unwrap_or(empty.last(), "empty") == "empty"
     {
-        return option.unwrap_or(names.last(), "missing");
+        return option::unwrap_or(names.last(), "missing");
     }
     return "";
 }
@@ -125,8 +125,8 @@ fn main() {
     let values = [10, 20, 30];
     let removed = values.remove_at(1);
     let missing = values.remove_at(5);
-    if option.unwrap_or(removed, 0) == 20
-        && option.unwrap_or(missing, 99) == 99
+    if option::unwrap_or(removed, 0) == 20
+        && option::unwrap_or(missing, 99) == 99
         && values.len() == 2
         && values[0] == 10
         && values[1] == 30
@@ -152,8 +152,8 @@ fn main() {
     let tags = ["daily", "quest", "raid"];
     let removed = tags.remove_at(0);
     let missing = tags.remove_at(9);
-    if option.unwrap_or(removed, "missing") == "daily"
-        && option.unwrap_or(missing, "none") == "none"
+    if option::unwrap_or(removed, "missing") == "daily"
+        && option::unwrap_or(missing, "none") == "none"
         && tags.join("|") == "quest|raid"
     {
         return tags[0];

@@ -5,7 +5,7 @@ fn parses_core_module_items() {
     let parsed = parse_source(
         source_id(),
         r#"
-use game.player.Player;
+use game::player::Player;
 
 pub const START_LEVEL: int = 1 + 2;
 
@@ -118,7 +118,7 @@ fn parses_structured_attribute_arguments() {
     let parsed = parse_source(
         source_id(),
         r#"
-#[rule(kind = game.reward.Rule, tags = ["daily", "quest"], config = { enabled: true, limit: 10 })]
+#[rule(kind = game::reward::Rule, tags = ["daily", "quest"], config = { enabled: true, limit: 10 })]
 fn main() {
     return null;
 }
@@ -133,13 +133,13 @@ fn main() {
     assert_eq!(parsed.items[0].attrs[0].path, ["rule"]);
     assert_eq!(
         parsed.items[0].attrs[0].value.as_deref(),
-        Some("kind=game.reward.Rule,tags=[\"daily\",\"quest\"],config={enabled:true,limit:10}")
+        Some("kind=game::reward::Rule,tags=[\"daily\",\"quest\"],config={enabled:true,limit:10}")
     );
 }
 
 #[test]
 fn parses_use_alias_metadata() {
-    let parsed = parse_source(source_id(), "use game.reward.grant as give_reward;");
+    let parsed = parse_source(source_id(), "use game::reward::grant as give_reward;");
 
     assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     let ItemKind::Use(import) = &parsed.items[0].kind else {
@@ -147,4 +147,13 @@ fn parses_use_alias_metadata() {
     };
     assert_eq!(import.path, ["game", "reward", "grant"]);
     assert_eq!(import.alias.as_deref(), Some("give_reward"));
+}
+
+#[test]
+fn diagnoses_dotted_static_paths() {
+    let parsed = parse_source(source_id(), "use game.reward.grant;");
+
+    assert!(parsed.diagnostics.iter().any(|diagnostic| {
+        diagnostic.message == "use `::` for module/type paths; `.` is value access"
+    }));
 }

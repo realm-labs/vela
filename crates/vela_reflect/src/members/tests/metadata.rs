@@ -136,7 +136,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     };
     assert_eq!(
         variant_field_list_item.get("owner"),
-        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+        Some(&HostValue::String("QuestProgress::Active".to_owned()))
     );
     assert_eq!(
         variant_field_list_item.get("name"),
@@ -460,7 +460,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::UnknownField {
-            type_name: "QuestProgress.Active".to_owned(),
+            type_name: "QuestProgress::Active".to_owned(),
             field: "cout".to_owned(),
             candidates: vec!["count".to_owned()],
             related: vec![crate::candidates::ReflectCandidate::new("count", None)],

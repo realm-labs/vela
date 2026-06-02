@@ -11,12 +11,12 @@ fn core_language_fixture_executes() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("conformance.core"),
+            ModulePath::from_qualified("conformance::core"),
             core,
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("conformance.reward"),
+            ModulePath::from_qualified("conformance::reward"),
             reward,
         ),
     ])
@@ -25,7 +25,7 @@ fn core_language_fixture_executes() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "conformance.core.main", &[])
+        .run_program(&program, "conformance::core::main", &[])
         .expect("core language conformance fixture should run");
 
     assert_eq!(result, Value::Int(609));

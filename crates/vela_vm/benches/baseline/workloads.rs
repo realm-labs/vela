@@ -42,7 +42,7 @@ fn main() {
     let unique = values.distinct().sort();
     let grouped = values.group_by(|value| if value % 2 == 0 { "even" } else { "odd" });
     let scores = {"quest": 3, "raid": 8}.merge({"quest": 5, "daily": 2});
-    let tags = set.from_array(["quest", "raid", "daily", "quest"]);
+    let tags = set::from_array(["quest", "raid", "daily", "quest"]);
     if unique.first().unwrap_or(0) == 1
         && unique.last().unwrap_or(0) == 9
         && grouped.get_or("even", []).len() == 3
@@ -87,11 +87,11 @@ fn main() {
     let item = parts[1];
     let count = parts[2].strip_prefix("count=").unwrap_or("0").parse_int().unwrap_or(0);
     let reward = Reward { item_id: item, count };
-    let outcome = ResultState.Done { score: reward.count + item.len() };
+    let outcome = ResultState::Done { score: reward.count + item.len() };
     let label = "quest.reward.done".strip_suffix(".done").unwrap_or("");
     match outcome {
-        ResultState.Done { score } if label.starts_with("quest") => score + label.len(),
-        ResultState.Blocked(reason) => reason.len(),
+        ResultState::Done { score } if label.starts_with("quest") => score + label.len(),
+        ResultState::Blocked(reason) => reason.len(),
         _ => 0,
     }
 }

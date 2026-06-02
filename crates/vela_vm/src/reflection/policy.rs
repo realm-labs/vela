@@ -13,13 +13,13 @@ pub(super) fn register(
 ) {
     let permissions_policy = policy.clone();
     let permissions_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.permissions", move |args, _host| {
+    vm.register_host_native("reflect::permissions", move |args, _host| {
         check_reflect_policy(
             &permissions_policy,
             &permissions_budget,
             reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
-        expect_arity("reflect.permissions", args, 0)?;
+        expect_arity("reflect::permissions", args, 0)?;
         Ok(Value::Array(
             reflect::permissions::permission_names(&permissions_policy)
                 .into_iter()
@@ -30,14 +30,14 @@ pub(super) fn register(
 
     let has_permission_policy = policy.clone();
     let has_permission_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.has_permission", move |args, _host| {
+    vm.register_host_native("reflect::has_permission", move |args, _host| {
         check_reflect_policy(
             &has_permission_policy,
             &has_permission_budget,
             reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
-        expect_arity("reflect.has_permission", args, 1)?;
-        let permission = expect_string(&args[0], "reflect.has_permission")?;
+        expect_arity("reflect::has_permission", args, 1)?;
+        let permission = expect_string(&args[0], "reflect::has_permission")?;
         Ok(Value::Bool(reflect::permissions::has_permission(
             &has_permission_policy,
             permission,

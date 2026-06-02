@@ -225,7 +225,7 @@ pub(super) fn tuple_constructor_diagnostics(
     let Some(shape) = shape else {
         return Vec::new();
     };
-    let owner = format!("{type_name}.{variant}");
+    let owner = format!("{type_name}::{variant}");
     match resolve_tuple_constructor_arguments(shape, &owner, args, constructor_span) {
         Ok(_) => Vec::new(),
         Err(diagnostics) => diagnostics,
@@ -292,7 +292,7 @@ pub(super) fn unknown_enum_variant_diagnostic(
     variant: &str,
     span: Span,
 ) -> Diagnostic {
-    Diagnostic::error(format!("unknown enum variant `{enum_name}.{variant}`"))
+    Diagnostic::error(format!("unknown enum variant `{enum_name}::{variant}`"))
         .with_code("compiler::unknown_constructor_variant")
         .with_span(span)
         .with_label(span, "variant is not declared on this enum")

@@ -37,7 +37,7 @@ pub(super) fn narrowed_by_match_pattern(
 }
 
 fn scrutinee_variant_fact(scrutinee_fact: &TypeFact, enum_name: &str, variant: &str) -> TypeFact {
-    match (scrutinee_fact, enum_name.rsplit('.').next(), variant) {
+    match (scrutinee_fact, enum_name.rsplit("::").next(), variant) {
         (TypeFact::Option { some }, Some("Option"), "Some")
         | (TypeFact::OptionSome { some }, Some("Option"), "Some") => {
             TypeFact::option_some((**some).clone())
@@ -102,7 +102,7 @@ fn pattern_path_variant(
         };
     }
 
-    let owner = owner_path.join(".");
+    let owner = owner_path.join("::");
     facts
         .variant_fact(&owner, variant)
         .map(|_| (owner.clone(), variant.clone()))
@@ -135,7 +135,7 @@ fn bind_variant_pattern_facts(
     variant: &str,
     facts: &RegistryFacts,
 ) {
-    let owner = format!("{enum_name}.{variant}");
+    let owner = format!("{enum_name}::{variant}");
     match pattern {
         Pattern::TupleVariant { fields, .. } => {
             bind_tuple_fields(
@@ -205,12 +205,12 @@ fn dynamic_enum_variant(
 ) -> Option<(String, String)> {
     match scrutinee_fact {
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone
-            if owner.rsplit('.').next() == Some("Option") && is_option_variant(variant) =>
+            if owner.rsplit("::").next() == Some("Option") && is_option_variant(variant) =>
         {
             Some((owner.to_owned(), variant.to_owned()))
         }
         TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. }
-            if owner.rsplit('.').next() == Some("Result") && is_result_variant(variant) =>
+            if owner.rsplit("::").next() == Some("Result") && is_result_variant(variant) =>
         {
             Some((owner.to_owned(), variant.to_owned()))
         }

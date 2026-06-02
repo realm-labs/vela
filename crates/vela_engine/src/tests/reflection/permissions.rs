@@ -11,8 +11,8 @@ fn engine_installs_reflection_lookup_budget() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.name(player);
-    reflect.kind(player);
+    reflect::name(player);
+    reflect::kind(player);
     return 1;
 }
 "#,
@@ -60,7 +60,7 @@ fn engine_reflect_call_denies_unapproved_native_methods() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.call(player, "grant_exp", 10);
+    reflect::call(player, "grant_exp", 10);
     return 1;
 }
 "#,
@@ -122,7 +122,7 @@ fn engine_reflect_call_records_approved_native_methods() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.call(player, "grant_exp", 10);
+    reflect::call(player, "grant_exp", 10);
     return 1;
 }
 "#,

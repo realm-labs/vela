@@ -305,12 +305,12 @@ Scope:
 ```text
 TypeRegistry modules, functions, fields, methods, variants, traits, attrs
 TypeHint, TypeKind, FieldAccess, MethodAccess, EffectSet, DeclOrigin, DocString
-reflect.name, kind, field, fields, has_field
-reflect.get and reflect.set for host refs and script records
-reflect.methods, has_method, call
-reflect.variant and variant_is
-reflect.traits and implements
-reflect.module and exports
+reflect::name, kind, field, fields, has_field
+reflect::get and reflect::set for host refs and script records
+reflect::methods, has_method, call
+reflect::variant and variant_is
+reflect::traits and implements
+reflect::module and exports
 reflection permission checks and lookup budgets
 candidate hints for unknown fields, methods, variants, modules, and functions
 ```
@@ -349,9 +349,9 @@ set APIs
 string APIs needed for gameplay scripts and diagnostics
 Option and Result as dynamic enums
 ? operator lowering for Option/Result propagation
-math.max/min/clamp/floor/ceil/abs
+math::max/min/clamp/floor/ceil/abs
 controlled random through permissions or context
-ctx.now, ctx.tick, logging, event emit helpers
+ctx::now, ctx::tick, logging, event emit helpers
 stdlib metadata for TypeFacts without user-visible generics
 ```
 
@@ -838,7 +838,7 @@ Control:
 ```text
 TypeRegistry is read-only at runtime.
 Schema changes happen only through compile/hot reload.
-reflect.set writes values only; it never changes schema.
+reflect::set writes values only; it never changes schema.
 ```
 
 ### Premature Performance Work

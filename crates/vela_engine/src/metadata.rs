@@ -132,7 +132,7 @@ fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
 }
 
 fn native_function_module(name: &str) -> Option<String> {
-    name.rsplit_once('.')
+    name.rsplit_once("::")
         .map(|(module, _)| module.to_owned())
         .filter(|module| !module.is_empty())
 }

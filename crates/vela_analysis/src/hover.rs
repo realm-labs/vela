@@ -241,7 +241,7 @@ fn variant_field_desc<'a>(
     owner: &str,
     field: &str,
 ) -> Option<&'a FieldDesc> {
-    let (enum_name, variant_name) = owner.rsplit_once('.')?;
+    let (enum_name, variant_name) = owner.rsplit_once("::")?;
     registry
         .type_by_name(enum_name)?
         .variants

@@ -136,7 +136,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game"),
+            ModulePath::from_qualified("game"),
             r#"
             struct Player { level: int }
             fn grant(player: Player, amount: int) -> bool {
@@ -158,7 +158,7 @@ mod tests {
         assert_eq!(
             facts.declaration(function.id),
             Some(&TypeFact::function(
-                vec![TypeFact::record("game.Player"), TypeFact::Int],
+                vec![TypeFact::record("game::Player"), TypeFact::Int],
                 TypeFact::Bool,
             ))
         );
@@ -185,7 +185,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game"),
+            ModulePath::from_qualified("game"),
             "enum QuestState { Active, Done }",
         ));
         graph.resolve_imports();
@@ -199,7 +199,7 @@ mod tests {
 
         assert_eq!(
             facts.declaration(declaration.id),
-            Some(&TypeFact::enum_type("game.QuestState", None::<String>))
+            Some(&TypeFact::enum_type("game::QuestState", None::<String>))
         );
     }
 
@@ -208,7 +208,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game"),
+            ModulePath::from_qualified("game"),
             r#"
             const BONUS: int = 3
             fn grant(amount: int) -> int {

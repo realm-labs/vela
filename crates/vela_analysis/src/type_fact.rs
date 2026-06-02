@@ -208,13 +208,13 @@ impl TypeFact {
             }
             Self::Set { element } => format!("set({})", element.display_name()),
             Self::Option { some } => format!("Option({})", some.display_name()),
-            Self::OptionSome { some } => format!("Option.Some({})", some.display_name()),
-            Self::OptionNone => "Option.None".to_owned(),
+            Self::OptionSome { some } => format!("Option::Some({})", some.display_name()),
+            Self::OptionNone => "Option::None".to_owned(),
             Self::Result { ok, err } => {
                 format!("Result({}, {})", ok.display_name(), err.display_name())
             }
-            Self::ResultOk { ok } => format!("Result.Ok({})", ok.display_name()),
-            Self::ResultErr { err } => format!("Result.Err({})", err.display_name()),
+            Self::ResultOk { ok } => format!("Result::Ok({})", ok.display_name()),
+            Self::ResultErr { err } => format!("Result::Err({})", err.display_name()),
             Self::Function { params, returns } => {
                 let params = params
                     .iter()
@@ -230,7 +230,7 @@ impl TypeFact {
             Self::Enum {
                 name,
                 variant: Some(variant),
-            } => format!("{name}.{variant}"),
+            } => format!("{name}::{variant}"),
             Self::Enum {
                 name,
                 variant: None,
@@ -271,11 +271,11 @@ mod tests {
         assert_eq!(fact.display_name(), "map(string, array(int))");
         assert_eq!(
             TypeFact::option_some(TypeFact::Int).display_name(),
-            "Option.Some(int)"
+            "Option::Some(int)"
         );
         assert_eq!(
             TypeFact::result_err(TypeFact::String).display_name(),
-            "Result.Err(string)"
+            "Result::Err(string)"
         );
         assert!(!fact.display_name().contains('<'));
         assert!(!fact.display_name().contains('>'));
@@ -303,8 +303,8 @@ mod tests {
 
     #[test]
     fn module_facts_display_as_module_paths() {
-        let fact = TypeFact::module("game.reward");
+        let fact = TypeFact::module("game::reward");
 
-        assert_eq!(fact.display_name(), "game.reward");
+        assert_eq!(fact.display_name(), "game::reward");
     }
 }

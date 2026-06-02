@@ -388,6 +388,10 @@ impl<'src> Lexer<'src> {
                 }
             }
             '.' => Some(Symbol::Dot),
+            ':' if self.peek_char() == Some(':') => {
+                self.bump_char();
+                Some(Symbol::ColonColon)
+            }
             ':' => Some(Symbol::Colon),
             ';' => Some(Symbol::Semicolon),
             '?' => Some(Symbol::Question),

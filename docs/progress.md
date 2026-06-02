@@ -53,6 +53,8 @@ closes or exposes a more specific gap.
 ## Active Capabilities
 
 - Source files use `.vela`; future bytecode-only artifacts use `.vbc`.
+- Static module, type, variant, and native-function paths use `::`; runtime
+  field, method, host-path, and metadata-record access uses `.`.
 - Parser covers declarations, statements, expressions, attributes, and recovery
   with source spans.
 - HIR owns module graph resolution, imports, declaration IDs, binding maps,
@@ -133,16 +135,16 @@ closes or exposes a more specific gap.
   method access, effect, and permission hints for likely method names.
 - Reflection field, method, and function access-denial diagnostics carry copied
   declaration source spans when schema metadata provides them.
-- Core reflection call policy enforces `reflect.call_methods` for direct
+- Core reflection call policy enforces `reflect::call_methods` for direct
   method calls and reflected function invocation, before effect-specific call
   permissions are considered.
 - Script-defined struct and enum fields expose writable reflection metadata,
-  and copy-returning `reflect.set` respects `reflect_writable` plus field
+  and copy-returning `reflect::set` respects `reflect_writable` plus field
   permissions for script values.
-- Reflection metadata records are read-only at the `reflect.set` boundary, so
+- Reflection metadata records are read-only at the `reflect::set` boundary, so
   copied descriptors cannot be rewritten into schema-mutation stand-ins.
-- Global `reflect.fields()` metadata includes enum variant payload fields with
-  policy filtering and `Type.Variant` ownership.
+- Global `reflect::fields()` metadata includes enum variant payload fields with
+  policy filtering and `Type::Variant` ownership.
 - Standard Option/Result enum variants and payload fields expose copied docs
   and stdlib attrs through direct registry metadata and script reflection.
 - Standard Context host schema metadata tags its type, time fields, and

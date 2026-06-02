@@ -5,7 +5,7 @@ fn snapshots_core_m1_syntax_shape() {
     let parsed = parse_source(
         source_id(),
         r#"
-use game.player.Player;
+use game::player::Player;
 
 const START_LEVEL = 1 + 2;
 
@@ -20,8 +20,8 @@ pub fn on_kill(ctx, player, monster) {
         player.inventory.add(reward.item_id, reward.count);
     }
     match player.quest_progress {
-        QuestProgress.Active { quest_id, count } => {
-            player.quest_progress = QuestProgress.Active { quest_id, count: count + 1 };
+        QuestProgress::Active { quest_id, count } => {
+            player.quest_progress = QuestProgress::Active { quest_id, count: count + 1 };
         },
         _ => {},
     }
@@ -37,7 +37,7 @@ impl Damageable for Player { fn damage(self, amount) { return amount; } }
     assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     assert_eq!(
         snapshot_file(&parsed),
-        r#"use game.player.Player
+        r#"use game::player::Player
 const START_LEVEL = binary
 pub fn on_kill(ctx, player, monster)
   let rewards = call
@@ -88,7 +88,7 @@ fn snapshot_file(file: &SourceFile) -> String {
     for item in &file.items {
         match &item.kind {
             ItemKind::Use(use_item) => {
-                writeln!(out, "use {}", use_item.path.join(".")).expect("write syntax snapshot");
+                writeln!(out, "use {}", use_item.path.join("::")).expect("write syntax snapshot");
             }
             ItemKind::Const(constant) => {
                 writeln!(
@@ -151,8 +151,8 @@ fn snapshot_file(file: &SourceFile) -> String {
                 writeln!(
                     out,
                     "impl {} for {}({methods})",
-                    impl_item.trait_path.join("."),
-                    impl_item.target_path.join(".")
+                    impl_item.trait_path.join("::"),
+                    impl_item.target_path.join("::")
                 )
                 .expect("write syntax snapshot");
             }
@@ -261,8 +261,8 @@ fn pattern_snapshot_name(pattern: &Pattern) -> String {
         Pattern::Wildcard => "_".to_owned(),
         Pattern::Literal(_) => "literal".to_owned(),
         Pattern::Binding(name) => name.clone(),
-        Pattern::Path(path) => path.join("."),
-        Pattern::TupleVariant { path, .. } => format!("{}(...)", path.join(".")),
-        Pattern::RecordVariant { path, .. } => format!("{} {{...}}", path.join(".")),
+        Pattern::Path(path) => path.join("::"),
+        Pattern::TupleVariant { path, .. } => format!("{}(...)", path.join("::")),
+        Pattern::RecordVariant { path, .. } => format!("{} {{...}}", path.join("::")),
     }
 }

@@ -473,7 +473,7 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         raw_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+        Some(&HostValue::String("QuestProgress::Active".to_owned()))
     );
 
     let ReflectValue::Host(HostValue::Array(policy_variants)) =
@@ -516,7 +516,7 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     );
     assert_eq!(
         fields.get("owner"),
-        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+        Some(&HostValue::String("QuestProgress::Active".to_owned()))
     );
     let HostValue::Record {
         fields: all_variant_fields,
@@ -542,7 +542,7 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         all_policy_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+        Some(&HostValue::String("QuestProgress::Active".to_owned()))
     );
     assert_eq!(policy_all_fields.len(), 1);
     let HostValue::Record {
@@ -554,7 +554,7 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         all_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+        Some(&HostValue::String("QuestProgress::Active".to_owned()))
     );
     assert_eq!(
         all_field_fields.get("name"),
@@ -573,7 +573,7 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         policy_variant_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress.Active".to_owned()))
+        Some(&HostValue::String("QuestProgress::Active".to_owned()))
     );
     assert!(
         has_field_with_policy(&registry, &target, "count", &ReflectPolicy::read_only())
@@ -589,7 +589,7 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::FieldNotReflectReadable {
-            type_name: "QuestProgress.Active".to_owned(),
+            type_name: "QuestProgress::Active".to_owned(),
             field: "secret".to_owned(),
             source_span: None,
         }

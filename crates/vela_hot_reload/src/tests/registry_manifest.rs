@@ -32,13 +32,13 @@ fn registry_abi_rejections_carry_new_declaration_spans() {
 
     let function_span = Span::new(SourceId::new(10), 30, 50);
     let old_abi = HotReloadAbi::empty().function(FunctionAbi::new(
-        "game.reward.grant",
+        "game::reward::grant",
         EffectAbi::host_read(),
         AccessAbi::public(),
     ));
     let new_abi = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_write(),
             AccessAbi::public(),
         )
@@ -134,7 +134,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
     let mut registry = TypeRegistry::new();
     registry.register(player);
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
             .return_type("int")
@@ -172,7 +172,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             ),
     );
     changed_registry.register_function(
-        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
             .return_type("int")
@@ -211,7 +211,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             ),
     );
     changed_param_registry.register_function(
-        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("float"))
             .return_type("int")
@@ -250,7 +250,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             ),
     );
     changed_method_param_registry.register_function(
-        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
             .return_type("int")
@@ -289,7 +289,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             ),
     );
     changed_function_return_registry.register_function(
-        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
             .return_type("float")
@@ -328,7 +328,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
             ),
     );
     changed_method_return_registry.register_function(
-        FunctionDesc::new(FunctionId::new(11), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(11), "game::reward::grant")
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .param(FunctionParamDesc::new("amount").type_hint("int"))
             .return_type("int")

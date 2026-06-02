@@ -226,7 +226,7 @@ fn trait_declaration(
         return (graph.declaration(declaration)?.kind == DeclarationKind::Trait)
             .then_some(declaration);
     }
-    let full_name = path.join(".");
+    let full_name = path.join("::");
     graph.declarations().find_map(|declaration| {
         (declaration.kind == DeclarationKind::Trait
             && declaration_qualified_name(graph, declaration) == full_name)
@@ -244,17 +244,17 @@ fn declaration_qualified_name(
     if module_path.segments().is_empty() {
         declaration.name.clone()
     } else {
-        format!("{}.{}", module_path.join(), declaration.name)
+        format!("{}::{}", module_path.join(), declaration.name)
     }
 }
 
 fn local_target_name(path: &[String]) -> String {
-    path.join(".")
+    path.join("::")
 }
 
 fn module_target_name(module_path: Option<&ModulePath>, path: &[String]) -> String {
     if path.len() != 1 {
-        return path.join(".");
+        return path.join("::");
     }
     let Some(module_path) = module_path else {
         return path[0].clone();
@@ -262,7 +262,7 @@ fn module_target_name(module_path: Option<&ModulePath>, path: &[String]) -> Stri
     if module_path.segments().is_empty() {
         path[0].clone()
     } else {
-        format!("{}.{}", module_path.join(), path[0])
+        format!("{}::{}", module_path.join(), path[0])
     }
 }
 
@@ -277,7 +277,7 @@ fn method_symbol(
         .map_or_else(String::new, |path| format!("{}.", path.join()));
     format!(
         "{prefix}__impl.{}.for.{}.{}",
-        trait_path.join("."),
+        trait_path.join("::"),
         target_type,
         method
     )
@@ -285,7 +285,7 @@ fn method_symbol(
 
 fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[String]) -> String {
     if trait_path.len() != 1 {
-        return trait_path.join(".");
+        return trait_path.join("::");
     }
     let Some(module_path) = module_path else {
         return trait_path[0].clone();
@@ -293,7 +293,7 @@ fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[Strin
     if module_path.segments().is_empty() {
         trait_path[0].clone()
     } else {
-        format!("{}.{}", module_path.join(), trait_path[0])
+        format!("{}::{}", module_path.join(), trait_path[0])
     }
 }
 

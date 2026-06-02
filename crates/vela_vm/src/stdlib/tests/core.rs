@@ -4,15 +4,15 @@ use super::*;
 fn managed_heap_execution_runs_option_filter_method() {
     let source = r#"
 fn main() {
-    let kept = option.some("quest").filter(|value| value.starts_with("q"));
-    let dropped = option.some("quest").filter(|value| value.starts_with("x"));
-    let aggregate = option.some(["quest", "done"]).filter(|values| values.len() == 2);
-    let none = option.none().filter(|value| value.starts_with("q"));
+    let kept = option::some("quest").filter(|value| value.starts_with("q"));
+    let dropped = option::some("quest").filter(|value| value.starts_with("x"));
+    let aggregate = option::some(["quest", "done"]).filter(|values| values.len() == 2);
+    let none = option::none().filter(|value| value.starts_with("q"));
 
-    return option.unwrap_or(kept, "") == "quest"
-        && option.is_none(dropped)
-        && option.unwrap_or(aggregate, []).join(".") == "quest.done"
-        && option.is_none(none);
+    return option::unwrap_or(kept, "") == "quest"
+        && option::is_none(dropped)
+        && option::unwrap_or(aggregate, []).join(".") == "quest.done"
+        && option::is_none(none);
 }
 "#;
 
@@ -32,16 +32,16 @@ fn main() {
 fn managed_heap_execution_runs_option_result_helper_methods() {
     let source = r#"
 fn main() {
-    let some = option.some(["quest", "done"]);
-    let none = option.none();
-    let ok = result.ok(["done"]);
-    let err = result.err(["blocked"]);
+    let some = option::some(["quest", "done"]);
+    let none = option::none();
+    let ok = result::ok(["done"]);
+    let err = result::err(["blocked"]);
     let converted_ok = some.ok_or(["missing"]);
     let converted_err = none.ok_or(["missing"]);
-    let flattened_some = option.some(option.some(["quest", "done"])).flatten();
-    let flattened_none = option.some(option.none()).flatten();
-    let flattened_ok = result.ok(result.ok(["done"])).flatten();
-    let flattened_err = result.ok(result.err(["nested"])).flatten();
+    let flattened_some = option::some(option::some(["quest", "done"])).flatten();
+    let flattened_none = option::some(option::none()).flatten();
+    let flattened_ok = result::ok(result::ok(["done"])).flatten();
+    let flattened_err = result::ok(result::err(["nested"])).flatten();
 
     return some.is_some()
         && none.is_none()
@@ -80,7 +80,7 @@ fn main() {
 fn option_result_helpers_reject_wrong_dynamic_shapes() {
     let source = r#"
 fn main() {
-    return option.unwrap_or(result.ok(1), 0);
+    return option::unwrap_or(result::ok(1), 0);
 }
 "#;
 
@@ -95,7 +95,7 @@ fn main() {
     assert_eq!(
         error.kind,
         VmErrorKind::TypeMismatch {
-            operation: "option.unwrap_or"
+            operation: "option::unwrap_or"
         }
     );
 }
@@ -104,7 +104,7 @@ fn main() {
 fn option_result_flatten_rejects_non_nested_values() {
     let source = r#"
 fn main() {
-    return option.some(1).flatten();
+    return option::some(1).flatten();
 }
 "#;
 
@@ -128,7 +128,7 @@ fn main() {
 fn option_result_and_then_rejects_non_enum_callback_results() {
     let source = r#"
 fn main() {
-    return option.some(1).and_then(|value| value + 1);
+    return option::some(1).and_then(|value| value + 1);
 }
 "#;
 
@@ -152,7 +152,7 @@ fn main() {
 fn option_result_or_else_rejects_non_enum_callback_results() {
     let source = r#"
 fn main() {
-    return option.none().or_else(| | 1);
+    return option::none().or_else(| | 1);
 }
 "#;
 
@@ -176,7 +176,7 @@ fn main() {
 fn runs_compiled_set_standard_natives_and_methods() {
     let source = r#"
 fn main() {
-    let tags = set.from_array(["fire", "ice", "fire"]);
+    let tags = set::from_array(["fire", "ice", "fire"]);
     let added = tags.add("arcane");
     let duplicate = tags.add("ice");
     let removed = tags.remove("fire");
@@ -209,7 +209,7 @@ fn main() {
 fn managed_heap_execution_runs_set_standard_natives_and_iteration() {
     let source = r#"
 fn main() {
-    let ids = set.from_array([1, 2, 2, 3]);
+    let ids = set::from_array([1, 2, 2, 3]);
     ids.add(4);
     ids.remove(2);
     let total = 0;
@@ -236,7 +236,7 @@ fn main() {
 fn set_from_array_rejects_non_scalar_elements() {
     let source = r#"
 fn main() {
-    return set.from_array([[1]]);
+    return set::from_array([[1]]);
 }
 "#;
 
@@ -247,11 +247,11 @@ fn main() {
 
     let error = vm
         .run(&code)
-        .expect_err("set.from_array should reject non-scalar elements");
+        .expect_err("set::from_array should reject non-scalar elements");
     assert_eq!(
         error.kind,
         VmErrorKind::TypeMismatch {
-            operation: "set.from_array"
+            operation: "set::from_array"
         }
     );
 }

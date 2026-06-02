@@ -70,7 +70,12 @@ fn host_path_receiver<'ast>(
             path.segments.push(HostPathPart::Value(index));
             Some(path)
         }
-        ExprKind::Path(path) => host_field_path_parts(options, path),
+        ExprKind::Path(path) => host_field_path_parts(options, path).or_else(|| {
+            path.first().map(|root| HostPath {
+                root: HostPathRoot::LocalPath(root),
+                segments: Vec::new(),
+            })
+        }),
         _ => Some(HostPath {
             root: HostPathRoot::Expr(receiver),
             segments: Vec::new(),
@@ -150,6 +155,9 @@ impl Compiler<'_> {
         let Some(path) = path else {
             return Ok(None);
         };
+        if path.segments.is_empty() {
+            return Ok(None);
+        }
         reject_named_args(args, "host path push")?;
         let [arg] = args else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -186,6 +194,9 @@ impl Compiler<'_> {
         let Some(path) = path else {
             return Ok(None);
         };
+        if path.segments.is_empty() {
+            return Ok(None);
+        }
         reject_named_args(args, "host path remove")?;
         if !args.is_empty() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

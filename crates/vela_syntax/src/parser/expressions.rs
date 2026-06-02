@@ -567,7 +567,7 @@ impl Parser {
     }
 
     pub(super) fn parse_path_pattern(&mut self) -> Pattern {
-        let path = self.parse_path();
+        let path = self.parse_static_path();
         if self.eat_symbol(Symbol::LParen).is_some() {
             let mut fields = Vec::new();
             while !self.at_eof() && !self.check_symbol(Symbol::RParen) {

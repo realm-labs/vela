@@ -429,7 +429,7 @@ fn field_owner(receiver: &TypeFact) -> Option<String> {
         TypeFact::Enum {
             name,
             variant: Some(variant),
-        } => Some(format!("{name}.{variant}")),
+        } => Some(format!("{name}::{variant}")),
         _ => None,
     }
 }
@@ -647,12 +647,12 @@ mod tests {
             r#"
             fn main(quest) {
                 match quest {
-                    QuestState.Active { quest_id } => {
+                    QuestState::Active { quest_id } => {
                         quest.quest_id;
                         quest.missing;
                         quest_id.len();
                     }
-                    QuestState.Done => {}
+                    QuestState::Done => {}
                 };
             }
             "#,
@@ -669,7 +669,7 @@ mod tests {
             Some("analysis::unknown_field")
         );
         assert!(diagnostics[0].message.contains("missing"));
-        assert!(diagnostics[0].message.contains("QuestState.Active"));
+        assert!(diagnostics[0].message.contains("QuestState::Active"));
     }
 
     #[test]
@@ -678,8 +678,8 @@ mod tests {
             r#"
             fn main(maybe_player) {
                 match maybe_player {
-                    Option.Some(player) => player.missing,
-                    Option.None => null,
+                    Option::Some(player) => player.missing,
+                    Option::None => null,
                 };
             }
             "#,

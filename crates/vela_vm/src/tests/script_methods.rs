@@ -19,12 +19,12 @@ fn main() {
     let keys = rewards.keys();
     let amounts = rewards.values();
     let entries = rewards.entries();
-    if empty.is_empty() && values.len() == 3 && option.unwrap_or(popped, 0) == 4 && rewards.len() == 2 && ("gold").len() == 4
+    if empty.is_empty() && values.len() == 3 && option::unwrap_or(popped, 0) == 4 && rewards.len() == 2 && ("gold").len() == 4
         && ("gold").contains("ol") && ("quest").starts_with("que") && ("quest").ends_with("st")
-        && option.is_none(missing_pop)
-        && option.unwrap_or(removed, 0) == 4
-        && option.is_none(missing_get) && option.is_none(missing_remove)
-        && rewards.has("quest") && option.unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", 10) == 10
+        && option::is_none(missing_pop)
+        && option::unwrap_or(removed, 0) == 4
+        && option::is_none(missing_get) && option::is_none(missing_remove)
+        && rewards.has("quest") && option::unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", 10) == 10
         && keys[0] == "quest" && keys[1] == "xp"
         && amounts[0] == 8 && amounts[1] == 6
         && entries[0].key == "quest" && entries[1].value == 6 {
@@ -285,7 +285,7 @@ trait BonusSource { fn bonus(self, amount) -> int; }
 
 impl BonusSource for Player {
     fn bonus(self, amount) -> int {
-        return reflect.get(self, "level") + amount;
+        return reflect::get(self, "level") + amount;
     }
 }
 
@@ -366,9 +366,9 @@ impl BonusSource for Player {
 }
 
 fn main() {
-    let event = Event.Grant { player: Player { level: 7 } };
+    let event = Event::Grant { player: Player { level: 7 } };
     return match event {
-        Event.Grant { player } => player.bonus(5),
+        Event::Grant { player } => player.bonus(5),
         _ => 0,
     };
 }
@@ -402,9 +402,9 @@ impl BonusSource for Player {
 }
 
 fn main() {
-    let event = Event.Grant(Player { level: 7 });
+    let event = Event::Grant(Player { level: 7 });
     return match event {
-        Event.Grant(player) => player.bonus(5),
+        Event::Grant(player) => player.bonus(5),
         _ => 0,
     };
 }
@@ -452,7 +452,7 @@ fn main() {
 fn runs_compiled_module_qualified_script_impl_method_dispatch() {
     let program = compile_module_sources(&[ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("game.combat"),
+        ModulePath::from_qualified("game::combat"),
         r#"
 trait BonusSource { fn bonus(self, amount) -> int; }
 struct Player { level: int }
@@ -472,7 +472,7 @@ pub fn main() {
     .expect("compile module-qualified script impl method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.combat.main", &[]),
+        Vm::new().run_program(&program, "game::combat::main", &[]),
         Ok(Value::Int(14))
     );
 }
@@ -482,7 +482,7 @@ fn runs_compiled_module_typed_parameter_method_id_dispatch() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.model"),
+            ModulePath::from_qualified("game::model"),
             r#"
 pub trait BonusSource { fn bonus(self, amount) -> int; }
 pub struct Player { level: int }
@@ -496,9 +496,9 @@ impl BonusSource for Player {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.combat"),
+            ModulePath::from_qualified("game::combat"),
             r#"
-use game.model.Player
+use game::model::Player
 
 pub fn main(player: Player) {
     return player.bonus(5);
@@ -508,15 +508,15 @@ pub fn main(player: Player) {
     ])
     .expect("compile module typed parameter method id dispatch");
     let player = Value::Record {
-        type_name: "game.model.Player".to_owned(),
+        type_name: "game::model::Player".to_owned(),
         fields: ScriptFields::from_pairs(
-            "game.model.Player",
+            "game::model::Player",
             [("level".to_owned(), Value::Int(7))],
         ),
     };
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.combat.main", &[player]),
+        Vm::new().run_program(&program, "game::combat::main", &[player]),
         Ok(Value::Int(12))
     );
 }

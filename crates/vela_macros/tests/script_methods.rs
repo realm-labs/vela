@@ -23,7 +23,7 @@ mod registration;
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game.player.Player")]
+#[script(path = "game::player::Player")]
 struct Player {
     #[script(get, set)]
     level: u32,
@@ -129,7 +129,7 @@ impl Player {
 }
 
 fn method_id(name: &str) -> HostMethodId {
-    HostMethodId::new(stable_id("host_method", "game.player.Player", name))
+    HostMethodId::new(stable_id("host_method", "game::player::Player", name))
 }
 
 fn unique_test_dir(name: &str) -> std::path::PathBuf {

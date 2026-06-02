@@ -203,22 +203,16 @@ impl Compiler<'_> {
                 if host_field_path(&self.facts.options, target).is_some() {
                     return Ok(None);
                 }
-                let ExprKind::Path(path) = &base.kind else {
+                let Some((record, fields)) = record_field_expr_parts(target) else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "record field assignment target",
                     )));
                 };
-                let Some((record, mut fields)) = record_field_base_parts(path) else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "record field assignment target",
-                    )));
-                };
-                fields.push(name.clone());
                 let slot = (fields.len() == 1)
                     .then(|| self.script_record_field_slot_for_receiver(base, name))
                     .flatten();
                 Ok(Some(RecordFieldAssignmentTarget {
-                    root: self.local_register_at_span(base.span, record)?,
+                    root: self.local_register_at_span(target.span, record)?,
                     fields,
                     slot,
                 }))
@@ -536,6 +530,21 @@ fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
 fn record_field_base_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
     let root = path.first()?;
     Some((root.as_str(), path[1..].to_vec()))
+}
+
+fn record_field_expr_parts(expr: &Expr) -> Option<(&str, Vec<String>)> {
+    match &expr.kind {
+        ExprKind::Path(path) => {
+            let root = path.first()?;
+            Some((root.as_str(), path[1..].to_vec()))
+        }
+        ExprKind::Field { base, name } => {
+            let (root, mut fields) = record_field_expr_parts(base)?;
+            fields.push(name.clone());
+            Some((root, fields))
+        }
+        _ => None,
+    }
 }
 
 fn indexed_record_field_parts(target: &Expr) -> Option<(&Expr, &Expr, Vec<String>)> {

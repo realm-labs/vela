@@ -2,21 +2,21 @@ use crate::script_object::ScriptFields;
 use crate::{Value, Vm, VmError, VmErrorKind, VmResult, expect_arity};
 
 pub(crate) fn register(vm: &mut Vm) {
-    vm.register_native("option.some", option_some);
-    vm.register_native("option.none", option_none);
-    vm.register_native("option.is_some", option_is_some);
-    vm.register_native("option.is_none", option_is_none);
-    vm.register_native("option.unwrap_or", option_unwrap_or);
-    vm.register_native("option.ok_or", option_ok_or);
-    vm.register_native("option.flatten", option_flatten);
-    vm.register_native("result.ok", result_ok);
-    vm.register_native("result.err", result_err);
-    vm.register_native("result.is_ok", result_is_ok);
-    vm.register_native("result.is_err", result_is_err);
-    vm.register_native("result.unwrap_or", result_unwrap_or);
-    vm.register_native("result.to_option", result_to_option);
-    vm.register_native("result.to_error_option", result_to_error_option);
-    vm.register_native("result.flatten", result_flatten);
+    vm.register_native("option::some", option_some);
+    vm.register_native("option::none", option_none);
+    vm.register_native("option::is_some", option_is_some);
+    vm.register_native("option::is_none", option_is_none);
+    vm.register_native("option::unwrap_or", option_unwrap_or);
+    vm.register_native("option::ok_or", option_ok_or);
+    vm.register_native("option::flatten", option_flatten);
+    vm.register_native("result::ok", result_ok);
+    vm.register_native("result::err", result_err);
+    vm.register_native("result::is_ok", result_is_ok);
+    vm.register_native("result::is_err", result_is_err);
+    vm.register_native("result::unwrap_or", result_unwrap_or);
+    vm.register_native("result::to_option", result_to_option);
+    vm.register_native("result::to_error_option", result_to_error_option);
+    vm.register_native("result::flatten", result_flatten);
 }
 
 pub(crate) fn option_value(payload: Option<Value>) -> Value {
@@ -28,119 +28,121 @@ pub(crate) fn option_value(payload: Option<Value>) -> Value {
 }
 
 fn option_some(args: &[Value]) -> VmResult<Value> {
-    expect_arity("option.some", args, 1)?;
+    expect_arity("option::some", args, 1)?;
     Ok(option_value(Some(args[0].clone())))
 }
 
 fn option_none(args: &[Value]) -> VmResult<Value> {
-    expect_arity("option.none", args, 0)?;
+    expect_arity("option::none", args, 0)?;
     Ok(option_value(None))
 }
 
 fn option_is_some(args: &[Value]) -> VmResult<Value> {
-    expect_arity("option.is_some", args, 1)?;
-    option_variant(&args[0], "option.is_some").map(|variant| Value::Bool(variant == "Some"))
+    expect_arity("option::is_some", args, 1)?;
+    option_variant(&args[0], "option::is_some").map(|variant| Value::Bool(variant == "Some"))
 }
 
 fn option_is_none(args: &[Value]) -> VmResult<Value> {
-    expect_arity("option.is_none", args, 1)?;
-    option_variant(&args[0], "option.is_none").map(|variant| Value::Bool(variant == "None"))
+    expect_arity("option::is_none", args, 1)?;
+    option_variant(&args[0], "option::is_none").map(|variant| Value::Bool(variant == "None"))
 }
 
 fn option_unwrap_or(args: &[Value]) -> VmResult<Value> {
-    expect_arity("option.unwrap_or", args, 2)?;
-    match option_variant(&args[0], "option.unwrap_or")? {
-        "Some" => enum_payload(&args[0], "option.unwrap_or"),
+    expect_arity("option::unwrap_or", args, 2)?;
+    match option_variant(&args[0], "option::unwrap_or")? {
+        "Some" => enum_payload(&args[0], "option::unwrap_or"),
         "None" => Ok(args[1].clone()),
-        _ => type_error("option.unwrap_or"),
+        _ => type_error("option::unwrap_or"),
     }
 }
 
 fn option_ok_or(args: &[Value]) -> VmResult<Value> {
-    expect_arity("option.ok_or", args, 2)?;
-    match option_variant(&args[0], "option.ok_or")? {
-        "Some" => enum_payload(&args[0], "option.ok_or").map(|payload| result_value("Ok", payload)),
+    expect_arity("option::ok_or", args, 2)?;
+    match option_variant(&args[0], "option::ok_or")? {
+        "Some" => {
+            enum_payload(&args[0], "option::ok_or").map(|payload| result_value("Ok", payload))
+        }
         "None" => Ok(result_value("Err", args[1].clone())),
-        _ => type_error("option.ok_or"),
+        _ => type_error("option::ok_or"),
     }
 }
 
 fn option_flatten(args: &[Value]) -> VmResult<Value> {
-    expect_arity("option.flatten", args, 1)?;
-    match option_variant(&args[0], "option.flatten")? {
+    expect_arity("option::flatten", args, 1)?;
+    match option_variant(&args[0], "option::flatten")? {
         "Some" => {
-            let payload = enum_payload(&args[0], "option.flatten")?;
-            option_variant(&payload, "option.flatten")?;
+            let payload = enum_payload(&args[0], "option::flatten")?;
+            option_variant(&payload, "option::flatten")?;
             Ok(payload)
         }
         "None" => Ok(option_value(None)),
-        _ => type_error("option.flatten"),
+        _ => type_error("option::flatten"),
     }
 }
 
 fn result_ok(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.ok", args, 1)?;
+    expect_arity("result::ok", args, 1)?;
     Ok(result_value("Ok", args[0].clone()))
 }
 
 fn result_err(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.err", args, 1)?;
+    expect_arity("result::err", args, 1)?;
     Ok(result_value("Err", args[0].clone()))
 }
 
 fn result_is_ok(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.is_ok", args, 1)?;
-    result_variant(&args[0], "result.is_ok").map(|variant| Value::Bool(variant == "Ok"))
+    expect_arity("result::is_ok", args, 1)?;
+    result_variant(&args[0], "result::is_ok").map(|variant| Value::Bool(variant == "Ok"))
 }
 
 fn result_is_err(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.is_err", args, 1)?;
-    result_variant(&args[0], "result.is_err").map(|variant| Value::Bool(variant == "Err"))
+    expect_arity("result::is_err", args, 1)?;
+    result_variant(&args[0], "result::is_err").map(|variant| Value::Bool(variant == "Err"))
 }
 
 fn result_unwrap_or(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.unwrap_or", args, 2)?;
-    match result_variant(&args[0], "result.unwrap_or")? {
-        "Ok" => enum_payload(&args[0], "result.unwrap_or"),
+    expect_arity("result::unwrap_or", args, 2)?;
+    match result_variant(&args[0], "result::unwrap_or")? {
+        "Ok" => enum_payload(&args[0], "result::unwrap_or"),
         "Err" => Ok(args[1].clone()),
-        _ => type_error("result.unwrap_or"),
+        _ => type_error("result::unwrap_or"),
     }
 }
 
 fn result_to_option(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.to_option", args, 1)?;
-    match result_variant(&args[0], "result.to_option")? {
-        "Ok" => enum_payload(&args[0], "result.to_option")
+    expect_arity("result::to_option", args, 1)?;
+    match result_variant(&args[0], "result::to_option")? {
+        "Ok" => enum_payload(&args[0], "result::to_option")
             .map(Some)
             .map(option_value),
         "Err" => Ok(option_value(None)),
-        _ => type_error("result.to_option"),
+        _ => type_error("result::to_option"),
     }
 }
 
 fn result_to_error_option(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.to_error_option", args, 1)?;
-    match result_variant(&args[0], "result.to_error_option")? {
+    expect_arity("result::to_error_option", args, 1)?;
+    match result_variant(&args[0], "result::to_error_option")? {
         "Ok" => Ok(option_value(None)),
-        "Err" => enum_payload(&args[0], "result.to_error_option")
+        "Err" => enum_payload(&args[0], "result::to_error_option")
             .map(Some)
             .map(option_value),
-        _ => type_error("result.to_error_option"),
+        _ => type_error("result::to_error_option"),
     }
 }
 
 fn result_flatten(args: &[Value]) -> VmResult<Value> {
-    expect_arity("result.flatten", args, 1)?;
-    match result_variant(&args[0], "result.flatten")? {
+    expect_arity("result::flatten", args, 1)?;
+    match result_variant(&args[0], "result::flatten")? {
         "Ok" => {
-            let payload = enum_payload(&args[0], "result.flatten")?;
-            result_variant(&payload, "result.flatten")?;
+            let payload = enum_payload(&args[0], "result::flatten")?;
+            result_variant(&payload, "result::flatten")?;
             Ok(payload)
         }
         "Err" => {
-            enum_payload(&args[0], "result.flatten").map(|payload| result_value("Err", payload))
+            enum_payload(&args[0], "result::flatten").map(|payload| result_value("Err", payload))
         }
-        _ => type_error("result.flatten"),
+        _ => type_error("result::flatten"),
     }
 }
 
@@ -152,14 +154,14 @@ fn enum_value(enum_name: &str, variant: &str, fields: Vec<(String, Value)>) -> V
     Value::Enum {
         enum_name: enum_name.to_owned(),
         variant: variant.to_owned(),
-        fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
+        fields: ScriptFields::from_pairs(&format!("{enum_name}::{variant}"), fields),
     }
 }
 
 fn option_variant<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a str> {
     let (enum_name, variant) =
         enum_tag(value).ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-    if enum_name == "Option" || enum_name.rsplit('.').next() == Some("Option") {
+    if enum_name == "Option" || enum_name.rsplit("::").next() == Some("Option") {
         return Ok(variant);
     }
     type_error(operation)
@@ -168,7 +170,7 @@ fn option_variant<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a
 fn result_variant<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a str> {
     let (enum_name, variant) =
         enum_tag(value).ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-    if enum_name == "Result" || enum_name.rsplit('.').next() == Some("Result") {
+    if enum_name == "Result" || enum_name.rsplit("::").next() == Some("Result") {
         return Ok(variant);
     }
     type_error(operation)

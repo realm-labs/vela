@@ -207,7 +207,7 @@ enum Damage {
     Magical(amount: int, element: string = "arcane"),
 }
 fn main() {
-    return Damage.Magical();
+    return Damage::Magical();
 }
 "#,
     )
@@ -219,7 +219,7 @@ enum Damage {
     Magical(amount: int),
 }
 fn main() {
-    return Damage.Magical(1, 2);
+    return Damage::Magical(1, 2);
 }
 "#,
     )
@@ -242,7 +242,7 @@ enum Damage {
     Physical { amount: int },
 }
 fn main() {
-    return Damage.Magical { amount: 7 };
+    return Damage::Magical { amount: 7 };
 }
 "#,
     )
@@ -311,9 +311,9 @@ fn compiler_rejects_private_imports_before_codegen() {
     let error = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.secret
+use game::reward::secret
 fn main() {
     return secret();
 }
@@ -321,7 +321,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 fn secret() {
     return 1;
@@ -344,20 +344,20 @@ fn compiler_rejects_duplicate_imports_before_codegen() {
     let error = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             "pub fn grant() { return 1; }",
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.config"),
+            ModulePath::from_qualified("game::config"),
             "pub const BONUS = 2",
         ),
         ModuleSource::new(
             SourceId::new(3),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.grant as reward
-use game.config.BONUS as reward
+use game::reward::grant as reward
+use game::config::BONUS as reward
 fn main() {
     return reward;
 }
@@ -379,14 +379,14 @@ fn compiler_rejects_import_conflicts_before_codegen() {
     let error = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             "pub fn grant() { return 1; }",
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.grant
+use game::reward::grant
 fn grant() {
     return 2;
 }

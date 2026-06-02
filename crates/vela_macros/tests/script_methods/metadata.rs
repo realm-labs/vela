@@ -106,7 +106,7 @@ fn script_methods_coexists_with_host_schema_metadata() {
             .kind(TypeKind::Host)
             .schema_hash(schema.schema_hash.expect("schema hash should be generated"))
             .host_type(Player::vela_host_type_id())
-            .attr("module", "game.player")
+            .attr("module", "game::player")
             .field(
                 FieldDesc::new(Player::vela_field_id_level(), "level")
                     .access(

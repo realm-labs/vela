@@ -5,7 +5,7 @@ fn indexes_top_level_declarations_with_stable_ids() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 pub fn grant(player) { return player; }
 pub const START_LEVEL: int = 1 + 2;
@@ -47,12 +47,12 @@ trait Damageable { fn damage(self, amount); }
 #[test]
 fn resolves_imports_across_modules() {
     let mut graph = ModuleGraph::new();
-    let _reward = graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+    let _reward = graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
     let main = graph.add_source(source(
         2,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.grant
+use game::reward::grant
 fn main() { return grant(); }
 "#,
     ));
@@ -76,7 +76,7 @@ fn duplicate_declarations_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.player",
+        "game::player",
         r#"
 fn level() { return 1; }
 struct level { value }
@@ -96,7 +96,7 @@ fn duplicate_function_parameters_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.player",
+        "game::player",
         r#"
 fn grant(amount, amount) {
     return amount;
@@ -116,14 +116,14 @@ fn grant(amount, amount) {
 #[test]
 fn duplicate_import_aliases_report_both_spans() {
     let mut graph = ModuleGraph::new();
-    graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
-    graph.add_source(source(2, "game.config", "pub const BONUS = 2"));
+    graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
+    graph.add_source(source(2, "game::config", "pub const BONUS = 2"));
     graph.add_source(source(
         3,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.grant as reward
-use game.config.BONUS as reward
+use game::reward::grant as reward
+use game::config::BONUS as reward
 fn main() { return reward; }
 "#,
     ));
@@ -140,12 +140,12 @@ fn main() { return reward; }
 #[test]
 fn imports_conflicting_with_declarations_report_both_spans() {
     let mut graph = ModuleGraph::new();
-    graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+    graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
     graph.add_source(source(
         2,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.grant
+use game::reward::grant
 fn grant() { return 2; }
 "#,
     ));
@@ -164,7 +164,7 @@ fn duplicate_struct_fields_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 struct Reward {
     count: int,
@@ -187,7 +187,7 @@ fn duplicate_enum_variants_and_fields_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.quest",
+        "game::quest",
         r#"
 enum QuestProgress {
     Active { count: int, count: string },
@@ -221,7 +221,7 @@ fn duplicate_trait_and_impl_methods_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.player",
+        "game::player",
         r#"
 struct Player { level: int }
 trait Rewardable {
@@ -255,8 +255,8 @@ impl Rewardable for Player {
 #[test]
 fn unresolved_imports_include_candidate_hints() {
     let mut graph = ModuleGraph::new();
-    graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
-    graph.add_source(source(2, "game.main", "use game.reward.grant_reward"));
+    graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
+    graph.add_source(source(2, "game::main", "use game::reward::grant_reward"));
     graph.resolve_imports();
     let unresolved = graph
         .diagnostics()
@@ -269,8 +269,8 @@ fn unresolved_imports_include_candidate_hints() {
 #[test]
 fn private_imports_are_rejected_across_modules() {
     let mut graph = ModuleGraph::new();
-    let reward = graph.add_source(source(1, "game.reward", "fn secret() { return 1; }"));
-    let main = graph.add_source(source(2, "game.main", "use game.reward.secret"));
+    let reward = graph.add_source(source(1, "game::reward", "fn secret() { return 1; }"));
+    let main = graph.add_source(source(2, "game::main", "use game::reward::secret"));
     graph.resolve_imports();
     let private = graph
         .diagnostics()

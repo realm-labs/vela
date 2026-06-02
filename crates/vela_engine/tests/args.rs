@@ -23,7 +23,7 @@ fn script_arg_conversions_support_optional_values() {
         fields: [("0".to_owned(), Value::Int(3))].into(),
     };
     let none_value = Value::Enum {
-        enum_name: "game.std.Option".to_owned(),
+        enum_name: "game::std::Option".to_owned(),
         variant: "None".to_owned(),
         fields: [].into(),
     };

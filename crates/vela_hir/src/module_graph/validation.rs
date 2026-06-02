@@ -177,7 +177,7 @@ impl ModuleGraph {
     fn member_schema_id(&mut self, member_name: &str, attrs: &[Attribute]) -> Option<(u64, Span)> {
         let mut found = None;
         for attr in attrs {
-            let name = attr.path.join(".");
+            let name = attr.path.join("::");
             match parse_schema_id_attr(&name, attr.value.as_deref()) {
                 Ok(Some(id)) => {
                     if let Some((previous_id, previous_span)) = found {

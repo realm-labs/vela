@@ -5,7 +5,7 @@ fn function_bindings_resolve_params_and_locals_with_expression_ids() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.player",
+        "game::player",
         r#"
 fn main(player) {
     let next = player.level;
@@ -50,7 +50,7 @@ fn binding_unresolved_names_report_candidate_hints() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.player",
+        "game::player",
         r#"
 fn main(player) {
     return plaeyr;
@@ -75,7 +75,7 @@ fn binding_tracks_nested_for_and_lambda_scopes() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 fn main(rewards) {
     for reward in rewards {
@@ -107,7 +107,7 @@ fn binding_tracks_for_pattern_locals() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 enum Reward {
     Grant { amount },
@@ -115,7 +115,7 @@ enum Reward {
 }
 fn main(rewards) {
     let total = 0;
-    for Reward.Grant { amount } in rewards {
+    for Reward::Grant { amount } in rewards {
         total += amount;
     }
     return total;
@@ -140,7 +140,7 @@ fn duplicate_lambda_parameters_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 fn main(reward) {
     let mapper = |count, count| count;
@@ -161,12 +161,12 @@ fn main(reward) {
 #[test]
 fn function_bindings_resolve_imported_names() {
     let mut graph = ModuleGraph::new();
-    let reward = graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+    let reward = graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
     let module = graph.add_source(source(
         2,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.grant
+use game::reward::grant
 fn main() { return grant; }
 "#,
     ));
@@ -189,12 +189,12 @@ fn main() { return grant; }
 #[test]
 fn function_bindings_resolve_import_aliases() {
     let mut graph = ModuleGraph::new();
-    let reward = graph.add_source(source(1, "game.reward", "pub fn grant() { return 1; }"));
+    let reward = graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
     let module = graph.add_source(source(
         2,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.grant as give_reward
+use game::reward::grant as give_reward
 fn main() { return give_reward; }
 "#,
     ));
@@ -221,9 +221,9 @@ fn function_bindings_resolve_record_constructor_import_aliases() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.Reward as Prize
+use game::reward::Reward as Prize
 fn main() {
     return Prize { count: 2 };
 }
@@ -231,7 +231,7 @@ fn main() {
     ));
     let reward = graph.add_source(source(
         2,
-        "game.reward",
+        "game::reward",
         r#"
 pub struct Reward { count: int }
 "#,
@@ -258,12 +258,12 @@ fn function_bindings_resolve_match_pattern_import_aliases() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.main",
+        "game::main",
         r#"
-use game.damage.Damage as Hit
+use game::damage::Damage as Hit
 fn main(damage) {
     match damage {
-        Hit.Physical { amount } => { return amount; },
+        Hit::Physical { amount } => { return amount; },
         _ => { return 0; },
     }
 }
@@ -271,7 +271,7 @@ fn main(damage) {
     ));
     let damage = graph.add_source(source(
         2,
-        "game.damage",
+        "game::damage",
         r#"
 pub enum Damage { Physical }
 "#,
@@ -297,17 +297,17 @@ fn function_bindings_resolve_tuple_constructor_call_aliases() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.main",
+        "game::main",
         r#"
-use game.damage.Damage as Hit
+use game::damage::Damage as Hit
 fn main() {
-    return Hit.Physical(7);
+    return Hit::Physical(7);
 }
 "#,
     ));
     let damage = graph.add_source(source(
         2,
-        "game.damage",
+        "game::damage",
         r#"
 pub enum Damage { Physical(amount) }
 "#,
@@ -334,13 +334,13 @@ fn resolved_imports_refresh_existing_binding_maps() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.main",
+        "game::main",
         r#"
-use game.reward.grant
+use game::reward::grant
 fn main() { return grant; }
 "#,
     ));
-    let reward = graph.add_source(source(2, "game.reward", "pub fn grant() { return 1; }"));
+    let reward = graph.add_source(source(2, "game::reward", "pub fn grant() { return 1; }"));
     let main = graph
         .module(module)
         .and_then(|module| module.get("main"))
@@ -382,23 +382,23 @@ fn resolved_modules_refresh_qualified_path_binding_maps() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.main",
+        "game::main",
         r#"
 fn main() {
-    return game.reward.grant() + game.config.BONUS;
+    return game::reward::grant() + game::config::BONUS;
 }
 "#,
     ));
     let reward = graph.add_source(source(
         2,
-        "game.reward",
+        "game::reward",
         r#"
 pub fn grant() { return 4; }
 "#,
     ));
     let config = graph.add_source(source(
         3,
-        "game.config",
+        "game::config",
         r#"
 pub const BONUS: int = 5;
 "#,
@@ -448,16 +448,16 @@ fn qualified_private_paths_do_not_resolve_across_modules() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.main",
+        "game::main",
         r#"
 fn main() {
-    return game.reward.secret();
+    return game::reward::secret();
 }
 "#,
     ));
     graph.add_source(source(
         2,
-        "game.reward",
+        "game::reward",
         r#"
 fn secret() { return 1; }
 "#,
@@ -483,7 +483,7 @@ fn binding_treats_bare_map_keys_as_keys_not_name_reads() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 fn main() {
     return { exp: 15 };
@@ -497,7 +497,7 @@ fn binding_resolves_record_shorthand_fields() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,
-        "game.reward",
+        "game::reward",
         r#"
 fn main() {
     let count = 2;

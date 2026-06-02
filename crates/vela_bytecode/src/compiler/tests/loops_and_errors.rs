@@ -39,11 +39,11 @@ enum Reward {
 fn main() {
     let total = 0;
     let rewards = [
-        Reward.Grant { amount: 2 },
-        Reward.Skip { amount: 100 },
-        Reward.Grant { amount: 5 },
+        Reward::Grant { amount: 2 },
+        Reward::Skip { amount: 100 },
+        Reward::Grant { amount: 5 },
     ];
-    for Reward.Grant { amount } in rewards {
+    for Reward::Grant { amount } in rewards {
         total += amount;
     }
     return total;

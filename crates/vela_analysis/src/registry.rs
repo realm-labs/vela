@@ -232,7 +232,7 @@ impl RegistryFacts {
                     TypeFact::enum_type(&desc.key.name, Some(&variant.name)),
                 );
                 for field in &variant.fields {
-                    let owner = format!("{}.{}", desc.key.name, variant.name);
+                    let owner = format!("{}::{}", desc.key.name, variant.name);
                     let key = (owner.clone(), field.name.clone());
                     facts.fields.insert(
                         key.clone(),
@@ -590,7 +590,7 @@ mod tests {
         registry.register(inventory);
         registry.register(quest);
         registry.register_function(
-            FunctionDesc::new(FunctionId::new(1), "game.reward.grant")
+            FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
                 .param(FunctionParamDesc::new("player").type_hint("Player"))
                 .param(FunctionParamDesc::new("amount").type_hint("int"))
                 .return_type("bool"),
@@ -618,7 +618,7 @@ mod tests {
                 .is_some_and(|access| !access.writable && access.readable)
         );
         assert_eq!(
-            facts.field_fact("QuestState.Active", "quest_id"),
+            facts.field_fact("QuestState::Active", "quest_id"),
             Some(&TypeFact::String)
         );
         assert_eq!(
@@ -636,7 +636,7 @@ mod tests {
                     && access.required_permissions == vec!["player.reward".to_owned()])
         );
         assert_eq!(
-            facts.function_fact("game.reward.grant"),
+            facts.function_fact("game::reward::grant"),
             Some(&TypeFact::function(
                 vec![TypeFact::host("Player"), TypeFact::Int],
                 TypeFact::Bool,

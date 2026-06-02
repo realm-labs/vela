@@ -87,7 +87,7 @@ fn const_map_key_name(key: &Expr) -> CompileResult<Option<String>> {
         ExprKind::Literal(Literal::String(value))
         | ExprKind::Literal(Literal::Int(value))
         | ExprKind::Literal(Literal::Float(value)) => Ok(Some(value.clone())),
-        ExprKind::Path(path) => Ok(Some(path.join("."))),
+        ExprKind::Path(path) => Ok(Some(path.join("::"))),
         _ => Ok(None),
     }
 }

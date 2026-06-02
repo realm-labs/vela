@@ -5,7 +5,7 @@ use vela_engine::context_schema::{
 };
 
 pub(crate) fn player_type() -> HostTypeId {
-    host_type("game.player.Player")
+    host_type("game::player::Player")
 }
 
 pub(crate) fn context_type() -> HostTypeId {
@@ -13,7 +13,7 @@ pub(crate) fn context_type() -> HostTypeId {
 }
 
 pub(crate) fn monster_type() -> HostTypeId {
-    host_type("game.monster.Monster")
+    host_type("game::monster::Monster")
 }
 
 #[derive(Clone, Copy)]
@@ -42,40 +42,40 @@ pub(crate) struct DemoIds {
 impl DemoIds {
     pub(crate) fn new() -> Self {
         Self {
-            level_field: host_field("game.player.Player", "level"),
+            level_field: host_field("game::player::Player", "level"),
             now_field: CONTEXT_NOW_FIELD_ID,
             tick_field: CONTEXT_TICK_FIELD_ID,
-            exp_field: host_field("game.player.Player", "exp"),
-            id_field: host_field("game.player.Player", "id"),
-            quest_progress_field: host_field("game.player.Player", "quest_progress"),
+            exp_field: host_field("game::player::Player", "exp"),
+            id_field: host_field("game::player::Player", "id"),
+            quest_progress_field: host_field("game::player::Player", "quest_progress"),
             quest_count_field: FieldId::new(stable_id(
                 "field",
-                "HostQuestProgress.Active",
+                "HostQuestProgress::Active",
                 "quest_count",
             )),
-            quest_goal_field: host_field("game.player.Player", "quest_goal"),
+            quest_goal_field: host_field("game::player::Player", "quest_goal"),
             quest_done_field: FieldId::new(stable_id(
                 "field",
-                "HostQuestProgress.Active",
+                "HostQuestProgress::Active",
                 "quest_done",
             )),
-            inventory_field: host_field("game.player.Player", "inventory"),
-            items_field: host_field("game.inventory.Inventory", "items"),
-            count_field: host_field("game.inventory.ItemStack", "count"),
+            inventory_field: host_field("game::player::Player", "inventory"),
+            items_field: host_field("game::inventory::Inventory", "items"),
+            count_field: host_field("game::inventory::ItemStack", "count"),
             config_field: host_field("Context", "config"),
-            exp_to_next_level_field: host_field("game.config.Config", "exp_to_next_level"),
-            kill_rewards_field: host_field("game.config.Config", "kill_rewards"),
+            exp_to_next_level_field: host_field("game::config::Config", "exp_to_next_level"),
+            kill_rewards_field: host_field("game::config::Config", "kill_rewards"),
             emit_method: CONTEXT_EMIT_METHOD_ID,
             add_reward_method: HostMethodId::new(stable_id(
                 "host_method",
-                "game.player.Player",
+                "game::player::Player",
                 "add_reward",
             )),
             log_method: CONTEXT_LOG_METHOD_ID,
             reward_grant_function: FunctionId::new(stable_id(
                 "native_function",
                 "",
-                "game.reward.grant",
+                "game::reward::grant",
             )),
         }
     }

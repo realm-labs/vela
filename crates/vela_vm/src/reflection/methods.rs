@@ -16,7 +16,7 @@ pub(super) fn register(
     let methods_registry = Arc::clone(registry);
     let methods_policy = policy.clone();
     let methods_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.methods", move |args, _host| {
+    vm.register_host_native("reflect::methods", move |args, _host| {
         check_reflect_policy(
             &methods_policy,
             &methods_budget,
@@ -28,8 +28,8 @@ pub(super) fn register(
                 &methods_policy,
             ));
         }
-        expect_arity("reflect.methods", args, 1)?;
-        let target = value_to_reflect(&args[0], "reflect.methods")?;
+        expect_arity("reflect::methods", args, 1)?;
+        let target = value_to_reflect(&args[0], "reflect::methods")?;
         check_host_ref_inspection(&methods_policy, &target)?;
         value_from_reflect(reflect::members::methods_with_policy(
             &methods_registry,
@@ -41,16 +41,16 @@ pub(super) fn register(
     let method_registry = Arc::clone(registry);
     let method_policy = policy.clone();
     let method_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.method", move |args, _host| {
+    vm.register_host_native("reflect::method", move |args, _host| {
         check_reflect_policy(
             &method_policy,
             &method_budget,
             reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
-        expect_arity("reflect.method", args, 2)?;
-        let target = value_to_reflect(&args[0], "reflect.method")?;
+        expect_arity("reflect::method", args, 2)?;
+        let target = value_to_reflect(&args[0], "reflect::method")?;
         check_host_ref_inspection(&method_policy, &target)?;
-        let method_name = expect_string(&args[1], "reflect.method")?;
+        let method_name = expect_string(&args[1], "reflect::method")?;
         value_from_reflect(reflect::members::method_with_policy(
             &method_registry,
             &target,
@@ -62,16 +62,16 @@ pub(super) fn register(
     let has_method_registry = Arc::clone(registry);
     let has_method_policy = policy.clone();
     let has_method_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect.has_method", move |args, _host| {
+    vm.register_host_native("reflect::has_method", move |args, _host| {
         check_reflect_policy(
             &has_method_policy,
             &has_method_budget,
             reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
-        expect_arity("reflect.has_method", args, 2)?;
-        let target = value_to_reflect(&args[0], "reflect.has_method")?;
+        expect_arity("reflect::has_method", args, 2)?;
+        let target = value_to_reflect(&args[0], "reflect::has_method")?;
         check_host_ref_inspection(&has_method_policy, &target)?;
-        let method_name = expect_string(&args[1], "reflect.has_method")?;
+        let method_name = expect_string(&args[1], "reflect::has_method")?;
         Ok(Value::Bool(reflect::members::has_method_with_policy(
             &has_method_registry,
             &target,

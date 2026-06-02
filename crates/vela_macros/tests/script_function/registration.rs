@@ -13,7 +13,7 @@ fn script_function_registers_typed_native_with_engine() {
         &source,
         r#"
 fn main() {
-    return game.grant_bonus(6, 7);
+    return game::grant_bonus(6, 7);
 }
 "#,
     )
@@ -41,7 +41,7 @@ fn script_function_registers_typed_set_native_with_engine() {
         &source,
         r#"
 fn main(labels) {
-    return game.count_labels(labels);
+    return game::count_labels(labels);
 }
 "#,
     )
@@ -77,7 +77,7 @@ fn script_function_registers_typed_hash_set_native_with_engine() {
         &source,
         r#"
 fn main(labels) {
-    return game.count_unordered_labels(labels);
+    return game::count_unordered_labels(labels);
 }
 "#,
     )
@@ -115,7 +115,7 @@ fn script_function_registers_typed_fixed_array_native_with_engine() {
         &source,
         r#"
 fn main(weights) {
-    return game.sum_weights(weights) + game.default_weights().sum();
+    return game::sum_weights(weights) + game::default_weights().sum();
 }
 "#,
     )
@@ -151,7 +151,7 @@ fn script_function_registers_typed_hash_map_native_with_engine() {
         &source,
         r#"
 fn main(scores) {
-    return game.score_total(scores);
+    return game::score_total(scores);
 }
 "#,
     )
@@ -189,7 +189,7 @@ fn script_function_registers_typed_btree_map_native_with_engine() {
         &source,
         r#"
 fn main(scores) {
-    let summary = game.ordered_score_summary(scores);
+    let summary = game::ordered_score_summary(scores);
     return summary.get_or("total", 0) + summary.get_or("daily", 0);
 }
 "#,
@@ -228,7 +228,7 @@ fn script_function_registers_typed_f32_native_with_engine() {
         &source,
         r#"
 fn main() {
-    return game.scale_weight(2.0);
+    return game::scale_weight(2.0);
 }
 "#,
     )
@@ -257,10 +257,10 @@ fn script_function_registers_typed_option_native_with_engine() {
         &source,
         r#"
 fn main() {
-    return game.optional_bonus(null) == null
-        && game.optional_bonus(4) == 5
-        && game.optional_bonus(option.none()) == null
-        && game.optional_bonus(option.some(8)) == 9;
+    return game::optional_bonus(null) == null
+        && game::optional_bonus(4) == 5
+        && game::optional_bonus(option::none()) == null
+        && game::optional_bonus(option::some(8)) == 9;
 }
 "#,
     )
@@ -288,7 +288,7 @@ fn script_function_registers_typed_five_arg_native_with_engine() {
         &source,
         r#"
 fn main() {
-    return game.sum5(1, 2, 3, 4, 5);
+    return game::sum5(1, 2, 3, 4, 5);
 }
 "#,
     )
@@ -316,7 +316,7 @@ fn script_function_registers_typed_six_arg_native_with_engine() {
         &source,
         r#"
 fn main() {
-    return game.sum6(1, 2, 3, 4, 5, 6);
+    return game::sum6(1, 2, 3, 4, 5, 6);
 }
 "#,
     )
@@ -345,9 +345,9 @@ fn script_function_registers_typed_result_native_with_engine() {
         &source,
         r#"
 fn main() {
-    let ok = game.checked_bonus(true);
-    let err = game.checked_bonus(false);
-    return result.unwrap_or(ok, 0) + result.unwrap_or(err, 4);
+    let ok = game::checked_bonus(true);
+    let err = game::checked_bonus(false);
+    return result::unwrap_or(ok, 0) + result::unwrap_or(err, 4);
 }
 "#,
     )
@@ -377,7 +377,7 @@ fn script_context_function_registers_typed_native_with_engine() {
         &source,
         r#"
 fn main(player) {
-    return game.set_level(player, 9);
+    return game::set_level(player, 9);
 }
 "#,
     )
@@ -418,7 +418,7 @@ fn script_context_function_enforces_engine_permissions_before_patching() {
         &source,
         r#"
 fn main(player) {
-    return game.set_level(player, 9);
+    return game::set_level(player, 9);
 }
 "#,
     )
@@ -444,7 +444,7 @@ fn main(player) {
     assert_eq!(
         error.kind,
         VmErrorKind::PermissionDenied {
-            native: "game.set_level".to_owned(),
+            native: "game::set_level".to_owned(),
             permission: "player.write".to_owned(),
         },
     );
@@ -466,7 +466,7 @@ fn script_context_function_charges_runtime_instruction_budget_before_patching() 
         &source,
         r#"
 fn main(player) {
-    return game.set_level(player, 9);
+    return game::set_level(player, 9);
 }
 "#,
     )
@@ -514,7 +514,7 @@ fn script_host_function_registers_typed_native_with_engine() {
         &source,
         r#"
 fn main(player) {
-    return game.set_score(player, 12);
+    return game::set_score(player, 12);
 }
 "#,
     )

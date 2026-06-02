@@ -95,7 +95,7 @@ pub(crate) fn values_to_heap_fields(
 }
 
 pub(crate) fn enum_variant_owner(enum_name: &str, variant: &str) -> String {
-    format!("{enum_name}.{variant}")
+    format!("{enum_name}::{variant}")
 }
 
 pub(crate) fn value_to_heap_slot(

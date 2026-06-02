@@ -17,7 +17,7 @@ impl HirAttribute {
     #[must_use]
     pub fn from_syntax(attribute: &Attribute) -> Self {
         Self {
-            name: attribute.path.join("."),
+            name: attribute.path.join("::"),
             value: attribute.value.clone(),
         }
     }

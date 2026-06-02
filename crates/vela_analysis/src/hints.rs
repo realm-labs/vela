@@ -40,7 +40,7 @@ pub(crate) fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Decl
                 .chain(std::iter::once(&declaration.name))
                 .cloned()
                 .collect::<Vec<_>>()
-                .join(".")
+                .join("::")
         })
         .unwrap_or_else(|| declaration.name.clone())
 }
@@ -130,7 +130,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game"),
+            ModulePath::from_qualified("game"),
             source,
         ));
         graph.resolve_imports();
@@ -167,15 +167,15 @@ mod tests {
 
         assert_eq!(
             type_fact_from_path(&graph, &["game".to_owned(), "Player".to_owned()]),
-            TypeFact::record("game.Player")
+            TypeFact::record("game::Player")
         );
         assert_eq!(
             type_fact_from_path(&graph, &["QuestState".to_owned()]),
-            TypeFact::enum_type("game.QuestState", None::<String>)
+            TypeFact::enum_type("game::QuestState", None::<String>)
         );
         assert_eq!(
             type_fact_from_path(&graph, &["Rewardable".to_owned()]),
-            TypeFact::trait_type("game.Rewardable")
+            TypeFact::trait_type("game::Rewardable")
         );
     }
 
@@ -184,7 +184,7 @@ mod tests {
         let mut graph = graph("struct Player { level: int }");
         graph.add_source(ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("arena"),
+            ModulePath::from_qualified("arena"),
             "struct Player { level: int }",
         ));
         graph.resolve_imports();
@@ -196,7 +196,7 @@ mod tests {
         );
         assert_eq!(
             type_fact_from_path(&graph, &["arena".to_owned(), "Player".to_owned()]),
-            TypeFact::record("arena.Player")
+            TypeFact::record("arena::Player")
         );
     }
 
@@ -205,9 +205,9 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-            use game.reward.Reward as Prize
+            use game::reward::Reward as Prize
             fn grant(reward: Prize) -> Prize {
                 return reward;
             }
@@ -215,7 +215,7 @@ mod tests {
         ));
         graph.add_source(ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             "pub struct Reward { count: int }",
         ));
         graph.resolve_imports();
@@ -236,7 +236,7 @@ mod tests {
                     .as_ref()
                     .expect("param type hint")
             ),
-            TypeFact::record("game.reward.Reward")
+            TypeFact::record("game::reward::Reward")
         );
         assert_eq!(
             type_fact_from_hint_in_module(
@@ -244,7 +244,7 @@ mod tests {
                 grant.module,
                 signature.return_type.as_ref().expect("return type hint")
             ),
-            TypeFact::record("game.reward.Reward")
+            TypeFact::record("game::reward::Reward")
         );
     }
 }

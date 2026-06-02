@@ -128,7 +128,7 @@ fn type_fact_from_expr_impl(
             );
             TypeFact::map(key, value)
         }
-        ExprKind::Record { path, .. } => TypeFact::record(path.join(".")),
+        ExprKind::Record { path, .. } => TypeFact::record(path.join("::")),
         ExprKind::Lambda { params, body } => lambda_fact(params, body, scope, facts, None),
         ExprKind::If(if_expr) => if_expr_fact(if_expr, scope, facts),
         ExprKind::Match(match_expr) => TypeFact::union(match_expr.arms.iter().map(|arm| {
@@ -206,7 +206,7 @@ fn call_fact(
                 .iter()
                 .map(|arg| type_fact_from_expr_impl(&arg.value, scope, facts))
                 .collect::<Vec<_>>();
-            if let Some(fact) = stdlib_function_fact(&path.join("."), &arg_facts) {
+            if let Some(fact) = stdlib_function_fact(&path.join("::"), &arg_facts) {
                 return fact.returns;
             }
 
@@ -291,7 +291,7 @@ fn registry_field_fact(
             name,
             variant: Some(variant),
         } => facts
-            .field_fact(&format!("{name}.{variant}"), field)
+            .field_fact(&format!("{name}::{variant}"), field)
             .cloned(),
         _ => None,
     }
@@ -455,7 +455,7 @@ fn type_fact_from_syntax_hint(hint: &TypeHint) -> TypeFact {
             "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
             name => TypeFact::record(name),
         },
-        path => TypeFact::record(path.join(".")),
+        path => TypeFact::record(path.join("::")),
     }
 }
 

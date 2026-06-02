@@ -122,7 +122,7 @@ fn option_type_desc() -> TypeDesc {
                 .field(
                     FieldDesc::new(OPTION_SOME_FIELD_ID, "0")
                         .type_hint("any")
-                        .docs("Dynamic Option.Some payload value.")
+                        .docs("Dynamic Option::Some payload value.")
                         .attr("stdlib", "option"),
                 ),
         )
@@ -153,7 +153,7 @@ fn result_type_desc() -> TypeDesc {
                 .field(
                     FieldDesc::new(RESULT_OK_FIELD_ID, "0")
                         .type_hint("any")
-                        .docs("Dynamic Result.Ok payload value.")
+                        .docs("Dynamic Result::Ok payload value.")
                         .attr("stdlib", "result"),
                 ),
         )
@@ -165,7 +165,7 @@ fn result_type_desc() -> TypeDesc {
                 .field(
                     FieldDesc::new(RESULT_ERR_FIELD_ID, "0")
                         .type_hint("any")
-                        .docs("Dynamic Result.Err payload value.")
+                        .docs("Dynamic Result::Err payload value.")
                         .attr("stdlib", "result"),
                 ),
         );

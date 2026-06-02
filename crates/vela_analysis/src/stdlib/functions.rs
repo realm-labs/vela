@@ -5,58 +5,58 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
     let number = number_fact();
     let mut facts = vec![
         StdlibFunctionFact::new(
-            "option.some",
+            "option::some",
             vec![TypeFact::Any],
             TypeFact::option(TypeFact::Any),
         ),
-        StdlibFunctionFact::new("option.none", Vec::new(), TypeFact::option(TypeFact::Any)),
+        StdlibFunctionFact::new("option::none", Vec::new(), TypeFact::option(TypeFact::Any)),
         StdlibFunctionFact::new(
-            "option.is_some",
+            "option::is_some",
             vec![TypeFact::option(TypeFact::Any)],
             TypeFact::Bool,
         ),
         StdlibFunctionFact::new(
-            "option.is_none",
+            "option::is_none",
             vec![TypeFact::option(TypeFact::Any)],
             TypeFact::Bool,
         ),
         StdlibFunctionFact::new(
-            "option.unwrap_or",
+            "option::unwrap_or",
             vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
             TypeFact::Any,
         ),
         StdlibFunctionFact::new(
-            "option.ok_or",
+            "option::ok_or",
             vec![TypeFact::option(TypeFact::Any), TypeFact::Any],
             TypeFact::result(TypeFact::Any, TypeFact::Any),
         ),
         StdlibFunctionFact::new(
-            "option.flatten",
+            "option::flatten",
             vec![TypeFact::option(TypeFact::option(TypeFact::Any))],
             TypeFact::option(TypeFact::Any),
         ),
         StdlibFunctionFact::new(
-            "result.ok",
+            "result::ok",
             vec![TypeFact::Any],
             TypeFact::result(TypeFact::Any, TypeFact::Any),
         ),
         StdlibFunctionFact::new(
-            "result.err",
+            "result::err",
             vec![TypeFact::Any],
             TypeFact::result(TypeFact::Any, TypeFact::Any),
         ),
         StdlibFunctionFact::new(
-            "result.is_ok",
+            "result::is_ok",
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
             TypeFact::Bool,
         ),
         StdlibFunctionFact::new(
-            "result.is_err",
+            "result::is_err",
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
             TypeFact::Bool,
         ),
         StdlibFunctionFact::new(
-            "result.unwrap_or",
+            "result::unwrap_or",
             vec![
                 TypeFact::result(TypeFact::Any, TypeFact::Any),
                 TypeFact::Any,
@@ -64,17 +64,17 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Any,
         ),
         StdlibFunctionFact::new(
-            "result.to_option",
+            "result::to_option",
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
             TypeFact::option(TypeFact::Any),
         ),
         StdlibFunctionFact::new(
-            "result.to_error_option",
+            "result::to_error_option",
             vec![TypeFact::result(TypeFact::Any, TypeFact::Any)],
             TypeFact::option(TypeFact::Any),
         ),
         StdlibFunctionFact::new(
-            "result.flatten",
+            "result::flatten",
             vec![TypeFact::result(
                 TypeFact::result(TypeFact::Any, TypeFact::Any),
                 TypeFact::Any,
@@ -82,32 +82,32 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::result(TypeFact::Any, TypeFact::Any),
         ),
         StdlibFunctionFact::new(
-            "math.max",
+            "math::max",
             vec![number.clone(), number.clone()],
             number.clone(),
         ),
         StdlibFunctionFact::new(
-            "math.min",
+            "math::min",
             vec![number.clone(), number.clone()],
             number.clone(),
         ),
         StdlibFunctionFact::new(
-            "math.clamp",
+            "math::clamp",
             vec![number.clone(), number.clone(), number.clone()],
             number.clone(),
         ),
         StdlibFunctionFact::new(
-            "math.lerp",
+            "math::lerp",
             vec![number.clone(), number.clone(), number.clone()],
             TypeFact::Float,
         ),
         StdlibFunctionFact::new(
-            "math.move_towards",
+            "math::move_towards",
             vec![number.clone(), number.clone(), number.clone()],
             number.clone(),
         ),
         StdlibFunctionFact::new(
-            "math.distance2d",
+            "math::distance2d",
             vec![
                 number.clone(),
                 number.clone(),
@@ -117,7 +117,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Float,
         ),
         StdlibFunctionFact::new(
-            "math.distance3d",
+            "math::distance3d",
             vec![
                 number.clone(),
                 number.clone(),
@@ -129,26 +129,26 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             TypeFact::Float,
         ),
         StdlibFunctionFact::new(
-            "math.pow",
+            "math::pow",
             vec![number.clone(), number.clone()],
             number.clone(),
         ),
-        StdlibFunctionFact::new("math.sqrt", vec![number.clone()], TypeFact::Float),
-        StdlibFunctionFact::new("math.sign", vec![number.clone()], TypeFact::Int),
-        StdlibFunctionFact::new("math.floor", vec![number.clone()], TypeFact::Int),
-        StdlibFunctionFact::new("math.ceil", vec![number.clone()], TypeFact::Int),
-        StdlibFunctionFact::new("math.round", vec![number.clone()], TypeFact::Int),
-        StdlibFunctionFact::new("math.abs", vec![number.clone()], number),
+        StdlibFunctionFact::new("math::sqrt", vec![number.clone()], TypeFact::Float),
+        StdlibFunctionFact::new("math::sign", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math::floor", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math::ceil", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math::round", vec![number.clone()], TypeFact::Int),
+        StdlibFunctionFact::new("math::abs", vec![number.clone()], number),
         StdlibFunctionFact::new(
-            "math.random",
+            "math::random",
             vec![TypeFact::Int, TypeFact::Int],
             TypeFact::Int,
         ),
-        StdlibFunctionFact::new("ctx.now", Vec::new(), TypeFact::Int),
-        StdlibFunctionFact::new("ctx.tick", Vec::new(), TypeFact::Int),
-        StdlibFunctionFact::new("ctx.elapsed_since", vec![TypeFact::Int], TypeFact::Int),
+        StdlibFunctionFact::new("ctx::now", Vec::new(), TypeFact::Int),
+        StdlibFunctionFact::new("ctx::tick", Vec::new(), TypeFact::Int),
+        StdlibFunctionFact::new("ctx::elapsed_since", vec![TypeFact::Int], TypeFact::Int),
         StdlibFunctionFact::new(
-            "set.from_array",
+            "set::from_array",
             vec![TypeFact::array(TypeFact::Any)],
             TypeFact::set(TypeFact::Any),
         ),
@@ -163,23 +163,23 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
     }
 
     match name {
-        "option.some" => {
+        "option::some" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "option.some",
+                "option::some",
                 args.to_vec(),
                 TypeFact::option(args[0].clone()),
             ))
         }
-        "option.none" => {
+        "option::none" => {
             expect_len(args, 0)?;
             Some(StdlibFunctionFact::new(
-                "option.none",
+                "option::none",
                 Vec::new(),
                 TypeFact::option(TypeFact::Any),
             ))
         }
-        "option.is_some" | "option.is_none" => {
+        "option::is_some" | "option::is_none" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
@@ -187,44 +187,44 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::Bool,
             ))
         }
-        "option.unwrap_or" => {
+        "option::unwrap_or" => {
             expect_len(args, 2)?;
             Some(StdlibFunctionFact::new(
-                "option.unwrap_or",
+                "option::unwrap_or",
                 args.to_vec(),
                 option_unwrap_or_return(&args[0], args[1].clone()),
             ))
         }
-        "option.ok_or" => {
+        "option::ok_or" => {
             expect_len(args, 2)?;
             Some(StdlibFunctionFact::new(
-                "option.ok_or",
+                "option::ok_or",
                 args.to_vec(),
                 option_ok_or_return(&args[0], args[1].clone()),
             ))
         }
-        "option.flatten" => {
+        "option::flatten" => {
             expect_len(args, 1)?;
             option_flatten_return(&args[0])
-                .map(|returns| StdlibFunctionFact::new("option.flatten", args.to_vec(), returns))
+                .map(|returns| StdlibFunctionFact::new("option::flatten", args.to_vec(), returns))
         }
-        "result.ok" => {
+        "result::ok" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "result.ok",
+                "result::ok",
                 args.to_vec(),
                 TypeFact::result(args[0].clone(), TypeFact::Any),
             ))
         }
-        "result.err" => {
+        "result::err" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "result.err",
+                "result::err",
                 args.to_vec(),
                 TypeFact::result(TypeFact::Any, args[0].clone()),
             ))
         }
-        "result.is_ok" | "result.is_err" => {
+        "result::is_ok" | "result::is_err" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
@@ -232,36 +232,36 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::Bool,
             ))
         }
-        "result.unwrap_or" => {
+        "result::unwrap_or" => {
             expect_len(args, 2)?;
             Some(StdlibFunctionFact::new(
-                "result.unwrap_or",
+                "result::unwrap_or",
                 args.to_vec(),
                 result_unwrap_or_return(&args[0], args[1].clone()),
             ))
         }
-        "result.to_option" => {
+        "result::to_option" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "result.to_option",
+                "result::to_option",
                 args.to_vec(),
                 result_to_option_return(&args[0]),
             ))
         }
-        "result.to_error_option" => {
+        "result::to_error_option" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "result.to_error_option",
+                "result::to_error_option",
                 args.to_vec(),
                 result_to_error_option_return(&args[0]),
             ))
         }
-        "result.flatten" => {
+        "result::flatten" => {
             expect_len(args, 1)?;
             result_flatten_return(&args[0])
-                .map(|returns| StdlibFunctionFact::new("result.flatten", args.to_vec(), returns))
+                .map(|returns| StdlibFunctionFact::new("result::flatten", args.to_vec(), returns))
         }
-        "math.max" | "math.min" => {
+        "math::max" | "math::min" => {
             expect_len(args, 2)?;
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
@@ -269,63 +269,63 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 numeric_result(args),
             ))
         }
-        "math.clamp" => {
+        "math::clamp" => {
             expect_len(args, 3)?;
             Some(StdlibFunctionFact::new(
-                "math.clamp",
+                "math::clamp",
                 args.to_vec(),
                 numeric_result(args),
             ))
         }
-        "math.lerp" => {
+        "math::lerp" => {
             expect_len(args, 3)?;
             Some(StdlibFunctionFact::new(
-                "math.lerp",
+                "math::lerp",
                 args.to_vec(),
                 TypeFact::Float,
             ))
         }
-        "math.move_towards" => {
+        "math::move_towards" => {
             expect_len(args, 3)?;
             Some(StdlibFunctionFact::new(
-                "math.move_towards",
+                "math::move_towards",
                 args.to_vec(),
                 numeric_result(args),
             ))
         }
-        "math.distance2d" => {
+        "math::distance2d" => {
             expect_len(args, 4)?;
             Some(StdlibFunctionFact::new(
-                "math.distance2d",
+                "math::distance2d",
                 args.to_vec(),
                 TypeFact::Float,
             ))
         }
-        "math.distance3d" => {
+        "math::distance3d" => {
             expect_len(args, 6)?;
             Some(StdlibFunctionFact::new(
-                "math.distance3d",
+                "math::distance3d",
                 args.to_vec(),
                 TypeFact::Float,
             ))
         }
-        "math.pow" => {
+        "math::pow" => {
             expect_len(args, 2)?;
             Some(StdlibFunctionFact::new(
-                "math.pow",
+                "math::pow",
                 args.to_vec(),
                 number_fact(),
             ))
         }
-        "math.sqrt" => {
+        "math::sqrt" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "math.sqrt",
+                "math::sqrt",
                 args.to_vec(),
                 TypeFact::Float,
             ))
         }
-        "math.sign" | "math.floor" | "math.ceil" | "math.round" => {
+        "math::sign" | "math::floor" | "math::ceil" | "math::round" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
@@ -333,23 +333,23 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::Int,
             ))
         }
-        "math.abs" => {
+        "math::abs" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "math.abs",
+                "math::abs",
                 args.to_vec(),
                 numeric_return(&args[0]),
             ))
         }
-        "math.random" => {
+        "math::random" => {
             expect_len(args, 2)?;
             Some(StdlibFunctionFact::new(
-                "math.random",
+                "math::random",
                 args.to_vec(),
                 TypeFact::Int,
             ))
         }
-        "ctx.now" | "ctx.tick" => {
+        "ctx::now" | "ctx::tick" => {
             expect_len(args, 0)?;
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
@@ -357,25 +357,25 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::Int,
             ))
         }
-        "ctx.elapsed_since" => {
+        "ctx::elapsed_since" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "ctx.elapsed_since",
+                "ctx::elapsed_since",
                 args.to_vec(),
                 TypeFact::Int,
             ))
         }
-        "set.from_array" => {
+        "set::from_array" => {
             expect_len(args, 1)?;
             let TypeFact::Array { element } = &args[0] else {
                 return Some(StdlibFunctionFact::new(
-                    "set.from_array",
+                    "set::from_array",
                     args.to_vec(),
                     TypeFact::set(TypeFact::Any),
                 ));
             };
             Some(StdlibFunctionFact::new(
-                "set.from_array",
+                "set::from_array",
                 args.to_vec(),
                 TypeFact::set((**element).clone()),
             ))
@@ -559,24 +559,24 @@ fn number_fact() -> TypeFact {
 
 fn canonical_function_name(name: &str) -> Option<&'static str> {
     match name {
-        "option.is_some" => Some("option.is_some"),
-        "option.is_none" => Some("option.is_none"),
-        "result.is_ok" => Some("result.is_ok"),
-        "result.is_err" => Some("result.is_err"),
-        "math.max" => Some("math.max"),
-        "math.min" => Some("math.min"),
-        "math.floor" => Some("math.floor"),
-        "math.ceil" => Some("math.ceil"),
-        "math.round" => Some("math.round"),
-        "math.move_towards" => Some("math.move_towards"),
-        "math.distance2d" => Some("math.distance2d"),
-        "math.distance3d" => Some("math.distance3d"),
-        "math.pow" => Some("math.pow"),
-        "math.sqrt" => Some("math.sqrt"),
-        "math.sign" => Some("math.sign"),
-        "ctx.now" => Some("ctx.now"),
-        "ctx.tick" => Some("ctx.tick"),
-        "ctx.elapsed_since" => Some("ctx.elapsed_since"),
+        "option::is_some" => Some("option::is_some"),
+        "option::is_none" => Some("option::is_none"),
+        "result::is_ok" => Some("result::is_ok"),
+        "result::is_err" => Some("result::is_err"),
+        "math::max" => Some("math::max"),
+        "math::min" => Some("math::min"),
+        "math::floor" => Some("math::floor"),
+        "math::ceil" => Some("math::ceil"),
+        "math::round" => Some("math::round"),
+        "math::move_towards" => Some("math::move_towards"),
+        "math::distance2d" => Some("math::distance2d"),
+        "math::distance3d" => Some("math::distance3d"),
+        "math::pow" => Some("math::pow"),
+        "math::sqrt" => Some("math::sqrt"),
+        "math::sign" => Some("math::sign"),
+        "ctx::now" => Some("ctx::now"),
+        "ctx::tick" => Some("ctx::tick"),
+        "ctx::elapsed_since" => Some("ctx::elapsed_since"),
         _ => None,
     }
 }

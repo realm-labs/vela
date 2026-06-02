@@ -237,7 +237,7 @@ fn runs_compiled_immediate_slot_field_reads() {
         r#"
 fn main() {
     return Reward { item_id: "gold", count: 2 }.count
-        + Damage.Physical { amount: 7 }.amount;
+        + Damage::Physical { amount: 7 }.amount;
 }
 "#,
         "main",
@@ -316,7 +316,7 @@ enum Damage {
 }
 
 fn main() {
-    let damage = Damage.Physical { amount: 7, element: "slash" };
+    let damage = Damage::Physical { amount: 7, element: "slash" };
     return damage.amount + damage.element.len();
 }
 "#,
@@ -335,7 +335,7 @@ fn returns_first_class_enum_values() {
         SourceId::new(1),
         r#"
 fn main() {
-    return Damage.Physical { amount: 7 };
+    return Damage::Physical { amount: 7 };
 }
 "#,
         "main",
@@ -349,7 +349,7 @@ fn main() {
         Ok(Value::Enum {
             enum_name: "Damage".into(),
             variant: "Physical".into(),
-            fields: ScriptFields::from_pairs("Damage.Physical", fields),
+            fields: ScriptFields::from_pairs("Damage::Physical", fields),
         })
     );
 }
@@ -365,14 +365,14 @@ enum Damage {
 }
 
 fn main() {
-    let physical = Damage.Physical { amount: 5 };
-    let magical = Damage.Magical();
+    let physical = Damage::Physical { amount: 5 };
+    let magical = Damage::Magical();
     let physical_score = match physical {
-        Damage.Physical { amount, element } => amount + element.len(),
+        Damage::Physical { amount, element } => amount + element.len(),
         _ => 0,
     };
     let magical_score = match magical {
-        Damage.Magical(amount, element) => amount + element.len(),
+        Damage::Magical(amount, element) => amount + element.len(),
         _ => 0,
     };
     return physical_score + magical_score;
@@ -393,10 +393,10 @@ fn matches_enum_tag_and_binds_variant_fields() {
         SourceId::new(1),
         r#"
 fn main() {
-    let damage = Damage.Physical { amount: 7 };
+    let damage = Damage::Physical { amount: 7 };
     match damage {
-        Damage.Magical { amount } => { return amount + 100; },
-        Damage.Physical { amount } => { return amount + 1; },
+        Damage::Magical { amount } => { return amount + 100; },
+        Damage::Physical { amount } => { return amount + 1; },
         _ => { return 0; },
     }
 }
@@ -414,10 +414,10 @@ fn heap_execution_matches_enum_tags_and_reads_fields() {
         SourceId::new(1),
         r#"
 fn main() {
-    let damage = Damage.Physical { amount: 7 };
+    let damage = Damage::Physical { amount: 7 };
     match damage {
-        Damage.Magical { amount } => { return amount + 100; },
-        Damage.Physical { amount } => { return amount + 1; },
+        Damage::Magical { amount } => { return amount + 100; },
+        Damage::Physical { amount } => { return amount + 1; },
         _ => { return 0; },
     }
 }

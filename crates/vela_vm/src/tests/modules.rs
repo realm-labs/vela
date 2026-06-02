@@ -5,9 +5,9 @@ fn runs_compiled_cross_module_imported_script_call() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.grant as give_reward
+use game::reward::grant as give_reward
 
 fn main() {
     return give_reward(4);
@@ -16,7 +16,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 pub fn grant(amount) {
     return amount + 1;
@@ -27,7 +27,7 @@ pub fn grant(amount) {
     .expect("compile imported cross-module script call");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(5))
     );
 }
@@ -37,9 +37,9 @@ fn runs_compiled_same_named_cross_module_functions() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.main as reward_main
+use game::reward::main as reward_main
 
 fn main() {
     return reward_main();
@@ -48,7 +48,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 pub fn main() {
     return 7;
@@ -59,7 +59,7 @@ pub fn main() {
     .expect("compile same-named cross-module functions");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -69,9 +69,9 @@ fn runs_compiled_cross_module_imported_const_expression() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.tuning.BONUS as REWARD
+use game::tuning::BONUS as REWARD
 
 fn main() {
     return REWARD + 1;
@@ -80,16 +80,16 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.tuning"),
+            ModulePath::from_qualified("game::tuning"),
             r#"
-use game.base.BASE as START
+use game::base::BASE as START
 
 pub const BONUS: int = START + 1;
 "#,
         ),
         ModuleSource::new(
             SourceId::new(3),
-            ModulePath::from_dotted("game.base"),
+            ModulePath::from_qualified("game::base"),
             r#"
 pub const BASE: int = 4;
 "#,
@@ -98,7 +98,7 @@ pub const BASE: int = 4;
     .expect("compile imported cross-module const expression");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(6))
     );
 }
@@ -108,30 +108,30 @@ fn runs_compiled_cross_module_imported_type_constructors() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.Reward as Prize
-use game.damage.Damage as Hit
+use game::reward::Reward as Prize
+use game::damage::Damage as Hit
 
 fn make_reward() {
     return Prize { count: 2 };
 }
 
 fn make_damage() {
-    return Hit.Physical { amount: 7 };
+    return Hit::Physical { amount: 7 };
 }
 "#,
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 pub struct Reward { count: int }
 "#,
         ),
         ModuleSource::new(
             SourceId::new(3),
-            ModulePath::from_dotted("game.damage"),
+            ModulePath::from_qualified("game::damage"),
             r#"
 pub enum Damage { Physical { amount: int } }
 "#,
@@ -144,18 +144,18 @@ pub enum Damage { Physical { amount: int } }
     damage_fields.insert("amount".into(), Value::Int(7));
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.make_reward", &[]),
+        Vm::new().run_program(&program, "game::main::make_reward", &[]),
         Ok(Value::Record {
-            type_name: "game.reward.Reward".into(),
-            fields: ScriptFields::from_pairs("game.reward.Reward", reward_fields),
+            type_name: "game::reward::Reward".into(),
+            fields: ScriptFields::from_pairs("game::reward::Reward", reward_fields),
         })
     );
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.make_damage", &[]),
+        Vm::new().run_program(&program, "game::main::make_damage", &[]),
         Ok(Value::Enum {
-            enum_name: "game.damage.Damage".into(),
+            enum_name: "game::damage::Damage".into(),
             variant: "Physical".into(),
-            fields: ScriptFields::from_pairs("game.damage.Damage.Physical", damage_fields),
+            fields: ScriptFields::from_pairs("game::damage::Damage::Physical", damage_fields),
         })
     );
 }
@@ -165,9 +165,9 @@ fn runs_cross_module_imported_constructor_defaults() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.Reward as Prize
+use game::reward::Reward as Prize
 
 fn main() {
     let reward = Prize {};
@@ -177,7 +177,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 pub const BASE_COUNT = 5
 
@@ -191,7 +191,7 @@ pub struct Reward {
     .expect("compile imported constructor defaults");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(11))
     );
 }
@@ -201,15 +201,15 @@ fn runs_compiled_cross_module_imported_match_patterns() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.damage.Damage as Hit
+use game::damage::Damage as Hit
 
 fn main() {
-    let damage = Hit.Physical { amount: 7 };
+    let damage = Hit::Physical { amount: 7 };
     match damage {
-        Hit.Magical { amount } => { return amount + 100; },
-        Hit.Physical { amount } => { return amount; },
+        Hit::Magical { amount } => { return amount + 100; },
+        Hit::Physical { amount } => { return amount; },
         _ => { return 0; },
     }
 }
@@ -217,7 +217,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.damage"),
+            ModulePath::from_qualified("game::damage"),
             r#"
 pub enum Damage {
     Physical { amount: int },
@@ -229,7 +229,7 @@ pub enum Damage {
     .expect("compile imported cross-module match pattern");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -239,16 +239,16 @@ fn runs_compiled_cross_module_qualified_function_and_const_paths() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
 fn main() {
-    return game.reward.grant() + game.config.BONUS;
+    return game::reward::grant() + game::config::BONUS;
 }
 "#,
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             r#"
 pub fn grant() {
     return 4;
@@ -257,7 +257,7 @@ pub fn grant() {
         ),
         ModuleSource::new(
             SourceId::new(3),
-            ModulePath::from_dotted("game.config"),
+            ModulePath::from_qualified("game::config"),
             r#"
 pub const BONUS: int = 5;
 "#,
@@ -266,7 +266,7 @@ pub const BONUS: int = 5;
     .expect("compile qualified cross-module paths");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game.main.main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(9))
     );
 }

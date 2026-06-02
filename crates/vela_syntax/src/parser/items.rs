@@ -45,7 +45,7 @@ impl Parser {
         while self.check_symbol(Symbol::Hash) && self.check_next_symbol(Symbol::LBracket) {
             let start = self.advance().span.start;
             self.advance();
-            let path = self.parse_path();
+            let path = self.parse_static_path();
             let value = self.parse_attribute_value();
             self.skip_balanced_until(Symbol::RBracket);
             let end = self.previous_span().end;
@@ -88,7 +88,7 @@ impl Parser {
     }
 
     pub(super) fn parse_use_item(&mut self) -> Option<UseItem> {
-        let path = self.parse_path();
+        let path = self.parse_static_path();
         if path.is_empty() {
             self.error_here("expected use path");
             return None;
@@ -196,14 +196,14 @@ impl Parser {
     }
 
     pub(super) fn parse_impl_item(&mut self) -> Option<ImplItem> {
-        let trait_path = self.parse_path();
+        let trait_path = self.parse_static_path();
         if trait_path.is_empty() {
             self.error_here("expected impl trait path");
         }
         if self.eat_keyword(Keyword::For).is_none() {
             self.error_here("expected `for` in impl declaration");
         }
-        let target_path = self.parse_path();
+        let target_path = self.parse_static_path();
         if target_path.is_empty() {
             self.error_here("expected impl target path");
         }

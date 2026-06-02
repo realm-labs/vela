@@ -58,24 +58,24 @@ fn reflect_implements_uses_registry_metadata() {
 fn reflect_implements_uses_script_type_metadata() {
     let mut registry = TypeRegistry::new();
     registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(200), "game.Player"))
+        TypeDesc::new(TypeKey::new(TypeId::new(200), "game::Player"))
             .kind(TypeKind::ScriptStruct)
-            .trait_impl(TraitDesc::new("game.Damageable")),
+            .trait_impl(TraitDesc::new("game::Damageable")),
     );
     registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(201), "game.Progress"))
+        TypeDesc::new(TypeKey::new(TypeId::new(201), "game::Progress"))
             .kind(TypeKind::ScriptEnum)
-            .trait_impl(TraitDesc::new("game.Trackable")),
+            .trait_impl(TraitDesc::new("game::Trackable")),
     );
 
     assert!(
         implements(
             &registry,
             &ReflectValue::ScriptRecord {
-                type_name: "game.Player".to_owned(),
+                type_name: "game::Player".to_owned(),
                 fields: BTreeMap::new(),
             },
-            &trait_name("game.Damageable"),
+            &trait_name("game::Damageable"),
         )
         .expect("script record implements check")
     );
@@ -83,11 +83,11 @@ fn reflect_implements_uses_script_type_metadata() {
         implements(
             &registry,
             &ReflectValue::ScriptEnum {
-                enum_name: "game.Progress".to_owned(),
+                enum_name: "game::Progress".to_owned(),
                 variant: "Active".to_owned(),
                 fields: BTreeMap::new(),
             },
-            &trait_name("game.Trackable"),
+            &trait_name("game::Trackable"),
         )
         .expect("script enum implements check")
     );
@@ -95,10 +95,10 @@ fn reflect_implements_uses_script_type_metadata() {
         !implements(
             &registry,
             &ReflectValue::ScriptRecord {
-                type_name: "game.Player".to_owned(),
+                type_name: "game::Player".to_owned(),
                 fields: BTreeMap::new(),
             },
-            &trait_name("game.Trackable"),
+            &trait_name("game::Trackable"),
         )
         .expect("script record negative implements check")
     );

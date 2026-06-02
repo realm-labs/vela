@@ -22,7 +22,7 @@ pub(crate) fn context_module_desc() -> ModuleDesc {
 pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry; 3] {
     [
         NativeFunctionEntry::new(
-            NativeFunctionDesc::new("ctx.now", CTX_NOW_FUNCTION_ID)
+            NativeFunctionDesc::new("ctx::now", CTX_NOW_FUNCTION_ID)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::pure())
                 .access(
@@ -31,10 +31,10 @@ pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEnt
                         .require_permission(CONTEXT_TIME_PERMISSION),
                 )
                 .docs("Returns the configured deterministic context timestamp."),
-            move |args| context_value("ctx.now", now, args),
+            move |args| context_value("ctx::now", now, args),
         ),
         NativeFunctionEntry::new(
-            NativeFunctionDesc::new("ctx.tick", CTX_TICK_FUNCTION_ID)
+            NativeFunctionDesc::new("ctx::tick", CTX_TICK_FUNCTION_ID)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::pure())
                 .access(
@@ -43,10 +43,10 @@ pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEnt
                         .require_permission(CONTEXT_TIME_PERMISSION),
                 )
                 .docs("Returns the configured deterministic context tick."),
-            move |args| context_value("ctx.tick", tick, args),
+            move |args| context_value("ctx::tick", tick, args),
         ),
         NativeFunctionEntry::new(
-            NativeFunctionDesc::new("ctx.elapsed_since", CTX_ELAPSED_SINCE_FUNCTION_ID)
+            NativeFunctionDesc::new("ctx::elapsed_since", CTX_ELAPSED_SINCE_FUNCTION_ID)
                 .param("start", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::pure())
@@ -80,7 +80,7 @@ fn elapsed_since(now: i64, args: &[Value]) -> VmResult<Value> {
     if args.len() != 1 {
         return Err(VmError {
             kind: VmErrorKind::ArityMismatch {
-                name: "ctx.elapsed_since".to_owned(),
+                name: "ctx::elapsed_since".to_owned(),
                 expected: 1,
                 actual: args.len(),
             },
@@ -92,7 +92,7 @@ fn elapsed_since(now: i64, args: &[Value]) -> VmResult<Value> {
     let Value::Int(start) = args[0] else {
         return Err(VmError {
             kind: VmErrorKind::TypeMismatch {
-                operation: "ctx.elapsed_since",
+                operation: "ctx::elapsed_since",
             },
             source_span: None,
             call_stack: Default::default(),
@@ -101,7 +101,7 @@ fn elapsed_since(now: i64, args: &[Value]) -> VmResult<Value> {
 
     now.checked_sub(start).map(Value::Int).ok_or(VmError {
         kind: VmErrorKind::TypeMismatch {
-            operation: "ctx.elapsed_since",
+            operation: "ctx::elapsed_since",
         },
         source_span: None,
         call_stack: Default::default(),

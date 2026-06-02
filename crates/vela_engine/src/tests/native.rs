@@ -22,7 +22,7 @@ use crate::runtime::{CallOptions, Runtime};
 fn engine_installs_registered_native_functions_into_vm() {
     let engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.add", NativeFunctionId::new(1))
+            NativeFunctionDesc::new("game::add", NativeFunctionId::new(1))
                 .param("lhs", TypeHint::Int)
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int)
@@ -42,7 +42,7 @@ fn engine_installs_registered_native_functions_into_vm() {
         SourceId::new(1),
         r#"
 fn main() {
-    return game.add(2, 3);
+    return game::add(2, 3);
 }
 "#,
     )
@@ -58,7 +58,7 @@ fn main() {
 fn engine_compiler_options_lower_named_registered_native_arguments() {
     let engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.subtract", NativeFunctionId::new(27))
+            NativeFunctionDesc::new("game::subtract", NativeFunctionId::new(27))
                 .param("lhs", TypeHint::Int)
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int)
@@ -77,7 +77,7 @@ fn engine_compiler_options_lower_named_registered_native_arguments() {
         SourceId::new(1),
         r#"
 fn main() {
-    return game.subtract(rhs = 3, lhs = 10);
+    return game::subtract(rhs = 3, lhs = 10);
 }
 "#,
         &engine.compiler_options(),
@@ -100,7 +100,7 @@ fn engine_compiler_options_lower_named_standard_native_arguments() {
         SourceId::new(1),
         r#"
 fn main() {
-    return math.clamp(max = 10, value = 15, min = 1);
+    return math::clamp(max = 10, value = 15, min = 1);
 }
 "#,
         &engine.compiler_options(),
@@ -217,14 +217,14 @@ fn engine_builder_installs_standard_natives_into_runtime() {
         SourceId::new(1),
         r#"
 fn main() {
-    let tags = set.from_array(["fire", "ice", "fire"]);
-    let midpoint = math.floor(math.lerp(10, 20, 0.5));
-    let range = math.round(math.distance3d(0, 0, 0, 2, 3, 6));
-    let score = math.pow(2, 3);
-    let root = math.round(math.sqrt(81));
-    let direction = math.sign(-3);
-    let approach = math.move_towards(0, 10, 4);
-    return tags.len() + option.unwrap_or(option.some(midpoint), 0) + math.round(1.5) + range + score + root + direction + approach;
+    let tags = set::from_array(["fire", "ice", "fire"]);
+    let midpoint = math::floor(math::lerp(10, 20, 0.5));
+    let range = math::round(math::distance3d(0, 0, 0, 2, 3, 6));
+    let score = math::pow(2, 3);
+    let root = math::round(math::sqrt(81));
+    let direction = math::sign(-3);
+    let approach = math::move_towards(0, 10, 4);
+    return tags.len() + option::unwrap_or(option::some(midpoint), 0) + math::round(1.5) + range + score + root + direction + approach;
 }
 "#,
     )
@@ -242,7 +242,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_host_native_fn(
-            NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(2))
+            NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(2))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -269,7 +269,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.set_level(player, 9);
+    game::set_level(player, 9);
     return 1;
 }
 "#,
@@ -305,7 +305,7 @@ fn engine_installs_context_host_native_functions_into_vm() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_context_host_native_fn(
-            NativeFunctionDesc::new("game.context_set_level", NativeFunctionId::new(23))
+            NativeFunctionDesc::new("game::context_set_level", NativeFunctionId::new(23))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -321,12 +321,12 @@ fn engine_installs_context_host_native_functions_into_vm() {
                 assert!(ctx.has_permission("player.write"));
                 assert!(
                     ctx.engine()
-                        .native_function_by_name("game.context_set_level")
+                        .native_function_by_name("game::context_set_level")
                         .is_none()
                 );
                 assert!(
                     ctx.engine()
-                        .context_host_native_function_by_name("game.context_set_level")
+                        .context_host_native_function_by_name("game::context_set_level")
                         .is_some()
                 );
                 ctx.tx().set_path(
@@ -343,14 +343,14 @@ fn engine_installs_context_host_native_functions_into_vm() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.context_set_level(player, 11);
+    return game::context_set_level(player, 11);
 }
 "#,
     )
     .expect("program should compile");
     let registry = engine.registry();
     let function = registry
-        .function_by_name("game.context_set_level")
+        .function_by_name("game::context_set_level")
         .expect("context host native metadata");
     assert_eq!(function.id, NativeFunctionId::new(23));
     assert!(function.effects.writes_host);
@@ -387,7 +387,7 @@ fn main(player) {
 fn context_host_native_can_charge_execution_budget_before_patching() {
     let engine = Engine::builder()
         .register_context_host_native_fn(
-            NativeFunctionDesc::new("game.expensive_set_level", NativeFunctionId::new(24))
+            NativeFunctionDesc::new("game::expensive_set_level", NativeFunctionId::new(24))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -414,7 +414,7 @@ fn context_host_native_can_charge_execution_budget_before_patching() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.expensive_set_level(player, 13);
+    game::expensive_set_level(player, 13);
     return 1;
 }
 "#,
@@ -449,7 +449,7 @@ fn main(player) {
 fn context_host_native_can_charge_memory_budget_before_patching() {
     let engine = Engine::builder()
         .register_context_host_native_fn(
-            NativeFunctionDesc::new("game.memory_checked_set_level", NativeFunctionId::new(25))
+            NativeFunctionDesc::new("game::memory_checked_set_level", NativeFunctionId::new(25))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -476,7 +476,7 @@ fn context_host_native_can_charge_memory_budget_before_patching() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.memory_checked_set_level(player, 13);
+    game::memory_checked_set_level(player, 13);
     return 1;
 }
 "#,
@@ -511,7 +511,7 @@ fn main(player) {
 fn context_host_native_can_reserve_patch_budget_before_patching() {
     let engine = Engine::builder()
         .register_context_host_native_fn(
-            NativeFunctionDesc::new("game.patch_checked_set_level", NativeFunctionId::new(26))
+            NativeFunctionDesc::new("game::patch_checked_set_level", NativeFunctionId::new(26))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -538,7 +538,7 @@ fn context_host_native_can_reserve_patch_budget_before_patching() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.patch_checked_set_level(player, 13);
+    game::patch_checked_set_level(player, 13);
     return 1;
 }
 "#,
@@ -574,7 +574,7 @@ fn host_native_patch_budget_rolls_back_overflow_patch() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_host_native_fn(
-            NativeFunctionDesc::new("game.unchecked_set_level", NativeFunctionId::new(28))
+            NativeFunctionDesc::new("game::unchecked_set_level", NativeFunctionId::new(28))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -601,7 +601,7 @@ fn host_native_patch_budget_rolls_back_overflow_patch() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.unchecked_set_level(player, 13);
+    game::unchecked_set_level(player, 13);
     return 1;
 }
 "#,
@@ -637,7 +637,7 @@ fn host_native_error_rolls_back_recorded_patches() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_host_native_fn(
-            NativeFunctionDesc::new("game.failing_set_level", NativeFunctionId::new(29))
+            NativeFunctionDesc::new("game::failing_set_level", NativeFunctionId::new(29))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -670,7 +670,7 @@ fn host_native_error_rolls_back_recorded_patches() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.failing_set_level(player, 13);
+    game::failing_set_level(player, 13);
     return 1;
 }
 "#,
@@ -705,7 +705,7 @@ fn host_native_error_rolls_back_patches_without_call_options() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_host_native_fn(
-            NativeFunctionDesc::new("game.direct_failing_set_level", NativeFunctionId::new(30))
+            NativeFunctionDesc::new("game::direct_failing_set_level", NativeFunctionId::new(30))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -738,7 +738,7 @@ fn host_native_error_rolls_back_patches_without_call_options() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.direct_failing_set_level(player, 13);
+    game::direct_failing_set_level(player, 13);
     return 1;
 }
 "#,
@@ -818,9 +818,9 @@ fn main() {
 fn engine_denies_native_calls_missing_required_permission() {
     let engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.secret", NativeFunctionId::new(3))
+            NativeFunctionDesc::new("game::secret", NativeFunctionId::new(3))
                 .returns(TypeHint::Int)
-                .access(FunctionAccess::public().require_permission("game.secret")),
+                .access(FunctionAccess::public().require_permission("game::secret")),
             |_| Ok(Value::Int(99)),
         )
         .build()
@@ -829,7 +829,7 @@ fn engine_denies_native_calls_missing_required_permission() {
         SourceId::new(1),
         r#"
 fn main() {
-    return game.secret();
+    return game::secret();
 }
 "#,
     )
@@ -838,8 +838,8 @@ fn main() {
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "game.secret".to_owned(),
-            permission: "game.secret".to_owned(),
+            native: "game::secret".to_owned(),
+            permission: "game::secret".to_owned(),
         }
     ));
 }
@@ -848,7 +848,7 @@ fn main() {
 fn engine_denies_host_native_before_recording_patches() {
     let engine = Engine::builder()
         .register_host_native_fn(
-            NativeFunctionDesc::new("game.set_level", NativeFunctionId::new(4))
+            NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(4))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -875,7 +875,7 @@ fn engine_denies_host_native_before_recording_patches() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.set_level(player, 9);
+    game::set_level(player, 9);
     return 1;
 }
 "#,
@@ -894,7 +894,7 @@ fn main(player) {
             .into_vm()
             .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "game.set_level".to_owned(),
+            native: "game::set_level".to_owned(),
             permission: "player.write".to_owned(),
         }
     ));

@@ -22,7 +22,7 @@ fn main() {
         .script_method("Player", "bonus")
         .expect("script impl method dispatch target");
     assert_eq!(method.params, ["self", "amount"]);
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
     assert_eq!(
         program
@@ -62,7 +62,7 @@ fn main() {
 "#,
     )
     .expect("named/default method call should compile");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     let args = main
         .instructions
@@ -89,7 +89,7 @@ fn compiler_registers_host_target_impl_methods_as_script_dispatch_targets() {
 trait BonusSource { fn bonus(self, amount) -> int; }
 impl BonusSource for Player {
     fn bonus(self, amount) -> int {
-        return reflect.get(self, "level") + amount;
+        return reflect::get(self, "level") + amount;
     }
 }
 fn main(player) {
@@ -102,7 +102,7 @@ fn main(player) {
         .script_method("Player", "bonus")
         .expect("host target script impl method dispatch target");
     assert_eq!(method.params, ["self", "amount"]);
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
 }
 #[test]
@@ -125,7 +125,7 @@ fn main() {
         .script_method("Player", "bonus")
         .expect("trait default method dispatch target");
     assert_eq!(method.params, ["self", "amount"]);
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
     assert!(program.script_method_by_id("Player", method_id).is_some());
     let main = program.function("main").expect("main function");
@@ -159,7 +159,7 @@ fn main() {
 "#,
     )
     .expect("self method calls should specialize by method id");
-    let label_id = stable_test_trait_method_id("main.BonusSource", "label");
+    let label_id = stable_test_trait_method_id("main::BonusSource", "label");
     let summary = program
         .script_method("Player", "summary")
         .expect("trait default summary method");
@@ -191,7 +191,7 @@ fn main() {
 "#,
     )
     .expect("captured receiver method should specialize by method id");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     let closure = main
         .instructions
@@ -230,7 +230,7 @@ fn main() {
 "#,
     )
     .expect("binding pattern receiver method should specialize by method id");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -257,16 +257,16 @@ impl BonusSource for Player {
     }
 }
 fn main() {
-    let event = Event.Grant { player: Player { level: 7 } };
+    let event = Event::Grant { player: Player { level: 7 } };
     return match event {
-        Event.Grant { player } => player.bonus(5),
+        Event::Grant { player } => player.bonus(5),
         _ => 0,
     };
 }
 "#,
     )
     .expect("record variant field receiver method should specialize by method id");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -293,16 +293,16 @@ impl BonusSource for Player {
     }
 }
 fn main() {
-    let event = Event.Grant(Player { level: 7 });
+    let event = Event::Grant(Player { level: 7 });
     return match event {
-        Event.Grant(player) => player.bonus(5),
+        Event::Grant(player) => player.bonus(5),
         _ => 0,
     };
 }
 "#,
     )
     .expect("tuple variant field receiver method should specialize by method id");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -331,7 +331,7 @@ fn main() {
 "#,
     )
     .expect("let-bound script record method should specialize by method id");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -359,7 +359,7 @@ fn main(player: Player) {
 "#,
     )
     .expect("typed script parameter method should specialize by method id");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -391,7 +391,7 @@ fn main() {
 "#,
     )
     .expect("typed let method should specialize by method id");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -406,7 +406,7 @@ fn compiler_specializes_module_typed_parameter_method_calls_by_method_id() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.model"),
+            ModulePath::from_qualified("game::model"),
             r#"
 pub trait BonusSource { fn bonus(self, amount) -> int; }
 pub struct Player { level: int }
@@ -419,9 +419,9 @@ impl BonusSource for Player {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.combat"),
+            ModulePath::from_qualified("game::combat"),
             r#"
-use game.model.Player
+use game::model::Player
 pub fn main(player: Player) {
     return player.bonus(5);
 }
@@ -429,10 +429,10 @@ pub fn main(player: Player) {
         ),
     ])
     .expect("module typed parameter method should specialize by method id");
-    let method_id = stable_test_trait_method_id("game.model.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("game::model::BonusSource", "bonus");
     let main = program
-        .function("game.combat.main")
-        .expect("game.combat.main function");
+        .function("game::combat::main")
+        .expect("game::combat::main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         InstructionKind::CallMethodId {
@@ -459,7 +459,7 @@ fn main() {
 "#,
     )
     .expect("shared trait method id should index per receiver");
-    let method_id = stable_test_trait_method_id("main.BonusSource", "bonus");
+    let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
     assert!(program.script_method_by_id("Player", method_id).is_some());
     assert!(program.script_method_by_id("Monster", method_id).is_some());
     assert!(program.script_method_by_id("Missing", method_id).is_none());

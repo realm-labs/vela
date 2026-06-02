@@ -4,225 +4,225 @@ enum QuestProgress {
 }
 
 fn main(ctx, player) {
-    let player_type = reflect.type_info("Player");
-    let inventory_type = reflect.type_info("Inventory");
-    let item_stack_type = reflect.type_info("ItemStack");
-    let config_type = reflect.type_info("Config");
-    let context_type = reflect.type_info("Context");
-    let string_type = reflect.type_info("string");
-    let array_type = reflect.type_info("array");
-    let option_type = reflect.type_info("Option");
-    let result_type = reflect.type_info("Result");
-    let null_value_type = reflect.type_of(null);
-    let bool_value_type = reflect.type_of(true);
-    let int_value_type = reflect.type_of(42);
-    let float_value_type = reflect.type_of(1.5);
-    let string_value_type = reflect.type_of("quest");
-    let array_value_type = reflect.type_of(["quest"]);
-    let map_value_type = reflect.type_of({"quest": 1});
-    let set_value_type = reflect.type_of(set.from_array(["quest"]));
-    let option_value_type = reflect.type_of(option.some(1));
-    let result_value_type = reflect.type_of(result.ok(1));
-    let closure_value_type = reflect.type_of(|value| value);
-    let range_value_type = reflect.type_of(1..3);
-    let quest_type = reflect.type_info("QuestProgress");
-    let host_quest_type = reflect.type_info("HostQuestProgress");
-    let damageable = reflect.trait_info("Damageable");
-    let quest = QuestProgress.Active { count: 2 };
-    let quest_variants = reflect.variants(quest);
-    let active_variant = reflect.variant_info(quest, "Active");
-    let host_active_variant = reflect.variant_info(host_quest_type, "Active");
-    let quest_type_variants = reflect.variants(quest_type);
-    let option_variants = reflect.variants(option_type);
-    let result_variants = reflect.variants(result_type);
-    let reflected_variants = reflect.variants();
-    let option_map = reflect.method(option_type, "map");
-    let option_ok_or = reflect.method(option_type, "ok_or");
-    let result_map_err = reflect.method(result_type, "map_err");
-    let result_to_error = reflect.method(result_type, "to_error_option");
-    let string_trim = reflect.method(string_type, "trim");
-    let array_map = reflect.method(array_type, "map");
-    let map_type = reflect.type_info("map");
-    let set_type = reflect.type_info("set");
-    let range_type = reflect.type_info("range");
-    let map_get = reflect.method(map_type, "get");
-    let set_union = reflect.method(set_type, "union");
-    let range_len = reflect.method(range_type, "len");
-    let range_is_empty = reflect.method(range_type, "is_empty");
-    let fields = reflect.fields(player);
-    let inventory_fields = reflect.fields(inventory_type);
-    let item_stack_fields = reflect.fields(item_stack_type);
-    let level = reflect.field(player, "level");
-    let level_access = reflect.access(level);
-    let item_count = reflect.field(item_stack_type, "count");
-    let item_count_access = reflect.access(item_count);
-    let method = reflect.method(player, "add_reward");
-    let method_access = reflect.access(method);
-    let reflected_types = reflect.types();
-    let reward_module = reflect.module("game.reward");
-    let ctx_module = reflect.module("ctx");
-    let math_module = reflect.module("math");
-    let option_module = reflect.module("option");
-    let result_module = reflect.module("result");
-    let set_module = reflect.module("set");
-    let reward_function = reflect.function("game.reward.grant");
-    let main_function = reflect.function("main");
-    let ctx_now = reflect.function("ctx.now");
-    let ctx_tick = reflect.function("ctx.tick");
-    let ctx_elapsed = reflect.function("ctx.elapsed_since");
-    let math_max = reflect.function("math.max");
-    let math_sqrt = reflect.function("math.sqrt");
-    let option_some = reflect.function("option.some");
-    let result_ok = reflect.function("result.ok");
-    let set_from_array = reflect.function("set.from_array");
-    let reward_params = reflect.params(reward_function);
-    let main_params = reflect.params(main_function);
-    let math_max_params = reflect.params(math_max);
-    let option_some_params = reflect.params(option_some);
-    let result_ok_params = reflect.params(result_ok);
-    let set_from_array_params = reflect.params(set_from_array);
-    let reward_access = reflect.access(reward_function);
-    let reward_attrs = reflect.attrs(reward_module);
-    let reward_effects = reflect.effects(reward_function);
-    let math_max_effects = reflect.effects(math_max);
-    let math_max_access = reflect.access(math_max);
-    let reflected_max = reflect.call(math_max, 4, 9);
-    let option_some_effects = reflect.effects(option_some);
-    let option_some_access = reflect.access(option_some);
-    let ctx_now_access = reflect.access(ctx_now);
-    let ctx_now_permissions = reflect.required_permissions(ctx_now);
-    let ctx_elapsed_access = reflect.access(ctx_elapsed);
-    let ctx_elapsed_params = reflect.params(ctx_elapsed);
-    let ctx_elapsed_permissions = reflect.required_permissions(ctx_elapsed);
-    let reflected_now = reflect.call(ctx_now);
-    let reflected_elapsed = reflect.call(ctx_elapsed, 1699999990);
-    let main_source_span = reflect.source_span(main_function);
-    let ctx_methods = reflect.methods(ctx);
-    let ctx_fields = reflect.fields(context_type);
-    let ctx_emit = reflect.method(ctx, "emit");
-    let ctx_log = reflect.method(ctx, "log");
-    let ctx_emit_access = reflect.access(ctx_emit);
-    let ctx_log_access = reflect.access(ctx_log);
-    let method_effects = reflect.effects(method);
-    let ctx_emit_effects = reflect.effects(ctx_emit);
-    let ctx_emit_params = reflect.params(ctx_emit);
-    let ctx_log_params = reflect.params(ctx_log);
-    let modules = reflect.modules();
-    let functions = reflect.functions();
-    let exports = reflect.exports(reward_module);
-    let ctx_exports = reflect.exports(ctx_module);
-    let math_exports = reflect.exports(math_module);
-    let option_exports = reflect.exports(option_module);
-    let result_exports = reflect.exports(result_module);
-    let set_exports = reflect.exports(set_module);
-    let permissions = reflect.permissions();
-    let player_type_of = reflect.type_of(player);
+    let player_type = reflect::type_info("Player");
+    let inventory_type = reflect::type_info("Inventory");
+    let item_stack_type = reflect::type_info("ItemStack");
+    let config_type = reflect::type_info("Config");
+    let context_type = reflect::type_info("Context");
+    let string_type = reflect::type_info("string");
+    let array_type = reflect::type_info("array");
+    let option_type = reflect::type_info("Option");
+    let result_type = reflect::type_info("Result");
+    let null_value_type = reflect::type_of(null);
+    let bool_value_type = reflect::type_of(true);
+    let int_value_type = reflect::type_of(42);
+    let float_value_type = reflect::type_of(1.5);
+    let string_value_type = reflect::type_of("quest");
+    let array_value_type = reflect::type_of(["quest"]);
+    let map_value_type = reflect::type_of({"quest": 1});
+    let set_value_type = reflect::type_of(set::from_array(["quest"]));
+    let option_value_type = reflect::type_of(option::some(1));
+    let result_value_type = reflect::type_of(result::ok(1));
+    let closure_value_type = reflect::type_of(|value| value);
+    let range_value_type = reflect::type_of(1..3);
+    let quest_type = reflect::type_info("QuestProgress");
+    let host_quest_type = reflect::type_info("HostQuestProgress");
+    let damageable = reflect::trait_info("Damageable");
+    let quest = QuestProgress::Active { count: 2 };
+    let quest_variants = reflect::variants(quest);
+    let active_variant = reflect::variant_info(quest, "Active");
+    let host_active_variant = reflect::variant_info(host_quest_type, "Active");
+    let quest_type_variants = reflect::variants(quest_type);
+    let option_variants = reflect::variants(option_type);
+    let result_variants = reflect::variants(result_type);
+    let reflected_variants = reflect::variants();
+    let option_map = reflect::method(option_type, "map");
+    let option_ok_or = reflect::method(option_type, "ok_or");
+    let result_map_err = reflect::method(result_type, "map_err");
+    let result_to_error = reflect::method(result_type, "to_error_option");
+    let string_trim = reflect::method(string_type, "trim");
+    let array_map = reflect::method(array_type, "map");
+    let map_type = reflect::type_info("map");
+    let set_type = reflect::type_info("set");
+    let range_type = reflect::type_info("range");
+    let map_get = reflect::method(map_type, "get");
+    let set_union = reflect::method(set_type, "union");
+    let range_len = reflect::method(range_type, "len");
+    let range_is_empty = reflect::method(range_type, "is_empty");
+    let fields = reflect::fields(player);
+    let inventory_fields = reflect::fields(inventory_type);
+    let item_stack_fields = reflect::fields(item_stack_type);
+    let level = reflect::field(player, "level");
+    let level_access = reflect::access(level);
+    let item_count = reflect::field(item_stack_type, "count");
+    let item_count_access = reflect::access(item_count);
+    let method = reflect::method(player, "add_reward");
+    let method_access = reflect::access(method);
+    let reflected_types = reflect::types();
+    let reward_module = reflect::module("game::reward");
+    let ctx_module = reflect::module("ctx");
+    let math_module = reflect::module("math");
+    let option_module = reflect::module("option");
+    let result_module = reflect::module("result");
+    let set_module = reflect::module("set");
+    let reward_function = reflect::function("game::reward::grant");
+    let main_function = reflect::function("main");
+    let ctx_now = reflect::function("ctx::now");
+    let ctx_tick = reflect::function("ctx::tick");
+    let ctx_elapsed = reflect::function("ctx::elapsed_since");
+    let math_max = reflect::function("math::max");
+    let math_sqrt = reflect::function("math::sqrt");
+    let option_some = reflect::function("option::some");
+    let result_ok = reflect::function("result::ok");
+    let set_from_array = reflect::function("set::from_array");
+    let reward_params = reflect::params(reward_function);
+    let main_params = reflect::params(main_function);
+    let math_max_params = reflect::params(math_max);
+    let option_some_params = reflect::params(option_some);
+    let result_ok_params = reflect::params(result_ok);
+    let set_from_array_params = reflect::params(set_from_array);
+    let reward_access = reflect::access(reward_function);
+    let reward_attrs = reflect::attrs(reward_module);
+    let reward_effects = reflect::effects(reward_function);
+    let math_max_effects = reflect::effects(math_max);
+    let math_max_access = reflect::access(math_max);
+    let reflected_max = reflect::call(math_max, 4, 9);
+    let option_some_effects = reflect::effects(option_some);
+    let option_some_access = reflect::access(option_some);
+    let ctx_now_access = reflect::access(ctx_now);
+    let ctx_now_permissions = reflect::required_permissions(ctx_now);
+    let ctx_elapsed_access = reflect::access(ctx_elapsed);
+    let ctx_elapsed_params = reflect::params(ctx_elapsed);
+    let ctx_elapsed_permissions = reflect::required_permissions(ctx_elapsed);
+    let reflected_now = reflect::call(ctx_now);
+    let reflected_elapsed = reflect::call(ctx_elapsed, 1699999990);
+    let main_source_span = reflect::source_span(main_function);
+    let ctx_methods = reflect::methods(ctx);
+    let ctx_fields = reflect::fields(context_type);
+    let ctx_emit = reflect::method(ctx, "emit");
+    let ctx_log = reflect::method(ctx, "log");
+    let ctx_emit_access = reflect::access(ctx_emit);
+    let ctx_log_access = reflect::access(ctx_log);
+    let method_effects = reflect::effects(method);
+    let ctx_emit_effects = reflect::effects(ctx_emit);
+    let ctx_emit_params = reflect::params(ctx_emit);
+    let ctx_log_params = reflect::params(ctx_log);
+    let modules = reflect::modules();
+    let functions = reflect::functions();
+    let exports = reflect::exports(reward_module);
+    let ctx_exports = reflect::exports(ctx_module);
+    let math_exports = reflect::exports(math_module);
+    let option_exports = reflect::exports(option_module);
+    let result_exports = reflect::exports(result_module);
+    let set_exports = reflect::exports(set_module);
+    let permissions = reflect::permissions();
+    let player_type_of = reflect::type_of(player);
 
-    if reflect.name(player_type_of) == "Player"
-        && reflect.kind(player_type_of) == "host"
-        && reflect.id(player) == reflect.id(player_type)
-        && reflect.id(player_type) > 0
+    if reflect::name(player_type_of) == "Player"
+        && reflect::kind(player_type_of) == "host"
+        && reflect::id(player) == reflect::id(player_type)
+        && reflect::id(player_type) > 0
         && reflected_types.any(|type_info| type_info.name == "Player"
-            && reflect.kind(type_info) == "host")
-        && reflect.has_type("Player")
-        && reflect.has_type("Config")
-        && reflect.has_type("Context")
-        && reflect.has_type("string")
-        && reflect.has_type("array")
-        && reflect.has_type("map")
-        && reflect.has_type("set")
-        && reflect.has_type("range")
-        && reflect.has_type("Option")
-        && reflect.has_type("Result")
-        && reflect.has_type("QuestProgress")
-        && reflect.has_type("HostQuestProgress")
-        && !reflect.has_type("MissingType")
-        && reflect.kind(string_type) == "string"
-        && reflect.kind(array_type) == "array"
-        && reflect.kind(map_type) == "map"
-        && reflect.kind(set_type) == "set"
-        && reflect.kind(range_type) == "range"
-        && reflect.kind(option_type) == "script_enum"
-        && reflect.kind(result_type) == "script_enum"
-        && reflect.name(null_value_type) == "null"
-        && reflect.kind(null_value_type) == "null"
-        && reflect.name(bool_value_type) == "bool"
-        && reflect.kind(bool_value_type) == "bool"
-        && reflect.name(int_value_type) == "int"
-        && reflect.kind(int_value_type) == "int"
-        && reflect.name(float_value_type) == "float"
-        && reflect.kind(float_value_type) == "float"
-        && reflect.name(string_value_type) == "string"
-        && reflect.kind(string_value_type) == "string"
-        && reflect.name(array_value_type) == "array"
-        && reflect.kind(array_value_type) == "array"
-        && reflect.name(map_value_type) == "map"
-        && reflect.kind(map_value_type) == "map"
-        && reflect.name(set_value_type) == "set"
-        && reflect.kind(set_value_type) == "set"
-        && reflect.name(option_value_type) == "Option"
-        && reflect.kind(option_value_type) == "script_enum"
-        && reflect.name(result_value_type) == "Result"
-        && reflect.kind(result_value_type) == "script_enum"
-        && reflect.name(closure_value_type) == "closure"
-        && reflect.kind(closure_value_type) == "closure"
-        && reflect.name(range_value_type) == "range"
-        && reflect.kind(range_value_type) == "range"
-        && reflect.attr(string_type, "stdlib") == "builtin"
-        && reflect.attr(array_type, "stdlib") == "builtin"
-        && reflect.attr(option_type, "stdlib") == "option"
-        && reflect.attr(result_type, "stdlib") == "result"
-        && reflect.has_method(option_type, "map")
-        && reflect.has_method(option_type, "ok_or")
-        && reflect.has_method(result_type, "map_err")
-        && reflect.has_method(result_type, "to_error_option")
+            && reflect::kind(type_info) == "host")
+        && reflect::has_type("Player")
+        && reflect::has_type("Config")
+        && reflect::has_type("Context")
+        && reflect::has_type("string")
+        && reflect::has_type("array")
+        && reflect::has_type("map")
+        && reflect::has_type("set")
+        && reflect::has_type("range")
+        && reflect::has_type("Option")
+        && reflect::has_type("Result")
+        && reflect::has_type("QuestProgress")
+        && reflect::has_type("HostQuestProgress")
+        && !reflect::has_type("MissingType")
+        && reflect::kind(string_type) == "string"
+        && reflect::kind(array_type) == "array"
+        && reflect::kind(map_type) == "map"
+        && reflect::kind(set_type) == "set"
+        && reflect::kind(range_type) == "range"
+        && reflect::kind(option_type) == "script_enum"
+        && reflect::kind(result_type) == "script_enum"
+        && reflect::name(null_value_type) == "null"
+        && reflect::kind(null_value_type) == "null"
+        && reflect::name(bool_value_type) == "bool"
+        && reflect::kind(bool_value_type) == "bool"
+        && reflect::name(int_value_type) == "int"
+        && reflect::kind(int_value_type) == "int"
+        && reflect::name(float_value_type) == "float"
+        && reflect::kind(float_value_type) == "float"
+        && reflect::name(string_value_type) == "string"
+        && reflect::kind(string_value_type) == "string"
+        && reflect::name(array_value_type) == "array"
+        && reflect::kind(array_value_type) == "array"
+        && reflect::name(map_value_type) == "map"
+        && reflect::kind(map_value_type) == "map"
+        && reflect::name(set_value_type) == "set"
+        && reflect::kind(set_value_type) == "set"
+        && reflect::name(option_value_type) == "Option"
+        && reflect::kind(option_value_type) == "script_enum"
+        && reflect::name(result_value_type) == "Result"
+        && reflect::kind(result_value_type) == "script_enum"
+        && reflect::name(closure_value_type) == "closure"
+        && reflect::kind(closure_value_type) == "closure"
+        && reflect::name(range_value_type) == "range"
+        && reflect::kind(range_value_type) == "range"
+        && reflect::attr(string_type, "stdlib") == "builtin"
+        && reflect::attr(array_type, "stdlib") == "builtin"
+        && reflect::attr(option_type, "stdlib") == "option"
+        && reflect::attr(result_type, "stdlib") == "result"
+        && reflect::has_method(option_type, "map")
+        && reflect::has_method(option_type, "ok_or")
+        && reflect::has_method(result_type, "map_err")
+        && reflect::has_method(result_type, "to_error_option")
         && option_map.params[0].name == "callback"
         && option_map.params[0].type == "function"
-        && reflect.returns(option_map) == "Option"
-        && reflect.attr(option_map, "stdlib") == "option"
+        && reflect::returns(option_map) == "Option"
+        && reflect::attr(option_map, "stdlib") == "option"
         && option_ok_or.params[0].name == "error"
-        && reflect.returns(option_ok_or) == "Result"
+        && reflect::returns(option_ok_or) == "Result"
         && result_map_err.params[0].name == "callback"
         && result_map_err.params[0].type == "function"
-        && reflect.returns(result_map_err) == "Result"
-        && reflect.attr(result_map_err, "stdlib") == "result"
-        && reflect.returns(result_to_error) == "Option"
-        && reflect.has_method(string_type, "trim")
-        && reflect.has_method(array_type, "map")
-        && reflect.has_method(map_type, "get")
-        && reflect.has_method(set_type, "union")
-        && reflect.has_method(range_type, "len")
-        && reflect.has_method(range_type, "is_empty")
-        && reflect.returns(string_trim) == "string"
-        && reflect.attr(string_trim, "stdlib") == "string"
+        && reflect::returns(result_map_err) == "Result"
+        && reflect::attr(result_map_err, "stdlib") == "result"
+        && reflect::returns(result_to_error) == "Option"
+        && reflect::has_method(string_type, "trim")
+        && reflect::has_method(array_type, "map")
+        && reflect::has_method(map_type, "get")
+        && reflect::has_method(set_type, "union")
+        && reflect::has_method(range_type, "len")
+        && reflect::has_method(range_type, "is_empty")
+        && reflect::returns(string_trim) == "string"
+        && reflect::attr(string_trim, "stdlib") == "string"
         && string_trim.owner == "string"
         && array_map.params[0].type == "function"
-        && reflect.returns(array_map) == "array"
-        && reflect.attr(array_map, "stdlib") == "array"
+        && reflect::returns(array_map) == "array"
+        && reflect::attr(array_map, "stdlib") == "array"
         && map_get.params[0].name == "key"
         && map_get.params[0].type == "string"
-        && reflect.returns(map_get) == "Option"
-        && reflect.attr(map_get, "stdlib") == "map"
+        && reflect::returns(map_get) == "Option"
+        && reflect::attr(map_get, "stdlib") == "map"
         && set_union.params[0].type == "set"
-        && reflect.returns(set_union) == "set"
-        && reflect.attr(set_union, "stdlib") == "set"
+        && reflect::returns(set_union) == "set"
+        && reflect::attr(set_union, "stdlib") == "set"
         && range_len.params.is_empty()
-        && reflect.returns(range_len) == "int"
-        && reflect.attr(range_len, "stdlib") == "range"
+        && reflect::returns(range_len) == "int"
+        && reflect::attr(range_len, "stdlib") == "range"
         && range_is_empty.params.is_empty()
-        && reflect.returns(range_is_empty) == "bool"
-        && reflect.has_field(config_type, "kill_rewards")
-        && reflect.field(config_type, "exp_to_next_level").type == "int"
-        && reflect.has_type("Inventory")
-        && reflect.kind(inventory_type) == "host"
-        && reflect.id(inventory_type) > 0
+        && reflect::returns(range_is_empty) == "bool"
+        && reflect::has_field(config_type, "kill_rewards")
+        && reflect::field(config_type, "exp_to_next_level").type == "int"
+        && reflect::has_type("Inventory")
+        && reflect::kind(inventory_type) == "host"
+        && reflect::id(inventory_type) > 0
         && inventory_fields.len() == 1
         && inventory_fields[0].owner == "Inventory"
         && inventory_fields[0].name == "items"
         && inventory_fields[0].type == "map"
-        && reflect.has_type("ItemStack")
-        && reflect.kind(item_stack_type) == "host"
-        && reflect.id(item_stack_type) > 0
+        && reflect::has_type("ItemStack")
+        && reflect::kind(item_stack_type) == "host"
+        && reflect::id(item_stack_type) > 0
         && item_stack_fields.len() == 1
         && item_stack_fields[0].owner == "ItemStack"
         && item_stack_fields[0].name == "count"
@@ -232,10 +232,10 @@ fn main(ctx, player) {
         && item_count.writable
         && item_count_access.reflect_readable
         && item_count_access.reflect_writable
-        && reflect.kind(quest_type) == "script_enum"
-        && reflect.kind(host_quest_type) == "host"
-        && reflect.has_field(player_type, "quest_progress")
-        && reflect.field(player_type, "quest_progress").type == "HostQuestProgress"
+        && reflect::kind(quest_type) == "script_enum"
+        && reflect::kind(host_quest_type) == "host"
+        && reflect::has_field(player_type, "quest_progress")
+        && reflect::field(player_type, "quest_progress").type == "HostQuestProgress"
         && quest_type.variant_count == 2
         && host_quest_type.variant_count == 1
         && quest_variants.len() == 2
@@ -243,117 +243,117 @@ fn main(ctx, player) {
         && option_variants.len() == 2
         && option_variants[0].name == "Some"
         && option_variants[0].fields[0].name == "0"
-        && option_variants[0].fields[0].owner == "Option.Some"
+        && option_variants[0].fields[0].owner == "Option::Some"
         && option_variants[0].fields[0].type == "any"
         && option_variants[1].name == "None"
         && result_variants.len() == 2
         && result_variants[0].name == "Ok"
         && result_variants[0].fields[0].name == "0"
-        && result_variants[0].fields[0].owner == "Result.Ok"
+        && result_variants[0].fields[0].owner == "Result::Ok"
         && result_variants[0].fields[0].type == "any"
         && result_variants[1].name == "Err"
         && result_variants[1].fields[0].name == "0"
-        && result_variants[1].fields[0].owner == "Result.Err"
+        && result_variants[1].fields[0].owner == "Result::Err"
         && result_variants[1].fields[0].type == "any"
         && reflected_variants.len() == 7
-        && reflect.name(active_variant) == "Active"
-        && reflect.owner(active_variant) == "QuestProgress"
+        && reflect::name(active_variant) == "Active"
+        && reflect::owner(active_variant) == "QuestProgress"
         && active_variant.fields.len() == 1
         && active_variant.fields[0].name == "count"
-        && active_variant.fields[0].owner == "QuestProgress.Active"
-        && quest_variants[0].fields[0].owner == "QuestProgress.Active"
-        && quest_type_variants[0].fields[0].owner == "QuestProgress.Active"
-        && reflect.name(host_active_variant) == "Active"
-        && reflect.owner(host_active_variant) == "HostQuestProgress"
+        && active_variant.fields[0].owner == "QuestProgress::Active"
+        && quest_variants[0].fields[0].owner == "QuestProgress::Active"
+        && quest_type_variants[0].fields[0].owner == "QuestProgress::Active"
+        && reflect::name(host_active_variant) == "Active"
+        && reflect::owner(host_active_variant) == "HostQuestProgress"
         && host_active_variant.fields.len() == 2
         && host_active_variant.fields[0].name == "quest_count"
-        && host_active_variant.fields[0].owner == "HostQuestProgress.Active"
+        && host_active_variant.fields[0].owner == "HostQuestProgress::Active"
         && host_active_variant.fields[1].name == "quest_done"
-        && host_active_variant.fields[1].owner == "HostQuestProgress.Active"
-        && reflect.has_variant(quest_type, "Active")
-        && reflect.has_variant(host_quest_type, "Active")
-        && !reflect.has_variant(quest_type, "Paused")
-        && reflect.variant(quest) == "Active"
-        && reflect.variant_is(quest, "Active")
-        && reflect.implements(player_type, damageable)
-        && reflect.has_trait("Damageable")
-        && !reflect.has_trait("MissingTrait")
+        && host_active_variant.fields[1].owner == "HostQuestProgress::Active"
+        && reflect::has_variant(quest_type, "Active")
+        && reflect::has_variant(host_quest_type, "Active")
+        && !reflect::has_variant(quest_type, "Paused")
+        && reflect::variant(quest) == "Active"
+        && reflect::variant_is(quest, "Active")
+        && reflect::implements(player_type, damageable)
+        && reflect::has_trait("Damageable")
+        && !reflect::has_trait("MissingTrait")
         && fields.len() == 6
-        && reflect.fields(player_type).len() == fields.len()
+        && reflect::fields(player_type).len() == fields.len()
         && fields[1].owner == "Player"
         && fields[1].name == "level"
-        && reflect.traits(player_type)[0].name == reflect.name(damageable)
-        && reflect.name(level) == "level"
-        && reflect.id(level) > 0
+        && reflect::traits(player_type)[0].name == reflect::name(damageable)
+        && reflect::name(level) == "level"
+        && reflect::id(level) > 0
         && level.owner == "Player"
         && level.writable
         && level_access.reflect_readable
         && level_access.reflect_writable
-        && reflect.name(method) == "add_reward"
+        && reflect::name(method) == "add_reward"
         && method.owner == "Player"
         && method.effects.writes_host
         && method_access.reflect_callable
         && permissions.len() == 9
-        && reflect.has_permission("reflect.read_type_info")
-        && reflect.has_permission("reflect.write_value_fields")
-        && reflect.has_permission("reflect.call_event_methods")
-        && reflect.has_module("game.reward")
-        && reflect.has_module("ctx")
-        && reflect.has_module("math")
-        && reflect.has_module("option")
-        && reflect.has_module("result")
-        && reflect.has_module("set")
-        && !reflect.has_module("game.missing")
-        && !reflect.has_function("math.random")
-        && reflect.name(reward_module) == "game.reward"
-        && reflect.kind(reward_module) == "module"
-        && reflect.origin(reward_module) == "host"
-        && reflect.docs(reward_module) == "Demo reward helper module."
-        && reflect.attr(reward_module, "domain") == "gameplay"
-        && reflect.has_attr(reward_module, "domain")
-        && !reflect.has_attr(reward_module, "missing")
+        && reflect::has_permission("reflect::read_type_info")
+        && reflect::has_permission("reflect::write_value_fields")
+        && reflect::has_permission("reflect::call_event_methods")
+        && reflect::has_module("game::reward")
+        && reflect::has_module("ctx")
+        && reflect::has_module("math")
+        && reflect::has_module("option")
+        && reflect::has_module("result")
+        && reflect::has_module("set")
+        && !reflect::has_module("game::missing")
+        && !reflect::has_function("math::random")
+        && reflect::name(reward_module) == "game::reward"
+        && reflect::kind(reward_module) == "module"
+        && reflect::origin(reward_module) == "host"
+        && reflect::docs(reward_module) == "Demo reward helper module."
+        && reflect::attr(reward_module, "domain") == "gameplay"
+        && reflect::has_attr(reward_module, "domain")
+        && !reflect::has_attr(reward_module, "missing")
         && reward_attrs["domain"] == "gameplay"
-        && reflect.name(ctx_module) == "ctx"
-        && reflect.kind(ctx_module) == "module"
-        && reflect.docs(ctx_module) == "Deterministic context helpers."
-        && reflect.attr(ctx_module, "stdlib") == "context"
-        && reflect.attr(ctx_module, "domain") == "gameplay"
-        && reflect.name(math_module) == "math"
-        && reflect.kind(math_module) == "module"
-        && reflect.docs(math_module) == "Deterministic math standard-library helpers."
-        && reflect.attr(math_module, "stdlib") == "math"
-        && reflect.name(option_module) == "option"
-        && reflect.kind(option_module) == "module"
-        && reflect.docs(option_module) == "Option standard-library propagation helpers."
-        && reflect.attr(option_module, "stdlib") == "option"
-        && reflect.name(result_module) == "result"
-        && reflect.kind(result_module) == "module"
-        && reflect.docs(result_module) == "Result standard-library propagation helpers."
-        && reflect.attr(result_module, "stdlib") == "result"
-        && reflect.name(set_module) == "set"
-        && reflect.kind(set_module) == "module"
-        && reflect.docs(set_module) == "Set standard-library construction helpers."
-        && reflect.attr(set_module, "stdlib") == "set"
+        && reflect::name(ctx_module) == "ctx"
+        && reflect::kind(ctx_module) == "module"
+        && reflect::docs(ctx_module) == "Deterministic context helpers."
+        && reflect::attr(ctx_module, "stdlib") == "context"
+        && reflect::attr(ctx_module, "domain") == "gameplay"
+        && reflect::name(math_module) == "math"
+        && reflect::kind(math_module) == "module"
+        && reflect::docs(math_module) == "Deterministic math standard-library helpers."
+        && reflect::attr(math_module, "stdlib") == "math"
+        && reflect::name(option_module) == "option"
+        && reflect::kind(option_module) == "module"
+        && reflect::docs(option_module) == "Option standard-library propagation helpers."
+        && reflect::attr(option_module, "stdlib") == "option"
+        && reflect::name(result_module) == "result"
+        && reflect::kind(result_module) == "module"
+        && reflect::docs(result_module) == "Result standard-library propagation helpers."
+        && reflect::attr(result_module, "stdlib") == "result"
+        && reflect::name(set_module) == "set"
+        && reflect::kind(set_module) == "module"
+        && reflect::docs(set_module) == "Set standard-library construction helpers."
+        && reflect::attr(set_module, "stdlib") == "set"
         && modules.len() == 6
-        && reflect.has_function("game.reward.grant")
-        && reflect.has_function("main")
-        && reflect.has_function("ctx.now")
-        && reflect.has_function("ctx.tick")
-        && reflect.has_function("ctx.elapsed_since")
-        && reflect.has_function("math.max")
-        && reflect.has_function("math.sqrt")
-        && reflect.has_function("option.some")
-        && reflect.has_function("result.ok")
-        && reflect.has_function("set.from_array")
-        && !reflect.has_function("game.reward.missing")
-        && reflect.name(reward_function) == "game.reward.grant"
-        && reflect.kind(reward_function) == "function"
-        && reflect.id(reward_function) > 0
-        && reflect.origin(reward_function) == "host"
-        && reflect.docs(reward_function) == "Grant reward."
-        && reflect.attr(reward_function, "event") == "reward"
-        && reflect.returns(reward_function) == "bool"
-        && reward_function.module == "game.reward"
+        && reflect::has_function("game::reward::grant")
+        && reflect::has_function("main")
+        && reflect::has_function("ctx::now")
+        && reflect::has_function("ctx::tick")
+        && reflect::has_function("ctx::elapsed_since")
+        && reflect::has_function("math::max")
+        && reflect::has_function("math::sqrt")
+        && reflect::has_function("option::some")
+        && reflect::has_function("result::ok")
+        && reflect::has_function("set::from_array")
+        && !reflect::has_function("game::reward::missing")
+        && reflect::name(reward_function) == "game::reward::grant"
+        && reflect::kind(reward_function) == "function"
+        && reflect::id(reward_function) > 0
+        && reflect::origin(reward_function) == "host"
+        && reflect::docs(reward_function) == "Grant reward."
+        && reflect::attr(reward_function, "event") == "reward"
+        && reflect::returns(reward_function) == "bool"
+        && reward_function.module == "game::reward"
         && reward_function.effects.writes_host == false
         && reward_effects.writes_host == false
         && reward_access.reflect_visible
@@ -364,12 +364,12 @@ fn main(ctx, player) {
         && reward_params[0].type == "Player"
         && reward_params[1].name == "item_id"
         && reward_params[1].type == "string"
-        && reflect.name(math_max) == "math.max"
-        && reflect.kind(math_max) == "function"
-        && reflect.origin(math_max) == "host"
-        && reflect.attr(math_max, "stdlib") == "math"
-        && reflect.returns(math_max) == "any"
-        && reflect.returns(math_sqrt) == "float"
+        && reflect::name(math_max) == "math::max"
+        && reflect::kind(math_max) == "function"
+        && reflect::origin(math_max) == "host"
+        && reflect::attr(math_max, "stdlib") == "math"
+        && reflect::returns(math_max) == "any"
+        && reflect::returns(math_sqrt) == "float"
         && !math_max_effects.reads_host
         && !math_max_effects.writes_host
         && !math_max_effects.emits_events
@@ -379,67 +379,67 @@ fn main(ctx, player) {
         && math_max_params.len() == 2
         && math_max_params[0].name == "left"
         && math_max_params[1].name == "right"
-        && reflect.name(main_function) == "main"
-        && reflect.kind(main_function) == "function"
-        && reflect.origin(main_function) == "script"
+        && reflect::name(main_function) == "main"
+        && reflect::kind(main_function) == "function"
+        && reflect::origin(main_function) == "script"
         && main_function.module == null
         && !main_function.public
         && main_source_span != null
-        && reflect.kind(main_source_span) == "source_span"
+        && reflect::kind(main_source_span) == "source_span"
         && main_source_span.start < main_source_span.end
         && main_params.len() == 2
         && main_params[0].name == "ctx"
         && main_params[1].name == "player"
         && exports.len() == 1
-        && exports[0] == "game.reward.grant"
-        && reflect.exports("game.reward")[0] == exports[0]
+        && exports[0] == "game::reward::grant"
+        && reflect::exports("game::reward")[0] == exports[0]
         && ctx_exports.len() == 3
-        && ctx_exports.contains("ctx.now")
-        && ctx_exports.contains("ctx.tick")
-        && ctx_exports.contains("ctx.elapsed_since")
+        && ctx_exports.contains("ctx::now")
+        && ctx_exports.contains("ctx::tick")
+        && ctx_exports.contains("ctx::elapsed_since")
         && math_exports.len() == 14
-        && math_exports.contains("math.max")
-        && math_exports.contains("math.sqrt")
-        && math_exports.contains("math.distance3d")
+        && math_exports.contains("math::max")
+        && math_exports.contains("math::sqrt")
+        && math_exports.contains("math::distance3d")
         && option_exports.len() == 7
-        && option_exports.contains("option.some")
-        && option_exports.contains("option.unwrap_or")
+        && option_exports.contains("option::some")
+        && option_exports.contains("option::unwrap_or")
         && result_exports.len() == 8
-        && result_exports.contains("result.ok")
-        && result_exports.contains("result.to_option")
+        && result_exports.contains("result::ok")
+        && result_exports.contains("result::to_option")
         && set_exports.len() == 1
-        && set_exports.contains("set.from_array")
-        && reflect.name(option_some) == "option.some"
-        && reflect.kind(option_some) == "function"
-        && reflect.origin(option_some) == "host"
-        && reflect.attr(option_some, "stdlib") == "option"
-        && reflect.returns(option_some) == "any"
+        && set_exports.contains("set::from_array")
+        && reflect::name(option_some) == "option::some"
+        && reflect::kind(option_some) == "function"
+        && reflect::origin(option_some) == "host"
+        && reflect::attr(option_some, "stdlib") == "option"
+        && reflect::returns(option_some) == "any"
         && option_some_params.len() == 1
         && option_some_params[0].name == "value"
         && !option_some_effects.reads_host
         && !option_some_effects.writes_host
         && option_some_access.reflect_callable
-        && reflect.name(result_ok) == "result.ok"
-        && reflect.kind(result_ok) == "function"
-        && reflect.origin(result_ok) == "host"
-        && reflect.attr(result_ok, "stdlib") == "result"
-        && reflect.returns(result_ok) == "any"
+        && reflect::name(result_ok) == "result::ok"
+        && reflect::kind(result_ok) == "function"
+        && reflect::origin(result_ok) == "host"
+        && reflect::attr(result_ok, "stdlib") == "result"
+        && reflect::returns(result_ok) == "any"
         && result_ok_params.len() == 1
         && result_ok_params[0].name == "value"
-        && reflect.name(set_from_array) == "set.from_array"
-        && reflect.kind(set_from_array) == "function"
-        && reflect.origin(set_from_array) == "host"
-        && reflect.attr(set_from_array, "stdlib") == "set"
-        && reflect.returns(set_from_array) == "set"
+        && reflect::name(set_from_array) == "set::from_array"
+        && reflect::kind(set_from_array) == "function"
+        && reflect::origin(set_from_array) == "host"
+        && reflect::attr(set_from_array, "stdlib") == "set"
+        && reflect::returns(set_from_array) == "set"
         && set_from_array_params.len() == 1
         && set_from_array_params[0].name == "values"
         && set_from_array_params[0].type == "array"
-        && reflect.name(ctx_now) == "ctx.now"
-        && reflect.name(ctx_tick) == "ctx.tick"
-        && reflect.name(ctx_elapsed) == "ctx.elapsed_since"
-        && reflect.returns(ctx_now) == "int"
-        && reflect.returns(ctx_tick) == "int"
-        && reflect.returns(ctx_elapsed) == "int"
+        && reflect::name(ctx_now) == "ctx::now"
+        && reflect::name(ctx_tick) == "ctx::tick"
+        && reflect::name(ctx_elapsed) == "ctx::elapsed_since"
+        && reflect::returns(ctx_now) == "int"
+        && reflect::returns(ctx_tick) == "int"
+        && reflect::returns(ctx_elapsed) == "int"
         && ctx_now_access.required_permissions[0] == "ctx.time"
         && ctx_now_permissions[0] == "ctx.time"
         && ctx_elapsed_access.required_permissions[0] == "ctx.time"
@@ -451,26 +451,26 @@ fn main(ctx, player) {
         && ctx_elapsed_params[0].type == "int"
         && ctx_methods.len() == 2
         && ctx_fields.len() == 3
-        && reflect.docs(context_type) == "Standard host context object for deterministic time, events, and logging."
-        && reflect.attr(context_type, "stdlib") == "context"
-        && reflect.attr(context_type, "domain") == "gameplay"
-        && reflect.docs(ctx_fields[0]) == "Current deterministic context timestamp."
-        && reflect.attr(ctx_fields[0], "stdlib") == "context"
-        && reflect.attr(ctx_fields[0], "domain") == "gameplay"
-        && reflect.docs(ctx_fields[1]) == "Current deterministic context tick."
-        && reflect.attr(ctx_fields[1], "stdlib") == "context"
-        && reflect.attr(ctx_fields[1], "domain") == "gameplay"
+        && reflect::docs(context_type) == "Standard host context object for deterministic time, events, and logging."
+        && reflect::attr(context_type, "stdlib") == "context"
+        && reflect::attr(context_type, "domain") == "gameplay"
+        && reflect::docs(ctx_fields[0]) == "Current deterministic context timestamp."
+        && reflect::attr(ctx_fields[0], "stdlib") == "context"
+        && reflect::attr(ctx_fields[0], "domain") == "gameplay"
+        && reflect::docs(ctx_fields[1]) == "Current deterministic context tick."
+        && reflect::attr(ctx_fields[1], "stdlib") == "context"
+        && reflect::attr(ctx_fields[1], "domain") == "gameplay"
         && ctx_fields[2].name == "config"
-        && reflect.has_method(ctx, "emit")
-        && reflect.has_method(ctx, "log")
-        && reflect.name(ctx_emit) == "emit"
-        && reflect.name(ctx_log) == "log"
+        && reflect::has_method(ctx, "emit")
+        && reflect::has_method(ctx, "log")
+        && reflect::name(ctx_emit) == "emit"
+        && reflect::name(ctx_log) == "log"
         && ctx_emit.owner == "Context"
         && ctx_log.owner == "Context"
-        && reflect.attr(ctx_emit, "stdlib") == "context"
-        && reflect.attr(ctx_emit, "domain") == "gameplay"
-        && reflect.attr(ctx_log, "stdlib") == "context"
-        && reflect.attr(ctx_log, "domain") == "gameplay"
+        && reflect::attr(ctx_emit, "stdlib") == "context"
+        && reflect::attr(ctx_emit, "domain") == "gameplay"
+        && reflect::attr(ctx_log, "stdlib") == "context"
+        && reflect::attr(ctx_log, "domain") == "gameplay"
         && ctx_emit.effects.emits_events
         && ctx_log.effects.emits_events
         && method_effects.writes_host
@@ -486,24 +486,24 @@ fn main(ctx, player) {
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
         && functions.len() == 35
-        && functions.any(|function| reflect.id(function) == reflect.id(reward_function))
-        && functions.any(|function| reflect.name(function) == "main"
-            && reflect.origin(function) == "script")
-        && functions.any(|function| reflect.name(function) == "ctx.now"
-            && reflect.returns(function) == "int")
-        && functions.any(|function| reflect.name(function) == "ctx.elapsed_since"
-            && reflect.returns(function) == "int")
-        && functions.any(|function| reflect.name(function) == "math.max"
-            && reflect.attr(function, "stdlib") == "math")
-        && functions.any(|function| reflect.name(function) == "option.some"
-            && reflect.attr(function, "stdlib") == "option")
-        && functions.any(|function| reflect.name(function) == "result.ok"
-            && reflect.attr(function, "stdlib") == "result")
-        && functions.any(|function| reflect.name(function) == "set.from_array"
-            && reflect.attr(function, "stdlib") == "set") {
-        reflect.set(player, "level", 12);
-        reflect.call(ctx, "emit", "reflect.player", reflect.get(player, "level"), fields.len());
-        let metadata_score = reflect.get(player, "level") + fields.len() + reward_params.len();
+        && functions.any(|function| reflect::id(function) == reflect::id(reward_function))
+        && functions.any(|function| reflect::name(function) == "main"
+            && reflect::origin(function) == "script")
+        && functions.any(|function| reflect::name(function) == "ctx::now"
+            && reflect::returns(function) == "int")
+        && functions.any(|function| reflect::name(function) == "ctx::elapsed_since"
+            && reflect::returns(function) == "int")
+        && functions.any(|function| reflect::name(function) == "math::max"
+            && reflect::attr(function, "stdlib") == "math")
+        && functions.any(|function| reflect::name(function) == "option::some"
+            && reflect::attr(function, "stdlib") == "option")
+        && functions.any(|function| reflect::name(function) == "result::ok"
+            && reflect::attr(function, "stdlib") == "result")
+        && functions.any(|function| reflect::name(function) == "set::from_array"
+            && reflect::attr(function, "stdlib") == "set") {
+        reflect::set(player, "level", 12);
+        reflect::call(ctx, "emit", "reflect::player", reflect::get(player, "level"), fields.len());
+        let metadata_score = reflect::get(player, "level") + fields.len() + reward_params.len();
         return metadata_score + host_active_variant.fields.len();
     }
 

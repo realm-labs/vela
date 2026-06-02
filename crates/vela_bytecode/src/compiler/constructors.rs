@@ -41,7 +41,7 @@ impl Compiler<'_> {
         let mut fields = Vec::new();
         let mut explicit_names = BTreeSet::new();
         if let Some(shape) = shape.as_ref() {
-            let owner = format!("{enum_name}.{variant}");
+            let owner = format!("{enum_name}::{variant}");
             let slots = resolve_tuple_constructor_arguments(shape, &owner, args, constructor_span)
                 .map_err(|diagnostics| self.constructor_diagnostics_error(diagnostics))?;
             for (index, arg) in slots.into_iter().enumerate() {

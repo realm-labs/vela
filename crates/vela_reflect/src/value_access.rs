@@ -115,13 +115,13 @@ pub(crate) fn script_enum_unknown_field(
                 .map(|field| (field.name.as_str(), field.source_span)),
         );
         return ReflectErrorKind::UnknownField {
-            type_name: format!("{enum_name}.{variant}"),
+            type_name: format!("{enum_name}::{variant}"),
             field: field.to_owned(),
             candidates: candidate_names(&related),
             related,
         };
     }
-    record_unknown_field_with_type(&format!("{enum_name}.{variant}"), field, record)
+    record_unknown_field_with_type(&format!("{enum_name}::{variant}"), field, record)
 }
 
 pub(crate) fn script_enum_unknown_field_with_policy(
@@ -140,14 +140,14 @@ pub(crate) fn script_enum_unknown_field_with_policy(
             .find(|candidate| candidate.name == variant)
     {
         return schema_unknown_field_with_policy(
-            &format!("{enum_name}.{variant}"),
+            &format!("{enum_name}::{variant}"),
             field,
             &variant_desc.fields,
             policy,
             access,
         );
     }
-    record_unknown_field_with_type(&format!("{enum_name}.{variant}"), field, record)
+    record_unknown_field_with_type(&format!("{enum_name}::{variant}"), field, record)
 }
 
 pub(crate) fn schema_unknown_field_with_policy(

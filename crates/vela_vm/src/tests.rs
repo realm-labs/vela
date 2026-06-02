@@ -117,7 +117,7 @@ fn script_module_reflection_registry() -> TypeRegistry {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("game.reward"),
+        ModulePath::from_qualified("game::reward"),
         r#"
 #[doc("Grant reward.")]
 #[event("reward")]
@@ -133,24 +133,24 @@ pub fn grant(player: Player, amount: int = 1) -> bool {
 
 fn policy_module_reflection_registry() -> TypeRegistry {
     let mut registry = TypeRegistry::new();
-    registry.register_module(ModuleDesc::new("game.reward"));
+    registry.register_module(ModuleDesc::new("game::reward"));
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.reward.grant").module("game.reward"),
+        FunctionDesc::new(FunctionId::new(1), "game::reward::grant").module("game::reward"),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(2), "game.reward.hidden")
-            .module("game.reward")
+        FunctionDesc::new(FunctionId::new(2), "game::reward::hidden")
+            .module("game::reward")
             .access(FunctionAccess::new().reflect_visible(false)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(3), "game.reward.private")
-            .module("game.reward")
+        FunctionDesc::new(FunctionId::new(3), "game::reward::private")
+            .module("game::reward")
             .access(FunctionAccess::new().public(false).reflect_visible(true)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(4), "game.reward.admin")
-            .module("game.reward")
-            .access(FunctionAccess::new().require_permission("game.admin")),
+        FunctionDesc::new(FunctionId::new(4), "game::reward::admin")
+            .module("game::reward")
+            .access(FunctionAccess::new().require_permission("game::admin")),
     );
     registry
 }

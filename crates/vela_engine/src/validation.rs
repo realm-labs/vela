@@ -58,7 +58,7 @@ pub(crate) fn validate_modules(
 }
 
 fn validate_module_desc(module: &ModuleDesc, names: &mut BTreeSet<String>) -> EngineResult<()> {
-    if !is_valid_dotted_name(&module.name) {
+    if !is_valid_qualified_name(&module.name) {
         return Err(EngineError::new(EngineErrorKind::InvalidModuleName {
             name: module.name.clone(),
         }));
@@ -223,7 +223,7 @@ fn validate_type_variants(desc: &TypeDesc) -> EngineResult<()> {
     for variant in &desc.variants {
         validate_schema_member_name(&desc.key.name, "variant", &variant.name)?;
         validate_attr_names(
-            &format!("variant {}.{}", desc.key.name, variant.name),
+            &format!("variant {}::{}", desc.key.name, variant.name),
             &variant.attrs,
         )?;
         if !ids.insert(variant.id) {
@@ -253,21 +253,21 @@ fn validate_variant_fields(
         validate_schema_member_name(type_name, "variant field", &field.name)?;
         validate_raw_type_hint(
             &format!(
-                "variant field {}.{}.{}",
+                "variant field {}::{}::{}",
                 type_name, variant.name, field.name
             ),
             field.type_hint.as_deref(),
         )?;
         validate_attr_names(
             &format!(
-                "variant field {}.{}.{}",
+                "variant field {}::{}::{}",
                 type_name, variant.name, field.name
             ),
             &field.attrs,
         )?;
         validate_permission_names(
             &format!(
-                "variant field {}.{}.{}",
+                "variant field {}::{}::{}",
                 type_name, variant.name, field.name
             ),
             field
@@ -302,7 +302,7 @@ fn validate_type_traits(desc: &TypeDesc) -> EngineResult<()> {
     for trait_desc in &desc.traits {
         validate_schema_member_name(&desc.key.name, "trait", &trait_desc.name)?;
         validate_attr_names(
-            &format!("trait {}.{}", desc.key.name, trait_desc.name),
+            &format!("trait {}::{}", desc.key.name, trait_desc.name),
             &trait_desc.attrs,
         )?;
         if !ids.insert(trait_desc.id) {
@@ -332,14 +332,14 @@ fn validate_trait_methods(
         validate_schema_member_name(type_name, "trait method", &method.name)?;
         validate_raw_type_hint(
             &format!(
-                "trait method {}.{}.{} return",
+                "trait method {}::{}::{} return",
                 type_name, trait_desc.name, method.name
             ),
             method.return_type.as_deref(),
         )?;
         validate_attr_names(
             &format!(
-                "trait method {}.{}.{}",
+                "trait method {}::{}::{}",
                 type_name, trait_desc.name, method.name
             ),
             &method.attrs,
@@ -406,7 +406,7 @@ fn validate_trait_method_params(
         validate_schema_member_name(type_name, "trait method parameter", &param.name)?;
         validate_raw_type_hint(
             &format!(
-                "trait method {type_name}.{trait_name}.{method} parameter {}",
+                "trait method {type_name}::{trait_name}::{method} parameter {}",
                 param.name
             ),
             param.type_hint.as_deref(),
@@ -494,7 +494,7 @@ fn validate_native_function_desc(
     names: &mut BTreeSet<String>,
     type_hints: &TypeHintLookup,
 ) -> EngineResult<()> {
-    if !is_valid_dotted_name(&desc.name) {
+    if !is_valid_qualified_name(&desc.name) {
         return Err(EngineError::new(
             EngineErrorKind::InvalidNativeFunctionName {
                 name: desc.name.clone(),
@@ -661,7 +661,7 @@ fn validate_raw_type_hint(descriptor: &str, hint: Option<&str>) -> EngineResult<
         || hint.trim() != hint
         || hint.contains('<')
         || hint.contains('>')
-        || !is_valid_dotted_name(hint)
+        || !is_valid_qualified_name(hint)
     {
         return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
             descriptor: descriptor.to_owned(),
@@ -671,8 +671,8 @@ fn validate_raw_type_hint(descriptor: &str, hint: Option<&str>) -> EngineResult<
     Ok(())
 }
 
-fn is_valid_dotted_name(name: &str) -> bool {
-    !name.is_empty() && name.split('.').all(|segment| !segment.is_empty())
+fn is_valid_qualified_name(name: &str) -> bool {
+    !name.is_empty() && !name.contains('.') && name.split("::").all(|segment| !segment.is_empty())
 }
 
 fn validate_schema_member_name(type_name: &str, member_kind: &str, name: &str) -> EngineResult<()> {

@@ -89,20 +89,20 @@ mod tests {
     fn runs_compiled_set_combination_methods() {
         let source = r#"
 fn main() {
-    let player = set.from_array(["daily", "quest", "raid"]);
-    let event = set.from_array(["quest", "bonus", "daily"]);
+    let player = set::from_array(["daily", "quest", "raid"]);
+    let event = set::from_array(["quest", "bonus", "daily"]);
     let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
     let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
     let missing = player.difference(event).values().join(",");
     let changed = player.symmetric_difference(event).values().sort_by(|tag| tag).join(",");
-    let required = set.from_array(["daily", "quest"]);
+    let required = set::from_array(["daily", "quest"]);
     if unioned == "bonus,daily,quest,raid"
         && shared == "daily,quest"
         && missing == "raid"
         && changed == "bonus,raid"
         && required.is_subset(player)
         && player.is_superset(required)
-        && player.is_disjoint(set.from_array(["bonus"]))
+        && player.is_disjoint(set::from_array(["bonus"]))
         && player.len() == 3
     {
         return shared;
@@ -123,14 +123,14 @@ fn main() {
     fn managed_heap_execution_runs_set_combination_methods() {
         let source = r#"
 fn main() {
-    let base = set.from_array([1, 2, 3, 5]);
-    let bonus = set.from_array([2, 4, 5]);
+    let base = set::from_array([1, 2, 3, 5]);
+    let bonus = set::from_array([2, 4, 5]);
     let unioned = base.union(bonus);
     let shared = base.intersection(bonus);
     let only_base = base.difference(bonus);
     let changed = base.symmetric_difference(bonus);
-    let required = set.from_array([1, 3]);
-    let excluded = set.from_array([9]);
+    let required = set::from_array([1, 3]);
+    let excluded = set::from_array([9]);
     if !required.is_subset(base) || !base.is_superset(required) || !base.is_disjoint(excluded) {
         return -1;
     }
@@ -156,16 +156,16 @@ fn main() {
     fn managed_heap_execution_runs_string_set_predicates() {
         let source = r#"
 fn main() {
-    let player = set.from_array(["daily", "quest", "raid"]);
-    let required = set.from_array(["daily", "quest"]);
-    let event = set.from_array(["quest", "bonus"]);
+    let player = set::from_array(["daily", "quest", "raid"]);
+    let required = set::from_array(["daily", "quest"]);
+    let event = set::from_array(["quest", "bonus"]);
     let unioned = player.union(event).values().sort_by(|tag| tag).join(",");
     let shared = player.intersection(event).values().sort_by(|tag| tag).join(",");
     let missing = player.difference(required).values().sort_by(|tag| tag).join(",");
     let changed = player.symmetric_difference(event).values().sort_by(|tag| tag).join(",");
     if required.is_subset(player)
         && player.is_superset(required)
-        && player.is_disjoint(set.from_array(["bonus"]))
+        && player.is_disjoint(set::from_array(["bonus"]))
         && unioned == "bonus,daily,quest,raid"
         && shared == "quest"
         && missing == "raid"
@@ -192,7 +192,7 @@ fn main() {
     fn runs_compiled_set_filter_method() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["daily", "quest", "raid", "daily"]);
+    let tags = set::from_array(["daily", "quest", "raid", "daily"]);
     let filtered = tags.filter(|tag| tag.starts_with("q") || tag == "raid");
     let unchanged = tags.values().sort_by(|tag| tag).join(",");
     if unchanged == "daily,quest,raid" && filtered.len() == 2 {
@@ -214,7 +214,7 @@ fn main() {
     fn managed_heap_execution_runs_set_filter_method() {
         let source = r#"
 fn main() {
-    let ids = set.from_array([1, 2, 3, 4, 5]);
+    let ids = set::from_array([1, 2, 3, 4, 5]);
     let filtered = ids.filter(|id| id > 2 && id != 4);
     return filtered.values().sum() + ids.values().sum();
 }
@@ -235,7 +235,7 @@ fn main() {
     fn runs_compiled_set_map_method() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["daily", "quest", "raid"]);
+    let tags = set::from_array(["daily", "quest", "raid"]);
     let mapped = tags.map(|tag| tag.to_upper()).values().sort_by(|tag| tag).join(",");
     let lengths = tags.map(|tag| tag.len());
     if tags.len() == 3 && lengths.len() == 2 {
@@ -257,7 +257,7 @@ fn main() {
     fn managed_heap_execution_runs_set_map_method() {
         let source = r#"
 fn main() {
-    let ids = set.from_array([1, 2, 3, 4]);
+    let ids = set::from_array([1, 2, 3, 4]);
     let doubled = ids.map(|id| id * 2);
     let parity = ids.map(|id| id % 2);
     return doubled.values().sum() + parity.values().sum();
@@ -279,7 +279,7 @@ fn main() {
     fn runs_compiled_set_higher_order_predicates() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["daily", "quest", "raid"]);
+    let tags = set::from_array(["daily", "quest", "raid"]);
     let found = tags.find(|tag| tag.starts_with("q"));
     if tags.any(|tag| tag == "raid")
         && tags.all(|tag| tag.len() >= 4)
@@ -303,7 +303,7 @@ fn main() {
     fn managed_heap_execution_runs_set_higher_order_predicates() {
         let source = r#"
 fn main() {
-    let ids = set.from_array([2, 4, 6, 9]);
+    let ids = set::from_array([2, 4, 6, 9]);
     let first_large = ids.find(|id| id > 5).unwrap_or(0);
     if ids.any(|id| id == 9)
         && !ids.all(|id| id % 2 == 0)
@@ -330,7 +330,7 @@ fn main() {
     fn set_filter_rejects_non_callback_args() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["quest"]);
+    let tags = set::from_array(["quest"]);
     return tags.filter("quest");
 }
 "#;
@@ -354,7 +354,7 @@ fn main() {
     fn set_combination_methods_reject_non_set_args() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["quest"]);
+    let tags = set::from_array(["quest"]);
     return tags.union(["raid"]);
 }
 "#;
@@ -375,7 +375,7 @@ fn main() {
 
         let source = r#"
 fn main() {
-    let tags = set.from_array(["quest"]);
+    let tags = set::from_array(["quest"]);
     return tags.symmetric_difference(["quest"]);
 }
 "#;
@@ -394,7 +394,7 @@ fn main() {
 
         let source = r#"
 fn main() {
-    let tags = set.from_array(["quest"]);
+    let tags = set::from_array(["quest"]);
     return tags.is_subset(["quest"]);
 }
 "#;
@@ -416,7 +416,7 @@ fn main() {
     fn runs_compiled_set_clear_method() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["daily", "quest"]);
+    let tags = set::from_array(["daily", "quest"]);
     tags.clear();
     tags.add("raid");
     if tags.len() == 1 && tags.has("raid") {
@@ -439,7 +439,7 @@ fn main() {
     fn managed_heap_execution_runs_set_clear_method() {
         let source = r#"
 fn main() {
-    let ids = set.from_array([2, 4, 6]);
+    let ids = set::from_array([2, 4, 6]);
     ids.clear();
     ids.add(9);
     if ids.len() == 1 && ids.has(9) {
@@ -465,8 +465,8 @@ fn main() {
     fn runs_compiled_set_extend_method() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["daily", "quest"]);
-    tags.extend(set.from_array(["quest", "raid"]));
+    let tags = set::from_array(["daily", "quest"]);
+    tags.extend(set::from_array(["quest", "raid"]));
     if tags.len() == 3 && tags.has("daily") && tags.has("quest") && tags.has("raid") {
         return tags.values().join("|");
     }
@@ -486,8 +486,8 @@ fn main() {
     fn managed_heap_execution_runs_set_extend_method() {
         let source = r#"
 fn main() {
-    let ids = set.from_array([2, 4]);
-    let more = set.from_array([4, 6, 8]);
+    let ids = set::from_array([2, 4]);
+    let more = set::from_array([4, 6, 8]);
     ids.extend(more);
     if ids.len() == 4 && ids.has(8) {
         return ids.values().sum();
@@ -511,7 +511,7 @@ fn main() {
     fn set_extend_rejects_non_set_arguments() {
         let source = r#"
 fn main() {
-    let tags = set.from_array(["quest"]);
+    let tags = set::from_array(["quest"]);
     tags.extend(["raid"]);
     return tags.len();
 }

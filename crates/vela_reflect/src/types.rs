@@ -50,7 +50,7 @@ fn type_record(desc: &TypeDesc) -> HostValue {
         "id".to_owned(),
         // TODO(reflect): stable IDs are u64, but reflection currently exposes IDs
         // through signed script ints. Replace this lossy saturation with a deliberate
-        // unsigned/ID value surface before treating reflect.id() as a stable public
+        // unsigned/ID value surface before treating reflect::id() as a stable public
         // identity API.
         HostValue::Int(i64::try_from(desc.key.id.get()).unwrap_or(i64::MAX)),
     );
@@ -62,7 +62,7 @@ fn type_record(desc: &TypeDesc) -> HostValue {
         desc.schema_hash.map_or(HostValue::Null, |hash| {
             // TODO(reflect): stable IDs are u64, but reflection currently exposes IDs
             // through signed script ints. Replace this lossy saturation with a deliberate
-            // unsigned/ID value surface before treating reflect.id() as a stable public
+            // unsigned/ID value surface before treating reflect::id() as a stable public
             // identity API.
             HostValue::Int(i64::try_from(hash.get()).unwrap_or(i64::MAX))
         }),

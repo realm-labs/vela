@@ -28,7 +28,7 @@ const MAP_METHODS: &[MethodSpec] = &[
         "get",
         &[ParamSpec::new("key", "string")],
         "Option",
-        "Returns the value for a key, or Option.None.",
+        "Returns the value for a key, or Option::None.",
     ),
     MethodSpec::new(
         map_id(4),
@@ -112,7 +112,7 @@ const MAP_METHODS: &[MethodSpec] = &[
         "find",
         &[ParamSpec::new("callback", "function")],
         "Option",
-        "Returns the first matching entry, or Option.None.",
+        "Returns the first matching entry, or Option::None.",
     ),
     MethodSpec::new(
         map_id(16),

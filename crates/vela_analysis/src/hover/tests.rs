@@ -52,7 +52,7 @@ fn hovers_types_fields_methods_and_variants() {
     );
 
     let variant_field_info =
-        field_hover(&registry, "QuestState.Active", "quest_id").expect("variant field hover");
+        field_hover(&registry, "QuestState::Active", "quest_id").expect("variant field hover");
     assert_eq!(variant_field_info.fact, TypeFact::String);
 }
 
@@ -112,9 +112,9 @@ fn hovers_functions_traits_and_modules() {
     );
     assert_eq!(trait_method_info.detail.as_deref(), Some("defaulted: true"));
 
-    let module_info = module_hover(&registry, "game.rewards").expect("module hover");
+    let module_info = module_hover(&registry, "game::rewards").expect("module hover");
     assert_eq!(module_info.kind, HoverKind::Module);
-    assert_eq!(module_info.fact, TypeFact::module("game.rewards"));
+    assert_eq!(module_info.fact, TypeFact::module("game::rewards"));
     assert_eq!(
         module_info.source_span,
         Some(Span::new(SourceId::new(1), 10, 22))
@@ -166,14 +166,14 @@ fn hover_registry() -> TypeRegistry {
                     .return_type("null"),
             ),
     );
-    registry.register_module(ModuleDesc::new("game.rewards").source_span(Span::new(
+    registry.register_module(ModuleDesc::new("game::rewards").source_span(Span::new(
         SourceId::new(1),
         10,
         22,
     )));
     registry.register_function(
         FunctionDesc::new(FunctionId::new(1), "grant_reward")
-            .module("game.rewards")
+            .module("game::rewards")
             .origin(DeclOrigin::Script)
             .param(FunctionParamDesc::new("player").type_hint("Player"))
             .return_type("bool")

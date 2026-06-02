@@ -690,7 +690,7 @@ fn reflect_get_with_policy_filters_unknown_script_enum_field_candidates() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::UnknownField {
-            type_name: "QuestProgress.Active".to_owned(),
+            type_name: "QuestProgress::Active".to_owned(),
             field: "count_secrett".to_owned(),
             candidates: vec!["count".to_owned()],
             related: vec![ReflectCandidate::new("count", None)],
@@ -736,7 +736,7 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::FieldNotReflectWritable {
-            type_name: "QuestProgress.Active".to_owned(),
+            type_name: "QuestProgress::Active".to_owned(),
             field: "count".to_owned(),
             source_span: None,
         }

@@ -18,7 +18,7 @@ fn registers_script_module_functions_and_exports() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("game.reward"),
+        ModulePath::from_qualified("game::reward"),
         r#"
 pub fn grant(player: Player, amount: int = 1) -> bool {
     return true;
@@ -36,11 +36,11 @@ fn helper() {
     registry.register_script_modules(&graph);
 
     let module = registry
-        .module_by_name("game.reward")
+        .module_by_name("game::reward")
         .expect("script module metadata");
     assert_eq!(module.exports.len(), 2);
     assert_eq!(module.origin, DeclOrigin::Script);
-    assert_eq!(module.exports[0].name, "game.reward.grant");
+    assert_eq!(module.exports[0].name, "game::reward::grant");
     assert_eq!(module.exports[0].kind, ModuleExportKind::Function);
     assert_eq!(
         module.source_span.map(|span| span.source),
@@ -48,9 +48,9 @@ fn helper() {
     );
 
     let grant = registry
-        .function_by_name("game.reward.grant")
+        .function_by_name("game::reward::grant")
         .expect("grant function metadata");
-    assert_eq!(grant.module.as_deref(), Some("game.reward"));
+    assert_eq!(grant.module.as_deref(), Some("game::reward"));
     assert!(grant.public);
     assert_eq!(grant.origin, DeclOrigin::Script);
     assert_eq!(grant.params[0].name, "player");
@@ -65,7 +65,7 @@ fn helper() {
     );
 
     let helper = registry
-        .function_by_name("game.reward.helper")
+        .function_by_name("game::reward::helper")
         .expect("helper function metadata");
     assert!(!helper.public);
     assert_eq!(helper.docs.as_deref(), Some("Helper docs."));
@@ -79,14 +79,14 @@ fn module_function_queries_return_records_and_candidates() {
     let module_span = Span::new(SourceId::new(7), 10, 20);
     let function_span = Span::new(SourceId::new(7), 30, 50);
     registry.register_module(
-        ModuleDesc::new("game.reward")
+        ModuleDesc::new("game::reward")
             .docs("Reward module.")
             .attr("domain", "gameplay")
             .source_span(module_span),
     );
     registry.register_function(
-        FunctionDesc::new(function_id, "game.reward.grant")
-            .module("game.reward")
+        FunctionDesc::new(function_id, "game::reward::grant")
+            .module("game::reward")
             .param(
                 FunctionParamDesc::new("amount")
                     .type_hint("int")
@@ -101,12 +101,12 @@ fn module_function_queries_return_records_and_candidates() {
             .source_span(function_span),
     );
 
-    assert!(has_module(&registry, "game.reward"));
-    assert!(!has_module(&registry, "game.missing"));
-    assert!(has_function(&registry, "game.reward.grant"));
-    assert!(!has_function(&registry, "game.reward.missing"));
+    assert!(has_module(&registry, "game::reward"));
+    assert!(!has_module(&registry, "game::missing"));
+    assert!(has_function(&registry, "game::reward::grant"));
+    assert!(!has_function(&registry, "game::reward::missing"));
 
-    let module_value = module(&registry, "game.reward").expect("module");
+    let module_value = module(&registry, "game::reward").expect("module");
     assert_eq!(
         crate::members::origin(&registry, &module_value).expect("module origin helper"),
         ReflectValue::Host(HostValue::String("host".to_owned()))
@@ -114,17 +114,17 @@ fn module_function_queries_return_records_and_candidates() {
     assert_eq!(
         exports_for_target(&registry, &module_value).expect("module record exports"),
         ReflectValue::Host(HostValue::Array(vec![HostValue::String(
-            "game.reward.grant".into()
+            "game::reward::grant".into()
         )]))
     );
     assert_eq!(
         exports_for_target(
             &registry,
-            &ReflectValue::Host(HostValue::String("game.reward".into())),
+            &ReflectValue::Host(HostValue::String("game::reward".into())),
         )
         .expect("module string exports"),
         ReflectValue::Host(HostValue::Array(vec![HostValue::String(
-            "game.reward.grant".into()
+            "game::reward::grant".into()
         )]))
     );
     let ReflectValue::Host(HostValue::Record {
@@ -137,7 +137,7 @@ fn module_function_queries_return_records_and_candidates() {
     assert_eq!(type_name, "ReflectModule");
     assert_eq!(
         module_metadata.get("name"),
-        Some(&HostValue::String("game.reward".into()))
+        Some(&HostValue::String("game::reward".into()))
     );
     assert_eq!(
         module_metadata.get("origin"),
@@ -170,9 +170,9 @@ fn module_function_queries_return_records_and_candidates() {
         Some(&span_value(Some(module_span)))
     );
     assert_eq!(
-        exports(&registry, "game.reward").expect("exports"),
+        exports(&registry, "game::reward").expect("exports"),
         ReflectValue::Host(HostValue::Array(vec![HostValue::String(
-            "game.reward.grant".into()
+            "game::reward::grant".into()
         )]))
     );
     let ReflectValue::Host(HostValue::Array(modules)) = modules(&registry) else {
@@ -189,7 +189,7 @@ fn module_function_queries_return_records_and_candidates() {
     assert_eq!(type_name, "ReflectModule");
     assert_eq!(
         module_list_item.get("name"),
-        Some(&HostValue::String("game.reward".into()))
+        Some(&HostValue::String("game::reward".into()))
     );
     assert_eq!(
         module_list_item.get("origin"),
@@ -209,7 +209,7 @@ fn module_function_queries_return_records_and_candidates() {
     assert_eq!(type_name, "ReflectFunction");
     assert_eq!(
         function_list_item.get("name"),
-        Some(&HostValue::String("game.reward.grant".into()))
+        Some(&HostValue::String("game::reward::grant".into()))
     );
     assert_eq!(
         function_list_item.get("id"),
@@ -218,7 +218,7 @@ fn module_function_queries_return_records_and_candidates() {
         ))
     );
 
-    let function_value = function(&registry, "game.reward.grant").expect("function");
+    let function_value = function(&registry, "game::reward::grant").expect("function");
     assert_eq!(
         crate::members::origin(&registry, &function_value).expect("function origin helper"),
         ReflectValue::Host(HostValue::String("script".to_owned()))
@@ -287,27 +287,27 @@ fn module_function_queries_return_records_and_candidates() {
         )])))
     );
 
-    let error = module(&registry, "game.rewards").expect_err("unknown module");
+    let error = module(&registry, "game::rewards").expect_err("unknown module");
     assert_eq!(
         error.kind,
         ReflectErrorKind::UnknownModule {
-            module: "game.rewards".to_owned(),
-            candidates: vec!["game.reward".to_owned()],
+            module: "game::rewards".to_owned(),
+            candidates: vec!["game::reward".to_owned()],
             related: vec![crate::candidates::ReflectCandidate::new(
-                "game.reward",
+                "game::reward",
                 Some(module_span)
             )],
         }
     );
 
-    let error = function(&registry, "game.reward.grnat").expect_err("unknown function");
+    let error = function(&registry, "game::reward::grnat").expect_err("unknown function");
     assert_eq!(
         error.kind,
         ReflectErrorKind::UnknownFunction {
-            function: "game.reward.grnat".to_owned(),
-            candidates: vec!["game.reward.grant".to_owned()],
+            function: "game::reward::grnat".to_owned(),
+            candidates: vec!["game::reward::grant".to_owned()],
             related: vec![crate::candidates::ReflectCandidate::new(
-                "game.reward.grant",
+                "game::reward::grant",
                 Some(function_span)
             )],
         }
@@ -318,33 +318,33 @@ fn module_function_queries_return_records_and_candidates() {
 fn function_policy_rejects_hidden_private_and_unapproved_functions() {
     let mut registry = TypeRegistry::new();
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.hidden")
+        FunctionDesc::new(FunctionId::new(1), "game::hidden")
             .access(FunctionAccess::new().reflect_visible(false)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(2), "game.private")
+        FunctionDesc::new(FunctionId::new(2), "game::private")
             .access(FunctionAccess::new().public(false).reflect_visible(true)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(3), "game.admin")
-            .access(FunctionAccess::new().require_permission("game.admin")),
+        FunctionDesc::new(FunctionId::new(3), "game::admin")
+            .access(FunctionAccess::new().require_permission("game::admin")),
     );
     let private_policy = ReflectPolicy::new(
         crate::permissions::ReflectPermissionSet::new()
             .with(crate::permissions::ReflectPermission::AccessPrivate),
     );
 
-    let error = function_with_policy(&registry, "game.hidden", &ReflectPolicy::all())
+    let error = function_with_policy(&registry, "game::hidden", &ReflectPolicy::all())
         .expect_err("hidden function");
     assert_eq!(
         error.kind,
         ReflectErrorKind::FunctionNotReflectVisible {
-            function: "game.hidden".to_owned(),
+            function: "game::hidden".to_owned(),
             source_span: None,
         }
     );
 
-    let error = function_with_policy(&registry, "game.private", &ReflectPolicy::read_only())
+    let error = function_with_policy(&registry, "game::private", &ReflectPolicy::read_only())
         .expect_err("private function");
     assert_eq!(
         error.kind,
@@ -353,13 +353,13 @@ fn function_policy_rejects_hidden_private_and_unapproved_functions() {
         }
     );
 
-    let error = function_with_policy(&registry, "game.admin", &private_policy)
+    let error = function_with_policy(&registry, "game::admin", &private_policy)
         .expect_err("missing function permission");
     assert_eq!(
         error.kind,
         ReflectErrorKind::FunctionPermissionDenied {
-            function: "game.admin".to_owned(),
-            permission: "game.admin".to_owned(),
+            function: "game::admin".to_owned(),
+            permission: "game::admin".to_owned(),
             source_span: None,
         }
     );
@@ -368,23 +368,23 @@ fn function_policy_rejects_hidden_private_and_unapproved_functions() {
 #[test]
 fn function_policy_filters_unknown_candidates() {
     let mut registry = TypeRegistry::new();
-    registry.register_function(FunctionDesc::new(FunctionId::new(1), "game.reward.grant"));
+    registry.register_function(FunctionDesc::new(FunctionId::new(1), "game::reward::grant"));
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(2), "game.reward.grant_hidden")
+        FunctionDesc::new(FunctionId::new(2), "game::reward::grant_hidden")
             .access(FunctionAccess::new().reflect_visible(false)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(3), "game.reward.grant_private")
+        FunctionDesc::new(FunctionId::new(3), "game::reward::grant_private")
             .access(FunctionAccess::new().public(false).reflect_visible(true)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(4), "game.reward.grant_admin")
-            .access(FunctionAccess::new().require_permission("game.admin")),
+        FunctionDesc::new(FunctionId::new(4), "game::reward::grant_admin")
+            .access(FunctionAccess::new().require_permission("game::admin")),
     );
 
     let error = function_with_policy(
         &registry,
-        "game.reward.grant_hiddden",
+        "game::reward::grant_hiddden",
         &ReflectPolicy::read_only(),
     )
     .expect_err("unknown function");
@@ -397,11 +397,11 @@ fn function_policy_filters_unknown_candidates() {
         panic!("expected unknown function");
     };
 
-    assert_eq!(candidates, vec!["game.reward.grant".to_owned()]);
+    assert_eq!(candidates, vec!["game::reward::grant".to_owned()]);
     assert_eq!(
         related,
         vec![crate::candidates::ReflectCandidate::new(
-            "game.reward.grant",
+            "game::reward::grant",
             None
         )]
     );
@@ -411,18 +411,18 @@ fn function_policy_filters_unknown_candidates() {
 fn function_call_policy_filters_unknown_candidates() {
     let mut registry = TypeRegistry::new();
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.reward.grant")
+        FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
             .access(FunctionAccess::new().reflect_callable(true)),
     );
     registry.register_function(FunctionDesc::new(
         FunctionId::new(2),
-        "game.reward.grant_visible",
+        "game::reward::grant_visible",
     ));
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(3), "game.reward.grant_write").access(
+        FunctionDesc::new(FunctionId::new(3), "game::reward::grant_write").access(
             FunctionAccess::new()
                 .reflect_callable(true)
-                .require_permission("game.write"),
+                .require_permission("game::write"),
         ),
     );
 
@@ -430,7 +430,7 @@ fn function_call_policy_filters_unknown_candidates() {
         type_name: "ReflectFunction".to_owned(),
         fields: BTreeMap::from([(
             "name".to_owned(),
-            HostValue::String("game.reward.grant_visibel".to_owned()),
+            HostValue::String("game::reward::grant_visibel".to_owned()),
         )]),
     });
     let policy = ReflectPolicy::new(
@@ -449,11 +449,11 @@ fn function_call_policy_filters_unknown_candidates() {
         panic!("expected unknown function");
     };
 
-    assert_eq!(candidates, vec!["game.reward.grant".to_owned()]);
+    assert_eq!(candidates, vec!["game::reward::grant".to_owned()]);
     assert_eq!(
         related,
         vec![crate::candidates::ReflectCandidate::new(
-            "game.reward.grant",
+            "game::reward::grant",
             None
         )]
     );
@@ -463,22 +463,22 @@ fn function_call_policy_filters_unknown_candidates() {
 fn function_policy_allows_private_functions_with_permissions() {
     let mut registry = TypeRegistry::new();
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.private_admin").access(
+        FunctionDesc::new(FunctionId::new(1), "game::private_admin").access(
             FunctionAccess::new()
                 .public(false)
                 .reflect_visible(true)
-                .require_permission("game.admin"),
+                .require_permission("game::admin"),
         ),
     );
     let policy = ReflectPolicy::new(
         crate::permissions::ReflectPermissionSet::new()
             .with(crate::permissions::ReflectPermission::AccessPrivate),
     )
-    .with_function_permission("game.admin");
+    .with_function_permission("game::admin");
 
     let ReflectValue::Host(HostValue::Record {
         fields: function, ..
-    }) = function_with_policy(&registry, "game.private_admin", &policy)
+    }) = function_with_policy(&registry, "game::private_admin", &policy)
         .expect("private function metadata")
     else {
         panic!("function metadata should be a record");
@@ -491,15 +491,15 @@ fn function_policy_allows_private_functions_with_permissions() {
 fn function_call_policy_requires_reflect_callable_metadata() {
     let mut registry = TypeRegistry::new();
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.inspectable")
+        FunctionDesc::new(FunctionId::new(1), "game::inspectable")
             .access(FunctionAccess::new().reflect_visible(true)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(2), "game.callable")
+        FunctionDesc::new(FunctionId::new(2), "game::callable")
             .access(FunctionAccess::new().reflect_callable(true)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(3), "game.write_host")
+        FunctionDesc::new(FunctionId::new(3), "game::write_host")
             .effects(FunctionEffectSet {
                 reads_host: false,
                 writes_host: true,
@@ -510,7 +510,7 @@ fn function_call_policy_requires_reflect_callable_metadata() {
     let policy = ReflectPolicy::all();
 
     let inspectable = registry
-        .function_by_name("game.inspectable")
+        .function_by_name("game::inspectable")
         .expect("inspectable function");
     policy
         .require_function_access(inspectable)
@@ -521,20 +521,20 @@ fn function_call_policy_requires_reflect_callable_metadata() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::FunctionNotReflectCallable {
-            function: "game.inspectable".to_owned(),
+            function: "game::inspectable".to_owned(),
             source_span: None,
         }
     );
 
     let callable = registry
-        .function_by_name("game.callable")
+        .function_by_name("game::callable")
         .expect("callable function");
     policy
         .require_function_call_access(callable)
         .expect("callable function");
 
     let effectful = registry
-        .function_by_name("game.write_host")
+        .function_by_name("game::write_host")
         .expect("effectful function");
     let read_only_call_policy = ReflectPolicy::new(
         crate::permissions::ReflectPermissionSet::new()
@@ -546,7 +546,7 @@ fn function_call_policy_requires_reflect_callable_metadata() {
     assert_eq!(
         error.kind,
         ReflectErrorKind::FunctionEffectPermissionDenied {
-            function: "game.write_host".to_owned(),
+            function: "game::write_host".to_owned(),
             permission: crate::permissions::ReflectPermission::CallHostWriteMethods,
             source_span: None,
         }
@@ -557,10 +557,10 @@ fn function_call_policy_requires_reflect_callable_metadata() {
 fn callable_function_lookup_requires_call_methods_permission() {
     let mut registry = TypeRegistry::new();
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.callable")
+        FunctionDesc::new(FunctionId::new(1), "game::callable")
             .access(FunctionAccess::new().reflect_callable(true)),
     );
-    let target = function(&registry, "game.callable").expect("callable function metadata");
+    let target = function(&registry, "game::callable").expect("callable function metadata");
 
     let error = callable_function_name_with_policy(&registry, &target, &ReflectPolicy::read_only())
         .expect_err("callable lookup should require call permission");
@@ -579,71 +579,71 @@ fn callable_function_lookup_requires_call_methods_permission() {
     );
     assert_eq!(
         callable_function_name_with_policy(&registry, &target, &policy),
-        Ok(Some("game.callable".to_owned()))
+        Ok(Some("game::callable".to_owned()))
     );
 }
 
 #[test]
 fn module_exports_with_policy_hide_inaccessible_functions() {
     let mut registry = TypeRegistry::new();
-    registry.register_module(ModuleDesc::new("game.reward"));
+    registry.register_module(ModuleDesc::new("game::reward"));
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(1), "game.reward.grant").module("game.reward"),
+        FunctionDesc::new(FunctionId::new(1), "game::reward::grant").module("game::reward"),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(2), "game.reward.hidden")
-            .module("game.reward")
+        FunctionDesc::new(FunctionId::new(2), "game::reward::hidden")
+            .module("game::reward")
             .access(FunctionAccess::new().reflect_visible(false)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(3), "game.reward.private")
-            .module("game.reward")
+        FunctionDesc::new(FunctionId::new(3), "game::reward::private")
+            .module("game::reward")
             .access(FunctionAccess::new().public(false).reflect_visible(true)),
     );
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(4), "game.reward.admin")
-            .module("game.reward")
-            .access(FunctionAccess::new().require_permission("game.admin")),
+        FunctionDesc::new(FunctionId::new(4), "game::reward::admin")
+            .module("game::reward")
+            .access(FunctionAccess::new().require_permission("game::admin")),
     );
 
     assert!(has_module_with_policy(
         &registry,
-        "game.reward",
+        "game::reward",
         &ReflectPolicy::read_only()
     ));
     assert!(!has_module_with_policy(
         &registry,
-        "game.missing",
+        "game::missing",
         &ReflectPolicy::read_only()
     ));
     assert!(has_function_with_policy(
         &registry,
-        "game.reward.grant",
+        "game::reward::grant",
         &ReflectPolicy::read_only()
     ));
     assert!(!has_function_with_policy(
         &registry,
-        "game.reward.hidden",
+        "game::reward::hidden",
         &ReflectPolicy::read_only()
     ));
     assert!(!has_function_with_policy(
         &registry,
-        "game.reward.private",
+        "game::reward::private",
         &ReflectPolicy::read_only()
     ));
     assert!(!has_function_with_policy(
         &registry,
-        "game.reward.admin",
+        "game::reward::admin",
         &ReflectPolicy::read_only()
     ));
 
     assert_eq!(
-        exports(&registry, "game.reward").expect("raw exports"),
+        exports(&registry, "game::reward").expect("raw exports"),
         ReflectValue::Host(HostValue::Array(vec![
-            HostValue::String("game.reward.grant".to_owned()),
-            HostValue::String("game.reward.hidden".to_owned()),
-            HostValue::String("game.reward.private".to_owned()),
-            HostValue::String("game.reward.admin".to_owned()),
+            HostValue::String("game::reward::grant".to_owned()),
+            HostValue::String("game::reward::hidden".to_owned()),
+            HostValue::String("game::reward::private".to_owned()),
+            HostValue::String("game::reward::admin".to_owned()),
         ]))
     );
     let ReflectValue::Host(HostValue::Array(raw_modules)) = modules(&registry) else {
@@ -655,10 +655,10 @@ fn module_exports_with_policy_hide_inaccessible_functions() {
     };
     assert_eq!(raw_functions.len(), 4);
     assert_eq!(
-        exports_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())
+        exports_with_policy(&registry, "game::reward", &ReflectPolicy::read_only())
             .expect("policy exports"),
         ReflectValue::Host(HostValue::Array(vec![HostValue::String(
-            "game.reward.grant".to_owned()
+            "game::reward::grant".to_owned()
         )]))
     );
     let ReflectValue::Host(HostValue::Array(policy_functions)) =
@@ -682,12 +682,12 @@ fn module_exports_with_policy_hide_inaccessible_functions() {
     assert_eq!(
         policy_module.get("exports"),
         Some(&HostValue::Array(vec![HostValue::String(
-            "game.reward.grant".to_owned()
+            "game::reward::grant".to_owned()
         )]))
     );
 
     let ReflectValue::Host(HostValue::Record { fields: module, .. }) =
-        module_with_policy(&registry, "game.reward", &ReflectPolicy::read_only())
+        module_with_policy(&registry, "game::reward", &ReflectPolicy::read_only())
             .expect("policy module")
     else {
         panic!("module metadata should be a record");
@@ -695,7 +695,7 @@ fn module_exports_with_policy_hide_inaccessible_functions() {
     assert_eq!(
         module.get("exports"),
         Some(&HostValue::Array(vec![HostValue::String(
-            "game.reward.grant".to_owned()
+            "game::reward::grant".to_owned()
         )]))
     );
     assert_eq!(
@@ -709,7 +709,7 @@ fn module_exports_with_policy_hide_inaccessible_functions() {
         )
         .expect("policy module record exports"),
         ReflectValue::Host(HostValue::Array(vec![HostValue::String(
-            "game.reward.grant".to_owned()
+            "game::reward::grant".to_owned()
         )]))
     );
 
@@ -717,18 +717,18 @@ fn module_exports_with_policy_hide_inaccessible_functions() {
         crate::permissions::ReflectPermissionSet::read_only()
             .with(crate::permissions::ReflectPermission::AccessPrivate),
     )
-    .with_function_permission("game.admin");
+    .with_function_permission("game::admin");
     assert!(has_function_with_policy(
         &registry,
-        "game.reward.admin",
+        "game::reward::admin",
         &admin_policy
     ));
     assert_eq!(
-        exports_with_policy(&registry, "game.reward", &admin_policy).expect("admin exports"),
+        exports_with_policy(&registry, "game::reward", &admin_policy).expect("admin exports"),
         ReflectValue::Host(HostValue::Array(vec![
-            HostValue::String("game.reward.grant".to_owned()),
-            HostValue::String("game.reward.private".to_owned()),
-            HostValue::String("game.reward.admin".to_owned()),
+            HostValue::String("game::reward::grant".to_owned()),
+            HostValue::String("game::reward::private".to_owned()),
+            HostValue::String("game::reward::admin".to_owned()),
         ]))
     );
 }

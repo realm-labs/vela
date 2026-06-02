@@ -165,7 +165,7 @@ fn get_impl(
             if let Some(policy) = policy
                 && let Some(field_desc) = script_enum_field(ctx.registry, enum_name, variant, field)
             {
-                policy.require_field_read_access(&format!("{enum_name}.{variant}"), field_desc)?;
+                policy.require_field_read_access(&format!("{enum_name}::{variant}"), field_desc)?;
             }
             get_record_field(field, fields, || {
                 if let Some(policy) = policy {
@@ -299,7 +299,8 @@ fn set_impl(
             if let Some(policy) = policy
                 && let Some(field_desc) = script_enum_field(ctx.registry, enum_name, variant, field)
             {
-                policy.require_field_write_access(&format!("{enum_name}.{variant}"), field_desc)?;
+                policy
+                    .require_field_write_access(&format!("{enum_name}::{variant}"), field_desc)?;
             }
             Ok(ReflectValue::ScriptEnum {
                 enum_name: enum_name.clone(),

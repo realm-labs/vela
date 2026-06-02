@@ -83,6 +83,7 @@ fn symbol_text(symbol: Symbol) -> &'static str {
         Symbol::DotDot => "..",
         Symbol::DotDotEqual => "..=",
         Symbol::Colon => ":",
+        Symbol::ColonColon => "::",
         Symbol::Semicolon => ";",
         Symbol::Arrow => "->",
         Symbol::FatArrow => "=>",

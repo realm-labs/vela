@@ -3,12 +3,12 @@ use super::*;
 #[test]
 fn function_effect_and_access_abi_changes_are_rejected() {
     let old_abi = HotReloadAbi::empty().function(FunctionAbi::new(
-        "game.reward.grant",
+        "game::reward::grant",
         EffectAbi::host_read(),
         AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
     ));
     let changed_effects = HotReloadAbi::empty().function(FunctionAbi::new(
-        "game.reward.grant",
+        "game::reward::grant",
         EffectAbi::host_write(),
         AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
     ));
@@ -26,7 +26,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedFunctionEffects {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             old: EffectAbi::host_read(),
             new: EffectAbi::host_write(),
             source_span: None,
@@ -34,7 +34,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     );
 
     let changed_access = HotReloadAbi::empty().function(FunctionAbi::new(
-        "game.reward.grant",
+        "game::reward::grant",
         EffectAbi::host_read(),
         AccessAbi::new(true, true, vec!["reward.write".to_owned()]),
     ));
@@ -48,7 +48,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedFunctionAccess {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             old: AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
             new: AccessAbi::new(true, true, vec!["reward.write".to_owned()]),
             source_span: None,
@@ -56,7 +56,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     );
 
     let changed_callability = HotReloadAbi::empty().function(FunctionAbi::new(
-        "game.reward.grant",
+        "game::reward::grant",
         EffectAbi::host_read(),
         AccessAbi::function(true, true, false, vec!["reward.read".to_owned()]),
     ));
@@ -70,7 +70,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedFunctionAccess {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             old: AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
             new: AccessAbi::function(true, true, false, vec!["reward.read".to_owned()]),
             source_span: None,
@@ -82,7 +82,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
 fn function_event_abi_changes_are_rejected() {
     let old_abi = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::event_emit(),
             AccessAbi::public(),
         )
@@ -90,7 +90,7 @@ fn function_event_abi_changes_are_rejected() {
     );
     let changed_event = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::event_emit(),
             AccessAbi::public(),
         )
@@ -110,7 +110,7 @@ fn function_event_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedFunctionEvent {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             old: Some("monster.kill".to_owned()),
             new: Some("quest.complete".to_owned()),
             source_span: None,
@@ -134,7 +134,7 @@ fn function_event_abi_changes_are_rejected() {
     );
 
     let removed_event = HotReloadAbi::empty().function(FunctionAbi::new(
-        "game.reward.grant",
+        "game::reward::grant",
         EffectAbi::event_emit(),
         AccessAbi::public(),
     ));
@@ -148,7 +148,7 @@ fn function_event_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedFunctionEvent {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             old: Some("monster.kill".to_owned()),
             new: None,
             source_span: None,
@@ -161,7 +161,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(8), 20, 45);
     let old_abi = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
@@ -170,7 +170,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
     );
     let changed_param = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
@@ -192,7 +192,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedFunctionParameterAbi {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             old: vec![
                 ParamAbi::new("player").type_hint("Player"),
                 ParamAbi::new("amount").type_hint("int"),
@@ -230,7 +230,7 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
 
     let added_required = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
@@ -248,14 +248,14 @@ fn function_descriptor_parameter_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::AddedFunctionParametersWithoutDefaults {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             added: vec!["reason".to_owned()],
         }
     );
 
     let added_defaulted = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
@@ -277,7 +277,7 @@ fn function_descriptor_return_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(13), 15, 35);
     let old_abi = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
@@ -285,7 +285,7 @@ fn function_descriptor_return_abi_changes_are_rejected() {
     );
     let changed_return = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_read(),
             AccessAbi::public(),
         )
@@ -305,7 +305,7 @@ fn function_descriptor_return_abi_changes_are_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::ChangedFunctionReturnAbi {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             old: Some("int".to_owned()),
             new: Some("float".to_owned()),
             source_span: Some(Box::new(span)),
@@ -334,7 +334,7 @@ fn removed_function_abi_is_rejected() {
     let span = Span::new(SourceId::new(9), 10, 25);
     let old_abi = HotReloadAbi::empty().function(
         FunctionAbi::new(
-            "game.reward.grant",
+            "game::reward::grant",
             EffectAbi::host_read(),
             AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
         )
@@ -354,7 +354,7 @@ fn removed_function_abi_is_rejected() {
     assert_eq!(
         error.kind,
         HotReloadErrorKind::RemovedFunctionAbi {
-            function: "game.reward.grant".to_owned(),
+            function: "game::reward::grant".to_owned(),
             source_span: Some(Box::new(span)),
         }
     );

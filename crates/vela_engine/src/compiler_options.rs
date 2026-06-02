@@ -8,7 +8,7 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
     let mut options = CompilerOptions::new();
     let mut value_method_params = HashMap::new();
     for module in registry.modules() {
-        if let Some(root) = module.name.split('.').next() {
+        if let Some(root) = module.name.split("::").next() {
             options = options.with_native_module_root(root);
         }
     }

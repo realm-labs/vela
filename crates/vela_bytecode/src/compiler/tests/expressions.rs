@@ -188,10 +188,10 @@ fn compiler_lowers_match_expression_values() {
         SourceId::new(1),
         r#"
 fn main() {
-    let damage = Damage.Physical { amount: 7 };
+    let damage = Damage::Physical { amount: 7 };
     let value = match damage {
-        Damage.Magical { amount } => amount + 100,
-        Damage.Physical { amount } => {
+        Damage::Magical { amount } => amount + 100,
+        Damage::Physical { amount } => {
             amount + 1;
         },
         _ => 0,
@@ -308,10 +308,10 @@ enum Reward {
     Grant { kind, amount }
 }
 fn main() {
-    let reward = Reward.Grant { kind: "xp", amount: 7 };
+    let reward = Reward::Grant { kind: "xp", amount: 7 };
     return match reward {
-        Reward.Grant { kind: "gold", amount } => amount,
-        Reward.Grant { kind: "xp", amount } => amount + 1,
+        Reward::Grant { kind: "gold", amount } => amount,
+        Reward::Grant { kind: "xp", amount } => amount + 1,
         _ => 0,
     };
 }
@@ -344,9 +344,9 @@ enum Damage {
     Magical(amount),
 }
 fn main() {
-    let damage = Damage.Physical(7, 2);
+    let damage = Damage::Physical(7, 2);
     return match damage {
-        Damage.Physical(amount, bonus) => amount + bonus,
+        Damage::Physical(amount, bonus) => amount + bonus,
         _ => 0,
     };
 }
@@ -594,7 +594,7 @@ fn compiler_lowers_immediate_enum_field_reads_to_slots() {
         SourceId::new(1),
         r#"
 fn main() {
-    return Damage.Physical { amount: 7 }.amount;
+    return Damage::Physical { amount: 7 }.amount;
 }
 "#,
         "main",
@@ -621,7 +621,7 @@ enum Damage {
     Magical { amount: int },
 }
 fn main() {
-    let damage = Damage.Physical { amount: 7, element: "slash" };
+    let damage = Damage::Physical { amount: 7, element: "slash" };
     return damage.amount;
 }
 "#,

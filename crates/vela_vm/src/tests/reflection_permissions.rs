@@ -7,11 +7,11 @@ fn compiled_source_uses_reflection_natives_for_host_state() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    let player_type = reflect.type_of(player);
-    if reflect.name(player_type) == "Player" && reflect.kind(player_type) == "host" {
-        if reflect.implements(player, "Damageable") {
-            reflect.set(player, "level", 10);
-            return reflect.get(player, "level");
+    let player_type = reflect::type_of(player);
+    if reflect::name(player_type) == "Player" && reflect::kind(player_type) == "host" {
+        if reflect::implements(player, "Damageable") {
+            reflect::set(player, "level", 10);
+            return reflect::get(player, "level");
         }
     }
     return 0;
@@ -53,7 +53,7 @@ fn reflection_permissions_deny_writes_before_patches() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.set(player, "level", 10);
+    reflect::set(player, "level", 10);
     return 1;
 }
 "#,
@@ -87,7 +87,7 @@ fn reflection_permissions_deny_calls_before_patches() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.call(player, "grant_exp", 10);
+    reflect::call(player, "grant_exp", 10);
     return 1;
 }
 "#,
@@ -122,7 +122,7 @@ fn reflection_permissions_deny_host_write_effect_calls_before_patches() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.call(player, "grant_exp", 10);
+    reflect::call(player, "grant_exp", 10);
     return 1;
 }
 "#,
@@ -175,7 +175,7 @@ fn reflection_permissions_deny_host_ref_metadata_without_inspection() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.type_of(player);
+    return reflect::type_of(player);
 }
 "#,
     )
@@ -209,7 +209,7 @@ fn reflection_permissions_deny_host_ref_trait_metadata_without_inspection() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.traits(player);
+    return reflect::traits(player);
 }
 "#,
     )
@@ -243,7 +243,7 @@ fn reflection_permissions_deny_host_ref_implements_without_inspection() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.implements(player, "Damageable");
+    return reflect::implements(player, "Damageable");
 }
 "#,
     )
@@ -279,7 +279,7 @@ struct Player { level: int }
 
 fn main() {
     let player = Player { level: 7 };
-    return reflect.name(player);
+    return reflect::name(player);
 }
 "#,
     )
@@ -310,13 +310,13 @@ fn reflection_permissions_report_active_policy_metadata() {
         SourceId::new(1),
         r#"
 fn main() {
-    if !reflect.has_permission("reflect.inspect_host_path") {
+    if !reflect::has_permission("reflect::inspect_host_path") {
         return 0;
     }
-    if reflect.has_permission("reflect.write_value_fields") {
+    if reflect::has_permission("reflect::write_value_fields") {
         return 0;
     }
-    return reflect.permissions();
+    return reflect::permissions();
 }
 "#,
     )
@@ -337,9 +337,9 @@ fn main() {
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Array(vec![
-            Value::String("reflect.read_type_info".to_owned()),
-            Value::String("reflect.read_value_fields".to_owned()),
-            Value::String("reflect.inspect_host_path".to_owned()),
+            Value::String("reflect::read_type_info".to_owned()),
+            Value::String("reflect::read_value_fields".to_owned()),
+            Value::String("reflect::inspect_host_path".to_owned()),
         ]))
     );
     assert!(tx.patches().is_empty());
@@ -351,7 +351,7 @@ fn reflection_permissions_report_unknown_permission_candidates() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.has_permission("reflect.inspect_host");
+    return reflect::has_permission("reflect::inspect_host");
 }
 "#,
     )
@@ -374,11 +374,11 @@ fn main() {
     assert_eq!(
         error.kind,
         VmErrorKind::Reflect(ReflectErrorKind::UnknownPermission {
-            permission: "reflect.inspect_host".to_owned(),
+            permission: "reflect::inspect_host".to_owned(),
             candidates: vec![
-                "reflect.inspect_host_path".to_owned(),
-                "reflect.call_methods".to_owned(),
-                "reflect.access_private".to_owned()
+                "reflect::inspect_host_path".to_owned(),
+                "reflect::call_methods".to_owned(),
+                "reflect::access_private".to_owned()
             ]
         })
     );
@@ -391,7 +391,7 @@ fn reflection_permissions_deny_permission_metadata_without_type_read() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.permissions();
+    return reflect::permissions();
 }
 "#,
     )
@@ -423,7 +423,7 @@ fn reflection_permissions_deny_function_metadata_without_function_permission() {
         SourceId::new(1),
         r#"
 fn main() {
-    reflect.function("game.admin");
+    reflect::function("game::admin");
     return 1;
 }
 "#,
@@ -431,8 +431,8 @@ fn main() {
     .expect("compile function metadata permission source");
     let mut registry = TypeRegistry::new();
     registry.register_function(
-        FunctionDesc::new(FunctionId::new(9), "game.admin")
-            .access(FunctionAccess::new().require_permission("game.admin")),
+        FunctionDesc::new(FunctionId::new(9), "game::admin")
+            .access(FunctionAccess::new().require_permission("game::admin")),
     );
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -455,8 +455,8 @@ fn main() {
     assert_eq!(
         error.kind,
         VmErrorKind::Reflect(ReflectErrorKind::FunctionPermissionDenied {
-            function: "game.admin".to_owned(),
-            permission: "game.admin".to_owned(),
+            function: "game::admin".to_owned(),
+            permission: "game::admin".to_owned(),
             source_span: None,
         })
     );
@@ -471,7 +471,7 @@ fn reflection_field_access_denies_hidden_host_field_reads() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.get(player, "secret");
+    return reflect::get(player, "secret");
 }
 "#,
     )
@@ -520,7 +520,7 @@ fn reflection_field_permissions_deny_host_field_reads_before_patch() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.get(player, "title");
+    return reflect::get(player, "title");
 }
 "#,
     )
@@ -572,7 +572,7 @@ fn reflection_unknown_host_field_candidates_respect_read_policy() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.get(player, "leve");
+    return reflect::get(player, "leve");
 }
 "#,
     )
@@ -630,7 +630,7 @@ fn reflection_unknown_host_method_candidates_respect_call_policy() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return reflect.call(player, "visibl");
+    return reflect::call(player, "visibl");
 }
 "#,
     )
@@ -691,8 +691,8 @@ fn reflection_lookup_budget_stops_after_limit() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    reflect.name(player);
-    reflect.kind(player);
+    reflect::name(player);
+    reflect::kind(player);
     return 1;
 }
 "#,
@@ -726,11 +726,11 @@ fn heap_execution_uses_reflection_natives_for_host_state() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    let player_type = reflect.type_of(player);
-    if reflect.name(player_type) == "Player" && reflect.kind(player_type) == "host" {
-        if reflect.implements(player, "Damageable") {
-            reflect.set(player, "level", 10);
-            return reflect.get(player, "level");
+    let player_type = reflect::type_of(player);
+    if reflect::name(player_type) == "Player" && reflect::kind(player_type) == "host" {
+        if reflect::implements(player, "Damageable") {
+            reflect::set(player, "level", 10);
+            return reflect::get(player, "level");
         }
     }
     return 0;

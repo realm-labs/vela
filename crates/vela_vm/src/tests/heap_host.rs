@@ -89,17 +89,17 @@ fn managed_heap_execution_preserves_path_proxy_slots() {
     let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(2)));
     let expected = proxy.clone();
     let mut vm = Vm::new();
-    vm.register_native("game.path", move |_| Ok(Value::PathProxy(proxy.clone())));
+    vm.register_native("game::path", move |_| Ok(Value::PathProxy(proxy.clone())));
     let program = compile_program_source(
         SourceId::new(1),
         r#"
 fn array_case() {
-    let paths = [game.path()];
+    let paths = [game::path()];
     return paths[0];
 }
 
 fn map_case() {
-    let paths = {"level": game.path()};
+    let paths = {"level": game::path()};
     return paths["level"];
 }
 "#,
@@ -318,7 +318,7 @@ fn managed_heap_host_execution_converts_enum_for_host_write_and_overlay_read() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    player.level = Damage.Physical { amount: 7 };
+    player.level = Damage::Physical { amount: 7 };
     return player.level;
 }
 "#,
@@ -354,7 +354,7 @@ fn main(player) {
         Value::Enum {
             enum_name: "Damage".into(),
             variant: "Physical".into(),
-            fields: ScriptFields::from_pairs("Damage.Physical", expected_script_fields),
+            fields: ScriptFields::from_pairs("Damage::Physical", expected_script_fields),
         }
     );
     assert_eq!(tx.patches().len(), 1);

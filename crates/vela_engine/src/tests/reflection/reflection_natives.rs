@@ -4,12 +4,12 @@ use super::*;
 fn engine_builder_registers_module_reflection_metadata() {
     let engine = Engine::builder()
         .register_module(
-            ModuleDesc::new("game.reward")
+            ModuleDesc::new("game::reward")
                 .docs("Reward module.")
                 .attr("domain", "gameplay"),
         )
         .register_native_fn(
-            NativeFunctionDesc::new("game.reward.grant", NativeFunctionId::new(221))
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(221))
                 .returns(TypeHint::Bool),
             |_| Ok(Value::Bool(true)),
         )
@@ -18,12 +18,12 @@ fn engine_builder_registers_module_reflection_metadata() {
 
     let registry = engine.registry();
     let module = registry
-        .module_by_name("game.reward")
+        .module_by_name("game::reward")
         .expect("registered module metadata");
     assert_eq!(module.docs.as_deref(), Some("Reward module."));
     assert_eq!(module.attrs.get("domain"), Some("gameplay"));
     assert_eq!(module.exports.len(), 1);
-    assert_eq!(module.exports[0].name, "game.reward.grant");
+    assert_eq!(module.exports[0].name, "game::reward::grant");
 }
 
 #[test]
@@ -71,8 +71,8 @@ fn engine_installs_permissioned_reflection_natives() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    if reflect.name(player) == "Player" && reflect.get(player, "level") == 7 {
-        reflect.set(player, "level", 8);
+    if reflect::name(player) == "Player" && reflect::get(player, "level") == 7 {
+        reflect::set(player, "level", 8);
     }
     return 0;
 }
@@ -116,13 +116,13 @@ fn engine_compiler_keeps_reflect_module_calls_off_host_method_lowering() {
         SourceId::new(1),
         r#"
 fn main(player: Player) {
-    reflect.set(player, "level", 12);
-    return reflect.get(player, "level");
+    reflect::set(player, "level", 12);
+    return reflect::get(player, "level");
 }
 "#,
         &engine.compiler_options(),
     )
-    .expect("reflect.set should compile as a native module call");
+    .expect("reflect::set should compile as a native module call");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(
@@ -159,17 +159,17 @@ fn engine_granted_permissions_unlock_reflection_metadata_lists() {
                 ),
         )
         .register_native_fn(
-            NativeFunctionDesc::new("game.secret_bonus", NativeFunctionId::new(77))
+            NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
                 .returns(TypeHint::Int)
                 .access(
                     FunctionAccess::public()
                         .reflect_callable(true)
-                        .require_permission("game.inspect"),
+                        .require_permission("game::inspect"),
                 ),
             |_| Ok(Value::Int(5)),
         )
         .grant_permission("player.inspect")
-        .grant_permission("game.inspect")
+        .grant_permission("game::inspect")
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
         .expect("engine should build");
@@ -177,13 +177,13 @@ fn engine_granted_permissions_unlock_reflection_metadata_lists() {
         SourceId::new(1),
         r#"
 fn main() {
-    let fields = reflect.fields();
-    let functions = reflect.functions();
+    let fields = reflect::fields();
+    let functions = reflect::functions();
     if fields.len() == 1
         && fields[0].owner == "Player"
         && fields[0].name == "secret_level"
         && functions.len() == 1
-        && functions[0].name == "game.secret_bonus" {
+        && functions[0].name == "game::secret_bonus" {
         return 1;
     }
     return 0;
@@ -219,12 +219,12 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
                 ),
         )
         .register_native_fn(
-            NativeFunctionDesc::new("game.secret_bonus", NativeFunctionId::new(77))
+            NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
                 .returns(TypeHint::Int)
                 .access(
                     FunctionAccess::public()
                         .reflect_callable(true)
-                        .require_permission("game.inspect"),
+                        .require_permission("game::inspect"),
                 ),
             |_| Ok(Value::Int(5)),
         )
@@ -235,7 +235,7 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect.fields().len() + reflect.functions().len();
+    return reflect::fields().len() + reflect::functions().len();
 }
 "#,
     )

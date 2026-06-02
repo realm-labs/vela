@@ -88,10 +88,10 @@ fn engine_compile_dir_loads_vela_modules_deterministically() {
     std::fs::write(
         game_dir.join("main.vela"),
         r#"
-use game.reward.grant
+use game::reward::grant
 
 fn main() {
-    return grant() + game.config.BONUS;
+    return grant() + game::config::BONUS;
 }
 "#,
     )
@@ -121,7 +121,7 @@ pub const BONUS: int = 6;
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "game.main.main", &[]),
+            .run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(10))
     );
     assert!(program.function("ignored.main").is_none());
@@ -136,7 +136,7 @@ fn engine_compile_hot_reload_dir_loads_module_updates() {
     std::fs::write(
         game_dir.join("main.vela"),
         r#"
-use game.reward.grant
+use game::reward::grant
 
 fn main() {
     return grant() + 1;
@@ -163,7 +163,7 @@ pub fn grant() {
 
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -193,16 +193,16 @@ pub fn grant() {
     assert!(report.accepted);
     assert_eq!(
         report.changed_functions,
-        vec!["game.reward.grant".to_owned()]
+        vec!["game::reward::grant".to_owned()]
     );
-    assert_eq!(report.changed_modules, vec!["game.reward".to_owned()]);
+    assert_eq!(report.changed_modules, vec!["game::reward".to_owned()]);
     assert_eq!(
         report.impacted_modules,
-        vec!["game.main".to_owned(), "game.reward".to_owned()]
+        vec!["game::main".to_owned(), "game::reward".to_owned()]
     );
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -227,7 +227,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
 
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -248,7 +248,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -263,8 +263,8 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
         .expect("staged dir report");
 
     assert!(report.accepted);
-    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
-    assert_eq!(report.changed_modules, vec!["game.reward"]);
+    assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
+    assert_eq!(report.changed_modules, vec!["game::reward"]);
     assert!(
         !runtime
             .has_pending_hot_update()
@@ -272,7 +272,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -305,7 +305,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
         .expect("hot reload rejection should be staged");
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -324,11 +324,11 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
     assert!(matches!(
         report.errors[0].error.kind,
         HotReloadErrorKind::NewFunctionDenied { ref function }
-            if function == "game.reward.helper"
+            if function == "game::reward::helper"
     ));
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -368,7 +368,7 @@ pub fn grant() {
         .expect("compile rejection should be staged as a hot reload report");
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -393,7 +393,7 @@ pub fn grant() {
     );
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -451,16 +451,16 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
     let report = runtime.apply_hot_update_report(update);
 
     assert!(report.accepted);
-    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
-    assert_eq!(report.changed_modules, vec!["game.reward"]);
+    assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
+    assert_eq!(report.changed_modules, vec!["game::reward"]);
     assert_eq!(
         report.impacted_modules,
-        vec!["game.main".to_owned(), "game.reward".to_owned()]
+        vec!["game::main".to_owned(), "game::reward".to_owned()]
     );
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&runtime.current().to_program(), "game.main.main", &[]),
+            .run_program(&runtime.current().to_program(), "game::main::main", &[]),
         Ok(Value::Int(10))
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
@@ -484,11 +484,11 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
     let report = runtime.apply_hot_update_report(update);
 
     assert!(report.accepted);
-    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
+    assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&runtime.current().to_program(), "game.main.main", &[]),
+            .run_program(&runtime.current().to_program(), "game::main::main", &[]),
         Ok(Value::Int(8))
     );
     std::fs::remove_dir_all(root).expect("clean temp source dir");
@@ -592,7 +592,7 @@ fn engine_exposes_registry_hot_reload_abi() {
                 ),
         )
         .register_native_fn(
-            NativeFunctionDesc::new("game.reward.grant", NativeFunctionId::new(22))
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("player", TypeHint::Host(player_key))
                 .returns(TypeHint::Null)
                 .effects(EffectSet::event_emit())
@@ -1440,7 +1440,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let old_engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.reward.grant", NativeFunctionId::new(22))
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
             |_| Ok(Value::Null),
         )
@@ -1451,7 +1451,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .expect("initial hot reload file compile");
     let new_engine = Engine::builder()
         .register_native_fn(
-            NativeFunctionDesc::new("game.reward.grant", NativeFunctionId::new(22))
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_write()),
             |_| Ok(Value::Null),
         )
@@ -1488,7 +1488,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     else {
         panic!("expected changed native function effects");
     };
-    assert_eq!(function, "game.reward.grant");
+    assert_eq!(function, "game::reward::grant");
     assert!(old.reads_host);
     assert!(!old.writes_host);
     assert!(new.reads_host);
@@ -1738,7 +1738,7 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
 
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1757,10 +1757,10 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
         .expect("runtime should apply changed file update");
 
     assert!(report.accepted);
-    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
+    assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1785,7 +1785,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
 
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1806,7 +1806,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1821,7 +1821,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
         .expect("staged changed-file report");
 
     assert!(report.accepted);
-    assert_eq!(report.changed_functions, vec!["game.reward.grant"]);
+    assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert!(
         !runtime
             .has_pending_hot_update()
@@ -1829,7 +1829,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1862,7 +1862,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
         .expect("hot reload rejection should be staged");
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1881,11 +1881,11 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
     assert!(matches!(
         report.errors[0].error.kind,
         HotReloadErrorKind::NewFunctionDenied { ref function }
-            if function == "game.reward.helper"
+            if function == "game::reward::helper"
     ));
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1925,7 +1925,7 @@ pub fn grant() {
         .expect("compile rejection should be staged as a hot reload report");
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -1950,7 +1950,7 @@ pub fn grant() {
     );
     assert_eq!(
         runtime.call(
-            "game.main.main",
+            "game::main::main",
             &[],
             CallOptions::unbounded(),
             &mut adapter,
@@ -2119,7 +2119,7 @@ fn write_reward_modules(
         game_dir.join("main.vela"),
         format!(
             r#"
-use game.reward.grant
+use game::reward::grant
 
 fn main() {{
     {main_return}

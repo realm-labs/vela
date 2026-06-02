@@ -11,12 +11,12 @@ fn conformance_graph() -> ModuleGraph {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("conformance.core"),
+        ModulePath::from_qualified("conformance::core"),
         CORE_LANGUAGE,
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
-        ModulePath::from_dotted("conformance.reward"),
+        ModulePath::from_qualified("conformance::reward"),
         REWARD_MODULE,
     ));
     graph.resolve_imports();
@@ -62,7 +62,7 @@ fn core_language_fixture_resolves() {
     assert_eq!(
         reward_attrs[2].value.as_deref(),
         Some(
-            "kind=conformance.reward.Rule,tags=[\"core\",\"fixture\"],config={enabled:true,limit:3}"
+            "kind=conformance::reward::Rule,tags=[\"core\",\"fixture\"],config={enabled:true,limit:3}"
         )
     );
     let reward_shape = graph

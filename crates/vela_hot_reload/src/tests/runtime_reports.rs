@@ -191,20 +191,20 @@ fn accepted_module_update_report_renders_module_impact() {
     let report = runtime.apply_hot_update_report(update);
     let lines = report.render_lines();
 
-    assert_eq!(report.changed_functions, ["game.reward.grant"]);
-    assert_eq!(report.changed_modules, ["game.reward"]);
-    assert_eq!(report.impacted_modules, ["game.main", "game.reward"]);
+    assert_eq!(report.changed_functions, ["game::reward::grant"]);
+    assert_eq!(report.changed_modules, ["game::reward"]);
+    assert_eq!(report.impacted_modules, ["game::main", "game::reward"]);
     assert!(lines.contains(&HotReloadReportLine::new(
         HotReloadReportLineKind::ChangedModules,
         None,
         None,
-        "changed modules: game.reward",
+        "changed modules: game::reward",
     )));
     assert!(lines.contains(&HotReloadReportLine::new(
         HotReloadReportLineKind::ImpactedModules,
         None,
         None,
-        "impacted modules: game.main, game.reward",
+        "impacted modules: game::main, game::reward",
     )));
 }
 
@@ -345,7 +345,7 @@ fn rejected_report_carries_function_abi_details() {
         ProgramVersionId(1),
         HotReloadError {
             kind: HotReloadErrorKind::ChangedFunctionEffects {
-                function: "game.reward.grant".to_owned(),
+                function: "game::reward::grant".to_owned(),
                 old: EffectAbi::host_read(),
                 new: EffectAbi::host_write(),
                 source_span: None,
@@ -500,9 +500,9 @@ fn module_sources(reward: i64) -> Vec<ModuleSource> {
     vec![
         ModuleSource::new(
             SourceId::new(1),
-            ModulePath::from_dotted("game.main"),
+            ModulePath::from_qualified("game::main"),
             r#"
-use game.reward.grant
+use game::reward::grant
 
 fn main() {
     return grant() + 1;
@@ -511,7 +511,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
-            ModulePath::from_dotted("game.reward"),
+            ModulePath::from_qualified("game::reward"),
             format!(
                 r#"
 pub fn grant() {{

@@ -22,7 +22,7 @@ impl HirTypeHint {
 
     #[must_use]
     pub fn display(&self) -> String {
-        self.path.join(".")
+        self.path.join("::")
     }
 }
 

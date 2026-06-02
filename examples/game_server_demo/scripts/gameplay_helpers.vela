@@ -10,19 +10,19 @@ fn main() {
     let count = count_text.parse_int().unwrap_or(0);
     let enabled = enabled_text.parse_bool().unwrap_or(false);
     let rate = "2.5".parse_float().unwrap_or(0.0);
-    let tags = set.from_array(["reward", item, "daily", item]);
+    let tags = set::from_array(["reward", item, "daily", item]);
     let tag_prefix = item.char_at(0).unwrap_or("");
     let label_lines = "  Quest.Gold \nReward ".trim().split_lines();
     let label = label_lines[0].trim_end().replace(".", "_").to_lower();
     let label_kind = label.slice(0, 5);
     let label_item = label.strip_prefix("quest_").unwrap_or("");
     let marker = "!".repeat(2);
-    let distance = math.distance2d(0, 0, 3, 4);
-    let diagonal = math.distance3d(0, 0, 0, 1, 2, 2);
-    let root = math.sqrt(81);
-    let step = math.move_towards(0, 10, count);
-    let clamped = math.clamp(count + math.sign(-1), 1, 10);
-    let bounded = math.max(math.min(clamped, 10), math.abs(-2));
+    let distance = math::distance2d(0, 0, 3, 4);
+    let diagonal = math::distance3d(0, 0, 0, 1, 2, 2);
+    let root = math::sqrt(81);
+    let step = math::move_towards(0, 10, count);
+    let clamped = math::clamp(count + math::sign(-1), 1, 10);
+    let bounded = math::max(math::min(clamped, 10), math::abs(-2));
 
     if enabled
         && tag_prefix == "g"
@@ -34,11 +34,11 @@ fn main() {
         && marker == "!!"
         && tags.has("gold")
         && tags.len() == 3
-        && math.floor(distance) == 5
-        && math.round(diagonal) == 3
-        && math.ceil(math.pow(2, 0.5)) == 2
-        && math.round(root) == 9
-        && math.floor(rate) == 2
+        && math::floor(distance) == 5
+        && math::round(diagonal) == 3
+        && math::ceil(math::pow(2, 0.5)) == 2
+        && math::round(root) == 9
+        && math::floor(rate) == 2
         && bounded == 2
     {
         return step + count + tags.len();

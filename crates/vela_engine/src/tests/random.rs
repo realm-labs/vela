@@ -20,7 +20,7 @@ fn engine_controlled_random_requires_permission() {
         SourceId::new(1),
         r#"
 fn main() {
-    return math.random(1, 6);
+    return math::random(1, 6);
 }
 "#,
     )
@@ -29,7 +29,7 @@ fn main() {
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "math.random".to_owned(),
+            native: "math::random".to_owned(),
             permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
         }
     ));
@@ -39,8 +39,8 @@ fn main() {
 fn engine_controlled_random_is_seeded_and_bounded() {
     let source = r#"
 fn main() {
-    let first = math.random(1, 6);
-    let second = math.random(10, 12);
+    let first = math::random(1, 6);
+    let second = math::random(10, 12);
     if first >= 1 && first <= 6 && second >= 10 && second <= 12 {
         return first * 100 + second;
     }
@@ -82,13 +82,13 @@ fn engine_controlled_random_registers_metadata() {
     let registry = engine.registry();
     let math = registry.module_by_name("math").expect("math module");
     let function = registry
-        .function_by_name("math.random")
-        .expect("math.random metadata");
+        .function_by_name("math::random")
+        .expect("math::random metadata");
     assert_eq!(math.exports.len(), 1);
     assert!(
         math.exports
             .iter()
-            .any(|export| export.name == "math.random")
+            .any(|export| export.name == "math::random")
     );
     assert_eq!(function.id, MATH_RANDOM_FUNCTION_ID);
     assert_eq!(function.module.as_deref(), Some("math"));
@@ -117,16 +117,16 @@ fn engine_controlled_random_extends_standard_math_metadata() {
     let registry = engine.registry();
     let math = registry.module_by_name("math").expect("math module");
     let random = registry
-        .function_by_name("math.random")
-        .expect("math.random metadata");
-    let max = registry.function_by_name("math.max").expect("math.max");
+        .function_by_name("math::random")
+        .expect("math::random metadata");
+    let max = registry.function_by_name("math::max").expect("math::max");
 
     assert_eq!(math.exports.len(), 15);
-    assert!(math.exports.iter().any(|export| export.name == "math.max"));
+    assert!(math.exports.iter().any(|export| export.name == "math::max"));
     assert!(
         math.exports
             .iter()
-            .any(|export| export.name == "math.random")
+            .any(|export| export.name == "math::random")
     );
     assert_eq!(
         math.docs.as_deref(),
@@ -154,16 +154,16 @@ fn engine_controlled_random_extends_standard_math_metadata() {
         SourceId::new(2),
         r#"
 fn main() {
-    let math_exports = reflect.exports("math");
-    let random = reflect.function("math.random");
-    let max = reflect.function("math.max");
-    let required = reflect.required_permissions(random);
-    let effects = reflect.effects(random);
+    let math_exports = reflect::exports("math");
+    let random = reflect::function("math::random");
+    let max = reflect::function("math::max");
+    let required = reflect::required_permissions(random);
+    let effects = reflect::effects(random);
     return math_exports.len() == 15
-        && math_exports.contains("math.max")
-        && math_exports.contains("math.random")
-        && reflect.docs(max) == "Returns the larger numeric value."
-        && reflect.docs(random) == "Returns a deterministic seeded integer in the inclusive range."
+        && math_exports.contains("math::max")
+        && math_exports.contains("math::random")
+        && reflect::docs(max) == "Returns the larger numeric value."
+        && reflect::docs(random) == "Returns a deterministic seeded integer in the inclusive range."
         && required.len() == 1
         && required[0] == "std.random"
         && !effects.reads_host
@@ -193,9 +193,9 @@ fn main() {
 fn engine_controlled_random_reflect_call_is_seeded_and_bounded() {
     let source = r#"
 fn main() {
-    let random = reflect.function("math.random");
-    let first = reflect.call(random, 1, 6);
-    let second = reflect.call(random, 10, 12);
+    let random = reflect::function("math::random");
+    let first = reflect::call(random, 1, 6);
+    let second = reflect::call(random, 10, 12);
     if first >= 1 && first <= 6 && second >= 10 && second <= 12 {
         return first * 100 + second;
     }

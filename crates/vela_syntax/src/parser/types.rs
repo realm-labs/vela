@@ -8,13 +8,21 @@ impl Parser {
         };
         parts.push(first);
 
-        while self.eat_symbol(Symbol::Dot).is_some() {
+        while self.eat_symbol(Symbol::ColonColon).is_some() {
             if let Some(part) = self.eat_ident() {
                 parts.push(part);
             } else {
                 self.error_here("expected path segment");
                 break;
             }
+        }
+        parts
+    }
+
+    pub(super) fn parse_static_path(&mut self) -> Vec<String> {
+        let parts = self.parse_path();
+        if self.check_symbol(Symbol::Dot) {
+            self.error_here("use `::` for module/type paths; `.` is value access");
         }
         parts
     }
@@ -87,13 +95,16 @@ impl Parser {
         };
         let mut path = vec![first];
 
-        while self.eat_symbol(Symbol::Dot).is_some() {
+        while self.eat_symbol(Symbol::ColonColon).is_some() {
             if let Some(segment) = self.eat_type_hint_segment() {
                 path.push(segment);
             } else {
                 self.error_here("expected type path segment");
                 break;
             }
+        }
+        if self.check_symbol(Symbol::Dot) {
+            self.error_here("use `::` for module/type paths; `.` is value access");
         }
 
         if self.check_symbol(Symbol::Less) {

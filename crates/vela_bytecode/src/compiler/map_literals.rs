@@ -20,7 +20,7 @@ fn map_key_name(key: &Expr) -> CompileResult<String> {
         ExprKind::Literal(Literal::String(value))
         | ExprKind::Literal(Literal::Int(value))
         | ExprKind::Literal(Literal::Float(value)) => Ok(value.clone()),
-        ExprKind::Path(path) => Ok(path.join(".")),
+        ExprKind::Path(path) => Ok(path.join("::")),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "map key",
         ))),

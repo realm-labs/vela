@@ -19,7 +19,7 @@ fn engine_registers_typed_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_host_native_fn::<(HostRef, i64), _>(
-            NativeFunctionDesc::new("game.typed_host_set_level", NativeFunctionId::new(106))
+            NativeFunctionDesc::new("game::typed_host_set_level", NativeFunctionId::new(106))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -36,7 +36,7 @@ fn engine_registers_typed_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game.typed_host_set_level(player, 19);
+    game::typed_host_set_level(player, 19);
     return 1;
 }
 "#,
@@ -71,7 +71,7 @@ fn typed_host_native_conversion_errors_before_patch() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_host_native_fn::<(HostRef, i64), _>(
-            NativeFunctionDesc::new("game.typed_host_set_level", NativeFunctionId::new(107))
+            NativeFunctionDesc::new("game::typed_host_set_level", NativeFunctionId::new(107))
                 .access(FunctionAccess::public().require_permission("player.write")),
             typed_host_set_level,
         )
@@ -81,7 +81,7 @@ fn typed_host_native_conversion_errors_before_patch() {
         SourceId::new(1),
         r#"
 fn main() {
-    game.typed_host_set_level("not a host", 19);
+    game::typed_host_set_level("not a host", 19);
     return 1;
 }
 "#,
@@ -122,7 +122,7 @@ fn engine_registers_four_arg_typed_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_host_native_fn::<(HostRef, i64, i64, i64), _>(
-            NativeFunctionDesc::new("game.typed_host_sum_level", NativeFunctionId::new(222))
+            NativeFunctionDesc::new("game::typed_host_sum_level", NativeFunctionId::new(222))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -141,7 +141,7 @@ fn engine_registers_four_arg_typed_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.typed_host_sum_level(player, 2, 3, 4);
+    return game::typed_host_sum_level(player, 2, 3, 4);
 }
 "#,
     )
@@ -175,7 +175,7 @@ fn engine_registers_five_arg_typed_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_host_native_fn::<(HostRef, i64, i64, i64, i64), _>(
-            NativeFunctionDesc::new("game.typed_host_sum5_level", NativeFunctionId::new(230))
+            NativeFunctionDesc::new("game::typed_host_sum5_level", NativeFunctionId::new(230))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -195,7 +195,7 @@ fn engine_registers_five_arg_typed_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.typed_host_sum5_level(player, 2, 3, 4, 5);
+    return game::typed_host_sum5_level(player, 2, 3, 4, 5);
 }
 "#,
     )
@@ -229,7 +229,7 @@ fn engine_registers_six_arg_typed_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_host_native_fn::<(HostRef, i64, i64, i64, i64, i64), _>(
-            NativeFunctionDesc::new("game.typed_host_sum6_level", NativeFunctionId::new(238))
+            NativeFunctionDesc::new("game::typed_host_sum6_level", NativeFunctionId::new(238))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -250,7 +250,7 @@ fn engine_registers_six_arg_typed_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.typed_host_sum6_level(player, 2, 3, 4, 5, 6);
+    return game::typed_host_sum6_level(player, 2, 3, 4, 5, 6);
 }
 "#,
     )
@@ -335,7 +335,7 @@ fn engine_registers_typed_context_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_context_host_native_fn::<(HostRef, i64), _>(
-            NativeFunctionDesc::new("game.typed_set_level", NativeFunctionId::new(104))
+            NativeFunctionDesc::new("game::typed_set_level", NativeFunctionId::new(104))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -352,7 +352,7 @@ fn engine_registers_typed_context_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.typed_set_level(player, 17);
+    return game::typed_set_level(player, 17);
 }
 "#,
     )
@@ -386,7 +386,7 @@ fn typed_context_host_native_conversion_errors_before_patch() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_context_host_native_fn::<(HostRef, i64), _>(
-            NativeFunctionDesc::new("game.typed_set_level", NativeFunctionId::new(105))
+            NativeFunctionDesc::new("game::typed_set_level", NativeFunctionId::new(105))
                 .access(FunctionAccess::public().require_permission("player.write")),
             typed_set_level,
         )
@@ -396,7 +396,7 @@ fn typed_context_host_native_conversion_errors_before_patch() {
         SourceId::new(1),
         r#"
 fn main() {
-    game.typed_set_level("not a host", 17);
+    game::typed_set_level("not a host", 17);
     return 1;
 }
 "#,
@@ -443,7 +443,7 @@ fn engine_registers_four_arg_typed_context_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_context_host_native_fn::<(HostRef, i64, i64, i64), _>(
-            NativeFunctionDesc::new("game.typed_context_sum_level", NativeFunctionId::new(223))
+            NativeFunctionDesc::new("game::typed_context_sum_level", NativeFunctionId::new(223))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -462,7 +462,7 @@ fn engine_registers_four_arg_typed_context_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.typed_context_sum_level(player, 5, 6, 7);
+    return game::typed_context_sum_level(player, 5, 6, 7);
 }
 "#,
     )
@@ -496,7 +496,7 @@ fn engine_registers_five_arg_typed_context_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_context_host_native_fn::<(HostRef, i64, i64, i64, i64), _>(
-            NativeFunctionDesc::new("game.typed_context_sum5_level", NativeFunctionId::new(231))
+            NativeFunctionDesc::new("game::typed_context_sum5_level", NativeFunctionId::new(231))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -516,7 +516,7 @@ fn engine_registers_five_arg_typed_context_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.typed_context_sum5_level(player, 5, 6, 7, 8);
+    return game::typed_context_sum5_level(player, 5, 6, 7, 8);
 }
 "#,
     )
@@ -550,7 +550,7 @@ fn engine_registers_six_arg_typed_context_host_native_functions() {
     let engine = Engine::builder()
         .grant_permission("player.write")
         .register_typed_context_host_native_fn::<(HostRef, i64, i64, i64, i64, i64), _>(
-            NativeFunctionDesc::new("game.typed_context_sum6_level", NativeFunctionId::new(239))
+            NativeFunctionDesc::new("game::typed_context_sum6_level", NativeFunctionId::new(239))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -571,7 +571,7 @@ fn engine_registers_six_arg_typed_context_host_native_functions() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    return game.typed_context_sum6_level(player, 5, 6, 7, 8, 9);
+    return game::typed_context_sum6_level(player, 5, 6, 7, 8, 9);
 }
 "#,
     )

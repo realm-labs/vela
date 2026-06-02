@@ -3,8 +3,8 @@ use quote::format_ident;
 use syn::{FnArg, ItemFn, LitBool, LitStr, PatType, Result, ReturnType, Type, parse::Parser};
 
 use crate::attrs::{
-    error, parse_dotted_name, parse_key_value_attr, parse_permission, reject_duplicate_attr_keys,
-    spanned_error,
+    error, parse_key_value_attr, parse_permission, parse_qualified_name,
+    reject_duplicate_attr_keys, spanned_error,
 };
 use crate::signature::{
     is_mut_reference_to_type, param_name, reject_script_reference_param,
@@ -116,13 +116,13 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
         let value = meta.value()?;
         match name.as_str() {
             "name" => {
-                parsed.name = Some(parse_dotted_name(
+                parsed.name = Some(parse_qualified_name(
                     value.parse::<LitStr>()?,
                     "script_function name",
                 )?);
             }
             "alias" => {
-                parsed.alias = Some(parse_dotted_name(
+                parsed.alias = Some(parse_qualified_name(
                     value.parse::<LitStr>()?,
                     "script_function alias",
                 )?);

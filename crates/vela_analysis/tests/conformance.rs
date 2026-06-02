@@ -11,12 +11,12 @@ fn conformance_graph() -> ModuleGraph {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
-        ModulePath::from_dotted("conformance.core"),
+        ModulePath::from_qualified("conformance::core"),
         CORE_LANGUAGE,
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
-        ModulePath::from_dotted("conformance.reward"),
+        ModulePath::from_qualified("conformance::reward"),
         REWARD_MODULE,
     ));
     graph.resolve_imports();
@@ -38,27 +38,27 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
 
     assert_eq!(
         facts.declaration(declaration(&graph, "Reward").id),
-        Some(&TypeFact::record("conformance.core.Reward"))
+        Some(&TypeFact::record("conformance::core::Reward"))
     );
     assert_eq!(
         facts.declaration(declaration(&graph, "QuestState").id),
         Some(&TypeFact::enum_type(
-            "conformance.core.QuestState",
+            "conformance::core::QuestState",
             None::<String>
         ))
     );
     assert_eq!(
         facts.declaration(declaration(&graph, "Scored").id),
-        Some(&TypeFact::trait_type("conformance.core.Scored"))
+        Some(&TypeFact::trait_type("conformance::core::Scored"))
     );
     assert_eq!(
         facts.declaration(declaration(&graph, "RewardConfig").id),
-        Some(&TypeFact::record("conformance.reward.RewardConfig"))
+        Some(&TypeFact::record("conformance::reward::RewardConfig"))
     );
     assert_eq!(
         facts.declaration(declaration(&graph, "RewardOutcome").id),
         Some(&TypeFact::enum_type(
-            "conformance.reward.RewardOutcome",
+            "conformance::reward::RewardOutcome",
             None::<String>
         ))
     );
@@ -67,19 +67,19 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     let bindings = graph.bindings(main.id).expect("main bindings should exist");
     assert_eq!(
         local_fact(bindings, &facts, "reward"),
-        Some(TypeFact::record("conformance.core.Reward"))
+        Some(TypeFact::record("conformance::core::Reward"))
     );
     assert_eq!(
         local_fact(bindings, &facts, "quest"),
         Some(TypeFact::enum_type(
-            "conformance.core.QuestState",
+            "conformance::core::QuestState",
             None::<String>
         ))
     );
     assert_eq!(
         local_fact(bindings, &facts, "streak"),
         Some(TypeFact::enum_type(
-            "conformance.core.QuestState",
+            "conformance::core::QuestState",
             None::<String>
         ))
     );
@@ -158,7 +158,7 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "imported_reward"),
-        Some(TypeFact::record("conformance.reward.RewardConfig"))
+        Some(TypeFact::record("conformance::reward::RewardConfig"))
     );
     assert_eq!(
         local_fact(bindings, &facts, "imported_bonus"),
@@ -167,7 +167,7 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     assert_eq!(
         local_fact(bindings, &facts, "outcome"),
         Some(TypeFact::enum_type(
-            "conformance.reward.RewardOutcome",
+            "conformance::reward::RewardOutcome",
             None::<String>
         ))
     );

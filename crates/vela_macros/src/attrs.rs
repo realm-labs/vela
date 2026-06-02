@@ -62,11 +62,17 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             if path_name(&meta.path, "name") {
                 parsed.name = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "path") {
-                parsed.path = Some(parse_dotted_name(value.parse::<LitStr>()?, "script path")?);
+                parsed.path = Some(parse_qualified_name(
+                    value.parse::<LitStr>()?,
+                    "script path",
+                )?);
             } else if path_name(&meta.path, "alias") {
-                parsed.alias = Some(parse_dotted_name(value.parse::<LitStr>()?, "script alias")?);
+                parsed.alias = Some(parse_qualified_name(
+                    value.parse::<LitStr>()?,
+                    "script alias",
+                )?);
             } else if path_name(&meta.path, "module") {
-                parsed.module = Some(parse_dotted_name(
+                parsed.module = Some(parse_qualified_name(
                     value.parse::<LitStr>()?,
                     "script module",
                 )?);
@@ -77,7 +83,7 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
                     .attrs
                     .push(parse_key_value_attr(value.parse::<LitStr>()?, "script")?);
             } else if path_name(&meta.path, "implements") {
-                parsed.traits.push(parse_dotted_name(
+                parsed.traits.push(parse_qualified_name(
                     value.parse::<LitStr>()?,
                     "script implemented trait",
                 )?);
@@ -117,12 +123,12 @@ pub(crate) fn parse_permission(literal: LitStr, context: &str) -> Result<String>
     Ok(permission)
 }
 
-pub(crate) fn parse_dotted_name(literal: LitStr, context: &str) -> Result<String> {
+pub(crate) fn parse_qualified_name(literal: LitStr, context: &str) -> Result<String> {
     let name = literal.value();
-    if !is_valid_dotted_name(&name) {
+    if !is_valid_qualified_name(&name) {
         return Err(error(
             literal.span(),
-            &format!("{context} must be a non-empty dotted name"),
+            &format!("{context} must be a non-empty `::` qualified name"),
         ));
     }
     Ok(name)
@@ -165,18 +171,18 @@ pub(crate) fn parse_type_hint(literal: LitStr, context: &str) -> Result<String> 
         || hint.trim() != hint
         || hint.contains('<')
         || hint.contains('>')
-        || !is_valid_dotted_name(&hint)
+        || !is_valid_qualified_name(&hint)
     {
         return Err(error(
             literal.span(),
-            &format!("{context} type hint must be a non-generic dotted name"),
+            &format!("{context} type hint must be a non-generic `::` qualified name"),
         ));
     }
     Ok(hint)
 }
 
-fn is_valid_dotted_name(name: &str) -> bool {
-    !name.is_empty() && name.split('.').all(|segment| !segment.is_empty())
+fn is_valid_qualified_name(name: &str) -> bool {
+    !name.is_empty() && !name.contains('.') && name.split("::").all(|segment| !segment.is_empty())
 }
 
 fn parse_doc_attr(attr: &Attribute) -> Result<Option<String>> {

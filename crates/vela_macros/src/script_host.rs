@@ -190,7 +190,7 @@ fn type_identity(
             let module = module_attr.ok_or_else(|| {
                 error(
                     ident.span(),
-                    "ScriptHost requires #[script(path = \"module.Type\")] or #[script(module = \"module\")]",
+                    "ScriptHost requires #[script(path = \"module::Type\")] or #[script(module = \"module\")]",
                 )
             })?;
             let name = name_attr.unwrap_or_else(|| ident.to_string());
@@ -200,13 +200,13 @@ fn type_identity(
             (module, name)
         }
     };
-    let current_path = format!("{module}.{name}");
+    let current_path = format!("{module}::{name}");
     let stable_path = alias
         .map(|alias| {
-            if alias.contains('.') {
+            if alias.contains("::") {
                 alias
             } else {
-                format!("{module}.{alias}")
+                format!("{module}::{alias}")
             }
         })
         .unwrap_or_else(|| current_path.clone());
@@ -222,7 +222,7 @@ fn type_identity(
 }
 
 fn split_type_path(path: &str, ident: &Ident) -> Result<(String, String)> {
-    let Some((module, name)) = path.rsplit_once('.') else {
+    let Some((module, name)) = path.rsplit_once("::") else {
         return Err(error(
             ident.span(),
             "script path must include a module and type name",
@@ -247,7 +247,7 @@ mod tests {
     fn rejects_duplicate_field_aliases() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
                     #[script(get, alias = "score")]
                     level: u32,
@@ -266,7 +266,7 @@ mod tests {
     fn rejects_duplicate_field_names() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
                     #[script(get, name = "level")]
                     level: u32,
@@ -285,7 +285,7 @@ mod tests {
     fn rejects_empty_field_names() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
                     #[script(get, name = "")]
                     level: u32,
@@ -306,7 +306,7 @@ mod tests {
     fn rejects_empty_field_permissions() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
                     #[script(get, permission = "")]
                     level: u32,
@@ -327,7 +327,7 @@ mod tests {
     fn rejects_duplicate_type_attrs() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player", attr = "domain=gameplay", attr = "domain=combat")]
+                #[script(path = "game::player::Player", attr = "domain=gameplay", attr = "domain=combat")]
                 struct Player {
                     #[script(get)]
                     level: u32,
@@ -348,7 +348,7 @@ mod tests {
     fn rejects_duplicate_field_attrs() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
                     #[script(get, attr = "unit=level", attr = "unit=rank")]
                     level: u32,
@@ -369,7 +369,7 @@ mod tests {
     fn rejects_empty_field_type_hints() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
                     #[script(get, hint = "")]
                     inventory: Vec<String>,
@@ -382,7 +382,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script type hint must be a non-generic dotted name")
+                .contains("script type hint must be a non-generic `::` qualified name")
         );
     }
 
@@ -390,7 +390,7 @@ mod tests {
     fn rejects_generic_field_type_hints() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
                     #[script(get, hint = "Array<Item>")]
                     inventory: Vec<String>,
@@ -403,7 +403,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script type hint must be a non-generic dotted name")
+                .contains("script type hint must be a non-generic `::` qualified name")
         );
     }
 
@@ -411,9 +411,9 @@ mod tests {
     fn rejects_malformed_field_type_hints() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player")]
+                #[script(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, type = "game..Inventory")]
+                    #[script(get, type = "game::::Inventory")]
                     inventory: Vec<String>,
                 }
             },
@@ -424,7 +424,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script type hint must be a non-generic dotted name")
+                .contains("script type hint must be a non-generic `::` qualified name")
         );
     }
 
@@ -444,7 +444,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("requires #[script(path = \"module.Type\")]")
+                .contains("requires #[script(path = \"module::Type\")]")
         );
     }
 
@@ -452,7 +452,7 @@ mod tests {
     fn rejects_empty_type_names() {
         let error = expand_result(
             quote! {
-                #[script(module = "game.player", name = "")]
+                #[script(module = "game::player", name = "")]
                 struct Player {
                     #[script(get)]
                     level: u32,
@@ -486,13 +486,13 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script module must be a non-empty dotted name")
+                .contains("script module must be a non-empty `::` qualified name")
         );
     }
 
     #[test]
     fn rejects_malformed_module_names() {
-        for module in [".game", "game.", "game..player"] {
+        for module in ["::game", "game::", "game::::player", "game.player"] {
             let error = expand_result(
                 quote! {
                     #[script(module = #module)]
@@ -508,7 +508,7 @@ mod tests {
             assert!(
                 error
                     .to_string()
-                    .contains("script module must be a non-empty dotted name")
+                    .contains("script module must be a non-empty `::` qualified name")
             );
         }
     }
@@ -517,7 +517,7 @@ mod tests {
     fn rejects_malformed_static_attrs() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.player.Player", attr = "gameplay")]
+                #[script(path = "game::player::Player", attr = "gameplay")]
                 struct Player {
                     #[script(get)]
                     level: u32,
@@ -538,7 +538,7 @@ mod tests {
     fn infers_fixed_array_field_type_hints() {
         let tokens = expand_result(
             quote! {
-                #[script(path = "game.spawn.SpawnTable")]
+                #[script(path = "game::spawn::SpawnTable")]
                 struct SpawnTable {
                     #[script(get)]
                     weights: [i64; 3],
@@ -556,7 +556,7 @@ mod tests {
     fn rejects_generic_host_schemas() {
         let error = expand_result(
             quote! {
-                #[script(path = "game.inventory.Inventory")]
+                #[script(path = "game::inventory::Inventory")]
                 struct Inventory<T>
                 where
                     T: Clone,

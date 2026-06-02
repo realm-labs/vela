@@ -34,7 +34,7 @@ const OPTION_METHODS: &[MethodSpec] = &[
         "ok_or",
         &[ParamSpec::new("error", "any")],
         "Result",
-        "Converts Option.None to Result.Err with an error value.",
+        "Converts Option::None to Result::Err with an error value.",
     ),
     MethodSpec::new(
         option_id(4),
@@ -48,14 +48,14 @@ const OPTION_METHODS: &[MethodSpec] = &[
         "map",
         &[ParamSpec::new("callback", "function")],
         "Option",
-        "Maps an Option.Some payload with a callback.",
+        "Maps an Option::Some payload with a callback.",
     ),
     MethodSpec::new(
         option_id(6),
         "and_then",
         &[ParamSpec::new("callback", "function")],
         "Option",
-        "Chains an Option.Some payload through an Option-returning callback.",
+        "Chains an Option::Some payload through an Option-returning callback.",
     ),
     MethodSpec::new(
         option_id(7),
@@ -69,7 +69,7 @@ const OPTION_METHODS: &[MethodSpec] = &[
         "filter",
         &[ParamSpec::new("predicate", "function")],
         "Option",
-        "Keeps an Option.Some payload accepted by a predicate.",
+        "Keeps an Option::Some payload accepted by a predicate.",
     ),
 ];
 

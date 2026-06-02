@@ -146,5 +146,5 @@ pub(crate) fn value_to_host(
 }
 
 fn enum_variant_owner(enum_name: &str, variant: &str) -> String {
-    format!("{enum_name}.{variant}")
+    format!("{enum_name}::{variant}")
 }
