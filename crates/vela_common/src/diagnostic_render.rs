@@ -66,7 +66,7 @@ impl DiagnosticRenderer {
             return;
         };
 
-        let Some(line) = line_for_span(&source.text, span) else {
+        let Some(span_lines) = lines_for_span(&source.text, span) else {
             lines.push(format!(
                 "  --> {}:{}..{}",
                 source.name, span.start, span.end
@@ -76,23 +76,28 @@ impl DiagnosticRenderer {
             }
             return;
         };
+        let Some(first_line) = span_lines.first() else {
+            return;
+        };
 
         lines.push(format!(
             "  --> {}:{}:{}",
-            source.name, line.number, line.column
+            source.name, first_line.number, first_line.column
         ));
         lines.push("   |".to_owned());
-        lines.push(format!("{:>3} | {}", line.number, line.text));
-        lines.push(format!(
-            "   | {}{}{}",
-            " ".repeat(line.caret_padding),
-            "^".repeat(line.caret_width),
-            if message.is_empty() {
-                String::new()
-            } else {
-                format!(" {message}")
-            }
-        ));
+        for (index, line) in span_lines.iter().enumerate() {
+            lines.push(format!("{:>3} | {}", line.number, line.text));
+            lines.push(format!(
+                "   | {}{}{}",
+                " ".repeat(line.caret_padding),
+                "^".repeat(line.caret_width),
+                if index == 0 && !message.is_empty() {
+                    format!(" {message}")
+                } else {
+                    String::new()
+                }
+            ));
+        }
     }
 }
 
@@ -120,7 +125,7 @@ struct RenderLine {
     caret_width: usize,
 }
 
-fn line_for_span(source: &str, span: Span) -> Option<RenderLine> {
+fn lines_for_span(source: &str, span: Span) -> Option<Vec<RenderLine>> {
     let start = usize::try_from(span.start).ok()?;
     let end = usize::try_from(span.end).ok()?;
     if start > source.len()
@@ -131,26 +136,44 @@ fn line_for_span(source: &str, span: Span) -> Option<RenderLine> {
         return None;
     }
 
-    let line_start = source[..start].rfind('\n').map_or(0, |index| index + 1);
-    let line_end = source[start..]
-        .find('\n')
-        .map_or(source.len(), |index| start + index);
-    let line_text = &source[line_start..line_end];
-    let line_number = source[..line_start]
+    let mut lines = Vec::new();
+    let mut line_start = source[..start].rfind('\n').map_or(0, |index| index + 1);
+    let mut line_number = source[..line_start]
         .bytes()
         .filter(|byte| *byte == b'\n')
         .count()
         + 1;
-    let prefix = &source[line_start..start];
-    let highlighted = &source[start..end.max(start + 1).min(line_end)];
+    let highlight_end = end.max(start + 1).min(source.len());
 
-    Some(RenderLine {
-        number: line_number,
-        column: prefix.chars().count() + 1,
-        text: line_text.to_owned(),
-        caret_padding: prefix.chars().count(),
-        caret_width: highlighted.chars().count().max(1),
-    })
+    loop {
+        let line_end = source[line_start..]
+            .find('\n')
+            .map_or(source.len(), |index| line_start + index);
+        let display_end = source[line_start..line_end]
+            .strip_suffix('\r')
+            .map_or(line_end, |text| line_start + text.len());
+        let caret_start = start.max(line_start).min(display_end);
+        let caret_end = highlight_end.min(display_end);
+        if caret_start <= caret_end && (caret_start < caret_end || lines.is_empty()) {
+            let prefix = &source[line_start..caret_start];
+            let highlighted = &source[caret_start..caret_end];
+            lines.push(RenderLine {
+                number: line_number,
+                column: prefix.chars().count() + 1,
+                text: source[line_start..display_end].to_owned(),
+                caret_padding: prefix.chars().count(),
+                caret_width: highlighted.chars().count().max(1),
+            });
+        }
+
+        if line_end >= highlight_end || line_end == source.len() {
+            break;
+        }
+        line_start = line_end + 1;
+        line_number += 1;
+    }
+
+    Some(lines)
 }
 
 #[cfg(test)]
@@ -203,6 +226,32 @@ error[hir::unknown_field]: unknown field `levle`
                 "  --> <source 9>:4..8",
                 "   = unmapped source",
             ]
+        );
+    }
+
+    #[test]
+    fn renders_multi_line_spans() {
+        let source = DiagnosticSource::new(
+            SourceId::new(1),
+            "combat.vela",
+            "fn main() {\n    player.level += 1\n    player.exp = 0\n}\n",
+        );
+        let diagnostic = Diagnostic::error("top-level host mutation")
+            .with_code("hir::top_level_effect")
+            .with_span(Span::new(SourceId::new(1), 12, 52));
+
+        let lines = render_diagnostic(&diagnostic, [source]);
+
+        assert_eq!(
+            lines.join("\n"),
+            "\
+error[hir::top_level_effect]: top-level host mutation
+  --> combat.vela:2:1
+   |
+  2 |     player.level += 1
+   | ^^^^^^^^^^^^^^^^^^^^^ top-level host mutation
+  3 |     player.exp = 0
+   | ^^^^^^^^^^^^^^^^^^"
         );
     }
 }

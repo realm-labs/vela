@@ -56,6 +56,8 @@ conformance contracts are stable.
   and caller bytecode offsets for debugger/tooling foundations.
 - VM call frames can report register-to-GC-root mappings while preserving the
   existing flat root list used by collection.
+- Shared diagnostic rendering expands multi-line source spans while preserving
+  stable single-line and missing-source output.
 - Host mutation goes through HostRef, HostPath, PathProxy, PatchTx, overlays,
   permissions, and safe-point apply.
 - Reflection covers types, fields, methods, variants, traits, modules,
