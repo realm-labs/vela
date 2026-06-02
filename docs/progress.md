@@ -113,6 +113,8 @@ closes or exposes a more specific gap.
   safe points without advancing the active version.
 - Runtime source-file reload staging reports required function parameter
   additions at safe points without advancing the active version.
+- Runtime source-file reload staging reports native descriptor effect ABI
+  rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports top-level const side-effect
   compile rejections at safe points without advancing the active version.
 - Runtime directory reload staging reports compile diagnostics at safe points
