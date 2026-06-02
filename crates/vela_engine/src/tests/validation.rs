@@ -1,4 +1,5 @@
 use vela_common::{FieldId, HostMethodId, HostTypeId, MethodId, TraitId, TypeId, VariantId};
+use vela_reflect::access::FieldAccess;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, TraitMethodDesc, TypeDesc, TypeKey, TypeKind,
@@ -10,7 +11,7 @@ use vela_vm::value::Value;
 use crate::engine::Engine;
 use crate::error::EngineErrorKind;
 use crate::method::NativeMethodDesc;
-use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::native::{FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
 use crate::standard::{INT_TYPE_ID, MATH_CLAMP_FUNCTION_ID};
 
 use super::{player_type, trait_desc_with_id};
@@ -52,6 +53,19 @@ fn engine_rejects_duplicate_native_function_ids() {
     assert!(matches!(
         result.map(|_| ()),
         Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionId { id: 10 }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_granted_permissions() {
+    let result = Engine::builder().grant_permission("").build();
+
+    assert!(matches!(
+        result.map(|_| ()),
+        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
+            descriptor: "engine granted permission".to_owned(),
+            name: "".to_owned(),
+        }
     ));
 }
 
@@ -111,6 +125,25 @@ fn engine_rejects_duplicate_native_function_param_names() {
         Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionParamName {
             function: "game.grant_reward".to_owned(),
             name: "amount".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_native_function_required_permissions() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game.grant_reward", NativeFunctionId::new(38))
+                .access(FunctionAccess::public().require_permission("")),
+            |_| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
+            descriptor: "native function game.grant_reward".to_owned(),
+            name: "".to_owned(),
         }
     ));
 }
@@ -437,6 +470,28 @@ fn engine_rejects_malformed_field_names() {
 }
 
 #[test]
+fn engine_rejects_empty_field_required_permissions() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(HostTypeId::new(1))
+                .field(
+                    FieldDesc::new(FieldId::new(1), "level")
+                        .access(FieldAccess::new().require_permission("")),
+                ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
+            descriptor: "field Player.level".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_host_type_ids() {
     let result = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
@@ -755,6 +810,46 @@ fn engine_rejects_duplicate_host_method_param_names() {
             type_name: "Player".to_owned(),
             method: "grant_exp".to_owned(),
             name: "amount".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_host_method_required_permissions() {
+    let result = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1)).method(
+                MethodDesc::new(HostMethodId::new(1), "grant_exp")
+                    .access(vela_reflect::access::MethodAccess::new().require_permission("")),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
+            descriptor: "host method Player.grant_exp".to_owned(),
+            name: "".to_owned(),
+        }
+    ));
+}
+
+#[test]
+fn engine_rejects_empty_native_method_required_permissions() {
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let result = Engine::builder()
+        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_host_method_desc(
+            NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp")
+                .access(FunctionAccess::public().require_permission("")),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
+            descriptor: "host method Player.grant_exp".to_owned(),
+            name: "".to_owned(),
         }
     ));
 }

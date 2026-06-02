@@ -188,6 +188,27 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_field_permissions() {
+        let error = expand_result(
+            quote! {
+                #[script(id = 100)]
+                struct Player {
+                    #[script(get, id = 1, permission = "")]
+                    level: u32,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("empty field permission should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script permission cannot be empty")
+        );
+    }
+
+    #[test]
     fn rejects_missing_type_id() {
         let error = expand_result(
             quote! {

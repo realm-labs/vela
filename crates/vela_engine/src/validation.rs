@@ -9,6 +9,7 @@ use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry, TypeHint,
 };
+use crate::permission::PermissionSet;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ModuleValidationOptions {
@@ -104,6 +105,10 @@ pub(crate) fn validate_types(types: &[TypeDesc], include_standard_types: bool) -
     Ok(())
 }
 
+pub(crate) fn validate_granted_permissions(permissions: &PermissionSet) -> EngineResult<()> {
+    validate_permission_names("engine granted permission", permissions.iter())
+}
+
 fn validate_type_desc(
     desc: &TypeDesc,
     ids: &mut BTreeSet<vela_common::TypeId>,
@@ -152,6 +157,14 @@ fn validate_type_desc(
             }));
         }
         validate_host_method_params(desc.key.name.as_str(), method.name.as_str(), &method.params)?;
+        validate_permission_names(
+            &format!("host method {}.{}", desc.key.name, method.name),
+            method
+                .access
+                .required_permissions()
+                .iter()
+                .map(String::as_str),
+        )?;
     }
 
     Ok(())
@@ -162,6 +175,14 @@ fn validate_type_fields(desc: &TypeDesc) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for field in &desc.fields {
         validate_schema_member_name(&desc.key.name, "field", &field.name)?;
+        validate_permission_names(
+            &format!("field {}.{}", desc.key.name, field.name),
+            field
+                .access
+                .required_permissions()
+                .iter()
+                .map(String::as_str),
+        )?;
         if !ids.insert(field.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateFieldId {
                 type_name: desc.key.name.clone(),
@@ -208,6 +229,17 @@ fn validate_variant_fields(
     let mut names = BTreeSet::new();
     for field in &variant.fields {
         validate_schema_member_name(type_name, "variant field", &field.name)?;
+        validate_permission_names(
+            &format!(
+                "variant field {}.{}.{}",
+                type_name, variant.name, field.name
+            ),
+            field
+                .access
+                .required_permissions()
+                .iter()
+                .map(String::as_str),
+        )?;
         if !ids.insert(field.id) {
             return Err(EngineError::new(EngineErrorKind::DuplicateVariantFieldId {
                 type_name: type_name.to_owned(),
@@ -417,6 +449,10 @@ fn validate_native_function_desc(
         &format!("native function {} return", desc.name),
         type_hints,
     )?;
+    validate_permission_names(
+        &format!("native function {}", desc.name),
+        desc.access.required_permissions.iter(),
+    )?;
     validate_native_function_params(desc, type_hints)
 }
 
@@ -518,6 +554,21 @@ fn validate_type_hint(
         | TypeHint::Host(_)
         | TypeHint::Function => Ok(()),
     }
+}
+
+fn validate_permission_names<'a>(
+    descriptor: &str,
+    permissions: impl IntoIterator<Item = &'a str>,
+) -> EngineResult<()> {
+    for permission in permissions {
+        if permission.is_empty() {
+            return Err(EngineError::new(EngineErrorKind::InvalidPermissionName {
+                descriptor: descriptor.to_owned(),
+                name: permission.to_owned(),
+            }));
+        }
+    }
+    Ok(())
 }
 
 fn is_valid_dotted_name(name: &str) -> bool {

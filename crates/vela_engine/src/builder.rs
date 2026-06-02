@@ -292,6 +292,7 @@ impl EngineBuilder {
             &types,
             self.standard_natives,
         )?;
+        validation::validate_granted_permissions(&self.permissions)?;
 
         let mut registry = TypeRegistry::new();
         for desc in types {

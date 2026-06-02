@@ -143,6 +143,23 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_method_permissions() {
+        let error = expand_result(quote! {
+            impl Player {
+                #[script_method(id = 1, permission = "")]
+                pub fn add_exp(player: HostRef, amount: i64) {}
+            }
+        })
+        .expect_err("empty method permission should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script_method permission cannot be empty")
+        );
+    }
+
+    #[test]
     fn rejects_self_receivers() {
         let error = expand_result(quote! {
             impl Player {

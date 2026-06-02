@@ -4,7 +4,7 @@ use syn::{
     FnArg, ItemFn, LitBool, LitInt, LitStr, PatType, Result, ReturnType, Type, parse::Parser,
 };
 
-use crate::attrs::{error, parse_key_value_attr, spanned_error};
+use crate::attrs::{error, parse_key_value_attr, parse_permission, spanned_error};
 use crate::signature::{
     is_mut_reference_to_type, param_name, reject_script_reference_param,
     reject_script_reference_return, reject_unsupported_integer_type, type_ident,
@@ -124,7 +124,10 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
                 value.parse::<LitStr>()?,
                 "script_function",
             )?),
-            "permission" => parsed.permissions.push(value.parse::<LitStr>()?.value()),
+            "permission" => parsed.permissions.push(parse_permission(
+                value.parse::<LitStr>()?,
+                "script_function",
+            )?),
             "reflect" | "reflect_callable" => {
                 parsed.reflect_callable = value.parse::<LitBool>()?.value;
             }

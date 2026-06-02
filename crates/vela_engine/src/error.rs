@@ -55,6 +55,10 @@ pub enum EngineErrorKind {
         descriptor: String,
         type_name: String,
     },
+    InvalidPermissionName {
+        descriptor: String,
+        name: String,
+    },
     DuplicateHostTypeId {
         id: u32,
     },
@@ -179,6 +183,9 @@ impl fmt::Display for EngineError {
                 type_name,
             } => {
                 write!(formatter, "unknown type hint {type_name} in {descriptor}")
+            }
+            EngineErrorKind::InvalidPermissionName { descriptor, name } => {
+                write!(formatter, "invalid permission name {name} in {descriptor}")
             }
             EngineErrorKind::DuplicateHostTypeId { id } => {
                 write!(formatter, "duplicate host type id {id}")

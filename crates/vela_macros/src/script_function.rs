@@ -138,6 +138,26 @@ mod tests {
     }
 
     #[test]
+    fn rejects_empty_function_permissions() {
+        let error = expand_result(
+            quote! { id = 1, permission = "" },
+            quote! {
+                fn grant(amount: i64) -> i64 {
+                    amount
+                }
+            },
+            FunctionMode::Pure,
+        )
+        .expect_err("empty function permission should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("script_function permission cannot be empty")
+        );
+    }
+
+    #[test]
     fn rejects_function_where_clauses() {
         let error = expand_result(
             quote! { id = 1 },

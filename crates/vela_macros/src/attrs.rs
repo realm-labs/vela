@@ -73,7 +73,9 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             } else if path_name(&meta.path, "hint") || path_name(&meta.path, "type") {
                 parsed.type_hint = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "permission") {
-                parsed.permissions.push(value.parse::<LitStr>()?.value());
+                parsed
+                    .permissions
+                    .push(parse_permission(value.parse::<LitStr>()?, "script")?);
             } else {
                 return Err(meta.error("unsupported script attribute"));
             }
@@ -88,6 +90,17 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
     }
 
     Ok(parsed)
+}
+
+pub(crate) fn parse_permission(literal: LitStr, context: &str) -> Result<String> {
+    let permission = literal.value();
+    if permission.is_empty() {
+        return Err(error(
+            literal.span(),
+            &format!("{context} permission cannot be empty"),
+        ));
+    }
+    Ok(permission)
 }
 
 pub(crate) fn parse_key_value_attr(literal: LitStr, context: &str) -> Result<(String, String)> {

@@ -5,7 +5,7 @@ use syn::{
     ReturnType, Type,
 };
 
-use crate::attrs::{error, parse_key_value_attr, spanned_error};
+use crate::attrs::{error, parse_key_value_attr, parse_permission, spanned_error};
 use crate::signature::{
     docs_from_attrs, is_mut_reference_to_type, is_shared_reference_to_type, param_name,
     reject_extern_signature, reject_generic_signature, reject_script_reference_param,
@@ -145,7 +145,9 @@ fn parse_script_method_attrs(attrs: &[Attribute]) -> Result<ScriptMethodAttrs> {
                     value.parse::<LitStr>()?,
                     "script_method",
                 )?),
-                "permission" => parsed.permissions.push(value.parse::<LitStr>()?.value()),
+                "permission" => parsed
+                    .permissions
+                    .push(parse_permission(value.parse::<LitStr>()?, "script_method")?),
                 "reflect" | "reflect_callable" => {
                     parsed.reflect_callable = value.parse::<LitBool>()?.value;
                 }
