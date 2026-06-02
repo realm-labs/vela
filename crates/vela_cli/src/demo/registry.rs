@@ -28,6 +28,7 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
         .reflection_policy(ReflectPolicy::all())
         .register_host_type::<Player>()
         .register_host_type::<Monster>()
+        .register_host_type::<Inventory>()
         .register_host_type::<Config>()
         .register_host_methods::<Player>()
         .register_module(
@@ -47,11 +48,6 @@ pub(crate) fn demo_support_type_registry(ids: DemoIds) -> TypeRegistry {
     registry.register(
         context_host_type_desc()
             .field(FieldDesc::new(ids.config_field, "config").type_hint("Config")),
-    );
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(103), "Inventory"))
-            .schema_hash(SchemaHash::new(0x1000_0000_0000_0004))
-            .field(FieldDesc::new(ids.items_field, "items").type_hint("map")),
     );
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(104), "ItemStack"))
@@ -167,7 +163,15 @@ struct Config {
 }
 
 #[allow(dead_code)]
-struct Inventory;
+#[derive(ScriptHost)]
+#[script(id = 103, host_id = 5, name = "Inventory")]
+struct Inventory {
+    #[script(get, id = 15, hint = "map")]
+    items: std::collections::BTreeMap<String, ItemStack>,
+}
+
+#[allow(dead_code)]
+struct ItemStack;
 
 #[allow(dead_code)]
 struct HostQuestProgress;

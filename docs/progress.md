@@ -83,9 +83,9 @@ closes or exposes a more specific gap.
 - Macro-generated context native registrations flow through Engine permission
   checks and `NativeCallContext` budget charging before host patches are
   recorded.
-- The game-server demo registers Player, Monster, and Config host schemas
-  through `ScriptHost` derives and `register_host_type::<T>()`, while preserving
-  reflected host trait and method metadata.
+- The game-server demo registers Player, Monster, Inventory, and Config host
+  schemas through `ScriptHost` derives and `register_host_type::<T>()`, while
+  preserving reflected host trait and method metadata.
 - Hot reload validates function, method, module, trait, schema, effect, access,
   stable-ID schema rename compatibility, and source diagnostics before version
   advancement.

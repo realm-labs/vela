@@ -5,6 +5,7 @@ enum QuestProgress {
 
 fn main(ctx, player) {
     let player_type = reflect.type_info("Player");
+    let inventory_type = reflect.type_info("Inventory");
     let config_type = reflect.type_info("Config");
     let context_type = reflect.type_info("Context");
     let string_type = reflect.type_info("string");
@@ -48,6 +49,7 @@ fn main(ctx, player) {
     let range_len = reflect.method(range_type, "len");
     let range_is_empty = reflect.method(range_type, "is_empty");
     let fields = reflect.fields(player);
+    let inventory_fields = reflect.fields(inventory_type);
     let level = reflect.field(player, "level");
     let level_access = reflect.access(level);
     let method = reflect.method(player, "add_reward");
@@ -206,6 +208,13 @@ fn main(ctx, player) {
         && reflect.returns(range_is_empty) == "bool"
         && reflect.has_field(config_type, "kill_rewards")
         && reflect.field(config_type, "exp_to_next_level").type == "int"
+        && reflect.has_type("Inventory")
+        && reflect.kind(inventory_type) == "host"
+        && reflect.id(inventory_type) == 103
+        && inventory_fields.len() == 1
+        && inventory_fields[0].owner == "Inventory"
+        && inventory_fields[0].name == "items"
+        && inventory_fields[0].type == "map"
         && reflect.kind(quest_type) == "script_enum"
         && reflect.kind(host_quest_type) == "host"
         && reflect.has_field(player_type, "quest_progress")
