@@ -101,6 +101,10 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
         Some(TypeFact::Int)
     );
     assert_eq!(
+        local_fact(bindings, &facts, "array_mutation_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
         local_fact(bindings, &facts, "mapped"),
         Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown))
     );
@@ -134,6 +138,10 @@ fn core_language_fixture_analyzes_schema_and_local_hints() {
     );
     assert_eq!(
         local_fact(bindings, &facts, "string_helper_score"),
+        Some(TypeFact::Int)
+    );
+    assert_eq!(
+        local_fact(bindings, &facts, "string_utility_score"),
         Some(TypeFact::Int)
     );
     assert_eq!(

@@ -140,6 +140,32 @@ fn main() {
     } else {
         0
     };
+    let mutable_values: array = [10, 30];
+    mutable_values.insert(1, 20);
+    mutable_values.push(50);
+    let popped_value = mutable_values.pop();
+    mutable_values.extend([40, 60]);
+    let removed_value = mutable_values.remove_at(0);
+    let missing_remove = mutable_values.remove_at(99);
+    let array_mutation_score: int = if popped_value.unwrap_or(0) == 50
+        && removed_value.unwrap_or(0) == 10
+        && missing_remove.is_none()
+        && mutable_values.len() == 4
+        && mutable_values[0] == 20
+        && mutable_values[1] == 30
+        && mutable_values[2] == 40
+        && mutable_values[3] == 60
+    {
+        mutable_values.clear();
+        mutable_values.push(70);
+        if mutable_values.len() == 1 && mutable_values[0] == 70 {
+            60
+        } else {
+            0
+        }
+    } else {
+        0
+    };
 
     let quest: QuestState = QuestState.Active { id: "daily", count: 2 };
     let quest_score: int = match quest {
@@ -194,6 +220,16 @@ fn main() {
         && "xp奖励".slice(2, 4) == "奖励"
     {
         30
+    } else {
+        0
+    };
+    let padded_label = "\tQuest.Log  ";
+    let string_utility_score: int = if padded_label.trim_start().trim_end() == "Quest.Log"
+        && "wolf".to_upper() == "WOLF"
+        && "xp".repeat(3) == "xpxpxp"
+        && "quest".repeat(0) == ""
+    {
+        15
     } else {
         0
     };
@@ -382,6 +418,7 @@ fn main() {
         + logical_score
         + doubled
         + array_helper_score
+        + array_mutation_score
         + quest_score
         + streak_score
         + block_value
@@ -389,6 +426,7 @@ fn main() {
         + nested_lambda_score
         + parsed
         + string_helper_score
+        + string_utility_score
         + math_helper_score
         + option_result_helper_score
         + result
