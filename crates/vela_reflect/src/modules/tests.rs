@@ -364,6 +364,95 @@ fn function_policy_rejects_hidden_private_and_unapproved_functions() {
 }
 
 #[test]
+fn function_policy_filters_unknown_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register_function(FunctionDesc::new(FunctionId::new(1), "game.reward.grant"));
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(2), "game.reward.grant_hidden")
+            .access(FunctionAccess::new().reflect_visible(false)),
+    );
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(3), "game.reward.grant_private")
+            .access(FunctionAccess::new().public(false).reflect_visible(true)),
+    );
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(4), "game.reward.grant_admin")
+            .access(FunctionAccess::new().require_permission("game.admin")),
+    );
+
+    let error = function_with_policy(
+        &registry,
+        "game.reward.grant_hiddden",
+        &ReflectPolicy::read_only(),
+    )
+    .expect_err("unknown function");
+    let ReflectErrorKind::UnknownFunction {
+        candidates,
+        related,
+        ..
+    } = error.kind
+    else {
+        panic!("expected unknown function");
+    };
+
+    assert_eq!(candidates, vec!["game.reward.grant".to_owned()]);
+    assert_eq!(
+        related,
+        vec![crate::candidates::ReflectCandidate::new(
+            "game.reward.grant",
+            None
+        )]
+    );
+}
+
+#[test]
+fn function_call_policy_filters_unknown_candidates() {
+    let mut registry = TypeRegistry::new();
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(1), "game.reward.grant")
+            .access(FunctionAccess::new().reflect_callable(true)),
+    );
+    registry.register_function(FunctionDesc::new(
+        FunctionId::new(2),
+        "game.reward.grant_visible",
+    ));
+    registry.register_function(
+        FunctionDesc::new(FunctionId::new(3), "game.reward.grant_write").access(
+            FunctionAccess::new()
+                .reflect_callable(true)
+                .require_permission("game.write"),
+        ),
+    );
+
+    let target = ReflectValue::Host(HostValue::Record {
+        type_name: "ReflectFunction".to_owned(),
+        fields: BTreeMap::from([(
+            "name".to_owned(),
+            HostValue::String("game.reward.grant_visibel".to_owned()),
+        )]),
+    });
+    let error = callable_function_name_with_policy(&registry, &target, &ReflectPolicy::read_only())
+        .expect_err("unknown callable function");
+    let ReflectErrorKind::UnknownFunction {
+        candidates,
+        related,
+        ..
+    } = error.kind
+    else {
+        panic!("expected unknown function");
+    };
+
+    assert_eq!(candidates, vec!["game.reward.grant".to_owned()]);
+    assert_eq!(
+        related,
+        vec![crate::candidates::ReflectCandidate::new(
+            "game.reward.grant",
+            None
+        )]
+    );
+}
+
+#[test]
 fn function_policy_allows_private_functions_with_permissions() {
     let mut registry = TypeRegistry::new();
     registry.register_function(

@@ -168,7 +168,7 @@ pub fn function_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = registry.function_by_name(name).ok_or_else(|| {
-        let related = function_candidates(registry, name);
+        let related = function_candidates_with_policy(registry, name, policy);
         ReflectError::new(ReflectErrorKind::UnknownFunction {
             function: name.to_owned(),
             candidates: candidate_names(&related),
@@ -198,7 +198,7 @@ pub fn callable_function_name_with_policy(
         return Ok(None);
     };
     let desc = registry.function_by_name(name).ok_or_else(|| {
-        let related = function_candidates(registry, name);
+        let related = callable_function_candidates_with_policy(registry, name, policy);
         ReflectError::new(ReflectErrorKind::UnknownFunction {
             function: name.to_owned(),
             candidates: candidate_names(&related),
@@ -229,6 +229,34 @@ fn function_candidates(
         name,
         registry
             .functions()
+            .map(|function| (function.name.as_str(), function.source_span)),
+    )
+}
+
+fn function_candidates_with_policy(
+    registry: &TypeRegistry,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> Vec<crate::candidates::ReflectCandidate> {
+    ranked_candidates(
+        name,
+        registry
+            .functions()
+            .filter(|function| policy.require_function_access(function).is_ok())
+            .map(|function| (function.name.as_str(), function.source_span)),
+    )
+}
+
+fn callable_function_candidates_with_policy(
+    registry: &TypeRegistry,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> Vec<crate::candidates::ReflectCandidate> {
+    ranked_candidates(
+        name,
+        registry
+            .functions()
+            .filter(|function| policy.require_function_call_access(function).is_ok())
             .map(|function| (function.name.as_str(), function.source_span)),
     )
 }
