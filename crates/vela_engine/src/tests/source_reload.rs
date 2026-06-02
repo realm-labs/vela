@@ -1685,6 +1685,37 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_returns_hot_reload_changed_file_source_errors_immediately() {
+    let root = unique_test_dir("runtime_stage_changed_file_source_error");
+    let _reward_file = write_reward_modules(&root, "return grant();", 2);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let changed = root.join("game").join("reward.txt");
+    std::fs::write(&changed, "not a vela source file").expect("write non-source file");
+
+    let error = runtime
+        .stage_hot_reload_update_changed_file(&root, &changed)
+        .expect("runtime should be hot-reload enabled")
+        .expect_err("invalid changed-file path should not stage a hot reload report");
+
+    assert!(matches!(
+        error.kind,
+        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+            kind: EngineSourceErrorKind::InvalidSourcePath { .. }
+        })
+    ));
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("source error should not stage an update")
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_preserves_program_when_engine_hot_reload_update_is_rejected() {
     let engine = Engine::builder()
         .hot_reload_policy(HotReloadPolicy::locked_down())
