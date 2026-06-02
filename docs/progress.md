@@ -106,6 +106,8 @@ closes or exposes a more specific gap.
   rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports event target ABI rejections at
   safe points without advancing the active version.
+- Runtime source-file reload staging reports function return ABI rejections at
+  safe points without advancing the active version.
 - Runtime source-file reload staging reports top-level const side-effect
   compile rejections at safe points without advancing the active version.
 - Analysis diagnostics can report non-exhaustive matches for known script
