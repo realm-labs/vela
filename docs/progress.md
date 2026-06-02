@@ -31,7 +31,7 @@ conformance contracts are stable.
 | M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist. |
 | M16 | Partial | Runtime diagnostics and common rendering have started. |
 | M17 | Partial | Conformance fixture and demo harnesses exist; game-server demo can still expand. |
-| M18 | Partial | Baseline harnesses cover VM scalar, stdlib, host PatchTx, managed heap, GC pacing, and hot reload workloads; official baselines remain. |
+| M18 | Partial | Baseline harnesses cover VM scalar, stdlib, host PatchTx, managed heap, GC pacing, hot reload, and available external runtime comparisons; official baselines remain. |
 | M19-M20 | Not started | Interpreter optimization plus inline caches and specialization. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT backend after interpreter/cache/debug contracts are stable. |

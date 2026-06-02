@@ -17,5 +17,9 @@ vela_hir = { path = "../vela_hir" }
 name = "baseline"
 harness = false
 
+[[bench]]
+name = "external_compare"
+harness = false
+
 [lints]
 workspace = true

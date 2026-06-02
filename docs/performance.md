@@ -52,11 +52,19 @@ Hot reload compile/apply and ABI rejection timing lives in
 cargo bench -p vela_engine --bench hot_reload
 ```
 
+External reference comparisons live in
+`crates/vela_vm/benches/external_compare.rs` and can be run with:
+
+```bash
+cargo bench -p vela_vm --bench external_compare
+```
+
 For quick validation during implementation:
 
 ```bash
 cargo bench -p vela_vm --bench baseline -- --quick
 cargo bench -p vela_engine --bench hot_reload -- --quick
+cargo bench -p vela_vm --bench external_compare -- --quick
 ```
 
 The baseline harness intentionally has no external benchmarking dependency yet.
@@ -81,7 +89,14 @@ managed_heap_materialization records, enums, strings, Option helpers, heap mode
 gc_pacing                   safe-point GC under managed heap allocation pressure
 hot_reload_accept           compatible update compile/apply and post-apply call
 hot_reload_abi_reject       rejected event ABI update and report generation
+external_compare            Vela plus available Lua 5.x, LuaJIT, Node, and Rhai
 ```
+
+The external comparison harness records missing runtimes explicitly instead of
+failing the benchmark. On each machine it reports the executable version for
+available runtimes, the process-backed timing mode used for external tools, and
+the same repeat, iteration, warmup, profile, OS, architecture, and checksum
+fields as the internal baseline harnesses.
 
 ## Targets
 
