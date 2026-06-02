@@ -96,6 +96,90 @@ fn main() {
 }
 
 #[test]
+fn script_enum_defaulted_variant_field_additions_are_accepted_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+enum QuestProgress {
+    Active {
+        quest_id: string
+    }
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script enum schema should compile");
+
+    let update = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+enum QuestProgress {
+    Active {
+        quest_id: string
+        count: int = 0
+    }
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    )
+    .expect("defaulted enum variant field addition should be accepted");
+
+    let mut runtime = HotReloadRuntime::new(initial);
+    runtime.apply_hot_update(update).expect("apply update");
+    assert_eq!(
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
+fn script_enum_required_variant_field_additions_are_rejected_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+enum QuestProgress {
+    Active {
+        quest_id: string
+    }
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script enum schema should compile");
+
+    let error = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+enum QuestProgress {
+    Active {
+        quest_id: string
+        count: int
+    }
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    )
+    .expect_err("required enum variant field addition should be rejected");
+
+    assert_eq!(error.code(), "reload.schema.abi_changed");
+    assert_eq!(error.target(), Some("QuestProgress".to_owned()));
+}
+
+#[test]
 fn script_schema_stable_id_member_renames_are_accepted_during_compile_update() {
     let initial = compile_initial(
         SourceId::new(1),
