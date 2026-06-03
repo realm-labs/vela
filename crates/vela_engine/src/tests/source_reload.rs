@@ -879,6 +879,92 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
 }
 
 #[test]
+fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .expect("initial hot reload compile");
+    let update = engine
+        .compile_hot_reload_update(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .expect("compatible update should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    runtime
+        .stage_hot_update(update)
+        .expect("stage pending update");
+    let report = runtime
+        .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .expect("event call should run");
+
+    assert_eq!(report.value, Value::Int(1));
+    let reload = report.reload.expect("staged reload should be consumed");
+    assert!(reload.accepted);
+    assert_eq!(reload.changed_functions, vec!["main".to_owned()]);
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("pending update should be consumed")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
+fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
+        .expect("initial hot reload compile");
+    let update = engine
+        .compile_hot_reload_update(
+            &initial,
+            SourceId::new(2),
+            "pub fn main() -> float { return 2.0; }",
+        )
+        .expect_err("return hint change should be rejected");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    runtime
+        .stage_hot_update_result(Err(update))
+        .expect("stage rejected update");
+    let report = runtime
+        .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .expect("event call should run before reporting reload rejection");
+
+    assert_eq!(report.value, Value::Int(1));
+    let reload = report.reload.expect("staged rejection should be consumed");
+    assert!(!reload.accepted);
+    let HotReloadErrorKind::ChangedFunctionReturnAbi {
+        function,
+        old,
+        new,
+        source_span,
+    } = &reload.errors[0].error.kind
+    else {
+        panic!("expected changed function return ABI");
+    };
+    assert_eq!(function, "main");
+    assert_eq!(old.as_deref(), Some("int"));
+    assert_eq!(new.as_deref(), Some("float"));
+    assert!(source_span.is_some());
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("pending rejection should be consumed")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
 fn runtime_checks_reload_around_patch_apply_safe_point() {
     let engine = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))

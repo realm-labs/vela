@@ -250,6 +250,19 @@ impl Runtime {
         }
     }
 
+    pub fn call_at_event_end_safe_point(
+        &mut self,
+        entry: &str,
+        args: &[Value],
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+        tx: &mut PatchTx,
+    ) -> VmResult<EventCallSafePointReport> {
+        let value = self.call(entry, args, options, adapter, tx)?;
+        let reload = self.check_optional_reload();
+        Ok(EventCallSafePointReport { value, reload })
+    }
+
     fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
         self.hot_reload
             .as_ref()
@@ -272,6 +285,12 @@ impl Runtime {
         }
         Some(report)
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EventCallSafePointReport {
+    pub value: Value,
+    pub reload: Option<HotReloadReport>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
