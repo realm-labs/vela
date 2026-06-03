@@ -1852,6 +1852,59 @@ fn main() {
 }
 
 #[test]
+fn runtime_stages_source_file_defaulted_enum_variant_field_addition_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+enum QuestProgress {
+    Active {
+        quest_id: string
+    }
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+enum QuestProgress {
+    Active {
+        quest_id: string
+        count: int = 0
+    }
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged enum variant field addition report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["main"]);
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_stages_source_file_event_parameter_reorder_rejection_until_safe_point() {
     let engine = Engine::builder().build().expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
