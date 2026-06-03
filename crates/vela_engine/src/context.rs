@@ -52,6 +52,13 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         self.host.tx
     }
 
+    pub fn read_path(&mut self, path: &HostPath, source_span: Option<Span>) -> VmResult<HostValue> {
+        Ok(self
+            .host
+            .tx
+            .read_path_at(self.host.adapter, path, source_span)?)
+    }
+
     pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {
         if let Some(budget) = self.budget.as_deref_mut() {
             budget.charge_instructions(instructions)?;

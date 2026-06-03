@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
@@ -381,6 +382,66 @@ fn main(player) {
         HostPath::new(host_ref).field(FieldId::new(1))
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(11)));
+}
+
+#[test]
+fn context_host_native_read_path_observes_patch_overlay() {
+    let engine = Engine::builder()
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game::read_after_context_write", NativeFunctionId::new(33))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("level", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            |args, ctx| {
+                let player = args.required::<HostRef>(0)?;
+                let level = args.required::<i64>(1)?;
+                let path = HostPath::new(player).field(FieldId::new(1));
+
+                assert_eq!(ctx.read_path(&path, None)?, HostValue::Int(3));
+                ctx.set_path(path.clone(), HostValue::Int(level), None)?;
+                match ctx.read_path(&path, None)? {
+                    HostValue::Int(value) => Ok(Value::Int(value)),
+                    _ => Ok(Value::Null),
+                }
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game::read_after_context_write(player, 17);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let level = HostPath::new(host_ref).field(FieldId::new(1));
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(level.clone(), HostValue::Int(3));
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(Value::Int(17))
+    );
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].path, level);
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(17)));
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(3)));
 }
 
 #[test]

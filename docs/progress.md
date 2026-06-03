@@ -96,9 +96,10 @@ closes or exposes a more specific gap.
   reflected enum schemas.
 - Macro-generated context native registrations flow through Engine permission
   checks and `NativeCallContext` budget charging, including budget-aware
-  PatchTx helpers for host path writes, read-modify-write operations, removals,
-  pushes, and host method-call patches, with coverage that each helper records
-  the expected patch and reserves patch budget before mutation.
+  PatchTx helpers for overlay-aware host path reads, host path writes,
+  read-modify-write operations, removals, pushes, and host method-call patches,
+  with coverage that each helper records the expected patch and reserves patch
+  budget before mutation.
 - Engine typed native Rust signature conversion covers copied `Vec<T>` array
   arguments and returns, fixed arrays, maps, sets, Option/Result, strings,
   `HostRef` handles, fallible `VmResult<T>` and `HostResult<T>` returns, and
