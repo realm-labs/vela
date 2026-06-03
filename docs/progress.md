@@ -97,8 +97,8 @@ closes or exposes a more specific gap.
   PatchTx helpers for host path writes, read-modify-write operations, removals,
   pushes, and host method-call patches.
 - Engine typed native Rust signature conversion covers copied `Vec<T>` array
-  arguments and returns, fixed arrays, maps, sets, Option/Result, strings, and
-  common numeric types.
+  arguments and returns, fixed arrays, maps, sets, Option/Result, strings,
+  `HostRef` handles, and common numeric types.
 - The game-server demo registers Player, Monster, Inventory, ItemStack, and
   Config host schemas through `ScriptHost` derives and
   `register_host_type::<T>()`, and registers HostQuestProgress variant

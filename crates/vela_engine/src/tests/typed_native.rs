@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::compiler::compile_program_source;
-use vela_common::SourceId;
+use vela_common::{HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_host::path::HostRef;
+use vela_reflect::registry::TypeKey;
 use vela_vm::error::{VmError, VmErrorKind};
 use vela_vm::value::Value;
 
@@ -70,6 +72,45 @@ fn main() {
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(11)),
+    );
+}
+
+#[test]
+fn typed_native_functions_accept_host_refs() {
+    let player_type = TypeHint::Host(TypeKey::new(TypeId::new(1), "Player"));
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(HostRef,), _>(
+            NativeFunctionDesc::new("game::host_generation", NativeFunctionId::new(243))
+                .param("player", player_type.clone())
+                .returns(TypeHint::Int),
+            |player: HostRef| i64::from(player.generation),
+        )
+        .register_typed_native_fn::<(HostRef,), _>(
+            NativeFunctionDesc::new("game::host_object_id", NativeFunctionId::new(244))
+                .param("player", player_type)
+                .returns(TypeHint::Int),
+            |player: HostRef| {
+                i64::try_from(player.object_id.get()).expect("host object id fits i64")
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game::host_generation(player) + game::host_object_id(player);
+}
+"#,
+    )
+    .expect("program should compile");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&program, "main", &[Value::HostRef(player)]),
+        Ok(Value::Int(49)),
     );
 }
 
