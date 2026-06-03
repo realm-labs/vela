@@ -4562,6 +4562,63 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
 }
 
 #[test]
+fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point() {
+    let old_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Null),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
+    let new_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(23))
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Null),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged native stable-ID churn ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.removed_abi");
+    assert_removed_function_abi_repair_hint(&report);
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("game::reward::grant")
+    );
+    let HotReloadErrorKind::RemovedFunctionAbi {
+        function,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected removed native function ABI");
+    };
+    assert_eq!(function, "game::reward::grant");
+    assert!(source_span.is_none());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
 fn runtime_stages_source_file_native_stable_id_rename_until_safe_point() {
     let old_engine = Engine::builder()
         .register_native_fn(
@@ -4654,6 +4711,60 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
         .check_reload()
         .expect("check reload at safe point")
         .expect("staged removed host method ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.method.removed_abi");
+    assert_removed_method_abi_repair_hint(&report);
+    assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
+    let HotReloadErrorKind::RemovedMethodAbi {
+        type_name,
+        method,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected removed host method ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(source_span.is_none());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
+fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point() {
+    let old_engine = Engine::builder()
+        .register_type(type_with_reload_method(MethodDesc::new(
+            HostMethodId::new(9),
+            "grant_exp",
+        )))
+        .build()
+        .expect("old engine should build");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
+    let new_engine = Engine::builder()
+        .register_type(type_with_reload_method(MethodDesc::new(
+            HostMethodId::new(10),
+            "grant_exp",
+        )))
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged method stable-ID churn ABI rejection report");
 
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
