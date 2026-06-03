@@ -1592,6 +1592,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Damageable")
     );
+    assert_removed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -1655,6 +1656,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Damageable")
     );
+    assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -1718,6 +1720,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Damageable")
     );
+    assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -3582,6 +3585,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.trait.removed_abi");
     assert_eq!(report.errors[0].target.as_deref(), Some("Damageable"));
+    assert_removed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -3632,6 +3636,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.trait.changed_abi");
     assert_eq!(report.errors[0].target.as_deref(), Some("Damageable"));
+    assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -3683,6 +3688,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.trait.changed_abi");
     assert_eq!(report.errors[0].target.as_deref(), Some("Damageable"));
+    assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -6425,6 +6431,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Damageable")
     );
+    assert_removed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -6488,6 +6495,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
         report.errors[0].target.as_deref(),
         Some("game::reward::Damageable")
     );
+    assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -6551,6 +6559,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
         report.errors[0].target.as_deref(),
         Some("game::reward::Damageable")
     );
+    assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -7645,6 +7654,22 @@ fn assert_removed_schema_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("restore the schema or restart with an explicit migration")
+    );
+}
+
+fn assert_changed_trait_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some(
+            "preserve existing trait method IDs, names, parameters, return hints, and default status"
+        )
+    );
+}
+
+fn assert_removed_trait_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the trait ABI entry or restart with an explicit migration")
     );
 }
 

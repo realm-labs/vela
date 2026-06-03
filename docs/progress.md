@@ -178,16 +178,16 @@ closes or exposes a more specific gap.
   version early.
 - Runtime source-file, directory, and changed-file reload staging report script
   trait method return ABI rejections at safe points without advancing the
-  active version.
+  active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report added
   required script trait method ABI rejections at safe points without advancing
-  the active version.
+  the active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging accept added
   defaulted script trait methods at safe points without activating the new
   version early.
 - Runtime source-file, directory, and changed-file reload staging report removed
   script trait ABI rejections at safe points without advancing the active
-  version.
+  version, with repair hints covered.
 - Runtime safe-point reload staging reports external module export ABI
   rejections without advancing the active version.
 - Runtime safe-point reload staging reports removed external function ABI
