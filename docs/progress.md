@@ -132,6 +132,8 @@ closes or exposes a more specific gap.
   compile rejections at safe points without advancing the active version.
 - Runtime directory reload staging reports compile diagnostics at safe points
   without advancing the active version.
+- Runtime directory reload staging reports function return ABI rejections at
+  safe points without advancing the active version.
 - Runtime changed-file reload staging reports compile diagnostics at safe
   points without advancing the active version.
 - Runtime changed-file reload staging reports function return ABI rejections
