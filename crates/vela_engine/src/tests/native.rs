@@ -445,6 +445,72 @@ fn main(player) {
 }
 
 #[test]
+fn context_host_native_previews_method_return_without_applying_patch() {
+    let method = HostMethodId::new(79);
+    let engine = Engine::builder()
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game::preview_inventory_add", NativeFunctionId::new(34))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .returns(TypeHint::String)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            move |args, ctx| {
+                let player = args.required::<HostRef>(0)?;
+                let inventory = HostPath::new(player).field(FieldId::new(3));
+                let method_args = vec![HostValue::String("gold".to_owned()), HostValue::Int(2)];
+                let preview = ctx.preview_method_return(&inventory, method, &method_args, None)?;
+                ctx.call_method(inventory, method, method_args, None)?;
+                match preview {
+                    HostValue::String(value) => Ok(Value::String(value)),
+                    _ => Ok(Value::Null),
+                }
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game::preview_inventory_add(player);
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let inventory = HostPath::new(host_ref).field(FieldId::new(3));
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(inventory.clone(), HostValue::Array(vec![]));
+    adapter.insert_method_return(method, HostValue::String("accepted".to_owned()));
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(Value::String("accepted".to_owned()))
+    );
+    assert!(adapter.method_calls().is_empty());
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].path, inventory);
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::String("gold".to_owned()), HostValue::Int(2)]
+        }
+    );
+}
+
+#[test]
 fn context_host_native_can_charge_execution_budget_before_patching() {
     let engine = Engine::builder()
         .register_context_host_native_fn(

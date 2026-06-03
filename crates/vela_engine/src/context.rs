@@ -59,6 +59,20 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .read_path_at(self.host.adapter, path, source_span)?)
     }
 
+    pub fn preview_method_return(
+        &self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+        source_span: Option<Span>,
+    ) -> VmResult<HostValue> {
+        Ok(self
+            .host
+            .adapter
+            .preview_method_return(path, method, args)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?)
+    }
+
     pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {
         if let Some(budget) = self.budget.as_deref_mut() {
             budget.charge_instructions(instructions)?;
