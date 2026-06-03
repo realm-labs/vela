@@ -253,7 +253,8 @@ closes or exposes a more specific gap.
   safe-point checks.
 - Macro-exposed host types, fields, methods, and native functions derive stable
   `u64` IDs from script-facing paths, with `alias` preserving compatibility
-  across rename-safe host API changes.
+  across rename-safe host API changes, including pure, context, and host native
+  function macro registration.
 - Macro-exposed native functions can set public, reflection visibility, and
   reflective callability metadata while preserving permissioned Engine
   registration and hot-reload ABI visibility.

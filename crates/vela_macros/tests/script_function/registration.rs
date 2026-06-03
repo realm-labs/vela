@@ -23,6 +23,33 @@ fn main() {
 }
 
 #[test]
+fn script_function_alias_registers_renamed_native_with_stable_id() {
+    let engine = vela_register_native_function_grant_bonus_v2(Engine::builder())
+        .build()
+        .expect("engine should build from macro renamed native function");
+    let program = compile_source!(
+        engine,
+        r#"
+fn main() {
+    return game::grant_bonus_v2(5);
+}
+"#,
+        "source should compile with macro registered renamed native"
+    );
+
+    let registry = engine.registry();
+    let registered = registry
+        .functions()
+        .find(|function| function.name == "game::grant_bonus_v2")
+        .expect("renamed function should be reflected");
+    assert_eq!(registered.id, function_id("game::grant_bonus"));
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(7)),
+    );
+}
+
+#[test]
 fn script_function_registers_typed_set_native_with_engine() {
     let engine = vela_register_native_function_count_labels(Engine::builder())
         .build()
@@ -359,6 +386,48 @@ fn main(player) {
 }
 
 #[test]
+fn script_context_function_alias_registers_renamed_native_with_stable_id() {
+    let engine = vela_register_context_native_function_set_level_v2(
+        Engine::builder().grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro renamed context native function");
+    let program = compile_source!(
+        engine,
+        r#"
+fn main(player) {
+    return game::set_level_v2(player, 11);
+}
+"#,
+        "source should compile with macro registered renamed context native"
+    );
+    let registry = engine.registry();
+    let registered = registry
+        .functions()
+        .find(|function| function.name == "game::set_level_v2")
+        .expect("renamed context function should be reflected");
+    assert_eq!(registered.id, function_id("game::set_level"));
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host,
+        ),
+        Ok(Value::Int(11)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(11)));
+}
+
+#[test]
 fn script_context_function_enforces_engine_permissions_before_patching() {
     let engine = vela_register_context_native_function_set_level(Engine::builder())
         .build()
@@ -472,4 +541,46 @@ fn main(player) {
         Ok(Value::Int(12)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(12)));
+}
+
+#[test]
+fn script_host_function_alias_registers_renamed_native_with_stable_id() {
+    let engine = vela_register_host_native_function_set_score_v2(
+        Engine::builder().grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro renamed host native function");
+    let program = compile_source!(
+        engine,
+        r#"
+fn main(player) {
+    return game::set_score_v2(player, 14);
+}
+"#,
+        "source should compile with macro registered renamed host native"
+    );
+    let registry = engine.registry();
+    let registered = registry
+        .functions()
+        .find(|function| function.name == "game::set_score_v2")
+        .expect("renamed host function should be reflected");
+    assert_eq!(registered.id, function_id("game::set_score"));
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host,
+        ),
+        Ok(Value::Int(14)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(14)));
 }

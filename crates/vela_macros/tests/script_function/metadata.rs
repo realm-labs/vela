@@ -21,6 +21,19 @@ fn script_function_generates_native_function_metadata() {
 }
 
 #[test]
+fn script_function_alias_preserves_native_function_id_across_renames() {
+    assert_eq!(
+        vela_native_function_desc_grant_bonus_v2(),
+        NativeFunctionDesc::new("game::grant_bonus_v2", function_id("game::grant_bonus"))
+            .param("amount", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Grants a renamed copied bonus amount."),
+    );
+}
+
+#[test]
 fn script_function_generates_set_signature_metadata() {
     assert_eq!(
         vela_native_function_desc_count_labels(),
@@ -189,6 +202,24 @@ fn script_context_function_generates_native_function_metadata() {
 }
 
 #[test]
+fn script_context_function_alias_preserves_native_function_id_across_renames() {
+    assert_eq!(
+        vela_native_function_desc_set_level_v2(),
+        NativeFunctionDesc::new("game::set_level_v2", function_id("game::set_level"))
+            .param("player", TypeHint::Any)
+            .param("level", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Sets a renamed copied player level through PatchTx."),
+    );
+}
+
+#[test]
 fn script_host_function_generates_native_function_metadata() {
     assert_eq!(
         vela_native_function_desc_set_score(),
@@ -203,5 +234,23 @@ fn script_host_function_generates_native_function_metadata() {
                     .require_permission("player.write"),
             )
             .docs("Sets a copied player score through host execution."),
+    );
+}
+
+#[test]
+fn script_host_function_alias_preserves_native_function_id_across_renames() {
+    assert_eq!(
+        vela_native_function_desc_set_score_v2(),
+        NativeFunctionDesc::new("game::set_score_v2", function_id("game::set_score"))
+            .param("player", TypeHint::Any)
+            .param("score", TypeHint::Int)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Sets a renamed copied player score through host execution."),
     );
 }

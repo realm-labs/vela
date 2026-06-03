@@ -47,6 +47,17 @@ fn grant_bonus(amount: i64, multiplier: i64) -> i64 {
     amount * multiplier
 }
 
+/// Grants a renamed copied bonus amount.
+#[script_function(
+    name = "game::grant_bonus_v2",
+    alias = "game::grant_bonus",
+    effect = "pure",
+    reflect = true
+)]
+fn grant_bonus_v2(amount: i64) -> i64 {
+    amount + 2
+}
+
 /// Sets a copied player level through PatchTx.
 #[script_context_function(
     name = "game::set_level",
@@ -64,6 +75,23 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
     Ok(ctx.has_permission("player.write"))
 }
 
+/// Sets a renamed copied player level through PatchTx.
+#[script_context_function(
+    name = "game::set_level_v2",
+    alias = "game::set_level",
+    effect = "write_host",
+    reflect = true,
+    permission = "player.write"
+)]
+fn set_level_v2(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<i64> {
+    ctx.set_path(
+        HostPath::new(player).field(FieldId::new(1)),
+        HostValue::Int(level),
+        None,
+    )?;
+    Ok(level)
+}
+
 /// Sets a copied player score through host execution.
 #[script_host_function(
     name = "game::set_score",
@@ -72,6 +100,23 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
     permission = "player.write"
 )]
 fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
+    host.tx.set_path(
+        HostPath::new(player).field(FieldId::new(2)),
+        HostValue::Int(score),
+        None,
+    )?;
+    Ok(score)
+}
+
+/// Sets a renamed copied player score through host execution.
+#[script_host_function(
+    name = "game::set_score_v2",
+    alias = "game::set_score",
+    effect = "write_host",
+    reflect = true,
+    permission = "player.write"
+)]
+fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
     host.tx.set_path(
         HostPath::new(player).field(FieldId::new(2)),
         HostValue::Int(score),
