@@ -571,6 +571,124 @@ fn grant() {
 }
 
 #[test]
+fn runtime_stages_dir_native_effect_rejection_until_safe_point() {
+    let kind = dir_native_rejection_kind(
+        "runtime_stage_dir_native_effect",
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .effects(EffectSet::host_read()),
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .effects(EffectSet::host_write()),
+        "reload.function.effects_changed",
+    );
+
+    let HotReloadErrorKind::ChangedFunctionEffects {
+        function,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed native function effects");
+    };
+    assert_eq!(function, "game::native::grant_bonus");
+    assert!(old.reads_host);
+    assert!(!old.writes_host);
+    assert!(new.reads_host);
+    assert!(new.writes_host);
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_dir_native_access_rejection_until_safe_point() {
+    let kind = dir_native_rejection_kind(
+        "runtime_stage_dir_native_access",
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22)).access(
+            FunctionAccess::public()
+                .reflect_callable(true)
+                .require_permission("reward.read"),
+        ),
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22)).access(
+            FunctionAccess::public()
+                .reflect_callable(true)
+                .require_permission("reward.write"),
+        ),
+        "reload.function.access_changed",
+    );
+
+    let HotReloadErrorKind::ChangedFunctionAccess {
+        function,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed native function access");
+    };
+    assert_eq!(function, "game::native::grant_bonus");
+    assert_eq!(old.required_permissions, vec!["reward.read"]);
+    assert_eq!(new.required_permissions, vec!["reward.write"]);
+    assert!(old.callable);
+    assert!(new.callable);
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_dir_native_parameter_rejection_until_safe_point() {
+    let kind = dir_native_rejection_kind(
+        "runtime_stage_dir_native_parameter",
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .param("amount", TypeHint::Int),
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .param("amount", TypeHint::Float),
+        "reload.function.parameter_abi_changed",
+    );
+
+    let HotReloadErrorKind::ChangedFunctionParameterAbi {
+        function,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed native function parameter ABI");
+    };
+    assert_eq!(function, "game::native::grant_bonus");
+    assert_eq!(old.len(), 1);
+    assert_eq!(old[0].name, "amount");
+    assert_eq!(old[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(new.len(), 1);
+    assert_eq!(new[0].name, "amount");
+    assert_eq!(new[0].type_hint.as_deref(), Some("float"));
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_dir_native_return_rejection_until_safe_point() {
+    let kind = dir_native_rejection_kind(
+        "runtime_stage_dir_native_return",
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .returns(TypeHint::Int),
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .returns(TypeHint::Float),
+        "reload.function.return_abi_changed",
+    );
+
+    let HotReloadErrorKind::ChangedFunctionReturnAbi {
+        function,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed native function return ABI");
+    };
+    assert_eq!(function, "game::native::grant_bonus");
+    assert_eq!(old.as_deref(), Some("int"));
+    assert_eq!(new.as_deref(), Some("float"));
+    assert!(source_span.is_none());
+}
+
+#[test]
 fn runtime_stages_dir_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -3618,6 +3736,77 @@ pub fn grant() {{
         ),
     )
     .expect("write reward module");
+}
+
+fn dir_native_rejection_kind(
+    test_name: &str,
+    old_desc: NativeFunctionDesc,
+    new_desc: NativeFunctionDesc,
+    expected_code: &str,
+) -> HotReloadErrorKind {
+    let root = unique_test_dir(test_name);
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let old_engine = Engine::builder()
+        .register_native_fn(old_desc, |_| Ok(Value::Null))
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_native_fn(new_desc, |_| Ok(Value::Null))
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir native descriptor ABI rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir native descriptor ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, expected_code);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    report.errors[0].error.kind.clone()
 }
 
 fn changed_file_method_rejection_kind(
