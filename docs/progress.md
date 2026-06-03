@@ -183,6 +183,8 @@ closes or exposes a more specific gap.
   version.
 - Runtime safe-point reload staging reports external module export ABI
   rejections without advancing the active version.
+- Runtime safe-point reload staging reports removed external module ABI
+  rejections without advancing the active version.
 - Runtime source-file reload staging reports top-level const side-effect
   compile rejections at safe points without advancing the active version.
 - Runtime directory reload staging reports compile diagnostics at safe points
