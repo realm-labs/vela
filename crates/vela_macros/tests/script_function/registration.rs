@@ -335,6 +335,35 @@ fn main() {
 }
 
 #[test]
+fn script_function_registers_typed_path_proxy_native_with_engine() {
+    let engine = vela_register_native_function_path_depth(Engine::builder())
+        .build()
+        .expect("engine should build from macro path-proxy native function");
+    let program = compile_source!(
+        engine,
+        r#"
+fn main(path) {
+    return game::path_depth(path);
+}
+"#,
+        "source should compile with macro registered path-proxy native"
+    );
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let path = PathProxy::new(
+        HostPath::new(host_ref)
+            .field(FieldId::new(9))
+            .field(FieldId::new(10)),
+    );
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&program, "main", &[Value::PathProxy(path)]),
+        Ok(Value::Int(2)),
+    );
+}
+
+#[test]
 fn script_function_registers_private_reflect_visible_metadata() {
     let engine = vela_register_native_function_debug_probe(
         Engine::builder().reflection_permissions(ReflectPermissionSet::all()),
