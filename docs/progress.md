@@ -1,23 +1,35 @@
 # Progress
 
-This file is the current implementation status. Detailed historical progress
-before this compaction lives in
+This file is the rolling implementation status for the current milestone. It
+records what is true now and what remains to close next; it is not a changelog.
+
+Detailed historical progress before the 2026-06-01 compaction lives in
 [archive/progress-full-2026-06-01.md](archive/progress-full-2026-06-01.md).
+Later history should be read from git unless a durable milestone summary needs
+to be archived.
 
 ## Current Focus
 
 M0-M13 are complete enough as a runnable prototype. Current work is centered on
-the current checkpoint queue below: advance targeted M14/M15 Engine API and
-hot-reload source workflow work as it unblocks embedding.
+M14/M15 embedding and hot-reload source workflows, specifically the pieces that
+unblock realistic embedding:
 
-Post-MVP performance remains a separate track: optimize the non-JIT bytecode
-interpreter toward Lua 5.x comparable gameplay workloads, then add debugger
-runtime/DAP support and Cranelift JIT once the interpreter, inline-cache, and
-conformance contracts are stable.
+```text
+Engine API registration
+native descriptors and Rust signature conversion
+context helpers and host macros
+safe-point reload staging and reports
+function, schema, effect, access, and source reload ABI checks
+source-file, directory, and changed-file update workflows
+```
 
-## Milestone Status
+Post-MVP performance remains a separate track: measure first, then optimize the
+non-JIT bytecode interpreter toward Lua 5.x comparable gameplay workloads
+before debugger/DAP work and Cranelift JIT.
 
-| Milestone | Status | Notes |
+## Milestone Snapshot
+
+| Milestone | Status | Current note |
 |---|---|---|
 | M0-M6 | Complete | Source -> bytecode -> VM -> HostRef/HostPath/PatchTx -> hot reload loop exists. |
 | M7 | Complete | Execution budgets, managed heap, GC roots, and managed heap entrypoints exist. |
@@ -25,289 +37,89 @@ conformance contracts are stable.
 | M9 | Complete enough | Broad executable language surface works; conformance catches edge cases. |
 | M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist. |
 | M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx overlays, and rollback-safe host boundaries exist. |
-| M12 | Complete enough | Reflection metadata, permission-aware queries, lookup budgets, candidate spans, and schema-safe mutation denial are covered. |
+| M12 | Complete enough | Reflection metadata, permission-aware queries, candidate spans, and schema-safe mutation denial are covered. |
 | M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and demo helper coverage are validated. |
-| M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices. |
-| M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist. |
+| M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices; close the remaining embedding proof. |
+| M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist; close production workflow proof. |
 | M16 | Partial | Runtime diagnostics, common rendering, and bytecode/runtime frame maps have started. |
-| M17 | Partial | Conformance fixture and demo harnesses exist; game-server demo can still expand. |
-| M18 | Partial | Baseline harnesses cover VM scalar, stdlib, host PatchTx, managed heap, GC pacing, hot reload, and available external runtime comparisons; official baselines remain. |
-| M19-M20 | Not started | Interpreter optimization plus inline caches and specialization. |
-| M21 | Not started | Debugger runtime hooks and DAP integration. |
-| M22 | Not started | Cranelift JIT backend after interpreter/cache/debug contracts are stable. |
+| M17 | Partial | Conformance fixtures and demo harnesses exist; game-server demo can still expand. |
+| M18 | Partial | Baseline harnesses exist; official baseline reporting and follow-up bottleneck tracking remain. |
+| M19-M20 | Not started | Interpreter optimization, inline caches, and specialization follow M18 baselines. |
+| M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
+| M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
 
-## Current Milestone Checkpoints
+## Current Milestone State
 
-Use this queue to choose the next implementation task. Work on the first
-checkpoint that is not satisfied, and update this section when a checkpoint
-closes or exposes a more specific gap.
+### Available Now
 
-1. M14/M15 embedding and reload:
-   - Advance only when it unblocks the demo or conformance workflow: Engine API
-     registration, native descriptors, context helpers, macros, safe-point
-     reload, ABI/schema/effect checks, or source-file update workflows.
-   - Validation: targeted engine/hot-reload tests and CLI demo runs when
-     workflow-facing.
-
-## Active Capabilities
-
-- Source files use `.vela`; future bytecode-only artifacts use `.vbc`.
-- Static module, type, variant, and native-function paths use `::`; runtime
-  field, method, host-path, and metadata-record access uses `.`.
-- Parser covers declarations, statements, expressions, attributes, and recovery
-  with source spans.
-- HIR owns module graph resolution, imports, declaration IDs, binding maps,
-  type-hint metadata, and top-level effect checks.
-- Bytecode compiler consumes HIR diagnostics and emits register bytecode for
-  functions, closures, control flow, collections, records, enums, slots,
-  host paths, method dispatch, Option/Result-style propagation, and iteration.
-- Bytecode code objects carry read-only frame metadata for named parameters,
-  locals, loop bindings, match bindings, lambda parameters, and captures.
-- VM supports managed heap execution, non-moving GC, execution budgets,
-  script value methods, standard natives, reflection natives, and host-aware
-  execution.
-- Runtime error stack frames expose function names, call-site source spans,
-  and caller bytecode offsets for debugger/tooling foundations.
-- VM call frames can report register-to-GC-root mappings while preserving the
-  existing flat root list used by collection.
-- Shared diagnostic rendering expands multi-line source spans while preserving
-  stable single-line and missing-source output.
-- Host mutation goes through HostRef, HostPath, PathProxy, PatchTx, overlays,
+- `.vela` source parsing, HIR lowering, bytecode compilation, VM execution,
+  managed heap entrypoints, execution budgets, and non-moving GC foundations.
+- Host mutation through `HostRef`, `HostPath`, `PathProxy`, `PatchTx`, overlays,
   permissions, and safe-point apply.
-- Reflection covers types, fields, methods, variants, traits, modules,
-  functions, attributes, permissions, source spans, controlled reads/writes,
-  and controlled calls.
-- Engine API registers host types through `register_host_type::<T>()`, native
-  functions, context helpers, standard natives, reflection permissions,
-  compiler options, hot-reload policies, and a focused embedding prelude for
-  common host setup, event and patch safe-point reports, source compile errors,
-  hot-reload result/report imports, and version-owned script metadata/code
-  object inspection, including module paths and declaration metadata.
-- Engine validation rejects duplicate native callable names and stable IDs
-  across pure, host, context-host, and standard native registrations.
-- Engine API registers macro-derived host bindings through
-  `register_script_host::<T>()`, combining `ScriptHost` schema metadata with
-  generated host method registration for embedders that use both derives, with
-  tests covering registry parity against the derived schema and method
-  descriptors.
-- Engine API registers derive-generated reflection schemas through
-  `register_reflect_schema::<T>()`.
-- `ScriptReflect` derives host enum variant metadata with stable variant and
-  payload field IDs, and `register_reflect_schema::<T>()` can register those
-  reflected enum schemas.
-- Macro-generated context native registrations flow through Engine permission
-  checks and `NativeCallContext` budget charging, including budget-aware
-  PatchTx helpers for overlay-aware host path reads, host path writes,
-  read-modify-write operations, removals, pushes, and host method-call patches,
-  plus copied host method return previews that do not apply or record patches
-  by themselves, with coverage that each mutation helper records the expected
-  patch and reserves patch budget before mutation.
-- Engine typed native Rust signature conversion covers copied `Vec<T>` array
-  arguments and returns, fixed arrays, maps, sets, Option/Result, strings,
-  `HostRef` handles, fallible `VmResult<T>` and `HostResult<T>` returns, and
-  common numeric types, including host-aware and context-host typed native
-  callables and typed native methods.
-- Macro-generated pure, context-host, and host-boundary native function
-  descriptors unwrap fallible `HostResult<T>` return types into the
-  script-visible return hint while still executing through the existing
-  host-error conversion path.
-- The game-server demo registers Player, Monster, Inventory, ItemStack, and
-  Config host schemas through `ScriptHost` derives and
-  `register_host_type::<T>()`, and registers HostQuestProgress variant
-  metadata through `ScriptReflect` plus `register_reflect_schema::<T>()`, while
-  preserving reflected host trait and method metadata.
-- Hot reload validates function, method, module, trait, schema, effect, access,
-  stable-ID schema rename compatibility, and source diagnostics before version
-  advancement.
-- Hot-reload `ProgramVersion` snapshots expose read-only function names, script
-  method metadata and method code objects with name and stable-ID lookup,
-  module metadata, and ABI data for host tooling without making version-owned
-  code or schema state mutable.
-- Hot-reload `HotUpdate` payloads expose read-only preflight function,
-  changed-function, changed-module, impacted-module, script method, method code
-  object, and module metadata before hosts stage or apply the update at a safe
-  point.
-- Hot reload accepts compatible host native function renames when the stable
-  native function ID is unchanged across source-file, directory, and
-  changed-file reload workflows, including module export ABI checks and old
-  hot-reload frames that still call the previous native name.
-- Hot reload accepts compatible host method renames when the stable host method
-  ID is unchanged across source-file, directory, and changed-file reload
-  workflows, including old hot-reload frames that still emit host method-call
-  patches by ID.
-- Runtime source-file, directory, and changed-file reload staging reject
-  same-name native function and host method stable-ID churn at safe points
-  without advancing the active version.
-- Hot reload reports distinguish actual bytecode-changed functions from
-  source-changed modules and reverse-import impacted modules.
-- Engine and Runtime hot-reload source workflows accept changed `.vela` file
-  events inside a module root while recompiling the full root for import and
-  ABI correctness.
-- Runtime source-file, directory, and changed-file reload staging keeps source
-  path/load errors immediate while deferring accepted updates and ABI/policy
-  rejections to the next explicit safe-point report.
-- Runtime in-memory source-text reload staging defers accepted updates and
-  ABI/policy rejections to the next explicit safe-point report.
-- Runtime staged directory and changed-file reload acceptance reports preserve
-  changed-module and reverse-import impacted-module metadata at the safe point.
-- Runtime source-file, directory, and changed-file reload staging accept
-  default-policy private helper additions at safe points while keeping old
-  calls on the previous version until the report is consumed.
-- Runtime source-file, directory, and changed-file reload staging accept
-  default-policy public function additions at safe points and make the new
-  public entry callable only after the accepted report is consumed.
-- Runtime source-file reload staging reports removed script function
-  rejections at safe points without advancing the active version.
-- Runtime source-file reload staging accepts compatible defaulted script schema
-  additions at safe points without activating the new version early.
-- Runtime source-file reload staging accepts compatible defaulted script enum
-  variant field additions at safe points without activating the new version
-  early.
-- Runtime directory and changed-file reload staging accept compatible defaulted
-  script enum variant field additions at safe points without activating the new
-  version early.
-- Runtime directory and changed-file reload staging accept compatible defaulted
-  script schema additions at safe points without activating the new version
-  early.
-- Runtime source-file, directory, and changed-file reload staging accept
-  stable-ID script schema field and variant renames at safe points without
-  activating the new version early.
-- Runtime source-file, directory, and changed-file reload staging report event
-  handler parameter ABI rejections at safe points without advancing the active
-  version.
-- Runtime source-file, directory, and changed-file reload staging report event
-  target ABI rejections at safe points without advancing the active version.
-- Runtime source-file, directory, and changed-file reload staging report
-  function return ABI rejections with repair hints at safe points without
-  advancing the active version.
-- Runtime source-file, directory, and changed-file reload staging report
-  required function parameter additions with repair hints at safe points
-  without advancing the active version.
-- Runtime source-file, directory, and changed-file reload staging report native
-  descriptor effect, access, parameter, return, and removal ABI rejections at
-  safe points without advancing the active version, with repair hints covered
-  for effect, access, parameter, return, and removal ABI reports.
-- Runtime source-file, directory, and changed-file reload staging report host
-  method descriptor effect, access, parameter, return, and removal ABI
-  rejections at safe points without advancing the active version, with repair
-  hints covered for effect, access, parameter, return, and removal ABI reports.
-- Runtime source-file, directory, and changed-file reload staging report
-  required script enum variant field ABI rejections at safe points without
-  advancing the active version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging report
-  required script struct field ABI rejections at safe points without advancing
-  the active version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging report script
-  struct field type ABI rejections at safe points without advancing the active
-  version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging report removed
-  script schema ABI rejections at safe points without advancing the active
-  version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging report script
-  enum variant field type ABI rejections at safe points without advancing the
-  active version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging report removed
-  script trait implementation ABI rejections at safe points without advancing
-  the active version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging accept added
-  script trait implementations at safe points without activating the new
-  version early.
-- Runtime source-file, directory, and changed-file reload staging report script
-  trait method return ABI rejections at safe points without advancing the
-  active version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging report added
-  required script trait method ABI rejections at safe points without advancing
-  the active version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging accept added
-  defaulted script trait methods at safe points without activating the new
-  version early.
-- Runtime source-file, directory, and changed-file reload staging report removed
-  script trait ABI rejections at safe points without advancing the active
-  version, with repair hints covered.
-- Runtime safe-point reload staging reports external module export ABI
-  rejections without advancing the active version, with repair hints covered.
-- Runtime safe-point reload staging reports removed external function ABI
-  rejections without advancing the active version, with repair hints covered.
-- Runtime safe-point reload staging reports removed external method ABI
-  rejections without advancing the active version, with repair hints covered.
-- Runtime safe-point reload staging reports removed external module ABI
-  rejections without advancing the active version, with repair hints covered.
-- Runtime source-file, directory, and changed-file reload staging report
-  top-level const side-effect compile rejections at safe points without
-  advancing the active version, with source diagnostic repair labels covered.
-- Runtime directory reload staging reports compile diagnostics at safe points
-  without advancing the active version.
-- Runtime source-file, directory, and changed-file reload staging report script
-  function access ABI rejections at safe points without advancing the active
-  version, with repair hints covered.
-- Runtime directory and changed-file reload staging reports removed script
-  function rejections at safe points without advancing the active version.
-- Runtime changed-file reload staging reports compile diagnostics at safe
-  points without advancing the active version.
-- Analysis diagnostics can report non-exhaustive matches for known script
-  enums and dynamic Option/Result facts used by propagation-style control flow.
-- Analysis diagnostics can use TypeRegistry field access metadata to flag
-  known read-only host field assignment targets with script-author write hints.
-- Unknown host-field diagnostics include ranked candidate labels with copied
-  read/write access hints for likely field names.
-- Unknown host-method diagnostics include ranked candidate labels with copied
-  method access, effect, and permission hints for likely method names.
-- Reflection field, method, and function access-denial diagnostics carry copied
-  declaration source spans when schema metadata provides them.
-- Core reflection call policy enforces `reflect::call_methods` for direct
-  method calls and reflected function invocation, before effect-specific call
-  permissions are considered.
-- Script-defined struct and enum fields expose writable reflection metadata,
-  and copy-returning `reflect::set` respects `reflect_writable` plus field
-  permissions for script values.
-- Reflection metadata records are read-only at the `reflect::set` boundary, so
-  copied descriptors cannot be rewritten into schema-mutation stand-ins.
-- Global `reflect::fields()` metadata includes enum variant payload fields with
-  policy filtering and `Type::Variant` ownership.
-- Standard Option/Result enum variants and payload fields expose copied docs
-  and stdlib attrs through direct registry metadata and script reflection.
-- Standard Context host schema metadata tags its type, time fields, and
-  event/log methods for stdlib and gameplay-domain reflection queries.
-- Standard library runtime and analysis coverage spans arrays, maps, sets,
+- Reflection for types, fields, methods, variants, traits, modules, functions,
+  attributes, permissions, controlled reads/writes/calls, and candidate spans.
+- Standard library runtime and analysis coverage for arrays, maps, sets,
   strings, Option/Result helpers and propagation, math, context time/event/log
   helpers, controlled random permissions, lambda TypeFacts, and gameplay demo
-  helper scripts.
-- Hot reload updates can be staged during gameplay and consumed only by an
-  explicit runtime safe-point check.
-- Runtime event calls can consume staged hot-reload updates or rejections at
-  an explicit event-end safe point while the completed event still runs on the
-  previous active version.
-- Runtime tick-boundary safe points can consume staged hot-reload updates or
-  rejections without running script code, matching production tick-loop
-  workflows.
-- Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
-  safe-point checks.
-- Macro-exposed host types, fields, methods, and native functions derive stable
-  `u64` IDs from script-facing paths, with `alias` preserving compatibility
-  across rename-safe host API changes, including pure, context, and host native
-  function macro registration.
-- Macro-exposed native functions can set public, reflection visibility, and
-  reflective callability metadata while preserving permissioned Engine
-  registration and hot-reload ABI visibility.
-- CLI demo scripts and conformance fixtures use `.vela`, and the hot-reload
-  demo exercises staged updates through an explicit tick-boundary safe point.
+  helpers.
+- Engine registration for host types, native functions, context helpers,
+  standard natives, reflection permissions, compiler options, hot-reload
+  policies, derive-generated host bindings, and reflection schemas.
+- Macro-generated host and native bindings with stable IDs, rename aliases,
+  permission-aware registration, and budget-aware context helper coverage.
+- Hot reload staging and safe-point reports for source-file, directory, and
+  changed-file workflows, including accepted compatible additions/renames and
+  rejected ABI/schema/effect/access/source changes without advancing the active
+  version.
+- CLI demo scripts and conformance fixtures covering gameplay helpers,
+  reflection, permissions, and tick-boundary hot reload.
 
-## Current Gaps
+### Remaining Gaps
 
-- Continue hardening M14/M15 embedding and production safe-point reload
-  workflows.
-- Expand M16/M17 diagnostics, fixtures, and game-server demo coverage.
-- Keep M18+ performance work benchmark-driven and separate from semantic
+- M14: close the remaining embedding proof against the milestone checkpoint:
+  EngineBuilder registration, `compile_file`/`compile_dir`, `Runtime::call`,
+  native descriptors, stable ID rejection, permissioned native calls, signature
+  conversion, and derive macro schema parity.
+- M15: close the production reload proof against the milestone checkpoint:
+  safe-point staging, old-frame lifetime, new-call version entry, source update
+  workflows, ABI/schema/effect rejection, compatible additions, and repair-hint
+  reports.
+- M16/M17: expand diagnostics, fixtures, and game-server demo coverage only
+  after the current embedding/reload checkpoint no longer blocks them.
+- M18+: keep performance work benchmark-driven and separate from semantic
   changes.
-- Plan M21 debugger and M22 Cranelift JIT from stable source-span, frame-map,
-  GC-root, budget, PatchTx, hot-reload, and conformance contracts.
+
+### Validation
+
+Use the relevant subset of [validation.md](validation.md) for each change.
+Default full validation remains:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+For current M14/M15 work, prefer targeted engine/hot-reload tests and at least
+one workflow-facing CLI demo run when the change affects embedding or reload
+behavior.
+
+## Next Up
+
+- Finish enough M14/M15 embedding and reload proof to unblock realistic host
+  integration.
+- Then broaden M16/M17 diagnostics, conformance fixtures, and game-server demo
+  workflows around the stable embedding surface.
+- Keep M18 measurement baselines ahead of M19/M20 optimization work.
+- Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
+  frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
 
 ## Update Rules
 
-- Update this file when milestone status, current focus, active capability
-  coverage, or major gaps change.
-- Do not append every small implementation detail here; that belongs in commit
-  history or the relevant module tests.
-- Move long historical sections into `docs/archive/` when this file stops being
-  quick to scan.
+- Update this file when current focus, milestone status, available capability
+  coverage, validation expectations, or remaining current gaps change.
+- Do not append routine implementation details, small refactors, or every
+  commit result here; those belong in commit history or focused tests.
+- Keep the file quick to scan. If durable historical context becomes necessary,
+  summarize it once and archive the long form under `docs/archive/`.

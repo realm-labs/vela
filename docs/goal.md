@@ -80,7 +80,19 @@ Engineering principles:
 The following goal can be used as a persistent implementation target:
 
 ```text
-/goal Treat docs/goal.md as the authoritative product roadmap, docs/architecture.md as the technical contract, and docs/progress.md as the current implementation status. Continue implementing Vela into a complete Hot Reload First dynamic scripting language for game server logic, starting from the earliest incomplete milestone checkpoint recorded in docs/progress.md. Complete means the full planned language surface in docs/grammar.ebnf can be resolved, analyzed, compiled, and executed; script heap values are managed by a budgeted non-moving GC; scripts mutate host state only through HostRef, HostPath, PathProxy, and PatchTx; TypeRegistry and reflection cover types, modules, functions, fields, methods, traits, variants, attributes, and permissions; Rust hosts can register schemas and native functions through a stable Engine API and derive macros; hot reload performs function, schema, and effect ABI checks at safe points; the standard library covers collections, Option/Result-style propagation, math, time/context, and gameplay helpers; and examples/game_server_demo proves level-up, monster-kill rewards, quest progress, reflection, and hot reload workflows. Maintain these constraints throughout implementation: the script language has no generics; scripts never hold real Rust &mut references; host mutation must enter PatchTx; reflection can only query and perform controlled reads/writes/calls and cannot monkey patch type structure; the first complete interpreter does not implement JIT, script async/coroutines, moving GC, or a full LSP; pre-release code should not preserve backward-compatibility shims for old internal APIs, transitional behavior, or temporary artifacts, while hot reload ABI and schema compatibility checks remain required product semantics; awkward feature additions, repeated conditional patching, oversized files/functions, or growing parameter lists must trigger architectural cleanup through clearer module boundaries, dispatch models, helper types, or parameter structs. For each turn, choose the smallest task that advances the current milestone checkpoint, add or run the named validation that proves it, update docs/progress.md when the checkpoint or milestone status changes, and only move to the next milestone when the current checkpoint is satisfied. Every milestone must be runnable, tested, documented in docs/progress.md, and validated by the relevant subset of cargo fmt --all -- --check, cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace, demo script runs, and benchmark/fuzz targets once those exist. Commit appropriate verified checkpoints using Conventional Commit messages.
+/goal Treat docs/goal.md as the stable product roadmap, docs/architecture.md as
+the technical contract, and docs/progress.md as the rolling source of current
+status and remaining milestone gaps. Continue implementing Vela into a complete
+Hot Reload First dynamic scripting language for game server logic, always
+starting from the active checkpoint in docs/progress.md. Preserve the standing
+constraints in this roadmap: no script-language generics, no Rust &mut exposed
+to scripts, all host mutation through HostRef, HostPath, PathProxy, and PatchTx,
+reflection without runtime type-structure mutation or monkey patching, and no
+MVP JIT, script async/coroutines, moving GC, or full LSP. For each turn, choose
+the smallest verifiable task that advances the current milestone, validate it
+with the relevant subset of docs/validation.md, update docs/progress.md only
+when current focus, milestone status, or current gaps change, and commit
+appropriate verified checkpoints with Conventional Commit messages.
 ```
 
 Post-MVP performance work is a first-class roadmap track. The initial release
@@ -763,32 +775,12 @@ performance thresholds, and release documentation
 docs/progress.md and docs/performance.md state achieved targets and known gaps
 ```
 
-## Remaining Task List
+## Current Status Tracking
 
-The current implementation status is tracked in [progress.md](progress.md).
-This list keeps the remaining roadmap shape, not a completed-work ledger.
-
-1. Finish M12 reflection access/reporting coverage and permission edge cases.
-2. Finish M13 standard library convenience coverage, including remaining
-   collection, string, Option/Result, math, context, and gameplay helpers.
-3. Complete M14 Engine embedding APIs, native descriptors, and host macros.
-4. Complete M15 hot reload safe-point, ABI, schema, effect, and source
-   workflows.
-5. Add M16 diagnostic rendering, call stacks, TypeFacts, and tooling fixtures.
-6. Expand M17 game-server demo and conformance fixtures across parser,
-   compiler, VM, host, reflection, stdlib, and hot reload behavior.
-7. Establish M18 official performance baselines and external comparison
-   harnesses.
-8. Optimize the M19 non-JIT interpreter and heap path toward Lua-comparable
-   gameplay workload performance.
-9. Add M20 inline caches and specialization for fields, methods, stdlib calls,
-   and hot bytecode offsets.
-10. Add M21 debugger runtime hooks and DAP integration after source-span,
-    frame, and TypeFact foundations are stable.
-11. Implement M22 Cranelift JIT after interpreter, inline-cache, debugger, and
-    conformance contracts are stable.
-12. Finish M23 release hardening, public docs, validation gates, and
-    performance target reporting.
+The current implementation status, active milestone focus, and remaining
+current gaps are tracked in [progress.md](progress.md). Keep this file stable as
+the product roadmap and milestone contract; do not use it as a changelog or a
+per-commit progress ledger.
 
 ## Key Risks
 
