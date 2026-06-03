@@ -2319,6 +2319,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.module.changed_abi");
     assert_eq!(report.errors[0].target.as_deref(), Some("host::reward"));
+    assert_changed_module_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedModuleAbi { old, new, .. } = &report.errors[0].error.kind else {
         panic!("expected changed module ABI");
     };
@@ -2372,6 +2373,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
         report.errors[0].target.as_deref(),
         Some("host::reward::grant")
     );
+    assert_removed_function_abi_repair_hint(&report);
     let HotReloadErrorKind::RemovedFunctionAbi { function, .. } = &report.errors[0].error.kind
     else {
         panic!("expected removed function ABI");
@@ -2423,6 +2425,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.method.removed_abi");
     assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
+    assert_removed_method_abi_repair_hint(&report);
     let HotReloadErrorKind::RemovedMethodAbi {
         type_name, method, ..
     } = &report.errors[0].error.kind
@@ -2472,6 +2475,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.module.removed_abi");
     assert_eq!(report.errors[0].target.as_deref(), Some("host::reward"));
+    assert_removed_module_abi_repair_hint(&report);
     let HotReloadErrorKind::RemovedModuleAbi { module, .. } = &report.errors[0].error.kind else {
         panic!("expected removed module ABI");
     };
@@ -7670,6 +7674,20 @@ fn assert_removed_trait_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("restore the trait ABI entry or restart with an explicit migration")
+    );
+}
+
+fn assert_changed_module_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve existing module exports or restart with an explicit migration")
+    );
+}
+
+fn assert_removed_module_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the module ABI entry or restart with an explicit migration")
     );
 }
 

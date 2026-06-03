@@ -189,13 +189,13 @@ closes or exposes a more specific gap.
   script trait ABI rejections at safe points without advancing the active
   version, with repair hints covered.
 - Runtime safe-point reload staging reports external module export ABI
-  rejections without advancing the active version.
+  rejections without advancing the active version, with repair hints covered.
 - Runtime safe-point reload staging reports removed external function ABI
-  rejections without advancing the active version.
+  rejections without advancing the active version, with repair hints covered.
 - Runtime safe-point reload staging reports removed external method ABI
-  rejections without advancing the active version.
+  rejections without advancing the active version, with repair hints covered.
 - Runtime safe-point reload staging reports removed external module ABI
-  rejections without advancing the active version.
+  rejections without advancing the active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report
   top-level const side-effect compile rejections at safe points without
   advancing the active version.
