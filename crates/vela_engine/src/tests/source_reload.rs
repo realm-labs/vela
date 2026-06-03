@@ -5529,6 +5529,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    assert_function_return_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,
         old,
@@ -7846,6 +7847,9 @@ fn dir_native_rejection_kind(
     assert_eq!(report.errors[0].code, expected_code);
     if expected_code == "reload.function.parameter_abi_changed" {
         assert_parameter_abi_repair_hint(&report);
+    }
+    if expected_code == "reload.function.return_abi_changed" {
+        assert_function_return_repair_hint(&report);
     }
     assert_eq!(
         runtime.call(

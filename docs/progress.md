@@ -150,7 +150,7 @@ closes or exposes a more specific gap.
 - Runtime source-file, directory, and changed-file reload staging report native
   descriptor effect, access, parameter, return, and removal ABI rejections at
   safe points without advancing the active version, with repair hints covered
-  for parameter ABI reports.
+  for parameter and return ABI reports.
 - Runtime source-file, directory, and changed-file reload staging report host
   method descriptor effect, access, parameter, return, and removal ABI
   rejections at safe points without advancing the active version, with repair
