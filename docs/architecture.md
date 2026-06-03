@@ -1895,7 +1895,9 @@ Runtime update compilation uses the runtime's active `ProgramVersion`, so hosts
 do not need to separately fetch the current version before compiling an update.
 Source load and path errors are returned immediately, while accepted updates and
 ABI or policy rejections are staged until the host calls `runtime.check_reload()`
-at a safe point. Hosts that already have a `PatchTx` can use
+at a safe point. Tick-loop hosts can call
+`runtime.check_reload_at_tick_boundary()` when no event or patch apply boundary
+is active. Hosts that already have a `PatchTx` can use
 `runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a pending
 reload before and after successful host patch apply.
 

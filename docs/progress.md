@@ -182,6 +182,9 @@ closes or exposes a more specific gap.
 - Runtime event calls can consume staged hot-reload updates or rejections at
   an explicit event-end safe point while the completed event still runs on the
   previous active version.
+- Runtime tick-boundary safe points can consume staged hot-reload updates or
+  rejections without running script code, matching production tick-loop
+  workflows.
 - Engine runtimes can bracket `PatchTx` apply with before/after hot-reload
   safe-point checks.
 - Macro-exposed host types, fields, methods, and native functions derive stable

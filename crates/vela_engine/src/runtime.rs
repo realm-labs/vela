@@ -100,6 +100,10 @@ impl Runtime {
         Ok(Self::consume_reload_report(&mut self.program, hot_reload))
     }
 
+    pub fn check_reload_at_tick_boundary(&mut self) -> EngineResult<Option<HotReloadReport>> {
+        self.check_reload()
+    }
+
     pub fn apply_patch_tx_at_safe_point(
         &mut self,
         tx: PatchTx,
