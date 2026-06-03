@@ -3252,6 +3252,101 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_native_parameter");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let old_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .param("amount", TypeHint::Int),
+            |_| Ok(Value::Null),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .param("amount", TypeHint::Float),
+            |_| Ok(Value::Null),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file native parameter ABI rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file native parameter ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(
+        report.errors[0].code,
+        "reload.function.parameter_abi_changed"
+    );
+    let HotReloadErrorKind::ChangedFunctionParameterAbi {
+        function,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed native function parameter ABI");
+    };
+    assert_eq!(function, "game::native::grant_bonus");
+    assert_eq!(old.len(), 1);
+    assert_eq!(old[0].name, "amount");
+    assert_eq!(old[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(new.len(), 1);
+    assert_eq!(new[0].name, "amount");
+    assert_eq!(new[0].type_hint.as_deref(), Some("float"));
+    assert!(source_span.is_none());
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
