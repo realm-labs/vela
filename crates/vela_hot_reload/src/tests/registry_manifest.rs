@@ -117,6 +117,75 @@ fn trait_abi_manifest_can_be_built_from_type_registry() {
 }
 
 #[test]
+fn registry_function_abi_accepts_host_stable_id_renames() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register_module(ModuleDesc::new("game::native"));
+    old_registry.register_function(
+        FunctionDesc::new(FunctionId::new(22), "game::native::grant_bonus")
+            .module("game::native")
+            .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("int")
+            .effects(FunctionEffectSet::host_read())
+            .access(FunctionAccess::new().reflect_visible(true)),
+    );
+
+    let mut renamed_registry = TypeRegistry::new();
+    renamed_registry.register_module(ModuleDesc::new("game::native"));
+    renamed_registry.register_function(
+        FunctionDesc::new(FunctionId::new(22), "game::native::grant_bonus_v2")
+            .module("game::native")
+            .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("int")
+            .effects(FunctionEffectSet::host_read())
+            .access(FunctionAccess::new().reflect_visible(true)),
+    );
+
+    HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&renamed_registry))
+        .expect("host native rename with unchanged stable ID should keep ABI");
+
+    let mut changed_id_registry = TypeRegistry::new();
+    changed_id_registry.register_module(ModuleDesc::new("game::native"));
+    changed_id_registry.register_function(
+        FunctionDesc::new(FunctionId::new(23), "game::native::grant_bonus")
+            .module("game::native")
+            .param(FunctionParamDesc::new("amount").type_hint("int"))
+            .return_type("int")
+            .effects(FunctionEffectSet::host_read())
+            .access(FunctionAccess::new().reflect_visible(true)),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&changed_id_registry))
+        .expect_err("host native stable ID churn should be rejected");
+    assert_eq!(error.code(), "reload.function.removed_abi");
+    assert_eq!(error.target(), Some("game::native::grant_bonus".to_owned()));
+}
+
+#[test]
+fn registry_function_abi_keeps_script_function_renames_name_based() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register_function(
+        FunctionDesc::new(FunctionId::new(31), "game::reward::grant")
+            .origin(DeclOrigin::Script)
+            .return_type("int"),
+    );
+
+    let mut renamed_registry = TypeRegistry::new();
+    renamed_registry.register_function(
+        FunctionDesc::new(FunctionId::new(31), "game::reward::grant_v2")
+            .origin(DeclOrigin::Script)
+            .return_type("int"),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&renamed_registry))
+        .expect_err("script function renames should still remove the old entry");
+    assert_eq!(error.code(), "reload.function.removed_abi");
+    assert_eq!(error.target(), Some("game::reward::grant".to_owned()));
+}
+
+#[test]
 fn abi_manifest_can_be_built_from_type_registry() {
     let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
         .schema_hash(SchemaHash::new(0xfeed))

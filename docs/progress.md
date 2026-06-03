@@ -112,6 +112,9 @@ closes or exposes a more specific gap.
 - Hot reload validates function, method, module, trait, schema, effect, access,
   stable-ID schema rename compatibility, and source diagnostics before version
   advancement.
+- Hot reload accepts compatible host native function renames when the stable
+  native function ID is unchanged, including module export ABI checks and old
+  hot-reload frames that still call the previous native name.
 - Hot reload reports distinguish actual bytecode-changed functions from
   source-changed modules and reverse-import impacted modules.
 - Engine and Runtime hot-reload source workflows accept changed `.vela` file

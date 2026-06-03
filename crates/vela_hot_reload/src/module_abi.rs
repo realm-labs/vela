@@ -53,9 +53,10 @@ impl ModuleAbi {
             .map(|export| (export.name.as_str(), export))
             .collect::<BTreeMap<_, _>>();
         let changed_existing = self.exports.iter().any(|old| {
-            next_exports
-                .get(old.name.as_str())
-                .is_none_or(|new| *new != old)
+            if let Some(new) = next_exports.get(old.name.as_str()) {
+                return *new != old;
+            }
+            !next.exports.iter().any(|new| old.is_compatible_rename(new))
         });
         if changed_existing {
             return Err(HotReloadError::new(HotReloadErrorKind::ChangedModuleAbi {
@@ -93,6 +94,10 @@ impl ModuleExportAbi {
             kind: ModuleExportKindAbi::from_export_kind(export.kind),
             function: export.function.map(|function| function.get()),
         }
+    }
+
+    fn is_compatible_rename(&self, next: &Self) -> bool {
+        self.kind == next.kind && self.function.is_some() && self.function == next.function
     }
 }
 

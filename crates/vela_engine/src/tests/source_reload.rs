@@ -761,6 +761,88 @@ fn runtime_stages_dir_removed_native_function_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_native_stable_id_rename_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_native_stable_id_rename");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    std::fs::write(
+        &reward_file,
+        r#"
+pub fn grant() {
+    return game::native::grant_bonus();
+}
+"#,
+    )
+    .expect("write old native reward module");
+    let old_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Int(5)),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Int(5)),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(5))
+    );
+
+    std::fs::write(
+        &reward_file,
+        r#"
+pub fn grant() {
+    return game::native::grant_bonus_v2();
+}
+"#,
+    )
+    .expect("write renamed native reward module");
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir native stable-ID rename should be staged");
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir native stable-ID rename report");
+
+    assert!(report.accepted);
+    assert!(report.errors.is_empty());
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(5))
+    );
+}
+
+#[test]
 fn runtime_stages_dir_method_effect_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_effect",

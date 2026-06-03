@@ -5,6 +5,7 @@ use vela_bytecode::Program;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_common::{FunctionId, HostMethodId};
 use vela_host::path::HostPath;
+use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::policy::HotReloadPolicy;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_reflect::registry::TypeRegistry;
@@ -237,6 +238,16 @@ impl Engine {
         }
     }
 
+    fn install_with_registry_and_abi(
+        &self,
+        vm: &mut Vm,
+        registry: Arc<TypeRegistry>,
+        abi: &HotReloadAbi,
+    ) {
+        self.install_with_registry(vm, registry);
+        self.install_native_function_aliases(vm, abi);
+    }
+
     fn install_native_functions(&self, vm: &mut Vm) {
         for entry in self.native_functions.values() {
             let name = entry.desc.name.clone();
@@ -278,6 +289,45 @@ impl Engine {
         }
     }
 
+    fn install_native_function_aliases(&self, vm: &mut Vm, abi: &HotReloadAbi) {
+        for (id, alias) in abi.host_function_aliases() {
+            if self.native_function_names.contains_key(alias) {
+                continue;
+            }
+            let id = FunctionId::new(id);
+            if let Some(entry) = self.native_functions.get(&id) {
+                let alias = alias.to_owned();
+                let access = entry.desc.access.clone();
+                let permissions = self.permissions.clone();
+                let function = Arc::clone(&entry.function);
+                vm.register_native(alias.clone(), move |args| {
+                    check_permissions(&alias, &access, &permissions)?;
+                    function(args)
+                });
+            } else if let Some(entry) = self.host_native_functions.get(&id) {
+                let alias = alias.to_owned();
+                let access = entry.desc.access.clone();
+                let permissions = self.permissions.clone();
+                let function = Arc::clone(&entry.function);
+                vm.register_host_native(alias.clone(), move |args, host| {
+                    check_permissions(&alias, &access, &permissions)?;
+                    function(args, host)
+                });
+            } else if let Some(entry) = self.context_host_native_functions.get(&id) {
+                let alias = alias.to_owned();
+                let access = entry.desc.access.clone();
+                let permissions = self.permissions.clone();
+                let function = Arc::clone(&entry.function);
+                let engine = self.clone();
+                vm.register_budgeted_host_native(alias.clone(), move |args, host, budget| {
+                    check_permissions(&alias, &access, &permissions)?;
+                    let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
+                    function(args, &mut context)
+                });
+            }
+        }
+    }
+
     fn registry_for_program(&self, program: &Program) -> Arc<TypeRegistry> {
         let Some(graph) = program.script_metadata() else {
             return Arc::clone(&self.registry);
@@ -299,6 +349,13 @@ impl Engine {
     pub fn into_vm_for_program(&self, program: &Program) -> Vm {
         let mut vm = Vm::new();
         self.install_program(&mut vm, program);
+        vm
+    }
+
+    #[must_use]
+    pub fn into_vm_for_program_with_abi(&self, program: &Program, abi: &HotReloadAbi) -> Vm {
+        let mut vm = Vm::new();
+        self.install_with_registry_and_abi(&mut vm, self.registry_for_program(program), abi);
         vm
     }
 }

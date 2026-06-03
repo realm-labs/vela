@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use vela_common::Span;
 use vela_hir::module_graph::ModuleGraph;
-use vela_reflect::modules::{FunctionDesc, FunctionParamDesc};
+use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc};
 use vela_reflect::registry::{
     MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeRegistry,
 };
@@ -122,7 +122,7 @@ impl HotReloadAbi {
         }
 
         for (function, old_function) in &self.functions {
-            let Some(new_function) = next.functions.get(function) else {
+            let Some(new_function) = find_compatible_function(function, old_function, next) else {
                 return Err(HotReloadError::new(
                     HotReloadErrorKind::RemovedFunctionAbi {
                         function: function.clone(),
@@ -166,11 +166,37 @@ impl HotReloadAbi {
 
         Ok(())
     }
+
+    pub fn host_function_aliases(&self) -> impl Iterator<Item = (u64, &str)> + '_ {
+        self.functions.values().filter_map(|function| {
+            let id = function.id?;
+            (function.origin == DeclOrigin::Host).then_some((id, function.name.as_str()))
+        })
+    }
+}
+
+fn find_compatible_function<'a>(
+    function: &str,
+    old_function: &FunctionAbi,
+    next: &'a HotReloadAbi,
+) -> Option<&'a FunctionAbi> {
+    if let Some(new_function) = next.functions.get(function) {
+        return Some(new_function);
+    }
+    let old_id = old_function.id?;
+    if old_function.origin != DeclOrigin::Host {
+        return None;
+    }
+    next.functions.values().find(|new_function| {
+        new_function.origin == DeclOrigin::Host && new_function.id == Some(old_id)
+    })
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionAbi {
+    pub id: Option<u64>,
     pub name: String,
+    pub origin: DeclOrigin,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
     pub event: Option<String>,
@@ -184,6 +210,8 @@ impl FunctionAbi {
     pub fn new(name: impl Into<String>, effects: EffectAbi, access: AccessAbi) -> Self {
         Self {
             name: name.into(),
+            id: None,
+            origin: DeclOrigin::Host,
             params: Vec::new(),
             return_type: None,
             event: None,
@@ -208,7 +236,9 @@ impl FunctionAbi {
                 function.access.reflect_callable,
                 function.access.required_permissions().to_vec(),
             ),
-        );
+        )
+        .id(function.id.get())
+        .origin(function.origin);
         if let Some(event) = function.attrs.get("event") {
             abi = abi.event(event);
         }
@@ -222,6 +252,18 @@ impl FunctionAbi {
             abi = abi.source_span(source_span);
         }
         abi
+    }
+
+    #[must_use]
+    pub fn id(mut self, id: u64) -> Self {
+        self.id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
+        self
     }
 
     #[must_use]
@@ -249,6 +291,19 @@ impl FunctionAbi {
     }
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
+        if self.origin == DeclOrigin::Host
+            && next.origin == DeclOrigin::Host
+            && self.id.is_some()
+            && next.id.is_some()
+            && self.id != next.id
+        {
+            return Err(HotReloadError::new(
+                HotReloadErrorKind::RemovedFunctionAbi {
+                    function: self.name.clone(),
+                    source_span: self.source_span.map(Box::new),
+                },
+            ));
+        }
         ensure_function_params_compatible(self, next)?;
         if self.return_type != next.return_type {
             return Err(HotReloadError::new(
