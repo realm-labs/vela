@@ -208,6 +208,8 @@ closes or exposes a more specific gap.
   additions at safe points without advancing the active version.
 - Runtime directory reload staging reports script function access ABI
   rejections at safe points without advancing the active version.
+- Runtime directory and changed-file reload staging reports removed script
+  function rejections at safe points without advancing the active version.
 - Runtime directory reload staging reports native descriptor effect, access,
   parameter, and return ABI rejections at safe points without advancing the
   active version.
