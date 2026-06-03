@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
@@ -23,12 +24,7 @@ fn unique_test_dir(name: &str) -> PathBuf {
 
 #[test]
 fn runtime_reflection_includes_compiled_script_metadata() {
-    let root = unique_test_dir("script_reflection");
-    fs::create_dir_all(&root).expect("create temp dir");
-    let script = root.join("script_reflection.vela");
-    fs::write(
-        &script,
-        r#"
+    let source = r#"
 enum QuestProgress {
     Active { count }
     Finished { count }
@@ -61,15 +57,15 @@ fn main() {
 
     return 0;
 }
-"#,
-    )
-    .expect("write script");
+"#;
 
     let engine = Engine::builder()
         .reflection_policy(ReflectPolicy::all())
         .build()
         .expect("build engine");
-    let program = engine.compile_file(&script).expect("compile script");
+    let program = engine
+        .compile_source(SourceId::new(1), source)
+        .expect("compile script");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -78,8 +74,6 @@ fn main() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx,),
         Ok(Value::Int(1))
     );
-
-    fs::remove_dir_all(root).expect("clean temp dir");
 }
 
 #[test]

@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use vela_common::{FieldId, HostObjectId, HostTypeId};
+use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
 use vela_engine::native::{
@@ -20,6 +20,14 @@ use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudgetKind;
 use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::value::Value;
+
+macro_rules! compile_source {
+    ($engine:expr, $source:expr, $expect:literal) => {
+        $engine
+            .compile_source(SourceId::new(1), $source)
+            .expect($expect)
+    };
+}
 
 #[path = "script_function/metadata.rs"]
 mod metadata;
@@ -153,17 +161,4 @@ fn debug_probe() -> bool {
 
 fn function_id(name: &str) -> NativeFunctionId {
     NativeFunctionId::new(vela_common::stable_id("native_function", "", name))
-}
-
-fn unique_test_dir(name: &str) -> std::path::PathBuf {
-    let mut path = std::env::temp_dir();
-    path.push(format!(
-        "vela_macros_{name}_{}_{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time before epoch")
-            .as_nanos()
-    ));
-    path
 }

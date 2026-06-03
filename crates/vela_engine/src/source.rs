@@ -80,11 +80,19 @@ impl fmt::Display for EngineSourceError {
 impl std::error::Error for EngineSourceError {}
 
 impl Engine {
+    pub fn compile_source(
+        &self,
+        source: SourceId,
+        text: &str,
+    ) -> Result<Program, EngineSourceError> {
+        compile_program_source_with_options(source, text, &self.compiler_options())
+            .map_err(EngineSourceError::compile)
+    }
+
     pub fn compile_file(&self, path: impl AsRef<Path>) -> Result<Program, EngineSourceError> {
         let path = path.as_ref();
         let text = read_source_text(path)?;
-        compile_program_source_with_options(SourceId::new(1), &text, &self.compiler_options())
-            .map_err(EngineSourceError::compile)
+        self.compile_source(SourceId::new(1), &text)
     }
 
     pub fn compile_dir(&self, root: impl AsRef<Path>) -> Result<Program, EngineSourceError> {

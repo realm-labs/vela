@@ -1,6 +1,6 @@
 #![allow(clippy::result_large_err)]
 
-use vela_common::{HostMethodId, HostObjectId, stable_id};
+use vela_common::{HostMethodId, HostObjectId, SourceId, stable_id};
 use vela_engine::engine::Engine;
 use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
@@ -15,6 +15,14 @@ use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::value::Value;
+
+macro_rules! compile_source {
+    ($engine:expr, $source:expr, $expect:literal) => {
+        $engine
+            .compile_source(SourceId::new(1), $source)
+            .expect($expect)
+    };
+}
 
 #[path = "script_methods/metadata.rs"]
 mod metadata;
@@ -130,17 +138,4 @@ impl Player {
 
 fn method_id(name: &str) -> HostMethodId {
     HostMethodId::new(stable_id("host_method", "game::player::Player", name))
-}
-
-fn unique_test_dir(name: &str) -> std::path::PathBuf {
-    let mut path = std::env::temp_dir();
-    path.push(format!(
-        "vela_macros_{name}_{}_{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time before epoch")
-            .as_nanos()
-    ));
-    path
 }

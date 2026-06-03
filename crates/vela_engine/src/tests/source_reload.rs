@@ -77,7 +77,6 @@ fn main(player: Player) {
             args: vec![HostValue::Int(7)]
         }
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -125,7 +124,6 @@ pub const BONUS: int = 6;
         Ok(Value::Int(10))
     );
     assert!(program.function("ignored.main").is_none());
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -210,7 +208,6 @@ pub fn grant() {
         ),
         Ok(Value::Int(8))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -280,7 +277,6 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
         ),
         Ok(Value::Int(6))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -336,7 +332,6 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -409,7 +404,6 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -479,7 +473,6 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -575,7 +568,6 @@ fn grant() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -640,7 +632,6 @@ pub fn grant() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -670,7 +661,6 @@ fn runtime_returns_hot_reload_dir_source_errors_immediately() {
             .has_pending_hot_update()
             .expect("source error should not stage an update")
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -702,7 +692,6 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
             .run_program(&runtime.current().to_program(), "game::main::main", &[]),
         Ok(Value::Int(10))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -730,7 +719,6 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
             .run_program(&runtime.current().to_program(), "game::main::main", &[]),
         Ok(Value::Int(8))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -755,7 +743,6 @@ fn engine_compile_hot_reload_changed_file_rejects_non_source_path() {
         })
     ));
     assert!(reward_file.exists());
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -779,7 +766,6 @@ fn engine_compile_hot_reload_changed_file_rejects_parent_dir_escape() {
         })
     ));
     assert!(reward_file.exists());
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -1432,25 +1418,17 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(5))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_private_helper_addition_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_private_helper");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 fn helper() {
     return 7;
@@ -1460,12 +1438,7 @@ fn main() {
     return helper();
 }
 "#,
-    )
-    .expect("write helper update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("helper update should stage");
+    );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -1482,25 +1455,17 @@ fn main() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(7))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_public_function_addition_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_public_function");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "pub fn main() { return 1; }").expect("write initial source");
     let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime = runtime_from_hot_reload_source(engine, "pub fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 pub fn helper() {
     return 7;
@@ -1510,12 +1475,7 @@ pub fn main() {
     return helper();
 }
 "#,
-    )
-    .expect("write public function update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("public function update should stage");
+    );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -1542,16 +1502,13 @@ pub fn main() {
         ),
         Ok(Value::Int(7))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_defaulted_schema_addition_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_schema_addition");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(
-        &path,
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
         r#"
 struct Reward {
     item_id: string
@@ -1561,18 +1518,12 @@ fn main() {
     return 1;
 }
 "#,
-    )
-    .expect("write initial source");
-    let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    );
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 struct Reward {
     item_id: string
@@ -1583,12 +1534,7 @@ fn main() {
     return 2;
 }
 "#,
-    )
-    .expect("write compatible schema update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("defaulted schema addition should stage");
+    );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -1605,46 +1551,32 @@ fn main() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_event_parameter_reorder_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_event_param_reorder");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(
-        &path,
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
         r#"
 #[event("monster.kill")]
 fn on_kill(player_id: int, monster_id: int) {
     return 1;
 }
 "#,
-    )
-    .expect("write initial source");
-    let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    );
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 #[event("monster.kill")]
 fn on_kill(monster_id: int, player_id: int) {
     return 2;
 }
 "#,
-    )
-    .expect("write incompatible event handler update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("event ABI rejection should be staged");
+    );
     assert_eq!(
         runtime.call(
             "on_kill",
@@ -1682,46 +1614,32 @@ fn on_kill(monster_id: int, player_id: int) {
         ),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_event_target_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_event_target");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(
-        &path,
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
         r#"
 #[event("monster.kill")]
 fn on_kill(player_id: int, monster_id: int) {
     return 1;
 }
 "#,
-    )
-    .expect("write initial source");
-    let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    );
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 #[event("quest.complete")]
 fn on_kill(player_id: int, monster_id: int) {
     return 2;
 }
 "#,
-    )
-    .expect("write incompatible event target update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("event target rejection should be staged");
+    );
     assert_eq!(
         runtime.call(
             "on_kill",
@@ -1764,44 +1682,30 @@ fn on_kill(player_id: int, monster_id: int) {
         ),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_return_abi_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_return_abi");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(
-        &path,
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
         r#"
 fn main() -> int {
     return 1;
 }
 "#,
-    )
-    .expect("write initial source");
-    let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    );
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 fn main() -> float {
     return 2.0;
 }
 "#,
-    )
-    .expect("write incompatible return ABI update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("return ABI rejection should be staged");
+    );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -1832,44 +1736,30 @@ fn main() -> float {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_required_parameter_addition_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_required_param");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(
-        &path,
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
         r#"
 fn main(player_id: int) {
     return player_id;
 }
 "#,
-    )
-    .expect("write initial source");
-    let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    );
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 fn main(player_id: int, amount: int) {
     return amount;
 }
 "#,
-    )
-    .expect("write required parameter update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("required parameter rejection should be staged");
+    );
     assert_eq!(
         runtime.call(
             "main",
@@ -1909,15 +1799,10 @@ fn main(player_id: int, amount: int) {
         ),
         Ok(Value::Int(7))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_native_effect");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let old_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
@@ -1926,9 +1811,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
@@ -1941,11 +1824,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("native effect ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -1978,15 +1857,10 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_native_access");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let old_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22)).access(
@@ -1998,9 +1872,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22)).access(
@@ -2016,11 +1888,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("native access ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2053,15 +1921,10 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_native_parameter");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let old_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
@@ -2070,9 +1933,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
@@ -2085,11 +1946,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("native parameter ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2127,15 +1984,10 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_native_return");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let old_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
@@ -2144,9 +1996,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
@@ -2159,11 +2009,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("native return ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2194,15 +2040,10 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_method_effect");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .register_type(
@@ -2215,9 +2056,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_type(
             TypeDesc::new(player_key)
@@ -2233,11 +2072,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("method effect ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2272,15 +2107,10 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_method_access");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .register_type(
@@ -2296,9 +2126,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_type(
             TypeDesc::new(player_key)
@@ -2317,11 +2145,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("method access ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2356,15 +2180,10 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_method_parameter");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .register_type(
@@ -2377,9 +2196,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_type(
             TypeDesc::new(player_key)
@@ -2395,11 +2212,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("method parameter ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2436,15 +2249,10 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_method_return");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .register_type(
@@ -2454,9 +2262,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         )
         .build()
         .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .register_type(
             TypeDesc::new(player_key)
@@ -2469,11 +2275,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("method return ABI rejection should be staged");
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2506,28 +2308,20 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_rejection");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let engine = Engine::builder()
         .hot_reload_policy(HotReloadPolicy::locked_down())
         .build()
         .expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 fn helper() {
     return 2;
@@ -2537,12 +2331,7 @@ fn main() {
     return helper();
 }
 "#,
-    )
-    .expect("write rejected source");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("hot reload rejection should be staged");
+    );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2564,25 +2353,17 @@ fn main() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
 fn runtime_stages_source_file_top_level_effect_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_file_top_level_effect");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let path = root.join("main.vela");
-    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
     let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_file(&path)
-        .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    std::fs::write(
-        &path,
+    stage_source_update(
+        &mut runtime,
         r#"
 const BAD = register_event("monster.kill");
 
@@ -2590,12 +2371,7 @@ fn main() {
     return 2;
 }
 "#,
-    )
-    .expect("write side-effecting update");
-    runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
-        .expect("compile rejection should be staged as a hot reload report");
+    );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -2619,7 +2395,6 @@ fn main() {
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -2651,7 +2426,6 @@ fn runtime_returns_hot_reload_file_source_errors_immediately() {
             .has_pending_hot_update()
             .expect("source error should not stage an update")
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -2698,7 +2472,6 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
         ),
         Ok(Value::Int(6))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -2767,7 +2540,6 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
         ),
         Ok(Value::Int(6))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -2823,7 +2595,6 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -2896,7 +2667,6 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -2966,7 +2736,6 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3062,7 +2831,6 @@ fn grant() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3152,7 +2920,6 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3248,7 +3015,6 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3343,7 +3109,6 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3431,7 +3196,6 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3496,7 +3260,6 @@ pub fn grant() {
         ),
         Ok(Value::Int(2))
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3527,7 +3290,6 @@ fn runtime_returns_hot_reload_changed_file_source_errors_immediately() {
             .has_pending_hot_update()
             .expect("source error should not stage an update")
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
 
 #[test]
@@ -3633,7 +3395,35 @@ fn main() {
     );
 }
 
-fn unique_test_dir(name: &str) -> std::path::PathBuf {
+struct TestDir(std::path::PathBuf);
+
+impl TestDir {
+    fn join(&self, path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
+        self.0.join(path)
+    }
+}
+
+impl AsRef<std::path::Path> for TestDir {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TestDir {
+    type Target = std::path::Path;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Drop for TestDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn unique_test_dir(name: &str) -> TestDir {
     let mut path = std::env::temp_dir();
     path.push(format!(
         "vela_engine_{name}_{}_{}",
@@ -3643,7 +3433,30 @@ fn unique_test_dir(name: &str) -> std::path::PathBuf {
             .expect("system time after epoch")
             .as_nanos()
     ));
-    path
+    TestDir(path)
+}
+
+fn runtime_from_hot_reload_source(engine: Engine, source: &str) -> Runtime {
+    let initial = hot_reload_initial_from_source(&engine, source);
+    Runtime::from_hot_reload_version(engine, initial)
+}
+
+fn hot_reload_initial_from_source(
+    engine: &Engine,
+    source: &str,
+) -> vela_hot_reload::version::ProgramVersion {
+    engine
+        .compile_hot_reload_initial(SourceId::new(1), source)
+        .expect("initial hot reload source compile")
+}
+
+fn stage_source_update(runtime: &mut Runtime, source: &str) {
+    let update = runtime
+        .compile_hot_reload_update(SourceId::new(2), source)
+        .expect("runtime should be hot-reload enabled");
+    runtime
+        .stage_hot_update_result(update)
+        .expect("source update should stage");
 }
 
 fn write_reward_modules(

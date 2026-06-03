@@ -218,20 +218,16 @@ fn script_method_metadata_compiles_to_patch_tx_calls() {
         .register_host_method_metadata::<Player>()
         .build()
         .expect("engine should build from macro metadata");
-    let root = unique_test_dir("script_method_metadata");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.vela");
-    std::fs::write(
-        &source,
+    let program = compile_source!(
+        engine,
         r#"
 fn main(player: Player) {
     player.grant_exp(5);
     return 1;
 }
 "#,
-    )
-    .expect("write source");
-    let program = engine.compile_file(&source).expect("compile source");
+        "compile source"
+    );
     let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -256,5 +252,4 @@ fn main(player: Player) {
             args: vec![HostValue::Int(5)],
         },
     );
-    std::fs::remove_dir_all(root).expect("clean temp source dir");
 }
