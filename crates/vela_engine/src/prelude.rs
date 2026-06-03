@@ -13,7 +13,8 @@ pub use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 pub use crate::runtime::{
-    CallOptions, PatchApplySafePointError, PatchApplySafePointReport, Runtime,
+    CallOptions, EventCallSafePointReport, PatchApplySafePointError, PatchApplySafePointReport,
+    Runtime,
 };
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
