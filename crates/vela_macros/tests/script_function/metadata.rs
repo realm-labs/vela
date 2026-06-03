@@ -159,6 +159,18 @@ fn script_function_generates_result_signature_metadata() {
 }
 
 #[test]
+fn script_function_generates_private_reflect_visible_metadata() {
+    assert_eq!(
+        vela_native_function_desc_debug_probe(),
+        NativeFunctionDesc::new("game::debug_probe", function_id("game::debug_probe"))
+            .returns(TypeHint::Bool)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::private().reflect_visible(true))
+            .docs("Private reflection-only debug probe."),
+    );
+}
+
+#[test]
 fn script_context_function_generates_native_function_metadata() {
     assert_eq!(
         vela_native_function_desc_set_level(),

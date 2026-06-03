@@ -681,6 +681,10 @@ let engine = Engine::builder()
 For macro-exposed functions, `#[script_function]`,
 `#[script_context_function]`, and `#[script_host_function]` derive the native
 function ID from the public `::` qualified function name and optional `alias`.
+They also expose descriptor access metadata such as `public`,
+`reflect_visible`, and `reflect` / `reflect_callable`, so hosts can publish
+private reflection-visible admin/debug functions without making them public
+script APIs or reflective call targets.
 Low-level descriptor constructors remain available for engine internals and
 tests that need explicit IDs:
 

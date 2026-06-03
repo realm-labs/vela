@@ -20,6 +20,8 @@ pub(super) struct FunctionMeta {
     pub(super) docs: Option<String>,
     pub(super) attrs: Vec<(String, String)>,
     pub(super) permissions: Vec<String>,
+    pub(super) public: bool,
+    pub(super) reflect_visible: bool,
     pub(super) reflect_callable: bool,
     pub(super) params: Vec<ParamMeta>,
     pub(super) returns: HintKind,
@@ -69,6 +71,8 @@ pub(super) struct ScriptFunctionAttrs {
     pub(super) docs: Option<String>,
     attrs: Vec<(String, String)>,
     permissions: Vec<String>,
+    public: Option<bool>,
+    reflect_visible: Option<bool>,
     reflect_callable: bool,
 }
 
@@ -139,6 +143,12 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
                 value.parse::<LitStr>()?,
                 "script_function",
             )?),
+            "public" => {
+                parsed.public = Some(value.parse::<LitBool>()?.value);
+            }
+            "reflect_visible" => {
+                parsed.reflect_visible = Some(value.parse::<LitBool>()?.value);
+            }
             "reflect" | "reflect_callable" => {
                 parsed.reflect_callable = value.parse::<LitBool>()?.value;
             }
@@ -243,6 +253,8 @@ pub(super) fn function_meta(
     })?;
     let stable_name = attrs.alias.unwrap_or_else(|| name.clone());
     let id = vela_common::stable_id("native_function", "", &stable_name);
+    let public = attrs.public.unwrap_or(true);
+    let reflect_visible = attrs.reflect_visible.unwrap_or(public);
 
     Ok(FunctionMeta {
         id,
@@ -251,6 +263,8 @@ pub(super) fn function_meta(
         docs,
         attrs: attrs.attrs,
         permissions: attrs.permissions,
+        public,
+        reflect_visible,
         reflect_callable: attrs.reflect_callable,
         params,
         returns: return_hint(&item.sig.output),

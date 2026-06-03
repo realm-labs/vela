@@ -15,6 +15,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_macros::{script_context_function, script_function, script_host_function};
+use vela_reflect::permissions::ReflectPermissionSet;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudgetKind;
 use vela_vm::error::{VmErrorKind, VmResult};
@@ -137,6 +138,17 @@ fn sum6(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64) -> i64 {
 #[script_function(name = "game::checked_bonus", effect = "pure", reflect = true)]
 fn checked_bonus(ok: bool) -> std::result::Result<i64, String> {
     if ok { Ok(9) } else { Err("denied".to_owned()) }
+}
+
+/// Private reflection-only debug probe.
+#[script_function(
+    name = "game::debug_probe",
+    effect = "pure",
+    public = false,
+    reflect_visible = true
+)]
+fn debug_probe() -> bool {
+    true
 }
 
 fn function_id(name: &str) -> NativeFunctionId {

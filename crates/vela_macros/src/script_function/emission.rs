@@ -113,6 +113,12 @@ fn hint_tokens(hint: HintKind) -> TokenStream {
 }
 
 fn access_tokens(function: &FunctionMeta) -> TokenStream {
+    let base = if function.public {
+        quote! { ::vela_engine::native::FunctionAccess::public() }
+    } else {
+        quote! { ::vela_engine::native::FunctionAccess::private() }
+    };
+    let reflect_visible = function.reflect_visible;
     let reflect_callable = function.reflect_callable;
     let permissions = function.permissions.iter().map(|permission| {
         quote! {
@@ -122,8 +128,9 @@ fn access_tokens(function: &FunctionMeta) -> TokenStream {
 
     quote! {
         {
-            let mut access =
-                ::vela_engine::native::FunctionAccess::public().reflect_callable(#reflect_callable);
+            let mut access = #base
+                .reflect_visible(#reflect_visible)
+                .reflect_callable(#reflect_callable);
             #(#permissions)*
             access
         }

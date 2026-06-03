@@ -364,6 +364,49 @@ fn main() {
 }
 
 #[test]
+fn script_function_registers_private_reflect_visible_metadata() {
+    let engine = vela_register_native_function_debug_probe(
+        Engine::builder().reflection_permissions(ReflectPermissionSet::all()),
+    )
+    .build()
+    .expect("engine should build from macro private reflection metadata");
+    let root = unique_test_dir("script_function_private_reflect_visible");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let source = root.join("main.vela");
+    std::fs::write(
+        &source,
+        r#"
+fn main() {
+    let probe = reflect::function("game::debug_probe");
+    return reflect::has_function("game::debug_probe")
+        && !probe.public
+        && probe.access.reflect_visible
+        && !probe.access.reflect_callable;
+}
+"#,
+    )
+    .expect("write source");
+    let program = engine
+        .compile_file(&source)
+        .expect("source should compile with macro registered private metadata");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[], &mut host),
+        Ok(Value::Bool(true)),
+    );
+    assert!(tx.patches().is_empty());
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn script_context_function_registers_typed_native_with_engine() {
     let engine = vela_register_context_native_function_set_level(
         Engine::builder().grant_permission("player.write"),

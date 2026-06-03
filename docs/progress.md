@@ -187,6 +187,9 @@ closes or exposes a more specific gap.
 - Macro-exposed host types, fields, methods, and native functions derive stable
   `u64` IDs from script-facing paths, with `alias` preserving compatibility
   across rename-safe host API changes.
+- Macro-exposed native functions can set public, reflection visibility, and
+  reflective callability metadata while preserving permissioned Engine
+  registration and hot-reload ABI visibility.
 - CLI demo scripts and conformance fixtures use `.vela`, and the hot-reload
   demo exercises staged updates through an explicit `check_reload` safe point.
 
