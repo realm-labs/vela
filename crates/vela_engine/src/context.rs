@@ -1,5 +1,8 @@
+use vela_common::Span;
 use vela_host::adapter::ScriptStateAdapter;
+use vela_host::path::HostPath;
 use vela_host::tx::PatchTx;
+use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
@@ -67,6 +70,17 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         if let Some(budget) = self.budget.as_deref() {
             budget.reserve_patch(self.host.tx.patches().len())?;
         }
+        Ok(())
+    }
+
+    pub fn set_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host.tx.set_path(path, value, source_span)?;
         Ok(())
     }
 

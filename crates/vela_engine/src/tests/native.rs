@@ -329,7 +329,7 @@ fn engine_installs_context_host_native_functions_into_vm() {
                         .context_host_native_function_by_name("game::context_set_level")
                         .is_some()
                 );
-                ctx.tx().set_path(
+                ctx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
@@ -508,7 +508,7 @@ fn main(player) {
 }
 
 #[test]
-fn context_host_native_can_reserve_patch_budget_before_patching() {
+fn context_host_native_set_path_reserves_patch_budget_before_patching() {
     let engine = Engine::builder()
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::patch_checked_set_level", NativeFunctionId::new(26))
@@ -521,10 +521,9 @@ fn context_host_native_can_reserve_patch_budget_before_patching() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
-                ctx.reserve_patch()?;
                 let player = args.required::<HostRef>(0)?;
                 let level = args.required::<i64>(1)?;
-                ctx.tx().set_path(
+                ctx.set_path(
                     HostPath::new(player).field(FieldId::new(1)),
                     HostValue::Int(level),
                     None,

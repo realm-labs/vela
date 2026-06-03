@@ -91,8 +91,9 @@ closes or exposes a more specific gap.
   payload field IDs, and `register_reflect_schema::<T>()` can register those
   reflected enum schemas.
 - Macro-generated context native registrations flow through Engine permission
-  checks and `NativeCallContext` budget charging before host patches are
-  recorded.
+  checks and `NativeCallContext` budget charging, including a budget-aware
+  `set_path` helper that reserves patch capacity before recording host
+  mutations.
 - The game-server demo registers Player, Monster, Inventory, ItemStack, and
   Config host schemas through `ScriptHost` derives and
   `register_host_type::<T>()`, and registers HostQuestProgress variant
