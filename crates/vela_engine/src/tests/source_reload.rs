@@ -761,6 +761,24 @@ fn runtime_stages_dir_removed_native_function_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_native_stable_id_churn_rejection_until_safe_point() {
+    let kind = native_stable_id_churn_rejection_kind(
+        "runtime_stage_dir_native_stable_id_churn",
+        NativeDescriptorReloadWorkflow::Directory,
+    );
+
+    let HotReloadErrorKind::RemovedFunctionAbi {
+        function,
+        source_span,
+    } = kind
+    else {
+        panic!("expected removed native function ABI");
+    };
+    assert_eq!(function, "game::native::grant_bonus");
+    assert!(source_span.is_none());
+}
+
+#[test]
 fn runtime_stages_dir_native_stable_id_rename_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_native_stable_id_rename");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -1097,6 +1115,26 @@ fn runtime_stages_dir_method_return_rejection_until_safe_point() {
 fn runtime_stages_dir_removed_method_rejection_until_safe_point() {
     let kind = removed_method_descriptor_rejection_kind(
         "runtime_stage_dir_removed_method",
+        MethodDescriptorReloadWorkflow::Directory,
+    );
+
+    let HotReloadErrorKind::RemovedMethodAbi {
+        type_name,
+        method,
+        source_span,
+    } = kind
+    else {
+        panic!("expected removed host method ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_dir_method_stable_id_churn_rejection_until_safe_point() {
+    let kind = method_stable_id_churn_rejection_kind(
+        "runtime_stage_dir_method_stable_id_churn",
         MethodDescriptorReloadWorkflow::Directory,
     );
 
@@ -6077,6 +6115,24 @@ fn runtime_stages_changed_file_removed_native_function_rejection_until_safe_poin
 }
 
 #[test]
+fn runtime_stages_changed_file_native_stable_id_churn_rejection_until_safe_point() {
+    let kind = native_stable_id_churn_rejection_kind(
+        "runtime_stage_changed_file_native_stable_id_churn",
+        NativeDescriptorReloadWorkflow::ChangedFile,
+    );
+
+    let HotReloadErrorKind::RemovedFunctionAbi {
+        function,
+        source_span,
+    } = kind
+    else {
+        panic!("expected removed native function ABI");
+    };
+    assert_eq!(function, "game::native::grant_bonus");
+    assert!(source_span.is_none());
+}
+
+#[test]
 fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_native_stable_id_rename");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -6279,6 +6335,26 @@ fn runtime_stages_changed_file_method_return_rejection_until_safe_point() {
 fn runtime_stages_changed_file_removed_method_rejection_until_safe_point() {
     let kind = removed_method_descriptor_rejection_kind(
         "runtime_stage_changed_file_removed_method",
+        MethodDescriptorReloadWorkflow::ChangedFile,
+    );
+
+    let HotReloadErrorKind::RemovedMethodAbi {
+        type_name,
+        method,
+        source_span,
+    } = kind
+    else {
+        panic!("expected removed host method ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_changed_file_method_stable_id_churn_rejection_until_safe_point() {
+    let kind = method_stable_id_churn_rejection_kind(
+        "runtime_stage_changed_file_method_stable_id_churn",
         MethodDescriptorReloadWorkflow::ChangedFile,
     );
 
@@ -8559,6 +8635,94 @@ fn removed_native_descriptor_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
+fn native_stable_id_churn_rejection_kind(
+    test_name: &str,
+    workflow: NativeDescriptorReloadWorkflow,
+) -> HotReloadErrorKind {
+    let root = unique_test_dir(test_name);
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let old_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Null),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(23))
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Null),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    match workflow {
+        NativeDescriptorReloadWorkflow::Directory => runtime
+            .stage_hot_reload_update_dir(&root)
+            .expect("runtime should be hot-reload enabled")
+            .expect("dir native stable-ID churn ABI rejection should be staged"),
+        NativeDescriptorReloadWorkflow::ChangedFile => runtime
+            .stage_hot_reload_update_changed_file(&root, &reward_file)
+            .expect("runtime should be hot-reload enabled")
+            .expect("changed-file native stable-ID churn ABI rejection should be staged"),
+    };
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged native stable-ID churn ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.removed_abi");
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("game::native::grant_bonus")
+    );
+    assert_removed_function_abi_repair_hint(&report);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    report.errors[0].error.kind.clone()
+}
+
 fn dir_native_rejection_kind(
     test_name: &str,
     old_desc: NativeFunctionDesc,
@@ -8710,6 +8874,89 @@ fn removed_method_descriptor_rejection_kind(
         .check_reload()
         .expect("check reload at safe point")
         .expect("staged removed method descriptor ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.method.removed_abi");
+    assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
+    assert_removed_method_abi_repair_hint(&report);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    report.errors[0].error.kind.clone()
+}
+
+fn method_stable_id_churn_rejection_kind(
+    test_name: &str,
+    workflow: MethodDescriptorReloadWorkflow,
+) -> HotReloadErrorKind {
+    let root = unique_test_dir(test_name);
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let old_engine = Engine::builder()
+        .register_type(type_with_reload_method(MethodDesc::new(
+            HostMethodId::new(9),
+            "grant_exp",
+        )))
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_type(type_with_reload_method(MethodDesc::new(
+            HostMethodId::new(10),
+            "grant_exp",
+        )))
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    match workflow {
+        MethodDescriptorReloadWorkflow::Directory => runtime
+            .stage_hot_reload_update_dir(&root)
+            .expect("runtime should be hot-reload enabled")
+            .expect("dir method stable-ID churn ABI rejection should be staged"),
+        MethodDescriptorReloadWorkflow::ChangedFile => runtime
+            .stage_hot_reload_update_changed_file(&root, &reward_file)
+            .expect("runtime should be hot-reload enabled")
+            .expect("changed-file method stable-ID churn ABI rejection should be staged"),
+    };
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged method stable-ID churn ABI rejection report");
 
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);

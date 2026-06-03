@@ -120,8 +120,9 @@ closes or exposes a more specific gap.
   ID is unchanged across source-file, directory, and changed-file reload
   workflows, including old hot-reload frames that still emit host method-call
   patches by ID.
-- Runtime source-file reload staging rejects same-name native function and host
-  method stable-ID churn at safe points without advancing the active version.
+- Runtime source-file, directory, and changed-file reload staging reject
+  same-name native function and host method stable-ID churn at safe points
+  without advancing the active version.
 - Hot reload reports distinguish actual bytecode-changed functions from
   source-changed modules and reverse-import impacted modules.
 - Engine and Runtime hot-reload source workflows accept changed `.vela` file
