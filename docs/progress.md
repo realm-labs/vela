@@ -145,14 +145,9 @@ closes or exposes a more specific gap.
   safe points without advancing the active version.
 - Runtime source-file reload staging reports required function parameter
   additions at safe points without advancing the active version.
-- Runtime source-file reload staging reports native descriptor effect ABI
-  rejections at safe points without advancing the active version.
-- Runtime source-file reload staging reports native descriptor access ABI
-  rejections at safe points without advancing the active version.
-- Runtime source-file reload staging reports native descriptor parameter and
-  return ABI rejections at safe points without advancing the active version.
-- Runtime source-file reload staging reports removed native descriptor ABI
-  rejections at safe points without advancing the active version.
+- Runtime source-file, directory, and changed-file reload staging report native
+  descriptor effect, access, parameter, return, and removal ABI rejections at
+  safe points without advancing the active version.
 - Runtime source-file reload staging reports host method descriptor effect ABI
   rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports host method descriptor access ABI
@@ -216,12 +211,6 @@ closes or exposes a more specific gap.
   version.
 - Runtime directory and changed-file reload staging reports removed script
   function rejections at safe points without advancing the active version.
-- Runtime directory reload staging reports native descriptor effect, access,
-  parameter, and return ABI rejections at safe points without advancing the
-  active version.
-- Runtime directory and changed-file reload staging reports removed native
-  descriptor ABI rejections at safe points without advancing the active
-  version.
 - Runtime directory reload staging reports host method descriptor effect,
   access, parameter, and return ABI rejections at safe points without advancing
   the active version.
@@ -234,14 +223,6 @@ closes or exposes a more specific gap.
   at safe points without advancing the active version.
 - Runtime changed-file reload staging reports required function parameter
   additions at safe points without advancing the active version.
-- Runtime changed-file reload staging reports native descriptor effect ABI
-  rejections at safe points without advancing the active version.
-- Runtime changed-file reload staging reports native descriptor access ABI
-  rejections at safe points without advancing the active version.
-- Runtime changed-file reload staging reports native descriptor parameter ABI
-  rejections at safe points without advancing the active version.
-- Runtime changed-file reload staging reports native descriptor return ABI
-  rejections at safe points without advancing the active version.
 - Runtime changed-file reload staging reports host method descriptor effect,
   access, parameter, and return ABI rejections at safe points without advancing
   the active version.
