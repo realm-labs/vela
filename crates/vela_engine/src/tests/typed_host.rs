@@ -1,5 +1,6 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
@@ -108,6 +109,53 @@ fn main() {
     assert!(tx.patches().is_empty());
 }
 
+#[test]
+fn typed_host_native_maps_host_result_errors() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_typed_host_native_fn::<(HostRef, bool), _>(
+            NativeFunctionDesc::new("game::typed_host_require_write", NativeFunctionId::new(247))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("allowed", TypeHint::Bool)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.write")),
+            typed_host_require_write,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game::typed_host_require_write(player, false);
+}
+"#,
+    )
+    .expect("program should compile");
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .map_err(|error| error.kind),
+        Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
+            path: HostPath::new(host_ref),
+            action: "write",
+        })),
+    );
+}
+
 fn typed_host_set_level(host: &mut HostExecution<'_>, player: HostRef, level: i64) -> VmResult<()> {
     host.tx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
@@ -115,6 +163,24 @@ fn typed_host_set_level(host: &mut HostExecution<'_>, player: HostRef, level: i6
         None,
     )?;
     Ok(())
+}
+
+fn typed_host_require_write(
+    _host: &mut HostExecution<'_>,
+    player: HostRef,
+    allowed: bool,
+) -> HostResult<i64> {
+    if allowed {
+        Ok(13)
+    } else {
+        Err(HostError {
+            kind: HostErrorKind::PermissionDenied {
+                path: HostPath::new(player),
+                action: "write",
+            },
+            source_span: None,
+        })
+    }
 }
 
 #[test]
