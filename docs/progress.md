@@ -185,6 +185,8 @@ closes or exposes a more specific gap.
   rejections without advancing the active version.
 - Runtime safe-point reload staging reports removed external function ABI
   rejections without advancing the active version.
+- Runtime safe-point reload staging reports removed external method ABI
+  rejections without advancing the active version.
 - Runtime safe-point reload staging reports removed external module ABI
   rejections without advancing the active version.
 - Runtime source-file reload staging reports top-level const side-effect
