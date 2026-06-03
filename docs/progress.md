@@ -112,6 +112,9 @@ closes or exposes a more specific gap.
 - Runtime source-file reload staging accepts default-policy private helper
   additions at safe points while keeping old calls on the previous version
   until the report is consumed.
+- Runtime source-file reload staging accepts default-policy public function
+  additions at safe points and makes the new public entry callable only after
+  the accepted report is consumed.
 - Runtime source-file reload staging accepts compatible defaulted script schema
   additions at safe points without activating the new version early.
 - Runtime source-file reload staging reports event handler parameter ABI
