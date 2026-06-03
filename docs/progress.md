@@ -142,8 +142,8 @@ closes or exposes a more specific gap.
 - Runtime source-file, directory, and changed-file reload staging report event
   target ABI rejections at safe points without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report
-  function return ABI rejections at safe points without advancing the active
-  version.
+  function return ABI rejections with repair hints at safe points without
+  advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report
   required function parameter additions at safe points without advancing the
   active version.

@@ -405,6 +405,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    assert_function_return_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,
         old,
@@ -3891,6 +3892,7 @@ fn main() -> float {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    assert_function_return_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,
         old,
@@ -4250,6 +4252,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    assert_function_return_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,
         old,
@@ -4993,6 +4996,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    assert_function_return_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,
         old,
@@ -7580,6 +7584,13 @@ fn assert_changed_function_access_rejection(report: &HotReloadReport, expected_f
     assert!(!new.public);
     assert_eq!(old.required_permissions, new.required_permissions);
     assert!(source_span.is_some());
+}
+
+fn assert_function_return_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve the previous return type hint or restart with an explicit migration")
+    );
 }
 
 fn removed_script_function_rejection_kind(
