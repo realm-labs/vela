@@ -63,6 +63,14 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    pub fn register_script_host<T>(self) -> Self
+    where
+        T: ScriptHostSchema + ScriptHostMethodMetadata,
+    {
+        self.register_host_type::<T>().register_host_methods::<T>()
+    }
+
+    #[must_use]
     pub fn register_reflect_schema<T: ScriptReflectSchema>(self) -> Self {
         self.register_type(T::script_reflect_type_desc())
     }

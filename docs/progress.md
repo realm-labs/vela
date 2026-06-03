@@ -82,6 +82,9 @@ closes or exposes a more specific gap.
   functions, context helpers, standard natives, reflection permissions,
   compiler options, hot-reload policies, and a focused embedding prelude for
   common host setup imports.
+- Engine API registers macro-derived host bindings through
+  `register_script_host::<T>()`, combining `ScriptHost` schema metadata with
+  generated host method registration for embedders that use both derives.
 - Engine API registers derive-generated reflection schemas through
   `register_reflect_schema::<T>()`.
 - `ScriptReflect` derives host enum variant metadata with stable variant and

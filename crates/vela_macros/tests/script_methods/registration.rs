@@ -62,8 +62,7 @@ fn script_methods_generate_callable_native_registration() {
 #[test]
 fn script_methods_feed_stable_engine_registration_api() {
     let engine = Engine::builder()
-        .register_host_type::<Player>()
-        .register_host_methods::<Player>()
+        .register_script_host::<Player>()
         .grant_permission("player.write")
         .build()
         .expect("engine should build from macro host methods");
