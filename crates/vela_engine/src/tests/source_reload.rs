@@ -342,6 +342,14 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_private_helper_addition_until_safe_point() {
+    private_helper_addition_report(
+        "runtime_stage_dir_private_helper_addition",
+        ScriptFunctionReloadWorkflow::Directory,
+    );
+}
+
+#[test]
 fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_return_abi");
     let reward_file = write_typed_reward_modules(&root, "return grant();", "int", "2");
@@ -4821,6 +4829,14 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
 }
 
 #[test]
+fn runtime_stages_changed_file_private_helper_addition_until_safe_point() {
+    private_helper_addition_report(
+        "runtime_stage_changed_file_private_helper_addition",
+        ScriptFunctionReloadWorkflow::ChangedFile,
+    );
+}
+
+#[test]
 fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -7146,6 +7162,78 @@ enum ScriptFunctionReloadWorkflow {
     ChangedFile,
 }
 
+fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloadWorkflow) {
+    let root = unique_test_dir(test_name);
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module_calling_helper(&reward_file, 6);
+    match workflow {
+        ScriptFunctionReloadWorkflow::Directory => runtime
+            .stage_hot_reload_update_dir(&root)
+            .expect("runtime should be hot-reload enabled")
+            .expect("dir helper addition should be staged"),
+        ScriptFunctionReloadWorkflow::ChangedFile => runtime
+            .stage_hot_reload_update_changed_file(&root, &reward_file)
+            .expect("runtime should be hot-reload enabled")
+            .expect("changed-file helper addition should be staged"),
+    };
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged helper addition report");
+
+    assert!(report.accepted);
+    assert!(
+        report
+            .changed_functions
+            .contains(&"game::reward::grant".to_owned())
+    );
+    assert!(
+        report
+            .changed_functions
+            .contains(&"game::reward::helper".to_owned())
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+}
+
 enum EventReloadWorkflow {
     Directory,
     ChangedFile,
@@ -7865,4 +7953,22 @@ fn helper() {{
         ),
     )
     .expect("write reward module with helper");
+}
+
+fn write_reward_module_calling_helper(path: &std::path::Path, reward: i64) {
+    std::fs::write(
+        path,
+        format!(
+            r#"
+pub fn grant() {{
+    return helper();
+}}
+
+fn helper() {{
+    return {reward};
+}}
+"#
+        ),
+    )
+    .expect("write reward module calling helper");
 }
