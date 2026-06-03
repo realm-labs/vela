@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::compiler::compile_program_source;
-use vela_common::{HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::path::{HostPath, HostRef};
+use vela_host::proxy::PathProxy;
 use vela_reflect::registry::TypeKey;
 use vela_vm::error::{VmError, VmErrorKind};
 use vela_vm::value::Value;
@@ -112,6 +113,39 @@ fn main(player) {
             .into_vm()
             .run_program(&program, "main", &[Value::HostRef(player)]),
         Ok(Value::Int(49)),
+    );
+}
+
+#[test]
+fn typed_native_functions_accept_path_proxies() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(PathProxy,), _>(
+            NativeFunctionDesc::new("game::path_depth", NativeFunctionId::new(247))
+                .param("path", TypeHint::Any)
+                .returns(TypeHint::Int),
+            |path: PathProxy| {
+                i64::try_from(path.path().segments.len()).expect("path depth fits i64")
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(path) {
+    return game::path_depth(path);
+}
+"#,
+    )
+    .expect("program should compile");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let path = PathProxy::new(HostPath::new(player).field(FieldId::new(3)).index(2));
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&program, "main", &[Value::PathProxy(path)]),
+        Ok(Value::Int(2)),
     );
 }
 
