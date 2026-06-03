@@ -78,6 +78,22 @@ impl ProgramVersion {
     }
 
     #[must_use]
+    pub fn script_method_function(&self, type_name: &str, method: &str) -> Option<Arc<CodeObject>> {
+        let method = self.script_method(type_name, method)?;
+        self.function(&method.function)
+    }
+
+    #[must_use]
+    pub fn script_method_function_by_id(
+        &self,
+        type_name: &str,
+        method_id: MethodId,
+    ) -> Option<Arc<CodeObject>> {
+        let method = self.script_method_by_id(type_name, method_id)?;
+        self.function(&method.function)
+    }
+
+    #[must_use]
     pub fn script_metadata(&self) -> Option<&ModuleGraph> {
         self.script_metadata.as_ref()
     }

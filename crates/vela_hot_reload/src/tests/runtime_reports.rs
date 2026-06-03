@@ -234,6 +234,20 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
         current.script_method_by_id("game::main::Player", method.id),
         Some(method)
     );
+    assert_eq!(
+        current
+            .script_method_function("game::main::Player", "bonus")
+            .as_ref()
+            .map(|function| function.name.as_str()),
+        Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
+    );
+    assert_eq!(
+        current
+            .script_method_function_by_id("game::main::Player", method.id)
+            .as_ref()
+            .map(|function| function.name.as_str()),
+        Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
+    );
 
     let metadata = current
         .script_metadata()
