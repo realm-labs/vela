@@ -203,12 +203,12 @@ closes or exposes a more specific gap.
   rejections without advancing the active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report
   top-level const side-effect compile rejections at safe points without
-  advancing the active version.
+  advancing the active version, with source diagnostic repair labels covered.
 - Runtime directory reload staging reports compile diagnostics at safe points
   without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report script
   function access ABI rejections at safe points without advancing the active
-  version.
+  version, with repair hints covered.
 - Runtime directory and changed-file reload staging reports removed script
   function rejections at safe points without advancing the active version.
 - Runtime changed-file reload staging reports compile diagnostics at safe

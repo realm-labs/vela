@@ -1848,6 +1848,7 @@ pub fn grant() {
             .iter()
             .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
     );
+    assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -4755,6 +4756,7 @@ fn main() {
             .iter()
             .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
     );
+    assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -6691,6 +6693,7 @@ pub fn grant() {
             .iter()
             .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
     );
+    assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -7631,6 +7634,22 @@ fn assert_changed_function_access_rejection(report: &HotReloadReport, expected_f
     assert!(!new.public);
     assert_eq!(old.required_permissions, new.required_permissions);
     assert!(source_span.is_some());
+}
+
+fn assert_top_level_side_effect_repair_label(report: &HotReloadReport) {
+    assert!(
+        report.errors[0]
+            .source_diagnostics
+            .iter()
+            .any(|diagnostic| {
+                diagnostic.code.as_deref() == Some("hir::top_level_side_effect")
+                    && diagnostic.labels.iter().any(|label| {
+                        label
+                            .message
+                            .contains("move this work into a runtime function")
+                    })
+            })
+    );
 }
 
 fn assert_function_return_repair_hint(report: &HotReloadReport) {

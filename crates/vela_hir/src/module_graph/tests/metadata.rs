@@ -209,6 +209,13 @@ fn main() { return SAFE_LIMIT; }
             .iter()
             .any(|diagnostic| diagnostic.message.contains("BAD_ASSIGN"))
     );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.labels.iter().any(|label| label
+                .message
+                .contains("move this work into a runtime function")))
+    );
 }
 #[test]
 fn lowers_attribute_metadata_for_declarations_and_members() {

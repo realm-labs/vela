@@ -144,7 +144,11 @@ impl ConstInitializerValidator<'_> {
             ))
             .with_code("hir::top_level_side_effect")
             .with_span(expr.span)
-            .with_label(expr.span, "side-effecting operation in const initializer"),
+            .with_label(expr.span, "side-effecting operation in const initializer")
+            .with_label(
+                expr.span,
+                "move this work into a runtime function instead of a top-level const",
+            ),
         );
     }
 
@@ -159,6 +163,10 @@ impl ConstInitializerValidator<'_> {
             .with_label(
                 statement.span,
                 "side-effecting operation in const initializer",
+            )
+            .with_label(
+                statement.span,
+                "move this work into a runtime function instead of a top-level const",
             ),
         );
     }
