@@ -142,4 +142,70 @@ impl HotUpdate {
             changes,
         }
     }
+
+    #[must_use]
+    pub fn function(&self, name: &str) -> Option<Arc<CodeObject>> {
+        self.functions.get(&FunctionSymbolId::new(name)).cloned()
+    }
+
+    pub fn function_names(&self) -> impl Iterator<Item = &str> {
+        self.functions.keys().map(|name| name.0.as_str())
+    }
+
+    pub fn changed_function_names(&self) -> impl Iterator<Item = &str> {
+        self.changes
+            .changed_functions
+            .iter()
+            .map(|name| name.0.as_str())
+    }
+
+    #[must_use]
+    pub fn changed_modules(&self) -> &[String] {
+        &self.changes.changed_modules
+    }
+
+    #[must_use]
+    pub fn impacted_modules(&self) -> &[String] {
+        &self.changes.impacted_modules
+    }
+
+    #[must_use]
+    pub fn script_methods(&self) -> &ScriptMethodTable {
+        &self.script_methods
+    }
+
+    #[must_use]
+    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&ScriptMethod> {
+        self.script_methods.get(type_name, method)
+    }
+
+    #[must_use]
+    pub fn script_method_by_id(
+        &self,
+        type_name: &str,
+        method_id: MethodId,
+    ) -> Option<&ScriptMethod> {
+        self.script_methods.get_by_id(type_name, method_id)
+    }
+
+    #[must_use]
+    pub fn script_method_function(&self, type_name: &str, method: &str) -> Option<Arc<CodeObject>> {
+        let method = self.script_method(type_name, method)?;
+        self.function(&method.function)
+    }
+
+    #[must_use]
+    pub fn script_method_function_by_id(
+        &self,
+        type_name: &str,
+        method_id: MethodId,
+    ) -> Option<Arc<CodeObject>> {
+        let method = self.script_method_by_id(type_name, method_id)?;
+        self.function(&method.function)
+    }
+
+    #[must_use]
+    pub fn script_metadata(&self) -> Option<&ModuleGraph> {
+        self.script_metadata.as_ref()
+    }
 }

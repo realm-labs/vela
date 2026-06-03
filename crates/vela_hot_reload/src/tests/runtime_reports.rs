@@ -263,6 +263,71 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
 }
 
 #[test]
+fn hot_update_exposes_read_only_preflight_metadata() {
+    let initial = compile_initial_modules_with_abi_and_options(
+        &script_method_module_sources(),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+    .expect("compile initial modules");
+    let runtime = HotReloadRuntime::new(initial);
+    let update = compile_update_modules_with_abi_and_options_and_policy(
+        &runtime.current(),
+        &script_method_module_sources_with_bonus("self.level + amount + 1"),
+        runtime.current().abi().clone(),
+        &CompilerOptions::default(),
+        &HotReloadPolicy::default(),
+    )
+    .expect("compile update");
+    let changed_functions = update.changed_function_names().collect::<Vec<_>>();
+
+    assert_eq!(
+        changed_functions,
+        [
+            "game::main.__impl.BonusSource.for.game::main::Player.bonus",
+            "game::main::main"
+        ]
+    );
+    assert!(
+        update
+            .function_names()
+            .any(|name| name == "game::main::main")
+    );
+    assert_eq!(update.changed_modules(), ["game::main"]);
+    assert_eq!(update.impacted_modules(), ["game::main"]);
+
+    let method = update
+        .script_method("game::main::Player", "bonus")
+        .expect("compiled script method should be visible from update metadata");
+    assert_eq!(
+        update.script_method_by_id("game::main::Player", method.id),
+        Some(method)
+    );
+    assert_eq!(
+        update
+            .script_method_function("game::main::Player", "bonus")
+            .as_ref()
+            .map(|function| function.name.as_str()),
+        Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
+    );
+    assert_eq!(
+        update
+            .script_method_function_by_id("game::main::Player", method.id)
+            .as_ref()
+            .map(|function| function.name.as_str()),
+        Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
+    );
+    let metadata = update
+        .script_metadata()
+        .expect("compiled update should preserve module metadata");
+    assert!(
+        metadata
+            .module_id(&ModulePath::from_qualified("game::main"))
+            .is_some()
+    );
+}
+
+#[test]
 fn old_version_lifetime_preserves_old_code() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
@@ -578,23 +643,29 @@ pub fn grant() {{
 }
 
 fn script_method_module_sources() -> Vec<ModuleSource> {
+    script_method_module_sources_with_bonus("self.level + amount")
+}
+
+fn script_method_module_sources_with_bonus(bonus_expression: &str) -> Vec<ModuleSource> {
     vec![ModuleSource::new(
         SourceId::new(1),
         ModulePath::from_qualified("game::main"),
-        r#"
-trait BonusSource { fn bonus(self, amount) -> int; }
-struct Player { level: int }
+        format!(
+            r#"
+trait BonusSource {{ fn bonus(self, amount) -> int; }}
+struct Player {{ level: int }}
 
-impl BonusSource for Player {
-    fn bonus(self, amount) -> int {
-        return self.level + amount;
-    }
-}
+impl BonusSource for Player {{
+    fn bonus(self, amount) -> int {{
+        return {bonus_expression};
+    }}
+}}
 
-fn main() {
-    let player = Player { level: 7 };
+fn main() {{
+    let player = Player {{ level: 7 }};
     return player.bonus(5);
-}
+}}
 "#,
+        ),
     )]
 }

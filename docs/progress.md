@@ -124,6 +124,10 @@ closes or exposes a more specific gap.
   method metadata and method code objects with name and stable-ID lookup,
   module metadata, and ABI data for host tooling without making version-owned
   code or schema state mutable.
+- Hot-reload `HotUpdate` payloads expose read-only preflight function,
+  changed-function, changed-module, impacted-module, script method, method code
+  object, and module metadata before hosts stage or apply the update at a safe
+  point.
 - Hot reload accepts compatible host native function renames when the stable
   native function ID is unchanged across source-file, directory, and
   changed-file reload workflows, including module export ABI checks and old
