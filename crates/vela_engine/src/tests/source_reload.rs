@@ -4307,6 +4307,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.removed_abi");
+    assert_removed_function_abi_repair_hint(&report);
     assert_eq!(
         report.errors[0].target.as_deref(),
         Some("game::reward::grant")
@@ -4360,6 +4361,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.method.removed_abi");
+    assert_removed_method_abi_repair_hint(&report);
     assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
     let HotReloadErrorKind::RemovedMethodAbi {
         type_name,
@@ -7642,6 +7644,20 @@ fn assert_access_abi_repair_hint(report: &HotReloadReport) {
     );
 }
 
+fn assert_removed_function_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the function ABI entry or restart with an explicit migration")
+    );
+}
+
+fn assert_removed_method_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the method ABI entry or restart with an explicit migration")
+    );
+}
+
 fn assert_method_return_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
@@ -7794,6 +7810,7 @@ fn removed_native_descriptor_rejection_kind(
         report.errors[0].target.as_deref(),
         Some("game::native::grant_bonus")
     );
+    assert_removed_function_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -7963,6 +7980,7 @@ fn removed_method_descriptor_rejection_kind(
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.method.removed_abi");
     assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
+    assert_removed_method_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
