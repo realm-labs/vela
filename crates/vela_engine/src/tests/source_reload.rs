@@ -11,6 +11,7 @@ use vela_hot_reload::error::HotReloadErrorKind;
 use vela_hot_reload::module_abi::{ModuleAbi, ModuleExportAbi};
 use vela_hot_reload::policy::HotReloadPolicy;
 use vela_hot_reload::report::HotReloadReport;
+use vela_hot_reload::report_render::HotReloadReportLineKind;
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
 use vela_reflect::registry::{MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey};
@@ -406,6 +407,10 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
     assert_function_return_repair_hint(&report);
+    assert_rendered_repair_hint(
+        &report,
+        "preserve the previous return type hint or restart with an explicit migration",
+    );
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,
         old,
@@ -4306,6 +4311,10 @@ fn main() -> float {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
     assert_function_return_repair_hint(&report);
+    assert_rendered_repair_hint(
+        &report,
+        "preserve the previous return type hint or restart with an explicit migration",
+    );
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,
         old,
@@ -8697,6 +8706,13 @@ fn assert_function_return_repair_hint(report: &HotReloadReport) {
         report.errors[0].repair_hint.as_deref(),
         Some("preserve the previous return type hint or restart with an explicit migration")
     );
+}
+
+fn assert_rendered_repair_hint(report: &HotReloadReport, expected: &str) {
+    assert!(report.render_lines().iter().any(|line| {
+        line.kind == HotReloadReportLineKind::RepairHint
+            && line.text == format!("repair: {expected}")
+    }));
 }
 
 fn assert_required_parameter_repair_hint(report: &HotReloadReport) {
