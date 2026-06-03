@@ -51,3 +51,45 @@ fn main(player: Player, amount: int) {
         },
     );
 }
+
+#[test]
+fn prelude_imports_cover_source_and_reload_results() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let compile_error: EngineSourceError = engine
+        .compile_file("missing-prelude-source.vela")
+        .expect_err("missing source should report an engine source error");
+
+    assert!(matches!(
+        compile_error.kind,
+        EngineSourceErrorKind::Io { .. }
+    ));
+
+    let reload_result: EngineHotReloadSourceResult<ProgramVersion> =
+        engine.compile_hot_reload_initial_file("missing-prelude-reload.vela");
+    let reload_error = reload_result.expect_err("missing reload source should report source error");
+
+    assert!(matches!(
+        reload_error.kind,
+        EngineHotReloadSourceErrorKind::Source(EngineSourceError {
+            kind: EngineSourceErrorKind::Io { .. },
+        })
+    ));
+
+    fn accepts_update_result(_result: EngineHotReloadSourceResult<HotUpdate>) {}
+    fn accepts_safe_point_report(_report: Option<HotReloadReport>) {}
+    fn accepts_hot_reload_result(_result: HotReloadResult<ProgramVersion>) {}
+    fn accepts_report_diagnostics(_diagnostics: Vec<HotReloadDiagnostic>) {}
+    fn accepts_report_detail(_detail: Option<HotReloadDiagnosticDetail>) {}
+    fn accepts_report_lines(_lines: Vec<HotReloadReportLine>) {}
+    fn accepts_report_line_kind(_kind: Option<HotReloadReportLineKind>) {}
+    fn accepts_version_id(_version: Option<ProgramVersionId>) {}
+
+    accepts_update_result(Err(reload_error));
+    accepts_safe_point_report(None);
+    accepts_hot_reload_result(engine.compile_hot_reload_initial(SourceId::new(2), "fn main() {}"));
+    accepts_report_diagnostics(Vec::new());
+    accepts_report_detail(None);
+    accepts_report_lines(Vec::new());
+    accepts_report_line_kind(None);
+    accepts_version_id(None);
+}

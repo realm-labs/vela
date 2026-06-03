@@ -9,10 +9,14 @@ pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
 pub use crate::permission::PermissionSet;
+pub use crate::reload::{
+    EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
+};
 pub use crate::runtime::{
     CallOptions, PatchApplySafePointError, PatchApplySafePointReport, Runtime,
 };
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
+pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::{args, host};
 pub use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TraitId,
@@ -23,7 +27,13 @@ pub use vela_host::path::{HostPath, HostRef};
 pub use vela_host::proxy::PathProxy;
 pub use vela_host::tx::PatchTx;
 pub use vela_host::value::HostValue;
+pub use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 pub use vela_hot_reload::policy::HotReloadPolicy;
+pub use vela_hot_reload::report::{HotReloadDiagnostic, HotReloadReport};
+pub use vela_hot_reload::report_detail::HotReloadDiagnosticDetail;
+pub use vela_hot_reload::report_render::{HotReloadReportLine, HotReloadReportLineKind};
+pub use vela_hot_reload::symbol::ProgramVersionId;
+pub use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 pub use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 pub use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
