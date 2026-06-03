@@ -545,6 +545,52 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_propagate_vm_result_errors() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(bool,), _>(
+            NativeFunctionDesc::new("game::require_admin", NativeFunctionId::new(245))
+                .param("allowed", TypeHint::Bool)
+                .returns(TypeHint::Int),
+            |allowed: bool| -> vela_vm::error::VmResult<i64> {
+                if allowed {
+                    Ok(17)
+                } else {
+                    Err(VmError {
+                        kind: VmErrorKind::PermissionDenied {
+                            native: "game::require_admin".to_owned(),
+                            permission: "admin".to_owned(),
+                        },
+                        source_span: None,
+                        call_stack: Default::default(),
+                    })
+                }
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(allowed) {
+    return game::require_admin(allowed);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&program, "main", &[Value::Bool(false)])
+            .map_err(|error| error.kind),
+        Err(VmErrorKind::PermissionDenied {
+            native: "game::require_admin".to_owned(),
+            permission: "admin".to_owned(),
+        }),
+    );
+}
+
+#[test]
 fn typed_native_functions_report_arity_and_type_errors() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64), _>(
