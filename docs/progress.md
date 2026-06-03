@@ -157,22 +157,22 @@ closes or exposes a more specific gap.
   hints covered for effect, access, parameter, return, and removal ABI reports.
 - Runtime source-file, directory, and changed-file reload staging report
   required script enum variant field ABI rejections at safe points without
-  advancing the active version.
+  advancing the active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report
   required script struct field ABI rejections at safe points without advancing
-  the active version.
+  the active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report script
   struct field type ABI rejections at safe points without advancing the active
-  version.
+  version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report removed
   script schema ABI rejections at safe points without advancing the active
-  version.
+  version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report script
   enum variant field type ABI rejections at safe points without advancing the
-  active version.
+  active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging report removed
   script trait implementation ABI rejections at safe points without advancing
-  the active version.
+  the active version, with repair hints covered.
 - Runtime source-file, directory, and changed-file reload staging accept added
   script trait implementations at safe points without activating the new
   version early.

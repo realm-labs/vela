@@ -1069,6 +1069,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Reward")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -1140,6 +1141,7 @@ pub fn grant() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Reward")
     );
+    assert_removed_schema_repair_hint(&report);
     let HotReloadErrorKind::RemovedSchema {
         type_name,
         old_hash,
@@ -1214,6 +1216,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Reward")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -1335,6 +1338,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::QuestProgress")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -1398,6 +1402,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::QuestProgress")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -1461,6 +1466,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Player")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -3132,6 +3138,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
     assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -3179,6 +3186,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.schema.removed");
     assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
+    assert_removed_schema_repair_hint(&report);
     let HotReloadErrorKind::RemovedSchema {
         type_name,
         old_hash,
@@ -3242,6 +3250,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
     assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -3350,6 +3359,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
     assert_eq!(report.errors[0].target.as_deref(), Some("QuestProgress"));
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -3406,6 +3416,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
     assert_eq!(report.errors[0].target.as_deref(), Some("QuestProgress"));
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -3466,6 +3477,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
     assert_eq!(report.errors[0].target.as_deref(), Some("Player"));
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
@@ -5890,6 +5902,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
         report.errors[0].target.as_deref(),
         Some("game::reward::Reward")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -5961,6 +5974,7 @@ pub fn grant() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Reward")
     );
+    assert_removed_schema_repair_hint(&report);
     let HotReloadErrorKind::RemovedSchema {
         type_name,
         old_hash,
@@ -6035,6 +6049,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Reward")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -6156,6 +6171,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
         report.errors[0].target.as_deref(),
         Some("game::reward::QuestProgress")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -6219,6 +6235,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
         report.errors[0].target.as_deref(),
         Some("game::reward::QuestProgress")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -6282,6 +6299,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
         report.errors[0].target.as_deref(),
         Some("game::reward::Player")
     );
+    assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -7613,6 +7631,20 @@ fn assert_required_parameter_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("give every appended parameter a default value")
+    );
+}
+
+fn assert_changed_schema_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve existing schema members, or add only defaulted fields during reload")
+    );
+}
+
+fn assert_removed_schema_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("restore the schema or restart with an explicit migration")
     );
 }
 
