@@ -119,6 +119,8 @@ closes or exposes a more specific gap.
   rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports native descriptor access ABI
   rejections at safe points without advancing the active version.
+- Runtime source-file reload staging reports native descriptor parameter and
+  return ABI rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports host method descriptor effect ABI
   rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports host method descriptor access ABI
