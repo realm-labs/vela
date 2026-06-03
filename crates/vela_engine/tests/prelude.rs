@@ -55,6 +55,20 @@ fn main(player: Player, amount: int) {
 }
 
 #[test]
+fn prelude_imports_cover_script_arg_conversion_traits() {
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(9)));
+    let args = args![host(host_ref), proxy.clone(), Some(3_i64), "tag"];
+
+    assert_eq!(args.required::<HostRef>(0), Ok(host_ref));
+    assert_eq!(args.required::<PathProxy>(1), Ok(proxy));
+    assert_eq!(args.required::<Option<i64>>(2), Ok(Some(3)));
+    assert_eq!(String::from_script_arg(&args[3]), Ok("tag".to_owned()));
+    assert_eq!("done".into_script_arg(), Value::String("done".to_owned()));
+    assert_eq!((1_u32, 42_u64, 7_u32).into_host_ref(), host_ref);
+}
+
+#[test]
 fn prelude_imports_cover_source_and_reload_results() {
     let engine = Engine::builder().build().expect("engine should build");
     let compile_error: EngineSourceError = engine
