@@ -2872,6 +2872,56 @@ pub fn main() {
 }
 
 #[test]
+fn runtime_stages_source_file_removed_function_rejection_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+fn helper() {
+    return 7;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+fn main() {
+    return 3;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(7))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged removed function rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.removed");
+    assert_eq!(report.errors[0].target.as_deref(), Some("helper"));
+    let HotReloadErrorKind::RemovedFunction { function } = &report.errors[0].error.kind else {
+        panic!("expected removed script function");
+    };
+    assert_eq!(function, "helper");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(7))
+    );
+}
+
+#[test]
 fn runtime_stages_source_file_defaulted_schema_addition_until_safe_point() {
     let engine = Engine::builder().build().expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
