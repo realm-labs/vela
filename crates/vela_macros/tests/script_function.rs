@@ -9,6 +9,7 @@ use vela_engine::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
 use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::error::HostResult;
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
@@ -191,6 +192,12 @@ fn sum6(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64) -> i64 {
 #[script_function(name = "game::checked_bonus", effect = "pure", reflect = true)]
 fn checked_bonus(ok: bool) -> std::result::Result<i64, String> {
     if ok { Ok(9) } else { Err("denied".to_owned()) }
+}
+
+/// Returns a fallible copied host bonus.
+#[script_function(name = "game::checked_host_bonus", effect = "pure", reflect = true)]
+fn checked_host_bonus(ok: bool) -> HostResult<i64> {
+    Ok(if ok { 11 } else { 0 })
 }
 
 /// Private reflection-only debug probe.

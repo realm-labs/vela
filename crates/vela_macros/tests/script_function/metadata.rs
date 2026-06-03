@@ -172,6 +172,22 @@ fn script_function_generates_result_signature_metadata() {
 }
 
 #[test]
+fn script_function_generates_host_result_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_checked_host_bonus(),
+        NativeFunctionDesc::new(
+            "game::checked_host_bonus",
+            function_id("game::checked_host_bonus"),
+        )
+        .param("ok", TypeHint::Bool)
+        .returns(TypeHint::Int)
+        .effects(EffectSet::pure())
+        .access(FunctionAccess::public().reflect_callable(true))
+        .docs("Returns a fallible copied host bonus."),
+    );
+}
+
+#[test]
 fn script_function_generates_private_reflect_visible_metadata() {
     assert_eq!(
         vela_native_function_desc_debug_probe(),

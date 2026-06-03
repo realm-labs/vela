@@ -314,6 +314,27 @@ fn main() {
 }
 
 #[test]
+fn script_function_registers_typed_host_result_native_with_engine() {
+    let engine = vela_register_native_function_checked_host_bonus(Engine::builder())
+        .build()
+        .expect("engine should build from macro host-result native function");
+    let program = compile_source!(
+        engine,
+        r#"
+fn main() {
+    return game::checked_host_bonus(true) + game::checked_host_bonus(false);
+}
+"#,
+        "source should compile with macro registered host-result native"
+    );
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(11)),
+    );
+}
+
+#[test]
 fn script_function_registers_private_reflect_visible_metadata() {
     let engine = vela_register_native_function_debug_probe(
         Engine::builder().reflection_permissions(ReflectPermissionSet::all()),
