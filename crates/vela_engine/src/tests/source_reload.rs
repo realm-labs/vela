@@ -2851,6 +2851,67 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
 }
 
 #[test]
+fn runtime_event_end_safe_point_keeps_nested_calls_on_old_version_until_return() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            SourceId::new(1),
+            r#"
+fn helper() {
+    return 1;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        )
+        .expect("initial hot reload compile");
+    let update = engine
+        .compile_hot_reload_update(
+            &initial,
+            SourceId::new(2),
+            r#"
+fn helper() {
+    return 2;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+        )
+        .expect("compatible update should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    runtime
+        .stage_hot_update(update)
+        .expect("stage pending update");
+    let report = runtime
+        .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .expect("event call should run on the old version");
+
+    assert_eq!(report.value, Value::Int(1));
+    let reload = report.reload.expect("staged reload should be consumed");
+    assert!(reload.accepted);
+    assert_eq!(
+        reload.changed_functions,
+        vec!["helper".to_owned(), "main".to_owned()]
+    );
+    assert!(
+        !runtime
+            .has_pending_hot_update()
+            .expect("pending update should be consumed")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
