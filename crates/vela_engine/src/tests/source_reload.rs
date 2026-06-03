@@ -869,6 +869,64 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_stable_id_schema_renames");
+    let reward_file = write_stable_schema_rename_modules(&root, 2, false);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_stable_schema_rename_module(&reward_file, 6, true);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir stable-id schema rename should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir stable-id schema rename report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+}
+
+#[test]
 fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_required_schema_field_rejection");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Absent);
@@ -2089,6 +2147,72 @@ fn main() {
         .check_reload()
         .expect("check reload at safe point")
         .expect("staged schema addition report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["main"]);
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
+fn runtime_stages_source_file_stable_id_schema_renames_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+struct Reward {
+    #[id(101)]
+    item_id: string
+    #[id(102)]
+    count: int
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Active
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+struct Reward {
+    #[id(101)]
+    item: string
+    #[id(102)]
+    quantity: int
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Started
+    #[id(202)]
+    Finished
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged stable-id schema rename report");
 
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main"]);
@@ -4135,6 +4259,64 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_stable_id_schema_renames");
+    let reward_file = write_stable_schema_rename_modules(&root, 2, false);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_stable_schema_rename_module(&reward_file, 6, true);
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file stable-id schema rename should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file stable-id schema rename report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+}
+
+#[test]
 fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_required_schema_field_rejection");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Absent);
@@ -4740,6 +4922,65 @@ pub fn grant() {{
         ),
     )
     .expect("write schema reward module");
+}
+
+fn write_stable_schema_rename_modules(
+    root: &std::path::Path,
+    reward: i64,
+    renamed: bool,
+) -> std::path::PathBuf {
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    std::fs::write(
+        game_dir.join("main.vela"),
+        r#"
+use game::reward::grant
+
+fn main() {
+    return grant();
+}
+"#,
+    )
+    .expect("write main module");
+    let reward_file = game_dir.join("reward.vela");
+    write_stable_schema_rename_module(&reward_file, reward, renamed);
+    reward_file
+}
+
+fn write_stable_schema_rename_module(path: &std::path::Path, reward: i64, renamed: bool) {
+    let (item_field, count_field, active_variant, finished_variant) = if renamed {
+        (
+            "item",
+            "quantity",
+            "Started",
+            "    #[id(202)]\n    Finished\n",
+        )
+    } else {
+        ("item_id", "count", "Active", "")
+    };
+    std::fs::write(
+        path,
+        format!(
+            r#"
+struct Reward {{
+    #[id(101)]
+    {item_field}: string
+    #[id(102)]
+    {count_field}: int
+}}
+
+enum QuestProgress {{
+    #[id(201)]
+    {active_variant}
+{finished_variant}}}
+
+pub fn grant() {{
+    return {reward};
+}}
+"#
+        ),
+    )
+    .expect("write stable schema rename module");
 }
 
 fn write_enum_reward_modules(
