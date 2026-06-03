@@ -4127,6 +4127,58 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
 }
 
 #[test]
+fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let old_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key.clone())
+                .host_type(HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp")),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
+    let new_engine = Engine::builder()
+        .register_type(TypeDesc::new(player_key).host_type(HostTypeId::new(1)))
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(&mut runtime, "fn main() { return 2; }");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged removed host method ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.method.removed_abi");
+    assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
+    let HotReloadErrorKind::RemovedMethodAbi {
+        type_name,
+        method,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected removed host method ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(source_span.is_none());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
 fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()

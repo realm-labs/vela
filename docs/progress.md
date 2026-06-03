@@ -153,6 +153,8 @@ closes or exposes a more specific gap.
 - Runtime source-file reload staging reports host method descriptor parameter
   and return ABI rejections at safe points without advancing the active
   version.
+- Runtime source-file reload staging reports removed host method descriptor ABI
+  rejections at safe points without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report
   required script enum variant field ABI rejections at safe points without
   advancing the active version.
