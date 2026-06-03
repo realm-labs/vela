@@ -4620,6 +4620,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.method.return_abi_changed");
+    assert_method_return_repair_hint(&report);
     let HotReloadErrorKind::ChangedMethodReturnAbi {
         type_name,
         method,
@@ -7593,6 +7594,13 @@ fn assert_function_return_repair_hint(report: &HotReloadReport) {
     );
 }
 
+fn assert_method_return_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve the previous method return type hint or restart with an explicit migration")
+    );
+}
+
 fn removed_script_function_rejection_kind(
     test_name: &str,
     workflow: ScriptFunctionReloadWorkflow,
@@ -7966,6 +7974,9 @@ fn dir_method_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.method.return_abi_changed" {
+        assert_method_return_repair_hint(&report);
+    }
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -8037,6 +8048,9 @@ fn changed_file_method_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.method.return_abi_changed" {
+        assert_method_return_repair_hint(&report);
+    }
     assert_eq!(
         runtime.call(
             "game::main::main",
