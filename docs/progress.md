@@ -141,21 +141,17 @@ closes or exposes a more specific gap.
   version.
 - Runtime source-file, directory, and changed-file reload staging report event
   target ABI rejections at safe points without advancing the active version.
-- Runtime source-file reload staging reports function return ABI rejections at
-  safe points without advancing the active version.
-- Runtime source-file reload staging reports required function parameter
-  additions at safe points without advancing the active version.
+- Runtime source-file, directory, and changed-file reload staging report
+  function return ABI rejections at safe points without advancing the active
+  version.
+- Runtime source-file, directory, and changed-file reload staging report
+  required function parameter additions at safe points without advancing the
+  active version.
 - Runtime source-file, directory, and changed-file reload staging report native
   descriptor effect, access, parameter, return, and removal ABI rejections at
   safe points without advancing the active version.
-- Runtime source-file reload staging reports host method descriptor effect ABI
-  rejections at safe points without advancing the active version.
-- Runtime source-file reload staging reports host method descriptor access ABI
-  rejections at safe points without advancing the active version.
-- Runtime source-file reload staging reports host method descriptor parameter
-  and return ABI rejections at safe points without advancing the active
-  version.
-- Runtime source-file reload staging reports removed host method descriptor ABI
+- Runtime source-file, directory, and changed-file reload staging report host
+  method descriptor effect, access, parameter, return, and removal ABI
   rejections at safe points without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report
   required script enum variant field ABI rejections at safe points without
@@ -198,34 +194,18 @@ closes or exposes a more specific gap.
   rejections without advancing the active version.
 - Runtime safe-point reload staging reports removed external module ABI
   rejections without advancing the active version.
-- Runtime source-file reload staging reports top-level const side-effect
-  compile rejections at safe points without advancing the active version.
+- Runtime source-file, directory, and changed-file reload staging report
+  top-level const side-effect compile rejections at safe points without
+  advancing the active version.
 - Runtime directory reload staging reports compile diagnostics at safe points
   without advancing the active version.
-- Runtime directory reload staging reports function return ABI rejections at
-  safe points without advancing the active version.
-- Runtime directory reload staging reports required function parameter
-  additions at safe points without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report script
   function access ABI rejections at safe points without advancing the active
   version.
 - Runtime directory and changed-file reload staging reports removed script
   function rejections at safe points without advancing the active version.
-- Runtime directory reload staging reports host method descriptor effect,
-  access, parameter, and return ABI rejections at safe points without advancing
-  the active version.
-- Runtime directory and changed-file reload staging reports removed host method
-  descriptor ABI rejections at safe points without advancing the active
-  version.
 - Runtime changed-file reload staging reports compile diagnostics at safe
   points without advancing the active version.
-- Runtime changed-file reload staging reports function return ABI rejections
-  at safe points without advancing the active version.
-- Runtime changed-file reload staging reports required function parameter
-  additions at safe points without advancing the active version.
-- Runtime changed-file reload staging reports host method descriptor effect,
-  access, parameter, and return ABI rejections at safe points without advancing
-  the active version.
 - Analysis diagnostics can report non-exhaustive matches for known script
   enums and dynamic Option/Result facts used by propagation-style control flow.
 - Analysis diagnostics can use TypeRegistry field access metadata to flag
