@@ -10,14 +10,11 @@ to be archived.
 
 ## Current Focus
 
-M0-M13 are complete enough as a runnable prototype. Current work is centered on
-M14/M15 embedding and hot-reload source workflows, specifically the pieces that
-unblock realistic embedding:
+M0-M14 are complete enough as a runnable prototype and embedding surface.
+Current work is centered on M15 hot-reload source workflows, specifically the
+pieces that unblock production reload behavior:
 
 ```text
-Engine API registration
-native descriptors and Rust signature conversion
-context helpers and host macros
 safe-point reload staging and reports
 function, schema, effect, access, and source reload ABI checks
 source-file, directory, and changed-file update workflows
@@ -39,7 +36,7 @@ before debugger/DAP work and Cranelift JIT.
 | M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx overlays, and rollback-safe host boundaries exist. |
 | M12 | Complete enough | Reflection metadata, permission-aware queries, candidate spans, and schema-safe mutation denial are covered. |
 | M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and demo helper coverage are validated. |
-| M14 | Partial | Engine APIs, native descriptors, context helpers, and macros exist in slices; close the remaining embedding proof. |
+| M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, permissions, signature conversion, and macro parity are covered. |
 | M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist; close production workflow proof. |
 | M16 | Partial | Runtime diagnostics, common rendering, and bytecode/runtime frame maps have started. |
 | M17 | Partial | Conformance fixtures and demo harnesses exist; game-server demo can still expand. |
@@ -77,16 +74,12 @@ before debugger/DAP work and Cranelift JIT.
 
 ### Remaining Gaps
 
-- M14: close the remaining embedding proof against the milestone checkpoint:
-  EngineBuilder registration, `compile_file`/`compile_dir`, `Runtime::call`,
-  native descriptors, stable ID rejection, permissioned native calls, signature
-  conversion, and derive macro schema parity.
 - M15: close the production reload proof against the milestone checkpoint:
   safe-point staging, old-frame lifetime, new-call version entry, source update
   workflows, ABI/schema/effect rejection, compatible additions, and repair-hint
   reports.
 - M16/M17: expand diagnostics, fixtures, and game-server demo coverage only
-  after the current embedding/reload checkpoint no longer blocks them.
+  after the current reload checkpoint no longer blocks them.
 - M18+: keep performance work benchmark-driven and separate from semantic
   changes.
 
@@ -101,14 +94,12 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For current M14/M15 work, prefer targeted engine/hot-reload tests and at least
-one workflow-facing CLI demo run when the change affects embedding or reload
-behavior.
+For current M15 work, prefer targeted engine/hot-reload tests and at least one
+workflow-facing CLI demo run when the change affects reload behavior.
 
 ## Next Up
 
-- Finish enough M14/M15 embedding and reload proof to unblock realistic host
-  integration.
+- Finish enough M15 reload proof to unblock production hot-reload workflows.
 - Then broaden M16/M17 diagnostics, conformance fixtures, and game-server demo
   workflows around the stable embedding surface.
 - Keep M18 measurement baselines ahead of M19/M20 optimization work.
