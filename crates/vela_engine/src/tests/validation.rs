@@ -106,6 +106,25 @@ fn engine_rejects_duplicate_names_across_host_and_pure_natives() {
 }
 
 #[test]
+fn engine_rejects_duplicate_ids_across_host_and_pure_natives() {
+    let result = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::first", NativeFunctionId::new(16)),
+            |_| Ok(Value::Null),
+        )
+        .register_host_native_fn(
+            NativeFunctionDesc::new("game::second", NativeFunctionId::new(16)),
+            |_, _| Ok(Value::Null),
+        )
+        .build();
+
+    assert!(matches!(
+        result.map(|_| ()),
+        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionId { id: 16 }
+    ));
+}
+
+#[test]
 fn engine_rejects_duplicate_names_across_context_host_and_pure_natives() {
     let result = Engine::builder()
         .register_native_fn(
