@@ -3199,6 +3199,128 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_changed_file_method_effect_rejection_until_safe_point() {
+    let kind = changed_file_method_rejection_kind(
+        "runtime_stage_changed_file_method_effect",
+        MethodDesc::new(HostMethodId::new(9), "grant_exp").effects(MethodEffectSet::host_read()),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp").effects(MethodEffectSet::host_write()),
+        "reload.method.effects_changed",
+    );
+
+    let HotReloadErrorKind::ChangedMethodEffects {
+        type_name,
+        method,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed host method effects");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(old.reads_host);
+    assert!(!old.writes_host);
+    assert!(new.reads_host);
+    assert!(new.writes_host);
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_changed_file_method_access_rejection_until_safe_point() {
+    let kind = changed_file_method_rejection_kind(
+        "runtime_stage_changed_file_method_access",
+        MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
+            MethodAccess::new()
+                .reflect_callable(true)
+                .require_permission("player.read"),
+        ),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
+            MethodAccess::new()
+                .reflect_callable(false)
+                .require_permission("player.read"),
+        ),
+        "reload.method.access_changed",
+    );
+
+    let HotReloadErrorKind::ChangedMethodAccess {
+        type_name,
+        method,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed host method access");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert_eq!(old.required_permissions, vec!["player.read"]);
+    assert_eq!(new.required_permissions, vec!["player.read"]);
+    assert!(old.callable);
+    assert!(!new.callable);
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_changed_file_method_parameter_rejection_until_safe_point() {
+    let kind = changed_file_method_rejection_kind(
+        "runtime_stage_changed_file_method_parameter",
+        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            .param(MethodParamDesc::new("amount").type_hint("int")),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            .param(MethodParamDesc::new("amount").type_hint("float")),
+        "reload.method.parameter_abi_changed",
+    );
+
+    let HotReloadErrorKind::ChangedMethodParameterAbi {
+        type_name,
+        method,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed host method parameter ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert_eq!(old.len(), 1);
+    assert_eq!(old[0].name, "amount");
+    assert_eq!(old[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(new.len(), 1);
+    assert_eq!(new[0].name, "amount");
+    assert_eq!(new[0].type_hint.as_deref(), Some("float"));
+    assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_changed_file_method_return_rejection_until_safe_point() {
+    let kind = changed_file_method_rejection_kind(
+        "runtime_stage_changed_file_method_return",
+        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("int"),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("null"),
+        "reload.method.return_abi_changed",
+    );
+
+    let HotReloadErrorKind::ChangedMethodReturnAbi {
+        type_name,
+        method,
+        old,
+        new,
+        source_span,
+    } = kind
+    else {
+        panic!("expected changed host method return ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert_eq!(old.as_deref(), Some("int"));
+    assert_eq!(new.as_deref(), Some("null"));
+    assert!(source_span.is_none());
+}
+
+#[test]
 fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -3496,6 +3618,83 @@ pub fn grant() {{
         ),
     )
     .expect("write reward module");
+}
+
+fn changed_file_method_rejection_kind(
+    test_name: &str,
+    old_method: MethodDesc,
+    new_method: MethodDesc,
+    expected_code: &str,
+) -> HotReloadErrorKind {
+    let root = unique_test_dir(test_name);
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let old_engine = Engine::builder()
+        .register_type(type_with_reload_method(old_method))
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_type(type_with_reload_method(new_method))
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file method ABI rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file method ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, expected_code);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    report.errors[0].error.kind.clone()
+}
+
+fn type_with_reload_method(method: MethodDesc) -> TypeDesc {
+    TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+        .host_type(HostTypeId::new(1))
+        .method(method)
 }
 
 fn write_typed_reward_modules(

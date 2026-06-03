@@ -165,6 +165,9 @@ closes or exposes a more specific gap.
   rejections at safe points without advancing the active version.
 - Runtime changed-file reload staging reports native descriptor return ABI
   rejections at safe points without advancing the active version.
+- Runtime changed-file reload staging reports host method descriptor effect,
+  access, parameter, and return ABI rejections at safe points without advancing
+  the active version.
 - Analysis diagnostics can report non-exhaustive matches for known script
   enums and dynamic Option/Result facts used by propagation-style control flow.
 - Analysis diagnostics can use TypeRegistry field access metadata to flag
