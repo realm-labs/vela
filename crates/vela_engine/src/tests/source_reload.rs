@@ -483,6 +483,102 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_script_function_access");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let main_file = root.join("game").join("main.vela");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    std::fs::write(
+        &main_file,
+        r#"
+fn main() {
+    return 3;
+}
+"#,
+    )
+    .expect("write main without reward import");
+    std::fs::write(
+        &reward_file,
+        r#"
+fn grant() {
+    return 6;
+}
+"#,
+    )
+    .expect("write reward without public export");
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir script function access ABI rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir script function access ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.access_changed");
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve reflective access metadata or require host approval before reloading")
+    );
+    let HotReloadErrorKind::ChangedFunctionAccess {
+        function,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed function access ABI");
+    };
+    assert_eq!(function, "game::reward::grant");
+    assert!(old.public);
+    assert!(!new.public);
+    assert_eq!(old.required_permissions, new.required_permissions);
+    assert!(source_span.is_some());
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_dir_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);

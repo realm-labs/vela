@@ -147,6 +147,8 @@ closes or exposes a more specific gap.
   safe points without advancing the active version.
 - Runtime directory reload staging reports required function parameter
   additions at safe points without advancing the active version.
+- Runtime directory reload staging reports script function access ABI
+  rejections at safe points without advancing the active version.
 - Runtime changed-file reload staging reports compile diagnostics at safe
   points without advancing the active version.
 - Runtime changed-file reload staging reports function return ABI rejections
