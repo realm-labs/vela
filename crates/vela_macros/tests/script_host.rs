@@ -283,6 +283,31 @@ fn script_reflect_derive_feeds_engine_registration_api() {
 }
 
 #[test]
+fn script_host_and_reflect_derive_register_matching_engine_schemas() {
+    let host_engine = vela_engine::engine::Engine::builder()
+        .register_host_type::<Player>()
+        .build()
+        .expect("engine should build from host schema");
+    let reflect_engine = vela_engine::engine::Engine::builder()
+        .register_reflect_schema::<Player>()
+        .build()
+        .expect("engine should build from reflected schema");
+
+    let host_registry = host_engine.registry();
+    let reflect_registry = reflect_engine.registry();
+    let host_player = host_registry
+        .type_by_name("Player")
+        .expect("host schema should be registered");
+    let reflect_player = reflect_registry
+        .type_by_name("Player")
+        .expect("reflected schema should be registered");
+
+    assert_eq!(host_player, reflect_player);
+    assert_eq!(host_player, &Player::vela_host_type_desc());
+    assert_eq!(reflect_player, &Player::vela_reflect_type_desc());
+}
+
+#[test]
 fn script_host_schema_hash_survives_field_reordering() {
     let first = RewardConfigA::vela_host_type_desc();
     let second = RewardConfigB::vela_host_type_desc();
