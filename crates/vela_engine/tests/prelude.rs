@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_engine::prelude::*;
 use vela_host::mock::MockStateAdapter;
@@ -85,6 +87,10 @@ fn prelude_imports_cover_source_and_reload_results() {
     fn accepts_report_lines(_lines: Vec<HotReloadReportLine>) {}
     fn accepts_report_line_kind(_kind: Option<HotReloadReportLineKind>) {}
     fn accepts_version_id(_version: Option<ProgramVersionId>) {}
+    fn accepts_code_object(_code: Option<Arc<CodeObject>>) {}
+    fn accepts_script_metadata(_metadata: Option<&ModuleGraph>) {}
+    fn accepts_script_methods(_methods: &ScriptMethodTable) {}
+    fn accepts_script_method(_method: Option<&ScriptMethod>) {}
 
     accepts_update_result(Err(reload_error));
     accepts_safe_point_report(None);
@@ -99,4 +105,43 @@ fn prelude_imports_cover_source_and_reload_results() {
     accepts_report_lines(Vec::new());
     accepts_report_line_kind(None);
     accepts_version_id(None);
+
+    let version = engine
+        .compile_hot_reload_initial(
+            SourceId::new(3),
+            r#"
+struct Player {
+    score
+}
+
+trait Bonus {
+    fn bonus(self)
+}
+
+impl Bonus for Player {
+    fn bonus(self) {
+        return self.score;
+    }
+}
+
+fn main() {
+    return Player { score: 7 }.bonus();
+}
+"#,
+        )
+        .expect("script metadata should compile");
+    let code = version.function("main");
+    let metadata = version.script_metadata();
+    let method = version.script_method("Player", "bonus");
+
+    assert!(code.is_some());
+    assert!(metadata.is_some());
+    assert!(method.is_some());
+    assert!(version.script_method_function("Player", "bonus").is_some());
+
+    accepts_code_object(code);
+    accepts_script_metadata(metadata);
+    accepts_script_methods(version.script_methods());
+    accepts_script_method(method);
+    accepts_code_object(version.script_method_function("Player", "bonus"));
 }

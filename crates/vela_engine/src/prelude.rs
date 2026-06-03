@@ -19,10 +19,15 @@ pub use crate::runtime::{
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::{args, host};
+pub use vela_bytecode::{
+    CodeObject,
+    script_methods::{ScriptMethod, ScriptMethodTable},
+};
 pub use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TraitId,
     TypeId, VariantId,
 };
+pub use vela_hir::module_graph::ModuleGraph;
 pub use vela_host::adapter::ScriptStateAdapter;
 pub use vela_host::path::{HostPath, HostRef};
 pub use vela_host::proxy::PathProxy;
