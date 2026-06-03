@@ -4069,6 +4069,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.effects_changed");
+    assert_effect_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionEffects {
         function,
         old,
@@ -4133,6 +4134,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.access_changed");
+    assert_access_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionAccess {
         function,
         old,
@@ -4420,6 +4422,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.method.effects_changed");
+    assert_effect_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedMethodEffects {
         type_name,
         method,
@@ -4493,6 +4496,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.method.access_changed");
+    assert_access_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedMethodAccess {
         type_name,
         method,
@@ -5250,6 +5254,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.effects_changed");
+    assert_effect_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionEffects {
         function,
         old,
@@ -5345,6 +5350,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.access_changed");
+    assert_access_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionAccess {
         function,
         old,
@@ -7622,6 +7628,20 @@ fn assert_method_parameter_abi_repair_hint(report: &HotReloadReport) {
     );
 }
 
+fn assert_effect_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve the previous effect set or require host approval before reloading")
+    );
+}
+
+fn assert_access_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve reflective access metadata or require host approval before reloading")
+    );
+}
+
 fn assert_method_return_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
@@ -7845,6 +7865,12 @@ fn dir_native_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.function.effects_changed" {
+        assert_effect_abi_repair_hint(&report);
+    }
+    if expected_code == "reload.function.access_changed" {
+        assert_access_abi_repair_hint(&report);
+    }
     if expected_code == "reload.function.parameter_abi_changed" {
         assert_parameter_abi_repair_hint(&report);
     }
@@ -8008,6 +8034,12 @@ fn dir_method_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.method.effects_changed" {
+        assert_effect_abi_repair_hint(&report);
+    }
+    if expected_code == "reload.method.access_changed" {
+        assert_access_abi_repair_hint(&report);
+    }
     if expected_code == "reload.method.parameter_abi_changed" {
         assert_method_parameter_abi_repair_hint(&report);
     }
@@ -8085,6 +8117,12 @@ fn changed_file_method_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.method.effects_changed" {
+        assert_effect_abi_repair_hint(&report);
+    }
+    if expected_code == "reload.method.access_changed" {
+        assert_access_abi_repair_hint(&report);
+    }
     if expected_code == "reload.method.parameter_abi_changed" {
         assert_method_parameter_abi_repair_hint(&report);
     }
