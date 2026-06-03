@@ -27,7 +27,11 @@ pub use vela_common::{
     FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TraitId,
     TypeId, VariantId,
 };
-pub use vela_hir::module_graph::ModuleGraph;
+pub use vela_hir::ids::{HirDeclId, ModuleId};
+pub use vela_hir::module_graph::{
+    Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleGraph,
+    ModulePath, ModuleSource, ResolvedImport,
+};
 pub use vela_host::adapter::ScriptStateAdapter;
 pub use vela_host::path::{HostPath, HostRef};
 pub use vela_host::proxy::PathProxy;

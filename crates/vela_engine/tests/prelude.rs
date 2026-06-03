@@ -89,6 +89,12 @@ fn prelude_imports_cover_source_and_reload_results() {
     fn accepts_version_id(_version: Option<ProgramVersionId>) {}
     fn accepts_code_object(_code: Option<Arc<CodeObject>>) {}
     fn accepts_script_metadata(_metadata: Option<&ModuleGraph>) {}
+    fn accepts_module_path(_path: ModulePath) {}
+    fn accepts_module_id(_module: Option<ModuleId>) {}
+    fn accepts_decl_id(_declaration: Option<HirDeclId>) {}
+    fn accepts_declaration_index(_index: Option<&DeclarationIndex>) {}
+    fn accepts_declaration(_declaration: Option<&Declaration>) {}
+    fn accepts_declaration_kind(_kind: DeclarationKind) {}
     fn accepts_script_methods(_methods: &ScriptMethodTable) {}
     fn accepts_script_method(_method: Option<&ScriptMethod>) {}
 
@@ -132,15 +138,35 @@ fn main() {
         .expect("script metadata should compile");
     let code = version.function("main");
     let metadata = version.script_metadata();
+    let module_path = ModulePath::from_qualified("");
+    let module = metadata.and_then(|metadata| metadata.module_id(&module_path));
+    let declaration_index =
+        module.and_then(|module| metadata.and_then(|metadata| metadata.module(module)));
+    let declaration_id = declaration_index.and_then(|index| index.get("Player"));
+    let declaration =
+        declaration_id.and_then(|id| metadata.and_then(|metadata| metadata.declaration(id)));
     let method = version.script_method("Player", "bonus");
 
     assert!(code.is_some());
     assert!(metadata.is_some());
+    assert!(module.is_some());
+    assert!(declaration_index.is_some());
+    assert!(declaration_id.is_some());
+    assert_eq!(
+        declaration.map(|declaration| declaration.kind),
+        Some(DeclarationKind::Struct)
+    );
     assert!(method.is_some());
     assert!(version.script_method_function("Player", "bonus").is_some());
 
     accepts_code_object(code);
     accepts_script_metadata(metadata);
+    accepts_module_path(module_path);
+    accepts_module_id(module);
+    accepts_declaration_index(declaration_index);
+    accepts_decl_id(declaration_id);
+    accepts_declaration(declaration);
+    accepts_declaration_kind(DeclarationKind::Struct);
     accepts_script_methods(version.script_methods());
     accepts_script_method(method);
     accepts_code_object(version.script_method_function("Player", "bonus"));

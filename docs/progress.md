@@ -83,7 +83,7 @@ closes or exposes a more specific gap.
   compiler options, hot-reload policies, and a focused embedding prelude for
   common host setup, event and patch safe-point reports, source compile errors,
   hot-reload result/report imports, and version-owned script metadata/code
-  object inspection.
+  object inspection, including module paths and declaration metadata.
 - Engine validation rejects duplicate native callable names and stable IDs
   across pure, host, context-host, and standard native registrations.
 - Engine API registers macro-derived host bindings through
