@@ -265,6 +265,10 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert_eq!(report.changed_modules, vec!["game::reward"]);
+    assert_eq!(
+        report.impacted_modules,
+        vec!["game::main".to_owned(), "game::reward".to_owned()]
+    );
     assert!(
         !runtime
             .has_pending_hot_update()
@@ -4794,6 +4798,11 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
 
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
+    assert_eq!(report.changed_modules, vec!["game::reward"]);
+    assert_eq!(
+        report.impacted_modules,
+        vec!["game::main".to_owned(), "game::reward".to_owned()]
+    );
     assert!(
         !runtime
             .has_pending_hot_update()
