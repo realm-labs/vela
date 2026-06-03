@@ -413,6 +413,76 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_required_parameter");
+    let reward_file = write_typed_reward_modules(&root, "return 2;", "int", "2");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir required parameter rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir required parameter rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(
+        report.errors[0].code,
+        "reload.function.required_added_parameters"
+    );
+    let HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, added } =
+        &report.errors[0].error.kind
+    else {
+        panic!("expected added required parameters");
+    };
+    assert_eq!(function, "game::reward::grant");
+    assert_eq!(added, &vec!["amount".to_owned()]);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_dir_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -2493,6 +2563,76 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_required_parameter");
+    let reward_file = write_typed_reward_modules(&root, "return 2;", "int", "2");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file required parameter rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file required parameter rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(
+        report.errors[0].code,
+        "reload.function.required_added_parameters"
+    );
+    let HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, added } =
+        &report.errors[0].error.kind
+    else {
+        panic!("expected added required parameters");
+    };
+    assert_eq!(function, "game::reward::grant");
+    assert_eq!(added, &vec!["amount".to_owned()]);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -2770,17 +2910,21 @@ fn main() {{
 }
 
 fn write_typed_reward_module(path: &std::path::Path, return_type: &str, reward_expr: &str) {
+    write_reward_module_with_signature(path, &format!("() -> {return_type}"), reward_expr);
+}
+
+fn write_reward_module_with_signature(path: &std::path::Path, signature: &str, reward_expr: &str) {
     std::fs::write(
         path,
         format!(
             r#"
-pub fn grant() -> {return_type} {{
+pub fn grant{signature} {{
     return {reward_expr};
 }}
 "#
         ),
     )
-    .expect("write typed reward module");
+    .expect("write reward module with signature");
 }
 
 fn write_reward_module_with_helper(path: &std::path::Path, reward: i64) {
