@@ -10,14 +10,14 @@ to be archived.
 
 ## Current Focus
 
-M0-M14 are complete enough as a runnable prototype and embedding surface.
-Current work is centered on M15 hot-reload source workflows, specifically the
-pieces that unblock production reload behavior:
+M0-M15 are complete enough as a runnable prototype, embedding surface, and
+production hot-reload workflow. Current work is centered on M16/M17 diagnostics,
+fixtures, and demo coverage around the now-stable reload and embedding surface:
 
 ```text
-safe-point reload staging and reports
-function, schema, effect, access, and source reload ABI checks
-source-file, directory, and changed-file update workflows
+runtime diagnostics and common rendering
+source spans, frame maps, and report surfaces
+conformance fixtures and game-server demo workflows
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
@@ -37,7 +37,7 @@ before debugger/DAP work and Cranelift JIT.
 | M12 | Complete enough | Reflection metadata, permission-aware queries, candidate spans, and schema-safe mutation denial are covered. |
 | M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and demo helper coverage are validated. |
 | M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, permissions, signature conversion, and macro parity are covered. |
-| M15 | Partial | Function, descriptor, module, trait, schema, and source reload ABI checks exist; close production workflow proof. |
+| M15 | Complete enough | Safe-point staging, old-frame lifetime, new-call entry, source workflows, ABI/schema rejection, compatible additions, and repair reports are covered. |
 | M16 | Partial | Runtime diagnostics, common rendering, and bytecode/runtime frame maps have started. |
 | M17 | Partial | Conformance fixtures and demo harnesses exist; game-server demo can still expand. |
 | M18 | Partial | Baseline harnesses exist; official baseline reporting and follow-up bottleneck tracking remain. |
@@ -74,12 +74,8 @@ before debugger/DAP work and Cranelift JIT.
 
 ### Remaining Gaps
 
-- M15: close the production reload proof against the milestone checkpoint:
-  safe-point staging, old-frame lifetime, new-call version entry, source update
-  workflows, ABI/schema/effect rejection, compatible additions, and repair-hint
-  reports.
-- M16/M17: expand diagnostics, fixtures, and game-server demo coverage only
-  after the current reload checkpoint no longer blocks them.
+- M16/M17: expand diagnostics, fixtures, and game-server demo coverage around
+  the stable embedding and reload surface.
 - M18+: keep performance work benchmark-driven and separate from semantic
   changes.
 
@@ -94,14 +90,13 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For current M15 work, prefer targeted engine/hot-reload tests and at least one
-workflow-facing CLI demo run when the change affects reload behavior.
+For current M16/M17 work, prefer targeted diagnostics, conformance, and demo
+tests plus at least one workflow-facing CLI demo run when behavior changes.
 
 ## Next Up
 
-- Finish enough M15 reload proof to unblock production hot-reload workflows.
-- Then broaden M16/M17 diagnostics, conformance fixtures, and game-server demo
-  workflows around the stable embedding surface.
+- Broaden M16/M17 diagnostics, conformance fixtures, and game-server demo
+  workflows around the stable embedding and reload surface.
 - Keep M18 measurement baselines ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
