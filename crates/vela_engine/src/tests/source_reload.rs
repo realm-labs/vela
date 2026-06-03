@@ -480,89 +480,17 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
 
 #[test]
 fn runtime_stages_dir_event_parameter_reorder_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_dir_event_parameter_reorder");
-    let game_dir = root.join("game");
-    std::fs::create_dir_all(&game_dir).expect("create module dir");
-    let event_file = game_dir.join("events.vela");
-    std::fs::write(
-        &event_file,
-        r#"
-#[event("monster.kill")]
-fn on_kill(player_id: int, monster_id: int) {
-    return 1;
-}
-"#,
-    )
-    .expect("write event module");
-    let engine = Engine::builder().build().expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_dir(&root)
-        .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
-
-    assert_eq!(
-        runtime.call(
-            "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(Value::Int(1))
+    event_parameter_reorder_rejection(
+        "runtime_stage_dir_event_parameter_reorder",
+        EventReloadWorkflow::Directory,
     );
-
-    std::fs::write(
-        &event_file,
-        r#"
-#[event("monster.kill")]
-fn on_kill(monster_id: int, player_id: int) {
-    return 2;
 }
-"#,
-    )
-    .expect("write reordered event module");
-    runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
-        .expect("dir event ABI rejection should be staged");
-    assert_eq!(
-        runtime.call(
-            "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(Value::Int(1))
-    );
 
-    let report = runtime
-        .check_reload()
-        .expect("check reload at safe point")
-        .expect("staged dir event ABI rejection report");
-
-    assert!(!report.accepted);
-    assert_eq!(report.to_version, None);
-    assert_eq!(report.errors[0].code, "reload.function.changed_parameters");
-    let HotReloadErrorKind::ChangedFunctionParameters { function, old, new } =
-        &report.errors[0].error.kind
-    else {
-        panic!("expected changed function parameters");
-    };
-    assert_eq!(function, "game::events::on_kill");
-    assert_eq!(old, &vec!["player_id".to_owned(), "monster_id".to_owned()]);
-    assert_eq!(new, &vec!["monster_id".to_owned(), "player_id".to_owned()]);
-    assert_eq!(
-        runtime.call(
-            "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(Value::Int(1))
+#[test]
+fn runtime_stages_changed_file_event_parameter_reorder_rejection_until_safe_point() {
+    event_parameter_reorder_rejection(
+        "runtime_stage_changed_file_event_parameter_reorder",
+        EventReloadWorkflow::ChangedFile,
     );
 }
 
@@ -7191,6 +7119,104 @@ pub fn grant() {{
 enum ScriptFunctionReloadWorkflow {
     Directory,
     ChangedFile,
+}
+
+enum EventReloadWorkflow {
+    Directory,
+    ChangedFile,
+}
+
+fn event_parameter_reorder_rejection(test_name: &str, workflow: EventReloadWorkflow) {
+    let root = unique_test_dir(test_name);
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    let event_file = game_dir.join("events.vela");
+    std::fs::write(
+        &event_file,
+        r#"
+#[event("monster.kill")]
+fn on_kill(player_id: int, monster_id: int) {
+    return 1;
+}
+"#,
+    )
+    .expect("write event module");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::events::on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+
+    std::fs::write(
+        &event_file,
+        r#"
+#[event("monster.kill")]
+fn on_kill(monster_id: int, player_id: int) {
+    return 2;
+}
+"#,
+    )
+    .expect("write reordered event module");
+    match workflow {
+        EventReloadWorkflow::Directory => runtime
+            .stage_hot_reload_update_dir(&root)
+            .expect("runtime should be hot-reload enabled")
+            .expect("dir event ABI rejection should be staged"),
+        EventReloadWorkflow::ChangedFile => runtime
+            .stage_hot_reload_update_changed_file(&root, &event_file)
+            .expect("runtime should be hot-reload enabled")
+            .expect("changed-file event ABI rejection should be staged"),
+    };
+    assert_eq!(
+        runtime.call(
+            "game::events::on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged event ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.changed_parameters");
+    let HotReloadErrorKind::ChangedFunctionParameters { function, old, new } =
+        &report.errors[0].error.kind
+    else {
+        panic!("expected changed function parameters");
+    };
+    assert_eq!(function, "game::events::on_kill");
+    assert_eq!(old, &vec!["player_id".to_owned(), "monster_id".to_owned()]);
+    assert_eq!(new, &vec!["monster_id".to_owned(), "player_id".to_owned()]);
+    assert_eq!(
+        runtime.call(
+            "game::events::on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
 }
 
 fn removed_script_function_rejection_kind(
