@@ -2,7 +2,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_engine::prelude::*;
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
@@ -18,17 +17,23 @@ fn prelude_imports_cover_runtime_embedding_flow() {
         )
         .build()
         .expect("engine should build");
-    let program = compile_program_source_with_options(
-        SourceId::new(1),
+
+    let root = unique_test_dir("prelude_compile_file_runtime_flow");
+    fs::create_dir_all(root.path()).expect("create compile_file test dir");
+    let source = root.path().join("main.vela");
+    fs::write(
+        &source,
         r#"
 fn main(player: Player, amount: int) {
     player.grant_exp(amount);
     return amount;
 }
 "#,
-        &engine.compiler_options(),
     )
-    .expect("program should compile");
+    .expect("write source file");
+    let program = engine
+        .compile_file(&source)
+        .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
