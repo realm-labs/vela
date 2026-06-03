@@ -2347,6 +2347,109 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_return_abi");
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    std::fs::write(
+        game_dir.join("main.vela"),
+        r#"
+use game::reward::grant
+
+fn main() {
+    return grant();
+}
+"#,
+    )
+    .expect("write main module");
+    let reward_file = game_dir.join("reward.vela");
+    std::fs::write(
+        &reward_file,
+        r#"
+pub fn grant() -> int {
+    return 2;
+}
+"#,
+    )
+    .expect("write initial reward module");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    std::fs::write(
+        &reward_file,
+        r#"
+pub fn grant() -> float {
+    return 6.0;
+}
+"#,
+    )
+    .expect("write incompatible reward module update");
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file return ABI rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file return ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    let HotReloadErrorKind::ChangedFunctionReturnAbi {
+        function,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed function return ABI");
+    };
+    assert_eq!(function, "game::reward::grant");
+    assert_eq!(old.as_deref(), Some("int"));
+    assert_eq!(new.as_deref(), Some("float"));
+    assert!(source_span.is_some());
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
 fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);

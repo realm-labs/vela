@@ -134,6 +134,8 @@ closes or exposes a more specific gap.
   without advancing the active version.
 - Runtime changed-file reload staging reports compile diagnostics at safe
   points without advancing the active version.
+- Runtime changed-file reload staging reports function return ABI rejections
+  at safe points without advancing the active version.
 - Analysis diagnostics can report non-exhaustive matches for known script
   enums and dynamic Option/Result facts used by propagation-style control flow.
 - Analysis diagnostics can use TypeRegistry field access metadata to flag
