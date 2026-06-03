@@ -1,3 +1,5 @@
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use vela_bytecode::compiler::compile_program_source_with_options;
@@ -66,6 +68,85 @@ fn prelude_imports_cover_script_arg_conversion_traits() {
     assert_eq!(String::from_script_arg(&args[3]), Ok("tag".to_owned()));
     assert_eq!("done".into_script_arg(), Value::String("done".to_owned()));
     assert_eq!((1_u32, 42_u64, 7_u32).into_host_ref(), host_ref);
+}
+
+#[test]
+fn prelude_imports_cover_compile_dir_runtime_call_embedding_flow() {
+    let root = unique_test_dir("prelude_compile_dir_runtime_call");
+    let game_dir = root.path().join("game");
+    fs::create_dir_all(&game_dir).expect("create game module dir");
+    fs::write(
+        game_dir.join("main.vela"),
+        r#"
+fn main(amount: int) {
+    return game::grant_bonus(amount = amount, base = game::config::BASE);
+}
+"#,
+    )
+    .expect("write main module");
+    fs::write(
+        game_dir.join("config.vela"),
+        r#"
+pub const BASE: int = 10;
+"#,
+    )
+    .expect("write config module");
+    fs::write(root.path().join("ignored.txt"), "fn main() { return 99; }")
+        .expect("write ignored non-source file");
+
+    let engine = Engine::builder()
+        .grant_permission("reward.read")
+        .register_native_fn(
+            NativeFunctionDesc::new("game::grant_bonus", NativeFunctionId::new(44))
+                .param("base", TypeHint::Int)
+                .param("amount", TypeHint::Int)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::pure())
+                .access(FunctionAccess::public().require_permission("reward.read")),
+            #[allow(clippy::result_large_err)]
+            |args| {
+                let [Value::Int(base), Value::Int(amount)] = args else {
+                    return Ok(Value::Null);
+                };
+                Ok(Value::Int(base + amount))
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let registry = engine.registry();
+    let function = registry
+        .function_by_name("game::grant_bonus")
+        .expect("native function metadata should register");
+    assert_eq!(function.id, NativeFunctionId::new(44));
+    assert_eq!(function.params[0].name, "base");
+    assert_eq!(function.params[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(function.params[1].name, "amount");
+    assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
+    assert_eq!(function.return_type.as_deref(), Some("int"));
+    assert_eq!(
+        function.access.required_permissions(),
+        &["reward.read".to_owned()]
+    );
+
+    let program = engine
+        .compile_dir(root.path())
+        .expect("directory modules should compile");
+    assert!(program.function("ignored.main").is_none());
+    let mut runtime = Runtime::new(engine, program);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &args![5],
+            CallOptions::gameplay(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(15))
+    );
+    assert!(tx.patches().is_empty());
 }
 
 #[test]
@@ -184,4 +265,31 @@ fn main() {
     accepts_script_methods(version.script_methods());
     accepts_script_method(method);
     accepts_code_object(version.script_method_function("Player", "bonus"));
+}
+
+struct TestDir(PathBuf);
+
+impl TestDir {
+    fn path(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl Drop for TestDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+fn unique_test_dir(name: &str) -> TestDir {
+    let mut path = std::env::temp_dir();
+    path.push(format!(
+        "vela_engine_{name}_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time after epoch")
+            .as_nanos()
+    ));
+    TestDir(path)
 }
