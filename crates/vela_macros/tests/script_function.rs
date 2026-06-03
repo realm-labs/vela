@@ -48,7 +48,7 @@ fn grant_bonus(amount: i64, multiplier: i64) -> i64 {
 )]
 fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<bool> {
     ctx.charge_instructions(3)?;
-    ctx.tx().set_path(
+    ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,

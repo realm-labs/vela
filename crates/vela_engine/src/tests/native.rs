@@ -400,7 +400,7 @@ fn context_host_native_can_charge_execution_budget_before_patching() {
                 ctx.charge_instructions(100)?;
                 let player = args.required::<HostRef>(0)?;
                 let level = args.required::<i64>(1)?;
-                ctx.tx().set_path(
+                ctx.set_path(
                     HostPath::new(player).field(FieldId::new(1)),
                     HostValue::Int(level),
                     None,
@@ -462,7 +462,7 @@ fn context_host_native_can_charge_memory_budget_before_patching() {
                 ctx.charge_memory_bytes(128)?;
                 let player = args.required::<HostRef>(0)?;
                 let level = args.required::<i64>(1)?;
-                ctx.tx().set_path(
+                ctx.set_path(
                     HostPath::new(player).field(FieldId::new(1)),
                     HostValue::Int(level),
                     None,

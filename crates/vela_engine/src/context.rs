@@ -1,4 +1,4 @@
-use vela_common::Span;
+use vela_common::{HostMethodId, Span};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::path::HostPath;
 use vela_host::tx::PatchTx;
@@ -81,6 +81,108 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_patch()?;
         self.host.tx.set_path(path, value, source_span)?;
+        Ok(())
+    }
+
+    pub fn add_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host
+            .tx
+            .add_path(path, value, base_value, source_span)?;
+        Ok(())
+    }
+
+    pub fn sub_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host
+            .tx
+            .sub_path(path, value, base_value, source_span)?;
+        Ok(())
+    }
+
+    pub fn mul_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host
+            .tx
+            .mul_path(path, value, base_value, source_span)?;
+        Ok(())
+    }
+
+    pub fn div_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host
+            .tx
+            .div_path(path, value, base_value, source_span)?;
+        Ok(())
+    }
+
+    pub fn rem_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host
+            .tx
+            .rem_path(path, value, base_value, source_span)?;
+        Ok(())
+    }
+
+    pub fn push_path(
+        &mut self,
+        path: HostPath,
+        value: HostValue,
+        base_value: HostValue,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host
+            .tx
+            .push_path(path, value, base_value, source_span)?;
+        Ok(())
+    }
+
+    pub fn remove_path(&mut self, path: HostPath, source_span: Option<Span>) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host.tx.remove_path(path, source_span)?;
+        Ok(())
+    }
+
+    pub fn call_method(
+        &mut self,
+        path: HostPath,
+        method: HostMethodId,
+        args: Vec<HostValue>,
+        source_span: Option<Span>,
+    ) -> VmResult<()> {
+        self.reserve_patch()?;
+        self.host.tx.call_method(path, method, args, source_span)?;
         Ok(())
     }
 

@@ -430,7 +430,7 @@ fn typed_set_level(
 ) -> VmResult<bool> {
     ctx.charge_instructions(10)?;
     let has_permission = ctx.has_permission("player.write");
-    ctx.tx().set_path(
+    ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
@@ -609,7 +609,7 @@ fn typed_context_sum_level(
 ) -> VmResult<i64> {
     ctx.charge_instructions(1)?;
     let level = a + b + c;
-    ctx.tx().set_path(
+    ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
@@ -627,7 +627,7 @@ fn typed_context_sum5_level(
 ) -> VmResult<i64> {
     ctx.charge_instructions(1)?;
     let level = a + b + c + d;
-    ctx.tx().set_path(
+    ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
@@ -646,7 +646,7 @@ fn typed_context_sum6_level(
 ) -> VmResult<i64> {
     ctx.charge_instructions(1)?;
     let level = a + b + c + d + e;
-    ctx.tx().set_path(
+    ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
