@@ -42,6 +42,38 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_accept_string_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(String,), _>(
+            NativeFunctionDesc::new("game::tag_len", NativeFunctionId::new(241))
+                .param("tag", TypeHint::String)
+                .returns(TypeHint::Int),
+            |tag: String| i64::try_from(tag.len()).expect("tag length fits i64"),
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game::default_tag", NativeFunctionId::new(242))
+                .returns(TypeHint::String),
+            || "quest".to_owned(),
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return game::tag_len("dragon") + game::tag_len(game::default_tag());
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(&program, "main", &[]),
+        Ok(Value::Int(11)),
+    );
+}
+
+#[test]
 fn typed_native_functions_accept_four_script_args() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i64, i64, i64, i64), _>(
