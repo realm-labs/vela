@@ -1488,6 +1488,69 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_defaulted_trait_method_addition");
+    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_trait_abi_module_with_defaulted_method(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir defaulted trait method addition should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir defaulted trait method addition report");
+
+    assert!(report.accepted);
+    assert_eq!(report.errors, Vec::new());
+    assert!(
+        report
+            .changed_functions
+            .contains(&"game::reward::grant".to_owned())
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+}
+
+#[test]
 fn runtime_stages_dir_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -3019,6 +3082,56 @@ fn main() {
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
+    );
+}
+
+#[test]
+fn runtime_stages_source_file_defaulted_trait_method_addition_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+trait Damageable {
+    fn damage(self, amount: int) -> int;
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+trait Damageable {
+    fn damage(self, amount: int) -> int;
+    fn heal(self, amount: int) -> int { return amount; }
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged defaulted trait method addition report");
+
+    assert!(report.accepted);
+    assert_eq!(report.errors, Vec::new());
+    assert!(report.changed_functions.contains(&"main".to_owned()));
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
     );
 }
 
@@ -5467,6 +5580,69 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
 }
 
 #[test]
+fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_defaulted_trait_method_addition");
+    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_trait_abi_module_with_defaulted_method(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file defaulted trait method addition should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file defaulted trait method addition report");
+
+    assert!(report.accepted);
+    assert_eq!(report.errors, Vec::new());
+    assert!(
+        report
+            .changed_functions
+            .contains(&"game::reward::grant".to_owned())
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+}
+
+#[test]
 fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -6037,6 +6213,15 @@ fn write_trait_abi_module_with_required_method(path: &std::path::Path, reward: i
         reward,
         "int",
         "    fn heal(self, amount: int) -> int;\n",
+    );
+}
+
+fn write_trait_abi_module_with_defaulted_method(path: &std::path::Path, reward: i64) {
+    write_trait_abi_module_with_methods(
+        path,
+        reward,
+        "int",
+        "    fn heal(self, amount: int) -> int { return amount; }\n",
     );
 }
 

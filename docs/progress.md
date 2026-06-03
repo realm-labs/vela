@@ -175,6 +175,9 @@ closes or exposes a more specific gap.
 - Runtime source-file, directory, and changed-file reload staging report added
   required script trait method ABI rejections at safe points without advancing
   the active version.
+- Runtime source-file, directory, and changed-file reload staging accept added
+  defaulted script trait methods at safe points without activating the new
+  version early.
 - Runtime source-file reload staging reports top-level const side-effect
   compile rejections at safe points without advancing the active version.
 - Runtime directory reload staging reports compile diagnostics at safe points
