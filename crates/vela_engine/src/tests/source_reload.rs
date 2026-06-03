@@ -832,6 +832,26 @@ fn runtime_stages_dir_method_return_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_removed_method_rejection_until_safe_point() {
+    let kind = removed_method_descriptor_rejection_kind(
+        "runtime_stage_dir_removed_method",
+        MethodDescriptorReloadWorkflow::Directory,
+    );
+
+    let HotReloadErrorKind::RemovedMethodAbi {
+        type_name,
+        method,
+        source_span,
+    } = kind
+    else {
+        panic!("expected removed host method ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(source_span.is_none());
+}
+
+#[test]
 fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_defaulted_schema_addition");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Absent);
@@ -5493,6 +5513,26 @@ fn runtime_stages_changed_file_method_return_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_changed_file_removed_method_rejection_until_safe_point() {
+    let kind = removed_method_descriptor_rejection_kind(
+        "runtime_stage_changed_file_removed_method",
+        MethodDescriptorReloadWorkflow::ChangedFile,
+    );
+
+    let HotReloadErrorKind::RemovedMethodAbi {
+        type_name,
+        method,
+        source_span,
+    } = kind
+    else {
+        panic!("expected removed host method ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert!(source_span.is_none());
+}
+
+#[test]
 fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_defaulted_schema_addition");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Absent);
@@ -7127,6 +7167,92 @@ fn dir_native_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    report.errors[0].error.kind.clone()
+}
+
+enum MethodDescriptorReloadWorkflow {
+    Directory,
+    ChangedFile,
+}
+
+fn removed_method_descriptor_rejection_kind(
+    test_name: &str,
+    workflow: MethodDescriptorReloadWorkflow,
+) -> HotReloadErrorKind {
+    let root = unique_test_dir(test_name);
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    let old_engine = Engine::builder()
+        .register_type(type_with_reload_method(MethodDesc::new(
+            HostMethodId::new(9),
+            "grant_exp",
+        )))
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).host_type(HostTypeId::new(1)),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_reward_module(&reward_file, 6);
+    match workflow {
+        MethodDescriptorReloadWorkflow::Directory => runtime
+            .stage_hot_reload_update_dir(&root)
+            .expect("runtime should be hot-reload enabled")
+            .expect("dir removed method descriptor ABI rejection should be staged"),
+        MethodDescriptorReloadWorkflow::ChangedFile => runtime
+            .stage_hot_reload_update_changed_file(&root, &reward_file)
+            .expect("runtime should be hot-reload enabled")
+            .expect("changed-file removed method descriptor ABI rejection should be staged"),
+    };
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged removed method descriptor ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.method.removed_abi");
+    assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
     assert_eq!(
         runtime.call(
             "game::main::main",
