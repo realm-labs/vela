@@ -82,6 +82,11 @@ impl Runtime {
         Ok(())
     }
 
+    pub fn stage_hot_reload_update(&mut self, source: SourceId, text: &str) -> EngineResult<()> {
+        let update = self.compile_hot_reload_update(source, text)?;
+        self.stage_hot_update_result(update)
+    }
+
     pub fn has_pending_hot_update(&self) -> EngineResult<bool> {
         let Some(hot_reload) = self.hot_reload.as_ref() else {
             return Err(EngineError::new(

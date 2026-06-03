@@ -2437,6 +2437,85 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
 }
 
 #[test]
+fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
+        .expect("initial hot reload compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    runtime
+        .stage_hot_reload_update(SourceId::new(2), "fn main() { return 2; }")
+        .expect("stage source text update");
+    assert!(
+        runtime
+            .has_pending_hot_update()
+            .expect("hot reload runtime should report pending update")
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("pending report");
+
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["main".to_owned()]);
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
+fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
+        .expect("initial hot reload compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    runtime
+        .stage_hot_reload_update(SourceId::new(2), "pub fn main() -> float { return 2.0; }")
+        .expect("stage rejected source text update");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("pending report");
+
+    assert!(!report.accepted);
+    let HotReloadErrorKind::ChangedFunctionReturnAbi {
+        function,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed function return ABI");
+    };
+    assert_eq!(function, "main");
+    assert_eq!(old.as_deref(), Some("int"));
+    assert_eq!(new.as_deref(), Some("float"));
+    assert!(source_span.is_some());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
 fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine

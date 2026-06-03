@@ -138,6 +138,8 @@ closes or exposes a more specific gap.
 - Runtime source-file, directory, and changed-file reload staging keeps source
   path/load errors immediate while deferring accepted updates and ABI/policy
   rejections to the next explicit safe-point report.
+- Runtime in-memory source-text reload staging defers accepted updates and
+  ABI/policy rejections to the next explicit safe-point report.
 - Runtime staged directory and changed-file reload acceptance reports preserve
   changed-module and reverse-import impacted-module metadata at the safe point.
 - Runtime source-file, directory, and changed-file reload staging accept
