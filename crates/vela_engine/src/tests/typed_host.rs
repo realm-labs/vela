@@ -489,6 +489,57 @@ fn main() {
     assert!(tx.patches().is_empty());
 }
 
+#[test]
+fn typed_context_host_native_maps_host_result_errors() {
+    let engine = Engine::builder()
+        .grant_permission("player.write")
+        .register_typed_context_host_native_fn::<(HostRef, bool), _>(
+            NativeFunctionDesc::new(
+                "game::typed_context_require_write",
+                NativeFunctionId::new(248),
+            )
+            .param(
+                "player",
+                TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+            )
+            .param("allowed", TypeHint::Bool)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(FunctionAccess::public().require_permission("player.write")),
+            typed_context_require_write,
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    return game::typed_context_require_write(player, false);
+}
+"#,
+    )
+    .expect("program should compile");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[Value::HostRef(player)], &mut host)
+            .map_err(|error| error.kind),
+        Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
+            path: HostPath::new(player),
+            action: "write",
+        })),
+    );
+    assert!(tx.patches().is_empty());
+}
+
 fn typed_set_level(
     ctx: &mut NativeCallContext<'_, '_>,
     player: HostRef,
@@ -502,6 +553,24 @@ fn typed_set_level(
         None,
     )?;
     Ok(has_permission)
+}
+
+fn typed_context_require_write(
+    ctx: &mut NativeCallContext<'_, '_>,
+    player: HostRef,
+    allowed: bool,
+) -> HostResult<i64> {
+    if allowed && ctx.has_permission("player.write") {
+        Ok(21)
+    } else {
+        Err(HostError {
+            kind: HostErrorKind::PermissionDenied {
+                path: HostPath::new(player),
+                action: "write",
+            },
+            source_span: None,
+        })
+    }
 }
 
 #[test]
