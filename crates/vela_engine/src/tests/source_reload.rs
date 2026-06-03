@@ -10,6 +10,7 @@ use vela_hot_reload::compile::{compile_initial_with_abi, compile_update_with_abi
 use vela_hot_reload::error::HotReloadErrorKind;
 use vela_hot_reload::module_abi::{ModuleAbi, ModuleExportAbi};
 use vela_hot_reload::policy::HotReloadPolicy;
+use vela_hot_reload::report::HotReloadReport;
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
 use vela_reflect::registry::{MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey};
@@ -595,24 +596,7 @@ fn grant() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.access_changed");
-    assert_eq!(
-        report.errors[0].repair_hint.as_deref(),
-        Some("preserve reflective access metadata or require host approval before reloading")
-    );
-    let HotReloadErrorKind::ChangedFunctionAccess {
-        function,
-        old,
-        new,
-        source_span,
-    } = &report.errors[0].error.kind
-    else {
-        panic!("expected changed function access ABI");
-    };
-    assert_eq!(function, "game::reward::grant");
-    assert!(old.public);
-    assert!(!new.public);
-    assert_eq!(old.required_permissions, new.required_permissions);
-    assert!(source_span.is_some());
+    assert_changed_function_access_rejection(&report, "game::reward::grant");
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -3990,6 +3974,61 @@ fn main(player_id: int, amount: int) {
 }
 
 #[test]
+fn runtime_stages_source_file_script_function_access_rejection_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+pub fn grant() {
+    return 2;
+}
+
+fn main() {
+    return grant();
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+fn grant() {
+    return 6;
+}
+
+fn main() {
+    return 3;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged script function access ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.access_changed");
+    assert_changed_function_access_rejection(&report, "grant");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     let old_engine = Engine::builder()
         .register_native_fn(
@@ -5113,24 +5152,7 @@ fn grant() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.function.access_changed");
-    assert_eq!(
-        report.errors[0].repair_hint.as_deref(),
-        Some("preserve reflective access metadata or require host approval before reloading")
-    );
-    let HotReloadErrorKind::ChangedFunctionAccess {
-        function,
-        old,
-        new,
-        source_span,
-    } = &report.errors[0].error.kind
-    else {
-        panic!("expected changed function access ABI");
-    };
-    assert_eq!(function, "game::reward::grant");
-    assert!(old.public);
-    assert!(!new.public);
-    assert_eq!(old.required_permissions, new.required_permissions);
-    assert!(source_span.is_some());
+    assert_changed_function_access_rejection(&report, "game::reward::grant");
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -7537,6 +7559,27 @@ fn on_kill(player_id: int, monster_id: int) {
         ),
         Ok(Value::Int(1))
     );
+}
+
+fn assert_changed_function_access_rejection(report: &HotReloadReport, expected_function: &str) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve reflective access metadata or require host approval before reloading")
+    );
+    let HotReloadErrorKind::ChangedFunctionAccess {
+        function,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed function access ABI");
+    };
+    assert_eq!(function, expected_function);
+    assert!(old.public);
+    assert!(!new.public);
+    assert_eq!(old.required_permissions, new.required_permissions);
+    assert!(source_span.is_some());
 }
 
 fn removed_script_function_rejection_kind(
