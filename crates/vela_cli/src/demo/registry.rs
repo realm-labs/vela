@@ -1,14 +1,13 @@
-use vela_common::{TypeId, VariantId};
 use vela_engine::context_schema::context_host_type_desc;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::PermissionSet;
 use vela_engine::random::CONTROLLED_RANDOM_PERMISSION;
-use vela_macros::{ScriptHost, script_methods};
+use vela_macros::{ScriptHost, ScriptReflect, script_methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
-use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeRegistry, VariantDesc};
+use vela_reflect::registry::{FieldDesc, TypeKey, TypeRegistry};
 use vela_vm::value::Value;
 
 use super::ids::DemoIds;
@@ -31,6 +30,7 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
         .register_host_type::<Inventory>()
         .register_host_type::<ItemStack>()
         .register_host_type::<Config>()
+        .register_reflect_schema::<HostQuestProgress>()
         .register_host_methods::<Player>()
         .register_module(
             ModuleDesc::new("game::reward")
@@ -49,23 +49,6 @@ pub(crate) fn demo_support_type_registry(ids: DemoIds) -> TypeRegistry {
     registry.register(
         context_host_type_desc()
             .field(FieldDesc::new(ids.config_field, "config").type_hint("Config")),
-    );
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(106), "HostQuestProgress"))
-            .schema_hash(SchemaHash::new(0x1000_0000_0000_0007))
-            .variant(
-                VariantDesc::new(VariantId::new(1), "Active")
-                    .field(
-                        FieldDesc::new(ids.quest_count_field, "quest_count")
-                            .writable(true)
-                            .type_hint("int"),
-                    )
-                    .field(
-                        FieldDesc::new(ids.quest_done_field, "quest_done")
-                            .writable(true)
-                            .type_hint("bool"),
-                    ),
-            ),
     );
     registry
 }
@@ -159,7 +142,16 @@ struct ItemStack {
 }
 
 #[allow(dead_code)]
-struct HostQuestProgress;
+#[derive(ScriptReflect)]
+#[script(path = "game::quest::HostQuestProgress")]
+enum HostQuestProgress {
+    Active {
+        #[script(get, set, hint = "int")]
+        quest_count: i64,
+        #[script(get, set, hint = "bool")]
+        quest_done: bool,
+    },
+}
 
 #[allow(dead_code)]
 struct KillRewardConfig;

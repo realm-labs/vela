@@ -3,7 +3,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::access::FieldAccess;
-use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind};
+use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc};
 
 #[allow(dead_code)]
 #[derive(ScriptHost, ScriptReflect)]
@@ -53,6 +53,20 @@ struct RewardConfigRenamed {
     item_key: String,
     #[script(get, hint = "int")]
     count: i64,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptReflect)]
+#[script(path = "game::quest::HostQuestProgress")]
+enum HostQuestProgress {
+    #[script(docs = "Active quest progress.")]
+    Active {
+        #[script(get, set, hint = "int")]
+        quest_count: i64,
+        #[script(get, set, hint = "bool")]
+        quest_done: bool,
+    },
+    Finished,
 }
 
 #[test]
@@ -114,6 +128,92 @@ fn script_host_derive_generates_type_metadata() {
         <Player as vela_engine::schema::ScriptHostSchema>::script_host_type_desc(),
         desc,
     );
+}
+
+#[test]
+fn script_reflect_derive_generates_enum_variant_metadata() {
+    let desc = HostQuestProgress::vela_reflect_type_desc();
+    let active_variant = VariantDesc::new(
+        vela_common::VariantId::new(stable_id(
+            "variant",
+            "game::quest::HostQuestProgress",
+            "Active",
+        )),
+        "Active",
+    )
+    .docs("Active quest progress.")
+    .field(
+        FieldDesc::new(
+            FieldId::new(stable_id(
+                "field",
+                "HostQuestProgress::Active",
+                "quest_count",
+            )),
+            "quest_count",
+        )
+        .access(
+            FieldAccess::new()
+                .readable(true)
+                .writable(true)
+                .reflect_readable(true)
+                .reflect_writable(true),
+        )
+        .attr("rust_name", "quest_count")
+        .type_hint("int"),
+    )
+    .field(
+        FieldDesc::new(
+            FieldId::new(stable_id(
+                "field",
+                "HostQuestProgress::Active",
+                "quest_done",
+            )),
+            "quest_done",
+        )
+        .access(
+            FieldAccess::new()
+                .readable(true)
+                .writable(true)
+                .reflect_readable(true)
+                .reflect_writable(true),
+        )
+        .attr("rust_name", "quest_done")
+        .type_hint("bool"),
+    );
+    let finished_variant = VariantDesc::new(
+        vela_common::VariantId::new(stable_id(
+            "variant",
+            "game::quest::HostQuestProgress",
+            "Finished",
+        )),
+        "Finished",
+    );
+
+    assert_eq!(desc.key.name, "HostQuestProgress");
+    assert_eq!(desc.kind, TypeKind::Host);
+    assert_eq!(desc.attrs.get("module"), Some("game::quest"));
+    assert_eq!(desc.variants, vec![active_variant, finished_variant]);
+    assert!(desc.schema_hash.is_some());
+    assert_eq!(
+        <HostQuestProgress as vela_engine::schema::ScriptReflectSchema>::script_reflect_type_desc(),
+        desc,
+    );
+}
+
+#[test]
+fn script_reflect_enum_schema_feeds_engine_registration_api() {
+    let engine = vela_engine::engine::Engine::builder()
+        .register_reflect_schema::<HostQuestProgress>()
+        .build()
+        .expect("engine should build from reflected enum schema");
+
+    let registry = engine.registry();
+    let progress = registry
+        .type_by_name("HostQuestProgress")
+        .expect("reflected enum schema should be registered");
+    assert_eq!(progress.variants.len(), 2);
+    assert_eq!(progress.variants[0].fields.len(), 2);
+    assert_eq!(progress.variants[0].fields[0].name, "quest_count");
 }
 
 #[test]

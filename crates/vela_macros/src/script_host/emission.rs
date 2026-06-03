@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use super::schema::FieldMeta;
+use super::schema::{FieldMeta, VariantMeta};
 
 pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
     let id = field.id;
@@ -62,5 +62,29 @@ pub(super) fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
         pub fn #field_proxy_ident(host_ref: ::vela_host::path::HostRef) -> ::vela_host::proxy::PathProxy {
             ::vela_host::proxy::PathProxy::new(Self::#field_path_ident(host_ref))
         }
+    }
+}
+
+pub(super) fn variant_tokens(variant: &VariantMeta) -> TokenStream {
+    let id = variant.id;
+    let script_name = &variant.script_name;
+    let docs_tokens = variant.docs.as_ref().map(|docs| quote! { .docs(#docs) });
+    let attr_tokens = variant.attrs.iter().map(|(name, value)| {
+        quote! {
+            .attr(#name, #value)
+        }
+    });
+    let field_tokens = variant.fields.iter().map(field_tokens);
+
+    quote! {
+        ::vela_reflect::registry::VariantDesc::new(
+            ::vela_common::VariantId::new(#id),
+            #script_name,
+        )
+        #(#attr_tokens)*
+        #docs_tokens
+        #(
+            .field(#field_tokens)
+        )*
     }
 }

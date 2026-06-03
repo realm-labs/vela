@@ -3,7 +3,7 @@ mod schema;
 
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{DeriveInput, Result, parse2};
+use syn::{Data, DeriveInput, Result, parse2};
 
 use crate::attrs::{error, parse_script_attrs, spanned_error};
 
@@ -13,6 +13,19 @@ struct TypeIdentity {
     stable_path: String,
     type_id: u64,
     host_id: u64,
+}
+
+struct EnumExpansion {
+    input: DeriveInput,
+    generated_method: GeneratedMethod,
+    type_id: u64,
+    host_id: u64,
+    type_name: String,
+    module_name: String,
+    stable_path: String,
+    docs: Option<String>,
+    type_attrs: Vec<(String, String)>,
+    trait_names: Vec<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -80,6 +93,20 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let docs = attrs.docs;
     let type_attrs = attrs.attrs;
     let trait_names = attrs.traits;
+    if matches!(input.data, Data::Enum(_)) {
+        return expand_enum_result(EnumExpansion {
+            input,
+            generated_method,
+            type_id,
+            host_id,
+            type_name,
+            module_name,
+            stable_path,
+            docs,
+            type_attrs,
+            trait_names,
+        });
+    }
     let fields = schema::collect_fields(&input, &stable_path)?;
     let schema_hash = schema::schema_hash(
         &type_name,
@@ -158,6 +185,79 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
             }
 
             #field_helper_tokens
+        }
+
+        #trait_impl
+    })
+}
+
+fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
+    let EnumExpansion {
+        input,
+        generated_method,
+        type_id,
+        host_id,
+        type_name,
+        module_name,
+        stable_path,
+        docs,
+        type_attrs,
+        trait_names,
+    } = expansion;
+    if matches!(generated_method, GeneratedMethod::Host) {
+        return Err(spanned_error(
+            &input,
+            "ScriptHost enum schemas are not supported; use ScriptReflect for enum metadata",
+        ));
+    }
+    let variants = schema::collect_variants(&input, &type_name, &stable_path)?;
+    let schema_hash = schema::enum_schema_hash(
+        &type_name,
+        Some(&module_name),
+        &type_attrs,
+        &trait_names,
+        &variants,
+    );
+
+    let ident = input.ident;
+    let method = generated_method.ident();
+    let trait_impl = generated_method.trait_impl_tokens(&ident, &method);
+    let module_tokens = quote! { .attr("module", #module_name) };
+    let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
+    let type_attr_tokens = type_attrs.iter().map(|(name, value)| {
+        quote! {
+            desc = desc.attr(#name, #value);
+        }
+    });
+    let trait_tokens = trait_names.iter().map(|trait_name| {
+        quote! {
+            desc = desc.trait_impl(::vela_reflect::registry::TraitDesc::new(#trait_name));
+        }
+    });
+    let variant_tokens = variants.iter().map(emission::variant_tokens);
+
+    Ok(quote! {
+        impl #ident {
+            #[must_use]
+            pub fn #method() -> ::vela_reflect::registry::TypeDesc {
+                let mut desc = ::vela_reflect::registry::TypeDesc::new(
+                    ::vela_reflect::registry::TypeKey::new(
+                        ::vela_common::TypeId::new(#type_id),
+                        #type_name,
+                    ),
+                )
+                .kind(::vela_reflect::registry::TypeKind::Host)
+                .schema_hash(::vela_reflect::registry::SchemaHash::new(#schema_hash))
+                .host_type(::vela_common::HostTypeId::new(#host_id))
+                #module_tokens
+                #docs_tokens;
+                #(#type_attr_tokens)*
+                #(#trait_tokens)*
+                #(
+                    desc = desc.variant(#variant_tokens);
+                )*
+                desc
+            }
         }
 
         #trait_impl

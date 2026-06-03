@@ -84,13 +84,17 @@ closes or exposes a more specific gap.
   common host setup imports.
 - Engine API registers derive-generated reflection schemas through
   `register_reflect_schema::<T>()`.
+- `ScriptReflect` derives host enum variant metadata with stable variant and
+  payload field IDs, and `register_reflect_schema::<T>()` can register those
+  reflected enum schemas.
 - Macro-generated context native registrations flow through Engine permission
   checks and `NativeCallContext` budget charging before host patches are
   recorded.
 - The game-server demo registers Player, Monster, Inventory, ItemStack, and
   Config host schemas through `ScriptHost` derives and
-  `register_host_type::<T>()`, while preserving reflected host trait and method
-  metadata.
+  `register_host_type::<T>()`, and registers HostQuestProgress variant
+  metadata through `ScriptReflect` plus `register_reflect_schema::<T>()`, while
+  preserving reflected host trait and method metadata.
 - Hot reload validates function, method, module, trait, schema, effect, access,
   stable-ID schema rename compatibility, and source diagnostics before version
   advancement.
