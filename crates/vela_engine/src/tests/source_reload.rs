@@ -2918,6 +2918,64 @@ fn main() {
 }
 
 #[test]
+fn runtime_stages_source_file_removed_schema_rejection_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+struct Reward {
+    item_id: string
+    count: int
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+fn main() {
+    return 2;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged removed schema rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.schema.removed");
+    assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
+    let HotReloadErrorKind::RemovedSchema {
+        type_name,
+        old_hash,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected removed schema rejection");
+    };
+    assert_eq!(type_name, "Reward");
+    assert_ne!(*old_hash, 0);
+    assert!(source_span.is_some());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
 fn runtime_stages_source_file_schema_field_type_rejection_until_safe_point() {
     let engine = Engine::builder().build().expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(

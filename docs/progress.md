@@ -160,6 +160,8 @@ closes or exposes a more specific gap.
 - Runtime source-file, directory, and changed-file reload staging report script
   struct field type ABI rejections at safe points without advancing the active
   version.
+- Runtime source-file reload staging reports removed script schema ABI
+  rejections at safe points without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report script
   enum variant field type ABI rejections at safe points without advancing the
   active version.
