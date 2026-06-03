@@ -212,7 +212,14 @@ fn update_from_program(
         }
         functions.insert(symbol, Arc::new(code));
     }
+    let previous_script_method_functions = previous
+        .script_methods
+        .function_names()
+        .collect::<BTreeSet<_>>();
     for old_name in previous.functions.keys() {
+        if previous_script_method_functions.contains(old_name.0.as_str()) {
+            continue;
+        }
         if !functions.contains_key(old_name) {
             return Err(HotReloadError::new(HotReloadErrorKind::RemovedFunction {
                 function: old_name.0.clone(),
