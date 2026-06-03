@@ -4562,6 +4562,69 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
 }
 
 #[test]
+fn runtime_stages_source_file_native_stable_id_rename_until_safe_point() {
+    let old_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Int(5)),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = hot_reload_initial_from_source(
+        &old_engine,
+        r#"
+fn main() {
+    return game::native::grant_bonus();
+}
+"#,
+    );
+    let new_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Int(5)),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(5))
+    );
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+fn main() {
+    return game::native::grant_bonus_v2() + 1;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(5))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged source-file native stable-ID rename report");
+
+    assert!(report.accepted);
+    assert!(report.errors.is_empty());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(6))
+    );
+}
+
+#[test]
 fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
@@ -5900,6 +5963,83 @@ fn runtime_stages_changed_file_removed_native_function_rejection_until_safe_poin
     };
     assert_eq!(function, "game::native::grant_bonus");
     assert!(source_span.is_none());
+}
+
+#[test]
+fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_native_stable_id_rename");
+    let reward_file = write_reward_modules(&root, "return grant();", 2);
+    write_native_reward_module(&reward_file, "grant_bonus", "");
+    let old_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Int(5)),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_read()),
+            |_| Ok(Value::Int(5)),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(5))
+    );
+
+    write_native_reward_module(&reward_file, "grant_bonus_v2", " + 1");
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file native stable-ID rename should be staged");
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(5))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file native stable-ID rename report");
+
+    assert!(report.accepted);
+    assert!(report.errors.is_empty());
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
 }
 
 #[test]
@@ -7316,6 +7456,20 @@ pub fn grant() {{
         ),
     )
     .expect("write reward module");
+}
+
+fn write_native_reward_module(path: &std::path::Path, native_name: &str, suffix: &str) {
+    std::fs::write(
+        path,
+        format!(
+            r#"
+pub fn grant() {{
+    return game::native::{native_name}(){suffix};
+}}
+"#
+        ),
+    )
+    .expect("write native reward module");
 }
 
 fn write_schema_reward_modules(

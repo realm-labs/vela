@@ -113,7 +113,8 @@ closes or exposes a more specific gap.
   stable-ID schema rename compatibility, and source diagnostics before version
   advancement.
 - Hot reload accepts compatible host native function renames when the stable
-  native function ID is unchanged, including module export ABI checks and old
+  native function ID is unchanged across source-file, directory, and
+  changed-file reload workflows, including module export ABI checks and old
   hot-reload frames that still call the previous native name.
 - Hot reload accepts compatible host method renames when the stable host method
   ID is unchanged across source-file, directory, and changed-file reload
