@@ -5,7 +5,7 @@ use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
-use vela_hot_reload::abi::HotReloadAbi;
+use vela_hot_reload::abi::{AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi};
 use vela_hot_reload::compile::{compile_initial_with_abi, compile_update_with_abi};
 use vela_hot_reload::error::HotReloadErrorKind;
 use vela_hot_reload::module_abi::{ModuleAbi, ModuleExportAbi};
@@ -2144,6 +2144,59 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     };
     assert_eq!(old, &vec![ModuleExportAbi::function("grant_reward", 11)]);
     assert_eq!(new, &Vec::<ModuleExportAbi>::new());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
+fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejection() {
+    let initial_abi = HotReloadAbi::empty().function(FunctionAbi::new(
+        "host::reward::grant",
+        EffectAbi::host_read(),
+        AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
+    ));
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial =
+        compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
+            .expect("initial hot reload compile");
+    let update = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        HotReloadAbi::empty(),
+    )
+    .expect_err("removed function ABI should be rejected");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    runtime
+        .stage_hot_update_result(Err(update))
+        .expect("stage rejected removed function update");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload_at_tick_boundary()
+        .expect("tick boundary should report staged function rejection")
+        .expect("staged removed function ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.removed_abi");
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("host::reward::grant")
+    );
+    let HotReloadErrorKind::RemovedFunctionAbi { function, .. } = &report.errors[0].error.kind
+    else {
+        panic!("expected removed function ABI");
+    };
+    assert_eq!(function, "host::reward::grant");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
