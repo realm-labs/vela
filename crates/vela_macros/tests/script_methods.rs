@@ -8,6 +8,7 @@ use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
+use vela_host::proxy::PathProxy;
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, script_methods};
@@ -133,6 +134,16 @@ impl Player {
         } else {
             Err("blocked".to_owned())
         }
+    }
+
+    /// Measures an extra copied path proxy argument.
+    #[script_method(effect = "read_host", reflect = true)]
+    pub fn inspect_path(
+        _receiver: &HostPath,
+        _host: &mut HostExecution<'_>,
+        path: PathProxy,
+    ) -> i64 {
+        i64::try_from(path.path().segments.len()).expect("path depth fits i64")
     }
 }
 

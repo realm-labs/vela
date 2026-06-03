@@ -202,6 +202,7 @@ pub enum TypeHint {
     Array,
     Map,
     Set,
+    PathProxy,
     Record(TypeKey),
     Enum(TypeKey),
     Host(TypeKey),

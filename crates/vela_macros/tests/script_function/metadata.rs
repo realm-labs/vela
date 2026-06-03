@@ -188,6 +188,19 @@ fn script_function_generates_host_result_signature_metadata() {
 }
 
 #[test]
+fn script_function_generates_path_proxy_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_path_depth(),
+        NativeFunctionDesc::new("game::path_depth", function_id("game::path_depth"))
+            .param("path", TypeHint::PathProxy)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::pure())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Measures a copied host path proxy."),
+    );
+}
+
+#[test]
 fn script_function_generates_private_reflect_visible_metadata() {
     assert_eq!(
         vela_native_function_desc_debug_probe(),

@@ -5,7 +5,7 @@ fn script_methods_generates_native_method_metadata() {
     let owner = TypeKey::new(Player::vela_type_id(), "Player");
     let descs = Player::vela_native_method_descs();
 
-    assert_eq!(descs.len(), 6);
+    assert_eq!(descs.len(), 7);
     assert_eq!(
         descs[0],
         NativeMethodDesc::new(owner.clone(), method_id("grant_exp"), "grant_exp")
@@ -89,6 +89,15 @@ fn script_methods_generates_native_method_metadata() {
         .effects(EffectSet::host_read())
         .access(FunctionAccess::public().reflect_callable(true))
         .docs("Previews a dynamic copied Result through a callable native method."),
+    );
+    assert_eq!(
+        descs[6],
+        NativeMethodDesc::new(owner.clone(), method_id("inspect_path"), "inspect_path")
+            .param("path", TypeHint::PathProxy)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_read())
+            .access(FunctionAccess::public().reflect_callable(true))
+            .docs("Measures an extra copied path proxy argument."),
     );
     assert_eq!(descs[0].owner, Player::vela_host_type_desc().key);
     assert_eq!(

@@ -108,6 +108,7 @@ fn hint_tokens(hint: HintKind) -> TokenStream {
         HintKind::Array => quote! { ::vela_engine::native::TypeHint::Array },
         HintKind::Map => quote! { ::vela_engine::native::TypeHint::Map },
         HintKind::Set => quote! { ::vela_engine::native::TypeHint::Set },
+        HintKind::PathProxy => quote! { ::vela_engine::native::TypeHint::PathProxy },
         HintKind::Function => quote! { ::vela_engine::native::TypeHint::Function },
     }
 }

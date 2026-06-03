@@ -56,6 +56,7 @@ pub(super) enum HintKind {
     Array,
     Map,
     Set,
+    PathProxy,
     HostOwner,
     Function,
 }
@@ -337,6 +338,7 @@ fn hint_for_type(ty: &Type) -> HintKind {
         Some("Vec") => HintKind::Array,
         Some("BTreeMap" | "HashMap") => HintKind::Map,
         Some("BTreeSet" | "HashSet") => HintKind::Set,
+        Some("PathProxy") => HintKind::PathProxy,
         Some("HostRef") => HintKind::HostOwner,
         Some("Value") => HintKind::Any,
         Some("NativeFunction" | "HostNativeFunction") => HintKind::Function,

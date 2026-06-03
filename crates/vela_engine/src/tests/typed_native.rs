@@ -121,7 +121,7 @@ fn typed_native_functions_accept_path_proxies() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(PathProxy,), _>(
             NativeFunctionDesc::new("game::path_depth", NativeFunctionId::new(247))
-                .param("path", TypeHint::Any)
+                .param("path", TypeHint::PathProxy)
                 .returns(TypeHint::Int),
             |path: PathProxy| {
                 i64::try_from(path.path().segments.len()).expect("path depth fits i64")
@@ -138,6 +138,11 @@ fn main(path) {
 "#,
     )
     .expect("program should compile");
+    let registry = engine.registry();
+    let reflected = registry
+        .function_by_name("game::path_depth")
+        .expect("typed native should register metadata");
+    assert_eq!(reflected.params[0].type_hint.as_deref(), Some("path_proxy"));
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
     let path = PathProxy::new(HostPath::new(player).field(FieldId::new(3)).index(2));
 

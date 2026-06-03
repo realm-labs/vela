@@ -13,6 +13,7 @@ use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
+use vela_host::proxy::PathProxy;
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_macros::{script_context_function, script_function, script_host_function};
@@ -246,6 +247,12 @@ fn checked_bonus(ok: bool) -> std::result::Result<i64, String> {
 #[script_function(name = "game::checked_host_bonus", effect = "pure", reflect = true)]
 fn checked_host_bonus(ok: bool) -> HostResult<i64> {
     Ok(if ok { 11 } else { 0 })
+}
+
+/// Measures a copied host path proxy.
+#[script_function(name = "game::path_depth", effect = "pure", reflect = true)]
+fn path_depth(path: PathProxy) -> i64 {
+    i64::try_from(path.path().segments.len()).expect("path depth fits i64")
 }
 
 /// Private reflection-only debug probe.

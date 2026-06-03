@@ -183,6 +183,7 @@ fn type_hint_display(hint: &TypeHint) -> String {
         TypeHint::Array => "array".to_owned(),
         TypeHint::Map => "map".to_owned(),
         TypeHint::Set => "set".to_owned(),
+        TypeHint::PathProxy => "path_proxy".to_owned(),
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
         TypeHint::Trait(name) => name.clone(),
         TypeHint::Function => "function".to_owned(),
