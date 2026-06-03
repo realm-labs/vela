@@ -843,6 +843,135 @@ pub fn grant() {
 }
 
 #[test]
+fn runtime_stages_dir_method_stable_id_rename_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_method_stable_id_rename");
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    std::fs::write(
+        game_dir.join("main.vela"),
+        r#"
+use game::reward::grant
+
+fn main(player: Player) {
+    return grant(player);
+}
+"#,
+    )
+    .expect("write main module");
+    let reward_file = game_dir.join("reward.vela");
+    std::fs::write(
+        &reward_file,
+        r#"
+pub fn grant(player: Player) {
+    player.grant_exp(7);
+    return 1;
+}
+"#,
+    )
+    .expect("write old method reward module");
+    let method = HostMethodId::new(9);
+    let old_engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(method, "grant_exp")),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let new_engine = Engine::builder()
+        .register_type(
+            player_type(TypeId::new(1), HostTypeId::new(1))
+                .method(MethodDesc::new(method, "award_exp")),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+
+    let mut tx = PatchTx::new();
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(7)]
+        }
+    );
+
+    std::fs::write(
+        &reward_file,
+        r#"
+pub fn grant(player: Player) {
+    player.award_exp(7);
+    return 2;
+}
+"#,
+    )
+    .expect("write renamed method reward module");
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir method stable-ID rename should be staged");
+
+    let mut tx = PatchTx::new();
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(7)]
+        }
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir method stable-ID rename report");
+
+    assert!(report.accepted);
+    assert!(report.errors.is_empty());
+    let mut tx = PatchTx::new();
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+    assert_eq!(
+        tx.patches()[0].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(7)]
+        }
+    );
+}
+
+#[test]
 fn runtime_stages_dir_method_effect_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_effect",

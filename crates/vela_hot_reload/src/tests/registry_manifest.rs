@@ -186,6 +186,52 @@ fn registry_function_abi_keeps_script_function_renames_name_based() {
 }
 
 #[test]
+fn registry_method_abi_accepts_host_stable_id_renames() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
+            MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                .param(MethodParamDesc::new("amount").type_hint("int"))
+                .return_type("int")
+                .effects(MethodEffectSet::host_write())
+                .access(MethodAccess::new().reflect_callable(true)),
+        ),
+    );
+
+    let mut renamed_registry = TypeRegistry::new();
+    renamed_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
+            MethodDesc::new(HostMethodId::new(9), "award_exp")
+                .param(MethodParamDesc::new("amount").type_hint("int"))
+                .return_type("int")
+                .effects(MethodEffectSet::host_write())
+                .access(MethodAccess::new().reflect_callable(true)),
+        ),
+    );
+
+    HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&renamed_registry))
+        .expect("host method rename with unchanged stable ID should keep ABI");
+
+    let mut changed_id_registry = TypeRegistry::new();
+    changed_id_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
+            MethodDesc::new(HostMethodId::new(10), "grant_exp")
+                .param(MethodParamDesc::new("amount").type_hint("int"))
+                .return_type("int")
+                .effects(MethodEffectSet::host_write())
+                .access(MethodAccess::new().reflect_callable(true)),
+        ),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&changed_id_registry))
+        .expect_err("host method stable ID churn should be rejected");
+    assert_eq!(error.code(), "reload.method.removed_abi");
+    assert_eq!(error.target(), Some("Player.grant_exp".to_owned()));
+}
+
+#[test]
 fn abi_manifest_can_be_built_from_type_registry() {
     let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
         .schema_hash(SchemaHash::new(0xfeed))

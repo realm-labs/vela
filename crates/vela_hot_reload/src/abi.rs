@@ -134,7 +134,8 @@ impl HotReloadAbi {
         }
 
         for ((type_name, method), old_method) in &self.methods {
-            let Some(new_method) = next.methods.get(&(type_name.clone(), method.clone())) else {
+            let Some(new_method) = find_compatible_method(type_name, method, old_method, next)
+            else {
                 return Err(HotReloadError::new(HotReloadErrorKind::RemovedMethodAbi {
                     type_name: type_name.clone(),
                     method: method.clone(),
@@ -189,6 +190,26 @@ fn find_compatible_function<'a>(
     }
     next.functions.values().find(|new_function| {
         new_function.origin == DeclOrigin::Host && new_function.id == Some(old_id)
+    })
+}
+
+fn find_compatible_method<'a>(
+    type_name: &str,
+    method: &str,
+    old_method: &MethodAbi,
+    next: &'a HotReloadAbi,
+) -> Option<&'a MethodAbi> {
+    if let Some(new_method) = next.methods.get(&(type_name.to_owned(), method.to_owned())) {
+        return Some(new_method);
+    }
+    let old_id = old_method.id?;
+    if old_method.origin != DeclOrigin::Host {
+        return None;
+    }
+    next.methods.values().find(|new_method| {
+        new_method.type_name == type_name
+            && new_method.origin == DeclOrigin::Host
+            && new_method.id == Some(old_id)
     })
 }
 
@@ -452,8 +473,10 @@ fn param_names(params: &[ParamAbi]) -> Vec<String> {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MethodAbi {
+    pub id: Option<u64>,
     pub type_name: String,
     pub name: String,
+    pub origin: DeclOrigin,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
     pub effects: EffectAbi,
@@ -470,8 +493,10 @@ impl MethodAbi {
         access: AccessAbi,
     ) -> Self {
         Self {
+            id: None,
             type_name: type_name.into(),
             name: name.into(),
+            origin: DeclOrigin::Host,
             params: Vec::new(),
             return_type: None,
             effects,
@@ -495,7 +520,9 @@ impl MethodAbi {
                 method.access.reflect_callable,
                 method.access.required_permissions().to_vec(),
             ),
-        );
+        )
+        .id(method.id.get())
+        .origin(method.origin);
         for param in &method.params {
             abi = abi.param(ParamAbi::from_method_param(param));
         }
@@ -506,6 +533,18 @@ impl MethodAbi {
             abi = abi.source_span(source_span);
         }
         abi
+    }
+
+    #[must_use]
+    pub fn id(mut self, id: u64) -> Self {
+        self.id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
+        self
     }
 
     #[must_use]
@@ -527,6 +566,18 @@ impl MethodAbi {
     }
 
     fn ensure_compatible(&self, next: &Self) -> HotReloadResult<()> {
+        if self.origin == DeclOrigin::Host
+            && next.origin == DeclOrigin::Host
+            && self.id.is_some()
+            && next.id.is_some()
+            && self.id != next.id
+        {
+            return Err(HotReloadError::new(HotReloadErrorKind::RemovedMethodAbi {
+                type_name: self.type_name.clone(),
+                method: self.name.clone(),
+                source_span: self.source_span.map(Box::new),
+            }));
+        }
         ensure_method_params_compatible(self, next)?;
         if self.return_type != next.return_type {
             return Err(HotReloadError::new(
