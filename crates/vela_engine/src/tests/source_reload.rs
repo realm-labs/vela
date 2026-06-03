@@ -9,7 +9,7 @@ use vela_hot_reload::error::HotReloadErrorKind;
 use vela_hot_reload::policy::HotReloadPolicy;
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
-use vela_reflect::registry::{MethodDesc, SchemaHash, TypeDesc, TypeKey};
+use vela_reflect::registry::{MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::value::Value;
 
@@ -1730,6 +1730,156 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     assert_eq!(new.required_permissions, vec!["player.read"]);
     assert!(old.callable);
     assert!(!new.callable);
+    assert!(source_span.is_none());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_method_parameter");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let old_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key.clone())
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                        .param(MethodParamDesc::new("amount").type_hint("int")),
+                ),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let new_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key)
+                .host_type(HostTypeId::new(1))
+                .method(
+                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                        .param(MethodParamDesc::new("amount").type_hint("float")),
+                ),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("method parameter ABI rejection should be staged");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged method parameter ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.method.parameter_abi_changed");
+    let HotReloadErrorKind::ChangedMethodParameterAbi {
+        type_name,
+        method,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed host method parameter ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert_eq!(old.len(), 1);
+    assert_eq!(old[0].name, "amount");
+    assert_eq!(old[0].type_hint.as_deref(), Some("int"));
+    assert_eq!(new.len(), 1);
+    assert_eq!(new[0].name, "amount");
+    assert_eq!(new[0].type_hint.as_deref(), Some("float"));
+    assert!(source_span.is_none());
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+    std::fs::remove_dir_all(root).expect("clean temp source dir");
+}
+
+#[test]
+fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_file_method_return");
+    std::fs::create_dir_all(&root).expect("create temp source dir");
+    let path = root.join("main.vela");
+    std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
+    let player_key = TypeKey::new(TypeId::new(1), "Player");
+    let old_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key.clone())
+                .host_type(HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("int")),
+        )
+        .build()
+        .expect("old engine should build");
+    let initial = old_engine
+        .compile_hot_reload_initial_file(&path)
+        .expect("initial hot reload file compile");
+    let new_engine = Engine::builder()
+        .register_type(
+            TypeDesc::new(player_key)
+                .host_type(HostTypeId::new(1))
+                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("null")),
+        )
+        .build()
+        .expect("new engine should build");
+    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    std::fs::write(&path, "fn main() { return 2; }").expect("write updated source");
+    runtime
+        .stage_hot_reload_update_file(&path)
+        .expect("runtime should be hot-reload enabled")
+        .expect("method return ABI rejection should be staged");
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged method return ABI rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.method.return_abi_changed");
+    let HotReloadErrorKind::ChangedMethodReturnAbi {
+        type_name,
+        method,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed host method return ABI");
+    };
+    assert_eq!(type_name, "Player");
+    assert_eq!(method, "grant_exp");
+    assert_eq!(old.as_deref(), Some("int"));
+    assert_eq!(new.as_deref(), Some("null"));
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
