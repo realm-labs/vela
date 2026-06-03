@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
-use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
@@ -566,6 +566,177 @@ fn main(player) {
         }
     );
     assert!(tx.patches().is_empty());
+}
+
+#[test]
+fn context_host_native_patch_helpers_record_expected_patches() {
+    let method = HostMethodId::new(77);
+    let engine = Engine::builder()
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game::record_patch_helpers", NativeFunctionId::new(31))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            move |args, ctx| {
+                let player = args.required::<HostRef>(0)?;
+                let numeric = HostPath::new(player).field(FieldId::new(1));
+                let array = HostPath::new(player).field(FieldId::new(2));
+                let inventory = HostPath::new(player).field(FieldId::new(3));
+                ctx.add_path(numeric.clone(), HostValue::Int(2), HostValue::Int(10), None)?;
+                ctx.sub_path(numeric.clone(), HostValue::Int(3), HostValue::Int(12), None)?;
+                ctx.mul_path(numeric.clone(), HostValue::Int(4), HostValue::Int(9), None)?;
+                ctx.div_path(numeric.clone(), HostValue::Int(2), HostValue::Int(36), None)?;
+                ctx.rem_path(numeric.clone(), HostValue::Int(5), HostValue::Int(18), None)?;
+                ctx.push_path(
+                    array.clone(),
+                    HostValue::String("gold".to_owned()),
+                    HostValue::Array(vec![]),
+                    None,
+                )?;
+                ctx.remove_path(array, None)?;
+                ctx.call_method(inventory, method, vec![HostValue::Int(4)], None)?;
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    game::record_patch_helpers(player);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(host_ref)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(Value::Int(1))
+    );
+
+    let numeric = HostPath::new(host_ref).field(FieldId::new(1));
+    let array = HostPath::new(host_ref).field(FieldId::new(2));
+    let inventory = HostPath::new(host_ref).field(FieldId::new(3));
+    assert_eq!(tx.patches().len(), 8);
+    assert_eq!(tx.patches()[0].path, numeric);
+    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
+    assert_eq!(tx.patches()[1].path, numeric);
+    assert_eq!(tx.patches()[1].op, PatchOp::Sub(HostValue::Int(3)));
+    assert_eq!(tx.patches()[2].path, numeric);
+    assert_eq!(tx.patches()[2].op, PatchOp::Mul(HostValue::Int(4)));
+    assert_eq!(tx.patches()[3].path, numeric);
+    assert_eq!(tx.patches()[3].op, PatchOp::Div(HostValue::Int(2)));
+    assert_eq!(tx.patches()[4].path, numeric);
+    assert_eq!(tx.patches()[4].op, PatchOp::Rem(HostValue::Int(5)));
+    assert_eq!(tx.patches()[5].path, array);
+    assert_eq!(
+        tx.patches()[5].op,
+        PatchOp::Push(HostValue::String("gold".to_owned()))
+    );
+    assert_eq!(tx.patches()[6].path, array);
+    assert_eq!(tx.patches()[6].op, PatchOp::Remove);
+    assert_eq!(tx.patches()[7].path, inventory);
+    assert_eq!(
+        tx.patches()[7].op,
+        PatchOp::CallHostMethod {
+            method,
+            args: vec![HostValue::Int(4)]
+        }
+    );
+}
+
+#[test]
+fn context_host_native_patch_helpers_reserve_patch_budget_before_patching() {
+    let method = HostMethodId::new(78);
+    let engine = Engine::builder()
+        .register_context_host_native_fn(
+            NativeFunctionDesc::new("game::patch_checked_helper", NativeFunctionId::new(32))
+                .param(
+                    "player",
+                    TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
+                )
+                .param("mode", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            move |args, ctx| {
+                let player = args.required::<HostRef>(0)?;
+                let mode = args.required::<i64>(1)?;
+                let numeric = HostPath::new(player).field(FieldId::new(1));
+                let array = HostPath::new(player).field(FieldId::new(2));
+                let inventory = HostPath::new(player).field(FieldId::new(3));
+                match mode {
+                    0 => ctx.add_path(numeric, HostValue::Int(1), HostValue::Int(10), None)?,
+                    1 => ctx.sub_path(numeric, HostValue::Int(1), HostValue::Int(10), None)?,
+                    2 => ctx.mul_path(numeric, HostValue::Int(2), HostValue::Int(10), None)?,
+                    3 => ctx.div_path(numeric, HostValue::Int(2), HostValue::Int(10), None)?,
+                    4 => ctx.rem_path(numeric, HostValue::Int(3), HostValue::Int(10), None)?,
+                    5 => ctx.push_path(
+                        array,
+                        HostValue::String("gold".to_owned()),
+                        HostValue::Array(vec![]),
+                        None,
+                    )?,
+                    6 => ctx.remove_path(array, None)?,
+                    7 => ctx.call_method(inventory, method, vec![HostValue::Int(1)], None)?,
+                    _ => {}
+                }
+                Ok(Value::Null)
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player, mode) {
+    game::patch_checked_helper(player, mode);
+    return 1;
+}
+"#,
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+
+    for mode in 0..=7 {
+        let mut tx = PatchTx::new();
+        let error = runtime
+            .call(
+                "main",
+                &[Value::HostRef(host_ref), Value::Int(mode)],
+                CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),
+                &mut adapter,
+                &mut tx,
+            )
+            .expect_err("native patch helper budget reservation should fail");
+
+        assert_eq!(
+            error.kind,
+            VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::Patches,
+                limit: 0
+            }
+        );
+        assert!(tx.patches().is_empty());
+    }
 }
 
 #[test]
