@@ -82,6 +82,8 @@ closes or exposes a more specific gap.
   functions, context helpers, standard natives, reflection permissions,
   compiler options, hot-reload policies, and a focused embedding prelude for
   common host setup imports.
+- Engine validation rejects duplicate native callable names and stable IDs
+  across pure, host, context-host, and standard native registrations.
 - Engine API registers macro-derived host bindings through
   `register_script_host::<T>()`, combining `ScriptHost` schema metadata with
   generated host method registration for embedders that use both derives.
