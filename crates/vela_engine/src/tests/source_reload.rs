@@ -1300,6 +1300,68 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_added_trait_impl_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_added_trait_impl");
+    let reward_file = write_trait_impl_modules(&root, 2, false);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_trait_impl_module(&reward_file, 6, true);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir added trait impl update should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir added trait impl report");
+
+    assert!(report.accepted);
+    assert!(
+        report
+            .changed_functions
+            .contains(&"game::reward::grant".to_owned())
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
+    );
+}
+
+#[test]
 fn runtime_stages_dir_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -2672,6 +2734,64 @@ fn main() {
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(Value::Int(1))
+    );
+}
+
+#[test]
+fn runtime_stages_source_file_added_trait_impl_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+trait Damageable {
+    fn damage(self) -> int { return self.level; }
+}
+
+struct Player {
+    level: int
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+trait Damageable {
+    fn damage(self) -> int { return self.level; }
+}
+
+struct Player {
+    level: int
+}
+
+impl Damageable for Player {}
+
+fn main() {
+    return 2;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged added trait impl report");
+
+    assert!(report.accepted);
+    assert!(report.changed_functions.contains(&"main".to_owned()));
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(2))
     );
 }
 
@@ -4928,6 +5048,68 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
             &mut tx
         ),
         Ok(Value::Int(2))
+    );
+}
+
+#[test]
+fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_added_trait_impl");
+    let reward_file = write_trait_impl_modules(&root, 2, false);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_trait_impl_module(&reward_file, 6, true);
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file added trait impl update should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file added trait impl report");
+
+    assert!(report.accepted);
+    assert!(
+        report
+            .changed_functions
+            .contains(&"game::reward::grant".to_owned())
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(6))
     );
 }
 
