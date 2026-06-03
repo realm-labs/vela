@@ -236,6 +236,25 @@ fn script_context_function_alias_preserves_native_function_id_across_renames() {
 }
 
 #[test]
+fn script_context_function_generates_host_result_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_checked_level(),
+        NativeFunctionDesc::new("game::checked_level", function_id("game::checked_level"))
+            .param("player", TypeHint::Any)
+            .param("level", TypeHint::Int)
+            .param("ok", TypeHint::Bool)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Returns a fallible copied player level through PatchTx."),
+    );
+}
+
+#[test]
 fn script_host_function_generates_native_function_metadata() {
     assert_eq!(
         vela_native_function_desc_set_score(),
@@ -268,5 +287,24 @@ fn script_host_function_alias_preserves_native_function_id_across_renames() {
                     .require_permission("player.write"),
             )
             .docs("Sets a renamed copied player score through host execution."),
+    );
+}
+
+#[test]
+fn script_host_function_generates_host_result_signature_metadata() {
+    assert_eq!(
+        vela_native_function_desc_checked_score(),
+        NativeFunctionDesc::new("game::checked_score", function_id("game::checked_score"))
+            .param("player", TypeHint::Any)
+            .param("score", TypeHint::Int)
+            .param("ok", TypeHint::Bool)
+            .returns(TypeHint::Int)
+            .effects(EffectSet::host_write())
+            .access(
+                FunctionAccess::public()
+                    .reflect_callable(true)
+                    .require_permission("player.write"),
+            )
+            .docs("Returns a fallible copied player score through host execution."),
     );
 }

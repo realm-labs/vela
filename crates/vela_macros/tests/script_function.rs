@@ -9,7 +9,7 @@ use vela_engine::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
 use vela_engine::runtime::{CallOptions, Runtime};
-use vela_host::error::HostResult;
+use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
@@ -93,6 +93,30 @@ fn set_level_v2(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64
     Ok(level)
 }
 
+/// Returns a fallible copied player level through PatchTx.
+#[script_context_function(
+    name = "game::checked_level",
+    effect = "write_host",
+    reflect = true,
+    permission = "player.write"
+)]
+fn checked_level(
+    ctx: &mut NativeCallContext<'_, '_>,
+    player: HostRef,
+    level: i64,
+    ok: bool,
+) -> HostResult<i64> {
+    let path = HostPath::new(player).field(FieldId::new(1));
+    if !ok {
+        return Err(HostError {
+            kind: HostErrorKind::MissingPath { path },
+            source_span: None,
+        });
+    }
+    ctx.tx().set_path(path, HostValue::Int(level), None)?;
+    Ok(level)
+}
+
 /// Sets a copied player score through host execution.
 #[script_host_function(
     name = "game::set_score",
@@ -123,6 +147,30 @@ fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> Vm
         HostValue::Int(score),
         None,
     )?;
+    Ok(score)
+}
+
+/// Returns a fallible copied player score through host execution.
+#[script_host_function(
+    name = "game::checked_score",
+    effect = "write_host",
+    reflect = true,
+    permission = "player.write"
+)]
+fn checked_score(
+    host: &mut HostExecution<'_>,
+    player: HostRef,
+    score: i64,
+    ok: bool,
+) -> HostResult<i64> {
+    let path = HostPath::new(player).field(FieldId::new(2));
+    if !ok {
+        return Err(HostError {
+            kind: HostErrorKind::MissingPath { path },
+            source_span: None,
+        });
+    }
+    host.tx.set_path(path, HostValue::Int(score), None)?;
     Ok(score)
 }
 

@@ -104,9 +104,10 @@ closes or exposes a more specific gap.
   `HostRef` handles, fallible `VmResult<T>` and `HostResult<T>` returns, and
   common numeric types, including host-aware and context-host typed native
   callables and typed native methods.
-- Macro-generated pure native function descriptors unwrap fallible
-  `HostResult<T>` return types into the script-visible return hint while still
-  executing through the existing host-error conversion path.
+- Macro-generated pure, context-host, and host-boundary native function
+  descriptors unwrap fallible `HostResult<T>` return types into the
+  script-visible return hint while still executing through the existing
+  host-error conversion path.
 - The game-server demo registers Player, Monster, Inventory, ItemStack, and
   Config host schemas through `ScriptHost` derives and
   `register_host_type::<T>()`, and registers HostQuestProgress variant

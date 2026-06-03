@@ -449,6 +449,59 @@ fn main(player) {
 }
 
 #[test]
+fn script_context_function_registers_typed_host_result_native_with_engine() {
+    let engine = vela_register_context_native_function_checked_level(
+        Engine::builder().grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro context host-result native function");
+    let program = compile_source!(
+        engine,
+        r#"
+fn main(player, ok) {
+    return game::checked_level(player, 13, ok);
+}
+"#,
+        "source should compile with macro registered context host-result native"
+    );
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut runtime = Runtime::new(engine, program);
+
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(player), Value::Bool(true)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(Value::Int(13)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+
+    let mut failed_tx = PatchTx::new();
+    let error = runtime
+        .call(
+            "main",
+            &[Value::HostRef(player), Value::Bool(false)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut failed_tx,
+        )
+        .expect_err("macro context host-result error should convert to VM host error");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::Host(HostErrorKind::MissingPath {
+            path: HostPath::new(player).field(FieldId::new(1)),
+        }),
+    );
+    assert!(failed_tx.patches().is_empty());
+}
+
+#[test]
 fn script_context_function_enforces_engine_permissions_before_patching() {
     let engine = vela_register_context_native_function_set_level(Engine::builder())
         .build()
@@ -604,4 +657,57 @@ fn main(player) {
         Ok(Value::Int(14)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(14)));
+}
+
+#[test]
+fn script_host_function_registers_typed_host_result_native_with_engine() {
+    let engine = vela_register_host_native_function_checked_score(
+        Engine::builder().grant_permission("player.write"),
+    )
+    .build()
+    .expect("engine should build from macro host-result native function");
+    let program = compile_source!(
+        engine,
+        r#"
+fn main(player, ok) {
+    return game::checked_score(player, 15, ok);
+}
+"#,
+        "source should compile with macro registered host-result native"
+    );
+    let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut runtime = Runtime::new(engine, program);
+
+    assert_eq!(
+        runtime.call(
+            "main",
+            &[Value::HostRef(player), Value::Bool(true)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(Value::Int(15)),
+    );
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(15)));
+
+    let mut failed_tx = PatchTx::new();
+    let error = runtime
+        .call(
+            "main",
+            &[Value::HostRef(player), Value::Bool(false)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut failed_tx,
+        )
+        .expect_err("macro host-result error should convert to VM host error");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::Host(HostErrorKind::MissingPath {
+            path: HostPath::new(player).field(FieldId::new(2)),
+        }),
+    );
+    assert!(failed_tx.patches().is_empty());
 }
