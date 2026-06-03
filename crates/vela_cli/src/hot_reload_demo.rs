@@ -41,7 +41,7 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
         }
     }
     let report = runtime
-        .check_reload()?
+        .check_reload_at_tick_boundary()?
         .ok_or("staged hot reload update was not consumed at the safe point")?;
     let report_lines = report.render_lines();
     let new = report
@@ -54,7 +54,7 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
         println!("{}", line.text);
     }
     println!(
-        "safe_point=check_reload abi=checked old_version={} new_version={} old_before={old_before:?} \
+        "safe_point=tick_boundary abi=checked old_version={} new_version={} old_before={old_before:?} \
          old_after={old_after:?} new_after={new_after:?}",
         old.id.0, new.id.0,
     );

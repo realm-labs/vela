@@ -194,7 +194,7 @@ closes or exposes a more specific gap.
   reflective callability metadata while preserving permissioned Engine
   registration and hot-reload ABI visibility.
 - CLI demo scripts and conformance fixtures use `.vela`, and the hot-reload
-  demo exercises staged updates through an explicit `check_reload` safe point.
+  demo exercises staged updates through an explicit tick-boundary safe point.
 
 ## Current Gaps
 
