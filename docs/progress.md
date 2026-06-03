@@ -118,6 +118,9 @@ closes or exposes a more specific gap.
   the accepted report is consumed.
 - Runtime source-file reload staging accepts compatible defaulted script schema
   additions at safe points without activating the new version early.
+- Runtime directory and changed-file reload staging accept compatible defaulted
+  script schema additions at safe points without activating the new version
+  early.
 - Runtime source-file reload staging reports event handler parameter ABI
   rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports event target ABI rejections at
