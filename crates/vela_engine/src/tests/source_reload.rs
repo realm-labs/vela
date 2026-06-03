@@ -932,6 +932,69 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_schema_field_type_rejection");
+    let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Required);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_schema_reward_module(&reward_file, 6, StructCountField::Float);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir schema field type rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir schema field type rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("game::reward::Reward")
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_defaulted_enum_variant_field_addition");
     let reward_file = write_enum_reward_modules(&root, 2, EnumVariantCountField::Absent);
@@ -2075,6 +2138,58 @@ fn main() {
         .check_reload()
         .expect("check reload at safe point")
         .expect("staged schema field rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
+    assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
+fn runtime_stages_source_file_schema_field_type_rejection_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+struct Reward {
+    item_id: string
+    count: int
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+struct Reward {
+    item_id: string
+    count: float
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged schema field type rejection report");
 
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
@@ -4083,6 +4198,69 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
 }
 
 #[test]
+fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_schema_field_type_rejection");
+    let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Required);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_schema_reward_module(&reward_file, 6, StructCountField::Float);
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file schema field type rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file schema field type rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.schema.abi_changed");
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("game::reward::Reward")
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_defaulted_enum_variant_field_addition");
     let reward_file = write_enum_reward_modules(&root, 2, EnumVariantCountField::Absent);
@@ -4531,6 +4709,7 @@ enum StructCountField {
     Absent,
     Defaulted,
     Required,
+    Float,
 }
 
 impl StructCountField {
@@ -4539,6 +4718,7 @@ impl StructCountField {
             Self::Absent => "",
             Self::Defaulted => "    count: int = 1\n",
             Self::Required => "    count: int\n",
+            Self::Float => "    count: float\n",
         }
     }
 }
