@@ -209,6 +209,43 @@ fn accepted_module_update_report_renders_module_impact() {
 }
 
 #[test]
+fn program_version_exposes_read_only_module_and_script_method_metadata() {
+    let initial = compile_initial_modules_with_abi_and_options(
+        &script_method_module_sources(),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+    .expect("compile initial modules");
+    let runtime = HotReloadRuntime::new(initial);
+    let current = runtime.current();
+    let function_names = current.function_names().collect::<Vec<_>>();
+
+    assert!(function_names.contains(&"game::main::main"));
+    assert!(function_names.contains(&"game::main.__impl.BonusSource.for.game::main::Player.bonus"));
+
+    let method = current
+        .script_methods()
+        .get("game::main::Player", "bonus")
+        .expect("compiled script method should be visible from version metadata");
+    assert_eq!(
+        method.function,
+        "game::main.__impl.BonusSource.for.game::main::Player.bonus"
+    );
+
+    let metadata = current
+        .script_metadata()
+        .expect("compiled modules should preserve module metadata");
+    let module = metadata
+        .module_id(&ModulePath::from_qualified("game::main"))
+        .expect("main module should be indexed");
+    assert!(metadata.module_source_hash(module).is_some());
+    assert_eq!(
+        Vm::new().run_program(&current.to_program(), "game::main::main", &[]),
+        Ok(Value::Int(12))
+    );
+}
+
+#[test]
 fn old_version_lifetime_preserves_old_code() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
@@ -521,4 +558,26 @@ pub fn grant() {{
             ),
         ),
     ]
+}
+
+fn script_method_module_sources() -> Vec<ModuleSource> {
+    vec![ModuleSource::new(
+        SourceId::new(1),
+        ModulePath::from_qualified("game::main"),
+        r#"
+trait BonusSource { fn bonus(self, amount) -> int; }
+struct Player { level: int }
+
+impl BonusSource for Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(5);
+}
+"#,
+    )]
 }

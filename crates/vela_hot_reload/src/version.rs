@@ -50,6 +50,20 @@ impl ProgramVersion {
         self.functions.get(&FunctionSymbolId::new(name)).cloned()
     }
 
+    pub fn function_names(&self) -> impl Iterator<Item = &str> {
+        self.functions.keys().map(|name| name.0.as_str())
+    }
+
+    #[must_use]
+    pub fn script_methods(&self) -> &ScriptMethodTable {
+        &self.script_methods
+    }
+
+    #[must_use]
+    pub fn script_metadata(&self) -> Option<&ModuleGraph> {
+        self.script_metadata.as_ref()
+    }
+
     #[must_use]
     pub fn abi(&self) -> &HotReloadAbi {
         &self.abi

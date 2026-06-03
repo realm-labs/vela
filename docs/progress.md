@@ -119,6 +119,9 @@ closes or exposes a more specific gap.
 - Hot reload validates function, method, module, trait, schema, effect, access,
   stable-ID schema rename compatibility, and source diagnostics before version
   advancement.
+- Hot-reload `ProgramVersion` snapshots expose read-only function names, script
+  method metadata, module metadata, and ABI data for host tooling without
+  making version-owned code or schema state mutable.
 - Hot reload accepts compatible host native function renames when the stable
   native function ID is unchanged across source-file, directory, and
   changed-file reload workflows, including module export ABI checks and old
