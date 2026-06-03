@@ -1,7 +1,11 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use vela_bytecode::{CodeObject, Program, script_methods::ScriptMethodTable};
+use vela_bytecode::{
+    CodeObject, Program,
+    script_methods::{ScriptMethod, ScriptMethodTable},
+};
+use vela_common::MethodId;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::abi::HotReloadAbi;
@@ -57,6 +61,20 @@ impl ProgramVersion {
     #[must_use]
     pub fn script_methods(&self) -> &ScriptMethodTable {
         &self.script_methods
+    }
+
+    #[must_use]
+    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&ScriptMethod> {
+        self.script_methods.get(type_name, method)
+    }
+
+    #[must_use]
+    pub fn script_method_by_id(
+        &self,
+        type_name: &str,
+        method_id: MethodId,
+    ) -> Option<&ScriptMethod> {
+        self.script_methods.get_by_id(type_name, method_id)
     }
 
     #[must_use]

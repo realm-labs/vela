@@ -224,12 +224,15 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
     assert!(function_names.contains(&"game::main.__impl.BonusSource.for.game::main::Player.bonus"));
 
     let method = current
-        .script_methods()
-        .get("game::main::Player", "bonus")
+        .script_method("game::main::Player", "bonus")
         .expect("compiled script method should be visible from version metadata");
     assert_eq!(
         method.function,
         "game::main.__impl.BonusSource.for.game::main::Player.bonus"
+    );
+    assert_eq!(
+        current.script_method_by_id("game::main::Player", method.id),
+        Some(method)
     );
 
     let metadata = current
