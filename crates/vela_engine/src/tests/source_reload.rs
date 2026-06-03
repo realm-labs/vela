@@ -4194,6 +4194,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         report.errors[0].code,
         "reload.function.parameter_abi_changed"
     );
+    assert_parameter_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionParameterAbi {
         function,
         old,
@@ -4559,6 +4560,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, "reload.method.parameter_abi_changed");
+    assert_method_parameter_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedMethodParameterAbi {
         type_name,
         method,
@@ -5435,6 +5437,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         report.errors[0].code,
         "reload.function.parameter_abi_changed"
     );
+    assert_parameter_abi_repair_hint(&report);
     let HotReloadErrorKind::ChangedFunctionParameterAbi {
         function,
         old,
@@ -7604,6 +7607,20 @@ fn assert_required_parameter_repair_hint(report: &HotReloadReport) {
     );
 }
 
+fn assert_parameter_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve existing parameter names, order, type hints, and defaults")
+    );
+}
+
+fn assert_method_parameter_abi_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("preserve existing method parameter names, order, type hints, and defaults")
+    );
+}
+
 fn assert_method_return_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
@@ -7827,6 +7844,9 @@ fn dir_native_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.function.parameter_abi_changed" {
+        assert_parameter_abi_repair_hint(&report);
+    }
     assert_eq!(
         runtime.call(
             "game::main::main",
@@ -7984,6 +8004,9 @@ fn dir_method_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.method.parameter_abi_changed" {
+        assert_method_parameter_abi_repair_hint(&report);
+    }
     if expected_code == "reload.method.return_abi_changed" {
         assert_method_return_repair_hint(&report);
     }
@@ -8058,6 +8081,9 @@ fn changed_file_method_rejection_kind(
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(report.errors[0].code, expected_code);
+    if expected_code == "reload.method.parameter_abi_changed" {
+        assert_method_parameter_abi_repair_hint(&report);
+    }
     if expected_code == "reload.method.return_abi_changed" {
         assert_method_return_repair_hint(&report);
     }

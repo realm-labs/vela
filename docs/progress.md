@@ -149,11 +149,12 @@ closes or exposes a more specific gap.
   without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report native
   descriptor effect, access, parameter, return, and removal ABI rejections at
-  safe points without advancing the active version.
+  safe points without advancing the active version, with repair hints covered
+  for parameter ABI reports.
 - Runtime source-file, directory, and changed-file reload staging report host
   method descriptor effect, access, parameter, return, and removal ABI
   rejections at safe points without advancing the active version, with repair
-  hints covered for return ABI reports.
+  hints covered for parameter and return ABI reports.
 - Runtime source-file, directory, and changed-file reload staging report
   required script enum variant field ABI rejections at safe points without
   advancing the active version.
