@@ -495,6 +495,22 @@ fn runtime_stages_changed_file_event_parameter_reorder_rejection_until_safe_poin
 }
 
 #[test]
+fn runtime_stages_dir_event_target_rejection_until_safe_point() {
+    event_target_rejection(
+        "runtime_stage_dir_event_target",
+        EventReloadWorkflow::Directory,
+    );
+}
+
+#[test]
+fn runtime_stages_changed_file_event_target_rejection_until_safe_point() {
+    event_target_rejection(
+        "runtime_stage_changed_file_event_target",
+        EventReloadWorkflow::ChangedFile,
+    );
+}
+
+#[test]
 fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_script_function_access");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -7207,6 +7223,104 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(function, "game::events::on_kill");
     assert_eq!(old, &vec!["player_id".to_owned(), "monster_id".to_owned()]);
     assert_eq!(new, &vec!["monster_id".to_owned(), "player_id".to_owned()]);
+    assert_eq!(
+        runtime.call(
+            "game::events::on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+}
+
+fn event_target_rejection(test_name: &str, workflow: EventReloadWorkflow) {
+    let root = unique_test_dir(test_name);
+    let game_dir = root.join("game");
+    std::fs::create_dir_all(&game_dir).expect("create module dir");
+    let event_file = game_dir.join("events.vela");
+    std::fs::write(
+        &event_file,
+        r#"
+#[event("monster.kill")]
+fn on_kill(player_id: int, monster_id: int) {
+    return 1;
+}
+"#,
+    )
+    .expect("write event module");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::events::on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+
+    std::fs::write(
+        &event_file,
+        r#"
+#[event("quest.complete")]
+fn on_kill(player_id: int, monster_id: int) {
+    return 2;
+}
+"#,
+    )
+    .expect("write retargeted event module");
+    match workflow {
+        EventReloadWorkflow::Directory => runtime
+            .stage_hot_reload_update_dir(&root)
+            .expect("runtime should be hot-reload enabled")
+            .expect("dir event target rejection should be staged"),
+        EventReloadWorkflow::ChangedFile => runtime
+            .stage_hot_reload_update_changed_file(&root, &event_file)
+            .expect("runtime should be hot-reload enabled")
+            .expect("changed-file event target rejection should be staged"),
+    };
+    assert_eq!(
+        runtime.call(
+            "game::events::on_kill",
+            &[Value::Int(7), Value::Int(11)],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged event target rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.function.event_changed");
+    let HotReloadErrorKind::ChangedFunctionEvent {
+        function,
+        old,
+        new,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected changed function event");
+    };
+    assert_eq!(function, "game::events::on_kill");
+    assert_eq!(old.as_deref(), Some("monster.kill"));
+    assert_eq!(new.as_deref(), Some("quest.complete"));
+    assert!(source_span.is_some());
     assert_eq!(
         runtime.call(
             "game::events::on_kill",
