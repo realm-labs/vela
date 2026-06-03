@@ -1425,6 +1425,69 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_required_trait_method_rejection");
+    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_trait_abi_module_with_required_method(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir required trait method rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir required trait method rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.trait.changed_abi");
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("game::reward::Damageable")
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_stages_dir_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -2897,6 +2960,57 @@ fn main() {
         .check_reload()
         .expect("check reload at safe point")
         .expect("staged trait method return rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.trait.changed_abi");
+    assert_eq!(report.errors[0].target.as_deref(), Some("Damageable"));
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+}
+
+#[test]
+fn runtime_stages_source_file_required_trait_method_rejection_until_safe_point() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let mut runtime = runtime_from_hot_reload_source(
+        engine,
+        r#"
+trait Damageable {
+    fn damage(self, amount: int) -> int;
+}
+
+fn main() {
+    return 1;
+}
+"#,
+    );
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    stage_source_update(
+        &mut runtime,
+        r#"
+trait Damageable {
+    fn damage(self, amount: int) -> int;
+    fn heal(self, amount: int) -> int;
+}
+
+fn main() {
+    return 2;
+}
+"#,
+    );
+    assert_eq!(
+        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        Ok(Value::Int(1))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged required trait method rejection report");
 
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
@@ -5290,6 +5404,69 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
 }
 
 #[test]
+fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_changed_file_required_trait_method_rejection");
+    let reward_file = write_trait_abi_modules(&root, 2, "int");
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    write_trait_abi_module_with_required_method(&reward_file, 6);
+    runtime
+        .stage_hot_reload_update_changed_file(&root, &reward_file)
+        .expect("runtime should be hot-reload enabled")
+        .expect("changed-file required trait method rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged changed-file required trait method rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.trait.changed_abi");
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("game::reward::Damageable")
+    );
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
@@ -5851,12 +6028,31 @@ fn main() {
 }
 
 fn write_trait_abi_module(path: &std::path::Path, reward: i64, return_type: &str) {
+    write_trait_abi_module_with_methods(path, reward, return_type, "");
+}
+
+fn write_trait_abi_module_with_required_method(path: &std::path::Path, reward: i64) {
+    write_trait_abi_module_with_methods(
+        path,
+        reward,
+        "int",
+        "    fn heal(self, amount: int) -> int;\n",
+    );
+}
+
+fn write_trait_abi_module_with_methods(
+    path: &std::path::Path,
+    reward: i64,
+    return_type: &str,
+    additional_methods: &str,
+) {
     std::fs::write(
         path,
         format!(
             r#"
 trait Damageable {{
     fn damage(self, amount: int) -> {return_type};
+{additional_methods}
 }}
 
 pub fn grant() {{
