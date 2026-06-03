@@ -993,6 +993,88 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
 }
 
 #[test]
+fn runtime_stages_dir_removed_schema_rejection_until_safe_point() {
+    let root = unique_test_dir("runtime_stage_dir_removed_schema_rejection");
+    let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Required);
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_dir(&root)
+        .expect("initial hot reload dir compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    std::fs::write(
+        &reward_file,
+        r#"
+pub fn grant() {
+    return 6;
+}
+"#,
+    )
+    .expect("write schema-free reward module");
+    runtime
+        .stage_hot_reload_update_dir(&root)
+        .expect("runtime should be hot-reload enabled")
+        .expect("dir removed schema rejection should be staged");
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("check reload at safe point")
+        .expect("staged dir removed schema rejection report");
+
+    assert!(!report.accepted);
+    assert_eq!(report.to_version, None);
+    assert_eq!(report.errors[0].code, "reload.schema.removed");
+    assert_eq!(
+        report.errors[0].target.as_deref(),
+        Some("game::reward::Reward")
+    );
+    let HotReloadErrorKind::RemovedSchema {
+        type_name,
+        old_hash,
+        source_span,
+    } = &report.errors[0].error.kind
+    else {
+        panic!("expected removed schema rejection");
+    };
+    assert_eq!(type_name, "game::reward::Reward");
+    assert_ne!(*old_hash, 0);
+    assert!(source_span.is_some());
+    assert_eq!(
+        runtime.call(
+            "game::main::main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx
+        ),
+        Ok(Value::Int(2))
+    );
+}
+
+#[test]
 fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_schema_field_type_rejection");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Required);
