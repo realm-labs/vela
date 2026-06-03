@@ -313,6 +313,46 @@ fn main(weights) {
 }
 
 #[test]
+fn typed_native_functions_accept_vec_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(Vec<i64>,), _>(
+            NativeFunctionDesc::new("game::sum_rewards", NativeFunctionId::new(239))
+                .param("rewards", TypeHint::Array)
+                .returns(TypeHint::Int),
+            |rewards: Vec<i64>| rewards.iter().sum::<i64>(),
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game::default_rewards", NativeFunctionId::new(240))
+                .returns(TypeHint::Array),
+            || vec![2_i64, 4, 6],
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(rewards) {
+    return game::sum_rewards(rewards) + game::default_rewards().sum();
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[Value::Array(vec![
+                Value::Int(3),
+                Value::Int(5),
+                Value::Int(7),
+            ])],
+        ),
+        Ok(Value::Int(27)),
+    );
+}
+
+#[test]
 fn typed_native_functions_accept_hash_map_values() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(HashMap<String, i64>,), _>(
