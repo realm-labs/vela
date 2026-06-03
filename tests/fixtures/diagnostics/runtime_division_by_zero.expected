@@ -1,0 +1,17 @@
+error[vm::division_by_zero]: division by zero
+  --> runtime_division_by_zero.vela:10:12
+   |
+ 10 |     return 10 / 0;
+   |            ^^^^^^ division by zero
+  --> runtime_division_by_zero.vela:10:12
+   |
+ 10 |     return 10 / 0;
+   |            ^^^^^^ runtime error
+  --> runtime_division_by_zero.vela:6:12
+   |
+  6 |     return leaf();
+   |            ^^^^^^ while executing `leaf`
+  --> runtime_division_by_zero.vela:2:12
+   |
+  2 |     return middle();
+   |            ^^^^^^^^ while executing `middle`

@@ -1,0 +1,11 @@
+fn main() {
+    return middle();
+}
+
+fn middle() {
+    return leaf();
+}
+
+fn leaf() {
+    return 10 / 0;
+}
