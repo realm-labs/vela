@@ -100,7 +100,7 @@ closes or exposes a more specific gap.
   arguments and returns, fixed arrays, maps, sets, Option/Result, strings,
   `HostRef` handles, fallible `VmResult<T>` and `HostResult<T>` returns, and
   common numeric types, including host-aware and context-host typed native
-  callables.
+  callables and typed native methods.
 - The game-server demo registers Player, Monster, Inventory, ItemStack, and
   Config host schemas through `ScriptHost` derives and
   `register_host_type::<T>()`, and registers HostQuestProgress variant

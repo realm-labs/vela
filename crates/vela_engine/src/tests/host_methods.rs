@@ -1,5 +1,6 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
+use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
@@ -484,6 +485,44 @@ fn typed_callable_native_method_conversion_errors_before_patch() {
 }
 
 #[test]
+fn typed_callable_native_method_maps_host_result_errors() {
+    let method = HostMethodId::new(13);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .grant_permission("player.grant_exp")
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_typed_native_method_fn::<(bool,), _>(
+            NativeMethodDesc::new(owner, method, "typed_require_grant")
+                .param("allowed", TypeHint::Bool)
+                .returns(TypeHint::Int)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+            typed_require_grant,
+        )
+        .build()
+        .expect("engine should build");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let expected_path = HostPath::new(player);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine
+            .call_native_method(method, &expected_path, &[Value::Bool(false)], &mut host)
+            .map_err(|error| error.kind),
+        Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
+            path: expected_path,
+            action: "call",
+        })),
+    );
+    assert!(tx.patches().is_empty());
+}
+
+#[test]
 fn callable_native_method_errors_roll_back_recorded_patches() {
     let method = HostMethodId::new(12);
     let owner = TypeKey::new(TypeId::new(1), "Player");
@@ -555,6 +594,24 @@ fn typed_grant_exp(
         None,
     )?;
     Ok(Some(amount))
+}
+
+fn typed_require_grant(
+    receiver: &HostPath,
+    _host: &mut HostExecution<'_>,
+    allowed: bool,
+) -> HostResult<i64> {
+    if allowed {
+        Ok(13)
+    } else {
+        Err(HostError {
+            kind: HostErrorKind::PermissionDenied {
+                path: receiver.clone(),
+                action: "call",
+            },
+            source_span: None,
+        })
+    }
 }
 
 #[test]
