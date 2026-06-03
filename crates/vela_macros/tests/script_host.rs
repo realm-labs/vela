@@ -69,6 +69,36 @@ enum HostQuestProgress {
     Finished,
 }
 
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::monster::Monster", docs = "Monster host schema.")]
+struct Monster {
+    #[script(get, hint = "int")]
+    exp: i64,
+    #[script(get, hint = "string")]
+    species: String,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::inventory::Inventory", docs = "Inventory host schema.")]
+struct Inventory {
+    #[script(get, set, hint = "int")]
+    gold: i64,
+    #[script(get, hint = "int")]
+    capacity: u32,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::config::Config", docs = "Config host schema.")]
+struct GameConfig {
+    #[script(get, hint = "int")]
+    exp_to_next_level: i64,
+    #[script(get, hint = "int")]
+    max_inventory_slots: u32,
+}
+
 #[test]
 fn script_host_derive_generates_type_metadata() {
     let desc = Player::vela_host_type_desc();
@@ -305,6 +335,38 @@ fn script_host_and_reflect_derive_register_matching_engine_schemas() {
     assert_eq!(host_player, reflect_player);
     assert_eq!(host_player, &Player::vela_host_type_desc());
     assert_eq!(reflect_player, &Player::vela_reflect_type_desc());
+}
+
+#[test]
+fn script_host_sample_game_schemas_register_with_engine_builder() {
+    let engine = vela_engine::engine::Engine::builder()
+        .register_host_type::<Player>()
+        .register_host_type::<Monster>()
+        .register_host_type::<Inventory>()
+        .register_host_type::<GameConfig>()
+        .build()
+        .expect("engine should build from sample game host schemas");
+    let registry = engine.registry();
+
+    for desc in [
+        Player::vela_host_type_desc(),
+        Monster::vela_host_type_desc(),
+        Inventory::vela_host_type_desc(),
+        GameConfig::vela_host_type_desc(),
+    ] {
+        let registered = registry
+            .type_by_name(&desc.key.name)
+            .expect("sample host schema should register");
+        assert_eq!(registered, &desc);
+        assert_eq!(registered.kind, TypeKind::Host);
+        assert!(registered.host_type_id.is_some());
+        assert_eq!(registered.fields.len(), 2);
+    }
+
+    assert!(registry.type_by_name("Player").is_some());
+    assert!(registry.type_by_name("Monster").is_some());
+    assert!(registry.type_by_name("Inventory").is_some());
+    assert!(registry.type_by_name("Config").is_some());
 }
 
 #[test]
