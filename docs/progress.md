@@ -152,6 +152,9 @@ closes or exposes a more specific gap.
 - Runtime directory reload staging reports native descriptor effect, access,
   parameter, and return ABI rejections at safe points without advancing the
   active version.
+- Runtime directory reload staging reports host method descriptor effect,
+  access, parameter, and return ABI rejections at safe points without advancing
+  the active version.
 - Runtime changed-file reload staging reports compile diagnostics at safe
   points without advancing the active version.
 - Runtime changed-file reload staging reports function return ABI rejections
