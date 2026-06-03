@@ -145,8 +145,8 @@ closes or exposes a more specific gap.
   function return ABI rejections with repair hints at safe points without
   advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report
-  required function parameter additions at safe points without advancing the
-  active version.
+  required function parameter additions with repair hints at safe points
+  without advancing the active version.
 - Runtime source-file, directory, and changed-file reload staging report native
   descriptor effect, access, parameter, return, and removal ABI rejections at
   safe points without advancing the active version.

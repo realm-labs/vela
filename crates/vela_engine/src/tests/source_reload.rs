@@ -481,6 +481,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
         report.errors[0].code,
         "reload.function.required_added_parameters"
     );
+    assert_required_parameter_repair_hint(&report);
     let HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, added } =
         &report.errors[0].error.kind
     else {
@@ -3956,6 +3957,7 @@ fn main(player_id: int, amount: int) {
         report.errors[0].code,
         "reload.function.required_added_parameters"
     );
+    assert_required_parameter_repair_hint(&report);
     let HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, added } =
         &report.errors[0].error.kind
     else {
@@ -5073,6 +5075,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
         report.errors[0].code,
         "reload.function.required_added_parameters"
     );
+    assert_required_parameter_repair_hint(&report);
     let HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { function, added } =
         &report.errors[0].error.kind
     else {
@@ -7591,6 +7594,13 @@ fn assert_function_return_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve the previous return type hint or restart with an explicit migration")
+    );
+}
+
+fn assert_required_parameter_repair_hint(report: &HotReloadReport) {
+    assert_eq!(
+        report.errors[0].repair_hint.as_deref(),
+        Some("give every appended parameter a default value")
     );
 }
 
