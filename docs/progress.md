@@ -122,6 +122,9 @@ closes or exposes a more specific gap.
   variant field additions at safe points without activating the new version
   early.
 - Runtime directory and changed-file reload staging accept compatible defaulted
+  script enum variant field additions at safe points without activating the new
+  version early.
+- Runtime directory and changed-file reload staging accept compatible defaulted
   script schema additions at safe points without activating the new version
   early.
 - Runtime source-file reload staging reports event handler parameter ABI
