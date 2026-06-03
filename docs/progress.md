@@ -132,8 +132,8 @@ closes or exposes a more specific gap.
 - Runtime source-file, directory, and changed-file reload staging accept
   stable-ID script schema field and variant renames at safe points without
   activating the new version early.
-- Runtime source-file reload staging reports event handler parameter ABI
-  rejections at safe points without advancing the active version.
+- Runtime source-file and directory reload staging report event handler
+  parameter ABI rejections at safe points without advancing the active version.
 - Runtime source-file reload staging reports event target ABI rejections at
   safe points without advancing the active version.
 - Runtime source-file reload staging reports function return ABI rejections at
