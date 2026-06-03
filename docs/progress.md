@@ -98,7 +98,8 @@ closes or exposes a more specific gap.
   pushes, and host method-call patches.
 - Engine typed native Rust signature conversion covers copied `Vec<T>` array
   arguments and returns, fixed arrays, maps, sets, Option/Result, strings,
-  `HostRef` handles, fallible `VmResult<T>` returns, and common numeric types.
+  `HostRef` handles, fallible `VmResult<T>` and `HostResult<T>` returns, and
+  common numeric types.
 - The game-server demo registers Player, Monster, Inventory, ItemStack, and
   Config host schemas through `ScriptHost` derives and
   `register_host_type::<T>()`, and registers HostQuestProgress variant

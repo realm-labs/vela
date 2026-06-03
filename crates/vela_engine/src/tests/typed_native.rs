@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::{HostObjectId, HostTypeId, SourceId, TypeId};
-use vela_host::path::HostRef;
+use vela_host::error::{HostError, HostErrorKind, HostResult};
+use vela_host::path::{HostPath, HostRef};
 use vela_reflect::registry::TypeKey;
 use vela_vm::error::{VmError, VmErrorKind};
 use vela_vm::value::Value;
@@ -587,6 +588,54 @@ fn main(allowed) {
             native: "game::require_admin".to_owned(),
             permission: "admin".to_owned(),
         }),
+    );
+}
+
+#[test]
+fn typed_native_functions_map_host_result_errors() {
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
+    let denied_path = HostPath::new(player);
+    let expected_path = denied_path.clone();
+    let engine = Engine::builder()
+        .register_typed_native_fn::<(bool,), _>(
+            NativeFunctionDesc::new("game::write_score", NativeFunctionId::new(246))
+                .param("allowed", TypeHint::Bool)
+                .returns(TypeHint::Int),
+            move |allowed: bool| -> HostResult<i64> {
+                if allowed {
+                    Ok(21)
+                } else {
+                    Err(HostError {
+                        kind: HostErrorKind::PermissionDenied {
+                            path: denied_path.clone(),
+                            action: "write",
+                        },
+                        source_span: None,
+                    })
+                }
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(allowed) {
+    return game::write_score(allowed);
+}
+"#,
+    )
+    .expect("program should compile");
+
+    assert_eq!(
+        engine
+            .into_vm()
+            .run_program(&program, "main", &[Value::Bool(false)])
+            .map_err(|error| error.kind),
+        Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
+            path: expected_path,
+            action: "write",
+        })),
     );
 }
 
