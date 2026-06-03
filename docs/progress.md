@@ -116,8 +116,9 @@ closes or exposes a more specific gap.
   native function ID is unchanged, including module export ABI checks and old
   hot-reload frames that still call the previous native name.
 - Hot reload accepts compatible host method renames when the stable host method
-  ID is unchanged, including source reload ABI checks and old hot-reload frames
-  that still emit host method-call patches by ID.
+  ID is unchanged across source-file, directory, and changed-file reload
+  workflows, including old hot-reload frames that still emit host method-call
+  patches by ID.
 - Hot reload reports distinguish actual bytecode-changed functions from
   source-changed modules and reverse-import impacted modules.
 - Engine and Runtime hot-reload source workflows accept changed `.vela` file
