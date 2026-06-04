@@ -8,7 +8,7 @@ use vela_host::tx::PatchTx;
 
 use self::ids::DemoIds;
 use self::registry::demo_engine;
-use self::state::DemoHostState;
+use self::state::{DemoHostOptions, DemoHostState};
 
 mod ids;
 mod registry;
@@ -32,7 +32,23 @@ pub(crate) fn run_script_with_stale_player(path: &str) -> Result<(), Box<dyn Err
     run_script_with_options(
         path,
         DemoRunOptions {
-            stale_player: true,
+            host: DemoHostOptions {
+                stale_player_arg: true,
+                ..DemoHostOptions::default()
+            },
+            ..DemoRunOptions::default()
+        },
+    )
+}
+
+pub(crate) fn run_script_with_denied_player_level_read(path: &str) -> Result<(), Box<dyn Error>> {
+    run_script_with_options(
+        path,
+        DemoRunOptions {
+            host: DemoHostOptions {
+                deny_player_level_read: true,
+                ..DemoHostOptions::default()
+            },
             ..DemoRunOptions::default()
         },
     )
@@ -49,11 +65,9 @@ fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Bo
     let main = program
         .function("main")
         .ok_or("script must define fn main(...)")?;
-    let mut host_state = DemoHostState::new(
-        ids,
-        main.params.iter().any(|param| param == "monster"),
-        options.stale_player,
-    );
+    let mut host_options = options.host;
+    host_options.has_monster = main.params.iter().any(|param| param == "monster");
+    let mut host_state = DemoHostState::new(ids, host_options);
     let args = host_state.main_args(main)?;
 
     let mut tx = PatchTx::new();
@@ -84,7 +98,7 @@ fn build_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine
 #[derive(Clone, Copy, Debug, Default)]
 struct DemoRunOptions {
     engine: DemoEngineOptions,
-    stale_player: bool,
+    host: DemoHostOptions,
 }
 
 #[derive(Clone, Copy, Debug, Default)]

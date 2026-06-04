@@ -18,6 +18,13 @@ const PLAYER_GENERATION: u32 = 3;
 const CTX_GENERATION: u32 = 1;
 const MONSTER_GENERATION: u32 = 1;
 
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct DemoHostOptions {
+    pub(crate) has_monster: bool,
+    pub(crate) stale_player_arg: bool,
+    pub(crate) deny_player_level_read: bool,
+}
+
 pub(crate) struct DemoHostState {
     ids: DemoIds,
     player_arg: HostRef,
@@ -35,13 +42,13 @@ pub(crate) struct DemoHostState {
 }
 
 impl DemoHostState {
-    pub(crate) fn new(ids: DemoIds, has_monster: bool, stale_player_arg: bool) -> Self {
+    pub(crate) fn new(ids: DemoIds, options: DemoHostOptions) -> Self {
         let player = HostRef::new(
             player_type(),
             HostObjectId::new(PLAYER_OBJECT),
             PLAYER_GENERATION,
         );
-        let player_arg = if stale_player_arg {
+        let player_arg = if options.stale_player_arg {
             HostRef::new(
                 player_type(),
                 HostObjectId::new(PLAYER_OBJECT),
@@ -87,11 +94,11 @@ impl DemoHostState {
         let mut adapter = MockStateAdapter::new();
         adapter.insert_value(
             level_path.clone(),
-            HostValue::Int(if has_monster { 1 } else { 9 }),
+            HostValue::Int(if options.has_monster { 1 } else { 9 }),
         );
         adapter.insert_value(
             exp_path.clone(),
-            HostValue::Int(if has_monster { 90 } else { 0 }),
+            HostValue::Int(if options.has_monster { 90 } else { 0 }),
         );
         adapter.insert_value(HostPath::new(player).field(ids.id_field), HostValue::Int(7));
         adapter.insert_value(quest_count_path.clone(), HostValue::Int(2));
@@ -113,13 +120,16 @@ impl DemoHostState {
         adapter.insert_method_return(ids.emit_method, HostValue::Null);
         adapter.insert_method_return(ids.add_reward_method, HostValue::Null);
         adapter.insert_method_return(ids.log_method, HostValue::Null);
+        if options.deny_player_level_read {
+            adapter.deny_read(level_path.clone());
+        }
 
         Self {
             ids,
             player_arg,
             ctx,
             monster,
-            has_monster,
+            has_monster: options.has_monster,
             level_path,
             exp_path,
             quest_count_path,

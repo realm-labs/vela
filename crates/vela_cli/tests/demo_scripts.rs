@@ -188,6 +188,22 @@ fn stale_host_ref_demo_reports_generation_mismatch() {
 }
 
 #[test]
+fn host_permission_demo_reports_denied_host_read() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg("--deny-player-level-read")
+        .arg(script_path("host_permission_denied.vela"))
+        .output()
+        .expect("run vela_cli host permission denial demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("error[vm::host_error]: host error: PermissionDenied"));
+    assert!(stderr.contains("action: \"read\""));
+    assert!(stderr.contains("host_permission_denied.vela:2:12"));
+    assert!(stderr.contains("return player.level;"));
+}
+
+#[test]
 fn bad_schema_demo_reports_duplicate_field() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
         .arg(script_path("bad_schema_duplicate_field.vela"))
