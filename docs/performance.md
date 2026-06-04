@@ -1103,6 +1103,37 @@ Remaining callback work should focus on receiver materialization and invocation
 overhead that still shows up in both callback modes.
 ```
 
+### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
+
+This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark
+that exercises integer arithmetic, modulo, float arithmetic and comparisons,
+boolean short-circuiting, string equality/inequality, branch control, and loop
+exit behavior in one scalar-heavy workload. It complements
+`scalar_branch_loop`, which remains focused on integer dispatch and branch
+control.
+
+Commands:
+
+```bash
+cargo test -p vela_vm --bench baseline --no-run
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+New benchmark baseline:
+
+| Benchmark | Mode | Quick mean ns | Quick checksum | Default mean ns | Default checksum |
+|---|---|---:|---:|---:|---:|
+| scalar_dispatch_mix | inline | 1449200 | 15308784822820424249 | 18350600 | 18355421299335186739 |
+
+Checkpoint notes:
+
+```text
+The scalar_dispatch_mix workload gives M19 a broader scalar dispatch surface
+before additional interpreter work on mixed int/float/bool/string operations.
+The benchmark is measurement-only; no VM runtime behavior changed.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

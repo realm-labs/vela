@@ -78,6 +78,34 @@ fn main() {
 "#,
     },
     Workload {
+        name: "scalar_dispatch_mix",
+        mode: ExecutionMode::Inline,
+        source: r#"
+fn main() {
+    let total = 0;
+    let drift = 0.5;
+    let label = "tick";
+    let enabled = true;
+    for tick in 0..180 {
+        drift += 0.25;
+        if drift > 12.0 {
+            drift = 0.5;
+        }
+        if enabled && (tick % 2 == 0 || label == "tick") {
+            total += tick * 3 - 1;
+        }
+        if !(label != "tick") && drift >= 1.0 {
+            total += 2;
+        }
+        if tick > 150 && drift < 5.0 {
+            break;
+        }
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "stdlib_collections",
         mode: ExecutionMode::Inline,
         source: r#"
