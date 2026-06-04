@@ -37,9 +37,11 @@ cargo run -p vela_cli -- --hot-reload examples/game_server_demo/scripts/hot_relo
 cargo run -p vela_cli -- --hot-reload examples/game_server_demo/scripts/hot_reload_function_swap_v1.vela examples/game_server_demo/scripts/hot_reload_function_swap_invalid.vela # expected ABI rejection
 ```
 
-Benchmark and fuzz targets are optional until the related crates exist:
+Benchmark targets are optional until the related crates exist. The parser fuzz
+target is compile-checkable without installing `cargo-fuzz`:
 
 ```bash
 cargo bench --workspace
+cargo check --manifest-path fuzz/Cargo.toml --bins
 cargo fuzz run parser
 ```

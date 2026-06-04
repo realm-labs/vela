@@ -76,6 +76,8 @@ before debugger/DAP work and Cranelift JIT.
   rejection, host patch conflict reporting, reflection candidate diagnostics,
   bad schema diagnostics, generic type hint rejection, and tick-boundary hot
   reload.
+- A parser fuzz target exists under `fuzz/` and can be compile-checked even
+  when the local machine has not installed `cargo-fuzz`.
 
 ### Remaining Gaps
 
