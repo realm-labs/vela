@@ -143,7 +143,7 @@ fn call_script_impl_method(
     let protected_root_len = dispatch
         .heap
         .as_deref_mut()
-        .map(|heap| heap.push_protected_roots(dispatch.caller_roots.clone()));
+        .map(|heap| heap.push_protected_roots(&dispatch.caller_roots));
     let result = dispatch.vm.execute_code_object(
         function,
         dispatch.program,

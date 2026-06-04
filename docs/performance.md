@@ -1060,6 +1060,49 @@ optimizations should preserve the matching checksum and report before/after
 results against this workload.
 ```
 
+### 2026-06-04 M19 Heap Callback Root Buffer Checkpoint
+
+This checkpoint removes per-callback temporary root-vector allocation in
+managed heap callback dispatch. `HeapExecution` now appends caller roots,
+callback arguments, and protected callback values directly into its existing
+protected-root buffer, then truncates that buffer after the nested call. Nested
+script function and closure calls also append frame roots directly into the
+same buffer instead of first building a temporary frame-root vector.
+
+Commands:
+
+```bash
+cargo test -p vela_vm
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_callback_collections | 19384000 | 19242050 | 6661976061914330346 | 6661976061914330346 |
+
+Default after-run comparison against the managed-heap callback benchmark
+coverage checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 153822685 | 157089685 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 242331900 | 228158371 | 4123773336162002392 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for the callback workload in both modes. The intended
+signal is the managed-heap callback row, where root protection no longer builds
+a fresh Vec<GcRef> for each callback invocation. The inline callback row is
+included as a guardrail; its default timing moved against the change within the
+same benchmark surface even though the edited path is heap-only for callbacks.
+Remaining callback work should focus on receiver materialization and invocation
+overhead that still shows up in both callback modes.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

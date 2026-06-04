@@ -1,6 +1,6 @@
-use crate::ExecutionBudget;
 use crate::frame::CallFrame;
 use crate::heap::{GcBudget, GcRef, GcStepStats, ScriptHeap};
+use crate::{ExecutionBudget, Value};
 
 pub struct HeapExecution<'heap> {
     pub heap: &'heap mut ScriptHeap,
@@ -36,14 +36,26 @@ impl<'heap> HeapExecution<'heap> {
         self.last_gc_step.as_ref()
     }
 
-    pub(crate) fn push_protected_roots(&mut self, roots: Vec<GcRef>) -> usize {
+    pub(crate) fn push_protected_roots(&mut self, roots: &[GcRef]) -> usize {
         let previous_len = self.protected_roots.len();
-        self.protected_roots.extend(roots);
+        self.protected_roots.extend_from_slice(roots);
+        previous_len
+    }
+
+    pub(crate) fn push_frame_roots(&mut self, frame: &CallFrame) -> usize {
+        let previous_len = self.protected_roots.len();
+        frame.extend_heap_roots(&mut self.protected_roots);
         previous_len
     }
 
     pub(crate) fn truncate_protected_roots(&mut self, len: usize) {
         self.protected_roots.truncate(len);
+    }
+
+    pub(crate) fn protect_values(&mut self, values: &[Value]) {
+        values
+            .iter()
+            .for_each(|value| value.trace_heap_refs(&mut self.protected_roots));
     }
 
     pub(crate) fn collect_frame_at_safe_point(

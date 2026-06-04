@@ -261,7 +261,7 @@ impl Vm {
                         .collect::<VmResult<Vec<_>>>()?;
                     let protected_root_len = heap
                         .as_deref_mut()
-                        .map(|heap| heap.push_protected_roots(frame.heap_roots()));
+                        .map(|heap| heap.push_frame_roots(&frame));
                     let result = self.execute_call(
                         ExecutionCall {
                             code: function,
@@ -308,7 +308,7 @@ impl Vm {
                         .collect::<VmResult<Vec<_>>>()?;
                     let protected_root_len = heap
                         .as_deref_mut()
-                        .map(|heap| heap.push_protected_roots(frame.heap_roots()));
+                        .map(|heap| heap.push_frame_roots(&frame));
                     let result = self.execute_call(
                         ExecutionCall {
                             code: &closure.code,
