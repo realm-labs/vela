@@ -48,6 +48,7 @@ const QUEST_DONE_FIELD: FieldId = FieldId::new(11);
 const CONFIG_FIELD: FieldId = FieldId::new(12);
 const EXP_TO_NEXT_LEVEL_FIELD: FieldId = FieldId::new(13);
 const KILL_REWARDS_FIELD: FieldId = FieldId::new(14);
+const REWARDS_FIELD: FieldId = FieldId::new(15);
 const EMIT_METHOD: HostMethodId = HostMethodId::new(101);
 const ADD_REWARD_METHOD: HostMethodId = HostMethodId::new(102);
 const CTX_TYPE: HostTypeId = HostTypeId::new(2);
@@ -194,7 +195,8 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
                 .with_host_field("level", LEVEL_FIELD)
                 .with_host_field("exp", EXP_FIELD)
                 .with_host_field("inventory", INVENTORY_FIELD)
-                .with_host_field("gold", GOLD_FIELD),
+                .with_host_field("gold", GOLD_FIELD)
+                .with_host_field("rewards", REWARDS_FIELD),
         )
         .map(|program| CompiledWorkload::HostPatchTx {
             program: Box::new(program),
@@ -296,6 +298,13 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>
             .field(GOLD_FIELD),
         HostValue::Int(5),
     );
+    let rewards_path = HostPath::new(player)
+        .field(INVENTORY_FIELD)
+        .field(REWARDS_FIELD);
+    adapter.insert_value(
+        rewards_path.clone(),
+        HostValue::Array(vec![HostValue::String("xp".to_owned())]),
+    );
     let mut tx = PatchTx::new();
     let mut budget = ExecutionBudget::unbounded();
     let mut host = HostExecution {
@@ -309,8 +318,12 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>
         &mut host,
         &mut budget,
     )?;
+    let patch_count = tx.patches().len();
+    tx.apply(&mut adapter)?;
     Ok(Value::Int(
-        value_checksum(&value) as i64 + tx.patches().len() as i64,
+        value_checksum(&value) as i64
+            + patch_count as i64
+            + host_array_len(&adapter, rewards_path)?,
     ))
 }
 
@@ -411,6 +424,13 @@ fn host_bool(adapter: &MockStateAdapter, path: HostPath) -> Result<bool, Box<dyn
     match adapter.read_path(&path)? {
         HostValue::Bool(value) => Ok(value),
         value => Err(format!("expected bool host value, got {value:?}").into()),
+    }
+}
+
+fn host_array_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
+    match adapter.read_path(&path)? {
+        HostValue::Array(values) => Ok(values.len() as i64),
+        value => Err(format!("expected array host value, got {value:?}").into()),
     }
 }
 

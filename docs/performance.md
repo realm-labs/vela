@@ -899,6 +899,39 @@ benchmark evidence from this expanded surface or a targeted array callback
 workload.
 ```
 
+### 2026-06-04 M19 Host Conversion Benchmark Coverage Checkpoint
+
+This measurement checkpoint expands the `host_patch_tx` workload beyond integer
+host path reads and numeric patch operations. The benchmark now reads a host
+array, pushes a script string through `PatchTx`, observes the overlay length in
+script code, applies the transaction, and includes the applied host array length
+in the checksum. This gives future host conversion work a focused benchmark
+surface for `HostValue::Array`, `HostValue::String`, `Value::Array`, and
+`Value::String` conversion in addition to numeric patches.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Expanded benchmark baseline:
+
+| Benchmark | Quick mean ns | Quick checksum | Default mean ns | Default checksum |
+|---|---:|---:|---:|---:|
+| host_patch_tx | 51000 | 8875875486420011969 | 710442 | 1944703388338173655 |
+
+Checkpoint notes:
+
+```text
+The host_patch_tx benchmark now covers array/string host conversion and
+transaction apply verification, not only integer read/modify/write paths. Future
+host conversion optimizations should preserve this checksum and report
+before/after results against this expanded workload or a more targeted host
+conversion benchmark.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

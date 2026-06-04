@@ -110,7 +110,8 @@ fn main(player) {
     player.level += 1;
     player.exp += 10;
     player.inventory.gold += 3;
-    return player.level + player.exp + player.inventory.gold;
+    player.inventory.rewards.push("gold");
+    return player.level + player.exp + player.inventory.gold + player.inventory.rewards.len();
 }
 "#,
     },
