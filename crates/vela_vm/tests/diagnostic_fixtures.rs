@@ -23,6 +23,10 @@ const HOST_PERMISSION_DENIED: &str =
     include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.vela");
 const HOST_PERMISSION_DENIED_EXPECTED: &str =
     include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.expected");
+const STALE_HOST_REF: &str =
+    include_str!("../../../tests/fixtures/diagnostics/stale_host_ref.vela");
+const STALE_HOST_REF_EXPECTED: &str =
+    include_str!("../../../tests/fixtures/diagnostics/stale_host_ref.expected");
 const REFLECTION_UNKNOWN_FIELD: &str =
     include_str!("../../../tests/fixtures/diagnostics/reflection_unknown_field.vela");
 const REFLECTION_UNKNOWN_FIELD_EXPECTED: &str =
@@ -102,6 +106,55 @@ fn host_permission_denied_fixture_renders_source_span() {
         rendered.trim_end(),
         HOST_PERMISSION_DENIED_EXPECTED.trim_end()
     );
+}
+
+#[test]
+fn stale_host_ref_fixture_renders_source_span() {
+    let stale_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let fresh_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 2);
+    let level_field = FieldId::new(1);
+    let level_path = HostPath::new(fresh_ref).field(level_field);
+    let source_span = Span::new(SourceId::new(1), 29, 41);
+
+    let mut code = CodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
+    code.push_instruction(
+        Instruction::new(InstructionKind::GetHostField {
+            dst: Register(1),
+            root: Register(0),
+            field: level_field,
+        })
+        .with_span(source_span),
+    );
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+
+    let mut program = Program::new();
+    program.insert_function(code);
+
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(level_path, HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = Vm::new()
+        .run_program_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
+        .expect_err("fixture should fail on stale host ref generation");
+
+    let rendered = render_diagnostic(
+        &error.to_diagnostic(),
+        [DiagnosticSource::new(
+            SourceId::new(1),
+            "stale_host_ref.vela",
+            STALE_HOST_REF,
+        )],
+    )
+    .join("\n");
+
+    assert_eq!(rendered.trim_end(), STALE_HOST_REF_EXPECTED.trim_end());
 }
 
 #[test]

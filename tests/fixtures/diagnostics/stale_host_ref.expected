@@ -1,0 +1,9 @@
+error[vm::host_error]: host error: StaleGeneration { expected: 1, actual: 2 }
+  --> stale_host_ref.vela:2:12
+   |
+  2 |     return player.level;
+   |            ^^^^^^^^^^^^ host error: StaleGeneration { expected: 1, actual: 2 }
+  --> stale_host_ref.vela:2:12
+   |
+  2 |     return player.level;
+   |            ^^^^^^^^^^^^ runtime error
