@@ -9,18 +9,27 @@ const GENERIC_TYPE_HINT_EXPECTED: &str =
 
 #[test]
 fn parser_generic_type_hint_fixture_renders_span_and_hint() {
-    let parsed = parse_source(SourceId::new(1), GENERIC_TYPE_HINT);
+    let source = normalized_fixture(GENERIC_TYPE_HINT);
+    let parsed = parse_source(SourceId::new(1), &source);
 
     assert_eq!(parsed.diagnostics.len(), 1);
     let rendered = render_diagnostic(
         &parsed.diagnostics[0],
-        [DiagnosticSource::new(
-            SourceId::new(1),
-            "generic_type_hint.vela",
-            GENERIC_TYPE_HINT,
-        )],
+        [diagnostic_source("generic_type_hint.vela", source)],
     )
     .join("\n");
 
-    assert_eq!(rendered.trim_end(), GENERIC_TYPE_HINT_EXPECTED.trim_end());
+    assert_rendered_eq(&rendered, GENERIC_TYPE_HINT_EXPECTED);
+}
+
+fn diagnostic_source(name: &str, source: String) -> DiagnosticSource {
+    DiagnosticSource::new(SourceId::new(1), name, source)
+}
+
+fn normalized_fixture(source: &str) -> String {
+    source.replace("\r\n", "\n")
+}
+
+fn assert_rendered_eq(rendered: &str, expected: &str) {
+    assert_eq!(rendered.trim_end(), normalized_fixture(expected).trim_end());
 }

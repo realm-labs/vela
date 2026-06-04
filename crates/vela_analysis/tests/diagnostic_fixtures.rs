@@ -24,50 +24,45 @@ const FLOW_NARROWING_NULL_MEMBER_EXPECTED: &str =
 
 #[test]
 fn semantic_unknown_host_field_fixture_renders_candidates_and_access_hints() {
-    let expr = first_expression(UNKNOWN_HOST_FIELD);
+    let source = normalized_fixture(UNKNOWN_HOST_FIELD);
+    let expr = first_expression(&source);
     let scope = ExprFactScope::new().with_path(["player"], TypeFact::host("Player"));
     let diagnostics = member_access_diagnostics(&expr, &scope, &registry_facts());
 
     assert_eq!(diagnostics.len(), 1);
     let rendered = render_diagnostic(
         &diagnostics[0],
-        [DiagnosticSource::new(
-            SourceId::new(1),
-            "unknown_host_field.vela",
-            UNKNOWN_HOST_FIELD,
-        )],
+        [diagnostic_source("unknown_host_field.vela", source)],
     )
     .join("\n");
 
-    assert_eq!(rendered.trim_end(), UNKNOWN_HOST_FIELD_EXPECTED.trim_end());
+    assert_rendered_eq(&rendered, UNKNOWN_HOST_FIELD_EXPECTED);
 }
 
 #[test]
 fn typefact_unknown_option_variant_fixture_renders_dynamic_candidates() {
-    let expr = first_expression(TYPEFACT_UNKNOWN_OPTION_VARIANT);
+    let source = normalized_fixture(TYPEFACT_UNKNOWN_OPTION_VARIANT);
+    let expr = first_expression(&source);
     let scope = ExprFactScope::new().with_path(["maybe"], TypeFact::option(TypeFact::Int));
     let diagnostics = match_pattern_diagnostics(&expr, &scope, &RegistryFacts::default());
 
     assert_eq!(diagnostics.len(), 1);
     let rendered = render_diagnostic(
         &diagnostics[0],
-        [DiagnosticSource::new(
-            SourceId::new(1),
+        [diagnostic_source(
             "typefact_unknown_option_variant.vela",
-            TYPEFACT_UNKNOWN_OPTION_VARIANT,
+            source,
         )],
     )
     .join("\n");
 
-    assert_eq!(
-        rendered.trim_end(),
-        TYPEFACT_UNKNOWN_OPTION_VARIANT_EXPECTED.trim_end()
-    );
+    assert_rendered_eq(&rendered, TYPEFACT_UNKNOWN_OPTION_VARIANT_EXPECTED);
 }
 
 #[test]
 fn flow_narrowing_null_check_fixture_renders_member_diagnostic() {
-    let expr = first_expression(FLOW_NARROWING_NULL_MEMBER);
+    let source = normalized_fixture(FLOW_NARROWING_NULL_MEMBER);
+    let expr = first_expression(&source);
     let scope = ExprFactScope::new().with_path(
         ["player"],
         TypeFact::union([TypeFact::Null, TypeFact::host("Player")]),
@@ -77,18 +72,11 @@ fn flow_narrowing_null_check_fixture_renders_member_diagnostic() {
     assert_eq!(diagnostics.len(), 1);
     let rendered = render_diagnostic(
         &diagnostics[0],
-        [DiagnosticSource::new(
-            SourceId::new(1),
-            "flow_narrowing_null_member.vela",
-            FLOW_NARROWING_NULL_MEMBER,
-        )],
+        [diagnostic_source("flow_narrowing_null_member.vela", source)],
     )
     .join("\n");
 
-    assert_eq!(
-        rendered.trim_end(),
-        FLOW_NARROWING_NULL_MEMBER_EXPECTED.trim_end()
-    );
+    assert_rendered_eq(&rendered, FLOW_NARROWING_NULL_MEMBER_EXPECTED);
 }
 
 fn registry_facts() -> RegistryFacts {
@@ -129,4 +117,16 @@ fn first_expression(source: &str) -> Expr {
             _ => None,
         })
         .expect("fixture should contain an expression")
+}
+
+fn diagnostic_source(name: &str, source: String) -> DiagnosticSource {
+    DiagnosticSource::new(SourceId::new(1), name, source)
+}
+
+fn normalized_fixture(source: &str) -> String {
+    source.replace("\r\n", "\n")
+}
+
+fn assert_rendered_eq(rendered: &str, expected: &str) {
+    assert_eq!(rendered.trim_end(), normalized_fixture(expected).trim_end());
 }

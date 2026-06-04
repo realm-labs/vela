@@ -14,7 +14,7 @@ const HOST_MEMBER_EXPECTED: &str =
 
 #[test]
 fn host_member_completion_fixture_suggests_registry_fields_and_methods() {
-    let parsed = parse_source(SourceId::new(1), HOST_MEMBER_SOURCE);
+    let parsed = parse_source(SourceId::new(1), &normalized_fixture(HOST_MEMBER_SOURCE));
     assert_eq!(parsed.diagnostics, []);
 
     let mut completions = member_completions(&registry_facts(), &TypeFact::host("Player"));
@@ -29,7 +29,14 @@ fn host_member_completion_fixture_suggests_registry_fields_and_methods() {
         .collect::<Vec<_>>()
         .join("\n");
 
-    assert_eq!(rendered.trim_end(), HOST_MEMBER_EXPECTED.trim_end());
+    assert_eq!(
+        rendered.trim_end(),
+        normalized_fixture(HOST_MEMBER_EXPECTED).trim_end()
+    );
+}
+
+fn normalized_fixture(source: &str) -> String {
+    source.replace("\r\n", "\n")
 }
 
 fn render_completion(completion: &CompletionItem) -> String {
