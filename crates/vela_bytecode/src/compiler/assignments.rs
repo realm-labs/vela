@@ -1,4 +1,4 @@
-use vela_common::Span;
+use vela_common::{Diagnostic, Span};
 use vela_hir::binding::BindingResolution;
 use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{AssignOp, Expr, ExprKind};
@@ -52,6 +52,7 @@ impl Compiler<'_> {
                 self.compile_local_assignment(*op, target.span, name, local, value, facts)?;
             return Ok(assigned);
         }
+        self.reject_read_only_host_assignment(target)?;
         if matches!(&target.kind, ExprKind::Index { .. })
             && host_field_path(&self.facts.options, target).is_none()
             && let ExprKind::Index { base, index } = &target.kind
@@ -517,6 +518,52 @@ impl Compiler<'_> {
             )));
         }
         Ok(path)
+    }
+
+    fn reject_read_only_host_assignment(&self, target: &Expr) -> CompileResult<()> {
+        let Some((receiver_type, field)) = self.host_assignment_receiver_and_field(target) else {
+            return Ok(());
+        };
+        let Some(access) = self
+            .facts
+            .options
+            .host_field(Some(receiver_type.as_str()), field.as_str())
+        else {
+            return Ok(());
+        };
+        if access.writable {
+            return Ok(());
+        }
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            vec![
+                Diagnostic::error(format!(
+                    "field `{receiver_type}.{field}` is read-only for script writes"
+                ))
+                .with_code("analysis::field_not_writable")
+                .with_span(target.span)
+                .with_label(target.span, "assignment targets a read-only field")
+                .with_label(
+                    target.span,
+                    "write through an exposed method or a writable field instead",
+                ),
+            ],
+        )))
+    }
+
+    fn host_assignment_receiver_and_field(&self, target: &Expr) -> Option<(String, String)> {
+        match &target.kind {
+            ExprKind::Field { base, name } => {
+                Some((self.script_type_for_expr(base)?, name.clone()))
+            }
+            ExprKind::Path(path) => {
+                let (field, receiver_path) = path.split_last()?;
+                let [receiver] = receiver_path else {
+                    return None;
+                };
+                Some((self.script_types.name(receiver)?, field.clone()))
+            }
+            _ => None,
+        }
     }
 }
 

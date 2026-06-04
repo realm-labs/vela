@@ -124,9 +124,8 @@ pub(super) fn host_field_path_parts<'ast>(
 
 fn host_path_field_part<'ast>(options: &CompilerOptions, name: &str) -> Option<HostPathPart<'ast>> {
     options
-        .host_fields
-        .get(name)
-        .copied()
+        .host_field(None, name)
+        .map(|field| field.id)
         .map(HostPathPart::Field)
         .or_else(|| {
             options

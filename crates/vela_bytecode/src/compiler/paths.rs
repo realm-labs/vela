@@ -113,7 +113,11 @@ impl Compiler<'_> {
                     slot,
                 });
             } else if index == 1
-                && let Some(field) = self.facts.options.host_fields.get(segment).copied()
+                && let Some(field) = self
+                    .facts
+                    .options
+                    .host_field(None, segment)
+                    .map(|field| field.id)
             {
                 self.emit(InstructionKind::GetHostField {
                     dst,

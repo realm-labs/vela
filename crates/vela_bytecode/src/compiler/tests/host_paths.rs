@@ -237,6 +237,31 @@ fn main(player) {
         ]
     )));
 }
+
+#[test]
+fn compiler_rejects_read_only_host_field_assignment_for_typed_receiver() {
+    let id = FieldId::new(3);
+    let error = compile_function_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    player.id = 8;
+    return player.id;
+}
+"#,
+        "main",
+        &CompilerOptions::new()
+            .with_host_field("id", id)
+            .with_host_field_for_type("Player", "id", id, false),
+    )
+    .expect_err("read-only host field assignment should be rejected");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::field_not_writable"]
+    );
+}
+
 #[test]
 fn compiler_lowers_indexed_host_field_paths() {
     let inventory = FieldId::new(3);

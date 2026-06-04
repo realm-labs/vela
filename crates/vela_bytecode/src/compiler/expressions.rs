@@ -80,7 +80,12 @@ impl Compiler<'_> {
                     }
                     let root = self.compile_expr(base)?;
                     let dst = self.alloc_register()?;
-                    if let Some(field) = self.facts.options.host_fields.get(name).copied() {
+                    if let Some(field) = self
+                        .facts
+                        .options
+                        .host_field(None, name)
+                        .map(|field| field.id)
+                    {
                         self.emit(InstructionKind::GetHostField { dst, root, field });
                     } else {
                         self.emit(InstructionKind::GetRecordField {

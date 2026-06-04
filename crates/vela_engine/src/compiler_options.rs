@@ -22,6 +22,12 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
         options = options.with_host_type(desc.key.name.clone());
         for field in &desc.fields {
             options = options.with_host_field(field.name.clone(), field.id);
+            options = options.with_host_field_for_type(
+                desc.key.name.clone(),
+                field.name.clone(),
+                field.id,
+                field.access.writable,
+            );
         }
         for variant in &desc.variants {
             for field in &variant.fields {

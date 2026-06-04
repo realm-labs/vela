@@ -153,6 +153,22 @@ fn random_permission_demo_reports_permission_denial() {
 }
 
 #[test]
+fn host_read_only_demo_reports_field_not_writable() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg(script_path("host_read_only_denied.vela"))
+        .output()
+        .expect("run vela_cli read-only host field demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains(
+        "error[analysis::field_not_writable]: field `Player.id` is read-only for script writes"
+    ));
+    assert!(stderr.contains("host_read_only_denied.vela:2:5"));
+    assert!(stderr.contains("player.id = 8;"));
+}
+
+#[test]
 fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.vela"),

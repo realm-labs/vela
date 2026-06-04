@@ -5,6 +5,7 @@ use vela_common::{FieldId, HostMethodId};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompilerOptions {
     pub(super) host_fields: HashMap<String, FieldId>,
+    pub(super) host_fields_by_type: HashMap<(String, String), HostFieldInfo>,
     pub(super) host_variant_fields: HashMap<String, FieldId>,
     pub(super) host_methods: HashMap<String, HostMethodId>,
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
@@ -20,6 +21,12 @@ pub struct CompilerOptions {
 pub(super) struct HostMethodParam {
     pub(super) name: String,
     pub(super) has_default: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct HostFieldInfo {
+    pub(super) id: FieldId,
+    pub(super) writable: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -42,6 +49,26 @@ impl CompilerOptions {
     #[must_use]
     pub fn with_host_field(mut self, name: impl Into<String>, field: FieldId) -> Self {
         self.host_fields.insert(name.into(), field);
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_field_for_type(
+        mut self,
+        type_name: impl Into<String>,
+        name: impl Into<String>,
+        field: FieldId,
+        writable: bool,
+    ) -> Self {
+        let type_name = type_name.into();
+        self.host_types.insert(type_name.clone());
+        self.host_fields_by_type.insert(
+            (type_name, name.into()),
+            HostFieldInfo {
+                id: field,
+                writable,
+            },
+        );
         self
     }
 
@@ -204,6 +231,25 @@ impl CompilerOptions {
             })
             .copied()
             .or_else(|| self.host_methods.get(name).copied())
+    }
+
+    pub(super) fn host_field(
+        &self,
+        receiver_type: Option<&str>,
+        name: &str,
+    ) -> Option<HostFieldInfo> {
+        receiver_type
+            .and_then(|type_name| {
+                self.host_fields_by_type
+                    .get(&(type_name.to_owned(), name.to_owned()))
+            })
+            .copied()
+            .or_else(|| {
+                self.host_fields
+                    .get(name)
+                    .copied()
+                    .map(|id| HostFieldInfo { id, writable: true })
+            })
     }
 
     pub(super) fn is_native_module_root(&self, root: &str) -> bool {

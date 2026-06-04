@@ -1,0 +1,4 @@
+fn main(player: Player) {
+    player.id = 8;
+    return player.id;
+}
