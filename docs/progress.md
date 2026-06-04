@@ -41,7 +41,7 @@ before debugger/DAP work and Cranelift JIT.
 | M15 | Complete enough | Safe-point staging, old-frame lifetime, new-call entry, source workflows, ABI/schema rejection, compatible additions, and repair reports are covered. |
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
-| M18 | Partial | Baseline harnesses exist; official baseline result capture and follow-up bottleneck tracking remain. |
+| M18 | Partial | Baseline harnesses and quick result capture exist; full/default baseline reporting remains. |
 | M19-M20 | Not started | Interpreter optimization, inline caches, and specialization follow M18 baselines. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -78,12 +78,14 @@ before debugger/DAP work and Cranelift JIT.
   reload.
 - A parser fuzz target exists under `fuzz/` and can be compile-checked even
   when the local machine has not installed `cargo-fuzz`.
+- M18 quick benchmark output is recorded in [performance.md](performance.md)
+  with environment metadata, checksums, external runtime availability, and
+  initial bottleneck notes.
 
 ### Remaining Gaps
 
-- M18: record official quick baseline outputs with environment metadata and
-  identify the first measured interpreter/heap bottleneck notes before M19
-  optimization.
+- M18: run and record full/default benchmark baselines when practical,
+  including Lua 5.x/LuaJIT/Rhai versions when those runtimes are available.
 - M19+: keep performance work benchmark-driven and separate from semantic
   changes.
 
@@ -104,8 +106,8 @@ of scope until baseline outputs and bottleneck notes are recorded.
 
 ## Next Up
 
-- Run the tracked quick benchmark commands and capture reproducible baseline
-  output summaries in [performance.md](performance.md).
+- Expand quick M18 baseline capture into full/default benchmark reporting when
+  runtime availability and machine time allow.
 - Keep M18 measurement baselines ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
