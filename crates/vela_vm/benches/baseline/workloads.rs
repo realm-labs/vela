@@ -173,6 +173,24 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_extrema",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let base = [9, 2, 5, 2, 8, 1, 9, 3];
+        let scaled = [tick + 4, tick + 1, tick + 8, tick + 2];
+        total += base.min().unwrap_or(0)
+            + base.max().unwrap_or(0)
+            + scaled.min().unwrap_or(0)
+            + scaled.max().unwrap_or(0);
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_materialization",
         mode: ExecutionMode::ManagedHeap,
         source: r#"

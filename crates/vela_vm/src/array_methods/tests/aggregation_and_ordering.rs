@@ -269,12 +269,15 @@ fn managed_heap_execution_runs_array_extrema_methods() {
     let source = r#"
 fn main() {
     let names = ["wyrm", "boar", "bat", "wolf"];
+    let scores = [9, 2, 5, 2, 8, 1, 9, 3];
     if names.min().unwrap_or("") == "bat"
         && names.max().unwrap_or("") == "wyrm"
+        && scores.min().unwrap_or(0) == 1
+        && scores.max().unwrap_or(0) == 9
     {
-        return names.max().unwrap_or("");
+        return scores.max().unwrap_or(0);
     }
-    return "";
+    return 0;
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
@@ -284,7 +287,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array extrema methods should run");
-    assert_eq!(result, Value::String("wyrm".to_owned()));
+    assert_eq!(result, Value::Int(9));
 }
 
 #[test]

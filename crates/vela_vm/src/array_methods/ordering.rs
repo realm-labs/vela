@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use crate::heap::HeapValue;
+use crate::heap::{HeapSlot, HeapValue};
 use crate::method_runtime::MethodRuntime;
-use crate::{HeapExecution, Value, VmResult};
+use crate::{HeapExecution, Value, VmResult, value_from_heap_slot};
 
 use super::{array_values, call_unary_callback, expect_arity, option_value, type_error};
 
@@ -161,11 +161,29 @@ fn extremum(
     operation: &'static str,
     extremum: Extremum,
 ) -> VmResult<Value> {
-    let values = array_values(receiver, heap, operation)?;
+    match receiver {
+        Value::Array(values) => value_extremum(values, heap, operation, extremum),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error(operation);
+            };
+            heap_slot_extremum(values, heap, operation, extremum)
+        }
+        _ => type_error(operation),
+    }
+}
+
+fn value_extremum(
+    values: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+    extremum: Extremum,
+) -> VmResult<Value> {
     let Some((first, rest)) = values.split_first() else {
         return Ok(option_value("None", None));
     };
-    let mut best = first.clone();
+    let mut best = first;
     let mut best_key = sort_key(first, heap, operation)?;
     let key_kind = best_key.kind();
     for value in rest {
@@ -179,11 +197,41 @@ fn extremum(
             Extremum::Max => ordering.is_gt(),
         };
         if replace {
-            best = value.clone();
+            best = value;
             best_key = key;
         }
     }
-    Ok(option_value("Some", Some(best)))
+    Ok(option_value("Some", Some(best.clone())))
+}
+
+fn heap_slot_extremum(
+    values: &[HeapSlot],
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+    extremum: Extremum,
+) -> VmResult<Value> {
+    let Some((first, rest)) = values.split_first() else {
+        return Ok(option_value("None", None));
+    };
+    let mut best = first;
+    let mut best_key = sort_key_from_heap_slot(first, heap, operation)?;
+    let key_kind = best_key.kind();
+    for value in rest {
+        let key = sort_key_from_heap_slot(value, heap, operation)?;
+        if key.kind() != key_kind {
+            return type_error(operation);
+        }
+        let ordering = key.compare(&best_key);
+        let replace = match extremum {
+            Extremum::Min => ordering.is_lt(),
+            Extremum::Max => ordering.is_gt(),
+        };
+        if replace {
+            best = value;
+            best_key = key;
+        }
+    }
+    Ok(option_value("Some", Some(value_from_heap_slot(best))))
 }
 
 struct SortEntry {
@@ -241,6 +289,22 @@ fn sort_key(
         Value::Float(value) if value.is_finite() => Ok(SortKey::Float(*value)),
         Value::String(value) => Ok(SortKey::String(value.clone())),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
+            _ => type_error(operation),
+        },
+        _ => type_error(operation),
+    }
+}
+
+fn sort_key_from_heap_slot(
+    value: &HeapSlot,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<SortKey> {
+    match value {
+        HeapSlot::Int(value) => Ok(SortKey::Int(*value)),
+        HeapSlot::Float(value) if value.is_finite() => Ok(SortKey::Float(*value)),
+        HeapSlot::Ref(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
             _ => type_error(operation),
         },
