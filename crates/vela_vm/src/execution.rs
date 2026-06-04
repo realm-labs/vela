@@ -1076,6 +1076,18 @@ fn dispatch_call_method(
     frame: &mut CallFrame,
     call: MethodCall<'_>,
 ) -> VmResult<()> {
+    if let Some(result) = call_readonly_method_without_callbacks(
+        frame.read(call.receiver)?,
+        call.method,
+        call.values,
+        heap.as_deref(),
+    ) {
+        let result =
+            store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
+        frame.write(call.dst, result)?;
+        return Ok(());
+    }
+
     let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
     if let Some(result) = call_non_mutating_method(
         frame.read(call.receiver)?,

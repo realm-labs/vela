@@ -1999,6 +1999,43 @@ inclusive i64::MAX cursor edge case. The generic iterator path remains the
 slow path for arrays, maps, sets, heap iterables, and native iterator values.
 ```
 
+### 2026-06-04 M19 Read-Only Method Root Checkpoint
+
+This checkpoint avoids collecting caller frame heap roots for method calls that
+resolve to read-only string or stdlib methods without invoking callbacks or
+script-defined methods. Heap-mode callback and script-method paths still collect
+caller roots before nested execution, so GC root protection stays on the paths
+that can allocate or re-enter script code.
+
+Commands:
+
+```bash
+cargo test -p vela_vm heap_safe_point_gc_preserves_caller_roots_during_nested_calls
+cargo test -p vela_vm managed_heap_execution_runs_option_result_helper_methods
+cargo test -p vela_vm managed_heap_execution_runs_map_lookup_methods
+cargo test -p vela_vm managed_heap_execution_runs_array_scalar_lookup_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Checksum |
+|---|---:|---:|---:|
+| managed_heap_option_result_helpers | 52681250 | 27552450 | 1812806599834733941 |
+| managed_heap_map_lookup | 10465950 | 7007900 | 13501942729849410472 |
+| managed_heap_array_lookup | 9834700 | 7134500 | 17198566150566951166 |
+| managed_heap_set_lookup | 6903850 | 5362450 | 17198566150566951166 |
+| managed_heap_callback_collections | 17158900 | 15692800 | 6661976061914330346 |
+
+Checkpoint notes:
+
+```text
+The accepted path is dispatch-only: it short-circuits read-only methods before
+caller-root vector collection, and leaves callback methods, mutating methods,
+host methods, PatchTx behavior, and script-defined method execution on the
+existing protected-root path.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

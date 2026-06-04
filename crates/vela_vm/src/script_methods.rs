@@ -81,6 +81,19 @@ pub(crate) fn call_method_id(
     )
 }
 
+pub(crate) fn call_readonly_method_without_callbacks(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    if let Some(result) = string_method_dispatch::call(method, receiver, args, heap) {
+        return Some(result);
+    }
+
+    script_builtin_methods::call_readonly(receiver, method, args, heap)
+}
+
 pub(crate) fn call_non_mutating_method(
     receiver: &Value,
     method: &str,
