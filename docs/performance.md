@@ -1225,6 +1225,47 @@ shows the strongest signal. Managed-heap callback numbers are retained as
 guardrails because their receiver materialization path is unchanged.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Sum Receiver Checkpoint
+
+This checkpoint adds a targeted `managed_heap_array_sum` benchmark and removes
+receiver materialization from plain array `sum()` calls. When `sum()` has no
+callback, the VM now iterates inline `Value::Array` values directly and reads
+managed-heap array numeric `HeapSlot` values directly instead of cloning the
+full receiver through `array_values`. Callback-based `sum(|value| ...)` keeps
+the existing materializing callback path so callback argument and heap-root
+semantics stay unchanged.
+
+Commands:
+
+```bash
+cargo test -p vela_vm array_sum
+cargo test -p vela_vm managed_heap_execution_runs_array_group_by_method
+cargo bench -p vela_vm --bench baseline
+```
+
+Default before/after for the targeted benchmark:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_sum | 12156971 | 10685242 | 3176850815018688896 | 3176850815018688896 |
+
+Default guardrail rows from the same before/after runs:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 132143585 | 134236785 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 210769728 | 211583471 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_materialization | 1488357 | 1478057 | 1965056817950502848 | 1965056817950502848 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The targeted benchmark isolates repeated managed-heap
+plain array sums, where avoiding receiver materialization removes a Vec<Value>
+build per sum call. Callback-based sums still route through the callback path,
+and non-targeted callback rows remain within normal benchmark noise.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark

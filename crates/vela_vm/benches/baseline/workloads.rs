@@ -158,6 +158,21 @@ fn main(player) {
         ),
     },
     Workload {
+        name: "managed_heap_array_sum",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let base = [1, 2, 3, 4, 5, 6, 7, 8];
+        let scaled = [tick, tick + 1, tick + 2, tick + 3];
+        total += base.sum() + scaled.sum();
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_materialization",
         mode: ExecutionMode::ManagedHeap,
         source: r#"

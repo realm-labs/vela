@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use crate::heap::{HeapSlot, HeapValue};
 use crate::method_runtime::MethodRuntime;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
@@ -17,17 +18,15 @@ pub(crate) fn sum(
             actual: args.len(),
         }));
     }
-    let values = array_values(receiver, runtime.heap.as_deref(), "method sum")?;
     let mut total = NumericTotal::default();
     if let Some(callback) = args.first() {
+        let values = array_values(receiver, runtime.heap.as_deref(), "method sum")?;
         for value in values {
             let mapped = call_unary_callback(&mut runtime, "method sum", callback, value, &[])?;
             total.add_value(&mapped, "method sum")?;
         }
     } else {
-        for value in values {
-            total.add_value(&value, "method sum")?;
-        }
+        total.add_receiver(receiver, runtime.heap.as_deref(), "method sum")?;
     }
     Ok(total.into_value())
 }
@@ -83,6 +82,34 @@ impl Default for NumericTotal {
 }
 
 impl NumericTotal {
+    fn add_receiver(
+        &mut self,
+        receiver: &Value,
+        heap: Option<&HeapExecution<'_>>,
+        operation: &'static str,
+    ) -> VmResult<()> {
+        match receiver {
+            Value::Array(values) => {
+                for value in values {
+                    self.add_value(value, operation)?;
+                }
+                Ok(())
+            }
+            Value::HeapRef(reference) => {
+                let Some(HeapValue::Array(values)) =
+                    heap.and_then(|heap| heap.heap.get(*reference))
+                else {
+                    return type_error(operation);
+                };
+                for value in values {
+                    self.add_heap_slot(value, operation)?;
+                }
+                Ok(())
+            }
+            _ => type_error(operation),
+        }
+    }
+
     fn add_value(&mut self, value: &Value, operation: &'static str) -> VmResult<()> {
         match (&mut *self, value) {
             (NumericTotal::Int(total), Value::Int(value)) => {
@@ -97,6 +124,27 @@ impl NumericTotal {
                 *total += *value as f64;
             }
             (NumericTotal::Float(total), Value::Float(value)) => {
+                *total += *value;
+            }
+            _ => return type_error(operation),
+        }
+        Ok(())
+    }
+
+    fn add_heap_slot(&mut self, value: &HeapSlot, operation: &'static str) -> VmResult<()> {
+        match (&mut *self, value) {
+            (NumericTotal::Int(total), HeapSlot::Int(value)) => {
+                *total = total
+                    .checked_add(*value)
+                    .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+            }
+            (NumericTotal::Int(total), HeapSlot::Float(value)) => {
+                *self = NumericTotal::Float(*total as f64 + *value);
+            }
+            (NumericTotal::Float(total), HeapSlot::Int(value)) => {
+                *total += *value as f64;
+            }
+            (NumericTotal::Float(total), HeapSlot::Float(value)) => {
                 *total += *value;
             }
             _ => return type_error(operation),
