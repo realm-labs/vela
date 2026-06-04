@@ -1940,6 +1940,34 @@ equality semantics and source-spanned slow-path errors through the existing
 equality bytecode.
 ```
 
+### 2026-06-04 M19 Range Iteration Benchmark Checkpoint
+
+This checkpoint adds a focused `range_iteration` benchmark for nested exclusive
+range loops plus an inclusive range loop. It gives M19 for-in loop and iterator
+state work a direct timing surface separate from the broader scalar branch and
+dispatch rows.
+
+Commands:
+
+```bash
+cargo test -p vela_vm runs_compiled_range_for_in_source
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick baseline from the same working session:
+
+| Benchmark | Mean ns | Checksum |
+|---|---:|---:|
+| range_iteration | 1339750 | 11386712117419000375 |
+
+Checkpoint notes:
+
+```text
+This is benchmark coverage only. A direct in-place iterator mutation experiment
+was measured in the same session but was not accepted because it regressed the
+scalar range-loop rows, so the runtime path stayed unchanged.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
