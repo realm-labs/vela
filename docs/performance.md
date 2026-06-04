@@ -932,6 +932,53 @@ before/after results against this expanded workload or a more targeted host
 conversion benchmark.
 ```
 
+### 2026-06-04 M19 Read-Only Method Receiver Fast Path Checkpoint
+
+This checkpoint reduces non-mutating method dispatch overhead by trying a
+borrowed receiver path before cloning the receiver for the existing mutable
+method fallback. The fast path covers string methods, callback methods, and
+read-only stdlib collection/Option/Result methods. Mutating methods such as
+`push`, `pop`, `insert`, `extend`, `set`, `add`, `remove`, and `clear` still
+use the existing mutable receiver path, and the optimized path still reaches
+the normal instruction-end GC safe point.
+
+Commands:
+
+```bash
+git worktree add --detach ../vela-readonly-method-before HEAD
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from warmed runs in the same working session. The before run
+used a detached worktree at `ab57a95`; the after run used the read-only method
+receiver working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 205750 | 163200 | 13147904610567772544 | 13147904610567772544 |
+| callback_collections | 14815850 | 12799750 | 6661976061914330346 | 6661976061914330346 |
+| host_patch_tx | 51650 | 48900 | 8875875486420011969 | 8875875486420011969 |
+
+Default before/after from warmed runs in the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 2404842 | 1988657 | 8455524478326472193 | 8455524478326472193 |
+| callback_collections | 185523200 | 166372700 | 4123773336162002392 | 4123773336162002392 |
+| host_patch_tx | 715028 | 666242 | 1944703388338173655 | 1944703388338173655 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for every reported workload.
+The optimization is scoped to non-mutating method dispatch; mutating methods and
+script impl methods keep the existing mutable receiver behavior.
+Remaining callback work should focus on callback invocation overhead, heap-mode
+receiver materialization, and set/array callback receiver materialization that
+still clones or materializes collection entries.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

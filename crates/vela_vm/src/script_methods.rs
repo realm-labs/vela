@@ -81,6 +81,36 @@ pub(crate) fn call_method_id(
     )
 }
 
+pub(crate) fn call_non_mutating_method(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
+) -> Option<VmResult<Value>> {
+    if let Some(result) =
+        string_method_dispatch::call(method, receiver, args, dispatch.heap.as_deref())
+    {
+        return Some(result);
+    }
+    {
+        let mut callback_dispatch = CallbackMethodDispatch {
+            vm: dispatch.vm,
+            program: dispatch.program,
+            host: dispatch.host.as_deref_mut(),
+            heap: dispatch.heap.as_deref_mut(),
+            budget: dispatch.budget.as_deref_mut(),
+            caller_roots: &dispatch.caller_roots,
+        };
+        if let Some(result) =
+            callback_method_dispatch::call(method, receiver, args, &mut callback_dispatch)
+        {
+            return Some(result);
+        }
+    }
+
+    script_builtin_methods::call_readonly(receiver, method, args, dispatch.heap.as_deref())
+}
+
 fn call_script_impl_method(
     receiver: &Value,
     lookup: ScriptMethodLookup<'_>,

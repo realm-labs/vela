@@ -342,10 +342,9 @@ impl Vm {
                             CallArgument::Missing => Ok(Value::Missing),
                         })
                         .collect::<VmResult<Vec<_>>>()?;
-                    let mut receiver_value = frame.read(*receiver)?.clone();
                     let caller_roots = caller_roots_for_heap(&frame, heap.as_deref());
-                    let result = call_method(
-                        &mut receiver_value,
+                    if let Some(result) = call_non_mutating_method(
+                        frame.read(*receiver)?,
                         method,
                         &values,
                         ScriptMethodDispatch {
@@ -356,14 +355,37 @@ impl Vm {
                             budget: budget.as_deref_mut(),
                             caller_roots,
                         },
-                    )?;
-                    let result = store_value_in_heap_if_needed(
-                        result,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    )?;
-                    frame.write(*receiver, receiver_value)?;
-                    frame.write(*dst, result)?;
+                    ) {
+                        let result = store_value_in_heap_if_needed(
+                            result?,
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                        )?;
+                        frame.write(*dst, result)?;
+                    } else {
+                        let mut receiver_value = frame.read(*receiver)?.clone();
+                        let caller_roots = caller_roots_for_heap(&frame, heap.as_deref());
+                        let result = call_method(
+                            &mut receiver_value,
+                            method,
+                            &values,
+                            ScriptMethodDispatch {
+                                vm: self,
+                                program,
+                                host: host.as_deref_mut(),
+                                heap: heap.as_deref_mut(),
+                                budget: budget.as_deref_mut(),
+                                caller_roots,
+                            },
+                        )?;
+                        let result = store_value_in_heap_if_needed(
+                            result,
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                        )?;
+                        frame.write(*receiver, receiver_value)?;
+                        frame.write(*dst, result)?;
+                    }
                 }
                 InstructionKind::CallMethodId {
                     dst,

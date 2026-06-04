@@ -70,6 +70,56 @@ pub(crate) fn call(
     Some(result)
 }
 
+pub(crate) fn call_readonly(
+    receiver: &Value,
+    method: &str,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    let result = match method {
+        "len" => expect_no_args(method, args).and_then(|()| len(receiver, heap).map(Value::Int)),
+        "is_empty" => {
+            expect_no_args(method, args).and_then(|()| is_empty(receiver, heap).map(Value::Bool))
+        }
+        "contains" => array_methods::contains(receiver, args, heap).map(Value::Bool),
+        "slice" => array_methods::slice(receiver, args, heap),
+        "first" => array_methods::first(receiver, args, heap),
+        "last" => array_methods::last(receiver, args, heap),
+        "join" => array_methods::join(receiver, args, heap),
+        "index_of" => array_methods::index_of(receiver, args, heap),
+        "distinct" => array_methods::distinct(receiver, args, heap),
+        "reverse" => array_methods::reverse(receiver, args, heap),
+        "sort" => array_methods::sort(receiver, args, heap),
+        "min" => array_methods::min(receiver, args, heap),
+        "max" => array_methods::max(receiver, args, heap),
+        "is_some" => option_result_methods::is_some(receiver, args, heap),
+        "is_none" => option_result_methods::is_none(receiver, args, heap),
+        "is_ok" => option_result_methods::is_ok(receiver, args, heap),
+        "is_err" => option_result_methods::is_err(receiver, args, heap),
+        "unwrap_or" => option_result_methods::unwrap_or(receiver, args, heap),
+        "ok_or" => option_result_methods::ok_or(receiver, args, heap),
+        "to_option" => option_result_methods::to_option(receiver, args, heap),
+        "to_error_option" => option_result_methods::to_error_option(receiver, args, heap),
+        "flatten" => flatten(receiver, args, heap),
+        "merge" => map_methods::merge(receiver, args, heap),
+        "has" => has(receiver, args, heap).map(Value::Bool),
+        "get" => map_methods::get(receiver, args, heap),
+        "get_or" => map_methods::get_or(receiver, args, heap),
+        "keys" => map_methods::keys(receiver, args, heap),
+        "values" => values(receiver, args, heap),
+        "union" => set_methods::union(receiver, args, heap),
+        "intersection" => set_methods::intersection(receiver, args, heap),
+        "difference" => set_methods::difference(receiver, args, heap),
+        "symmetric_difference" => set_methods::symmetric_difference(receiver, args, heap),
+        "is_subset" => set_methods::is_subset(receiver, args, heap).map(Value::Bool),
+        "is_superset" => set_methods::is_superset(receiver, args, heap).map(Value::Bool),
+        "is_disjoint" => set_methods::is_disjoint(receiver, args, heap).map(Value::Bool),
+        "entries" => map_methods::entries(receiver, args, heap),
+        _ => return None,
+    };
+    Some(result)
+}
+
 fn extend(
     receiver: &mut Value,
     args: &[Value],

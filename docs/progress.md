@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native argument materialization cleanup, owned return aggregate storage, array lookup and sort callback receiver fast paths, no-heap callback root/protected-value guards, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native argument materialization cleanup, owned return aggregate storage, array lookup/sort/read-only method receiver fast paths, no-heap callback root/protected-value guards, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -146,6 +146,10 @@ before debugger/DAP work and Cranelift JIT.
   [performance.md](performance.md): `host_patch_tx` now also exercises host
   array reads, script string pushes through `PatchTx`, overlay length reads,
   and post-apply host array verification.
+- An M19 read-only method receiver checkpoint is recorded in
+  [performance.md](performance.md): non-mutating string, callback, and stdlib
+  method dispatch now tries a borrowed receiver fast path before falling back to
+  the existing mutable receiver path.
 - A gameplay-style M19 benchmark is recorded in [performance.md](performance.md):
   `gameplay_monster_kill` runs the real demo monster-kill script through
   HostPath reads/writes, PatchTx apply, stdlib callbacks, and host method

@@ -35,7 +35,7 @@ impl<'a, 'host, 'heap> CallbackMethodDispatch<'a, 'host, 'heap> {
 
 pub(crate) fn call(
     method: &str,
-    receiver: &mut Value,
+    receiver: &Value,
     args: &[Value],
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> Option<VmResult<Value>> {
@@ -58,7 +58,7 @@ pub(crate) fn call(
 }
 
 fn call_map(
-    receiver: &mut Value,
+    receiver: &Value,
     args: &[Value],
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
@@ -72,7 +72,7 @@ fn call_map(
 }
 
 fn call_map_err(
-    receiver: &mut Value,
+    receiver: &Value,
     args: &[Value],
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
@@ -84,7 +84,7 @@ fn call_map_err(
 }
 
 fn call_and_then(
-    receiver: &mut Value,
+    receiver: &Value,
     args: &[Value],
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
@@ -96,7 +96,7 @@ fn call_and_then(
 }
 
 fn call_or_else(
-    receiver: &mut Value,
+    receiver: &Value,
     args: &[Value],
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
@@ -108,7 +108,7 @@ fn call_or_else(
 }
 
 fn call_filter(
-    receiver: &mut Value,
+    receiver: &Value,
     args: &[Value],
     dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {

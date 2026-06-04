@@ -65,7 +65,7 @@ use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_closure, expect_int, is_truthy, validate_jump};
-use script_methods::{ScriptMethodDispatch, call_method, call_method_id};
+use script_methods::{ScriptMethodDispatch, call_method, call_method_id, call_non_mutating_method};
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
