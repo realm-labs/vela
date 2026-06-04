@@ -1,0 +1,9 @@
+error[syntax::generic_type_hint]: script type hints do not support generics
+  --> generic_type_hint.vela:1:17
+   |
+  1 | fn bad(xs: Array<int>) {
+   |                 ^ script type hints do not support generics
+  --> generic_type_hint.vela:1:17
+   |
+  1 | fn bad(xs: Array<int>) {
+   |                 ^ remove generic type arguments

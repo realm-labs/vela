@@ -1,0 +1,3 @@
+fn bad(xs: Array<int>) {
+    return xs;
+}
