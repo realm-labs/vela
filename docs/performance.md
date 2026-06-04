@@ -460,6 +460,51 @@ Remaining M19 heap work should focus on script value allocation/materialization
 and temporary collection construction outside the GC mark stack.
 ```
 
+### 2026-06-04 M19 Heap Aggregate Construction Checkpoint
+
+This checkpoint removes temporary `Value` aggregate construction in managed heap
+mode for bytecode array, map, record, and enum literals. When a heap execution
+is active, `MakeArray`, `MakeMap`, `MakeRecord`, and `MakeEnum` now convert
+source registers directly into `HeapSlot` collections before allocating the
+heap object. Non-heap execution still constructs the same `Value` aggregates.
+
+Commands:
+
+```bash
+git worktree add --detach ../vela-aggregate-bench-head HEAD
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session. The before run used a
+detached worktree at `74c234c`; the after run used the aggregate-construction
+working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| gameplay_monster_kill | 207200 | 201100 | 11641737387043360531 | 11641737387043360531 |
+| managed_heap_materialization | 184400 | 151400 | 11773534860610571856 | 11773534860610571856 |
+| gc_pacing | 4956250 | 6647750 | 16625037316567583116 | 16625037316567583116 |
+
+Default before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| gameplay_monster_kill | 2287300 | 2135071 | 5386942582173291744 | 5386942582173291744 |
+| managed_heap_materialization | 1829471 | 1709614 | 1965056817950502848 | 1965056817950502848 |
+| gc_pacing | 70608685 | 58571514 | 10923073775105338595 | 10923073775105338595 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for every reported workload.
+Quick gc_pacing was noisy in this session, but the default run improved and the
+change directly affects the temporary array construction inside that workload.
+This removes one heap-mode temporary aggregate layer; remaining materialization
+pressure is now more likely in native/stdlib boundaries, returned heap object
+materialization, string construction, callbacks, and mutable collection methods.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

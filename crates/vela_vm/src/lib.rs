@@ -48,13 +48,12 @@ use field_access::{
     get_record_slot_value,
 };
 pub(crate) use frame::{CallFrame, normalized_param_defaults};
-use heap::{HeapValue, ScriptHeap};
+use heap::{HeapSlot, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, materialize_value,
     materialize_values, store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot,
-    value_to_heap_slot, values_equal, values_to_heap_fields, values_to_heap_map,
-    values_to_heap_slots,
+    value_to_heap_slot, values_equal,
 };
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};

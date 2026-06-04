@@ -411,27 +411,33 @@ impl Vm {
                     }
                 }
                 InstructionKind::MakeArray { dst, elements } => {
-                    let values = elements
-                        .iter()
-                        .map(|register| frame.read(*register).cloned())
-                        .collect::<VmResult<Vec<_>>>()?;
                     let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots = values_to_heap_slots(&values, heap, budget.as_deref_mut())?;
+                        let slots = heap_slots_from_registers(
+                            &frame,
+                            elements,
+                            heap,
+                            budget.as_deref_mut(),
+                        )?;
                         allocate_heap_value(HeapValue::Array(slots), heap, budget.as_deref_mut())?
                     } else {
+                        let values = elements
+                            .iter()
+                            .map(|register| frame.read(*register).cloned())
+                            .collect::<VmResult<Vec<_>>>()?;
                         Value::Array(values)
                     };
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeMap { dst, entries } => {
-                    let mut values = BTreeMap::new();
-                    for (key, register) in entries {
-                        values.insert(key.clone(), frame.read(*register)?.clone());
-                    }
                     let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
+                        let slots =
+                            heap_map_from_registers(&frame, entries, heap, budget.as_deref_mut())?;
                         allocate_heap_value(HeapValue::Map(slots), heap, budget.as_deref_mut())?
                     } else {
+                        let mut values = BTreeMap::new();
+                        for (key, register) in entries {
+                            values.insert(key.clone(), frame.read(*register)?.clone());
+                        }
                         Value::Map(values)
                     };
                     frame.write(*dst, value)?;
@@ -451,18 +457,14 @@ impl Vm {
                     type_name,
                     fields,
                 } => {
-                    let values = ScriptFields::from_pairs(
-                        type_name,
-                        fields
-                            .iter()
-                            .map(|(name, register)| {
-                                Ok((name.clone(), frame.read(*register)?.clone()))
-                            })
-                            .collect::<VmResult<Vec<_>>>()?,
-                    );
                     let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots =
-                            values_to_heap_fields(type_name, &values, heap, budget.as_deref_mut())?;
+                        let slots = heap_fields_from_registers(
+                            type_name,
+                            &frame,
+                            fields,
+                            heap,
+                            budget.as_deref_mut(),
+                        )?;
                         allocate_heap_value(
                             HeapValue::Record {
                                 type_name: type_name.clone(),
@@ -472,6 +474,15 @@ impl Vm {
                             budget.as_deref_mut(),
                         )?
                     } else {
+                        let values = ScriptFields::from_pairs(
+                            type_name,
+                            fields
+                                .iter()
+                                .map(|(name, register)| {
+                                    Ok((name.clone(), frame.read(*register)?.clone()))
+                                })
+                                .collect::<VmResult<Vec<_>>>()?,
+                        );
                         Value::Record {
                             type_name: type_name.clone(),
                             fields: values,
@@ -486,18 +497,14 @@ impl Vm {
                     fields,
                 } => {
                     let owner = enum_variant_owner(enum_name, variant);
-                    let values = ScriptFields::from_pairs(
-                        &owner,
-                        fields
-                            .iter()
-                            .map(|(name, register)| {
-                                Ok((name.clone(), frame.read(*register)?.clone()))
-                            })
-                            .collect::<VmResult<Vec<_>>>()?,
-                    );
                     let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots =
-                            values_to_heap_fields(&owner, &values, heap, budget.as_deref_mut())?;
+                        let slots = heap_fields_from_registers(
+                            &owner,
+                            &frame,
+                            fields,
+                            heap,
+                            budget.as_deref_mut(),
+                        )?;
                         allocate_heap_value(
                             HeapValue::Enum {
                                 enum_name: enum_name.clone(),
@@ -508,6 +515,15 @@ impl Vm {
                             budget.as_deref_mut(),
                         )?
                     } else {
+                        let values = ScriptFields::from_pairs(
+                            &owner,
+                            fields
+                                .iter()
+                                .map(|(name, register)| {
+                                    Ok((name.clone(), frame.read(*register)?.clone()))
+                                })
+                                .collect::<VmResult<Vec<_>>>()?,
+                        );
                         Value::Enum {
                             enum_name: enum_name.clone(),
                             variant: variant.clone(),
@@ -991,4 +1007,52 @@ impl Vm {
 
         Err(VmError::new(VmErrorKind::MissingReturn))
     }
+}
+
+fn heap_slots_from_registers(
+    frame: &CallFrame,
+    registers: &[Register],
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Vec<HeapSlot>> {
+    registers
+        .iter()
+        .map(|register| value_to_heap_slot(frame.read(*register)?, heap, budget.as_deref_mut()))
+        .collect()
+}
+
+fn heap_map_from_registers(
+    frame: &CallFrame,
+    entries: &[(String, Register)],
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<BTreeMap<String, HeapSlot>> {
+    entries
+        .iter()
+        .map(|(key, register)| {
+            Ok((
+                key.clone(),
+                value_to_heap_slot(frame.read(*register)?, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect()
+}
+
+fn heap_fields_from_registers(
+    owner: &str,
+    frame: &CallFrame,
+    fields: &[(String, Register)],
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<ScriptFields<HeapSlot>> {
+    fields
+        .iter()
+        .map(|(name, register)| {
+            Ok((
+                name.clone(),
+                value_to_heap_slot(frame.read(*register)?, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect::<VmResult<Vec<_>>>()
+        .map(|fields| ScriptFields::from_pairs(owner, fields))
 }
