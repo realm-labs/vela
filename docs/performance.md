@@ -2204,6 +2204,39 @@ for the targeted three- and four-argument workloads. The hand-written path
 keeps the public &[Value] interfaces and existing runtime safety semantics.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Group-By Benchmark Checkpoint
+
+This measurement checkpoint adds `managed_heap_array_group_by`, a focused
+managed-heap benchmark for repeated `array.group_by()` calls over script string
+arrays. The workload keeps callback dispatch, string predicate calls, grouped
+array construction, map indexing, and array `join()` verification in one
+deterministic checksum row.
+
+Validation:
+
+```bash
+cargo test -p vela_vm --bench baseline --no-run
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+New benchmark baseline from the same working session:
+
+| Benchmark | Mode | Quick mean ns | Checksum |
+|---|---|---:|---:|
+| managed_heap_array_group_by | managed_heap | 4734625 | 261019958722123471 |
+
+A heap-slot snapshot fast path for `array.group_by()` was measured in the same
+session, but it was not accepted because the focused quick row was flat to
+slower:
+
+| Benchmark | Baseline mean ns | Candidate mean ns | Baseline checksum | Candidate checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_group_by | 4734625 | 4773083 | 261019958722123471 | 261019958722123471 |
+
+The row gives future M19 heap receiver materialization work a direct group-by
+surface without carrying an optimization that failed to beat the existing
+materialized receiver path.
+
 ## Targets
 
 The post-MVP non-JIT target is:

@@ -238,6 +238,30 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_group_by",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let names = ["boar", "bat", "wolf", "wyrm", "bear", "wasp", "boss", "wisp"];
+        let groups = names.group_by(|name| if name.starts_with("w") { "w" } else { "b" });
+        if groups.len() != 2
+            || groups["w"].len() != 4
+            || groups["b"].len() != 4
+            || groups["w"][0] != "wolf"
+            || groups["w"][3] != "wisp"
+            || groups["b"][1] != "bat"
+        {
+            return 0;
+        }
+        total += groups["w"].join("").len() + groups["b"].join("").len() + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_option_result_helpers",
         mode: ExecutionMode::ManagedHeap,
         source: r#"
