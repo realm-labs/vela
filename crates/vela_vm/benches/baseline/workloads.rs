@@ -228,6 +228,23 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_join",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let tags = ["daily", "quest", "raid", "bonus", "boss", "event"];
+        let route = ["zone", "shard", "tick", "phase"];
+        let label = tags.join("|");
+        let path = route.join(".");
+        total += label.len() + path.len() + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_materialization",
         mode: ExecutionMode::ManagedHeap,
         source: r#"

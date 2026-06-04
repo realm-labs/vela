@@ -11,8 +11,14 @@ pub(crate) fn join(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("join", args, 1)?;
-    let values = array_values(receiver, heap, "method join")?;
     let separator = string_value(&args[0], heap, "method join")?;
+    if let Value::HeapRef(reference) = receiver {
+        let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+            return type_error("method join");
+        };
+        return join_heap_slots(values, heap, separator);
+    }
+    let values = array_values(receiver, heap, "method join")?;
     let mut parts = Vec::with_capacity(values.len());
     for value in values {
         parts.push(string_value(&value, heap, "method join")?.to_owned());
@@ -95,4 +101,39 @@ fn slice_heap_slots(values: &[HeapSlot], args: &[Value]) -> VmResult<Value> {
             .map(value_from_heap_slot)
             .collect(),
     ))
+}
+
+fn join_heap_slots(
+    values: &[HeapSlot],
+    heap: Option<&HeapExecution<'_>>,
+    separator: &str,
+) -> VmResult<Value> {
+    let mut capacity = separator
+        .len()
+        .saturating_mul(values.len().saturating_sub(1));
+    for value in values {
+        capacity = capacity.saturating_add(heap_slot_string_value(value, heap)?.len());
+    }
+
+    let mut joined = String::with_capacity(capacity);
+    for (index, value) in values.iter().enumerate() {
+        if index > 0 {
+            joined.push_str(separator);
+        }
+        joined.push_str(heap_slot_string_value(value, heap)?);
+    }
+    Ok(Value::String(joined))
+}
+
+fn heap_slot_string_value<'a>(
+    value: &'a HeapSlot,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> VmResult<&'a str> {
+    match value {
+        HeapSlot::Ref(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(value),
+            _ => type_error("method join"),
+        },
+        _ => type_error("method join"),
+    }
 }

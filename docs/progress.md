@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/slice/read-only/higher-order/sum/extrema and set higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/slice/join/read-only/higher-order/sum/extrema and set higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -166,6 +166,10 @@ before debugger/DAP work and Cranelift JIT.
   [performance.md](performance.md): `managed_heap_array_slice` now measures
   repeated heap-mode array `slice()` calls, and heap-mode slice materializes
   only the requested range instead of cloning the full receiver before slicing.
+- An M19 managed-heap array join receiver checkpoint is recorded in
+  [performance.md](performance.md): `managed_heap_array_join` now measures
+  repeated heap-mode array `join()` calls, and heap-mode join reads string
+  heap slots directly instead of cloning the full receiver before joining.
 - An M19 host conversion benchmark coverage checkpoint is recorded in
   [performance.md](performance.md): `host_patch_tx` now also exercises host
   array reads, script string pushes through `PatchTx`, overlay length reads,

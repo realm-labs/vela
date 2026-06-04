@@ -1388,6 +1388,46 @@ non-targeted guardrails were noisy in the after run and are retained only as
 checksum/behavior checks, not claimed as performance wins or regressions.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Join Receiver Checkpoint
+
+This checkpoint adds a targeted `managed_heap_array_join` benchmark and removes
+full receiver materialization from managed-heap array `join()` calls. Heap-mode
+join now scans string heap slots directly and builds the output string with a
+precomputed capacity instead of first cloning the receiver through
+`Vec<Value>`.
+
+Commands:
+
+```bash
+cargo test -p vela_vm array_join
+cargo fmt --all -- --check
+cargo bench -p vela_vm --bench baseline
+```
+
+Default before/after for the targeted benchmark:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_join | 32650571 | 26664214 | 11392497872150165547 | 11392497872150165547 |
+
+Default guardrail rows from the same before/after runs:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 136272471 | 136369885 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 216481385 | 217583757 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_array_slice | 20331542 | 19804757 | 4447774498174460210 | 4447774498174460210 |
+| managed_heap_materialization | 1547242 | 1476971 | 1965056817950502848 | 1965056817950502848 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The target benchmark isolates repeated managed-heap
+string array joins, where direct heap-slot string reads avoid the temporary
+receiver Vec<Value>. Non-targeted guardrails are kept as checksum and behavior
+checks only.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark
