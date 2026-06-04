@@ -1,11 +1,14 @@
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::hint::black_box;
+use std::num::NonZeroU32;
 use std::time::{Duration, Instant};
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{compile_function_source, compile_program_source_with_options};
 use vela_bytecode::{CodeObject, Program};
-use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol};
+use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
@@ -35,6 +38,22 @@ const LEVEL_FIELD: FieldId = FieldId::new(1);
 const EXP_FIELD: FieldId = FieldId::new(2);
 const INVENTORY_FIELD: FieldId = FieldId::new(3);
 const GOLD_FIELD: FieldId = FieldId::new(4);
+const ITEM_COUNT_FIELD: FieldId = FieldId::new(5);
+const ITEMS_FIELD: FieldId = FieldId::new(6);
+const ID_FIELD: FieldId = FieldId::new(7);
+const QUEST_PROGRESS_FIELD: FieldId = FieldId::new(8);
+const QUEST_COUNT_FIELD: FieldId = FieldId::new(9);
+const QUEST_GOAL_FIELD: FieldId = FieldId::new(10);
+const QUEST_DONE_FIELD: FieldId = FieldId::new(11);
+const CONFIG_FIELD: FieldId = FieldId::new(12);
+const EXP_TO_NEXT_LEVEL_FIELD: FieldId = FieldId::new(13);
+const KILL_REWARDS_FIELD: FieldId = FieldId::new(14);
+const EMIT_METHOD: HostMethodId = HostMethodId::new(101);
+const ADD_REWARD_METHOD: HostMethodId = HostMethodId::new(102);
+const CTX_TYPE: HostTypeId = HostTypeId::new(2);
+const MONSTER_TYPE: HostTypeId = HostTypeId::new(3);
+const CTX_OBJECT: HostObjectId = HostObjectId::new(100);
+const MONSTER_OBJECT: HostObjectId = HostObjectId::new(200);
 const GC_SEEDED_GARBAGE_OBJECTS: usize = 128;
 const GC_SAFE_POINT_SWEEP_SLOTS: usize = 16;
 
@@ -131,6 +150,9 @@ enum CompiledWorkload {
     HostPatchTx {
         program: Box<Program>,
     },
+    GameplayHost {
+        program: Box<Program>,
+    },
 }
 
 fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error>> {
@@ -153,8 +175,13 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error
         CompiledWorkload::Function {
             mode: ExecutionMode::HostPatchTx,
             ..
-        } => unreachable!("host patch workload compiles to a program"),
+        }
+        | CompiledWorkload::Function {
+            mode: ExecutionMode::GameplayHost,
+            ..
+        } => unreachable!("host workloads compile to programs"),
         CompiledWorkload::HostPatchTx { program } => run_host_patch_tx(vm, program),
+        CompiledWorkload::GameplayHost { program } => run_gameplay_monster_kill(vm, program),
     }
 }
 
@@ -173,6 +200,15 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
             program: Box::new(program),
         })
         .map_err(|error| format!("{error:?}")),
+        ExecutionMode::GameplayHost => compile_program_source_with_options(
+            SourceId::new(1),
+            workload.source,
+            &gameplay_compiler_options(),
+        )
+        .map(|program| CompiledWorkload::GameplayHost {
+            program: Box::new(program),
+        })
+        .map_err(|error| format!("{error:?}")),
         ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
             compile_function_source(SourceId::new(1), workload.source, "main")
                 .map(|code| CompiledWorkload::Function {
@@ -188,6 +224,27 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
             })
             .map_err(|error| format!("{error:?}")),
     }
+}
+
+fn gameplay_compiler_options() -> CompilerOptions {
+    CompilerOptions::new()
+        .with_host_field("level", LEVEL_FIELD)
+        .with_host_field("exp", EXP_FIELD)
+        .with_host_field("inventory", INVENTORY_FIELD)
+        .with_host_field("items", ITEMS_FIELD)
+        .with_host_field("count", ITEM_COUNT_FIELD)
+        .with_host_field("id", ID_FIELD)
+        .with_host_field("quest_progress", QUEST_PROGRESS_FIELD)
+        .with_host_field("quest_count", QUEST_COUNT_FIELD)
+        .with_host_variant_field("quest_count", QUEST_COUNT_FIELD)
+        .with_host_field("quest_goal", QUEST_GOAL_FIELD)
+        .with_host_field("quest_done", QUEST_DONE_FIELD)
+        .with_host_variant_field("quest_done", QUEST_DONE_FIELD)
+        .with_host_field("config", CONFIG_FIELD)
+        .with_host_field("exp_to_next_level", EXP_TO_NEXT_LEVEL_FIELD)
+        .with_host_field("kill_rewards", KILL_REWARDS_FIELD)
+        .with_host_method("emit", EMIT_METHOD)
+        .with_host_method("add_reward", ADD_REWARD_METHOD)
 }
 
 fn run_gc_pacing(vm: &Vm, code: &CodeObject) -> Result<Value, Box<dyn Error>> {
@@ -255,6 +312,106 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>
     Ok(Value::Int(
         value_checksum(&value) as i64 + tx.patches().len() as i64,
     ))
+}
+
+fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>> {
+    let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
+    let ctx = HostRef::new(CTX_TYPE, CTX_OBJECT, 1);
+    let monster = HostRef::new(MONSTER_TYPE, MONSTER_OBJECT, 1);
+    let inventory_gold_count_path = HostPath::new(player)
+        .field(INVENTORY_FIELD)
+        .field(ITEMS_FIELD)
+        .key(gold_symbol())
+        .field(ITEM_COUNT_FIELD);
+    let quest_count_path = HostPath::new(player)
+        .field(QUEST_PROGRESS_FIELD)
+        .field(QUEST_COUNT_FIELD);
+    let quest_done_path = HostPath::new(player)
+        .field(QUEST_PROGRESS_FIELD)
+        .field(QUEST_DONE_FIELD);
+
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(1));
+    adapter.insert_value(HostPath::new(player).field(EXP_FIELD), HostValue::Int(90));
+    adapter.insert_value(HostPath::new(player).field(ID_FIELD), HostValue::Int(7));
+    adapter.insert_value(quest_count_path.clone(), HostValue::Int(2));
+    adapter.insert_value(
+        HostPath::new(player).field(QUEST_GOAL_FIELD),
+        HostValue::Int(3),
+    );
+    adapter.insert_value(quest_done_path.clone(), HostValue::Bool(false));
+    adapter.insert_value(inventory_gold_count_path.clone(), HostValue::Int(0));
+    adapter.insert_value(
+        HostPath::new(ctx)
+            .field(CONFIG_FIELD)
+            .field(EXP_TO_NEXT_LEVEL_FIELD),
+        HostValue::Int(100),
+    );
+    adapter.insert_value(
+        HostPath::new(ctx)
+            .field(CONFIG_FIELD)
+            .field(KILL_REWARDS_FIELD),
+        HostValue::Array(vec![HostValue::Map(BTreeMap::from([
+            ("monster_id".to_owned(), HostValue::Int(11)),
+            ("item_id".to_owned(), HostValue::String("gold".to_owned())),
+            ("count".to_owned(), HostValue::Int(3)),
+        ]))]),
+    );
+    adapter.insert_value(HostPath::new(monster).field(EXP_FIELD), HostValue::Int(20));
+    adapter.insert_value(HostPath::new(monster).field(ID_FIELD), HostValue::Int(11));
+    adapter.insert_method_return(EMIT_METHOD, HostValue::Null);
+    adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
+
+    let mut tx = PatchTx::new();
+    let mut budget = ExecutionBudget::unbounded();
+    let value = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+        vm.run_program_with_host_and_budget(
+            program,
+            "main",
+            &[
+                Value::HostRef(ctx),
+                Value::HostRef(player),
+                Value::HostRef(monster),
+            ],
+            &mut host,
+            &mut budget,
+        )?
+    };
+    let patch_count = tx.patches().len();
+    tx.apply(&mut adapter)?;
+
+    Ok(Value::Int(
+        value_checksum(&value) as i64
+            + patch_count as i64
+            + adapter.method_calls().len() as i64
+            + host_int(&adapter, HostPath::new(player).field(LEVEL_FIELD))?
+            + host_int(&adapter, HostPath::new(player).field(EXP_FIELD))?
+            + host_int(&adapter, inventory_gold_count_path)?
+            + host_int(&adapter, quest_count_path)?
+            + i64::from(host_bool(&adapter, quest_done_path)?),
+    ))
+}
+
+fn gold_symbol() -> Symbol {
+    Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"))
+}
+
+fn host_int(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
+    match adapter.read_path(&path)? {
+        HostValue::Int(value) => Ok(value),
+        value => Err(format!("expected int host value, got {value:?}").into()),
+    }
+}
+
+fn host_bool(adapter: &MockStateAdapter, path: HostPath) -> Result<bool, Box<dyn Error>> {
+    match adapter.read_path(&path)? {
+        HostValue::Bool(value) => Ok(value),
+        value => Err(format!("expected bool host value, got {value:?}").into()),
+    }
 }
 
 fn summarize(mut samples: Vec<Duration>, checksum: u64) -> BenchResult {
@@ -346,6 +503,7 @@ impl ExecutionMode {
             Self::Inline => "inline",
             Self::ManagedHeap => "managed_heap",
             Self::HostPatchTx => "host_patch_tx",
+            Self::GameplayHost => "gameplay_host",
             Self::GcPacing => "gc_pacing",
         }
     }

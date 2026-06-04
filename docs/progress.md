@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point GC root buffering and continuation root-scan elision are optimized with benchmark evidence; heap allocation pressure and scalar dispatch remain candidates. |
+| M19 | Partial | Safe-point GC pacing optimizations and a gameplay host benchmark exist; heap allocation pressure and scalar dispatch remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -93,12 +93,16 @@ before debugger/DAP work and Cranelift JIT.
   [performance.md](performance.md): incremental GC continuation steps now skip
   frame-root scanning because the heap consumes roots only when starting a
   collection.
+- A gameplay-style M19 benchmark is recorded in [performance.md](performance.md):
+  `gameplay_monster_kill` runs the real demo monster-kill script through
+  HostPath reads/writes, PatchTx apply, stdlib callbacks, and host method
+  patches.
 
 ### Remaining Gaps
 
 - M19: continue optimizing the non-JIT interpreter and managed heap path only
   with before/after benchmark evidence, focusing next on heap allocation
-  pressure, scalar dispatch measurements, and gameplay-style benchmark coverage.
+  pressure, scalar dispatch measurements, and gameplay-host benchmark deltas.
 - M20+: keep inline-cache and specialization work behind M19 benchmarked
   interpreter/heap improvements.
 
@@ -121,8 +125,8 @@ ownership, and source-spanned diagnostics.
 ## Next Up
 
 - Choose the next narrow measured M19 optimization target from the updated
-  checkpoint notes, with heap allocation pressure, scalar dispatch, and
-  gameplay-style benchmark coverage currently the clearest candidates.
+  checkpoint notes, with heap allocation pressure and scalar dispatch currently
+  the clearest candidates; include the gameplay-host benchmark when relevant.
 - Keep benchmark evidence ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.

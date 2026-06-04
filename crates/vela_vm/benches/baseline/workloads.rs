@@ -9,6 +9,7 @@ pub(crate) enum ExecutionMode {
     Inline,
     ManagedHeap,
     HostPatchTx,
+    GameplayHost,
     GcPacing,
 }
 
@@ -66,6 +67,13 @@ fn main(player) {
     return player.level + player.exp + player.inventory.gold;
 }
 "#,
+    },
+    Workload {
+        name: "gameplay_monster_kill",
+        mode: ExecutionMode::GameplayHost,
+        source: include_str!(
+            "../../../../examples/game_server_demo/scripts/monster_kill_reward.vela"
+        ),
     },
     Workload {
         name: "managed_heap_materialization",

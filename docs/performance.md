@@ -85,6 +85,7 @@ Current tracked workload groups:
 scalar_branch_loop          VM dispatch, arithmetic, branches, range for-in
 stdlib_collections          array, map, set, Option, and stdlib method dispatch
 host_patch_tx               HostRef reads, nested HostPath writes, PatchTx overlay
+gameplay_monster_kill       demo monster kill workflow with HostPath, PatchTx, stdlib callbacks, and host methods
 managed_heap_materialization records, enums, strings, Option helpers, heap mode
 gc_pacing                   safe-point GC under managed heap allocation pressure
 hot_reload_accept           compatible update compile/apply and post-apply call
@@ -334,6 +335,40 @@ Checksums stayed stable for quick and default runs.
 GC pacing is still the largest tracked VM workload, but remaining work should
 now balance GC allocation pressure against scalar dispatch and broader
 gameplay-style benchmark coverage.
+```
+
+### 2026-06-04 M19 Gameplay Baseline Checkpoint
+
+This checkpoint adds a tracked gameplay-style host workload to the VM baseline
+harness. `gameplay_monster_kill` compiles the real
+`examples/game_server_demo/scripts/monster_kill_reward.vela` source and runs it
+through a `MockStateAdapter`, `HostPath` reads and writes, `PatchTx` apply,
+stdlib `filter` callback dispatch, and host method patches. Compilation remains
+outside the timed loop.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Initial gameplay baseline:
+
+| Run | Benchmark | Mode | Min ns | Mean ns | Median ns | P95 ns | Checksum |
+|---|---|---|---:|---:|---:|---:|---:|
+| quick | gameplay_monster_kill | gameplay_host | 189000 | 198100 | 207200 | 207200 | 11641737387043360531 |
+| default | gameplay_monster_kill | gameplay_host | 2094500 | 2159685 | 2121000 | 2329600 | 5386942582173291744 |
+
+Checkpoint notes:
+
+```text
+The new workload gives M19 a host-heavy gameplay timing target before adding
+inline caches or broader specialization.
+This benchmark exercises PatchTx and stdlib callback behavior together; keep it
+separate from scalar VM dispatch conclusions.
+Future M19 optimization reports should include this workload when touching host
+paths, callbacks, collection methods, or PatchTx-heavy execution.
 ```
 
 ## Targets
