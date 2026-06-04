@@ -189,6 +189,30 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_set_has_method() {
+        let source = r#"
+fn main() {
+    let tags = set::from_array(["daily", "quest", "raid"]);
+    let ids = set::from_array([2, 4, 8]);
+    if tags.has("quest") && !tags.has("missing") && ids.has(8) && !ids.has(16) {
+        return tags.len() + ids.len();
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap set has source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap set has method should run");
+        assert_eq!(result, Value::Int(6));
+    }
+
+    #[test]
     fn runs_compiled_set_filter_method() {
         let source = r#"
 fn main() {

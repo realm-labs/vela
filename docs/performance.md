@@ -1703,6 +1703,34 @@ was measured but not accepted because repeated quick runs did not show a
 consistent win, so the runtime path stayed unchanged.
 ```
 
+### 2026-06-04 M19 Managed Heap Set Lookup Checkpoint
+
+This checkpoint adds a focused `managed_heap_set_lookup` benchmark for repeated
+heap-mode `set.has()` calls over string and integer sets. The accepted runtime
+change makes `set.has()` scan existing set storage directly instead of cloning
+or materializing the full receiver before checking membership.
+
+Commands:
+
+```bash
+cargo test -p vela_vm set_has
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_set_lookup | 7938100 | 6987650 | 17198566150566951166 | 17198566150566951166 |
+
+Checkpoint notes:
+
+```text
+The focused lookup benchmark kept the same checksum and improved after avoiding
+temporary receiver vectors and heap-reference wrapper values in set.has().
+Other quick benchmark rows stayed within normal run-to-run noise.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

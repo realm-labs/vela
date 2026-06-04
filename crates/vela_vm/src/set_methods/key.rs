@@ -31,6 +31,53 @@ impl SetKey {
             _ => type_error(operation),
         }
     }
+
+    pub(super) fn matches_value(
+        &self,
+        value: &Value,
+        heap: Option<&HeapExecution<'_>>,
+        operation: &'static str,
+    ) -> VmResult<bool> {
+        match (self, value) {
+            (Self::Null, Value::Null) => Ok(true),
+            (Self::Bool(lhs), Value::Bool(rhs)) => Ok(*lhs == *rhs),
+            (Self::Int(lhs), Value::Int(rhs)) => Ok(*lhs == *rhs),
+            (Self::Float(lhs), Value::Float(rhs)) if rhs.is_finite() => Ok(*lhs == rhs.to_bits()),
+            (Self::String(lhs), Value::String(rhs)) => Ok(lhs == rhs),
+            (Self::String(lhs), Value::HeapRef(reference)) => {
+                match heap.and_then(|heap| heap.heap.get(*reference)) {
+                    Some(HeapValue::String(rhs)) => Ok(lhs == rhs),
+                    _ => type_error(operation),
+                }
+            }
+            (_, Value::Null | Value::Bool(_) | Value::Int(_) | Value::String(_)) => Ok(false),
+            (_, Value::Float(value)) if value.is_finite() => Ok(false),
+            _ => type_error(operation),
+        }
+    }
+
+    pub(super) fn matches_slot(
+        &self,
+        slot: &HeapSlot,
+        heap: &HeapExecution<'_>,
+        operation: &'static str,
+    ) -> VmResult<bool> {
+        match (self, slot) {
+            (Self::Null, HeapSlot::Null) => Ok(true),
+            (Self::Bool(lhs), HeapSlot::Bool(rhs)) => Ok(*lhs == *rhs),
+            (Self::Int(lhs), HeapSlot::Int(rhs)) => Ok(*lhs == *rhs),
+            (Self::Float(lhs), HeapSlot::Float(rhs)) if rhs.is_finite() => {
+                Ok(*lhs == rhs.to_bits())
+            }
+            (Self::String(lhs), HeapSlot::Ref(reference)) => match heap.heap.get(*reference) {
+                Some(HeapValue::String(rhs)) => Ok(lhs == rhs),
+                _ => type_error(operation),
+            },
+            (_, HeapSlot::Null | HeapSlot::Bool(_) | HeapSlot::Int(_)) => Ok(false),
+            (_, HeapSlot::Float(value)) if value.is_finite() => Ok(false),
+            _ => type_error(operation),
+        }
+    }
 }
 
 pub(super) fn set_keys(

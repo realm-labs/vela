@@ -1,3 +1,4 @@
+use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmResult};
 
 use super::{SetKey, expect_arity, push_unique, set_values, type_error};
@@ -21,10 +22,31 @@ pub(crate) fn has(
 ) -> VmResult<bool> {
     expect_arity("has", args, 1)?;
     let key = SetKey::from_value(&args[0], heap, "method has")?;
-    let values = set_values(receiver, heap, "method has")?;
-    Ok(values
-        .iter()
-        .any(|value| SetKey::from_value(value, heap, "method has").as_ref() == Ok(&key)))
+    match receiver {
+        Value::Set(values) => {
+            for value in values {
+                if key.matches_value(value, heap, "method has")? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method has");
+            };
+            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
+                return type_error("method has");
+            };
+            for value in values {
+                if key.matches_slot(value, heap, "method has")? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        _ => type_error("method has"),
+    }
 }
 
 pub(crate) fn values(

@@ -208,6 +208,24 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_set_lookup",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = set::from_array(["daily", "quest", "raid", "bonus", "event", "boss"]);
+        let tiers = set::from_array([1, 2, 3, 5, 8, 13]);
+        if !tags.has("raid") || tags.has("missing") || !tiers.has(8) || tiers.has(tick + 20) {
+            return 0;
+        }
+        total += tags.len() + tiers.len() + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "host_patch_tx",
         mode: ExecutionMode::HostPatchTx,
         source: r#"
