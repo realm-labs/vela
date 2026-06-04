@@ -25,6 +25,7 @@ pub(crate) struct DemoHostOptions {
     pub(crate) deny_player_level_read: bool,
     pub(crate) deny_player_level_write: bool,
     pub(crate) deny_context_emit_call: bool,
+    pub(crate) conflict_player_level_before_apply: bool,
 }
 
 pub(crate) struct DemoHostState {
@@ -159,6 +160,12 @@ impl DemoHostState {
                 _ => Err(format!("unsupported demo main parameter `{param}`").into()),
             })
             .collect()
+    }
+
+    pub(crate) fn conflict_player_level_before_apply(&mut self) -> Result<(), Box<dyn Error>> {
+        self.adapter
+            .write_path(&self.level_path, HostValue::Int(99))
+            .map_err(|error| format!("{error:?}").into())
     }
 
     pub(crate) fn print_result(

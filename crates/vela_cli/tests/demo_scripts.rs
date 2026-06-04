@@ -236,6 +236,23 @@ fn host_call_permission_demo_reports_denied_apply() {
 }
 
 #[test]
+fn host_patch_conflict_demo_reports_apply_conflict() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg("--conflict-player-level-before-apply")
+        .arg(script_path("host_patch_conflict.vela"))
+        .output()
+        .expect("run vela_cli host patch conflict demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("error[vm::host_error]: host error: PatchConflict"));
+    assert!(stderr.contains("expected: Int(9)"));
+    assert!(stderr.contains("actual: Some(Int(99))"));
+    assert!(stderr.contains("host_patch_conflict.vela:2:5"));
+    assert!(stderr.contains("player.level += 1;"));
+}
+
+#[test]
 fn bad_schema_demo_reports_duplicate_field() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
         .arg(script_path("bad_schema_duplicate_field.vela"))

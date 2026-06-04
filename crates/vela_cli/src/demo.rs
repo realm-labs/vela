@@ -80,6 +80,19 @@ pub(crate) fn run_script_with_denied_context_emit_call(path: &str) -> Result<(),
     )
 }
 
+pub(crate) fn run_script_with_player_level_conflict(path: &str) -> Result<(), Box<dyn Error>> {
+    run_script_with_options(
+        path,
+        DemoRunOptions {
+            host: DemoHostOptions {
+                conflict_player_level_before_apply: true,
+                ..DemoHostOptions::default()
+            },
+            ..DemoRunOptions::default()
+        },
+    )
+}
+
 fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Box<dyn Error>> {
     let ids = DemoIds::new();
     let engine = build_engine(ids, options.engine).map_err(|error| format!("{error:?}"))?;
@@ -107,6 +120,9 @@ fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Bo
             &mut tx,
         )
         .map_err(|error| crate::diagnostics::render_vm_error(path, &error))?;
+    if host_options.conflict_player_level_before_apply {
+        host_state.conflict_player_level_before_apply()?;
+    }
     let patch_count = tx.patches().len();
     tx.apply(&mut host_state.adapter)
         .map_err(|error| crate::diagnostics::render_host_error(path, &error))?;

@@ -28,9 +28,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [flag, path] if flag == "--deny-ctx-emit-call" => {
             demo::run_script_with_denied_context_emit_call(path)
         }
+        [flag, path] if flag == "--conflict-player-level-before-apply" => {
+            demo::run_script_with_player_level_conflict(path)
+        }
         [path] => demo::run_script(path),
         _ => {
-            Err("usage: vela_cli <script-path> | vela_cli --allow-random <script-path> | vela_cli --stale-player <script-path> | vela_cli --deny-player-level-read <script-path> | vela_cli --deny-player-level-write <script-path> | vela_cli --deny-ctx-emit-call <script-path> | vela_cli --hot-reload <initial> <updated>".into())
+            Err("usage: vela_cli <script-path> | vela_cli --allow-random <script-path> | vela_cli --stale-player <script-path> | vela_cli --deny-player-level-read <script-path> | vela_cli --deny-player-level-write <script-path> | vela_cli --deny-ctx-emit-call <script-path> | vela_cli --conflict-player-level-before-apply <script-path> | vela_cli --hot-reload <initial> <updated>".into())
         }
     }
 }
