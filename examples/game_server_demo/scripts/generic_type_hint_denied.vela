@@ -1,0 +1,3 @@
+fn main(values: Array<int>) {
+    return values;
+}

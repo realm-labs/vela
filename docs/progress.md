@@ -72,7 +72,8 @@ before debugger/DAP work and Cranelift JIT.
   version.
 - CLI demo scripts and conformance fixtures covering gameplay helpers,
   reflection, schema-safe mutation denial, permissions, read-only host boundary
-  rejection, bad schema diagnostics, and tick-boundary hot reload.
+  rejection, bad schema diagnostics, generic type hint rejection, and
+  tick-boundary hot reload.
 
 ### Remaining Gaps
 

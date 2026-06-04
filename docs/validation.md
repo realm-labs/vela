@@ -21,6 +21,7 @@ cargo run -p vela_cli -- --allow-random examples/game_server_demo/scripts/random
 cargo run -p vela_cli -- examples/game_server_demo/scripts/random_permission_denied.vela # expected permission-denied failure
 cargo run -p vela_cli -- examples/game_server_demo/scripts/host_read_only_denied.vela # expected read-only host field failure
 cargo run -p vela_cli -- examples/game_server_demo/scripts/bad_schema_duplicate_field.vela # expected bad-schema failure
+cargo run -p vela_cli -- examples/game_server_demo/scripts/generic_type_hint_denied.vela # expected generic type hint failure
 cargo run -p vela_cli -- examples/game_server_demo/scripts/reward_preview.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/monster_kill_reward.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/quest_progress.vela

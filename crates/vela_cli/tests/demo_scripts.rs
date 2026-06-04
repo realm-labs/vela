@@ -185,6 +185,25 @@ fn bad_schema_demo_reports_duplicate_field() {
 }
 
 #[test]
+fn generic_type_hint_demo_reports_unsupported_generics() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg(script_path("generic_type_hint_denied.vela"))
+        .output()
+        .expect("run vela_cli generic type hint demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(
+        stderr.contains(
+            "error[syntax::generic_type_hint]: script type hints do not support generics"
+        )
+    );
+    assert!(stderr.contains("generic_type_hint_denied.vela:1:22"));
+    assert!(stderr.contains("fn main(values: Array<int>) {"));
+    assert!(stderr.contains("remove generic type arguments"));
+}
+
+#[test]
 fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.vela"),
