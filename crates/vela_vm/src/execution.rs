@@ -347,6 +347,7 @@ impl Vm {
                         })
                         .collect::<VmResult<Vec<_>>>()?;
                     let mut receiver_value = frame.read(*receiver)?.clone();
+                    let caller_roots = caller_roots_for_heap(&frame, heap.as_deref());
                     let result = call_method(
                         &mut receiver_value,
                         method,
@@ -357,7 +358,7 @@ impl Vm {
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            caller_roots: frame.heap_roots(),
+                            caller_roots,
                         },
                     )?;
                     let result = store_value_in_heap_if_needed(
@@ -383,6 +384,7 @@ impl Vm {
                         })
                         .collect::<VmResult<Vec<_>>>()?;
                     let receiver_value = frame.read(*receiver)?.clone();
+                    let caller_roots = caller_roots_for_heap(&frame, heap.as_deref());
                     let result = call_method_id(
                         &receiver_value,
                         method,
@@ -394,7 +396,7 @@ impl Vm {
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            caller_roots: frame.heap_roots(),
+                            caller_roots,
                         },
                     )?;
                     let result = store_value_in_heap_if_needed(
@@ -1006,6 +1008,14 @@ impl Vm {
         }
 
         Err(VmError::new(VmErrorKind::MissingReturn))
+    }
+}
+
+fn caller_roots_for_heap(frame: &CallFrame, heap: Option<&HeapExecution<'_>>) -> Vec<GcRef> {
+    if heap.is_some() {
+        frame.heap_roots()
+    } else {
+        Vec::new()
     }
 }
 

@@ -48,7 +48,7 @@ use field_access::{
     get_record_slot_value,
 };
 pub(crate) use frame::{CallFrame, normalized_param_defaults};
-use heap::{HeapSlot, HeapValue, ScriptHeap};
+use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, materialize_value,

@@ -505,6 +505,47 @@ pressure is now more likely in native/stdlib boundaries, returned heap object
 materialization, string construction, callbacks, and mutable collection methods.
 ```
 
+### 2026-06-04 M19 Callback Root Guard Checkpoint
+
+This checkpoint reduces callback and method-call allocation pressure outside
+managed heap execution. VM method dispatch now collects caller heap roots only
+when a heap exists, and callback invocation skips temporary root-vector
+construction when there is no heap to protect. Managed heap execution keeps the
+same caller-root and protected-root behavior.
+
+Commands:
+
+```bash
+git worktree add --detach ../vela-callback-bench-head HEAD
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session. The before run used a
+detached worktree at `83f6f6f`; the after run used the callback-root working
+tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 270850 | 227100 | 13147904610567772544 | 13147904610567772544 |
+
+Default before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 3133314 | 2694171 | 8455524478326472193 | 8455524478326472193 |
+
+Checkpoint notes:
+
+```text
+The improvement is intentionally scoped to non-heap stdlib method and callback
+dispatch. Heap-mode callback paths still collect and protect roots before
+executing callbacks.
+Checksums stayed stable for the reported workload.
+Remaining callback work should focus on argument vector construction and closure
+call overhead, not no-heap GC root protection.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

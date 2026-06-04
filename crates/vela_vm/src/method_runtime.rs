@@ -24,16 +24,20 @@ pub(crate) fn call_callback(
     let Value::Closure(closure) = callback else {
         return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
     };
-    let mut roots = runtime.caller_roots.to_vec();
-    args.iter()
-        .for_each(|value| value.trace_heap_refs(&mut roots));
-    protected_values
-        .iter()
-        .for_each(|value| value.trace_heap_refs(&mut roots));
-    let protected_root_len = runtime
-        .heap
-        .as_deref_mut()
-        .map(|heap| heap.push_protected_roots(roots));
+    let protected_root_len = if runtime.heap.is_some() {
+        let mut roots = runtime.caller_roots.to_vec();
+        args.iter()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        protected_values
+            .iter()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        runtime
+            .heap
+            .as_deref_mut()
+            .map(|heap| heap.push_protected_roots(roots))
+    } else {
+        None
+    };
     let result = runtime.vm.execute_closure_value(
         closure,
         runtime.program,
