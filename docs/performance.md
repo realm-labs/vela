@@ -1307,6 +1307,46 @@ per min/max call. Result payloads still use the same Option wrapper and heap
 reference materialization path as other heap-mode method returns.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Sort Receiver Checkpoint
+
+This checkpoint adds a targeted `managed_heap_array_sort` benchmark and removes
+receiver materialization from managed-heap array `sort()` calls. Heap-mode sort
+now builds sort entries directly from array `HeapSlot` values, preserving the
+existing stable tie-breaker and scalar-domain checks, then returns the sorted
+values through the same array result path.
+
+Commands:
+
+```bash
+cargo test -p vela_vm array_sort
+cargo fmt --all -- --check
+cargo bench -p vela_vm --bench baseline
+```
+
+Default before/after for the targeted benchmark:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_sort | 17870271 | 14702914 | 49647096020964123 | 49647096020964123 |
+
+Default guardrail rows from the same before/after runs:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 133621785 | 136428014 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 214439871 | 216786200 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_array_extrema | 79037914 | 77153600 | 323503183347530798 | 323503183347530798 |
+| managed_heap_materialization | 1453114 | 1439814 | 1965056817950502848 | 1965056817950502848 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The targeted benchmark isolates repeated managed-heap
+numeric array sorts, where direct HeapSlot key construction avoids cloning the
+full receiver through Vec<Value> before sorting. Callback-based sort_by keeps
+its existing callback and root-protection path.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark

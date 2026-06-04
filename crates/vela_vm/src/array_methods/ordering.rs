@@ -12,6 +12,12 @@ pub(crate) fn sort(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("sort", args, 0)?;
+    if let Value::HeapRef(reference) = receiver {
+        let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+            return type_error("method sort");
+        };
+        return sort_heap_slots(values, heap, "method sort");
+    }
     let values = array_values(receiver, heap, "method sort")?;
     sort_values_by_key(values, heap, "method sort", |value, _| Ok(value.clone()))
 }
@@ -149,6 +155,41 @@ fn sort_entries(mut entries: Vec<SortEntry>) -> VmResult<Value> {
     ))
 }
 
+fn sort_heap_slots(
+    values: &[HeapSlot],
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let mut entries = Vec::<HeapSlotSortEntry>::with_capacity(values.len());
+    let mut key_kind = None;
+    for value in values {
+        let key = sort_key_from_heap_slot(value, heap, operation)?;
+        if let Some(expected) = key_kind {
+            if key.kind() != expected {
+                return type_error(operation);
+            }
+        } else {
+            key_kind = Some(key.kind());
+        }
+        entries.push(HeapSlotSortEntry {
+            key,
+            value: value.clone(),
+            index: entries.len(),
+        });
+    }
+    entries.sort_by(|left, right| {
+        left.key
+            .compare(&right.key)
+            .then_with(|| left.index.cmp(&right.index))
+    });
+    Ok(Value::Array(
+        entries
+            .into_iter()
+            .map(|entry| value_from_heap_slot(&entry.value))
+            .collect(),
+    ))
+}
+
 #[derive(Clone, Copy)]
 enum Extremum {
     Min,
@@ -237,6 +278,12 @@ fn heap_slot_extremum(
 struct SortEntry {
     key: SortKey,
     value: Value,
+    index: usize,
+}
+
+struct HeapSlotSortEntry {
+    key: SortKey,
+    value: HeapSlot,
     index: usize,
 }
 

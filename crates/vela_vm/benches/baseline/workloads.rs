@@ -191,6 +191,23 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_sort",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..48 {
+        let base = [9, 2, 5, 2, 8, 1, 9, 3];
+        let scaled = [tick + 4, tick + 1, tick + 8, tick + 2];
+        let sorted = base.sort();
+        let scaled_sorted = scaled.sort();
+        total += sorted[0] + sorted[7] + scaled_sorted[0] + scaled_sorted[3];
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_materialization",
         mode: ExecutionMode::ManagedHeap,
         source: r#"

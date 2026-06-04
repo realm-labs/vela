@@ -243,15 +243,19 @@ fn managed_heap_execution_runs_array_sort_method() {
     let source = r#"
 fn main() {
     let names = ["wyrm", "boar", "bat", "wolf"];
+    let scores = [9, 2, 5, 2, 8, 1, 9, 3];
     let sorted = names.sort();
+    let sorted_scores = scores.sort();
     if sorted[0] == "bat"
         && sorted[1] == "boar"
         && sorted[2] == "wolf"
         && sorted[3] == "wyrm"
+        && sorted_scores[0] == 1
+        && sorted_scores[7] == 9
     {
-        return sorted[2];
+        return sorted_scores[7];
     }
-    return "";
+    return 0;
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
@@ -261,7 +265,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array sort method should run");
-    assert_eq!(result, Value::String("wolf".to_owned()));
+    assert_eq!(result, Value::Int(9));
 }
 
 #[test]

@@ -158,6 +158,10 @@ before debugger/DAP work and Cranelift JIT.
   repeated heap-mode array `min()`/`max()` calls, and extrema scan inline array
   values and managed-heap slots directly instead of cloning the full receiver
   before comparison.
+- An M19 managed-heap array sort receiver checkpoint is recorded in
+  [performance.md](performance.md): `managed_heap_array_sort` now measures
+  repeated heap-mode array `sort()` calls, and heap-mode sort builds keys
+  directly from heap slots instead of cloning the full receiver before sorting.
 - An M19 host conversion benchmark coverage checkpoint is recorded in
   [performance.md](performance.md): `host_patch_tx` now also exercises host
   array reads, script string pushes through `PatchTx`, overlay length reads,
