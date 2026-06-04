@@ -94,6 +94,51 @@ pub(crate) fn values_to_heap_fields(
         .map(|fields| ScriptFields::from_pairs(owner, fields))
 }
 
+fn values_into_heap_slots(
+    values: Vec<Value>,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Vec<HeapSlot>> {
+    values
+        .into_iter()
+        .map(|value| value_into_heap_slot(value, heap, budget.as_deref_mut()))
+        .collect()
+}
+
+fn values_into_heap_map(
+    values: BTreeMap<String, Value>,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<BTreeMap<String, HeapSlot>> {
+    values
+        .into_iter()
+        .map(|(key, value)| {
+            Ok((
+                key,
+                value_into_heap_slot(value, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect()
+}
+
+fn values_into_heap_fields(
+    owner: &str,
+    values: ScriptFields<Value>,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<ScriptFields<HeapSlot>> {
+    values
+        .into_pairs()
+        .map(|(key, value)| {
+            Ok((
+                key,
+                value_into_heap_slot(value, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect::<VmResult<Vec<_>>>()
+        .map(|fields| ScriptFields::from_pairs(owner, fields))
+}
+
 pub(crate) fn enum_variant_owner(enum_name: &str, variant: &str) -> String {
     format!("{enum_name}::{variant}")
 }
@@ -187,6 +232,90 @@ pub(crate) fn value_to_heap_slot(
                 operation: "heap slot",
             }))
         }
+    }
+}
+
+fn value_into_heap_slot(
+    value: Value,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<HeapSlot> {
+    match value {
+        Value::Null => Ok(HeapSlot::Null),
+        Value::Bool(value) => Ok(HeapSlot::Bool(value)),
+        Value::Int(value) => Ok(HeapSlot::Int(value)),
+        Value::Float(value) => Ok(HeapSlot::Float(value)),
+        Value::HeapRef(reference) => Ok(HeapSlot::Ref(reference)),
+        Value::HostRef(reference) => Ok(HeapSlot::HostRef(reference)),
+        Value::PathProxy(proxy) => Ok(HeapSlot::PathProxy(proxy)),
+        Value::String(_)
+        | Value::Array(_)
+        | Value::Set(_)
+        | Value::Map(_)
+        | Value::Record { .. }
+        | Value::Enum { .. } => {
+            if let Value::HeapRef(reference) = store_owned_heap_value(value, heap, budget)? {
+                Ok(HeapSlot::Ref(reference))
+            } else {
+                unreachable!("heap allocation always returns a heap ref");
+            }
+        }
+        Value::Range(_) | Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
+            Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "heap slot",
+            }))
+        }
+    }
+}
+
+fn store_owned_heap_value(
+    value: Value,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    match value {
+        Value::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
+        Value::Array(values) => {
+            let slots = values_into_heap_slots(values, heap, budget.as_deref_mut())?;
+            allocate_heap_value(HeapValue::Array(slots), heap, budget)
+        }
+        Value::Set(values) => {
+            let slots = values_into_heap_slots(values, heap, budget.as_deref_mut())?;
+            allocate_heap_value(HeapValue::Set(slots), heap, budget)
+        }
+        Value::Map(values) => {
+            let slots = values_into_heap_map(values, heap, budget.as_deref_mut())?;
+            allocate_heap_value(HeapValue::Map(slots), heap, budget)
+        }
+        Value::Record { type_name, fields } => {
+            let slots = values_into_heap_fields(&type_name, fields, heap, budget.as_deref_mut())?;
+            allocate_heap_value(
+                HeapValue::Record {
+                    type_name,
+                    fields: slots,
+                },
+                heap,
+                budget,
+            )
+        }
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => {
+            let owner = enum_variant_owner(&enum_name, &variant);
+            let slots = values_into_heap_fields(&owner, fields, heap, budget.as_deref_mut())?;
+            allocate_heap_value(
+                HeapValue::Enum {
+                    enum_name,
+                    variant,
+                    fields: slots,
+                },
+                heap,
+                budget,
+            )
+        }
+        _ => unreachable!("only owned heap aggregate values can be stored"),
     }
 }
 
@@ -346,15 +475,12 @@ pub(crate) fn store_value_in_heap_if_needed(
         return Ok(value);
     };
     match value {
-        Value::String(_)
-        | Value::Array(_)
+        Value::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
+        Value::Array(_)
         | Value::Set(_)
         | Value::Map(_)
         | Value::Record { .. }
-        | Value::Enum { .. } => {
-            let slot = value_to_heap_slot(&value, heap, budget)?;
-            Ok(value_from_heap_slot(&slot))
-        }
+        | Value::Enum { .. } => store_owned_heap_value(value, heap, budget),
         Value::Null
         | Value::Bool(_)
         | Value::Int(_)

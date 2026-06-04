@@ -116,6 +116,10 @@ impl<T> ScriptFields<T> {
             .iter()
             .map(|slot| (slot.name.as_str(), &slot.value))
     }
+
+    pub fn into_pairs(self) -> impl Iterator<Item = (String, T)> {
+        self.slots.into_iter().map(|slot| (slot.name, slot.value))
+    }
 }
 
 impl<T> From<BTreeMap<String, T>> for ScriptFields<T> {

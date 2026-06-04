@@ -670,6 +670,50 @@ Remaining materialization work is still likely in native return storage,
 stdlib heap receiver conversion, host conversion, and returned heap objects.
 ```
 
+### 2026-06-04 M19 Returned Heap Object Storage Checkpoint
+
+This checkpoint reduces managed-heap return storage work. VM return and method
+results that are already owned `Value` aggregates now move strings,
+arrays, maps, sets, records, and enums into heap objects directly instead of
+converting through borrowed heap-slot helpers that clone the same aggregate data
+before allocation. Nested heap-slot conversion still preserves the same
+budget charging, GC root, and script-owned heap boundary behavior.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+git worktree add --detach ../vela-owned-return-before HEAD
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick warmed before/after from the same working session. The before run used a
+detached worktree at `4a901f8`; the after run used the owned return storage
+working tree after the benchmark binary was already compiled.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_materialization | 138400 | 131200 | 11773534860610571856 | 11773534860610571856 |
+
+Default before/after from the same working session. The before run used the
+same detached worktree at `4a901f8`; the after run used the owned return
+storage working tree. Other workloads were noisy during the default runs, so
+the target workload and stable checksum are the useful signal.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_materialization | 1688600 | 1576128 | 1965056817950502848 | 1965056817950502848 |
+
+Checkpoint notes:
+
+```text
+The optimization is scoped to storing owned return/method-result aggregates in
+managed heap mode. Borrowed heap-slot conversion remains available for frame
+registers, host values, and other paths that do not own the source Value.
+Remaining materialization work is more likely in stdlib heap receiver
+conversion, host conversion, string operations, and callback invocation.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
