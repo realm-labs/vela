@@ -1185,6 +1185,46 @@ are retained as guardrails because their receiver materialization path is
 unchanged.
 ```
 
+### 2026-06-04 M19 Set Higher-Order Receiver Checkpoint
+
+This checkpoint adds no-heap receiver fast paths for set `map`, `filter`,
+`find`, `any`, `all`, and `count`. When the receiver is already a `Value::Set`
+and managed heap execution is not active, these methods now iterate the
+receiver directly instead of cloning the full set through `set_values` before
+invoking callbacks. Managed heap execution keeps the existing materializing
+path so heap-root protection semantics stay unchanged.
+
+Commands:
+
+```bash
+cargo test -p vela_vm set_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick after-run comparison against the array higher-order receiver checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 11115800 | 11152600 | 6661976061914330346 | 6661976061914330346 |
+| managed_heap_callback_collections | 17106100 | 17546600 | 6661976061914330346 | 6661976061914330346 |
+
+Default after-run comparison against the array higher-order receiver checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 138982100 | 134873314 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 212849257 | 218051128 | 4123773336162002392 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for the callback workload in both modes. The targeted
+change is the inline no-heap set callback path, where the default benchmark
+shows the strongest signal. Managed-heap callback numbers are retained as
+guardrails because their receiver materialization path is unchanged.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark
