@@ -24,6 +24,7 @@ pub(crate) struct DemoHostOptions {
     pub(crate) stale_player_arg: bool,
     pub(crate) deny_player_level_read: bool,
     pub(crate) deny_player_level_write: bool,
+    pub(crate) deny_context_emit_call: bool,
 }
 
 pub(crate) struct DemoHostState {
@@ -126,6 +127,9 @@ impl DemoHostState {
         }
         if options.deny_player_level_write {
             adapter.deny_write(level_path.clone());
+        }
+        if options.deny_context_emit_call {
+            adapter.deny_call(HostPath::new(ctx));
         }
 
         Self {

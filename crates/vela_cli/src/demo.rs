@@ -67,6 +67,19 @@ pub(crate) fn run_script_with_denied_player_level_write(path: &str) -> Result<()
     )
 }
 
+pub(crate) fn run_script_with_denied_context_emit_call(path: &str) -> Result<(), Box<dyn Error>> {
+    run_script_with_options(
+        path,
+        DemoRunOptions {
+            host: DemoHostOptions {
+                deny_context_emit_call: true,
+                ..DemoHostOptions::default()
+            },
+            ..DemoRunOptions::default()
+        },
+    )
+}
+
 fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Box<dyn Error>> {
     let ids = DemoIds::new();
     let engine = build_engine(ids, options.engine).map_err(|error| format!("{error:?}"))?;

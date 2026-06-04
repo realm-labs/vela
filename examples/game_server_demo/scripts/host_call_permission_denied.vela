@@ -1,0 +1,4 @@
+fn main(ctx) {
+    ctx.emit("demo.denied", 12);
+    return 1;
+}
