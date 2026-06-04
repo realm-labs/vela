@@ -714,6 +714,47 @@ Remaining materialization work is more likely in stdlib heap receiver
 conversion, host conversion, string operations, and callback invocation.
 ```
 
+### 2026-06-04 M19 Array Lookup Receiver Checkpoint
+
+This checkpoint reduces array stdlib receiver work for `first`, `last`,
+`contains`, and `index_of`. These methods now read or scan `Value::Array`
+receivers directly and iterate heap array slots one element at a time instead
+of first cloning or materializing the whole receiver into a temporary
+`Vec<Value>`. Heap array receivers still materialize individual slots only when
+the method needs to return or compare that element.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+git worktree add --detach ../vela-array-lookup-before HEAD
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 218950 | 205700 | 13147904610567772544 | 13147904610567772544 |
+
+Default before/after from the same working session. The before run used a
+warmed detached worktree at `e4ab551`; the after run used the array lookup
+working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 2378228 | 2350500 | 8455524478326472193 | 8455524478326472193 |
+
+Checkpoint notes:
+
+```text
+The benchmark signal is strongest in the quick stdlib_collections workload,
+which calls first and last after array transforms. The same direct path covers
+managed heap arrays and avoids full receiver materialization for contains and
+index_of, but broader stdlib heap receiver work remains in map, set, transform,
+ordering, and callback-heavy methods.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
