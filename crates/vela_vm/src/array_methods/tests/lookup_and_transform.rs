@@ -140,17 +140,24 @@ fn main() {
 fn managed_heap_execution_runs_array_distinct_method() {
     let source = r#"
 fn main() {
+    let scores = [3, 1, 3, 2, 1];
     let tags = ["raid", "quest", "raid", "daily", "quest"];
     let nested = [["daily", "quest"], ["daily", "quest"], ["raid"]];
+    let unique_scores = scores.distinct();
     let unique_tags = tags.distinct();
     let unique_nested = nested.distinct();
-    if tags.len() == 5
+    if scores.len() == 5
+        && unique_scores.len() == 3
+        && unique_scores[0] == 3
+        && unique_scores[1] == 1
+        && unique_scores[2] == 2
+        && tags.len() == 5
         && unique_tags.join(",") == "raid,quest,daily"
         && unique_nested.len() == 2
     {
-        return unique_nested[0].join("|");
+        return unique_scores.sum();
     }
-    return "";
+    return 0;
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
@@ -160,7 +167,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array distinct should run");
-    assert_eq!(result, Value::String("daily|quest".to_owned()));
+    assert_eq!(result, Value::Int(6));
 }
 
 #[test]

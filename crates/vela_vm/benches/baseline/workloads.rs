@@ -248,6 +248,28 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_distinct",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..48 {
+        let values = [
+            tick, tick + 1, tick, tick + 2,
+            tick + 1, tick + 3, tick + 2, tick + 4,
+        ];
+        let tags = ["raid", "quest", "raid", "daily", "quest", "bonus"];
+        let nested = [["daily", "quest"], ["daily", "quest"], ["raid"], ["raid"]];
+        let unique = values.distinct();
+        let unique_tags = tags.distinct();
+        let unique_nested = nested.distinct();
+        total += unique.sum() + unique_tags.join("|").len() + unique_nested.len();
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_array_join",
         mode: ExecutionMode::ManagedHeap,
         source: r#"

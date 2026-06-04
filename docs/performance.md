@@ -1468,6 +1468,36 @@ removes the extra temporary reverse pass for managed-heap receivers.
 Non-targeted guardrails are kept as checksum and behavior checks only.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Distinct Benchmark Coverage Checkpoint
+
+This measurement checkpoint adds `managed_heap_array_distinct`, a managed-heap
+benchmark covering `array.distinct()` over inline numeric slots, string heap
+refs, and nested array heap refs. It gives the remaining transform-method heap
+receiver materialization path a direct benchmark surface.
+
+Commands:
+
+```bash
+cargo test -p vela_vm array_distinct
+cargo bench -p vela_vm --bench baseline
+```
+
+New benchmark baseline:
+
+| Benchmark | Mode | Default mean ns | Default checksum |
+|---|---|---:|---:|
+| managed_heap_array_distinct | managed_heap | 73399514 | 4824218642054093469 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. A direct heap-slot distinct fast path was measured
+but not accepted because the mixed benchmark regressed versus the existing
+generic materialized equality path. Future distinct optimization needs either
+cached materialized comparison values or a narrower benchmark-proven scalar
+path that does not penalize heap-ref arrays.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark
