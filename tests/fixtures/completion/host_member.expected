@@ -1,0 +1,3 @@
+field inventory map(unknown, unknown)
+field level int
+method grant_exp fn(int) -> bool
