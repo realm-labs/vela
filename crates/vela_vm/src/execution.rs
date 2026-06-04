@@ -201,11 +201,7 @@ impl Vm {
                     ip = target.0;
                 }
                 InstructionKind::CallNative { dst, name, args } => {
-                    let values = args
-                        .iter()
-                        .map(|register| frame.read(*register).cloned())
-                        .collect::<VmResult<Vec<_>>>()?;
-                    let values = materialize_values(&values, heap.as_deref())?;
+                    let values = materialize_registers(&frame, args, heap.as_deref())?;
                     let result = if let Some(native) = self.natives.get(name) {
                         native(&values)
                             .map_err(|error| error.with_source_span_if_absent(instruction.span))?
@@ -1017,6 +1013,17 @@ fn caller_roots_for_heap(frame: &CallFrame, heap: Option<&HeapExecution<'_>>) ->
     } else {
         Vec::new()
     }
+}
+
+fn materialize_registers(
+    frame: &CallFrame,
+    registers: &[Register],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Vec<Value>> {
+    registers
+        .iter()
+        .map(|register| materialize_value(frame.read(*register)?, heap))
+        .collect()
 }
 
 fn heap_slots_from_registers(

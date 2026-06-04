@@ -52,8 +52,8 @@ use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, materialize_value,
-    materialize_values, store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot,
-    value_to_heap_slot, values_equal,
+    store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot, value_to_heap_slot,
+    values_equal,
 };
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};

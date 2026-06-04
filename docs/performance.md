@@ -630,6 +630,46 @@ Remaining callback work should focus on closure invocation overhead and broader
 stdlib/native boundary materialization.
 ```
 
+### 2026-06-04 M19 Native Argument Materialization Checkpoint
+
+This checkpoint reduces managed-heap native-call boundary work. `CallNative`
+now materializes argument registers directly into the native argument vector
+instead of first cloning register values into a temporary `Vec<Value>` and then
+materializing that second pass. Native calls still receive fully materialized
+script-owned `Value` arguments, preserving the heap and host boundary contract.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+git worktree add --detach ../vela-native-materialize-before HEAD
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_materialization | 139450 | 137200 | 11773534860610571856 | 11773534860610571856 |
+
+Default before/after from the same working session. The before run used a
+detached worktree at `0cf817f`; the after run used the native argument
+materialization working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_materialization | 1697428 | 1672942 | 1965056817950502848 | 1965056817950502848 |
+
+Checkpoint notes:
+
+```text
+The optimization is intentionally narrow: it removes one temporary vector from
+native argument materialization while preserving the materialized Value boundary
+for native calls.
+Remaining materialization work is still likely in native return storage,
+stdlib heap receiver conversion, host conversion, and returned heap objects.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
