@@ -7,6 +7,7 @@ pub(crate) struct Workload {
 #[derive(Clone, Copy)]
 pub(crate) enum ExecutionMode {
     Inline,
+    ScriptProgram,
     ManagedHeap,
     HostPatchTx,
     HostManagedHeapPatchTx,
@@ -101,6 +102,28 @@ fn main() {
         if tick > 150 && drift < 5.0 {
             break;
         }
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "script_call_small_args",
+        mode: ExecutionMode::ScriptProgram,
+        source: r#"
+fn add_one(value) {
+    return value + 1;
+}
+
+fn mix_pair(left, right) {
+    return left * 3 + right;
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..240 {
+        total += add_one(tick);
+        total += mix_pair(tick, total % 17);
     }
     return total;
 }

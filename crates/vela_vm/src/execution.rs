@@ -256,13 +256,7 @@ impl Vm {
                     let function = program.function(name).ok_or_else(|| {
                         VmError::new(VmErrorKind::UnknownFunction { name: name.clone() })
                     })?;
-                    let values = args
-                        .iter()
-                        .map(|arg| match arg {
-                            CallArgument::Register(register) => frame.read(*register).cloned(),
-                            CallArgument::Missing => Ok(Value::Missing),
-                        })
-                        .collect::<VmResult<Vec<_>>>()?;
+                    let values = ScriptCallArgs::from_call_arguments(&frame, args)?;
                     let protected_root_len = heap
                         .as_deref_mut()
                         .map(|heap| heap.push_frame_roots(&frame));
@@ -271,7 +265,7 @@ impl Vm {
                             code: function,
                             program: Some(program),
                             captures: &[],
-                            args: &values,
+                            args: values.as_slice(),
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
                         },
@@ -306,10 +300,7 @@ impl Vm {
                 }
                 InstructionKind::CallClosure { dst, callee, args } => {
                     let closure = expect_closure(frame.read(*callee)?, "closure call")?;
-                    let values = args
-                        .iter()
-                        .map(|register| frame.read(*register).cloned())
-                        .collect::<VmResult<Vec<_>>>()?;
+                    let values = ScriptCallArgs::from_registers(&frame, args)?;
                     let protected_root_len = heap
                         .as_deref_mut()
                         .map(|heap| heap.push_frame_roots(&frame));
@@ -318,7 +309,7 @@ impl Vm {
                             code: &closure.code,
                             program,
                             captures: &closure.captures,
-                            args: &values,
+                            args: values.as_slice(),
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
                         },
@@ -356,7 +347,7 @@ impl Vm {
                             },
                         )?;
                     } else {
-                        let values = MethodCallArgs::from_call_arguments(&frame, args)?;
+                        let values = ScriptCallArgs::from_call_arguments(&frame, args)?;
                         dispatch_call_method(
                             self,
                             program,
@@ -397,7 +388,7 @@ impl Vm {
                             },
                         )?;
                     } else {
-                        let values = MethodCallArgs::from_call_arguments(&frame, args)?;
+                        let values = ScriptCallArgs::from_call_arguments(&frame, args)?;
                         dispatch_call_method_id(
                             self,
                             program,
@@ -1160,13 +1151,13 @@ impl NativeCallArgs {
     }
 }
 
-enum MethodCallArgs {
+enum ScriptCallArgs {
     One([Value; 1]),
     Two([Value; 2]),
     Many(Vec<Value>),
 }
 
-impl MethodCallArgs {
+impl ScriptCallArgs {
     fn from_call_arguments(frame: &CallFrame, args: &[CallArgument]) -> VmResult<Self> {
         fn value_from_arg(frame: &CallFrame, arg: &CallArgument) -> VmResult<Value> {
             match arg {
@@ -1185,6 +1176,22 @@ impl MethodCallArgs {
             _ => args
                 .iter()
                 .map(|arg| value_from_arg(frame, arg))
+                .collect::<VmResult<Vec<_>>>()
+                .map(Self::Many),
+        }
+    }
+
+    fn from_registers(frame: &CallFrame, registers: &[Register]) -> VmResult<Self> {
+        match registers {
+            [] => Ok(Self::Many(Vec::new())),
+            [first] => Ok(Self::One([frame.read(*first)?.clone()])),
+            [first, second] => Ok(Self::Two([
+                frame.read(*first)?.clone(),
+                frame.read(*second)?.clone(),
+            ])),
+            _ => registers
+                .iter()
+                .map(|register| frame.read(*register).cloned())
                 .collect::<VmResult<Vec<_>>>()
                 .map(Self::Many),
         }

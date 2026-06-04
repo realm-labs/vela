@@ -5,7 +5,9 @@ use std::num::NonZeroU32;
 use std::time::{Duration, Instant};
 
 use vela_bytecode::compiler::options::CompilerOptions;
-use vela_bytecode::compiler::{compile_function_source, compile_program_source_with_options};
+use vela_bytecode::compiler::{
+    compile_function_source, compile_program_source, compile_program_source_with_options,
+};
 use vela_bytecode::{CodeObject, Program};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol};
 use vela_host::adapter::ScriptStateAdapter;
@@ -148,6 +150,9 @@ enum CompiledWorkload {
         mode: ExecutionMode,
         code: CodeObject,
     },
+    ScriptProgram {
+        program: Box<Program>,
+    },
     HostPatchTx {
         program: Box<Program>,
     },
@@ -165,6 +170,7 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error
             mode: ExecutionMode::Inline,
             code,
         } => Ok(vm.run(code)?),
+        CompiledWorkload::ScriptProgram { program } => Ok(vm.run_program(program, "main", &[])?),
         CompiledWorkload::Function {
             mode: ExecutionMode::ManagedHeap,
             code,
@@ -186,6 +192,10 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error
         }
         | CompiledWorkload::Function {
             mode: ExecutionMode::GameplayHost,
+            ..
+        }
+        | CompiledWorkload::Function {
+            mode: ExecutionMode::ScriptProgram,
             ..
         } => unreachable!("host workloads compile to programs"),
         CompiledWorkload::HostPatchTx { program } => run_host_patch_tx(vm, program),
@@ -237,6 +247,11 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
                 })
                 .map_err(|error| format!("{error:?}"))
         }
+        ExecutionMode::ScriptProgram => compile_program_source(SourceId::new(1), workload.source)
+            .map(|program| CompiledWorkload::ScriptProgram {
+                program: Box::new(program),
+            })
+            .map_err(|error| format!("{error:?}")),
         ExecutionMode::Inline => compile_function_source(SourceId::new(1), workload.source, "main")
             .map(|code| CompiledWorkload::Function {
                 mode: workload.mode,
@@ -597,6 +612,7 @@ impl ExecutionMode {
     fn as_str(self) -> &'static str {
         match self {
             Self::Inline => "inline",
+            Self::ScriptProgram => "script_program",
             Self::ManagedHeap => "managed_heap",
             Self::HostPatchTx => "host_patch_tx",
             Self::HostManagedHeapPatchTx => "host_managed_heap_patch_tx",

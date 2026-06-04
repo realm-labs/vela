@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, small native/method argument storage, owned return aggregate storage, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema, map lookup key borrowing, and set lookup/higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded map/map-lookup/set/set-lookup/array/array-lookup/array-distinct/host-conversion/managed-heap-host-conversion/managed-heap-callback/Option-Result/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, Option/Result helper tag fast paths, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, small script/native/method argument storage, owned return aggregate storage, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema, map lookup key borrowing, and set lookup/higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded script-call/map/map-lookup/set/set-lookup/array/array-lookup/array-distinct/host-conversion/managed-heap-host-conversion/managed-heap-callback/Option-Result/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, Option/Result helper tag fast paths, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -120,6 +120,11 @@ before debugger/DAP work and Cranelift JIT.
   [performance.md](performance.md): zero-, one-, and two-argument native calls
   now use stack-backed argument storage instead of allocating a temporary
   `Vec<Value>`, while wider calls keep the vector-backed path.
+- An M19 script call argument storage checkpoint is recorded in
+  [performance.md](performance.md): `script_call_small_args` now measures
+  repeated one- and two-argument script function calls, and script function,
+  closure, and method call argument packing uses stack-backed storage for small
+  calls before falling back to the vector-backed path.
 - An M19 returned heap object storage checkpoint is recorded in
   [performance.md](performance.md): owned return and method-result aggregates
   now move strings, collections, records, and enums directly into managed heap

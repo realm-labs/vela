@@ -83,6 +83,7 @@ Current tracked workload groups:
 
 ```text
 scalar_branch_loop          VM dispatch, arithmetic, branches, range for-in
+script_call_small_args      script function calls with one- and two-argument calls
 stdlib_collections          array, map, set, Option, and stdlib method dispatch
 host_patch_tx               HostRef reads, nested HostPath writes, PatchTx overlay
 gameplay_monster_kill       demo monster kill workflow with HostPath, PatchTx, stdlib callbacks, and host methods
@@ -1701,6 +1702,37 @@ Checkpoint notes:
 The focused Option/Result helper workload improved by about 6.8% because it
 uses many small native/helper calls. Checksums stayed stable, and the slow path
 for wider native calls remains unchanged.
+```
+
+### 2026-06-04 M19 Script Call Argument Storage Checkpoint
+
+This checkpoint adds a focused `script_call_small_args` benchmark for repeated
+one- and two-argument script function calls through a compiled `Program`.
+Script function, closure, and method call argument packing now uses
+stack-backed storage for one- and two-argument calls before falling back to the
+existing `Vec<Value>` path for wider calls.
+
+Commands:
+
+```bash
+cargo test -p vela_vm runs_compiled_script_function_calls
+cargo test -p vela_vm runs_immediate_lambda_calls_and_block_returns
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Checksum |
+|---|---:|---:|---:|
+| script_call_small_args | 1982200 | 1696050 | 17951189677707400592 |
+
+Checkpoint notes:
+
+```text
+The focused script-call workload improved by about 14.4% with the checksum
+unchanged. The optimization keeps the same `&[Value]` call interface and does
+not change call-depth budgeting, frame root collection, or hot-reload code
+object ownership.
 ```
 
 ### 2026-06-04 M19 Managed Heap Host Conversion Benchmark Checkpoint
