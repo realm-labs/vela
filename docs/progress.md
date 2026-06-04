@@ -85,6 +85,9 @@ before debugger/DAP work and Cranelift JIT.
 - M18 full/default benchmark output is recorded in
   [performance.md](performance.md) with environment metadata, checksums,
   external runtime availability, and measured bottleneck notes.
+- The external comparison benchmark now covers scalar branch loops, script
+  function calls, array scans, and string method workloads across Vela and
+  available Lua 5.x, LuaJIT, Node.js, and Rhai runtimes.
 - The first M19 GC pacing optimization is recorded in
   [performance.md](performance.md): safe-point GC root collection now reuses a
   `HeapExecution` buffer and appends frame roots directly while preserving

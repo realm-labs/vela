@@ -4,19 +4,31 @@ use std::hint::black_box;
 use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use vela_bytecode::compiler::compile_function_source;
+use vela_bytecode::Program;
+use vela_bytecode::compiler::compile_program_source;
 use vela_common::SourceId;
 use vela_vm::Vm;
 use vela_vm::value::Value;
 
 const QUICK_REPEATS: usize = 2;
-const QUICK_ITERATIONS: usize = 8;
+const QUICK_ITERATIONS: usize = 500;
 const QUICK_WARMUP: usize = 1;
-const DEFAULT_REPEATS: usize = 5;
-const DEFAULT_ITERATIONS: usize = 100;
-const DEFAULT_WARMUP: usize = 3;
+const DEFAULT_REPEATS: usize = 3;
+const DEFAULT_ITERATIONS: usize = 5_000;
+const DEFAULT_WARMUP: usize = 1;
 
-const VELA_SOURCE: &str = r#"
+struct Workload {
+    name: &'static str,
+    vela: &'static str,
+    lua: &'static str,
+    node: &'static str,
+    rhai: &'static str,
+}
+
+const WORKLOADS: &[Workload] = &[
+    Workload {
+        name: "scalar_branch_loop",
+        vela: r#"
 fn main() {
     let total = 0;
     for value in 0..200 {
@@ -31,9 +43,29 @@ fn main() {
     }
     return total;
 }
-"#;
-
-const NODE_SCALAR_SCRIPT: &str = r#"
+"#,
+        lua: r#"
+local iterations = tonumber(os.getenv("VELA_BENCH_ITERATIONS") or "1")
+local checksum = 0
+local function run()
+    local total = 0
+    for value = 0, 199 do
+        if value % 3 == 0 then
+            total = total + value * 2
+        elseif value > 180 then
+            break
+        else
+            total = total + (value * 5) % 17
+        end
+    end
+    return total
+end
+for _ = 1, iterations do
+    checksum = checksum + run()
+end
+print(string.format("%.0f", checksum))
+"#,
+        node: r#"
 const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
 let checksum = 0;
 function run() {
@@ -54,31 +86,8 @@ for (let iteration = 0; iteration < iterations; iteration += 1) {
     checksum += run();
 }
 console.log(String(checksum));
-"#;
-
-const LUA_SCALAR_SCRIPT: &str = r#"
-local iterations = tonumber(os.getenv("VELA_BENCH_ITERATIONS") or "1")
-local checksum = 0
-local function run()
-    local total = 0
-    for value = 0, 199 do
-        if value % 3 == 0 then
-            total = total + value * 2
-        elseif value > 180 then
-            break
-        else
-            total = total + (value * 5) % 17
-        end
-    end
-    return total
-end
-for _ = 1, iterations do
-    checksum = checksum + run()
-end
-print(string.format("%.0f", checksum))
-"#;
-
-const RHAI_SCALAR_SCRIPT: &str = r#"
+"#,
+        rhai: r#"
 let iterations = {iterations};
 let checksum = 0;
 
@@ -101,7 +110,277 @@ for _ in 0..iterations {
 }
 
 print(checksum);
-"#;
+"#,
+    },
+    Workload {
+        name: "function_calls",
+        vela: r#"
+fn add_one(value) {
+    return value + 1;
+}
+
+fn mix_pair(left, right) {
+    return left * 3 + right;
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..240 {
+        total += add_one(tick);
+        total += mix_pair(tick, total % 17);
+    }
+    return total;
+}
+"#,
+        lua: r#"
+local iterations = tonumber(os.getenv("VELA_BENCH_ITERATIONS") or "1")
+local checksum = 0
+local function add_one(value)
+    return value + 1
+end
+local function mix_pair(left, right)
+    return left * 3 + right
+end
+local function run()
+    local total = 0
+    for tick = 0, 239 do
+        total = total + add_one(tick)
+        total = total + mix_pair(tick, total % 17)
+    end
+    return total
+end
+for _ = 1, iterations do
+    checksum = checksum + run()
+end
+print(string.format("%.0f", checksum))
+"#,
+        node: r#"
+const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
+let checksum = 0;
+function addOne(value) {
+    return value + 1;
+}
+function mixPair(left, right) {
+    return left * 3 + right;
+}
+function run() {
+    let total = 0;
+    for (let tick = 0; tick < 240; tick += 1) {
+        total += addOne(tick);
+        total += mixPair(tick, total % 17);
+    }
+    return total;
+}
+for (let iteration = 0; iteration < iterations; iteration += 1) {
+    checksum += run();
+}
+console.log(String(checksum));
+"#,
+        rhai: r#"
+let iterations = {iterations};
+let checksum = 0;
+
+fn add_one(value) {
+    value + 1
+}
+
+fn mix_pair(left, right) {
+    left * 3 + right
+}
+
+fn run() {
+    let total = 0;
+    for tick in 0..240 {
+        total += add_one(tick);
+        total += mix_pair(tick, total % 17);
+    }
+    total
+}
+
+for _ in 0..iterations {
+    checksum += run();
+}
+
+print(checksum);
+"#,
+    },
+    Workload {
+        name: "array_scan",
+        vela: r#"
+fn main() {
+    let values = [3, 1, 4, 1, 5, 9, 2, 6];
+    let total = 0;
+    for tick in 0..200 {
+        for value in values {
+            if value % 2 == 0 {
+                total += (value * tick) % 17;
+            } else {
+                total += value + tick % 5;
+            }
+        }
+    }
+    return total;
+}
+"#,
+        lua: r#"
+local iterations = tonumber(os.getenv("VELA_BENCH_ITERATIONS") or "1")
+local checksum = 0
+local values = {3, 1, 4, 1, 5, 9, 2, 6}
+local function run()
+    local total = 0
+    for tick = 0, 199 do
+        for _, value in ipairs(values) do
+            if value % 2 == 0 then
+                total = total + (value * tick) % 17
+            else
+                total = total + value + tick % 5
+            end
+        end
+    end
+    return total
+end
+for _ = 1, iterations do
+    checksum = checksum + run()
+end
+print(string.format("%.0f", checksum))
+"#,
+        node: r#"
+const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
+let checksum = 0;
+const values = [3, 1, 4, 1, 5, 9, 2, 6];
+function run() {
+    let total = 0;
+    for (let tick = 0; tick < 200; tick += 1) {
+        for (const value of values) {
+            if (value % 2 === 0) {
+                total += (value * tick) % 17;
+            } else {
+                total += value + tick % 5;
+            }
+        }
+    }
+    return total;
+}
+for (let iteration = 0; iteration < iterations; iteration += 1) {
+    checksum += run();
+}
+console.log(String(checksum));
+"#,
+        rhai: r#"
+let iterations = {iterations};
+let checksum = 0;
+let values = [3, 1, 4, 1, 5, 9, 2, 6];
+
+fn run(values) {
+    let total = 0;
+    for tick in 0..200 {
+        for value in values {
+            if value % 2 == 0 {
+                total += (value * tick) % 17;
+            } else {
+                total += value + tick % 5;
+            }
+        }
+    }
+    total
+}
+
+for _ in 0..iterations {
+    checksum += run(values);
+}
+
+print(checksum);
+"#,
+    },
+    Workload {
+        name: "string_methods",
+        vela: r#"
+fn main() {
+    let labels = ["quest", "raid", "daily", "bonus"];
+    let total = 0;
+    for tick in 0..200 {
+        for label in labels {
+            if label.starts_with("q") || label.contains("i") {
+                total += label.len() + tick % 7;
+            } else {
+                total += label.len();
+            }
+        }
+    }
+    return total;
+}
+"#,
+        lua: r#"
+local iterations = tonumber(os.getenv("VELA_BENCH_ITERATIONS") or "1")
+local checksum = 0
+local labels = {"quest", "raid", "daily", "bonus"}
+local function run()
+    local total = 0
+    for tick = 0, 199 do
+        for _, label in ipairs(labels) do
+            if string.sub(label, 1, 1) == "q" or string.find(label, "i", 1, true) ~= nil then
+                total = total + #label + tick % 7
+            else
+                total = total + #label
+            end
+        end
+    end
+    return total
+end
+for _ = 1, iterations do
+    checksum = checksum + run()
+end
+print(string.format("%.0f", checksum))
+"#,
+        node: r#"
+const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
+let checksum = 0;
+const labels = ["quest", "raid", "daily", "bonus"];
+function run() {
+    let total = 0;
+    for (let tick = 0; tick < 200; tick += 1) {
+        for (const label of labels) {
+            if (label.startsWith("q") || label.includes("i")) {
+                total += label.length + tick % 7;
+            } else {
+                total += label.length;
+            }
+        }
+    }
+    return total;
+}
+for (let iteration = 0; iteration < iterations; iteration += 1) {
+    checksum += run();
+}
+console.log(String(checksum));
+"#,
+        rhai: r#"
+let iterations = {iterations};
+let checksum = 0;
+let labels = ["quest", "raid", "daily", "bonus"];
+
+fn run(labels) {
+    let total = 0;
+    for tick in 0..200 {
+        for label in labels {
+            if label.starts_with("q") || label.contains("i") {
+                total += label.len() + tick % 7;
+            } else {
+                total += label.len();
+            }
+        }
+    }
+    total
+}
+
+for _ in 0..iterations {
+    checksum += run(labels);
+}
+
+print(checksum);
+"#,
+    },
+];
 
 fn main() -> Result<(), Box<dyn Error>> {
     let params = BenchParams::from_args();
@@ -115,33 +394,47 @@ fn main() -> Result<(), Box<dyn Error>> {
         params.warmup
     );
 
-    let vela = run_vela(params)?;
-    print_result(
-        "vela",
-        env!("CARGO_PKG_VERSION"),
-        "internal",
-        "scalar_branch_loop",
-        vela,
-    );
+    let vm = Vm::new().with_standard_natives();
+    for workload in WORKLOADS {
+        let result = run_vela(&vm, workload, params)?;
+        print_result(
+            "vela",
+            env!("CARGO_PKG_VERSION"),
+            "internal",
+            workload.name,
+            result,
+            params,
+        );
+    }
 
     for runtime in external_runtimes() {
         match runtime.locate() {
             Some(command) => {
                 let version = runtime.version(&command);
-                match runtime.run(&command, params) {
-                    Ok(result) => print_result(
-                        runtime.name,
-                        &version,
-                        "process",
-                        "scalar_branch_loop",
-                        result,
-                    ),
-                    Err(error) => println!(
-                        "runtime={} status=error command={} error=\"{}\"",
-                        runtime.name,
-                        command,
-                        sanitize(&error.to_string())
-                    ),
+                println!(
+                    "runtime={} version=\"{}\" command={}",
+                    runtime.name,
+                    sanitize(&version),
+                    command
+                );
+                for workload in WORKLOADS {
+                    match runtime.run(&command, workload, params) {
+                        Ok(result) => print_result(
+                            runtime.name,
+                            &version,
+                            "process",
+                            workload.name,
+                            result,
+                            params,
+                        ),
+                        Err(error) => println!(
+                            "runtime={} bench={} status=error command={} error=\"{}\"",
+                            runtime.name,
+                            workload.name,
+                            command,
+                            sanitize(&error.to_string())
+                        ),
+                    }
                 }
             }
             None => println!(
@@ -192,7 +485,6 @@ struct ExternalRuntime {
     commands: &'static [&'static str],
     version_args: &'static [&'static str],
     run_args: &'static [&'static str],
-    script: &'static str,
     script_mode: ScriptMode,
 }
 
@@ -228,17 +520,24 @@ impl ExternalRuntime {
             .unwrap_or_else(|| "unknown".to_owned())
     }
 
-    fn run(&self, command: &str, params: BenchParams) -> Result<BenchResult, Box<dyn Error>> {
+    fn run(
+        &self,
+        command: &str,
+        workload: &Workload,
+        params: BenchParams,
+    ) -> Result<BenchResult, Box<dyn Error>> {
+        let script = self.script_for(workload);
         for _ in 0..params.warmup {
-            let checksum = self.run_process(command, params.iterations)?;
+            let checksum = self.run_process(command, script, params.iterations)?;
             black_box(checksum);
         }
 
         let mut samples = Vec::with_capacity(params.repeats);
-        let mut checksum = bytes_checksum(self.name.as_bytes());
+        let mut checksum =
+            bytes_checksum(self.name.as_bytes()) ^ bytes_checksum(workload.name.as_bytes());
         for _ in 0..params.repeats {
             let started = Instant::now();
-            let iteration_checksum = self.run_process(command, params.iterations)?;
+            let iteration_checksum = self.run_process(command, script, params.iterations)?;
             samples.push(started.elapsed());
             checksum = mix(checksum, iteration_checksum);
             black_box(iteration_checksum);
@@ -247,8 +546,22 @@ impl ExternalRuntime {
         Ok(summarize(samples, checksum))
     }
 
-    fn run_process(&self, command: &str, iterations: usize) -> Result<u64, Box<dyn Error>> {
-        let script = self.script.replace("{iterations}", &iterations.to_string());
+    fn script_for<'a>(&self, workload: &'a Workload) -> &'a str {
+        match self.name {
+            "lua5" | "luajit" => workload.lua,
+            "node" => workload.node,
+            "rhai" => workload.rhai,
+            _ => "",
+        }
+    }
+
+    fn run_process(
+        &self,
+        command: &str,
+        script: &str,
+        iterations: usize,
+    ) -> Result<u64, Box<dyn Error>> {
+        let script = script.replace("{iterations}", &iterations.to_string());
         let mut command_process = Command::new(command);
         command_process
             .args(self.run_args)
@@ -295,7 +608,6 @@ fn external_runtimes() -> Vec<ExternalRuntime> {
             commands: &["lua", "lua5.4", "lua5.3"],
             version_args: &["-v"],
             run_args: &["-e"],
-            script: LUA_SCALAR_SCRIPT,
             script_mode: ScriptMode::InlineArg,
         },
         ExternalRuntime {
@@ -303,7 +615,6 @@ fn external_runtimes() -> Vec<ExternalRuntime> {
             commands: &["luajit"],
             version_args: &["-v"],
             run_args: &["-e"],
-            script: LUA_SCALAR_SCRIPT,
             script_mode: ScriptMode::InlineArg,
         },
         ExternalRuntime {
@@ -311,7 +622,6 @@ fn external_runtimes() -> Vec<ExternalRuntime> {
             commands: &["node"],
             version_args: &["--version"],
             run_args: &["-e"],
-            script: NODE_SCALAR_SCRIPT,
             script_mode: ScriptMode::InlineArg,
         },
         ExternalRuntime {
@@ -319,27 +629,29 @@ fn external_runtimes() -> Vec<ExternalRuntime> {
             commands: &["rhai-run"],
             version_args: &["--version"],
             run_args: &[],
-            script: RHAI_SCALAR_SCRIPT,
             script_mode: ScriptMode::FileArg,
         },
     ]
 }
 
-fn run_vela(params: BenchParams) -> Result<BenchResult, Box<dyn Error>> {
-    let code = compile_function_source(SourceId::new(1), VELA_SOURCE, "main")
+fn run_vela(
+    vm: &Vm,
+    workload: &Workload,
+    params: BenchParams,
+) -> Result<BenchResult, Box<dyn Error>> {
+    let program = compile_program_source(SourceId::new(1), workload.vela)
         .map_err(|error| format!("{error:?}"))?;
-    let vm = Vm::new();
 
     for _ in 0..params.warmup {
-        let checksum = run_vela_iterations(&vm, &code, params.iterations)?;
+        let checksum = run_vela_iterations(vm, &program, params.iterations)?;
         black_box(checksum);
     }
 
     let mut samples = Vec::with_capacity(params.repeats);
-    let mut checksum = bytes_checksum(b"vela");
+    let mut checksum = bytes_checksum(b"vela") ^ bytes_checksum(workload.name.as_bytes());
     for _ in 0..params.repeats {
         let started = Instant::now();
-        let iteration_checksum = run_vela_iterations(&vm, &code, params.iterations)?;
+        let iteration_checksum = run_vela_iterations(vm, &program, params.iterations)?;
         samples.push(started.elapsed());
         checksum = mix(checksum, iteration_checksum);
         black_box(iteration_checksum);
@@ -350,12 +662,12 @@ fn run_vela(params: BenchParams) -> Result<BenchResult, Box<dyn Error>> {
 
 fn run_vela_iterations(
     vm: &Vm,
-    code: &vela_bytecode::CodeObject,
+    program: &Program,
     iterations: usize,
 ) -> Result<u64, Box<dyn Error>> {
     let mut checksum = 0_u64;
     for _ in 0..iterations {
-        let value = vm.run(code)?;
+        let value = vm.run_program(program, "main", &[])?;
         checksum = checksum.wrapping_add(value_checksum(&value));
     }
     Ok(checksum)
@@ -381,9 +693,16 @@ fn temp_script_path(runtime: &str) -> std::path::PathBuf {
     ))
 }
 
-fn print_result(runtime: &str, version: &str, mode: &str, bench: &str, result: BenchResult) {
+fn print_result(
+    runtime: &str,
+    version: &str,
+    mode: &str,
+    bench: &str,
+    result: BenchResult,
+    params: BenchParams,
+) {
     println!(
-        "runtime={} version=\"{}\" bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={}",
+        "runtime={} version=\"{}\" bench={} mode={} min_ns={} mean_ns={} median_ns={} p95_ns={} per_iter_mean_ns={} checksum={}",
         runtime,
         sanitize(version),
         bench,
@@ -392,6 +711,7 @@ fn print_result(runtime: &str, version: &str, mode: &str, bench: &str, result: B
         result.mean_ns,
         result.median_ns,
         result.p95_ns,
+        result.mean_ns / params.iterations as u128,
         result.checksum
     );
 }

@@ -91,14 +91,16 @@ managed_heap_materialization records, enums, strings, Option helpers, heap mode
 gc_pacing                   safe-point GC under managed heap allocation pressure
 hot_reload_accept           compatible update compile/apply and post-apply call
 hot_reload_abi_reject       rejected event ABI update and report generation
-external_compare            Vela plus available Lua 5.x, LuaJIT, Node, and Rhai
+external_compare            Vela plus available Lua 5.x, LuaJIT, Node, and Rhai across scalar, call, array, and string workloads
 ```
 
 The external comparison harness records missing runtimes explicitly instead of
 failing the benchmark. On each machine it reports the executable version for
 available runtimes, the process-backed timing mode used for external tools, and
-the same repeat, iteration, warmup, profile, OS, architecture, and checksum
-fields as the internal baseline harnesses.
+the same repeat, iteration, warmup, profile, OS, architecture, per-iteration
+mean, and checksum fields as the internal baseline harnesses. External runtime
+rows are process-backed, so their timings include a process launch per sample;
+larger iteration counts are used to reduce that startup cost.
 
 ## Baseline Captures
 
@@ -257,6 +259,69 @@ Lua 5.x, LuaJIT, and Rhai were unavailable on this machine. The external
 comparison harness still records the missing commands and Node.js version, but
 the Lua-comparable M19 target requires a later capture on a machine with Lua
 5.x installed.
+```
+
+### 2026-06-04 Expanded External Comparison Checkpoint
+
+This checkpoint expands `external_compare` from one scalar branch workload to
+four common execution workloads:
+
+```text
+scalar_branch_loop
+function_calls
+array_scan
+string_methods
+```
+
+The harness still reports Vela as an in-process VM measurement and external
+runtimes as process-backed measurements. `per_iter_mean_ns` is reported to make
+the larger iteration counts easier to compare.
+
+Environment:
+
+```text
+commit=f17f6cf
+rustc=1.96.0 (ac68faa20 2026-05-25)
+cargo=1.96.0 (30a34c682 2026-05-25)
+target=macos/aarch64
+profile=release
+lua=Lua 5.5.0
+luajit=LuaJIT 2.1.1780076327
+node=v22.20.0
+rhai=missing: rhai-run
+```
+
+Command:
+
+```bash
+cargo bench -p vela_vm --bench external_compare
+```
+
+Parameters:
+
+```text
+repeats=3 iterations=5000 warmup=1
+```
+
+Per-iteration mean nanoseconds:
+
+| Runtime | scalar_branch_loop | function_calls | array_scan | string_methods |
+|---|---:|---:|---:|---:|
+| vela | 34664 | 106573 | 435377 | 469890 |
+| lua5 | 4898 | 12391 | 75947 | 103761 |
+| luajit | 1184 | 2353 | 4801 | 8590 |
+| node | 7397 | 7834 | 10014 | 13830 |
+
+Checkpoint notes:
+
+```text
+The expanded comparison is a directional reference, not an apples-to-apples
+runtime shootout. Lua, LuaJIT, Node, and Rhai rows execute through a separate
+process per sample. Even with 5000 iterations per sample, process startup and
+runtime warmup policy still affect the external rows. The useful signal is the
+shape of the gaps: scalar loops are closest, while array and string workloads
+show that collection iteration and method dispatch remain major non-JIT
+interpreter targets.
 ```
 
 ### 2026-06-04 M19 GC Root Buffer Checkpoint
