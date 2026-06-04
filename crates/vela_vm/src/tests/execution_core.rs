@@ -328,6 +328,34 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_scalar_equality_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    if "tick" == "tick"
+        && "tick" != "tock"
+        && true == true
+        && false != true
+        && 7 == 7
+        && 7 != 8
+        && 7 != 7.0
+        && null == null
+        && null != false
+    {
+        return 1;
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile scalar equality source");
+
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+}
+
+#[test]
 fn runs_compiled_shebang_source() {
     let code = compile_function_source(
         SourceId::new(1),

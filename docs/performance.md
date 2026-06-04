@@ -1134,6 +1134,47 @@ before additional interpreter work on mixed int/float/bool/string operations.
 The benchmark is measurement-only; no VM runtime behavior changed.
 ```
 
+### 2026-06-04 M19 Scalar Equality Fast Path Checkpoint
+
+This checkpoint avoids materializing values for direct scalar equality and
+inequality checks. `values_equal` now compares `null`, bool, int, float, and
+string pairs directly before falling back to the existing materializing path
+for heap refs and aggregates. This keeps aggregate and heap-reference equality
+semantics unchanged while avoiding string clones in common scalar dispatch
+paths.
+
+Commands:
+
+```bash
+cargo test -p vela_vm execution_core
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from warmed runs in the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| scalar_branch_loop | 550750 | 526400 | 5382776514408301204 | 5382776514408301204 |
+| scalar_dispatch_mix | 1468400 | 1245750 | 15308784822820424249 | 15308784822820424249 |
+
+Default after-run comparison against the scalar dispatch mix coverage
+checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| scalar_branch_loop | 6963514 | 6615942 | 14794452088437409837 | 14794452088437409837 |
+| scalar_dispatch_mix | 18350600 | 15448514 | 18355421299335186739 | 18355421299335186739 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for both scalar workloads. The strongest signal is in
+scalar_dispatch_mix, where string equality and inequality no longer clone both
+sides through materialization. Aggregate equality, heap-ref equality, and
+source-spanned fallback errors continue through the previous materializing path.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

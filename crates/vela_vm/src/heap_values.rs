@@ -461,9 +461,27 @@ pub(crate) fn values_equal(
     rhs: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
+    if let Some(equal) = scalar_values_equal(lhs, rhs) {
+        return Ok(equal);
+    }
     let lhs = materialize_value(lhs, heap)?;
     let rhs = materialize_value(rhs, heap)?;
     Ok(lhs == rhs)
+}
+
+fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
+    match (lhs, rhs) {
+        (Value::Null, Value::Null) => Some(true),
+        (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
+        (Value::Int(lhs), Value::Int(rhs)) => Some(lhs == rhs),
+        (Value::Float(lhs), Value::Float(rhs)) => Some(lhs == rhs),
+        (Value::String(lhs), Value::String(rhs)) => Some(lhs == rhs),
+        (
+            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_),
+            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_),
+        ) => Some(false),
+        _ => None,
+    }
 }
 
 pub(crate) fn store_value_in_heap_if_needed(

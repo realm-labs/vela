@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/read-only method receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and scalar dispatch optimizations remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/read-only method receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, numeric dispatch fast paths, and scalar equality fast paths exist; heap materialization pressure and scalar dispatch optimizations remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -177,6 +177,10 @@ before debugger/DAP work and Cranelift JIT.
   [performance.md](performance.md): `scalar_dispatch_mix` now exercises mixed
   integer, float, boolean, string comparison, branch, and loop behavior as a
   broader scalar interpreter measurement surface.
+- An M19 scalar equality checkpoint is recorded in
+  [performance.md](performance.md): direct `null`, bool, int, float, and string
+  equality checks now avoid value materialization and string cloning while
+  aggregate and heap-reference equality keep the previous fallback path.
 
 ### Remaining Gaps
 
