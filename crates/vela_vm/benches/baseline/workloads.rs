@@ -226,6 +226,30 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_lookup",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = ["daily", "quest", "raid", "bonus", "event", "boss"];
+        let tiers = [1, 2, 3, 5, 8, 13];
+        if !tags.contains("raid")
+            || tags.contains("missing")
+            || option::unwrap_or(tags.index_of("boss"), -1) != 5
+            || !tiers.contains(8)
+            || tiers.contains(tick + 20)
+            || option::unwrap_or(tiers.index_of(13), -1) != 5
+        {
+            return 0;
+        }
+        total += tags.len() + tiers.len() + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "host_patch_tx",
         mode: ExecutionMode::HostPatchTx,
         source: r#"

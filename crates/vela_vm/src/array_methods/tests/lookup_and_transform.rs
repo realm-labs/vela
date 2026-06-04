@@ -107,6 +107,33 @@ fn main() {
 }
 
 #[test]
+fn managed_heap_execution_runs_array_scalar_lookup_methods() {
+    let source = r#"
+fn main() {
+    let values = [1, 2, 3, 5, 8, 13];
+    if values.contains(8)
+        && !values.contains(21)
+        && option::unwrap_or(values.index_of(13), -1) == 5
+        && option::unwrap_or(values.index_of(21), -1) == -1
+    {
+        return values.len();
+    }
+    return 0;
+}
+"#;
+    let code = compile_function_source(SourceId::new(1), source, "main")
+        .expect("heap array scalar lookup source should compile");
+    let mut budget = ExecutionBudget::unbounded();
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    let result = vm
+        .run_with_managed_heap_and_budget(&code, &mut budget)
+        .expect("heap array scalar lookup methods should run");
+    assert_eq!(result, Value::Int(6));
+}
+
+#[test]
 fn runs_compiled_array_distinct_method() {
     let source = r#"
 fn main() {

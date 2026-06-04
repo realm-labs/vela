@@ -1731,6 +1731,36 @@ temporary receiver vectors and heap-reference wrapper values in set.has().
 Other quick benchmark rows stayed within normal run-to-run noise.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Lookup Benchmark Checkpoint
+
+This checkpoint adds a focused `managed_heap_array_lookup` benchmark for
+repeated heap-mode `array.contains()` and `array.index_of()` calls over string
+and integer arrays. It also adds a focused managed-heap scalar lookup test.
+
+Commands:
+
+```bash
+cargo test -p vela_vm managed_heap_execution_runs_array_contains_method
+cargo test -p vela_vm managed_heap_execution_runs_array_index_of_method
+cargo test -p vela_vm managed_heap_execution_runs_array_scalar_lookup_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick baseline from the same working session:
+
+| Benchmark | Mean ns | Checksum |
+|---|---:|---:|
+| managed_heap_array_lookup | 9624100 | 17198566150566951166 |
+
+Checkpoint notes:
+
+```text
+This gives M19 a focused array lookup timing surface separate from broader
+array transform and callback rows. A direct heap-slot comparison helper was
+measured but not accepted because quick runs regressed the focused benchmark,
+so the runtime path stayed unchanged.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
