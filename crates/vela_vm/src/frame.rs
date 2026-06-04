@@ -42,10 +42,15 @@ impl CallFrame {
 
     #[allow(dead_code)]
     pub(crate) fn heap_roots(&self) -> Vec<GcRef> {
-        self.heap_root_slots()
-            .into_iter()
-            .map(|root| root.reference)
-            .collect()
+        let mut roots = Vec::new();
+        self.extend_heap_roots(&mut roots);
+        roots
+    }
+
+    pub(crate) fn extend_heap_roots(&self, roots: &mut Vec<GcRef>) {
+        self.registers
+            .iter()
+            .for_each(|value| value.trace_heap_refs(roots));
     }
 
     #[allow(dead_code)]

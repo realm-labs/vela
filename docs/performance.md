@@ -257,6 +257,46 @@ the Lua-comparable M19 target requires a later capture on a machine with Lua
 5.x installed.
 ```
 
+### 2026-06-04 M19 GC Root Buffer Checkpoint
+
+This checkpoint optimized safe-point GC root collection without changing the GC
+algorithm, safe-point cadence, budget accounting, or benchmark checksums. Before
+each safe-point GC step, `HeapExecution` now reuses one root buffer and appends
+current frame roots directly instead of allocating temporary root vectors.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| gc_pacing | 21782500 | 6617300 | 16625037316567583116 | 16625037316567583116 |
+
+Default baseline comparison against the pre-M19 full baseline:
+
+| Benchmark | Pre-M19 mean ns | After mean ns | Pre-M19 checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_materialization | 7122628 | 1805528 | 1965056817950502848 | 1965056817950502848 |
+| gc_pacing | 1119594114 | 86437328 | 10923073775105338595 | 10923073775105338595 |
+
+Checkpoint notes:
+
+```text
+The large managed_heap_materialization improvement is expected because the same
+safe-point root path is active in managed heap execution.
+Checksums stayed stable for both quick and default runs, so the optimization is
+measurement-preserving for these harnesses.
+GC pacing remains the largest default VM workload after this change, but it is
+now much closer to the other tracked groups. Further M19 work should inspect
+heap materialization, allocation pressure, and scalar dispatch before adding
+larger GC policy changes.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

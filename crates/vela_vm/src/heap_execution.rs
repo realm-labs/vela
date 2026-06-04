@@ -1,9 +1,11 @@
 use crate::ExecutionBudget;
+use crate::frame::CallFrame;
 use crate::heap::{GcBudget, GcRef, GcStepStats, ScriptHeap};
 
 pub struct HeapExecution<'heap> {
     pub heap: &'heap mut ScriptHeap,
     protected_roots: Vec<GcRef>,
+    safe_point_roots: Vec<GcRef>,
     safe_point_gc_budget: GcBudget,
     gc_in_progress: bool,
     last_gc_step: Option<GcStepStats>,
@@ -16,6 +18,7 @@ impl<'heap> HeapExecution<'heap> {
         Self {
             heap,
             protected_roots: Vec::new(),
+            safe_point_roots: Vec::new(),
             safe_point_gc_budget: GcBudget::micros(max_pause_micros),
             gc_in_progress: false,
             last_gc_step: None,
@@ -43,20 +46,23 @@ impl<'heap> HeapExecution<'heap> {
         self.protected_roots.truncate(len);
     }
 
-    pub(crate) fn collect_at_safe_point(
+    pub(crate) fn collect_frame_at_safe_point(
         &mut self,
-        frame_roots: Vec<GcRef>,
+        frame: &CallFrame,
         budget: Option<&mut ExecutionBudget>,
     ) {
         if !self.gc_in_progress && !self.heap.should_collect() {
             return;
         }
 
-        let mut roots = self.protected_roots.clone();
-        roots.extend(frame_roots);
-        let stats = self
-            .heap
-            .step_gc_with_budget(&roots, self.safe_point_gc_budget, budget);
+        self.safe_point_roots.clear();
+        self.safe_point_roots.extend(&self.protected_roots);
+        frame.extend_heap_roots(&mut self.safe_point_roots);
+        let stats = self.heap.step_gc_with_budget(
+            &self.safe_point_roots,
+            self.safe_point_gc_budget,
+            budget,
+        );
         self.gc_in_progress = !stats.complete;
         self.last_gc_step = Some(stats);
     }

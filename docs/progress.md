@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | GC pacing, heap materialization, and scalar dispatch are measured first optimization candidates. |
+| M19 | Partial | Safe-point GC root buffering is optimized with benchmark evidence; heap materialization and scalar dispatch remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -85,12 +85,16 @@ before debugger/DAP work and Cranelift JIT.
 - M18 full/default benchmark output is recorded in
   [performance.md](performance.md) with environment metadata, checksums,
   external runtime availability, and measured bottleneck notes.
+- The first M19 GC pacing optimization is recorded in
+  [performance.md](performance.md): safe-point GC root collection now reuses a
+  `HeapExecution` buffer and appends frame roots directly while preserving
+  benchmark checksums.
 
 ### Remaining Gaps
 
-- M19: optimize the non-JIT interpreter and managed heap path only with
-  before/after benchmark evidence, starting from GC pacing, heap
-  materialization, and scalar dispatch measurements.
+- M19: continue optimizing the non-JIT interpreter and managed heap path only
+  with before/after benchmark evidence, focusing next on heap materialization,
+  allocation pressure, and scalar dispatch measurements.
 - M20+: keep inline-cache and specialization work behind M19 benchmarked
   interpreter/heap improvements.
 
@@ -112,9 +116,9 @@ ownership, and source-spanned diagnostics.
 
 ## Next Up
 
-- Choose a narrow measured M19 optimization target from the full/default
-  baseline notes, with GC pacing and heap materialization currently the clearest
-  candidates.
+- Choose the next narrow measured M19 optimization target from the updated
+  checkpoint notes, with heap materialization, allocation pressure, and scalar
+  dispatch currently the clearest candidates.
 - Keep benchmark evidence ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
