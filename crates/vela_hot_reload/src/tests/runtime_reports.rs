@@ -624,14 +624,16 @@ fn rejected_compile_report_carries_source_span_and_labels() {
 
 #[test]
 fn rejected_reload_report_fixture_renders_parameter_abi_span_and_hint() {
-    let initial = compile_initial(SourceId::new(1), HOT_RELOAD_PARAMETER_ABI_V1)
+    let initial_source = normalized_fixture(HOT_RELOAD_PARAMETER_ABI_V1);
+    let updated_source = normalized_fixture(HOT_RELOAD_PARAMETER_ABI_V2);
+    let initial = compile_initial(SourceId::new(1), &initial_source)
         .expect("compile initial hot reload diagnostic fixture");
     let mut runtime = HotReloadRuntime::new(initial);
 
     let report = runtime.apply_hot_update_result_report(compile_update(
         &runtime.current(),
         SourceId::new(2),
-        HOT_RELOAD_PARAMETER_ABI_V2,
+        &updated_source,
     ));
 
     assert!(!report.accepted);
@@ -639,8 +641,12 @@ fn rejected_reload_report_fixture_renders_parameter_abi_span_and_hint() {
 
     assert_eq!(
         rendered.trim_end(),
-        HOT_RELOAD_PARAMETER_ABI_EXPECTED.trim_end()
+        normalized_fixture(HOT_RELOAD_PARAMETER_ABI_EXPECTED).trim_end()
     );
+}
+
+fn normalized_fixture(source: &str) -> String {
+    source.replace("\r\n", "\n")
 }
 
 fn render_report_lines_for_fixture(report: &HotReloadReport) -> String {
