@@ -1,7 +1,7 @@
-use crate::heap::HeapValue;
+use crate::runtime_view::MapView;
 use crate::{HeapExecution, Value, VmResult, value_from_heap_slot};
 
-use super::{expect_no_args, map_entry, type_error};
+use super::{expect_no_args, map_entry};
 
 pub(crate) fn keys(
     receiver: &Value,
@@ -9,26 +9,19 @@ pub(crate) fn keys(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_no_args("keys", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(
+    match MapView::from_value(receiver, heap, "method keys")? {
+        MapView::Values(values) => Ok(Value::Array(
             values
                 .keys()
                 .map(|key| Value::String(key.clone()))
                 .collect(),
         )),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method keys");
-            };
-            Ok(Value::Array(
-                values
-                    .keys()
-                    .map(|key| Value::String(key.clone()))
-                    .collect(),
-            ))
-        }
-        _ => type_error("method keys"),
+        MapView::Slots(values, _) => Ok(Value::Array(
+            values
+                .keys()
+                .map(|key| Value::String(key.clone()))
+                .collect(),
+        )),
     }
 }
 
@@ -38,18 +31,11 @@ pub(crate) fn values(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_no_args("values", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(values.values().cloned().collect())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method values");
-            };
-            Ok(Value::Array(
-                values.values().map(value_from_heap_slot).collect(),
-            ))
-        }
-        _ => type_error("method values"),
+    match MapView::from_value(receiver, heap, "method values")? {
+        MapView::Values(values) => Ok(Value::Array(values.values().cloned().collect())),
+        MapView::Slots(values, _) => Ok(Value::Array(
+            values.values().map(value_from_heap_slot).collect(),
+        )),
     }
 }
 
@@ -59,25 +45,18 @@ pub(crate) fn entries(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_no_args("entries", args)?;
-    match receiver {
-        Value::Map(values) => Ok(Value::Array(
+    match MapView::from_value(receiver, heap, "method entries")? {
+        MapView::Values(values) => Ok(Value::Array(
             values
                 .iter()
                 .map(|(key, value)| map_entry(key, value.clone()))
                 .collect(),
         )),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method entries");
-            };
-            Ok(Value::Array(
-                values
-                    .iter()
-                    .map(|(key, value)| map_entry(key, value_from_heap_slot(value)))
-                    .collect(),
-            ))
-        }
-        _ => type_error("method entries"),
+        MapView::Slots(values, _) => Ok(Value::Array(
+            values
+                .iter()
+                .map(|(key, value)| map_entry(key, value_from_heap_slot(value)))
+                .collect(),
+        )),
     }
 }

@@ -2,7 +2,7 @@ use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::option_result::option_value;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
-use super::{expect_arity, push_unique, set_values};
+use super::{expect_arity, materialize_set_values, push_unique};
 
 pub(crate) fn map(
     receiver: &Value,
@@ -26,7 +26,7 @@ pub(crate) fn map(
         }
         return Ok(Value::Set(mapped));
     }
-    let values = set_values(receiver, runtime.heap.as_deref(), "method map")?;
+    let values = materialize_set_values(receiver, runtime.heap.as_deref(), "method map")?;
     let mut mapped = Vec::new();
     for value in values {
         let mapped_value = call_callback(
@@ -70,7 +70,7 @@ pub(crate) fn filter(
         }
         return Ok(Value::Set(filtered));
     }
-    let values = set_values(receiver, runtime.heap.as_deref(), "method filter")?;
+    let values = materialize_set_values(receiver, runtime.heap.as_deref(), "method filter")?;
     let mut filtered = Vec::new();
     for value in values {
         let predicate = call_callback(
@@ -115,7 +115,7 @@ pub(crate) fn find(
         }
         return Ok(option_value(None));
     }
-    for value in set_values(receiver, runtime.heap.as_deref(), "method find")? {
+    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method find")? {
         let predicate = call_callback(
             &mut runtime,
             "method find",
@@ -153,7 +153,7 @@ pub(crate) fn any(
         }
         return Ok(false);
     }
-    for value in set_values(receiver, runtime.heap.as_deref(), "method any")? {
+    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method any")? {
         let predicate = call_callback(
             &mut runtime,
             "method any",
@@ -191,7 +191,7 @@ pub(crate) fn all(
         }
         return Ok(true);
     }
-    for value in set_values(receiver, runtime.heap.as_deref(), "method all")? {
+    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method all")? {
         let predicate = call_callback(
             &mut runtime,
             "method all",
@@ -235,7 +235,7 @@ pub(crate) fn count(
         return Ok(count);
     }
     let mut count = 0_i64;
-    for value in set_values(receiver, runtime.heap.as_deref(), "method count")? {
+    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method count")? {
         let predicate = call_callback(
             &mut runtime,
             "method count",

@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_to_heap_slot};
 
-use super::{SetKey, expect_arity, push_unique, set_values, slot_key, type_error};
+use super::{SetKey, expect_arity, materialize_set_values, push_unique, slot_key, type_error};
 
 pub(crate) fn add(
     receiver: &mut Value,
@@ -117,7 +117,7 @@ pub(crate) fn extend(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("extend", args, 1)?;
-    let extension = set_values(&args[0], heap.as_deref(), "method extend")?;
+    let extension = materialize_set_values(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
         Value::Set(values) => {
             for value in extension {

@@ -4,7 +4,9 @@ use crate::heap::{HeapSlot, HeapValue};
 use crate::method_runtime::MethodRuntime;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
-use super::{array_values, call_unary_callback, expect_arity, string_value, type_error};
+use super::{
+    call_unary_callback, expect_arity, materialize_array_values, string_value, type_error,
+};
 
 pub(crate) fn sum(
     receiver: &Value,
@@ -20,7 +22,7 @@ pub(crate) fn sum(
     }
     let mut total = NumericTotal::default();
     if let Some(callback) = args.first() {
-        let values = array_values(receiver, runtime.heap.as_deref(), "method sum")?;
+        let values = materialize_array_values(receiver, runtime.heap.as_deref(), "method sum")?;
         for value in values {
             let mapped = call_unary_callback(&mut runtime, "method sum", callback, value, &[])?;
             total.add_value(&mapped, "method sum")?;
@@ -37,7 +39,7 @@ pub(crate) fn group_by(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("group_by", args, 1)?;
-    let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
+    let values = materialize_array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
     let mut groups = BTreeMap::<String, Value>::new();
     for value in values {
         let protected;

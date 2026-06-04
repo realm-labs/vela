@@ -28,6 +28,7 @@ mod record_fields;
 mod reflection;
 mod reflection_values;
 mod runtime_checks;
+mod runtime_view;
 mod script_builtin_methods;
 mod script_methods;
 mod script_object;

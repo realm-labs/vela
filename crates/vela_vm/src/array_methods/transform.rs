@@ -2,7 +2,8 @@ use crate::heap::{HeapSlot, HeapValue};
 use crate::{HeapExecution, Value, VmResult, value_from_heap_slot, values_equal};
 
 use super::{
-    array_values, expect_arity, index_out_of_bounds, index_value, string_value, type_error,
+    expect_arity, index_out_of_bounds, index_value, materialize_array_values, string_value,
+    type_error,
 };
 
 pub(crate) fn join(
@@ -18,7 +19,7 @@ pub(crate) fn join(
         };
         return join_heap_slots(values, heap, separator);
     }
-    let values = array_values(receiver, heap, "method join")?;
+    let values = materialize_array_values(receiver, heap, "method join")?;
     let mut parts = Vec::with_capacity(values.len());
     for value in values {
         parts.push(string_value(&value, heap, "method join")?.to_owned());
@@ -32,7 +33,7 @@ pub(crate) fn distinct(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("distinct", args, 0)?;
-    let values = array_values(receiver, heap, "method distinct")?;
+    let values = materialize_array_values(receiver, heap, "method distinct")?;
     let mut distinct = Vec::new();
     'values: for value in values {
         for existing in &distinct {
@@ -57,7 +58,7 @@ pub(crate) fn reverse(
         };
         return Ok(Value::Array(reverse_heap_slots(values)));
     }
-    let mut values = array_values(receiver, heap, "method reverse")?;
+    let mut values = materialize_array_values(receiver, heap, "method reverse")?;
     values.reverse();
     Ok(Value::Array(values))
 }
@@ -74,7 +75,7 @@ pub(crate) fn slice(
         };
         return slice_heap_slots(values, args);
     }
-    let values = array_values(receiver, heap, "method slice")?;
+    let values = materialize_array_values(receiver, heap, "method slice")?;
     let start = index_value(&args[0], "method slice")?;
     let end = index_value(&args[1], "method slice")?;
     if start > end {

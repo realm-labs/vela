@@ -1,6 +1,6 @@
 use crate::{HeapExecution, Value, VmResult};
 
-use super::{SetKey, expect_arity, push_unique, set_keys, set_values};
+use super::{SetKey, expect_arity, materialize_set_values, push_unique, set_keys};
 
 pub(crate) fn union(
     receiver: &Value,
@@ -9,10 +9,10 @@ pub(crate) fn union(
 ) -> VmResult<Value> {
     expect_arity("union", args, 1)?;
     let mut combined = Vec::new();
-    for value in set_values(receiver, heap, "method union")? {
+    for value in materialize_set_values(receiver, heap, "method union")? {
         push_unique(&mut combined, value, heap, "method union")?;
     }
-    for value in set_values(&args[0], heap, "method union")? {
+    for value in materialize_set_values(&args[0], heap, "method union")? {
         push_unique(&mut combined, value, heap, "method union")?;
     }
     Ok(Value::Set(combined))
@@ -25,12 +25,12 @@ pub(crate) fn intersection(
 ) -> VmResult<Value> {
     expect_arity("intersection", args, 1)?;
     let right = set_keys(
-        &set_values(&args[0], heap, "method intersection")?,
+        &materialize_set_values(&args[0], heap, "method intersection")?,
         heap,
         "method intersection",
     )?;
     let mut result = Vec::new();
-    for value in set_values(receiver, heap, "method intersection")? {
+    for value in materialize_set_values(receiver, heap, "method intersection")? {
         let key = SetKey::from_value(&value, heap, "method intersection")?;
         if right.contains(&key) {
             push_unique(&mut result, value, heap, "method intersection")?;
@@ -46,12 +46,12 @@ pub(crate) fn difference(
 ) -> VmResult<Value> {
     expect_arity("difference", args, 1)?;
     let right = set_keys(
-        &set_values(&args[0], heap, "method difference")?,
+        &materialize_set_values(&args[0], heap, "method difference")?,
         heap,
         "method difference",
     )?;
     let mut result = Vec::new();
-    for value in set_values(receiver, heap, "method difference")? {
+    for value in materialize_set_values(receiver, heap, "method difference")? {
         let key = SetKey::from_value(&value, heap, "method difference")?;
         if !right.contains(&key) {
             push_unique(&mut result, value, heap, "method difference")?;
@@ -66,8 +66,8 @@ pub(crate) fn symmetric_difference(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("symmetric_difference", args, 1)?;
-    let left_values = set_values(receiver, heap, "method symmetric_difference")?;
-    let right_values = set_values(&args[0], heap, "method symmetric_difference")?;
+    let left_values = materialize_set_values(receiver, heap, "method symmetric_difference")?;
+    let right_values = materialize_set_values(&args[0], heap, "method symmetric_difference")?;
     let left_keys = set_keys(&left_values, heap, "method symmetric_difference")?;
     let right_keys = set_keys(&right_values, heap, "method symmetric_difference")?;
 
@@ -110,11 +110,11 @@ pub(crate) fn is_disjoint(
 ) -> VmResult<bool> {
     expect_arity("is_disjoint", args, 1)?;
     let right = set_keys(
-        &set_values(&args[0], heap, "method is_disjoint")?,
+        &materialize_set_values(&args[0], heap, "method is_disjoint")?,
         heap,
         "method is_disjoint",
     )?;
-    for value in set_values(receiver, heap, "method is_disjoint")? {
+    for value in materialize_set_values(receiver, heap, "method is_disjoint")? {
         let key = SetKey::from_value(&value, heap, "method is_disjoint")?;
         if right.contains(&key) {
             return Ok(false);
@@ -129,8 +129,12 @@ fn set_contains_all(
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let superset = set_keys(&set_values(superset, heap, operation)?, heap, operation)?;
-    for value in set_values(subset, heap, operation)? {
+    let superset = set_keys(
+        &materialize_set_values(superset, heap, operation)?,
+        heap,
+        operation,
+    )?;
+    for value in materialize_set_values(subset, heap, operation)? {
         let key = SetKey::from_value(&value, heap, operation)?;
         if !superset.contains(&key) {
             return Ok(false);

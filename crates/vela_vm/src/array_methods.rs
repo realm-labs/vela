@@ -12,42 +12,25 @@ pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{max, min, sort, sort_by};
 pub(crate) use transform::{distinct, join, reverse, slice};
 
-use crate::heap::HeapValue;
 use crate::method_runtime::{MethodRuntime, call_callback};
+use crate::runtime_view::{ArrayView, StringView};
 use crate::script_object::ScriptFields;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(super) fn string_value<'a>(
     value: &'a Value,
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<&'a str> {
-    match value {
-        Value::String(value) => Ok(value),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(value),
-            _ => type_error(operation),
-        },
-        _ => type_error(operation),
-    }
+    StringView::from_value(value, heap, operation).map(|view| view.as_str())
 }
 
-pub(super) fn array_values(
+pub(super) fn materialize_array_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    match receiver {
-        Value::Array(values) => Ok(values.clone()),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error(operation);
-            };
-            Ok(values.iter().map(value_from_heap_slot).collect())
-        }
-        _ => type_error(operation),
-    }
+    ArrayView::from_value(receiver, heap, operation).map(|view| view.materialize_values())
 }
 
 pub(super) fn index_value(value: &Value, operation: &'static str) -> VmResult<usize> {

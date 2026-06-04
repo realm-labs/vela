@@ -1,5 +1,5 @@
-use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::runtime_view::SetView;
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 mod basic;
 mod combination;
@@ -16,16 +16,7 @@ use key::{SetKey, set_keys, slot_key};
 pub(crate) use mutation::{add, clear, extend, remove};
 
 pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
-    match receiver {
-        Value::Set(_) => true,
-        Value::HeapRef(reference) => {
-            matches!(
-                heap.and_then(|heap| heap.heap.get(*reference)),
-                Some(HeapValue::Set(_))
-            )
-        }
-        _ => false,
-    }
+    SetView::from_value(receiver, heap, "method set").is_ok()
 }
 
 pub(super) fn push_unique(
@@ -45,22 +36,12 @@ pub(super) fn push_unique(
     Ok(true)
 }
 
-pub(super) fn set_values(
+pub(super) fn materialize_set_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    match receiver {
-        Value::Set(values) => Ok(values.clone()),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Set(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error(operation);
-            };
-            Ok(values.iter().map(value_from_heap_slot).collect())
-        }
-        _ => type_error(operation),
-    }
+    SetView::from_value(receiver, heap, operation).map(|view| view.materialize_values())
 }
 
 pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {

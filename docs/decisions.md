@@ -81,6 +81,12 @@ Managed heap entrypoints materialize return values at API boundaries. Native
 calls materialize heap-backed values as needed so existing host/native APIs do
 not own script GC state.
 
+Read-only runtime access should prefer crate-internal borrowed view helpers
+over repeating `Value` / `HeapRef` / `HeapSlot` receiver classification in
+each stdlib method. Views may centralize string, collection, enum, and
+length-style reads, but mutable accessors, callback calls, host/native
+interfaces, GC tracing, and hot-reload ABI remain separate boundaries.
+
 ### Host Boundary
 
 Host state is mutated only by recording patches. Direct host field, host path,

@@ -1,7 +1,7 @@
-use crate::heap::HeapValue;
+use crate::runtime_view::SetView;
 use crate::{HeapExecution, Value, VmResult};
 
-use super::{SetKey, expect_arity, push_unique, set_values, type_error};
+use super::{SetKey, expect_arity, materialize_set_values, push_unique, type_error};
 
 pub(crate) fn from_array(args: &[Value]) -> VmResult<Value> {
     expect_arity("set::from_array", args, 1)?;
@@ -22,31 +22,23 @@ pub(crate) fn has(
 ) -> VmResult<bool> {
     expect_arity("has", args, 1)?;
     let key = SetKey::from_value(&args[0], heap, "method has")?;
-    match receiver {
-        Value::Set(values) => {
+    match SetView::from_value(receiver, heap, "method has")? {
+        SetView::Values(values) => {
             for value in values {
                 if key.matches_value(value, heap, "method has")? {
                     return Ok(true);
                 }
             }
-            Ok(false)
         }
-        Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
-                return type_error("method has");
-            };
-            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
-                return type_error("method has");
-            };
+        SetView::Slots(values, heap) => {
             for value in values {
                 if key.matches_slot(value, heap, "method has")? {
                     return Ok(true);
                 }
             }
-            Ok(false)
         }
-        _ => type_error("method has"),
     }
+    Ok(false)
 }
 
 pub(crate) fn values(
@@ -55,5 +47,5 @@ pub(crate) fn values(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("values", args, 0)?;
-    set_values(receiver, heap, "method values").map(Value::Array)
+    materialize_set_values(receiver, heap, "method values").map(Value::Array)
 }

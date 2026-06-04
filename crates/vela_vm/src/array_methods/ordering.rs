@@ -4,7 +4,9 @@ use crate::heap::{HeapSlot, HeapValue};
 use crate::method_runtime::MethodRuntime;
 use crate::{HeapExecution, Value, VmResult, value_from_heap_slot};
 
-use super::{array_values, call_unary_callback, expect_arity, option_value, type_error};
+use super::{
+    call_unary_callback, expect_arity, materialize_array_values, option_value, type_error,
+};
 
 pub(crate) fn sort(
     receiver: &Value,
@@ -18,7 +20,7 @@ pub(crate) fn sort(
         };
         return sort_heap_slots(values, heap, "method sort");
     }
-    let values = array_values(receiver, heap, "method sort")?;
+    let values = materialize_array_values(receiver, heap, "method sort")?;
     sort_values_by_key(values, heap, "method sort", |value, _| Ok(value.clone()))
 }
 
@@ -65,7 +67,7 @@ pub(crate) fn sort_by(
         }
         return sort_entries(entries);
     }
-    let values = array_values(receiver, runtime.heap.as_deref(), "method sort_by")?;
+    let values = materialize_array_values(receiver, runtime.heap.as_deref(), "method sort_by")?;
     let mut entries = Vec::<SortEntry>::with_capacity(values.len());
     let mut key_kind = None;
     for value in values {

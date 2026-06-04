@@ -4,7 +4,7 @@ use crate::{
     ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot, value_to_heap_slot,
 };
 
-use super::{expect_arity, map_entries, map_key, type_error};
+use super::{expect_arity, map_key, materialize_map_entries, type_error};
 
 pub(crate) fn set(
     receiver: &mut Value,
@@ -90,7 +90,7 @@ pub(crate) fn extend(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("extend", args, 1)?;
-    let entries = map_entries(&args[0], heap.as_deref(), "method extend")?;
+    let entries = materialize_map_entries(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
         Value::Map(values) => {
             values.extend(entries);

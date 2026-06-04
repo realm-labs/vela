@@ -2264,6 +2264,47 @@ The candidate was not accepted because repeated quick runs did not preserve the
 initial improvement signal. The runtime keeps the existing `RangeNext` path for
 both exclusive and inclusive direct range loops.
 
+### 2026-06-04 M19 Runtime View Refactor Checkpoint
+
+This checkpoint introduced a crate-internal borrowed runtime view layer for
+read-only `Value` / `HeapRef` / `HeapSlot` access. The accepted scope keeps the
+public `Value`, `HeapValue`, bytecode, native, host, GC, and hot-reload
+contracts unchanged, and centralizes receiver classification for string,
+array, map, set, enum, and length-style reads.
+
+Validation:
+
+```bash
+cargo test -p vela_vm program_execution
+cargo test -p vela_vm array_methods
+cargo test -p vela_vm map_methods
+cargo test -p vela_vm set_methods
+cargo test -p vela_vm option_result
+cargo test -p vela_engine typed_native
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+Quick guardrail before/final means:
+
+| Benchmark | Before mean ns | Final mean ns | Checksum |
+|---|---:|---:|---:|
+| callback_collections | 8325646 | 7776437 | 6661976061914330346 |
+| managed_heap_callback_collections | 9568520 | 9691250 | 6661976061914330346 |
+| managed_heap_option_result_helpers | 14299229 | 14915541 | 1812806599834733941 |
+| managed_heap_set_lookup | 3121145 | 3199083 | 17198566150566951166 |
+| managed_heap_array_lookup | 4030167 | 4036520 | 17198566150566951166 |
+| managed_heap_map_lookup | 3888896 | 3867333 | 13501942729849410472 |
+| gameplay_monster_kill | 79374 | 77791 | 11641737387043360531 |
+
+The default guardrail also preserved all reported checksums. This is recorded
+as an architecture cleanup rather than a performance win: several quick rows
+were within noise or slightly slower, while the main value is concentrating
+materialization and receiver classification before later M19/M20 specialization
+work.
+
 ## Targets
 
 The post-MVP non-JIT target is:

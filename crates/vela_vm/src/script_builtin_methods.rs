@@ -1,4 +1,4 @@
-use crate::heap::HeapValue;
+use crate::runtime_view::{LengthView, length_view};
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
     map_methods, option_result_methods, set_methods,
@@ -188,35 +188,18 @@ fn values(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) ->
 }
 
 fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
+    if let Some(view) = length_view(receiver, heap, "method len") {
+        return match view? {
+            LengthView::String(value) => usize_to_i64(string_char_len(value), "method len"),
+            LengthView::Count(value) => usize_to_i64(value, "method len"),
+        };
+    }
     match receiver {
-        Value::String(value) => usize_to_i64(string_char_len(value), "method len"),
-        Value::Array(values) => usize_to_i64(values.len(), "method len"),
-        Value::Map(values) => usize_to_i64(values.len(), "method len"),
-        Value::Set(values) => usize_to_i64(values.len(), "method len"),
         Value::Range(range) => range.len().ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
                 operation: "method len",
             })
         }),
-        Value::HeapRef(reference) => {
-            let Some(value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
-                return type_error("method len");
-            };
-            match value {
-                HeapValue::String(value) => usize_to_i64(string_char_len(value), "method len"),
-                HeapValue::Array(values) | HeapValue::Set(values) => {
-                    usize_to_i64(values.len(), "method len")
-                }
-                HeapValue::Map(values) => usize_to_i64(values.len(), "method len"),
-                HeapValue::Record { fields: values, .. }
-                | HeapValue::Enum { fields: values, .. } => {
-                    usize_to_i64(values.len(), "method len")
-                }
-            }
-        }
-        Value::Record { fields, .. } | Value::Enum { fields, .. } => {
-            usize_to_i64(fields.len(), "method len")
-        }
         _ => type_error("method len"),
     }
 }
@@ -230,25 +213,11 @@ fn string_char_len(value: &str) -> usize {
 }
 
 fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool> {
+    if let Some(view) = length_view(receiver, heap, "method is_empty") {
+        return Ok(view?.is_empty());
+    }
     match receiver {
-        Value::String(value) => Ok(value.is_empty()),
-        Value::Array(values) => Ok(values.is_empty()),
-        Value::Map(values) => Ok(values.is_empty()),
-        Value::Set(values) => Ok(values.is_empty()),
         Value::Range(range) => Ok(range.is_empty()),
-        Value::HeapRef(reference) => {
-            let Some(value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
-                return type_error("method is_empty");
-            };
-            match value {
-                HeapValue::String(value) => Ok(value.is_empty()),
-                HeapValue::Array(values) | HeapValue::Set(values) => Ok(values.is_empty()),
-                HeapValue::Map(values) => Ok(values.is_empty()),
-                HeapValue::Record { fields: values, .. }
-                | HeapValue::Enum { fields: values, .. } => Ok(values.is_empty()),
-            }
-        }
-        Value::Record { fields, .. } | Value::Enum { fields, .. } => Ok(fields.is_empty()),
         _ => type_error("method is_empty"),
     }
 }

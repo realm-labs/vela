@@ -4,7 +4,7 @@ use crate::method_runtime::{MethodRuntime, call_callback, call_callback_with_pro
 use crate::option_result::option_value;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
-use super::{expect_arity, map_entries, map_entry, type_error};
+use super::{expect_arity, map_entry, materialize_map_entries, type_error};
 
 pub(crate) fn map_values(
     receiver: &Value,
@@ -29,7 +29,7 @@ pub(crate) fn map_values(
         }
         return Ok(Value::Map(mapped));
     }
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
+    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
     let mut mapped = BTreeMap::new();
     for (key, value) in entries {
         let value = if runtime.heap.is_some() {
@@ -81,7 +81,7 @@ pub(crate) fn filter(
         }
         return Ok(Value::Map(filtered));
     }
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
+    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
     let mut filtered = BTreeMap::new();
     for (key, value) in entries {
         let predicate = if runtime.heap.is_some() {
@@ -134,7 +134,7 @@ pub(crate) fn find(
         }
         return Ok(option_value(None));
     }
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
+    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method find")?;
     for (key, value) in entries {
         let predicate = call_map_callback(
             &mut runtime,
@@ -175,7 +175,7 @@ pub(crate) fn any(
         }
         return Ok(false);
     }
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
+    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method any")?;
     for (key, value) in entries {
         let predicate = call_map_callback(&mut runtime, "method any", &args[0], key, value, &[])?;
         if is_truthy(&predicate) {
@@ -209,7 +209,7 @@ pub(crate) fn all(
         }
         return Ok(true);
     }
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
+    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method all")?;
     for (key, value) in entries {
         let predicate = call_map_callback(&mut runtime, "method all", &args[0], key, value, &[])?;
         if !is_truthy(&predicate) {
@@ -244,7 +244,7 @@ pub(crate) fn count(
         }
         return Ok(count);
     }
-    let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
+    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method count")?;
     let mut count = 0_i64;
     for (key, value) in entries {
         let predicate = call_map_callback(&mut runtime, "method count", &args[0], key, value, &[])?;

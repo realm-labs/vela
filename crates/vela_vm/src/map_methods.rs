@@ -1,7 +1,7 @@
-use crate::heap::HeapValue;
+use crate::runtime_view::MapView;
 use crate::script_object::ScriptFields;
 use crate::string_methods;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 mod higher_order;
 mod introspection;
@@ -16,40 +16,15 @@ pub(crate) use merge::merge;
 pub(crate) use mutation::{clear, extend, remove, set};
 
 pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
-    match receiver {
-        Value::Map(_) => true,
-        Value::HeapRef(reference) => {
-            matches!(
-                heap.and_then(|heap| heap.heap.get(*reference)),
-                Some(HeapValue::Map(_))
-            )
-        }
-        _ => false,
-    }
+    MapView::from_value(receiver, heap, "method map").is_ok()
 }
 
-pub(super) fn map_entries(
+pub(super) fn materialize_map_entries(
     receiver: &Value,
     heap: Option<&crate::HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<(String, Value)>> {
-    match receiver {
-        Value::Map(values) => Ok(values
-            .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect()),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error(operation);
-            };
-            Ok(values
-                .iter()
-                .map(|(key, value)| (key.clone(), value_from_heap_slot(value)))
-                .collect())
-        }
-        _ => type_error(operation),
-    }
+    MapView::from_value(receiver, heap, operation).map(|view| view.materialize_entries())
 }
 
 pub(super) fn map_entry(key: &str, value: Value) -> Value {

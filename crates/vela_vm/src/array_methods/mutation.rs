@@ -4,7 +4,8 @@ use crate::{
 };
 
 use super::{
-    array_values, expect_arity, index_out_of_bounds, index_value, option_value, type_error,
+    expect_arity, index_out_of_bounds, index_value, materialize_array_values, option_value,
+    type_error,
 };
 
 pub(crate) fn push(
@@ -137,7 +138,7 @@ pub(crate) fn extend(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("extend", args, 1)?;
-    let extension = array_values(&args[0], heap.as_deref(), "method extend")?;
+    let extension = materialize_array_values(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
         Value::Array(values) => {
             values.extend(extension);

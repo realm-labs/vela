@@ -1,8 +1,8 @@
-use crate::heap::HeapValue;
 use crate::option_result::option_value;
-use crate::{HeapExecution, Value, VmResult, string_methods, value_from_heap_slot};
+use crate::runtime_view::MapView;
+use crate::{HeapExecution, Value, VmResult, string_methods};
 
-use super::{expect_arity, type_error};
+use super::expect_arity;
 
 pub(crate) fn has(
     receiver: &Value,
@@ -11,17 +11,7 @@ pub(crate) fn has(
 ) -> VmResult<bool> {
     expect_arity("has", args, 1)?;
     let key = lookup_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(values.contains_key(key)),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method has");
-            };
-            Ok(values.contains_key(key))
-        }
-        _ => type_error("method has"),
-    }
+    MapView::from_value(receiver, heap, "method has").map(|values| values.contains_key(key))
 }
 
 pub(crate) fn get(
@@ -31,17 +21,8 @@ pub(crate) fn get(
 ) -> VmResult<Value> {
     expect_arity("get", args, 1)?;
     let key = lookup_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(option_value(values.get(key).cloned())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method get");
-            };
-            Ok(option_value(values.get(key).map(value_from_heap_slot)))
-        }
-        _ => type_error("method get"),
-    }
+    MapView::from_value(receiver, heap, "method get")
+        .map(|values| option_value(values.get_owned(key)))
 }
 
 pub(crate) fn get_or(
@@ -51,19 +32,8 @@ pub(crate) fn get_or(
 ) -> VmResult<Value> {
     expect_arity("get_or", args, 2)?;
     let key = lookup_key(&args[0], heap)?;
-    match receiver {
-        Value::Map(values) => Ok(values.get(key).cloned().unwrap_or_else(|| args[1].clone())),
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
-            else {
-                return type_error("method get_or");
-            };
-            Ok(values
-                .get(key)
-                .map_or_else(|| args[1].clone(), value_from_heap_slot))
-        }
-        _ => type_error("method get_or"),
-    }
+    MapView::from_value(receiver, heap, "method get_or")
+        .map(|values| values.get_owned(key).unwrap_or_else(|| args[1].clone()))
 }
 
 fn lookup_key<'a>(value: &'a Value, heap: Option<&'a HeapExecution<'_>>) -> VmResult<&'a str> {

@@ -1,4 +1,4 @@
-use crate::heap::HeapValue;
+use crate::runtime_view::StringView;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 mod affix;
@@ -16,14 +16,7 @@ pub(crate) use splitting::{split, split_lines, split_once, split_whitespace};
 pub(crate) use transform::{repeat, replace, to_lower, to_upper, trim, trim_end, trim_start};
 
 pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
-    match value {
-        Value::String(_) => true,
-        Value::HeapRef(reference) => matches!(
-            heap.and_then(|heap| heap.heap.get(*reference)),
-            Some(HeapValue::String(_))
-        ),
-        _ => false,
-    }
+    StringView::from_value(value, heap, "string").is_ok()
 }
 
 pub(crate) fn string_value<'a>(
@@ -31,14 +24,7 @@ pub(crate) fn string_value<'a>(
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<&'a str> {
-    match value {
-        Value::String(value) => Ok(value),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(value),
-            _ => type_error(operation),
-        },
-        _ => type_error(operation),
-    }
+    StringView::from_value(value, heap, operation).map(|view| view.as_str())
 }
 
 pub(super) fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
