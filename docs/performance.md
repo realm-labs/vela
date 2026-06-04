@@ -1674,6 +1674,35 @@ array benchmarks stayed within normal quick-run noise. This is a narrow helper
 dispatch cleanup, not a broader enum payload materialization change.
 ```
 
+### 2026-06-04 M19 Native Call Argument Storage Checkpoint
+
+This checkpoint gives bytecode native calls stack-backed argument storage for
+zero-, one-, and two-argument calls instead of always materializing native call
+arguments into a temporary `Vec<Value>`. Wider native calls keep the existing
+vector-backed path, and native functions still receive the same `&[Value]`
+interface.
+
+Commands:
+
+```bash
+cargo test -p vela_vm managed_heap_execution_runs_option_result_helper_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Checksum |
+|---|---:|---:|---:|
+| managed_heap_option_result_helpers | 55650150 | 51879550 | 1812806599834733941 |
+
+Checkpoint notes:
+
+```text
+The focused Option/Result helper workload improved by about 6.8% because it
+uses many small native/helper calls. Checksums stayed stable, and the slow path
+for wider native calls remains unchanged.
+```
+
 ### 2026-06-04 M19 Managed Heap Host Conversion Benchmark Checkpoint
 
 This checkpoint adds a focused `managed_heap_host_conversion` benchmark for

@@ -206,9 +206,9 @@ impl Vm {
                     ip = target.0;
                 }
                 InstructionKind::CallNative { dst, name, args } => {
-                    let values = materialize_registers(&frame, args, heap.as_deref())?;
+                    let values = NativeCallArgs::from_registers(&frame, args, heap.as_deref())?;
                     let result = if let Some(native) = self.natives.get(name) {
-                        native(&values)
+                        native(values.as_slice())
                             .map_err(|error| error.with_source_span_if_absent(instruction.span))?
                     } else if let Some(native) = self.host_natives.get(name) {
                         let host = host.as_deref_mut().ok_or_else(|| {
@@ -217,7 +217,7 @@ impl Vm {
                             })
                         })?;
                         let tx_checkpoint = host.tx.clone();
-                        let result = match native(&values, host, budget.as_deref_mut()) {
+                        let result = match native(values.as_slice(), host, budget.as_deref_mut()) {
                             Ok(result) => result,
                             Err(error) => {
                                 *host.tx = tx_checkpoint;
@@ -1122,6 +1122,44 @@ fn dispatch_call_method_id(
     frame.write(call.dst, result)
 }
 
+enum NativeCallArgs {
+    Empty,
+    One([Value; 1]),
+    Two([Value; 2]),
+    Many(Vec<Value>),
+}
+
+impl NativeCallArgs {
+    fn from_registers(
+        frame: &CallFrame,
+        registers: &[Register],
+        heap: Option<&HeapExecution<'_>>,
+    ) -> VmResult<Self> {
+        match registers {
+            [] => Ok(Self::Empty),
+            [first] => Ok(Self::One([materialize_value(frame.read(*first)?, heap)?])),
+            [first, second] => Ok(Self::Two([
+                materialize_value(frame.read(*first)?, heap)?,
+                materialize_value(frame.read(*second)?, heap)?,
+            ])),
+            _ => registers
+                .iter()
+                .map(|register| materialize_value(frame.read(*register)?, heap))
+                .collect::<VmResult<Vec<_>>>()
+                .map(Self::Many),
+        }
+    }
+
+    fn as_slice(&self) -> &[Value] {
+        match self {
+            Self::Empty => &[],
+            Self::One(values) => values,
+            Self::Two(values) => values,
+            Self::Many(values) => values,
+        }
+    }
+}
+
 enum MethodCallArgs {
     One([Value; 1]),
     Two([Value; 2]),
@@ -1159,17 +1197,6 @@ impl MethodCallArgs {
             Self::Many(values) => values,
         }
     }
-}
-
-fn materialize_registers(
-    frame: &CallFrame,
-    registers: &[Register],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Vec<Value>> {
-    registers
-        .iter()
-        .map(|register| materialize_value(frame.read(*register)?, heap))
-        .collect()
 }
 
 fn heap_slots_from_registers(
