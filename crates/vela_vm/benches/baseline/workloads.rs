@@ -71,10 +71,23 @@ fn main() {
         let keyed = rewards.map_values(|key, value| key.len() + value + tick - tick);
         let filtered = keyed.filter(|key, value| key.starts_with("r") && value % 3 == 0);
         let sorted = filtered.values().sort_by(|value| 20 - value);
-        if filtered.len() != 4 || sorted[0] != 15 || sorted[3] != 6 {
+        let tags = set::from_array(["daily", "quest", "raid", "bonus", "daily"]);
+        let active = tags.filter(|tag| tag.contains("a") || tag.starts_with("q"));
+        let lengths = active.map(|tag| tag.len());
+        let found = active.find(|tag| tag.ends_with("d")).unwrap_or("");
+        if filtered.len() != 4
+            || sorted[0] != 15
+            || sorted[3] != 6
+            || active.len() != 3
+            || lengths.len() != 2
+            || found != "raid"
+            || !active.any(|tag| tag == "quest")
+            || !active.all(|tag| tag.len() >= 4)
+            || active.count(|tag| tag.contains("i")) != 2
+        {
             return 0;
         }
-        total += sorted.sum() + keyed.get_or("r12", 0);
+        total += sorted.sum() + keyed.get_or("r12", 0) + lengths.values().sum();
     }
     return total;
 }

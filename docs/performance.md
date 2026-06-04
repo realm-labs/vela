@@ -834,6 +834,38 @@ plain ordering, set callbacks, heap-mode protected values, and closure
 invocation overhead remain separate measured targets.
 ```
 
+### 2026-06-04 M19 Set Callback Benchmark Coverage Checkpoint
+
+This measurement checkpoint expands the `callback_collections` workload to
+cover set `filter`, `map`, `find`, `any`, `all`, and `count` callbacks in the
+same repeated collection loop that already covers map callbacks and
+`array.sort_by`. It does not accept a runtime fast path by itself; a direct
+no-heap set receiver experiment was rejected in this working session because
+it did not improve the warmed default benchmark.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+git worktree add --detach ../vela-set-callback-before HEAD
+cargo bench -p vela_vm --bench baseline
+```
+
+Expanded benchmark baseline:
+
+| Benchmark | Quick mean ns | Quick checksum | Default mean ns | Default checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 10642800 | 13737855412215224532 | 130130614 | 3465184824986257422 |
+
+Checkpoint notes:
+
+```text
+The callback_collections benchmark now includes set callback semantics and
+can be used for future set callback receiver materialization work. Remaining
+set work should be accepted only with benchmark evidence from this expanded
+surface or a more targeted set callback workload.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
