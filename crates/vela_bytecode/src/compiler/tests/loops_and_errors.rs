@@ -27,6 +27,39 @@ fn main() {
             .any(|instruction| matches!(instruction.kind, InstructionKind::IterNext { .. }))
     );
 }
+
+#[test]
+fn compiler_lowers_direct_range_for_in_to_range_next() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for value in 1..4 {
+        total += value;
+    }
+    for value in 4..=5 {
+        total += value;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("range for-in loop should compile");
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, InstructionKind::RangeNext { .. }))
+    );
+    assert!(
+        !code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, InstructionKind::IterInit { .. }))
+    );
+}
+
 #[test]
 fn compiler_lowers_for_in_patterns() {
     let program = compile_program_source(

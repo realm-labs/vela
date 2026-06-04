@@ -1968,6 +1968,37 @@ was measured in the same session but was not accepted because it regressed the
 scalar range-loop rows, so the runtime path stayed unchanged.
 ```
 
+### 2026-06-04 M19 Range Loop Bytecode Checkpoint
+
+This checkpoint specializes direct `for value in start..end` and
+`for value in start..=end` loops. The bytecode compiler now emits a range-next
+instruction that keeps the cursor, end, and done state in registers instead of
+constructing a `Range` value and updating a generic `IteratorState` register on
+each step. Non-range iterables still use the existing `IterInit`/`IterNext`
+path.
+
+Commands:
+
+```bash
+cargo test -p vela_bytecode compiler_lowers_direct_range_for_in_to_range_next
+cargo test -p vela_vm runs_compiled_range_for_in_source
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Checksum |
+|---|---:|---:|---:|
+| range_iteration | 1315300 | 1230450 | 11386712117419000375 |
+
+Checkpoint notes:
+
+```text
+The VM range-next path preserves empty ranges, inclusive end handling, and the
+inclusive i64::MAX cursor edge case. The generic iterator path remains the
+slow path for arrays, maps, sets, heap iterables, and native iterator values.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

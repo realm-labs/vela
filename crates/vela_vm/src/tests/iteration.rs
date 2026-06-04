@@ -117,6 +117,17 @@ fn main() {
     for value in 4..=5 {
         total += value;
     }
+    for value in 2..2 {
+        total += 1000;
+    }
+    for value in 3..=2 {
+        total += 1000;
+    }
+    let count = 0;
+    for value in 9223372036854775807..=9223372036854775807 {
+        count += 1;
+    }
+    total += count;
     return total;
 }
 "#,
@@ -124,5 +135,5 @@ fn main() {
     )
     .expect("compile range for-in source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(15)));
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(16)));
 }

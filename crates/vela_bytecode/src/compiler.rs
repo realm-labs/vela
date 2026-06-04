@@ -744,6 +744,26 @@ impl<'ast> Compiler<'ast> {
         offset
     }
 
+    fn emit_range_next(
+        &mut self,
+        cursor: Register,
+        end: Register,
+        done: Register,
+        inclusive: bool,
+        dst: Register,
+    ) -> usize {
+        let offset = self.current_offset();
+        self.emit(InstructionKind::RangeNext {
+            cursor,
+            end,
+            done,
+            inclusive,
+            dst,
+            jump_if_done: InstructionOffset(usize::MAX),
+        });
+        offset
+    }
+
     fn patch_jump(&mut self, offset: usize, target: usize) -> CompileResult<()> {
         let instruction =
             self.code.instructions.get_mut(offset).ok_or_else(|| {
@@ -762,6 +782,10 @@ impl<'ast> Compiler<'ast> {
                 target: jump_target,
             }
             | InstructionKind::IterNext {
+                jump_if_done: jump_target,
+                ..
+            }
+            | InstructionKind::RangeNext {
                 jump_if_done: jump_target,
                 ..
             } => {

@@ -638,6 +638,47 @@ impl Vm {
                         }
                     }
                 }
+                InstructionKind::RangeNext {
+                    cursor,
+                    end,
+                    done,
+                    inclusive,
+                    dst,
+                    jump_if_done,
+                } => {
+                    let is_done = match frame.read(*done)? {
+                        Value::Bool(value) => *value,
+                        _ => {
+                            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "range",
+                            }));
+                        }
+                    };
+                    if is_done {
+                        validate_jump(code, jump_if_done.0)?;
+                        ip = jump_if_done.0;
+                    } else {
+                        let current = expect_int(frame.read(*cursor)?, "range")?;
+                        let end = expect_int(frame.read(*end)?, "range")?;
+                        let has_next = if *inclusive {
+                            current <= end
+                        } else {
+                            current < end
+                        };
+                        if has_next {
+                            frame.write(*dst, Value::Int(current))?;
+                            if current == i64::MAX {
+                                frame.write(*done, Value::Bool(true))?;
+                            } else {
+                                frame.write(*cursor, Value::Int(current + 1))?;
+                            }
+                        } else {
+                            frame.write(*done, Value::Bool(true))?;
+                            validate_jump(code, jump_if_done.0)?;
+                            ip = jump_if_done.0;
+                        }
+                    }
+                }
                 InstructionKind::EnumTagEqual {
                     dst,
                     value,

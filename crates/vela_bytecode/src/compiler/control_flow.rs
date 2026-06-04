@@ -2,7 +2,7 @@ use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
-    Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
+    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
 };
 
 use crate::{Constant, InstructionKind, InstructionOffset, Register};
@@ -17,6 +17,19 @@ pub(super) struct LoopContext {
     continue_target: usize,
     break_jumps: Vec<usize>,
     continue_jumps: Vec<usize>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LoopIterable {
+    Generic {
+        iterator: Register,
+    },
+    Range {
+        cursor: Register,
+        end: Register,
+        done: Register,
+        inclusive: bool,
+    },
 }
 
 impl LoopContext {
@@ -178,12 +191,39 @@ impl Compiler<'_> {
         iterable: &Expr,
         body: &Block,
     ) -> CompileResult<bool> {
-        let iterable = self.compile_expr(iterable)?;
-        let iterator = self.alloc_register()?;
-        self.emit(InstructionKind::IterInit {
-            dst: iterator,
-            iterable,
-        });
+        let range_iterable = match &iterable.kind {
+            ExprKind::Binary {
+                op: BinaryOp::Range,
+                left,
+                right,
+            } => Some((left.as_ref(), right.as_ref(), false)),
+            ExprKind::Binary {
+                op: BinaryOp::RangeInclusive,
+                left,
+                right,
+            } => Some((left.as_ref(), right.as_ref(), true)),
+            _ => None,
+        };
+        let loop_iterable = if let Some((start, end, inclusive)) = range_iterable {
+            let cursor = self.compile_expr(start)?;
+            let end = self.compile_expr(end)?;
+            let done = self.alloc_register()?;
+            self.emit_bool_constant_to(done, false);
+            LoopIterable::Range {
+                cursor,
+                end,
+                done,
+                inclusive,
+            }
+        } else {
+            let iterable = self.compile_expr(iterable)?;
+            let iterator = self.alloc_register()?;
+            self.emit(InstructionKind::IterInit {
+                dst: iterator,
+                iterable,
+            });
+            LoopIterable::Generic { iterator }
+        };
 
         let item_register = self.alloc_register()?;
         let previous_locals = self.locals.clone();
@@ -192,7 +232,15 @@ impl Compiler<'_> {
         let previous_value_types = self.value_types.clone();
 
         let loop_start = self.current_offset();
-        let done_jump = self.emit_iter_next(iterator, item_register);
+        let done_jump = match loop_iterable {
+            LoopIterable::Generic { iterator } => self.emit_iter_next(iterator, item_register),
+            LoopIterable::Range {
+                cursor,
+                end,
+                done,
+                inclusive,
+            } => self.emit_range_next(cursor, end, done, inclusive, item_register),
+        };
         let mismatch_jumps = self.compile_match_pattern(item_register, pattern)?;
         self.bind_pattern_locals(
             item_register,

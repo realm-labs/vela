@@ -465,6 +465,14 @@ pub enum InstructionKind {
         dst: Register,
         jump_if_done: InstructionOffset,
     },
+    RangeNext {
+        cursor: Register,
+        end: Register,
+        done: Register,
+        inclusive: bool,
+        dst: Register,
+        jump_if_done: InstructionOffset,
+    },
     EnumTagEqual {
         dst: Register,
         value: Register,
