@@ -277,6 +277,10 @@ pub enum InstructionKind {
         dst: Register,
         src: Register,
     },
+    Truthy {
+        dst: Register,
+        src: Register,
+    },
     Negate {
         dst: Register,
         src: Register,

@@ -119,6 +119,10 @@ impl Vm {
                     let value = Value::Bool(!is_truthy(frame.read(*src)?));
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::Truthy { dst, src } => {
+                    let value = Value::Bool(is_truthy(frame.read(*src)?));
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::Negate { dst, src } => {
                     let value = negate_numeric(frame.read(*src)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;

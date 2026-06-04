@@ -71,6 +71,12 @@ instructions, memory, call depth, and patches. Script heap values use stable,
 generation-checked non-moving handles; host refs and path proxies remain
 external handles and are not traced as Rust-owned state.
 
+The compiler may replace a multi-instruction source-level lowering with one
+semantics-equivalent bytecode instruction, such as `Truthy` for dynamic
+truthiness coercion. Execution budgets are charged against the emitted bytecode
+instructions, and optimized opcodes must preserve the same host, reflection,
+GC-root, hot-reload, and diagnostic boundaries as their expanded VM sequence.
+
 Managed heap entrypoints materialize return values at API boundaries. Native
 calls materialize heap-backed values as needed so existing host/native APIs do
 not own script GC state.

@@ -1175,6 +1175,40 @@ sides through materialization. Aggregate equality, heap-ref equality, and
 source-spanned fallback errors continue through the previous materializing path.
 ```
 
+### 2026-06-04 M19 Truthy Bytecode Checkpoint
+
+This checkpoint adds a `Truthy` bytecode instruction for boolean-result
+coercion in logical `&&` and `||` chains. The compiler previously emitted two
+`Not` instructions for this conversion; it now emits one `Truthy` instruction
+that preserves the same dynamic truthiness semantics while reducing dispatch
+work in scalar short-circuit paths.
+
+Commands:
+
+```bash
+cargo test -p vela_bytecode logical
+cargo test -p vela_vm execution_core
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick/default after-run comparison against the scalar equality checkpoint:
+
+| Benchmark | Previous quick mean ns | After quick mean ns | Previous default mean ns | After default mean ns | Checksum |
+|---|---:|---:|---:|---:|---:|
+| scalar_dispatch_mix | 1245750 | 1205550 | 15448514 | 15096228 | quick 15308784822820424249 / default 18355421299335186739 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The targeted win is in scalar_dispatch_mix, where
+short-circuit boolean result coercion appears inside the hot loop. Non-targeted
+benchmarks stayed within normal run-to-run noise and keep the same checksums.
+The VM still charges one instruction per executed bytecode instruction, so the
+optimization reduces both dispatch count and budget consumption for the same
+source-level logical expression.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

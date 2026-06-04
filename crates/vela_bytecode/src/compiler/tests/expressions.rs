@@ -45,6 +45,17 @@ fn main() {
             .iter()
             .any(|instruction| { matches!(instruction.kind, InstructionKind::Jump { .. }) })
     );
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| { matches!(instruction.kind, InstructionKind::Truthy { .. }) })
+    );
+    assert!(
+        !code
+            .instructions
+            .iter()
+            .any(|instruction| { matches!(instruction.kind, InstructionKind::Not { .. }) })
+    );
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         InstructionKind::CallNative { ref name, .. } if name == "fail"

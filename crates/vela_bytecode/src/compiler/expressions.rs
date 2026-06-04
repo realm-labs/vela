@@ -328,9 +328,7 @@ impl Compiler<'_> {
     }
 
     fn emit_truthy_to_bool(&mut self, dst: Register, src: Register) -> CompileResult<()> {
-        let inverted = self.alloc_register()?;
-        self.emit(InstructionKind::Not { dst: inverted, src });
-        self.emit(InstructionKind::Not { dst, src: inverted });
+        self.emit(InstructionKind::Truthy { dst, src });
         Ok(())
     }
 
