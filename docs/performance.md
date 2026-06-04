@@ -2237,6 +2237,33 @@ The row gives future M19 heap receiver materialization work a direct group-by
 surface without carrying an optimization that failed to beat the existing
 materialized receiver path.
 
+### 2026-06-04 M19 Rejected Exclusive Range Loop Candidate
+
+This measurement checkpoint tested a no-done-register bytecode path for direct
+exclusive range loops (`start..end`). The candidate was behaviorally valid:
+exclusive ranges cannot yield `i64::MAX` and then require a separate exhausted
+state, because `current < end` fails after the last yielded value. Inclusive
+ranges still need the existing guarded path for `i64::MAX..=i64::MAX`.
+
+Validation:
+
+```bash
+cargo test -p vela_bytecode compiler_lowers_direct_range_for_in_to_range_next
+cargo test -p vela_vm runs_compiled_range_for_in_source
+cargo test -p vela_vm --bench baseline --no-run
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/candidate/final rerun:
+
+| Benchmark | Before mean ns | Candidate best mean ns | Candidate final mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| range_iteration | 642729 | 625229 | 651979 | 11386712117419000375 |
+
+The candidate was not accepted because repeated quick runs did not preserve the
+initial improvement signal. The runtime keeps the existing `RangeNext` path for
+both exclusive and inclusive direct range loops.
+
 ## Targets
 
 The post-MVP non-JIT target is:
