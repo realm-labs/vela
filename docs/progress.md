@@ -10,15 +10,15 @@ to be archived.
 
 ## Current Focus
 
-M0-M16 are complete enough as a runnable prototype, embedding surface,
-production hot-reload workflow, and diagnostics/tooling foundation. Current work
-is centered on M17 fixtures and demo coverage around the now-stable reload and
-embedding surface:
+M0-M17 are complete enough as a runnable prototype, embedding surface,
+production hot-reload workflow, diagnostics/tooling foundation, and runnable
+game-server/conformance proof. Current work is centered on M18 performance
+measurement baselines:
 
 ```text
-runtime diagnostics and common rendering
-source spans, frame maps, and report surfaces
-conformance fixtures and game-server demo workflows
+official benchmark commands and quick validation
+baseline result capture with environment metadata
+follow-up bottleneck notes before optimization work
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
@@ -40,8 +40,8 @@ before debugger/DAP work and Cranelift JIT.
 | M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, permissions, signature conversion, and macro parity are covered. |
 | M15 | Complete enough | Safe-point staging, old-frame lifetime, new-call entry, source workflows, ABI/schema rejection, compatible additions, and repair reports are covered. |
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
-| M17 | Partial | Conformance fixtures and demo harnesses exist; game-server demo can still expand. |
-| M18 | Partial | Baseline harnesses exist; official baseline reporting and follow-up bottleneck tracking remain. |
+| M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
+| M18 | Partial | Baseline harnesses exist; official baseline result capture and follow-up bottleneck tracking remain. |
 | M19-M20 | Not started | Interpreter optimization, inline caches, and specialization follow M18 baselines. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -81,9 +81,10 @@ before debugger/DAP work and Cranelift JIT.
 
 ### Remaining Gaps
 
-- M17: expand conformance fixtures and game-server demo coverage around the
-  stable embedding and reload surface.
-- M18+: keep performance work benchmark-driven and separate from semantic
+- M18: record official quick baseline outputs with environment metadata and
+  identify the first measured interpreter/heap bottleneck notes before M19
+  optimization.
+- M19+: keep performance work benchmark-driven and separate from semantic
   changes.
 
 ### Validation
@@ -97,13 +98,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For current M16/M17 work, prefer targeted diagnostics, conformance, and demo
-tests plus at least one workflow-facing CLI demo run when behavior changes.
+For current M18 work, prefer benchmark compile checks, quick benchmark runs,
+and focused correctness tests for touched runtime areas. Keep optimization out
+of scope until baseline outputs and bottleneck notes are recorded.
 
 ## Next Up
 
-- Broaden M17 conformance and game-server demo workflows around the stable
-  embedding and reload surface.
+- Run the tracked quick benchmark commands and capture reproducible baseline
+  output summaries in [performance.md](performance.md).
 - Keep M18 measurement baselines ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
