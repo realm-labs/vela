@@ -307,6 +307,27 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_large_int_comparisons_without_float_rounding() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let low = 9007199254740992;
+    let high = 9007199254740993;
+    if low < high && high > low && low <= high && high >= low {
+        return 1;
+    }
+    return 0;
+}
+"#,
+        "main",
+    )
+    .expect("compile large int comparison source");
+
+    assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+}
+
+#[test]
 fn runs_compiled_shebang_source() {
     let code = compile_function_source(
         SourceId::new(1),

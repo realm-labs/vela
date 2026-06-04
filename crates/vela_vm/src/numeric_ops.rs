@@ -1,20 +1,33 @@
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
-pub(crate) fn binary_numeric(
-    lhs: &Value,
-    rhs: &Value,
-    operation: &'static str,
-    int_op: impl FnOnce(i64, i64) -> i64,
-) -> VmResult<Value> {
+#[inline]
+pub(crate) fn add_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(int_op(*lhs, *rhs))),
-        (Value::Float(lhs), Value::Float(rhs)) => {
-            Ok(Value::Float(int_op_float(*lhs, *rhs, operation)?))
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs + rhs)),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs + rhs)),
+        _ => type_mismatch("add"),
     }
 }
 
+#[inline]
+pub(crate) fn sub_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
+    match (lhs, rhs) {
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs - rhs)),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs - rhs)),
+        _ => type_mismatch("sub"),
+    }
+}
+
+#[inline]
+pub(crate) fn mul_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
+    match (lhs, rhs) {
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs * rhs)),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(Value::Float(lhs * rhs)),
+        _ => type_mismatch("mul"),
+    }
+}
+
+#[inline]
 pub(crate) fn negate_numeric(value: &Value) -> VmResult<Value> {
     match value {
         Value::Int(value) => value.checked_neg().map(Value::Int).ok_or_else(|| {
@@ -29,6 +42,7 @@ pub(crate) fn negate_numeric(value: &Value) -> VmResult<Value> {
     }
 }
 
+#[inline]
 pub(crate) fn div_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
         (Value::Int(_), Value::Int(0)) => Err(VmError::new(VmErrorKind::DivisionByZero)),
@@ -41,6 +55,7 @@ pub(crate) fn div_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     }
 }
 
+#[inline]
 pub(crate) fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     match (lhs, rhs) {
         (Value::Int(_), Value::Int(0)) => Err(VmError::new(VmErrorKind::DivisionByZero)),
@@ -53,24 +68,43 @@ pub(crate) fn rem_numeric(lhs: &Value, rhs: &Value) -> VmResult<Value> {
     }
 }
 
-pub(crate) fn compare_numeric(
-    lhs: &Value,
-    rhs: &Value,
-    operation: &'static str,
-    compare: impl FnOnce(f64, f64) -> bool,
-) -> VmResult<bool> {
+#[inline]
+pub(crate) fn less_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
     match (lhs, rhs) {
-        (Value::Int(lhs), Value::Int(rhs)) => Ok(compare(*lhs as f64, *rhs as f64)),
-        (Value::Float(lhs), Value::Float(rhs)) => Ok(compare(*lhs, *rhs)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs < rhs),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs < rhs),
+        _ => type_mismatch("less"),
     }
 }
 
-fn int_op_float(lhs: f64, rhs: f64, operation: &'static str) -> VmResult<f64> {
-    match operation {
-        "add" => Ok(lhs + rhs),
-        "sub" => Ok(lhs - rhs),
-        "mul" => Ok(lhs * rhs),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+#[inline]
+pub(crate) fn less_equal_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
+    match (lhs, rhs) {
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs <= rhs),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs <= rhs),
+        _ => type_mismatch("less_equal"),
     }
+}
+
+#[inline]
+pub(crate) fn greater_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
+    match (lhs, rhs) {
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs > rhs),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs > rhs),
+        _ => type_mismatch("greater"),
+    }
+}
+
+#[inline]
+pub(crate) fn greater_equal_numeric(lhs: &Value, rhs: &Value) -> VmResult<bool> {
+    match (lhs, rhs) {
+        (Value::Int(lhs), Value::Int(rhs)) => Ok(lhs >= rhs),
+        (Value::Float(lhs), Value::Float(rhs)) => Ok(lhs >= rhs),
+        _ => type_mismatch("greater_equal"),
+    }
+}
+
+#[inline]
+fn type_mismatch<T>(operation: &'static str) -> VmResult<T> {
+    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }

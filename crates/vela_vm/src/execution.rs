@@ -124,21 +124,18 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Add { dst, lhs, rhs } => {
-                    let value =
-                        binary_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "add", |a, b| a + b)
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = add_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Sub { dst, lhs, rhs } => {
-                    let value =
-                        binary_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "sub", |a, b| a - b)
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = sub_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Mul { dst, lhs, rhs } => {
-                    let value =
-                        binary_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "mul", |a, b| a * b)
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = mul_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Div { dst, lhs, rhs } => {
@@ -168,37 +165,23 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Less { dst, lhs, rhs } => {
-                    let value =
-                        compare_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "less", |a, b| a < b)
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = less_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::LessEqual { dst, lhs, rhs } => {
-                    let value = compare_numeric(
-                        frame.read(*lhs)?,
-                        frame.read(*rhs)?,
-                        "less_equal",
-                        |a, b| a <= b,
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = less_equal_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::Greater { dst, lhs, rhs } => {
-                    let value =
-                        compare_numeric(frame.read(*lhs)?, frame.read(*rhs)?, "greater", |a, b| {
-                            a > b
-                        })
+                    let value = greater_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
                         .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::GreaterEqual { dst, lhs, rhs } => {
-                    let value = compare_numeric(
-                        frame.read(*lhs)?,
-                        frame.read(*rhs)?,
-                        "greater_equal",
-                        |a, b| a >= b,
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let value = greater_equal_numeric(frame.read(*lhs)?, frame.read(*rhs)?)
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                     frame.write(*dst, Value::Bool(value))?;
                 }
                 InstructionKind::JumpIfFalse { condition, target } => {

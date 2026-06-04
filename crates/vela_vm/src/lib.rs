@@ -58,7 +58,10 @@ use heap_values::{
 };
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};
-use numeric_ops::{binary_numeric, compare_numeric, div_numeric, negate_numeric, rem_numeric};
+use numeric_ops::{
+    add_numeric, div_numeric, greater_equal_numeric, greater_numeric, less_equal_numeric,
+    less_numeric, mul_numeric, negate_numeric, rem_numeric, sub_numeric,
+};
 use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};

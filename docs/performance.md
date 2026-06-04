@@ -371,6 +371,55 @@ Future M19 optimization reports should include this workload when touching host
 paths, callbacks, collection methods, or PatchTx-heavy execution.
 ```
 
+### 2026-06-04 M19 Numeric Dispatch Checkpoint
+
+This checkpoint replaces the generic closure-based bytecode numeric helpers
+with named add/sub/mul and comparison operations. VM error kinds and
+source-spanned diagnostics are preserved, while integer comparisons now stay in
+the integer domain instead of converting through `f64`.
+
+Commands:
+
+```bash
+git worktree add --detach ../vela-bench-head HEAD
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session. The before run used a
+detached worktree at `ccebc40`; the after run used the numeric-dispatch working
+tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| scalar_branch_loop | 589250 | 567550 | 5382776514408301204 | 5382776514408301204 |
+| gameplay_monster_kill | 193250 | 181200 | 11641737387043360531 | 11641737387043360531 |
+| managed_heap_materialization | 168650 | 150750 | 11773534860610571856 | 11773534860610571856 |
+| gc_pacing | 5099800 | 5084650 | 16625037316567583116 | 16625037316567583116 |
+
+Default before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| scalar_branch_loop | 7438914 | 7421900 | 14794452088437409837 | 14794452088437409837 |
+| stdlib_collections | 3472385 | 3367914 | 8455524478326472193 | 8455524478326472193 |
+| gameplay_monster_kill | 2341614 | 2223314 | 5386942582173291744 | 5386942582173291744 |
+| managed_heap_materialization | 2061700 | 1855300 | 1965056817950502848 | 1965056817950502848 |
+| gc_pacing | 115115285 | 64910728 | 10923073775105338595 | 10923073775105338595 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for every reported workload.
+The biggest default improvement appears in gc_pacing because its inner loop is
+numeric-heavy even though the benchmark is still categorized as a GC workload.
+Scalar dispatch remains a broader target: register access, branch dispatch, and
+instruction-loop structure are still unoptimized beyond these named numeric
+operations.
+Heap allocation pressure remains the clearest next M19 target after this
+checkpoint.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
