@@ -17,6 +17,10 @@ const TYPEFACT_UNKNOWN_OPTION_VARIANT: &str =
     include_str!("../../../tests/fixtures/diagnostics/typefact_unknown_option_variant.vela");
 const TYPEFACT_UNKNOWN_OPTION_VARIANT_EXPECTED: &str =
     include_str!("../../../tests/fixtures/diagnostics/typefact_unknown_option_variant.expected");
+const FLOW_NARROWING_NULL_MEMBER: &str =
+    include_str!("../../../tests/fixtures/diagnostics/flow_narrowing_null_member.vela");
+const FLOW_NARROWING_NULL_MEMBER_EXPECTED: &str =
+    include_str!("../../../tests/fixtures/diagnostics/flow_narrowing_null_member.expected");
 
 #[test]
 fn semantic_unknown_host_field_fixture_renders_candidates_and_access_hints() {
@@ -58,6 +62,32 @@ fn typefact_unknown_option_variant_fixture_renders_dynamic_candidates() {
     assert_eq!(
         rendered.trim_end(),
         TYPEFACT_UNKNOWN_OPTION_VARIANT_EXPECTED.trim_end()
+    );
+}
+
+#[test]
+fn flow_narrowing_null_check_fixture_renders_member_diagnostic() {
+    let expr = first_expression(FLOW_NARROWING_NULL_MEMBER);
+    let scope = ExprFactScope::new().with_path(
+        ["player"],
+        TypeFact::union([TypeFact::Null, TypeFact::host("Player")]),
+    );
+    let diagnostics = member_access_diagnostics(&expr, &scope, &registry_facts());
+
+    assert_eq!(diagnostics.len(), 1);
+    let rendered = render_diagnostic(
+        &diagnostics[0],
+        [DiagnosticSource::new(
+            SourceId::new(1),
+            "flow_narrowing_null_member.vela",
+            FLOW_NARROWING_NULL_MEMBER,
+        )],
+    )
+    .join("\n");
+
+    assert_eq!(
+        rendered.trim_end(),
+        FLOW_NARROWING_NULL_MEMBER_EXPECTED.trim_end()
     );
 }
 

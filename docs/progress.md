@@ -10,9 +10,10 @@ to be archived.
 
 ## Current Focus
 
-M0-M15 are complete enough as a runnable prototype, embedding surface, and
-production hot-reload workflow. Current work is centered on M16/M17 diagnostics,
-fixtures, and demo coverage around the now-stable reload and embedding surface:
+M0-M16 are complete enough as a runnable prototype, embedding surface,
+production hot-reload workflow, and diagnostics/tooling foundation. Current work
+is centered on M17 fixtures and demo coverage around the now-stable reload and
+embedding surface:
 
 ```text
 runtime diagnostics and common rendering
@@ -38,7 +39,7 @@ before debugger/DAP work and Cranelift JIT.
 | M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and demo helper coverage are validated. |
 | M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, permissions, signature conversion, and macro parity are covered. |
 | M15 | Complete enough | Safe-point staging, old-frame lifetime, new-call entry, source workflows, ABI/schema rejection, compatible additions, and repair reports are covered. |
-| M16 | Partial | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, and completion snapshot fixtures exist; flow-narrowing fixtures remain. |
+| M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Partial | Conformance fixtures and demo harnesses exist; game-server demo can still expand. |
 | M18 | Partial | Baseline harnesses exist; official baseline reporting and follow-up bottleneck tracking remain. |
 | M19-M20 | Not started | Interpreter optimization, inline caches, and specialization follow M18 baselines. |
@@ -74,8 +75,8 @@ before debugger/DAP work and Cranelift JIT.
 
 ### Remaining Gaps
 
-- M16/M17: add flow-narrowing diagnostic fixtures, then expand game-server demo
-  coverage around the stable embedding and reload surface.
+- M17: expand conformance fixtures and game-server demo coverage around the
+  stable embedding and reload surface.
 - M18+: keep performance work benchmark-driven and separate from semantic
   changes.
 
@@ -95,8 +96,8 @@ tests plus at least one workflow-facing CLI demo run when behavior changes.
 
 ## Next Up
 
-- Broaden M16/M17 flow-narrowing, conformance, and game-server demo workflows
-  around the stable embedding and reload surface.
+- Broaden M17 conformance and game-server demo workflows around the stable
+  embedding and reload surface.
 - Keep M18 measurement baselines ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
