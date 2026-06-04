@@ -2,6 +2,13 @@ use super::*;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 
+const HOT_RELOAD_PARAMETER_ABI_V1: &str =
+    include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi_v1.vela");
+const HOT_RELOAD_PARAMETER_ABI_V2: &str =
+    include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi_v2.vela");
+const HOT_RELOAD_PARAMETER_ABI_EXPECTED: &str =
+    include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi.expected");
+
 #[test]
 fn new_calls_enter_new_code_after_update() {
     let initial =
@@ -613,6 +620,49 @@ fn rejected_compile_report_carries_source_span_and_labels() {
             && line.span.is_some()
     }));
     assert_eq!(runtime.current().id, ProgramVersionId(0));
+}
+
+#[test]
+fn rejected_reload_report_fixture_renders_parameter_abi_span_and_hint() {
+    let initial = compile_initial(SourceId::new(1), HOT_RELOAD_PARAMETER_ABI_V1)
+        .expect("compile initial hot reload diagnostic fixture");
+    let mut runtime = HotReloadRuntime::new(initial);
+
+    let report = runtime.apply_hot_update_result_report(compile_update(
+        &runtime.current(),
+        SourceId::new(2),
+        HOT_RELOAD_PARAMETER_ABI_V2,
+    ));
+
+    assert!(!report.accepted);
+    let rendered = render_report_lines_for_fixture(&report);
+
+    assert_eq!(
+        rendered.trim_end(),
+        HOT_RELOAD_PARAMETER_ABI_EXPECTED.trim_end()
+    );
+}
+
+fn render_report_lines_for_fixture(report: &HotReloadReport) -> String {
+    report
+        .render_lines()
+        .into_iter()
+        .map(|line| {
+            let span = line
+                .span
+                .map(|span| {
+                    format!(
+                        " @ source {}:{}..{}",
+                        span.source.get(),
+                        span.start,
+                        span.end
+                    )
+                })
+                .unwrap_or_default();
+            format!("{:?}{span}: {}", line.kind, line.text)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn module_sources(reward: i64) -> Vec<ModuleSource> {

@@ -1,0 +1,4 @@
+Summary: hot reload rejected: v0 unchanged
+Diagnostic @ source 2:0..44: [reload.function.parameter_abi_changed] main: function `main` changed parameter ABI
+Detail: parameter ABI: old=(value:int) new=(value:string)
+RepairHint: repair: preserve existing parameter names, order, type hints, and defaults
