@@ -1,0 +1,12 @@
+fn main(ctx, player, monster) {
+    let reward = ctx.config.kill_rewards
+        .find(|reward| reward["monster_id"] == monster.id)
+        .unwrap_or({"item_id": "none", "count": 0});
+    let granted = game::reward::grant(player, reward["item_id"]);
+
+    if granted {
+        return reward["count"] + monster.exp;
+    }
+
+    return 0;
+}

@@ -128,6 +128,14 @@ fn random_reflect_allowed_demo_runs_through_cli() {
 }
 
 #[test]
+fn reward_preview_demo_runs_through_cli() {
+    assert_eq!(
+        run_demo("reward_preview.vela"),
+        "result=Int(23) level=Int(1) patches=0\n"
+    );
+}
+
+#[test]
 fn random_permission_demo_reports_permission_denial() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
         .arg(script_path("random_permission_denied.vela"))
