@@ -44,16 +44,22 @@ pub(crate) fn sort_by(
     let mut entries = Vec::<SortEntry>::with_capacity(values.len());
     let mut key_kind = None;
     for value in values {
-        let protected = entries
-            .iter()
-            .map(|entry| entry.value.clone())
-            .collect::<Vec<_>>();
+        let protected;
+        let protected_values = if runtime.heap.is_some() {
+            protected = entries
+                .iter()
+                .map(|entry| entry.value.clone())
+                .collect::<Vec<_>>();
+            protected.as_slice()
+        } else {
+            &[]
+        };
         let key_value = call_unary_callback(
             &mut runtime,
             "method sort_by",
             &args[0],
             value.clone(),
-            &protected,
+            protected_values,
         )?;
         let key = sort_key(&key_value, runtime.heap.as_deref(), "method sort_by")?;
         if let Some(expected) = key_kind {

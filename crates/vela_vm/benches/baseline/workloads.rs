@@ -57,6 +57,30 @@ fn main() {
 "#,
     },
     Workload {
+        name: "callback_collections",
+        mode: ExecutionMode::Inline,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..20 {
+        let rewards = {
+            "r01": 1, "r02": 2, "r03": 3, "r04": 4,
+            "r05": 5, "r06": 6, "r07": 7, "r08": 8,
+            "r09": 9, "r10": 10, "r11": 11, "r12": 12,
+        };
+        let keyed = rewards.map_values(|key, value| key.len() + value + tick - tick);
+        let filtered = keyed.filter(|key, value| key.starts_with("r") && value % 3 == 0);
+        let sorted = filtered.values().sort_by(|value| 20 - value);
+        if filtered.len() != 4 || sorted[0] != 15 || sorted[3] != 6 {
+            return 0;
+        }
+        total += sorted.sum() + keyed.get_or("r12", 0);
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "host_patch_tx",
         mode: ExecutionMode::HostPatchTx,
         source: r#"

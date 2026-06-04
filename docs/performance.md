@@ -585,6 +585,51 @@ Remaining callback work should focus on map/sort protected-value construction,
 map callback argument vectors, and closure call overhead.
 ```
 
+### 2026-06-04 M19 Map/Sort Callback Allocation Checkpoint
+
+This checkpoint adds a targeted `callback_collections` benchmark and reduces
+allocation pressure in map and sort callbacks. Map higher-order methods now pass
+zero-, one-, and two-argument callbacks from stack-local slices instead of
+allocating a callback argument `Vec` per entry. No-heap `map.map_values`,
+`map.filter`, and `array.sort_by` callback dispatch also skips protected-value
+clone vectors that are only needed for managed heap root protection.
+
+Managed heap execution keeps protected-value root collection for callbacks that
+can allocate while previously-built map or sort results remain live.
+
+Commands:
+
+```bash
+git worktree add --detach ../vela-callback-protected-before HEAD
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+The before worktree used `0bba76b` with only the new benchmark workload applied;
+the after run used the map/sort callback allocation working tree.
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 12008950 | 6794900 | 3270490998308601835 | 3270490998308601835 |
+
+Default before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 82308542 | 75103300 | 12210731834836948394 | 12210731834836948394 |
+
+Checkpoint notes:
+
+```text
+The new callback_collections benchmark exercises map_values, map filter, and
+array sort_by callbacks over a repeated map workload.
+Checksums stayed stable for the reported workload.
+Remaining callback work should focus on closure invocation overhead and broader
+stdlib/native boundary materialization.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, no-heap callback root/protected-value guards, a gameplay host benchmark, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, no-heap callback root/protected-value guards, stack-local map callback args, gameplay/callback benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -107,6 +107,11 @@ before debugger/DAP work and Cranelift JIT.
   [performance.md](performance.md): no-heap `array.group_by` callbacks skip
   cloning previously-built groups that are only needed for heap root
   protection.
+- An M19 map/sort callback allocation checkpoint is recorded in
+  [performance.md](performance.md): the `callback_collections` benchmark now
+  covers `map_values`, map `filter`, and `sort_by`, and no-heap map/sort
+  callbacks skip protected-value clone vectors while map callbacks pass
+  zero-, one-, and two-argument slices without allocating a per-entry `Vec`.
 - A gameplay-style M19 benchmark is recorded in [performance.md](performance.md):
   `gameplay_monster_kill` runs the real demo monster-kill script through
   HostPath reads/writes, PatchTx apply, stdlib callbacks, and host method
@@ -121,8 +126,8 @@ before debugger/DAP work and Cranelift JIT.
 - M19: continue optimizing the non-JIT interpreter and managed heap path only
   with before/after benchmark evidence, focusing next on native/stdlib boundary
   materialization, returned heap object materialization, string and callback
-  argument/call overhead, remaining map/sort protected-value construction,
-  broader scalar dispatch measurements, and gameplay-host benchmark deltas.
+  call overhead, broader scalar dispatch measurements, and gameplay-host
+  benchmark deltas.
 - M20+: keep inline-cache and specialization work behind M19 benchmarked
   interpreter/heap improvements.
 
@@ -146,9 +151,9 @@ ownership, and source-spanned diagnostics.
 
 - Choose the next narrow measured M19 optimization target from the updated
   checkpoint notes, with native/stdlib boundary materialization, returned heap
-  object materialization, string/callback argument overhead, remaining map/sort
-  protected-value construction, and broader scalar dispatch currently the
-  clearest candidates; include the gameplay-host benchmark when relevant.
+  object materialization, string/callback call overhead, and broader scalar
+  dispatch currently the clearest candidates; include the gameplay-host
+  benchmark when relevant.
 - Keep benchmark evidence ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.

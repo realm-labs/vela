@@ -15,14 +15,20 @@ pub(crate) fn map_values(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
     let mut mapped = BTreeMap::new();
     for (key, value) in entries {
-        let protected = mapped.values().cloned().collect::<Vec<_>>();
-        let callback_args = map_callback_args(&args[0], key.clone(), value, "method map_values")?;
-        let value = call_callback(
+        let protected;
+        let protected_values = if runtime.heap.is_some() {
+            protected = mapped.values().cloned().collect::<Vec<_>>();
+            protected.as_slice()
+        } else {
+            &[]
+        };
+        let value = call_map_callback(
             &mut runtime,
             "method map_values",
             &args[0],
-            &callback_args,
-            &protected,
+            key.clone(),
+            value,
+            protected_values,
         )?;
         mapped.insert(key, value);
     }
@@ -38,15 +44,20 @@ pub(crate) fn filter(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
     let mut filtered = BTreeMap::new();
     for (key, value) in entries {
-        let protected = filtered.values().cloned().collect::<Vec<_>>();
-        let predicate_args =
-            map_callback_args(&args[0], key.clone(), value.clone(), "method filter")?;
-        let predicate = call_callback(
+        let protected;
+        let protected_values = if runtime.heap.is_some() {
+            protected = filtered.values().cloned().collect::<Vec<_>>();
+            protected.as_slice()
+        } else {
+            &[]
+        };
+        let predicate = call_map_callback(
             &mut runtime,
             "method filter",
             &args[0],
-            &predicate_args,
-            &protected,
+            key.clone(),
+            value.clone(),
+            protected_values,
         )?;
         if is_truthy(&predicate) {
             filtered.insert(key, value);
@@ -63,9 +74,14 @@ pub(crate) fn find(
     expect_arity("find", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
     for (key, value) in entries {
-        let predicate_args =
-            map_callback_args(&args[0], key.clone(), value.clone(), "method find")?;
-        let predicate = call_callback(&mut runtime, "method find", &args[0], &predicate_args, &[])?;
+        let predicate = call_map_callback(
+            &mut runtime,
+            "method find",
+            &args[0],
+            key.clone(),
+            value.clone(),
+            &[],
+        )?;
         if is_truthy(&predicate) {
             return Ok(option_value(Some(map_entry(&key, value))));
         }
@@ -81,8 +97,7 @@ pub(crate) fn any(
     expect_arity("any", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
     for (key, value) in entries {
-        let predicate_args = map_callback_args(&args[0], key, value, "method any")?;
-        let predicate = call_callback(&mut runtime, "method any", &args[0], &predicate_args, &[])?;
+        let predicate = call_map_callback(&mut runtime, "method any", &args[0], key, value, &[])?;
         if is_truthy(&predicate) {
             return Ok(true);
         }
@@ -98,8 +113,7 @@ pub(crate) fn all(
     expect_arity("all", args, 1)?;
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
     for (key, value) in entries {
-        let predicate_args = map_callback_args(&args[0], key, value, "method all")?;
-        let predicate = call_callback(&mut runtime, "method all", &args[0], &predicate_args, &[])?;
+        let predicate = call_map_callback(&mut runtime, "method all", &args[0], key, value, &[])?;
         if !is_truthy(&predicate) {
             return Ok(false);
         }
@@ -116,9 +130,7 @@ pub(crate) fn count(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
     let mut count = 0_i64;
     for (key, value) in entries {
-        let predicate_args = map_callback_args(&args[0], key, value, "method count")?;
-        let predicate =
-            call_callback(&mut runtime, "method count", &args[0], &predicate_args, &[])?;
+        let predicate = call_map_callback(&mut runtime, "method count", &args[0], key, value, &[])?;
         if is_truthy(&predicate) {
             count = count.checked_add(1).ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
@@ -130,19 +142,36 @@ pub(crate) fn count(
     Ok(count)
 }
 
-fn map_callback_args(
+fn call_map_callback(
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
     callback: &Value,
     key: String,
     value: Value,
-    operation: &'static str,
-) -> VmResult<Vec<Value>> {
+    protected_values: &[Value],
+) -> VmResult<Value> {
     let Value::Closure(closure) = callback else {
         return type_error(operation);
     };
     match closure.code.params.len() {
-        0 => Ok(Vec::new()),
-        1 => Ok(vec![value]),
-        _ => Ok(vec![Value::String(key), value]),
+        0 => call_callback(runtime, operation, callback, &[], protected_values),
+        1 => call_callback(
+            runtime,
+            operation,
+            callback,
+            std::slice::from_ref(&value),
+            protected_values,
+        ),
+        _ => {
+            let callback_args = [Value::String(key), value];
+            call_callback(
+                runtime,
+                operation,
+                callback,
+                &callback_args,
+                protected_values,
+            )
+        }
     }
 }
 
