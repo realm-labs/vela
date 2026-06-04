@@ -10,15 +10,15 @@ to be archived.
 
 ## Current Focus
 
-M0-M17 are complete enough as a runnable prototype, embedding surface,
+M0-M18 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, and runnable
-game-server/conformance proof. Current work is centered on M18 performance
-measurement baselines:
+game-server/conformance proof with measured performance baselines. Current work
+is centered on M19 non-JIT interpreter and heap optimization:
 
 ```text
-official benchmark commands and quick validation
-baseline result capture with environment metadata
-follow-up bottleneck notes before optimization work
+preserve all runtime, host, reflection, GC, and hot-reload semantics
+optimize only against recorded benchmark bottlenecks
+separate before/after benchmark evidence for each accepted change
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
@@ -41,8 +41,9 @@ before debugger/DAP work and Cranelift JIT.
 | M15 | Complete enough | Safe-point staging, old-frame lifetime, new-call entry, source workflows, ABI/schema rejection, compatible additions, and repair reports are covered. |
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
-| M18 | Partial | Baseline harnesses and quick result capture exist; full/default baseline reporting remains. |
-| M19-M20 | Not started | Interpreter optimization, inline caches, and specialization follow M18 baselines. |
+| M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
+| M19 | Partial | GC pacing, heap materialization, and scalar dispatch are measured first optimization candidates. |
+| M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -81,13 +82,17 @@ before debugger/DAP work and Cranelift JIT.
 - M18 quick benchmark output is recorded in [performance.md](performance.md)
   with environment metadata, checksums, external runtime availability, and
   initial bottleneck notes.
+- M18 full/default benchmark output is recorded in
+  [performance.md](performance.md) with environment metadata, checksums,
+  external runtime availability, and measured bottleneck notes.
 
 ### Remaining Gaps
 
-- M18: run and record full/default benchmark baselines when practical,
-  including Lua 5.x/LuaJIT/Rhai versions when those runtimes are available.
-- M19+: keep performance work benchmark-driven and separate from semantic
-  changes.
+- M19: optimize the non-JIT interpreter and managed heap path only with
+  before/after benchmark evidence, starting from GC pacing, heap
+  materialization, and scalar dispatch measurements.
+- M20+: keep inline-cache and specialization work behind M19 benchmarked
+  interpreter/heap improvements.
 
 ### Validation
 
@@ -100,15 +105,17 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For current M18 work, prefer benchmark compile checks, quick benchmark runs,
-and focused correctness tests for touched runtime areas. Keep optimization out
-of scope until baseline outputs and bottleneck notes are recorded.
+For current M19 work, run focused correctness tests for touched runtime areas
+plus the relevant benchmark before and after each optimization. Optimized paths
+must preserve ExecutionBudget, PatchTx, reflection policy, GC roots, hot reload
+ownership, and source-spanned diagnostics.
 
 ## Next Up
 
-- Expand quick M18 baseline capture into full/default benchmark reporting when
-  runtime availability and machine time allow.
-- Keep M18 measurement baselines ahead of M19/M20 optimization work.
+- Choose a narrow measured M19 optimization target from the full/default
+  baseline notes, with GC pacing and heap materialization currently the clearest
+  candidates.
+- Keep benchmark evidence ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
 

@@ -176,6 +176,87 @@ Lua 5.x, LuaJIT, and Rhai were unavailable on this machine, so the primary
 non-JIT external comparison target remains unmeasured for this capture.
 ```
 
+### 2026-06-04 Full Baseline
+
+This full/default baseline was captured before M19 optimization work using the
+tracked harness default parameters.
+
+Environment:
+
+```text
+commit=cd64022
+rustc=1.96.0 (ac68faa20 2026-05-25)
+cargo=1.96.0 (30a34c682 2026-05-25)
+host=x86_64-pc-windows-msvc
+target=windows/x86_64
+profile=release
+```
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline
+cargo bench -p vela_engine --bench hot_reload
+cargo bench -p vela_vm --bench external_compare
+```
+
+Parameters:
+
+```text
+vela_vm baseline repeats=7 iterations=100 warmup=10
+vela_engine hot_reload repeats=7 iterations=100 warmup=10
+vela_vm external_compare repeats=5 iterations=100 warmup=3
+```
+
+Internal VM baseline:
+
+| Benchmark | Mode | Min ns | Mean ns | Median ns | P95 ns | Checksum |
+|---|---|---:|---:|---:|---:|---:|
+| scalar_branch_loop | inline | 7141400 | 7278714 | 7219300 | 7603600 | 14794452088437409837 |
+| stdlib_collections | inline | 3301600 | 3479714 | 3409000 | 3818900 | 8455524478326472193 |
+| host_patch_tx | host_patch_tx | 300700 | 301585 | 301200 | 303200 | 2706371544431107761 |
+| managed_heap_materialization | managed_heap | 6992400 | 7122628 | 7148300 | 7250600 | 1965056817950502848 |
+| gc_pacing | gc_pacing | 1097458400 | 1119594114 | 1108094000 | 1162844900 | 10923073775105338595 |
+
+Hot reload baseline:
+
+| Benchmark | Mode | Min ns | Mean ns | Median ns | P95 ns | Checksum |
+|---|---|---:|---:|---:|---:|---:|
+| hot_reload_accept | compile_apply | 12637000 | 13063714 | 12992000 | 13580200 | 16819348956461335541 |
+| hot_reload_abi_reject | compile_reject | 9215500 | 10452328 | 9303500 | 12234700 | 8095282285294424121 |
+
+External comparison baseline:
+
+| Runtime | Version/status | Mode | Min ns | Mean ns | Median ns | P95 ns | Checksum |
+|---|---|---|---:|---:|---:|---:|---:|
+| vela | 0.1.0 | internal | 7091400 | 7758440 | 7225800 | 9519800 | 310942833354159201 |
+| lua5 | missing: `lua`, `lua5.4`, `lua5.3` | n/a | n/a | n/a | n/a | n/a | n/a |
+| luajit | missing: `luajit` | n/a | n/a | n/a | n/a | n/a | n/a |
+| node | v24.15.0 | process | 37929300 | 40226140 | 39597500 | 43048100 | 8356183458656122754 |
+| rhai | missing: `rhai-run` | n/a | n/a | n/a | n/a | n/a | n/a |
+
+Full-baseline bottleneck notes:
+
+```text
+gc_pacing is still dominant at roughly 1.12 seconds mean for 700 total
+iterations. M19 should inspect safe-point sweep work, seeded garbage setup,
+allocation pressure, and GC step accounting before changing general VM dispatch.
+managed_heap_materialization and scalar_branch_loop are close in mean time on
+this machine, which points to heap/materialization costs and scalar dispatch
+both needing measurement-preserving optimization.
+stdlib_collections is materially faster than scalar_branch_loop in this
+workload mix, so broad stdlib rewrites should wait for narrower evidence.
+host_patch_tx is much cheaper than the script-heavy workloads in this harness;
+do not optimize PatchTx first unless a host-heavy gameplay benchmark exposes a
+different profile.
+hot_reload_accept remains slower than ABI rejection and should stay measured as
+a compile/update workflow, not as steady-state execution.
+Lua 5.x, LuaJIT, and Rhai were unavailable on this machine. The external
+comparison harness still records the missing commands and Node.js version, but
+the Lua-comparable M19 target requires a later capture on a machine with Lua
+5.x installed.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
