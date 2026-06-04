@@ -9,6 +9,7 @@ pub(crate) enum ExecutionMode {
     Inline,
     ManagedHeap,
     HostPatchTx,
+    HostManagedHeapPatchTx,
     GameplayHost,
     GcPacing,
 }
@@ -216,6 +217,35 @@ fn main(player) {
     player.inventory.gold += 3;
     player.inventory.rewards.push("gold");
     return player.level + player.exp + player.inventory.gold + player.inventory.rewards.len();
+}
+"#,
+    },
+    Workload {
+        name: "managed_heap_host_conversion",
+        mode: ExecutionMode::HostManagedHeapPatchTx,
+        source: r#"
+struct Reward {
+    item_id,
+    count,
+}
+
+enum Damage {
+    Physical { amount }
+}
+
+fn main(player) {
+    let total = 0;
+    for tick in 0..24 {
+        player.level = {
+            "class": "mage",
+            score: tick + 3,
+            tags: ["quest", "raid", "daily"],
+        };
+        player.exp = Reward { item_id: "gold", count: tick + 1 };
+        player.inventory.gold = Damage::Physical { amount: tick + 2 };
+        total += player.level.len();
+    }
+    return total;
 }
 "#,
     },

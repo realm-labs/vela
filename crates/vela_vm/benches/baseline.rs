@@ -151,6 +151,9 @@ enum CompiledWorkload {
     HostPatchTx {
         program: Box<Program>,
     },
+    HostManagedHeapPatchTx {
+        program: Box<Program>,
+    },
     GameplayHost {
         program: Box<Program>,
     },
@@ -178,30 +181,45 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error
             ..
         }
         | CompiledWorkload::Function {
+            mode: ExecutionMode::HostManagedHeapPatchTx,
+            ..
+        }
+        | CompiledWorkload::Function {
             mode: ExecutionMode::GameplayHost,
             ..
         } => unreachable!("host workloads compile to programs"),
         CompiledWorkload::HostPatchTx { program } => run_host_patch_tx(vm, program),
+        CompiledWorkload::HostManagedHeapPatchTx { program } => {
+            run_managed_heap_host_conversion(vm, program)
+        }
         CompiledWorkload::GameplayHost { program } => run_gameplay_monster_kill(vm, program),
     }
 }
 
 fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
     match workload.mode {
-        ExecutionMode::HostPatchTx => compile_program_source_with_options(
-            SourceId::new(1),
-            workload.source,
-            &CompilerOptions::new()
-                .with_host_field("level", LEVEL_FIELD)
-                .with_host_field("exp", EXP_FIELD)
-                .with_host_field("inventory", INVENTORY_FIELD)
-                .with_host_field("gold", GOLD_FIELD)
-                .with_host_field("rewards", REWARDS_FIELD),
-        )
-        .map(|program| CompiledWorkload::HostPatchTx {
-            program: Box::new(program),
-        })
-        .map_err(|error| format!("{error:?}")),
+        ExecutionMode::HostPatchTx | ExecutionMode::HostManagedHeapPatchTx => {
+            compile_program_source_with_options(
+                SourceId::new(1),
+                workload.source,
+                &CompilerOptions::new()
+                    .with_host_field("level", LEVEL_FIELD)
+                    .with_host_field("exp", EXP_FIELD)
+                    .with_host_field("inventory", INVENTORY_FIELD)
+                    .with_host_field("gold", GOLD_FIELD)
+                    .with_host_field("rewards", REWARDS_FIELD),
+            )
+            .map(|program| match workload.mode {
+                ExecutionMode::HostPatchTx => CompiledWorkload::HostPatchTx {
+                    program: Box::new(program),
+                },
+                ExecutionMode::HostManagedHeapPatchTx => CompiledWorkload::HostManagedHeapPatchTx {
+                    program: Box::new(program),
+                },
+                _ => unreachable!("only host patch modes are handled here"),
+            })
+            .map_err(|error| format!("{error:?}"))
+        }
         ExecutionMode::GameplayHost => compile_program_source_with_options(
             SourceId::new(1),
             workload.source,
@@ -327,6 +345,43 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>
     ))
 }
 
+fn run_managed_heap_host_conversion(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>> {
+    let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
+    let level_path = HostPath::new(player).field(LEVEL_FIELD);
+    let exp_path = HostPath::new(player).field(EXP_FIELD);
+    let damage_path = HostPath::new(player)
+        .field(INVENTORY_FIELD)
+        .field(GOLD_FIELD);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(level_path.clone(), HostValue::Null);
+    adapter.insert_value(exp_path.clone(), HostValue::Null);
+    adapter.insert_value(damage_path.clone(), HostValue::Null);
+    let mut tx = PatchTx::new();
+    let mut budget = ExecutionBudget::unbounded();
+    let value = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+        vm.run_program_with_host_managed_heap_and_budget(
+            program,
+            "main",
+            &[Value::HostRef(player)],
+            &mut host,
+            &mut budget,
+        )?
+    };
+    let patch_count = tx.patches().len();
+    tx.apply(&mut adapter)?;
+    Ok(Value::Int(
+        value_checksum(&value) as i64
+            + patch_count as i64
+            + host_map_len(&adapter, level_path)?
+            + host_record_len(&adapter, exp_path)?
+            + host_enum_field_len(&adapter, damage_path)?,
+    ))
+}
+
 fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let ctx = HostRef::new(CTX_TYPE, CTX_OBJECT, 1);
@@ -434,6 +489,27 @@ fn host_array_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box
     }
 }
 
+fn host_map_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
+    match adapter.read_path(&path)? {
+        HostValue::Map(values) => Ok(values.len() as i64),
+        value => Err(format!("expected map host value, got {value:?}").into()),
+    }
+}
+
+fn host_record_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
+    match adapter.read_path(&path)? {
+        HostValue::Record { fields, .. } => Ok(fields.len() as i64),
+        value => Err(format!("expected record host value, got {value:?}").into()),
+    }
+}
+
+fn host_enum_field_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
+    match adapter.read_path(&path)? {
+        HostValue::Enum { fields, .. } => Ok(fields.len() as i64),
+        value => Err(format!("expected enum host value, got {value:?}").into()),
+    }
+}
+
 fn summarize(mut samples: Vec<Duration>, checksum: u64) -> BenchResult {
     samples.sort_unstable();
     let min_ns = samples.first().map_or(0, Duration::as_nanos);
@@ -523,6 +599,7 @@ impl ExecutionMode {
             Self::Inline => "inline",
             Self::ManagedHeap => "managed_heap",
             Self::HostPatchTx => "host_patch_tx",
+            Self::HostManagedHeapPatchTx => "host_managed_heap_patch_tx",
             Self::GameplayHost => "gameplay_host",
             Self::GcPacing => "gc_pacing",
         }

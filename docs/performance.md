@@ -1674,6 +1674,35 @@ array benchmarks stayed within normal quick-run noise. This is a narrow helper
 dispatch cleanup, not a broader enum payload materialization change.
 ```
 
+### 2026-06-04 M19 Managed Heap Host Conversion Benchmark Checkpoint
+
+This checkpoint adds a focused `managed_heap_host_conversion` benchmark for
+host execution with managed heap enabled. The workload writes map, record, and
+enum aggregates through `PatchTx`, applies the patches to the mock host, and
+verifies the final host aggregate shapes through the benchmark checksum.
+
+Commands:
+
+```bash
+cargo test -p vela_vm managed_heap_host_execution
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick baseline from the same working session:
+
+| Benchmark | Mean ns | Checksum |
+|---|---:|---:|
+| managed_heap_host_conversion | 2584850 | 2738613165024392619 |
+
+Checkpoint notes:
+
+```text
+This gives M19 a measured host-managed-heap conversion surface separate from
+the broader host_patch_tx row. A direct heap-slot-to-HostValue conversion path
+was measured but not accepted because repeated quick runs did not show a
+consistent win, so the runtime path stayed unchanged.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
