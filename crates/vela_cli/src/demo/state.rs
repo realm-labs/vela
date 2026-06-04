@@ -20,7 +20,7 @@ const MONSTER_GENERATION: u32 = 1;
 
 pub(crate) struct DemoHostState {
     ids: DemoIds,
-    player: HostRef,
+    player_arg: HostRef,
     ctx: HostRef,
     monster: HostRef,
     has_monster: bool,
@@ -35,12 +35,21 @@ pub(crate) struct DemoHostState {
 }
 
 impl DemoHostState {
-    pub(crate) fn new(ids: DemoIds, has_monster: bool) -> Self {
+    pub(crate) fn new(ids: DemoIds, has_monster: bool, stale_player_arg: bool) -> Self {
         let player = HostRef::new(
             player_type(),
             HostObjectId::new(PLAYER_OBJECT),
             PLAYER_GENERATION,
         );
+        let player_arg = if stale_player_arg {
+            HostRef::new(
+                player_type(),
+                HostObjectId::new(PLAYER_OBJECT),
+                PLAYER_GENERATION - 1,
+            )
+        } else {
+            player
+        };
         let ctx = HostRef::new(
             context_type(),
             HostObjectId::new(CTX_OBJECT),
@@ -107,7 +116,7 @@ impl DemoHostState {
 
         Self {
             ids,
-            player,
+            player_arg,
             ctx,
             monster,
             has_monster,
@@ -126,7 +135,7 @@ impl DemoHostState {
         main.params
             .iter()
             .map(|param| match param.as_str() {
-                "player" => Ok(Value::HostRef(self.player)),
+                "player" => Ok(Value::HostRef(self.player_arg)),
                 "ctx" => Ok(Value::HostRef(self.ctx)),
                 "monster" => Ok(Value::HostRef(self.monster)),
                 _ => Err(format!("unsupported demo main parameter `{param}`").into()),

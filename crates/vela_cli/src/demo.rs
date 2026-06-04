@@ -15,16 +15,32 @@ mod registry;
 mod state;
 
 pub(crate) fn run_script(path: &str) -> Result<(), Box<dyn Error>> {
-    run_script_with_options(path, DemoEngineOptions::default())
+    run_script_with_options(path, DemoRunOptions::default())
 }
 
 pub(crate) fn run_script_with_random(path: &str) -> Result<(), Box<dyn Error>> {
-    run_script_with_options(path, DemoEngineOptions { allow_random: true })
+    run_script_with_options(
+        path,
+        DemoRunOptions {
+            engine: DemoEngineOptions { allow_random: true },
+            ..DemoRunOptions::default()
+        },
+    )
 }
 
-fn run_script_with_options(path: &str, options: DemoEngineOptions) -> Result<(), Box<dyn Error>> {
+pub(crate) fn run_script_with_stale_player(path: &str) -> Result<(), Box<dyn Error>> {
+    run_script_with_options(
+        path,
+        DemoRunOptions {
+            stale_player: true,
+            ..DemoRunOptions::default()
+        },
+    )
+}
+
+fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Box<dyn Error>> {
     let ids = DemoIds::new();
-    let engine = build_engine(ids, options).map_err(|error| format!("{error:?}"))?;
+    let engine = build_engine(ids, options.engine).map_err(|error| format!("{error:?}"))?;
     let path = Path::new(path);
     let program = engine
         .compile_file(path)
@@ -33,8 +49,11 @@ fn run_script_with_options(path: &str, options: DemoEngineOptions) -> Result<(),
     let main = program
         .function("main")
         .ok_or("script must define fn main(...)")?;
-    let mut host_state =
-        DemoHostState::new(ids, main.params.iter().any(|param| param == "monster"));
+    let mut host_state = DemoHostState::new(
+        ids,
+        main.params.iter().any(|param| param == "monster"),
+        options.stale_player,
+    );
     let args = host_state.main_args(main)?;
 
     let mut tx = PatchTx::new();
@@ -60,6 +79,12 @@ pub(crate) fn hot_reload_engine() -> EngineResult<Engine> {
 
 fn build_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine> {
     demo_engine(ids, options)
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct DemoRunOptions {
+    engine: DemoEngineOptions,
+    stale_player: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default)]

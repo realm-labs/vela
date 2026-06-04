@@ -42,6 +42,40 @@ fn main(player) {
 }
 
 #[test]
+fn compiled_source_host_field_read_error_keeps_source_span() {
+    let source = r#"
+fn main(player) {
+    return player.level;
+}
+"#;
+    let host_ref = player_ref(3);
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        source,
+        &CompilerOptions::new().with_host_field("level", level_field()),
+    )
+    .expect("compile host field source");
+    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    adapter.deny_read(level_path(host_ref));
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    let error = Vm::new()
+        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .expect_err("host read should fail");
+
+    let span = error.source_span.expect("host read error source span");
+    assert_eq!(span.source, SourceId::new(1));
+    assert_eq!(
+        &source[span.start as usize..span.end as usize],
+        "player.level"
+    );
+}
+
+#[test]
 fn compiled_source_mutates_nested_host_field_through_patch_tx() {
     let host_ref = player_ref(3);
     let stats = FieldId::new(8);

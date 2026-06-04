@@ -412,94 +412,71 @@ impl Compiler<'_> {
             .then(|| self.compile_host_path_segments(segments))
             .transpose()?;
         let src = self.compile_expr(value)?;
-        match op {
-            AssignOp::Set => {
-                if let Some(field) = field {
-                    self.emit(InstructionKind::SetHostField { root, field, src });
-                } else {
-                    self.emit(InstructionKind::SetHostPath {
-                        root,
-                        segments: segments.expect("host path segments"),
-                        src,
-                    });
-                }
+        let instruction = if let Some(field) = field {
+            match op {
+                AssignOp::Set => InstructionKind::SetHostField { root, field, src },
+                AssignOp::Add => InstructionKind::AddHostField {
+                    root,
+                    field,
+                    rhs: src,
+                },
+                AssignOp::Sub => InstructionKind::SubHostField {
+                    root,
+                    field,
+                    rhs: src,
+                },
+                AssignOp::Mul => InstructionKind::MulHostField {
+                    root,
+                    field,
+                    rhs: src,
+                },
+                AssignOp::Div => InstructionKind::DivHostField {
+                    root,
+                    field,
+                    rhs: src,
+                },
+                AssignOp::Rem => InstructionKind::RemHostField {
+                    root,
+                    field,
+                    rhs: src,
+                },
             }
-            AssignOp::Add => {
-                if let Some(field) = field {
-                    self.emit(InstructionKind::AddHostField {
-                        root,
-                        field,
-                        rhs: src,
-                    });
-                } else {
-                    self.emit(InstructionKind::AddHostPath {
-                        root,
-                        segments: segments.expect("host path segments"),
-                        rhs: src,
-                    });
-                }
+        } else {
+            let segments = segments.expect("host path segments");
+            match op {
+                AssignOp::Set => InstructionKind::SetHostPath {
+                    root,
+                    segments,
+                    src,
+                },
+                AssignOp::Add => InstructionKind::AddHostPath {
+                    root,
+                    segments,
+                    rhs: src,
+                },
+                AssignOp::Sub => InstructionKind::SubHostPath {
+                    root,
+                    segments,
+                    rhs: src,
+                },
+                AssignOp::Mul => InstructionKind::MulHostPath {
+                    root,
+                    segments,
+                    rhs: src,
+                },
+                AssignOp::Div => InstructionKind::DivHostPath {
+                    root,
+                    segments,
+                    rhs: src,
+                },
+                AssignOp::Rem => InstructionKind::RemHostPath {
+                    root,
+                    segments,
+                    rhs: src,
+                },
             }
-            AssignOp::Sub => {
-                if let Some(field) = field {
-                    self.emit(InstructionKind::SubHostField {
-                        root,
-                        field,
-                        rhs: src,
-                    });
-                } else {
-                    self.emit(InstructionKind::SubHostPath {
-                        root,
-                        segments: segments.expect("host path segments"),
-                        rhs: src,
-                    });
-                }
-            }
-            AssignOp::Mul => {
-                if let Some(field) = field {
-                    self.emit(InstructionKind::MulHostField {
-                        root,
-                        field,
-                        rhs: src,
-                    });
-                } else {
-                    self.emit(InstructionKind::MulHostPath {
-                        root,
-                        segments: segments.expect("host path segments"),
-                        rhs: src,
-                    });
-                }
-            }
-            AssignOp::Div => {
-                if let Some(field) = field {
-                    self.emit(InstructionKind::DivHostField {
-                        root,
-                        field,
-                        rhs: src,
-                    });
-                } else {
-                    self.emit(InstructionKind::DivHostPath {
-                        root,
-                        segments: segments.expect("host path segments"),
-                        rhs: src,
-                    });
-                }
-            }
-            AssignOp::Rem => {
-                if let Some(field) = field {
-                    self.emit(InstructionKind::RemHostField {
-                        root,
-                        field,
-                        rhs: src,
-                    });
-                } else {
-                    self.emit(InstructionKind::RemHostPath {
-                        root,
-                        segments: segments.expect("host path segments"),
-                        rhs: src,
-                    });
-                }
-            }
-        }
+        };
+        self.emit_spanned(instruction, target.span);
         Ok(src)
     }
 

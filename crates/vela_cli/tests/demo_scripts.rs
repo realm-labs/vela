@@ -169,6 +169,25 @@ fn host_read_only_demo_reports_field_not_writable() {
 }
 
 #[test]
+fn stale_host_ref_demo_reports_generation_mismatch() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg("--stale-player")
+        .arg(script_path("stale_host_ref.vela"))
+        .output()
+        .expect("run vela_cli stale host ref demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(
+        stderr.contains(
+            "error[vm::host_error]: host error: StaleGeneration { expected: 2, actual: 3 }"
+        )
+    );
+    assert!(stderr.contains("stale_host_ref.vela:2:12"));
+    assert!(stderr.contains("return player.level;"));
+}
+
+#[test]
 fn bad_schema_demo_reports_duplicate_field() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
         .arg(script_path("bad_schema_duplicate_field.vela"))

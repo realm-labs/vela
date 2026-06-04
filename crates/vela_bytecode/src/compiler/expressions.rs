@@ -71,11 +71,14 @@ impl Compiler<'_> {
                         let root = self.compile_host_path_root(expr.span, path.root)?;
                         let segments = self.compile_host_path_segments(path.segments)?;
                         let dst = self.alloc_register()?;
-                        self.emit(InstructionKind::GetHostPath {
-                            dst,
-                            root,
-                            segments,
-                        });
+                        self.emit_spanned(
+                            InstructionKind::GetHostPath {
+                                dst,
+                                root,
+                                segments,
+                            },
+                            expr.span,
+                        );
                         return Ok(dst);
                     }
                     let root = self.compile_expr(base)?;
@@ -86,7 +89,10 @@ impl Compiler<'_> {
                         .host_field(None, name)
                         .map(|field| field.id)
                     {
-                        self.emit(InstructionKind::GetHostField { dst, root, field });
+                        self.emit_spanned(
+                            InstructionKind::GetHostField { dst, root, field },
+                            expr.span,
+                        );
                     } else {
                         self.emit(InstructionKind::GetRecordField {
                             dst,
@@ -104,11 +110,14 @@ impl Compiler<'_> {
                     let root = self.compile_host_path_root(expr.span, path.root)?;
                     let segments = self.compile_host_path_segments(path.segments)?;
                     let dst = self.alloc_register()?;
-                    self.emit(InstructionKind::GetHostPath {
-                        dst,
-                        root,
-                        segments,
-                    });
+                    self.emit_spanned(
+                        InstructionKind::GetHostPath {
+                            dst,
+                            root,
+                            segments,
+                        },
+                        expr.span,
+                    );
                     return Ok(dst);
                 }
                 let base = self.compile_expr(base)?;
