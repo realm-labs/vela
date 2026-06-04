@@ -195,16 +195,20 @@ fn managed_heap_execution_runs_array_reverse_method() {
     let source = r#"
 fn main() {
     let tags = ["daily", "quest", "raid"];
+    let scores = [9, 2, 5, 2, 8];
     let nested = [["daily", "quest"], ["raid"]];
     let reversed_tags = tags.reverse();
+    let reversed_scores = scores.reverse();
     let reversed_nested = nested.reverse();
     if tags.join(",") == "daily,quest,raid"
         && reversed_tags.join(",") == "raid,quest,daily"
+        && reversed_scores[0] == 8
+        && reversed_scores[4] == 9
         && reversed_nested[0].join("|") == "raid"
     {
-        return reversed_nested[1].join("|");
+        return reversed_scores.sum();
     }
-    return "";
+    return 0;
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
@@ -214,7 +218,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array reverse should run");
-    assert_eq!(result, Value::String("daily|quest".to_owned()));
+    assert_eq!(result, Value::Int(26));
 }
 
 #[test]

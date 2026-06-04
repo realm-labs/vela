@@ -1428,6 +1428,46 @@ receiver Vec<Value>. Non-targeted guardrails are kept as checksum and behavior
 checks only.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Reverse Receiver Checkpoint
+
+This checkpoint adds a targeted `managed_heap_array_reverse` benchmark and
+removes full receiver materialization from managed-heap array `reverse()`
+calls. Heap-mode reverse now walks array heap slots in reverse order and
+materializes only the returned array, instead of first cloning the receiver
+through `Vec<Value>` and then reversing that temporary vector.
+
+Commands:
+
+```bash
+cargo test -p vela_vm array_reverse
+cargo fmt --all -- --check
+cargo bench -p vela_vm --bench baseline
+```
+
+Default before/after for the targeted benchmark:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_reverse | 41384914 | 40754542 | 6904157696146865977 | 6904157696146865977 |
+
+Default guardrail rows from the same before/after runs:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 131548857 | 133303685 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 212675257 | 211428200 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_array_slice | 19775042 | 19991771 | 4447774498174460210 | 4447774498174460210 |
+| managed_heap_array_join | 26578500 | 26775885 | 11392497872150165547 | 11392497872150165547 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The target benchmark shows a small improvement on
+this machine; the optimization is primarily a materialization cleanup that
+removes the extra temporary reverse pass for managed-heap receivers.
+Non-targeted guardrails are kept as checksum and behavior checks only.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark

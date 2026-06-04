@@ -51,6 +51,12 @@ pub(crate) fn reverse(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("reverse", args, 0)?;
+    if let Value::HeapRef(reference) = receiver {
+        let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+            return type_error("method reverse");
+        };
+        return Ok(Value::Array(reverse_heap_slots(values)));
+    }
     let mut values = array_values(receiver, heap, "method reverse")?;
     values.reverse();
     Ok(Value::Array(values))
@@ -101,6 +107,10 @@ fn slice_heap_slots(values: &[HeapSlot], args: &[Value]) -> VmResult<Value> {
             .map(value_from_heap_slot)
             .collect(),
     ))
+}
+
+fn reverse_heap_slots(values: &[HeapSlot]) -> Vec<Value> {
+    values.iter().rev().map(value_from_heap_slot).collect()
 }
 
 fn join_heap_slots(

@@ -228,6 +228,26 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_reverse",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let values = [
+            tick, tick + 1, tick + 2, tick + 3,
+            tick + 4, tick + 5, tick + 6, tick + 7,
+        ];
+        let labels = ["daily", "quest", "raid", "bonus"];
+        let reversed = values.reverse();
+        let reversed_labels = labels.reverse();
+        total += reversed[0] + reversed[7] + reversed_labels.join("|").len();
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_array_join",
         mode: ExecutionMode::ManagedHeap,
         source: r#"
