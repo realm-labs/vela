@@ -40,6 +40,25 @@ pub(crate) fn sort_by(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("sort_by", args, 1)?;
+    if runtime.heap.is_none()
+        && let Value::Array(values) = receiver
+    {
+        let mut entries = Vec::<SortEntry>::with_capacity(values.len());
+        let mut key_kind = None;
+        for value in values {
+            let key_value =
+                call_unary_callback(&mut runtime, "method sort_by", &args[0], value.clone(), &[])?;
+            push_sort_entry(
+                &mut entries,
+                &mut key_kind,
+                value.clone(),
+                key_value,
+                runtime.heap.as_deref(),
+                "method sort_by",
+            )?;
+        }
+        return sort_entries(entries);
+    }
     let values = array_values(receiver, runtime.heap.as_deref(), "method sort_by")?;
     let mut entries = Vec::<SortEntry>::with_capacity(values.len());
     let mut key_kind = None;
@@ -61,19 +80,14 @@ pub(crate) fn sort_by(
             value.clone(),
             protected_values,
         )?;
-        let key = sort_key(&key_value, runtime.heap.as_deref(), "method sort_by")?;
-        if let Some(expected) = key_kind {
-            if key.kind() != expected {
-                return type_error("method sort_by");
-            }
-        } else {
-            key_kind = Some(key.kind());
-        }
-        entries.push(SortEntry {
-            key,
+        push_sort_entry(
+            &mut entries,
+            &mut key_kind,
             value,
-            index: entries.len(),
-        });
+            key_value,
+            runtime.heap.as_deref(),
+            "method sort_by",
+        )?;
     }
     sort_entries(entries)
 }
@@ -88,21 +102,40 @@ fn sort_values_by_key(
     let mut key_kind = None;
     for value in values {
         let key_value = key_fn(&value, &entries)?;
-        let key = sort_key(&key_value, heap, operation)?;
-        if let Some(expected) = key_kind {
-            if key.kind() != expected {
-                return type_error(operation);
-            }
-        } else {
-            key_kind = Some(key.kind());
-        }
-        entries.push(SortEntry {
-            key,
+        push_sort_entry(
+            &mut entries,
+            &mut key_kind,
             value,
-            index: entries.len(),
-        });
+            key_value,
+            heap,
+            operation,
+        )?;
     }
     sort_entries(entries)
+}
+
+fn push_sort_entry(
+    entries: &mut Vec<SortEntry>,
+    key_kind: &mut Option<SortKeyKind>,
+    value: Value,
+    key_value: Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<()> {
+    let key = sort_key(&key_value, heap, operation)?;
+    if let Some(expected) = *key_kind {
+        if key.kind() != expected {
+            return type_error(operation);
+        }
+    } else {
+        *key_kind = Some(key.kind());
+    }
+    entries.push(SortEntry {
+        key,
+        value,
+        index: entries.len(),
+    });
+    Ok(())
 }
 
 fn sort_entries(mut entries: Vec<SortEntry>) -> VmResult<Value> {

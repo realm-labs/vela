@@ -795,6 +795,45 @@ focus on heap-mode protected values, closure invocation overhead, and set/array
 callback receiver materialization.
 ```
 
+### 2026-06-04 M19 Array Sort Callback Receiver Checkpoint
+
+This checkpoint reduces no-heap `array.sort_by` callback overhead. The method
+now iterates `Value::Array` receivers directly instead of first cloning the
+whole receiver through `array_values`. Managed-heap receivers keep the existing
+materialized-entry path so already-collected sort entries remain protected as
+callback roots.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+git worktree add --detach ../vela-array-receiver-before HEAD
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 5804150 | 5781000 | 3270490998308601835 | 3270490998308601835 |
+
+Default before/after from warmed runs in the same working session. The before
+run used a detached worktree at `8498ea5`; the after run used the
+`array.sort_by` working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 77584071 | 67049900 | 12210731834836948394 | 12210731834836948394 |
+
+Checkpoint notes:
+
+```text
+The optimization is scoped to no-heap array.sort_by receiver iteration and
+preserves managed-heap callback root behavior. Broader array aggregation,
+plain ordering, set callbacks, heap-mode protected values, and closure
+invocation overhead remain separate measured targets.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
