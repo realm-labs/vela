@@ -3,7 +3,8 @@ use crate::option_result::{option_value, result_value};
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::access::{
-    EnumKind, enum_payload, enum_tag, expect_arity, expect_enum_kind, is_truthy, type_error,
+    EnumKind, EnumVariant, enum_payload, enum_tag, expect_arity, expect_enum_kind, is_truthy,
+    type_error,
 };
 
 pub(crate) fn map(
@@ -18,8 +19,8 @@ pub(crate) fn map(
         })
     })?;
 
-    match (tag.kind, tag.variant.as_str()) {
-        (EnumKind::Option, "Some") => {
+    match (tag.kind, tag.variant) {
+        (EnumKind::Option, EnumVariant::Some) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method map")?;
             let mapped = call_callback(
                 &mut runtime,
@@ -30,8 +31,8 @@ pub(crate) fn map(
             )?;
             Ok(option_value(Some(mapped)))
         }
-        (EnumKind::Option, "None") => Ok(option_value(None)),
-        (EnumKind::Result, "Ok") => {
+        (EnumKind::Option, EnumVariant::None) => Ok(option_value(None)),
+        (EnumKind::Result, EnumVariant::Ok) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method map")?;
             let mapped = call_callback(
                 &mut runtime,
@@ -42,8 +43,10 @@ pub(crate) fn map(
             )?;
             Ok(result_value("Ok", mapped))
         }
-        (EnumKind::Result, "Err") => enum_payload(receiver, runtime.heap.as_deref(), "method map")
-            .map(|payload| result_value("Err", payload)),
+        (EnumKind::Result, EnumVariant::Err) => {
+            enum_payload(receiver, runtime.heap.as_deref(), "method map")
+                .map(|payload| result_value("Err", payload))
+        }
         _ => type_error("method map"),
     }
 }
@@ -60,12 +63,12 @@ pub(crate) fn map_err(
         })
     })?;
 
-    match (tag.kind, tag.variant.as_str()) {
-        (EnumKind::Result, "Ok") => {
+    match (tag.kind, tag.variant) {
+        (EnumKind::Result, EnumVariant::Ok) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method map_err")
                 .map(|payload| result_value("Ok", payload))
         }
-        (EnumKind::Result, "Err") => {
+        (EnumKind::Result, EnumVariant::Err) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method map_err")?;
             let mapped = call_callback(
                 &mut runtime,
@@ -92,8 +95,8 @@ pub(crate) fn and_then(
         })
     })?;
 
-    match (tag.kind, tag.variant.as_str()) {
-        (EnumKind::Option, "Some") => {
+    match (tag.kind, tag.variant) {
+        (EnumKind::Option, EnumVariant::Some) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method and_then")?;
             let chained = call_callback(
                 &mut runtime,
@@ -109,8 +112,8 @@ pub(crate) fn and_then(
                 "method and_then",
             )
         }
-        (EnumKind::Option, "None") => Ok(option_value(None)),
-        (EnumKind::Result, "Ok") => {
+        (EnumKind::Option, EnumVariant::None) => Ok(option_value(None)),
+        (EnumKind::Result, EnumVariant::Ok) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method and_then")?;
             let chained = call_callback(
                 &mut runtime,
@@ -126,7 +129,7 @@ pub(crate) fn and_then(
                 "method and_then",
             )
         }
-        (EnumKind::Result, "Err") => {
+        (EnumKind::Result, EnumVariant::Err) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method and_then")
                 .map(|payload| result_value("Err", payload))
         }
@@ -146,12 +149,12 @@ pub(crate) fn or_else(
         })
     })?;
 
-    match (tag.kind, tag.variant.as_str()) {
-        (EnumKind::Option, "Some") => {
+    match (tag.kind, tag.variant) {
+        (EnumKind::Option, EnumVariant::Some) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method or_else")
                 .map(|payload| option_value(Some(payload)))
         }
-        (EnumKind::Option, "None") => {
+        (EnumKind::Option, EnumVariant::None) => {
             let fallback = call_callback(
                 &mut runtime,
                 "method or_else",
@@ -166,11 +169,11 @@ pub(crate) fn or_else(
                 "method or_else",
             )
         }
-        (EnumKind::Result, "Ok") => {
+        (EnumKind::Result, EnumVariant::Ok) => {
             enum_payload(receiver, runtime.heap.as_deref(), "method or_else")
                 .map(|payload| result_value("Ok", payload))
         }
-        (EnumKind::Result, "Err") => {
+        (EnumKind::Result, EnumVariant::Err) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method or_else")?;
             let fallback = call_callback(
                 &mut runtime,
@@ -202,8 +205,8 @@ pub(crate) fn filter(
         })
     })?;
 
-    match (tag.kind, tag.variant.as_str()) {
-        (EnumKind::Option, "Some") => {
+    match (tag.kind, tag.variant) {
+        (EnumKind::Option, EnumVariant::Some) => {
             let payload = enum_payload(receiver, runtime.heap.as_deref(), "method filter")?;
             let predicate = call_callback(
                 &mut runtime,
@@ -218,7 +221,7 @@ pub(crate) fn filter(
                 Ok(option_value(None))
             }
         }
-        (EnumKind::Option, "None") => Ok(option_value(None)),
+        (EnumKind::Option, EnumVariant::None) => Ok(option_value(None)),
         _ => type_error("method filter"),
     }
 }

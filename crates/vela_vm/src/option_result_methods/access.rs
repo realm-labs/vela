@@ -3,7 +3,7 @@ use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_hea
 
 pub(super) struct EnumTag {
     pub(super) kind: EnumKind,
-    pub(super) variant: String,
+    pub(super) variant: EnumVariant,
 }
 
 impl EnumTag {
@@ -20,6 +20,15 @@ impl EnumTag {
 pub(super) enum EnumKind {
     Option,
     Result,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) enum EnumVariant {
+    Some,
+    None,
+    Ok,
+    Err,
+    Other,
 }
 
 pub(super) fn enum_tag(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Option<EnumTag> {
@@ -43,15 +52,25 @@ pub(super) fn enum_tag(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Op
     };
     Some(EnumTag {
         kind,
-        variant: variant.to_owned(),
+        variant: enum_variant(variant),
     })
+}
+
+fn enum_variant(variant: &str) -> EnumVariant {
+    match variant {
+        "Some" => EnumVariant::Some,
+        "None" => EnumVariant::None,
+        "Ok" => EnumVariant::Ok,
+        "Err" => EnumVariant::Err,
+        _ => EnumVariant::Other,
+    }
 }
 
 pub(super) fn option_variant(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<String> {
+) -> VmResult<EnumVariant> {
     let tag = enum_tag(receiver, heap)
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
     if tag.kind == EnumKind::Option {
@@ -64,7 +83,7 @@ pub(super) fn result_variant(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<String> {
+) -> VmResult<EnumVariant> {
     let tag = enum_tag(receiver, heap)
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
     if tag.kind == EnumKind::Result {

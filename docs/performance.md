@@ -1643,6 +1643,37 @@ optimization reduces both dispatch count and budget consumption for the same
 source-level logical expression.
 ```
 
+### 2026-06-04 M19 Option/Result Helper Tag Checkpoint
+
+This checkpoint adds a `managed_heap_option_result_helpers` benchmark for
+repeated heap-mode Option/Result helper-method chains. Option/Result method
+dispatch now carries `Some`, `None`, `Ok`, and `Err` as a compact copyable tag
+instead of cloning the enum variant name into a temporary `String` for every
+helper call. Payload reads, callback calls, wrong-shape errors, and managed heap
+materialization behavior still use the existing paths.
+
+Commands:
+
+```bash
+cargo test -p vela_vm option_result
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_option_result_helpers | 52994750 | 52187100 | 1812806599834733941 | 1812806599834733941 |
+
+Checkpoint notes:
+
+```text
+The focused helper benchmark kept the same checksum and improved modestly after
+removing per-call variant-name allocation. Neighboring managed-heap callback and
+array benchmarks stayed within normal quick-run noise. This is a narrow helper
+dispatch cleanup, not a broader enum payload materialization change.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
