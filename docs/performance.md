@@ -297,6 +297,45 @@ heap materialization, allocation pressure, and scalar dispatch before adding
 larger GC policy changes.
 ```
 
+### 2026-06-04 M19 GC Continuation Checkpoint
+
+This checkpoint avoids frame-root scanning on incremental GC continuation
+steps. `ScriptHeap::step_gc_with_budget` uses roots only when starting a
+collection and performs sweep-only work while a collection is already in
+progress, so `HeapExecution` now gathers roots only for the collection-start
+step.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| gc_pacing | 6491400 | 5326100 | 16625037316567583116 | 16625037316567583116 |
+
+Default baseline comparison against the previous M19 checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| gc_pacing | 86437328 | 78924471 | 10923073775105338595 | 10923073775105338595 |
+
+Checkpoint notes:
+
+```text
+The optimization preserves the incremental GC algorithm: roots still determine
+the mark set at collection start, and continuation steps keep sweeping the
+already-started collection.
+Checksums stayed stable for quick and default runs.
+GC pacing is still the largest tracked VM workload, but remaining work should
+now balance GC allocation pressure against scalar dispatch and broader
+gameplay-style benchmark coverage.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

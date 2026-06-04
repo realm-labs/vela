@@ -55,14 +55,16 @@ impl<'heap> HeapExecution<'heap> {
             return;
         }
 
-        self.safe_point_roots.clear();
-        self.safe_point_roots.extend(&self.protected_roots);
-        frame.extend_heap_roots(&mut self.safe_point_roots);
-        let stats = self.heap.step_gc_with_budget(
-            &self.safe_point_roots,
-            self.safe_point_gc_budget,
-            budget,
-        );
+        let stats = if self.gc_in_progress {
+            self.heap
+                .step_gc_with_budget(&[], self.safe_point_gc_budget, budget)
+        } else {
+            self.safe_point_roots.clear();
+            self.safe_point_roots.extend(&self.protected_roots);
+            frame.extend_heap_roots(&mut self.safe_point_roots);
+            self.heap
+                .step_gc_with_budget(&self.safe_point_roots, self.safe_point_gc_budget, budget)
+        };
         self.gc_in_progress = !stats.complete;
         self.last_gc_step = Some(stats);
     }
