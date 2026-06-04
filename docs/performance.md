@@ -1878,6 +1878,38 @@ reads. The focused quick benchmark improved by about 14.6% with the checksum
 unchanged.
 ```
 
+### 2026-06-04 M19 String Len ASCII Fast Path Checkpoint
+
+This checkpoint makes string `.len()` count ASCII strings with byte length
+before falling back to Unicode scalar counting for non-ASCII strings. The
+runtime behavior remains character-count based for script-visible semantics,
+including managed-heap strings.
+
+Commands:
+
+```bash
+cargo test -p vela_vm string_len_counts_unicode_characters
+cargo test -p vela_vm string_utility_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Checksum |
+|---|---:|---:|---:|
+| callback_collections | 11433000 | 11052650 | 6661976061914330346 |
+| managed_heap_map_callbacks | 13549700 | 12286450 | 2601892725534891372 |
+| managed_heap_option_result_helpers | 55354550 | 52248650 | 1812806599834733941 |
+
+Checkpoint notes:
+
+```text
+ASCII map keys, labels, and helper strings are common in callback-heavy
+gameplay code. The fast path avoids repeated UTF-8 decoding for those strings
+while preserving Unicode character counts through the fallback path and focused
+non-heap/managed-heap regression tests.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

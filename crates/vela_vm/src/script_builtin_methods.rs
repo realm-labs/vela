@@ -189,7 +189,7 @@ fn values(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) ->
 
 fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
     match receiver {
-        Value::String(value) => usize_to_i64(value.chars().count(), "method len"),
+        Value::String(value) => usize_to_i64(string_char_len(value), "method len"),
         Value::Array(values) => usize_to_i64(values.len(), "method len"),
         Value::Map(values) => usize_to_i64(values.len(), "method len"),
         Value::Set(values) => usize_to_i64(values.len(), "method len"),
@@ -203,7 +203,7 @@ fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
                 return type_error("method len");
             };
             match value {
-                HeapValue::String(value) => usize_to_i64(value.chars().count(), "method len"),
+                HeapValue::String(value) => usize_to_i64(string_char_len(value), "method len"),
                 HeapValue::Array(values) | HeapValue::Set(values) => {
                     usize_to_i64(values.len(), "method len")
                 }
@@ -218,6 +218,14 @@ fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
             usize_to_i64(fields.len(), "method len")
         }
         _ => type_error("method len"),
+    }
+}
+
+fn string_char_len(value: &str) -> usize {
+    if value.is_ascii() {
+        value.len()
+    } else {
+        value.chars().count()
     }
 }
 
@@ -266,4 +274,45 @@ fn usize_to_i64(value: usize, operation: &'static str) -> VmResult<i64> {
 
 fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_bytecode::compiler::compile_function_source;
+    use vela_common::SourceId;
+
+    use crate::{ExecutionBudget, Value, Vm};
+
+    #[test]
+    fn string_len_counts_unicode_characters() {
+        let source = r#"
+fn main() {
+    return "quest".len() * 100 + "é日".len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("string len source should compile");
+
+        let result = Vm::new().run(&code).expect("string len should run");
+        assert_eq!(result, Value::Int(502));
+    }
+
+    #[test]
+    fn managed_heap_string_len_counts_unicode_characters() {
+        let source = r#"
+fn main() {
+    let ascii = "quest";
+    let unicode = "é日";
+    return ascii.len() * 100 + unicode.len();
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("managed heap string len source should compile");
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = Vm::new()
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("managed heap string len should run");
+        assert_eq!(result, Value::Int(502));
+    }
 }
