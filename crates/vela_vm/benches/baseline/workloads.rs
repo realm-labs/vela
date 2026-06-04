@@ -208,6 +208,26 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_slice",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let values = [
+            tick, tick + 1, tick + 2, tick + 3,
+            tick + 4, tick + 5, tick + 6, tick + 7,
+            tick + 8, tick + 9, tick + 10, tick + 11,
+        ];
+        let middle = values.slice(3, 7);
+        let tail = values.slice(8, 12);
+        total += middle.sum() + tail.sum();
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_materialization",
         mode: ExecutionMode::ManagedHeap,
         source: r#"

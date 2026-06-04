@@ -1347,6 +1347,47 @@ full receiver through Vec<Value> before sorting. Callback-based sort_by keeps
 its existing callback and root-protection path.
 ```
 
+### 2026-06-04 M19 Managed Heap Array Slice Receiver Checkpoint
+
+This checkpoint adds a targeted `managed_heap_array_slice` benchmark and
+removes full receiver materialization from managed-heap array `slice()` calls.
+Heap-mode slice now validates against the heap array length and materializes
+only the requested `start..end` range, preserving the existing index error and
+type-mismatch behavior for invalid ranges and receivers.
+
+Commands:
+
+```bash
+cargo test -p vela_vm array_slice
+cargo fmt --all -- --check
+cargo bench -p vela_vm --bench baseline
+```
+
+Default before/after for the targeted benchmark:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_slice | 21918357 | 20340285 | 4447774498174460210 | 4447774498174460210 |
+
+Default guardrail rows from the same before/after runs:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 132857457 | 137827014 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 212066571 | 224178685 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_array_sort | 14843442 | 17499171 | 49647096020964123 | 49647096020964123 |
+| managed_heap_materialization | 1452571 | 1451714 | 1965056817950502848 | 1965056817950502848 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The target benchmark isolates repeated partial slices
+of managed-heap arrays, where converting only the requested range avoids a
+full Vec<Value> receiver build before copying the subrange. Several
+non-targeted guardrails were noisy in the after run and are retained only as
+checksum/behavior checks, not claimed as performance wins or regressions.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark

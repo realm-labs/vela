@@ -1,4 +1,5 @@
-use crate::{HeapExecution, Value, VmResult, values_equal};
+use crate::heap::{HeapSlot, HeapValue};
+use crate::{HeapExecution, Value, VmResult, value_from_heap_slot, values_equal};
 
 use super::{
     array_values, expect_arity, index_out_of_bounds, index_value, string_value, type_error,
@@ -55,6 +56,12 @@ pub(crate) fn slice(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     expect_arity("slice", args, 2)?;
+    if let Value::HeapRef(reference) = receiver {
+        let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+            return type_error("method slice");
+        };
+        return slice_heap_slots(values, args);
+    }
     let values = array_values(receiver, heap, "method slice")?;
     let start = index_value(&args[0], "method slice")?;
     let end = index_value(&args[1], "method slice")?;
@@ -68,4 +75,24 @@ pub(crate) fn slice(
         return Err(index_out_of_bounds(end, values.len()));
     }
     Ok(Value::Array(values[start..end].to_vec()))
+}
+
+fn slice_heap_slots(values: &[HeapSlot], args: &[Value]) -> VmResult<Value> {
+    let start = index_value(&args[0], "method slice")?;
+    let end = index_value(&args[1], "method slice")?;
+    if start > end {
+        return type_error("method slice");
+    }
+    if start > values.len() {
+        return Err(index_out_of_bounds(start, values.len()));
+    }
+    if end > values.len() {
+        return Err(index_out_of_bounds(end, values.len()));
+    }
+    Ok(Value::Array(
+        values[start..end]
+            .iter()
+            .map(value_from_heap_slot)
+            .collect(),
+    ))
 }

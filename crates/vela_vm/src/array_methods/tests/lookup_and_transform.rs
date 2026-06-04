@@ -252,16 +252,19 @@ fn managed_heap_execution_runs_array_slice_method() {
     let source = r#"
 fn main() {
     let tags = ["daily", "quest", "raid", "bonus"];
+    let scores = [9, 2, 5, 2, 8, 1, 9, 3];
     let nested = [["daily", "quest"], ["raid"], ["bonus"]];
     let tag_slice = tags.slice(1, 3);
+    let score_slice = scores.slice(2, 6);
     let nested_slice = nested.slice(0, 2);
     if tags.join(",") == "daily,quest,raid,bonus"
         && tag_slice.join("|") == "quest|raid"
+        && score_slice.sum() == 16
         && nested_slice[0].join("|") == "daily|quest"
     {
-        return nested_slice[1].join("|");
+        return score_slice[3];
     }
-    return "";
+    return 0;
 }
 "#;
     let code = compile_function_source(SourceId::new(1), source, "main")
@@ -271,7 +274,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array slice should run");
-    assert_eq!(result, Value::String("raid".to_owned()));
+    assert_eq!(result, Value::Int(1));
 }
 
 #[test]
