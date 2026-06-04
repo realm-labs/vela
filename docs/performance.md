@@ -1910,6 +1910,36 @@ while preserving Unicode character counts through the fallback path and focused
 non-heap/managed-heap regression tests.
 ```
 
+### 2026-06-04 M19 Negated Equality Peephole Checkpoint
+
+This checkpoint lowers `!(lhs == rhs)` and `!(lhs != rhs)` directly to the
+inverse equality bytecode instead of emitting an equality instruction followed
+by `Not`. Ordering comparisons are intentionally not inverted here because
+`!(a < b)` is not equivalent to `a >= b` for NaN float values.
+
+Commands:
+
+```bash
+cargo test -p vela_bytecode compiler_inverts_negated_equality_without_not_instruction
+cargo test -p vela_vm runs_compiled_scalar_equality_source
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Checksum |
+|---|---:|---:|---:|
+| scalar_dispatch_mix | 1205750 | 1169850 | 15308784822820424249 |
+
+Checkpoint notes:
+
+```text
+The scalar-dispatch benchmark includes a hot `!(label != "tick")` branch. The
+peephole removes one dispatch from that expression while preserving dynamic
+equality semantics and source-spanned slow-path errors through the existing
+equality bytecode.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

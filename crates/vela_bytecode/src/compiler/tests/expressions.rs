@@ -23,6 +23,34 @@ fn main() {
             .any(|instruction| { matches!(instruction.kind, InstructionKind::Negate { .. }) })
     );
 }
+
+#[test]
+fn compiler_inverts_negated_equality_without_not_instruction() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let label = "tick";
+    return !(label != "tick");
+}
+"#,
+        "main",
+    )
+    .expect("negated equality should compile");
+
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| { matches!(instruction.kind, InstructionKind::Equal { .. }) })
+    );
+    assert!(
+        !code
+            .instructions
+            .iter()
+            .any(|instruction| { matches!(instruction.kind, InstructionKind::Not { .. }) })
+    );
+}
+
 #[test]
 fn compiler_lowers_logical_short_circuit_operators() {
     let code = compile_function_source(

@@ -333,6 +333,12 @@ impl Compiler<'_> {
     }
 
     fn compile_unary(&mut self, op: UnaryOp, span: Span, expr: &Expr) -> CompileResult<Register> {
+        if op == UnaryOp::Not
+            && let Some(register) = self.compile_negated_equality(span, expr)?
+        {
+            return Ok(register);
+        }
+
         let src = self.compile_expr(expr)?;
         let dst = self.alloc_register()?;
         let instruction = match op {
@@ -341,6 +347,28 @@ impl Compiler<'_> {
         };
         self.emit_spanned(instruction, span);
         Ok(dst)
+    }
+
+    fn compile_negated_equality(
+        &mut self,
+        span: Span,
+        expr: &Expr,
+    ) -> CompileResult<Option<Register>> {
+        let ExprKind::Binary {
+            op: equality_op @ (BinaryOp::Equal | BinaryOp::NotEqual),
+            left,
+            right,
+        } = &expr.kind
+        else {
+            return Ok(None);
+        };
+
+        let inverse = match equality_op {
+            BinaryOp::Equal => BinaryOp::NotEqual,
+            BinaryOp::NotEqual => BinaryOp::Equal,
+            _ => unreachable!("binary equality was matched above"),
+        };
+        self.compile_binary(inverse, span, left, right).map(Some)
     }
 }
 
