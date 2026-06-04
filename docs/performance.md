@@ -1144,6 +1144,47 @@ being treated as no default, while avoiding one temporary Vec allocation on
 each script function or closure call.
 ```
 
+### 2026-06-04 M19 Array Higher-Order Receiver Checkpoint
+
+This checkpoint adds no-heap receiver fast paths for array `map`, `filter`,
+`find`, `any`, `all`, and `count`. When the receiver is already a
+`Value::Array` and managed heap execution is not active, these methods now
+iterate the receiver directly instead of cloning the full array through
+`array_values` before invoking callbacks. Managed heap execution keeps the
+existing materializing path so heap-root protection semantics stay unchanged.
+
+Commands:
+
+```bash
+cargo test -p vela_vm array_methods::tests
+cargo test -p vela_vm program_execution
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick after-run comparison against the call default allocation checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 11750950 | 11115800 | 6661976061914330346 | 6661976061914330346 |
+| managed_heap_callback_collections | 17631400 | 17106100 | 6661976061914330346 | 6661976061914330346 |
+
+Default after-run comparison against the call default allocation checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 141971342 | 138982100 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 213228385 | 212849257 | 4123773336162002392 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for the callback workload in both modes. The targeted
+change is the inline no-heap array callback path; managed-heap callback numbers
+are retained as guardrails because their receiver materialization path is
+unchanged.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark

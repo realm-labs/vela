@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/read-only method receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, and call-entry default allocation removal exist; heap materialization pressure and scalar dispatch optimizations remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/read-only/higher-order method receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, and call-entry default allocation removal exist; heap materialization pressure and scalar dispatch optimizations remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -139,9 +139,12 @@ before debugger/DAP work and Cranelift JIT.
   change improves the expanded benchmark.
 - An M19 array higher-order callback benchmark coverage checkpoint is recorded
   in [performance.md](performance.md): `callback_collections` now also
-  exercises array `map`, `filter`, `find`, `any`, `all`, and `count`; array
-  higher-order callback receiver materialization remains an optimization
-  candidate until a runtime change improves the expanded benchmark.
+  exercises array `map`, `filter`, `find`, `any`, `all`, and `count`, giving
+  array higher-order receiver materialization a measured benchmark surface.
+- An M19 array higher-order receiver checkpoint is recorded in
+  [performance.md](performance.md): no-heap array `map`, `filter`, `find`,
+  `any`, `all`, and `count` now iterate `Value::Array` receivers directly
+  instead of cloning the full receiver before callback dispatch.
 - An M19 host conversion benchmark coverage checkpoint is recorded in
   [performance.md](performance.md): `host_patch_tx` now also exercises host
   array reads, script string pushes through `PatchTx`, overlay length reads,
@@ -197,9 +200,8 @@ before debugger/DAP work and Cranelift JIT.
 - M19: continue optimizing the non-JIT interpreter and managed heap path only
   with before/after benchmark evidence, focusing next on broader stdlib heap
   receiver materialization, measured host conversion deltas, callback
-  invocation overhead, set/array callback
-  receiver materialization, scalar dispatch optimizations, and
-  gameplay-host benchmark deltas.
+  invocation overhead, set callback receiver materialization, scalar dispatch
+  optimizations, and gameplay-host benchmark deltas.
 - M20+: keep inline-cache and specialization work behind M19 benchmarked
   interpreter/heap improvements.
 
@@ -223,10 +225,9 @@ ownership, and source-spanned diagnostics.
 
 - Choose the next narrow measured M19 optimization target from the updated
   checkpoint notes, with broader stdlib heap receiver materialization, host
-  conversion deltas, callback invocation overhead, set/array
-  aggregation callback receiver materialization, and scalar dispatch
-  currently the clearest candidates; include the gameplay-host benchmark when
-  relevant.
+  conversion deltas, callback invocation overhead, set callback receiver
+  materialization, and scalar dispatch currently the clearest candidates;
+  include the gameplay-host benchmark when relevant.
 - Keep benchmark evidence ahead of M19/M20 optimization work.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
