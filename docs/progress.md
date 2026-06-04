@@ -117,14 +117,15 @@ before debugger/DAP work and Cranelift JIT.
   argument registers directly into the native argument vector instead of first
   cloning register values into a temporary `Vec`.
 - An M19 native call argument storage checkpoint is recorded in
-  [performance.md](performance.md): zero-, one-, and two-argument native calls
+  [performance.md](performance.md): zero- through four-argument native calls
   now use stack-backed argument storage instead of allocating a temporary
-  `Vec<Value>`, while wider calls keep the vector-backed path.
+  `Vec<Value>`, while five or more arguments keep the vector-backed path.
 - An M19 script call argument storage checkpoint is recorded in
   [performance.md](performance.md): `script_call_small_args` now measures
   repeated one- and two-argument script function calls, and script function,
-  closure, and method call argument packing uses stack-backed storage for small
-  calls before falling back to the vector-backed path.
+  closure, and method call argument packing uses stack-backed storage for zero-
+  through four-value temporary argument slices before falling back to the
+  vector-backed path.
 - An M19 returned heap object storage checkpoint is recorded in
   [performance.md](performance.md): owned return and method-result aggregates
   now move strings, collections, records, and enums directly into managed heap
@@ -227,8 +228,8 @@ before debugger/DAP work and Cranelift JIT.
 - An M19 method argument materialization checkpoint is recorded in
   [performance.md](performance.md): one- and two-argument method calls now use
   stack-backed argument storage instead of allocating a temporary `Vec<Value>`,
-  while zero-argument calls keep the existing empty-slice path and wider calls
-  keep the vector-backed path.
+  while later call-argument storage work extends stack-backed temporary
+  argument slices through four values.
 - An M19 managed-heap callback benchmark coverage checkpoint is recorded in
   [performance.md](performance.md): `managed_heap_callback_collections` now
   runs the same callback-heavy map/set/array source as `callback_collections`
@@ -291,9 +292,8 @@ before debugger/DAP work and Cranelift JIT.
 - An M19 wide call argument storage checkpoint is recorded in
   [performance.md](performance.md): `script_call_wide_args` and
   `native_call_wide_args` now measure three- and four-argument calls, and
-  wider temporary call argument storage uses `SmallVec<[Value; 4]>` while the
-  zero-, one-, and two-argument fast paths keep the existing stack-array
-  storage.
+  temporary call argument storage now uses hand-written stack-array enum
+  variants through four values before falling back to `Vec<Value>`.
 
 ### Remaining Gaps
 

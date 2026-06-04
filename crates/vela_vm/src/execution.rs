@@ -1,8 +1,5 @@
 use super::*;
-use smallvec::SmallVec;
 use vela_common::MethodId;
-
-type SmallValueArgs = SmallVec<[Value; 4]>;
 
 impl Vm {
     pub(super) fn execute_body(
@@ -1173,7 +1170,9 @@ enum NativeCallArgs {
     Empty,
     One([Value; 1]),
     Two([Value; 2]),
-    Many(SmallValueArgs),
+    Three([Value; 3]),
+    Four([Value; 4]),
+    Many(Vec<Value>),
 }
 
 impl NativeCallArgs {
@@ -1189,10 +1188,21 @@ impl NativeCallArgs {
                 materialize_value(frame.read(*first)?, heap)?,
                 materialize_value(frame.read(*second)?, heap)?,
             ])),
+            [first, second, third] => Ok(Self::Three([
+                materialize_value(frame.read(*first)?, heap)?,
+                materialize_value(frame.read(*second)?, heap)?,
+                materialize_value(frame.read(*third)?, heap)?,
+            ])),
+            [first, second, third, fourth] => Ok(Self::Four([
+                materialize_value(frame.read(*first)?, heap)?,
+                materialize_value(frame.read(*second)?, heap)?,
+                materialize_value(frame.read(*third)?, heap)?,
+                materialize_value(frame.read(*fourth)?, heap)?,
+            ])),
             _ => registers
                 .iter()
                 .map(|register| materialize_value(frame.read(*register)?, heap))
-                .collect::<VmResult<SmallValueArgs>>()
+                .collect::<VmResult<Vec<_>>>()
                 .map(Self::Many),
         }
     }
@@ -1202,6 +1212,8 @@ impl NativeCallArgs {
             Self::Empty => &[],
             Self::One(values) => values,
             Self::Two(values) => values,
+            Self::Three(values) => values,
+            Self::Four(values) => values,
             Self::Many(values) => values,
         }
     }
@@ -1211,7 +1223,9 @@ enum ScriptCallArgs {
     Empty,
     One([Value; 1]),
     Two([Value; 2]),
-    Many(SmallValueArgs),
+    Three([Value; 3]),
+    Four([Value; 4]),
+    Many(Vec<Value>),
 }
 
 impl ScriptCallArgs {
@@ -1230,10 +1244,21 @@ impl ScriptCallArgs {
                 value_from_arg(frame, first)?,
                 value_from_arg(frame, second)?,
             ])),
+            [first, second, third] => Ok(Self::Three([
+                value_from_arg(frame, first)?,
+                value_from_arg(frame, second)?,
+                value_from_arg(frame, third)?,
+            ])),
+            [first, second, third, fourth] => Ok(Self::Four([
+                value_from_arg(frame, first)?,
+                value_from_arg(frame, second)?,
+                value_from_arg(frame, third)?,
+                value_from_arg(frame, fourth)?,
+            ])),
             _ => args
                 .iter()
                 .map(|arg| value_from_arg(frame, arg))
-                .collect::<VmResult<SmallValueArgs>>()
+                .collect::<VmResult<Vec<_>>>()
                 .map(Self::Many),
         }
     }
@@ -1246,10 +1271,21 @@ impl ScriptCallArgs {
                 frame.read(*first)?.clone(),
                 frame.read(*second)?.clone(),
             ])),
+            [first, second, third] => Ok(Self::Three([
+                frame.read(*first)?.clone(),
+                frame.read(*second)?.clone(),
+                frame.read(*third)?.clone(),
+            ])),
+            [first, second, third, fourth] => Ok(Self::Four([
+                frame.read(*first)?.clone(),
+                frame.read(*second)?.clone(),
+                frame.read(*third)?.clone(),
+                frame.read(*fourth)?.clone(),
+            ])),
             _ => registers
                 .iter()
                 .map(|register| frame.read(*register).cloned())
-                .collect::<VmResult<SmallValueArgs>>()
+                .collect::<VmResult<Vec<_>>>()
                 .map(Self::Many),
         }
     }
@@ -1259,6 +1295,8 @@ impl ScriptCallArgs {
             Self::Empty => &[],
             Self::One(values) => values,
             Self::Two(values) => values,
+            Self::Three(values) => values,
+            Self::Four(values) => values,
             Self::Many(values) => values,
         }
     }

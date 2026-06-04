@@ -2089,6 +2089,56 @@ call-depth budgeting, frame root protection, host native rollback behavior, and
 hot-reload CodeObject ownership.
 ```
 
+### 2026-06-04 M19 Handwritten Wide Call Argument Follow-Up
+
+This checkpoint replaces the temporary `SmallVec<[Value; 4]>` call-argument
+storage with hand-written zero- through four-argument enum storage for native,
+script function, closure, and script-method calls. Five or more arguments still
+fall back to `Vec<Value>`. Script-visible arrays, managed-heap collection
+payloads, GC, PatchTx, HostRef/HostPath, and hot-reload ABI are unchanged.
+
+Commands:
+
+```bash
+cargo test -p vela_vm runs_compiled_script_function_calls
+cargo test -p vela_vm runs_immediate_lambda_calls_and_block_returns
+cargo test -p vela_vm program_execution
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick comparison from a detached SmallVec worktree and the hand-written
+working tree in the same session:
+
+| Benchmark | SmallVec mean ns | Hand-written mean ns | SmallVec checksum | Hand-written checksum |
+|---|---:|---:|---:|---:|
+| script_call_small_args | 833333 | 830417 | 17951189677707400592 | 17951189677707400592 |
+| script_call_wide_args | 1520666 | 1443521 | 2544809685083106790 | 2544809685083106790 |
+| native_call_wide_args | 541250 | 461729 | 6248877105930083886 | 6248877105930083886 |
+| callback_collections | 5331458 | 5264875 | 6661976061914330346 | 6661976061914330346 |
+| managed_heap_callback_collections | 7743062 | 7743354 | 6661976061914330346 | 6661976061914330346 |
+
+Default comparison from the same detached SmallVec worktree and the
+hand-written working tree:
+
+| Benchmark | SmallVec mean ns | Hand-written mean ns | SmallVec checksum | Hand-written checksum |
+|---|---:|---:|---:|---:|
+| script_call_small_args | 10200851 | 10368559 | 8911229402023173645 | 8911229402023173645 |
+| script_call_wide_args | 19276952 | 18238452 | 9013669435675877301 | 9013669435675877301 |
+| native_call_wide_args | 6663512 | 5629845 | 17539598824308639303 | 17539598824308639303 |
+| callback_collections | 72837077 | 66531857 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 115374029 | 97807327 | 4123773336162002392 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+The accepted follow-up removes the smallvec dependency. The quick guardrail
+kept script_call_small_args flat, while the default run showed a small
+script_call_small_args regression inside normal benchmark noise and clear wins
+for the targeted three- and four-argument workloads. The hand-written path
+keeps the public &[Value] interfaces and existing runtime safety semantics.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

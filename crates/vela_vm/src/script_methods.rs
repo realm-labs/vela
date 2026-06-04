@@ -1,4 +1,3 @@
-use smallvec::SmallVec;
 use vela_bytecode::Program;
 use vela_common::MethodId;
 use vela_reflect::registry::TypeRegistry;
@@ -10,8 +9,6 @@ use crate::string_method_dispatch;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
 };
-
-type SmallValueArgs = SmallVec<[Value; 4]>;
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
@@ -153,9 +150,7 @@ fn call_script_impl_method(
         }));
     };
 
-    let mut values = SmallValueArgs::new();
-    values.push(receiver.clone());
-    values.extend(args.iter().cloned());
+    let values = ScriptMethodArgs::from_receiver_and_args(receiver, args);
     let protected_root_len = dispatch
         .heap
         .as_deref_mut()
@@ -163,7 +158,7 @@ fn call_script_impl_method(
     let result = dispatch.vm.execute_code_object(
         function,
         dispatch.program,
-        &values,
+        values.as_slice(),
         dispatch.host.as_deref_mut(),
         dispatch.heap.as_deref_mut(),
         dispatch.budget.as_deref_mut(),
@@ -174,6 +169,46 @@ fn call_script_impl_method(
         heap.truncate_protected_roots(protected_root_len);
     }
     result
+}
+
+enum ScriptMethodArgs {
+    One([Value; 1]),
+    Two([Value; 2]),
+    Three([Value; 3]),
+    Four([Value; 4]),
+    Many(Vec<Value>),
+}
+
+impl ScriptMethodArgs {
+    fn from_receiver_and_args(receiver: &Value, args: &[Value]) -> Self {
+        match args {
+            [] => Self::One([receiver.clone()]),
+            [first] => Self::Two([receiver.clone(), first.clone()]),
+            [first, second] => Self::Three([receiver.clone(), first.clone(), second.clone()]),
+            [first, second, third] => Self::Four([
+                receiver.clone(),
+                first.clone(),
+                second.clone(),
+                third.clone(),
+            ]),
+            _ => {
+                let mut values = Vec::with_capacity(args.len() + 1);
+                values.push(receiver.clone());
+                values.extend(args.iter().cloned());
+                Self::Many(values)
+            }
+        }
+    }
+
+    fn as_slice(&self) -> &[Value] {
+        match self {
+            Self::One(values) => values,
+            Self::Two(values) => values,
+            Self::Three(values) => values,
+            Self::Four(values) => values,
+            Self::Many(values) => values,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
