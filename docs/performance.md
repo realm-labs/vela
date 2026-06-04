@@ -1103,6 +1103,47 @@ Remaining callback work should focus on receiver materialization and invocation
 overhead that still shows up in both callback modes.
 ```
 
+### 2026-06-04 M19 Call Default Allocation Checkpoint
+
+This checkpoint removes a per-call allocation from VM function and closure
+entry. `execute_body` now reads `CodeObject::param_defaults` directly and
+treats missing default flags as `false` instead of cloning and resizing a
+temporary defaults vector for every call. This especially affects callback-heavy
+workloads because each collection callback enters a closure frame.
+
+Commands:
+
+```bash
+cargo test -p vela_vm program_execution
+cargo test -p vela_vm array_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick after-run comparison against the latest documented callback quick
+checkpoints:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 12428900 | 11750950 | 6661976061914330346 | 6661976061914330346 |
+| managed_heap_callback_collections | 19242050 | 17631400 | 6661976061914330346 | 6661976061914330346 |
+
+Default after-run comparison against the heap callback root-buffer checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 157089685 | 141971342 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 228158371 | 213228385 | 4123773336162002392 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for the callback workload in both modes. The change
+preserves default-parameter semantics, including missing param_defaults entries
+being treated as no default, while avoiding one temporary Vec allocation on
+each script function or closure call.
+```
+
 ### 2026-06-04 M19 Scalar Dispatch Mix Benchmark Coverage Checkpoint
 
 This measurement checkpoint adds `scalar_dispatch_mix`, an inline benchmark

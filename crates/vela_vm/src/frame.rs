@@ -1,4 +1,4 @@
-use vela_bytecode::{CodeObject, Register};
+use vela_bytecode::Register;
 
 use crate::heap::GcRef;
 use crate::{Value, VmError, VmErrorKind, VmResult};
@@ -70,10 +70,4 @@ impl CallFrame {
             });
         roots
     }
-}
-
-pub(crate) fn normalized_param_defaults(code: &CodeObject) -> Vec<bool> {
-    let mut defaults = code.param_defaults.clone();
-    defaults.resize(code.params.len(), false);
-    defaults
 }

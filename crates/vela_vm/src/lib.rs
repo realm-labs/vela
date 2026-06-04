@@ -47,7 +47,7 @@ use field_access::{
     enum_tag_equal, get_enum_field_value, get_enum_slot_value, get_record_field_value,
     get_record_slot_value,
 };
-pub(crate) use frame::{CallFrame, normalized_param_defaults};
+pub(crate) use frame::CallFrame;
 use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{

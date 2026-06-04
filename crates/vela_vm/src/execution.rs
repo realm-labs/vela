@@ -64,12 +64,11 @@ impl Vm {
                 Value::Missing,
             )?;
         }
-        let defaults = normalized_param_defaults(code);
         let actual = args
             .iter()
             .filter(|arg| !matches!(arg, Value::Missing))
             .count();
-        for (index, has_default) in defaults.iter().enumerate() {
+        for index in 0..code.params.len() {
             let register = Register(u16::try_from(param_offset.saturating_add(index)).map_err(
                 |_| {
                     VmError::new(VmErrorKind::RegisterOutOfBounds {
@@ -77,6 +76,7 @@ impl Vm {
                     })
                 },
             )?);
+            let has_default = code.param_defaults.get(index).copied().unwrap_or(false);
             if !has_default && matches!(frame.read(register)?, Value::Missing) {
                 return Err(VmError::new(VmErrorKind::ArityMismatch {
                     name: code.name.clone(),
