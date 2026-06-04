@@ -979,6 +979,54 @@ receiver materialization, and set/array callback receiver materialization that
 still clones or materializes collection entries.
 ```
 
+### 2026-06-04 M19 Method Argument Materialization Checkpoint
+
+This checkpoint reduces interpreter method-call overhead by avoiding a heap
+`Vec<Value>` allocation for one- and two-argument `CallMethod` and
+`CallMethodId` dispatch. Zero-argument method calls still pass the existing
+empty slice directly, and method calls with three or more arguments keep the
+existing vector-backed path. The optimization changes only argument
+materialization for method dispatch; receiver mutation, heap storage of return
+values, GC safe points, budgets, and source-spanned errors use the existing
+paths.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from warmed runs in the same working session. The before run
+used commit `adbafb5`; the after run used the method-argument working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 172950 | 164250 | 13147904610567772544 | 13147904610567772544 |
+| callback_collections | 13037350 | 12446050 | 6661976061914330346 | 6661976061914330346 |
+| host_patch_tx | 49250 | 48750 | 8875875486420011969 | 8875875486420011969 |
+| gameplay_monster_kill | 168600 | 171250 | 11641737387043360531 | 11641737387043360531 |
+| managed_heap_materialization | 131350 | 121000 | 11773534860610571856 | 11773534860610571856 |
+
+Default after-run comparison against the previous read-only method receiver
+checkpoint:
+
+| Benchmark | Previous mean ns | After mean ns | Previous checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 1988657 | 1981728 | 8455524478326472193 | 8455524478326472193 |
+| callback_collections | 166372700 | 154637371 | 4123773336162002392 | 4123773336162002392 |
+| host_patch_tx | 666242 | 655728 | 1944703388338173655 | 1944703388338173655 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for every reported workload. The strongest signal is in
+callback-heavy method dispatch, where one- and two-argument calls are common.
+Remaining callback work should focus on callback invocation overhead and
+heap-mode receiver/materialization costs rather than generic method argument
+allocation.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

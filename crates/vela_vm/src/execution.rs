@@ -1,4 +1,5 @@
 use super::*;
+use vela_common::MethodId;
 
 impl Vm {
     pub(super) fn execute_body(
@@ -335,56 +336,37 @@ impl Vm {
                     method,
                     args,
                 } => {
-                    let values = args
-                        .iter()
-                        .map(|arg| match arg {
-                            CallArgument::Register(register) => frame.read(*register).cloned(),
-                            CallArgument::Missing => Ok(Value::Missing),
-                        })
-                        .collect::<VmResult<Vec<_>>>()?;
-                    let caller_roots = caller_roots_for_heap(&frame, heap.as_deref());
-                    if let Some(result) = call_non_mutating_method(
-                        frame.read(*receiver)?,
-                        method,
-                        &values,
-                        ScriptMethodDispatch {
-                            vm: self,
+                    if args.is_empty() {
+                        dispatch_call_method(
+                            self,
                             program,
-                            host: host.as_deref_mut(),
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            caller_roots,
-                        },
-                    ) {
-                        let result = store_value_in_heap_if_needed(
-                            result?,
-                            heap.as_deref_mut(),
-                            budget.as_deref_mut(),
-                        )?;
-                        frame.write(*dst, result)?;
-                    } else {
-                        let mut receiver_value = frame.read(*receiver)?.clone();
-                        let caller_roots = caller_roots_for_heap(&frame, heap.as_deref());
-                        let result = call_method(
-                            &mut receiver_value,
-                            method,
-                            &values,
-                            ScriptMethodDispatch {
-                                vm: self,
-                                program,
-                                host: host.as_deref_mut(),
-                                heap: heap.as_deref_mut(),
-                                budget: budget.as_deref_mut(),
-                                caller_roots,
+                            &mut host,
+                            &mut heap,
+                            &mut budget,
+                            &mut frame,
+                            MethodCall {
+                                dst: *dst,
+                                receiver: *receiver,
+                                method,
+                                values: &[],
                             },
                         )?;
-                        let result = store_value_in_heap_if_needed(
-                            result,
-                            heap.as_deref_mut(),
-                            budget.as_deref_mut(),
+                    } else {
+                        let values = MethodCallArgs::from_call_arguments(&frame, args)?;
+                        dispatch_call_method(
+                            self,
+                            program,
+                            &mut host,
+                            &mut heap,
+                            &mut budget,
+                            &mut frame,
+                            MethodCall {
+                                dst: *dst,
+                                receiver: *receiver,
+                                method,
+                                values: values.as_slice(),
+                            },
                         )?;
-                        frame.write(*receiver, receiver_value)?;
-                        frame.write(*dst, result)?;
                     }
                 }
                 InstructionKind::CallMethodId {
@@ -394,35 +376,40 @@ impl Vm {
                     method_id,
                     args,
                 } => {
-                    let values = args
-                        .iter()
-                        .map(|arg| match arg {
-                            CallArgument::Register(register) => frame.read(*register).cloned(),
-                            CallArgument::Missing => Ok(Value::Missing),
-                        })
-                        .collect::<VmResult<Vec<_>>>()?;
-                    let receiver_value = frame.read(*receiver)?.clone();
-                    let caller_roots = caller_roots_for_heap(&frame, heap.as_deref());
-                    let result = call_method_id(
-                        &receiver_value,
-                        method,
-                        *method_id,
-                        &values,
-                        ScriptMethodDispatch {
-                            vm: self,
+                    if args.is_empty() {
+                        dispatch_call_method_id(
+                            self,
                             program,
-                            host: host.as_deref_mut(),
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            caller_roots,
-                        },
-                    )?;
-                    let result = store_value_in_heap_if_needed(
-                        result,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    )?;
-                    frame.write(*dst, result)?;
+                            &mut host,
+                            &mut heap,
+                            &mut budget,
+                            &mut frame,
+                            MethodIdCall {
+                                dst: *dst,
+                                receiver: *receiver,
+                                method,
+                                method_id: *method_id,
+                                values: &[],
+                            },
+                        )?;
+                    } else {
+                        let values = MethodCallArgs::from_call_arguments(&frame, args)?;
+                        dispatch_call_method_id(
+                            self,
+                            program,
+                            &mut host,
+                            &mut heap,
+                            &mut budget,
+                            &mut frame,
+                            MethodIdCall {
+                                dst: *dst,
+                                receiver: *receiver,
+                                method,
+                                method_id: *method_id,
+                                values: values.as_slice(),
+                            },
+                        )?;
+                    }
                 }
                 InstructionKind::TryPropagate { dst, src } => {
                     match try_propagate_value(frame.read(*src)?, heap.as_deref())? {
@@ -1034,6 +1021,139 @@ fn caller_roots_for_heap(frame: &CallFrame, heap: Option<&HeapExecution<'_>>) ->
         frame.heap_roots()
     } else {
         Vec::new()
+    }
+}
+
+struct MethodCall<'a> {
+    dst: Register,
+    receiver: Register,
+    method: &'a str,
+    values: &'a [Value],
+}
+
+fn dispatch_call_method(
+    vm: &Vm,
+    program: Option<&Program>,
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: MethodCall<'_>,
+) -> VmResult<()> {
+    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+    if let Some(result) = call_non_mutating_method(
+        frame.read(call.receiver)?,
+        call.method,
+        call.values,
+        ScriptMethodDispatch {
+            vm,
+            program,
+            host: host.as_deref_mut(),
+            heap: heap.as_deref_mut(),
+            budget: budget.as_deref_mut(),
+            caller_roots,
+        },
+    ) {
+        let result =
+            store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
+        frame.write(call.dst, result)?;
+    } else {
+        let mut receiver_value = frame.read(call.receiver)?.clone();
+        let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+        let result = call_method(
+            &mut receiver_value,
+            call.method,
+            call.values,
+            ScriptMethodDispatch {
+                vm,
+                program,
+                host: host.as_deref_mut(),
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+                caller_roots,
+            },
+        )?;
+        let result =
+            store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
+        frame.write(call.receiver, receiver_value)?;
+        frame.write(call.dst, result)?;
+    }
+    Ok(())
+}
+
+struct MethodIdCall<'a> {
+    dst: Register,
+    receiver: Register,
+    method: &'a str,
+    method_id: MethodId,
+    values: &'a [Value],
+}
+
+fn dispatch_call_method_id(
+    vm: &Vm,
+    program: Option<&Program>,
+    host: &mut Option<&mut HostExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    frame: &mut CallFrame,
+    call: MethodIdCall<'_>,
+) -> VmResult<()> {
+    let receiver_value = frame.read(call.receiver)?.clone();
+    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
+    let result = call_method_id(
+        &receiver_value,
+        call.method,
+        call.method_id,
+        call.values,
+        ScriptMethodDispatch {
+            vm,
+            program,
+            host: host.as_deref_mut(),
+            heap: heap.as_deref_mut(),
+            budget: budget.as_deref_mut(),
+            caller_roots,
+        },
+    )?;
+    let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
+    frame.write(call.dst, result)
+}
+
+enum MethodCallArgs {
+    One([Value; 1]),
+    Two([Value; 2]),
+    Many(Vec<Value>),
+}
+
+impl MethodCallArgs {
+    fn from_call_arguments(frame: &CallFrame, args: &[CallArgument]) -> VmResult<Self> {
+        fn value_from_arg(frame: &CallFrame, arg: &CallArgument) -> VmResult<Value> {
+            match arg {
+                CallArgument::Register(register) => frame.read(*register).cloned(),
+                CallArgument::Missing => Ok(Value::Missing),
+            }
+        }
+
+        match args {
+            [] => Ok(Self::Many(Vec::new())),
+            [first] => Ok(Self::One([value_from_arg(frame, first)?])),
+            [first, second] => Ok(Self::Two([
+                value_from_arg(frame, first)?,
+                value_from_arg(frame, second)?,
+            ])),
+            _ => args
+                .iter()
+                .map(|arg| value_from_arg(frame, arg))
+                .collect::<VmResult<Vec<_>>>()
+                .map(Self::Many),
+        }
+    }
+
+    fn as_slice(&self) -> &[Value] {
+        match self {
+            Self::One(values) => values,
+            Self::Two(values) => values,
+            Self::Many(values) => values,
+        }
     }
 }
 
