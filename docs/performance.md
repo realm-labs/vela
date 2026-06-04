@@ -420,6 +420,46 @@ Heap allocation pressure remains the clearest next M19 target after this
 checkpoint.
 ```
 
+### 2026-06-04 M19 GC Mark Stack Checkpoint
+
+This checkpoint reduces GC mark-phase allocation pressure. `ScriptHeap` now
+keeps a reusable mark stack and extends it from the current roots at collection
+start instead of allocating a fresh `Vec<GcRef>` for every `mark_from_roots`
+call. Marking, sweeping, GC roots, execution-budget memory accounting, and
+checksums are unchanged.
+
+Commands:
+
+```bash
+git worktree add --detach ../vela-heap-bench-head HEAD
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session. The before run used a
+detached worktree at `57e1b4d`; the after run used the mark-stack working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| gc_pacing | 5255300 | 4487850 | 16625037316567583116 | 16625037316567583116 |
+
+Default before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| gc_pacing | 106587671 | 65015785 | 10923073775105338595 | 10923073775105338595 |
+
+Checkpoint notes:
+
+```text
+This is a narrow GC allocation-pressure optimization; it does not change the
+heap object model or expose script-owned state outside the existing GC.
+The reusable mark stack is runtime bookkeeping and remains outside script memory
+budget charging, matching the previous temporary root-stack allocation behavior.
+Remaining M19 heap work should focus on script value allocation/materialization
+and temporary collection construction outside the GC mark stack.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

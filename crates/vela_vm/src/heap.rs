@@ -234,6 +234,7 @@ struct IncrementalGc {
 pub struct ScriptHeap {
     entries: Vec<HeapEntry>,
     free_list: Vec<usize>,
+    mark_stack: Vec<GcRef>,
     allocated_bytes: usize,
     gc_config: GcConfig,
     next_gc_at_bytes: usize,
@@ -246,6 +247,7 @@ impl Default for ScriptHeap {
         Self {
             entries: Vec::new(),
             free_list: Vec::new(),
+            mark_stack: Vec::new(),
             allocated_bytes: 0,
             gc_config,
             next_gc_at_bytes: 1,
@@ -477,7 +479,9 @@ impl ScriptHeap {
 
     fn mark_from_roots(&mut self, roots: &[GcRef]) -> usize {
         let mut marked = 0;
-        let mut stack = roots.to_vec();
+        let mut stack = std::mem::take(&mut self.mark_stack);
+        stack.clear();
+        stack.extend_from_slice(roots);
 
         while let Some(reference) = stack.pop() {
             let Some(object) = self
@@ -495,6 +499,7 @@ impl ScriptHeap {
             object.value.trace_refs(&mut stack);
         }
 
+        self.mark_stack = stack;
         marked
     }
 
