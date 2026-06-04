@@ -329,6 +329,22 @@ fn reflect_schema_mutation_demo_reports_invalid_target() {
 }
 
 #[test]
+fn reflect_unknown_field_demo_reports_candidate() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg(script_path("reflect_unknown_field_denied.vela"))
+        .output()
+        .expect("run vela_cli reflection unknown field demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains(
+        "error[reflect::unknown_field]: unknown reflected field `leve` on `Player`; candidates: level, exp, id"
+    ));
+    assert!(stderr.contains("reflect_unknown_field_denied.vela:2:12"));
+    assert!(stderr.contains("return reflect::get(player, \"leve\");"));
+}
+
+#[test]
 fn hot_reload_function_swap_demo_runs_through_cli() {
     assert_eq!(
         run_hot_reload_demo(
