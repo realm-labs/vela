@@ -58,6 +58,15 @@ impl<'heap> HeapExecution<'heap> {
             .for_each(|value| value.trace_heap_refs(&mut self.protected_roots));
     }
 
+    pub(crate) fn protect_value_refs<'value>(
+        &mut self,
+        values: impl IntoIterator<Item = &'value Value>,
+    ) {
+        values
+            .into_iter()
+            .for_each(|value| value.trace_heap_refs(&mut self.protected_roots));
+    }
+
     pub(crate) fn collect_frame_at_safe_point(
         &mut self,
         frame: &CallFrame,

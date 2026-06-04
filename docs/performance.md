@@ -1103,6 +1103,45 @@ Remaining callback work should focus on receiver materialization and invocation
 overhead that still shows up in both callback modes.
 ```
 
+### 2026-06-04 M19 Heap Map Callback Protection Checkpoint
+
+This checkpoint adds a targeted `managed_heap_map_callbacks` benchmark and
+removes per-iteration protected-value `Vec<Value>` allocation from heap-mode
+map `map_values()` and `filter()` callbacks. The callback dispatcher can now
+protect an iterator of existing `Value` references, so partial mapped or
+filtered map results are traced directly into the existing `HeapExecution`
+protected-root buffer.
+
+Commands:
+
+```bash
+cargo test -p vela_vm map_
+cargo bench -p vela_vm --bench baseline
+```
+
+Default before/after for the targeted benchmark:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_map_callbacks | 161074557 | 145166342 | 8330170948568223460 | 8330170948568223460 |
+
+Default guardrail rows from the same before/final-after runs:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 131643214 | 136827514 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 214569042 | 210889400 | 4123773336162002392 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The targeted benchmark isolates heap-mode map
+callbacks that accumulate partial map results while invoking callbacks. The
+generic callback helper now accepts borrowed protected values, preserving GC
+root behavior without allocating a temporary protected-value vector each
+iteration.
+```
+
 ### 2026-06-04 M19 Call Default Allocation Checkpoint
 
 This checkpoint removes a per-call allocation from VM function and closure

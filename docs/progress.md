@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema and set higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, expanded map/set/array/array-distinct/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema and set higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded map/set/array/array-distinct/host-conversion/managed-heap-callback/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -211,6 +211,11 @@ before debugger/DAP work and Cranelift JIT.
   caller roots, callback args, and protected values into the existing
   `HeapExecution` protected-root buffer instead of allocating a temporary
   `Vec<GcRef>` for each callback.
+- An M19 heap map callback protection checkpoint is recorded in
+  [performance.md](performance.md): `managed_heap_map_callbacks` now measures
+  repeated heap-mode map `map_values()` and `filter()` callbacks, and partial
+  map results are protected through borrowed value iterators instead of a
+  temporary protected-value `Vec`.
 - An M19 call-entry default allocation checkpoint is recorded in
   [performance.md](performance.md): script function and closure calls now read
   parameter default flags directly from `CodeObject` instead of allocating a

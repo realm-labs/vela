@@ -21,13 +21,23 @@ pub(crate) fn call_callback(
     args: &[Value],
     protected_values: &[Value],
 ) -> VmResult<Value> {
+    call_callback_with_protected_values(runtime, operation, callback, args, protected_values.iter())
+}
+
+pub(crate) fn call_callback_with_protected_values<'value>(
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: &Value,
+    args: &[Value],
+    protected_values: impl IntoIterator<Item = &'value Value>,
+) -> VmResult<Value> {
     let Value::Closure(closure) = callback else {
         return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
     };
     let protected_root_len = runtime.heap.as_deref_mut().map(|heap| {
         let protected_root_len = heap.push_protected_roots(runtime.caller_roots);
         heap.protect_values(args);
-        heap.protect_values(protected_values);
+        heap.protect_value_refs(protected_values);
         protected_root_len
     });
     let result = runtime.vm.execute_closure_value(

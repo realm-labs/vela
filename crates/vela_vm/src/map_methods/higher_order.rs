@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::method_runtime::{MethodRuntime, call_callback};
+use crate::method_runtime::{MethodRuntime, call_callback, call_callback_with_protected_values};
 use crate::option_result::option_value;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
@@ -32,21 +32,25 @@ pub(crate) fn map_values(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
     let mut mapped = BTreeMap::new();
     for (key, value) in entries {
-        let protected;
-        let protected_values = if runtime.heap.is_some() {
-            protected = mapped.values().cloned().collect::<Vec<_>>();
-            protected.as_slice()
+        let value = if runtime.heap.is_some() {
+            call_map_callback_with_protected_values(
+                &mut runtime,
+                "method map_values",
+                &args[0],
+                key.clone(),
+                value,
+                mapped.values(),
+            )?
         } else {
-            &[]
+            call_map_callback(
+                &mut runtime,
+                "method map_values",
+                &args[0],
+                key.clone(),
+                value,
+                &[],
+            )?
         };
-        let value = call_map_callback(
-            &mut runtime,
-            "method map_values",
-            &args[0],
-            key.clone(),
-            value,
-            protected_values,
-        )?;
         mapped.insert(key, value);
     }
     Ok(Value::Map(mapped))
@@ -80,21 +84,25 @@ pub(crate) fn filter(
     let entries = map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
     let mut filtered = BTreeMap::new();
     for (key, value) in entries {
-        let protected;
-        let protected_values = if runtime.heap.is_some() {
-            protected = filtered.values().cloned().collect::<Vec<_>>();
-            protected.as_slice()
+        let predicate = if runtime.heap.is_some() {
+            call_map_callback_with_protected_values(
+                &mut runtime,
+                "method filter",
+                &args[0],
+                key.clone(),
+                value.clone(),
+                filtered.values(),
+            )?
         } else {
-            &[]
+            call_map_callback(
+                &mut runtime,
+                "method filter",
+                &args[0],
+                key.clone(),
+                value.clone(),
+                &[],
+            )?
         };
-        let predicate = call_map_callback(
-            &mut runtime,
-            "method filter",
-            &args[0],
-            key.clone(),
-            value.clone(),
-            protected_values,
-        )?;
         if is_truthy(&predicate) {
             filtered.insert(key, value);
         }
@@ -278,6 +286,41 @@ fn call_map_callback(
         _ => {
             let callback_args = [Value::String(key), value];
             call_callback(
+                runtime,
+                operation,
+                callback,
+                &callback_args,
+                protected_values,
+            )
+        }
+    }
+}
+
+fn call_map_callback_with_protected_values<'value>(
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+    callback: &Value,
+    key: String,
+    value: Value,
+    protected_values: impl IntoIterator<Item = &'value Value>,
+) -> VmResult<Value> {
+    let Value::Closure(closure) = callback else {
+        return type_error(operation);
+    };
+    match closure.code.params.len() {
+        0 => {
+            call_callback_with_protected_values(runtime, operation, callback, &[], protected_values)
+        }
+        1 => call_callback_with_protected_values(
+            runtime,
+            operation,
+            callback,
+            std::slice::from_ref(&value),
+            protected_values,
+        ),
+        _ => {
+            let callback_args = [Value::String(key), value];
+            call_callback_with_protected_values(
                 runtime,
                 operation,
                 callback,

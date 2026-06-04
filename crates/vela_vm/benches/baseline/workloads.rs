@@ -138,6 +138,29 @@ fn main() {
         source: CALLBACK_COLLECTIONS_SOURCE,
     },
     Workload {
+        name: "managed_heap_map_callbacks",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..48 {
+        let rewards = {
+            "r01": 1, "r02": 2, "r03": 3, "r04": 4,
+            "r05": 5, "r06": 6, "r07": 7, "r08": 8,
+            "r09": 9, "r10": 10, "r11": 11, "r12": 12,
+        };
+        let keyed = rewards.map_values(|key, value| key.len() + value + tick - tick);
+        let filtered = keyed.filter(|key, value| key.starts_with("r") && value % 3 == 0);
+        if filtered.len() != 4 || filtered.get_or("r12", 0) != 15 {
+            return 0;
+        }
+        total += keyed.values().sum() + filtered.values().sum();
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "host_patch_tx",
         mode: ExecutionMode::HostPatchTx,
         source: r#"
