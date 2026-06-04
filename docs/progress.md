@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema and set lookup/higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded map/set/set-lookup/array/array-lookup/array-distinct/host-conversion/managed-heap-host-conversion/managed-heap-callback/Option-Result/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, Option/Result helper tag fast paths, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema and set lookup/higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded map/map-lookup/set/set-lookup/array/array-lookup/array-distinct/host-conversion/managed-heap-host-conversion/managed-heap-callback/Option-Result/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, Option/Result helper tag fast paths, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -198,6 +198,10 @@ before debugger/DAP work and Cranelift JIT.
   repeated heap-mode `array.contains()` and `array.index_of()` calls; a direct
   heap-slot comparison path was measured but not accepted because it regressed
   the focused quick benchmark.
+- An M19 managed-heap map lookup benchmark coverage checkpoint is recorded in
+  [performance.md](performance.md): `managed_heap_map_lookup` now measures
+  repeated heap-mode `map.has()`, `map.get()`, and `map.get_or()` calls over
+  string and integer map values.
 - An M19 read-only method receiver checkpoint is recorded in
   [performance.md](performance.md): non-mutating string, callback, and stdlib
   method dispatch now tries a borrowed receiver fast path before falling back to

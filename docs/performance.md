@@ -1761,6 +1761,33 @@ measured but not accepted because quick runs regressed the focused benchmark,
 so the runtime path stayed unchanged.
 ```
 
+### 2026-06-04 M19 Managed Heap Map Lookup Benchmark Checkpoint
+
+This checkpoint adds a focused `managed_heap_map_lookup` benchmark for repeated
+heap-mode `map.has()`, `map.get()`, and `map.get_or()` calls over string and
+integer map values. It also adds a focused managed-heap map lookup test.
+
+Commands:
+
+```bash
+cargo test -p vela_vm managed_heap_execution_runs_map_lookup_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick baseline from the same working session:
+
+| Benchmark | Mean ns | Checksum |
+|---|---:|---:|
+| managed_heap_map_lookup | 10804250 | 13501942729849410472 |
+
+Checkpoint notes:
+
+```text
+This gives M19 a focused map lookup timing surface separate from callback-heavy
+map rows and broader collection workloads. No runtime optimization was accepted
+in this checkpoint.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

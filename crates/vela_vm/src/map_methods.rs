@@ -296,6 +296,36 @@ fn main() {
     }
 
     #[test]
+    fn managed_heap_execution_runs_map_lookup_methods() {
+        let source = r#"
+fn main() {
+    let states = {"daily": "done", "raid": "active", "boss": "ready"};
+    let scores = {"daily": 3, "raid": 8, "boss": 13};
+    if states.has("raid")
+        && !states.has("missing")
+        && option::unwrap_or(states.get("boss"), "") == "ready"
+        && states.get_or("missing", "fallback") == "fallback"
+        && scores.get_or("raid", 0) == 8
+        && option::unwrap_or(scores.get("missing"), -1) == -1
+    {
+        return states.len() + scores.get_or("daily", 0);
+    }
+    return 0;
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("heap map lookup methods should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let result = vm
+            .run_with_managed_heap_and_budget(&code, &mut budget)
+            .expect("heap map lookup methods should run");
+        assert_eq!(result, Value::Int(6));
+    }
+
+    #[test]
     fn runs_compiled_map_merge_method() {
         let source = r#"
 fn main() {
