@@ -1,0 +1,8 @@
+struct RewardPreview {
+    item_id: string,
+    item_id: int,
+}
+
+fn main() {
+    return 1;
+}
