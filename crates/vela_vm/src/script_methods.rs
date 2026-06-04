@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use vela_bytecode::Program;
 use vela_common::MethodId;
 use vela_reflect::registry::TypeRegistry;
@@ -9,6 +10,8 @@ use crate::string_method_dispatch;
 use crate::{
     ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
 };
+
+type SmallValueArgs = SmallVec<[Value; 4]>;
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
@@ -150,7 +153,7 @@ fn call_script_impl_method(
         }));
     };
 
-    let mut values = Vec::with_capacity(args.len() + 1);
+    let mut values = SmallValueArgs::new();
     values.push(receiver.clone());
     values.extend(args.iter().cloned());
     let protected_root_len = dispatch

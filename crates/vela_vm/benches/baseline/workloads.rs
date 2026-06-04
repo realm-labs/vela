@@ -148,6 +148,41 @@ fn main() {
 "#,
     },
     Workload {
+        name: "script_call_wide_args",
+        mode: ExecutionMode::ScriptProgram,
+        source: r#"
+fn mix_three(left, middle, right) {
+    return left * 2 + middle - right;
+}
+
+fn mix_four(first, second, third, fourth) {
+    return first + second * 3 - third + fourth;
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..240 {
+        total += mix_three(tick, total % 19, tick % 7);
+        total += mix_four(tick, total % 23, tick % 11, 5);
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "native_call_wide_args",
+        mode: ExecutionMode::Inline,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..240 {
+        total += bench::mix4(tick, total % 17, tick % 5, 3);
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "stdlib_collections",
         mode: ExecutionMode::Inline,
         source: r#"

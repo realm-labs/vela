@@ -2036,6 +2036,59 @@ host methods, PatchTx behavior, and script-defined method execution on the
 existing protected-root path.
 ```
 
+### 2026-06-04 M19 Wide Call Argument Storage Checkpoint
+
+This checkpoint adds `script_call_wide_args` and `native_call_wide_args`
+benchmark coverage for repeated three- and four-argument calls. VM native,
+script function, closure, and method call argument packing keeps the existing
+zero-, one-, and two-argument stack-array paths, and uses
+`SmallVec<[Value; 4]>` only for wider temporary call argument storage. Script
+visible arrays and managed-heap collection payloads are unchanged.
+
+Commands:
+
+```bash
+cargo test -p vela_vm runs_compiled_script_function_calls
+cargo test -p vela_vm runs_immediate_lambda_calls_and_block_returns
+cargo test -p vela_vm program_execution
+cargo test -p vela_engine typed_native
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from a detached baseline worktree with only the new
+benchmark rows applied:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| script_call_small_args | 861666 | 790667 | 17951189677707400592 | 17951189677707400592 |
+| script_call_wide_args | 1727979 | 1550708 | 2544809685083106790 | 2544809685083106790 |
+| native_call_wide_args | 620666 | 526583 | 6248877105930083886 | 6248877105930083886 |
+| callback_collections | 5379603 | 5285020 | 6661976061914330346 | 6661976061914330346 |
+| managed_heap_callback_collections | 8091562 | 8091437 | 6661976061914330346 | 6661976061914330346 |
+
+Default before/after from the same detached baseline worktree and final
+working tree:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| script_call_small_args | 10602684 | 10431333 | 8911229402023173645 | 8911229402023173645 |
+| script_call_wide_args | 21747922 | 18863291 | 9013669435675877301 | 9013669435675877301 |
+| native_call_wide_args | 7526369 | 6769863 | 17539598824308639303 | 17539598824308639303 |
+| callback_collections | 68072303 | 66191797 | 4123773336162002392 | 4123773336162002392 |
+| managed_heap_callback_collections | 103160059 | 99102660 | 4123773336162002392 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+A pure SmallVec replacement for all call arities was measured first, but the
+quick guardrail regressed script_call_small_args, so the accepted path keeps
+the previous zero-, one-, and two-argument enum storage and uses SmallVec only
+for the wider fallback. This preserves the existing &[Value] call interface,
+call-depth budgeting, frame root protection, host native rollback behavior, and
+hot-reload CodeObject ownership.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

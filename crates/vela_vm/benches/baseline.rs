@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::hint::black_box;
@@ -123,7 +125,8 @@ struct BenchResult {
 
 fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult, Box<dyn Error>> {
     let compiled = compile_workload(workload)?;
-    let vm = Vm::new().with_standard_natives();
+    let mut vm = Vm::new().with_standard_natives();
+    register_bench_natives(&mut vm);
 
     for _ in 0..params.warmup {
         let value = run_once(&vm, &compiled)?;
@@ -143,6 +146,15 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
     }
 
     Ok(summarize(samples, checksum))
+}
+
+fn register_bench_natives(vm: &mut Vm) {
+    vm.register_native("bench::mix4", |args| {
+        let [Value::Int(a), Value::Int(b), Value::Int(c), Value::Int(d)] = args else {
+            return Ok(Value::Null);
+        };
+        Ok(Value::Int(a * 3 + b * 2 - c + d))
+    });
 }
 
 enum CompiledWorkload {

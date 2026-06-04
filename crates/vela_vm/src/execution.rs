@@ -1,5 +1,8 @@
 use super::*;
+use smallvec::SmallVec;
 use vela_common::MethodId;
+
+type SmallValueArgs = SmallVec<[Value; 4]>;
 
 impl Vm {
     pub(super) fn execute_body(
@@ -1170,7 +1173,7 @@ enum NativeCallArgs {
     Empty,
     One([Value; 1]),
     Two([Value; 2]),
-    Many(Vec<Value>),
+    Many(SmallValueArgs),
 }
 
 impl NativeCallArgs {
@@ -1189,7 +1192,7 @@ impl NativeCallArgs {
             _ => registers
                 .iter()
                 .map(|register| materialize_value(frame.read(*register)?, heap))
-                .collect::<VmResult<Vec<_>>>()
+                .collect::<VmResult<SmallValueArgs>>()
                 .map(Self::Many),
         }
     }
@@ -1205,9 +1208,10 @@ impl NativeCallArgs {
 }
 
 enum ScriptCallArgs {
+    Empty,
     One([Value; 1]),
     Two([Value; 2]),
-    Many(Vec<Value>),
+    Many(SmallValueArgs),
 }
 
 impl ScriptCallArgs {
@@ -1220,7 +1224,7 @@ impl ScriptCallArgs {
         }
 
         match args {
-            [] => Ok(Self::Many(Vec::new())),
+            [] => Ok(Self::Empty),
             [first] => Ok(Self::One([value_from_arg(frame, first)?])),
             [first, second] => Ok(Self::Two([
                 value_from_arg(frame, first)?,
@@ -1229,14 +1233,14 @@ impl ScriptCallArgs {
             _ => args
                 .iter()
                 .map(|arg| value_from_arg(frame, arg))
-                .collect::<VmResult<Vec<_>>>()
+                .collect::<VmResult<SmallValueArgs>>()
                 .map(Self::Many),
         }
     }
 
     fn from_registers(frame: &CallFrame, registers: &[Register]) -> VmResult<Self> {
         match registers {
-            [] => Ok(Self::Many(Vec::new())),
+            [] => Ok(Self::Empty),
             [first] => Ok(Self::One([frame.read(*first)?.clone()])),
             [first, second] => Ok(Self::Two([
                 frame.read(*first)?.clone(),
@@ -1245,13 +1249,14 @@ impl ScriptCallArgs {
             _ => registers
                 .iter()
                 .map(|register| frame.read(*register).cloned())
-                .collect::<VmResult<Vec<_>>>()
+                .collect::<VmResult<SmallValueArgs>>()
                 .map(Self::Many),
         }
     }
 
     fn as_slice(&self) -> &[Value] {
         match self {
+            Self::Empty => &[],
             Self::One(values) => values,
             Self::Two(values) => values,
             Self::Many(values) => values,
