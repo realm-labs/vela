@@ -755,6 +755,46 @@ index_of, but broader stdlib heap receiver work remains in map, set, transform,
 ordering, and callback-heavy methods.
 ```
 
+### 2026-06-04 M19 Map Callback Entry Checkpoint
+
+This checkpoint reduces no-heap map callback overhead. `map.map_values`,
+`map.filter`, `map.find`, `map.any`, `map.all`, and `map.count` now iterate
+`Value::Map` receivers directly instead of first cloning the whole receiver
+into a temporary entry vector. Managed-heap map receivers keep the existing
+materialized-entry path so callback execution can borrow `HeapExecution`
+mutably without holding an immutable heap-map borrow across the callback.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+git worktree add --detach ../vela-map-callback-before HEAD
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 6412800 | 5747250 | 3270490998308601835 | 3270490998308601835 |
+
+Default before/after from the same working session. The before run used a
+warmed detached worktree at `ac9fa81`; the after run used the map callback
+working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 76368914 | 68746600 | 12210731834836948394 | 12210731834836948394 |
+
+Checkpoint notes:
+
+```text
+The optimization is scoped to no-heap Value::Map higher-order callbacks and
+preserves managed-heap callback root behavior. Remaining callback work should
+focus on heap-mode protected values, closure invocation overhead, and set/array
+callback receiver materialization.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
