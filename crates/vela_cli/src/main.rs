@@ -22,9 +22,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [flag, path] if flag == "--deny-player-level-read" => {
             demo::run_script_with_denied_player_level_read(path)
         }
+        [flag, path] if flag == "--deny-player-level-write" => {
+            demo::run_script_with_denied_player_level_write(path)
+        }
         [path] => demo::run_script(path),
         _ => {
-            Err("usage: vela_cli <script-path> | vela_cli --allow-random <script-path> | vela_cli --stale-player <script-path> | vela_cli --deny-player-level-read <script-path> | vela_cli --hot-reload <initial> <updated>".into())
+            Err("usage: vela_cli <script-path> | vela_cli --allow-random <script-path> | vela_cli --stale-player <script-path> | vela_cli --deny-player-level-read <script-path> | vela_cli --deny-player-level-write <script-path> | vela_cli --hot-reload <initial> <updated>".into())
         }
     }
 }

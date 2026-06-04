@@ -23,6 +23,7 @@ pub(crate) struct DemoHostOptions {
     pub(crate) has_monster: bool,
     pub(crate) stale_player_arg: bool,
     pub(crate) deny_player_level_read: bool,
+    pub(crate) deny_player_level_write: bool,
 }
 
 pub(crate) struct DemoHostState {
@@ -122,6 +123,9 @@ impl DemoHostState {
         adapter.insert_method_return(ids.log_method, HostValue::Null);
         if options.deny_player_level_read {
             adapter.deny_read(level_path.clone());
+        }
+        if options.deny_player_level_write {
+            adapter.deny_write(level_path.clone());
         }
 
         Self {
