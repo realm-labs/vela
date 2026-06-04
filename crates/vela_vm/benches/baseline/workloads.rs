@@ -13,6 +13,49 @@ pub(crate) enum ExecutionMode {
     GcPacing,
 }
 
+const CALLBACK_COLLECTIONS_SOURCE: &str = r#"
+fn main() {
+    let total = 0;
+    for tick in 0..20 {
+        let rewards = {
+            "r01": 1, "r02": 2, "r03": 3, "r04": 4,
+            "r05": 5, "r06": 6, "r07": 7, "r08": 8,
+            "r09": 9, "r10": 10, "r11": 11, "r12": 12,
+        };
+        let keyed = rewards.map_values(|key, value| key.len() + value + tick - tick);
+        let filtered = keyed.filter(|key, value| key.starts_with("r") && value % 3 == 0);
+        let sorted = filtered.values().sort_by(|value| 20 - value);
+        let tags = set::from_array(["daily", "quest", "raid", "bonus", "daily"]);
+        let active = tags.filter(|tag| tag.contains("a") || tag.starts_with("q"));
+        let lengths = active.map(|tag| tag.len());
+        let found = active.find(|tag| tag.ends_with("d")).unwrap_or("");
+        let tiers = [1, 2, 3, 4, 5, 6, 7, 8];
+        let boosted = tiers.map(|tier| tier + tick - tick + 1);
+        let even = boosted.filter(|tier| tier % 2 == 0);
+        let first_high = boosted.find(|tier| tier > 6).unwrap_or(0);
+        if filtered.len() != 4
+            || sorted[0] != 15
+            || sorted[3] != 6
+            || active.len() != 3
+            || lengths.len() != 2
+            || found != "raid"
+            || !active.any(|tag| tag == "quest")
+            || !active.all(|tag| tag.len() >= 4)
+            || active.count(|tag| tag.contains("i")) != 2
+            || even.len() != 4
+            || first_high != 7
+            || !boosted.any(|tier| tier == 9)
+            || !boosted.all(|tier| tier > 1)
+            || boosted.count(|tier| tier >= 5) != 5
+        {
+            return 0;
+        }
+        total += sorted.sum() + keyed.get_or("r12", 0) + lengths.values().sum() + even.sum();
+    }
+    return total;
+}
+"#;
+
 pub(crate) const WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
@@ -59,48 +102,12 @@ fn main() {
     Workload {
         name: "callback_collections",
         mode: ExecutionMode::Inline,
-        source: r#"
-fn main() {
-    let total = 0;
-    for tick in 0..20 {
-        let rewards = {
-            "r01": 1, "r02": 2, "r03": 3, "r04": 4,
-            "r05": 5, "r06": 6, "r07": 7, "r08": 8,
-            "r09": 9, "r10": 10, "r11": 11, "r12": 12,
-        };
-        let keyed = rewards.map_values(|key, value| key.len() + value + tick - tick);
-        let filtered = keyed.filter(|key, value| key.starts_with("r") && value % 3 == 0);
-        let sorted = filtered.values().sort_by(|value| 20 - value);
-        let tags = set::from_array(["daily", "quest", "raid", "bonus", "daily"]);
-        let active = tags.filter(|tag| tag.contains("a") || tag.starts_with("q"));
-        let lengths = active.map(|tag| tag.len());
-        let found = active.find(|tag| tag.ends_with("d")).unwrap_or("");
-        let tiers = [1, 2, 3, 4, 5, 6, 7, 8];
-        let boosted = tiers.map(|tier| tier + tick - tick + 1);
-        let even = boosted.filter(|tier| tier % 2 == 0);
-        let first_high = boosted.find(|tier| tier > 6).unwrap_or(0);
-        if filtered.len() != 4
-            || sorted[0] != 15
-            || sorted[3] != 6
-            || active.len() != 3
-            || lengths.len() != 2
-            || found != "raid"
-            || !active.any(|tag| tag == "quest")
-            || !active.all(|tag| tag.len() >= 4)
-            || active.count(|tag| tag.contains("i")) != 2
-            || even.len() != 4
-            || first_high != 7
-            || !boosted.any(|tier| tier == 9)
-            || !boosted.all(|tier| tier > 1)
-            || boosted.count(|tier| tier >= 5) != 5
-        {
-            return 0;
-        }
-        total += sorted.sum() + keyed.get_or("r12", 0) + lengths.values().sum() + even.sum();
-    }
-    return total;
-}
-"#,
+        source: CALLBACK_COLLECTIONS_SOURCE,
+    },
+    Workload {
+        name: "managed_heap_callback_collections",
+        mode: ExecutionMode::ManagedHeap,
+        source: CALLBACK_COLLECTIONS_SOURCE,
     },
     Workload {
         name: "host_patch_tx",

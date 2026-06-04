@@ -1027,6 +1027,39 @@ heap-mode receiver/materialization costs rather than generic method argument
 allocation.
 ```
 
+### 2026-06-04 M19 Managed-Heap Callback Benchmark Coverage Checkpoint
+
+This measurement checkpoint adds `managed_heap_callback_collections`, a
+managed-heap version of the existing callback-heavy collections workload. The
+source is shared with `callback_collections`, so the two benchmark rows compare
+the same map/set/array callback behavior with and without managed heap
+execution. Matching checksums verify that both modes produce the same script
+result.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Expanded benchmark baseline:
+
+| Benchmark | Mode | Quick mean ns | Quick checksum | Default mean ns | Default checksum |
+|---|---|---:|---:|---:|---:|
+| callback_collections | inline | 12428900 | 6661976061914330346 | 153822685 | 4123773336162002392 |
+| managed_heap_callback_collections | managed_heap | 19018650 | 6661976061914330346 | 242331900 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+The managed-heap callback benchmark now gives M19 a direct timing surface for
+heap-mode callback root protection, receiver materialization, callback return
+storage, and heap value conversion costs. Future heap-mode callback
+optimizations should preserve the matching checksum and report before/after
+results against this workload.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

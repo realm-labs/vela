@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/read-only method receiver fast paths, no-heap callback root/protected-value guards, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, owned return aggregate storage, array lookup/sort/read-only method receiver fast paths, no-heap callback root/protected-value guards, stack-local/no-heap map callback entries, expanded map/set/array/host-conversion/managed-heap-callback benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -163,15 +163,20 @@ before debugger/DAP work and Cranelift JIT.
   stack-backed argument storage instead of allocating a temporary `Vec<Value>`,
   while zero-argument calls keep the existing empty-slice path and wider calls
   keep the vector-backed path.
+- An M19 managed-heap callback benchmark coverage checkpoint is recorded in
+  [performance.md](performance.md): `managed_heap_callback_collections` now
+  runs the same callback-heavy map/set/array source as `callback_collections`
+  through managed heap execution with matching checksums, giving heap-mode
+  callback costs a direct benchmark surface.
 
 ### Remaining Gaps
 
 - M19: continue optimizing the non-JIT interpreter and managed heap path only
   with before/after benchmark evidence, focusing next on broader stdlib heap
   receiver materialization, measured host conversion deltas, callback
-  invocation overhead, heap-mode callback costs, set/array callback receiver
-  materialization, broader scalar dispatch measurements, and gameplay-host
-  benchmark deltas.
+  invocation overhead, measured heap-mode callback deltas, set/array callback
+  receiver materialization, broader scalar dispatch measurements, and
+  gameplay-host benchmark deltas.
 - M20+: keep inline-cache and specialization work behind M19 benchmarked
   interpreter/heap improvements.
 
@@ -195,7 +200,7 @@ ownership, and source-spanned diagnostics.
 
 - Choose the next narrow measured M19 optimization target from the updated
   checkpoint notes, with broader stdlib heap receiver materialization, host
-  conversion deltas, string/heap-mode callback call overhead, set/array
+  conversion deltas, callback invocation and heap-mode callback deltas, set/array
   aggregation callback receiver materialization, and broader scalar dispatch
   currently the clearest candidates; include the gameplay-host benchmark when
   relevant.
