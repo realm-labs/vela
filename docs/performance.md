@@ -1788,6 +1788,35 @@ map rows and broader collection workloads. No runtime optimization was accepted
 in this checkpoint.
 ```
 
+### 2026-06-04 M19 Managed Heap Map Lookup Key Borrow Checkpoint
+
+This checkpoint keeps map lookup keys borrowed for immediate `map.has()`,
+`map.get()`, and `map.get_or()` access instead of allocating an owned `String`
+before probing `BTreeMap<String, _>` storage. Mutating map methods still own
+keys when inserting into map storage.
+
+Commands:
+
+```bash
+cargo test -p vela_vm managed_heap_execution_runs_map_lookup_methods
+cargo bench -p vela_vm --bench baseline -- --quick
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Checksum |
+|---|---:|---:|---:|
+| managed_heap_map_lookup | 12152350 | 10382200 | 13501942729849410472 |
+
+Checkpoint notes:
+
+```text
+The optimization removes repeated key-string allocation from read-only map
+lookups while preserving the existing string key type checks and heap string
+reads. The focused quick benchmark improved by about 14.6% with the checksum
+unchanged.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
