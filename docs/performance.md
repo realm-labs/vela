@@ -546,6 +546,45 @@ Remaining callback work should focus on argument vector construction and closure
 call overhead, not no-heap GC root protection.
 ```
 
+### 2026-06-04 M19 GroupBy Protected-Value Guard Checkpoint
+
+This checkpoint removes another no-heap callback allocation from
+`array.group_by`. Grouping callbacks still protect previously-built groups
+when managed heap execution is active, but inline/no-heap execution now skips
+building the protected-value clone vector that only feeds heap root protection.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+git worktree add --detach ../vela-groupby-bench-head HEAD
+cargo bench -p vela_vm --bench baseline
+```
+
+Quick before/after from the same working session:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 244050 | 217050 | 13147904610567772544 | 13147904610567772544 |
+
+Default before/after from the same working session. The before run used a
+detached worktree at `b6e15c3`; the after run used the group-by protected-value
+working tree.
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| stdlib_collections | 2612585 | 2474571 | 8455524478326472193 | 8455524478326472193 |
+
+Checkpoint notes:
+
+```text
+The optimization is scoped to no-heap array.group_by callback dispatch.
+Managed heap execution still collects the previously-built groups as protected
+roots before executing each callback.
+Remaining callback work should focus on map/sort protected-value construction,
+map callback argument vectors, and closure call overhead.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

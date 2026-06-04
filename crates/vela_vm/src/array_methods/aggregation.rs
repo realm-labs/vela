@@ -41,13 +41,19 @@ pub(crate) fn group_by(
     let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
     let mut groups = BTreeMap::<String, Value>::new();
     for value in values {
-        let protected = groups.values().cloned().collect::<Vec<_>>();
+        let protected;
+        let protected_values = if runtime.heap.is_some() {
+            protected = groups.values().cloned().collect::<Vec<_>>();
+            protected.as_slice()
+        } else {
+            &[]
+        };
         let key_value = call_unary_callback(
             &mut runtime,
             "method group_by",
             &args[0],
             value.clone(),
-            &protected,
+            protected_values,
         )?;
         let key = group_key(&key_value, runtime.heap.as_deref())?;
         match groups.entry(key) {
