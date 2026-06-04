@@ -75,6 +75,10 @@ fn main() {
         let active = tags.filter(|tag| tag.contains("a") || tag.starts_with("q"));
         let lengths = active.map(|tag| tag.len());
         let found = active.find(|tag| tag.ends_with("d")).unwrap_or("");
+        let tiers = [1, 2, 3, 4, 5, 6, 7, 8];
+        let boosted = tiers.map(|tier| tier + tick - tick + 1);
+        let even = boosted.filter(|tier| tier % 2 == 0);
+        let first_high = boosted.find(|tier| tier > 6).unwrap_or(0);
         if filtered.len() != 4
             || sorted[0] != 15
             || sorted[3] != 6
@@ -84,10 +88,15 @@ fn main() {
             || !active.any(|tag| tag == "quest")
             || !active.all(|tag| tag.len() >= 4)
             || active.count(|tag| tag.contains("i")) != 2
+            || even.len() != 4
+            || first_high != 7
+            || !boosted.any(|tier| tier == 9)
+            || !boosted.all(|tier| tier > 1)
+            || boosted.count(|tier| tier >= 5) != 5
         {
             return 0;
         }
-        total += sorted.sum() + keyed.get_or("r12", 0) + lengths.values().sum();
+        total += sorted.sum() + keyed.get_or("r12", 0) + lengths.values().sum() + even.sum();
     }
     return total;
 }

@@ -866,6 +866,39 @@ set work should be accepted only with benchmark evidence from this expanded
 surface or a more targeted set callback workload.
 ```
 
+### 2026-06-04 M19 Array Higher-Order Callback Benchmark Coverage Checkpoint
+
+This measurement checkpoint expands the `callback_collections` workload to
+cover array `map`, `filter`, `find`, `any`, `all`, and `count` callbacks in the
+same repeated collection loop that already covers map callbacks, set callbacks,
+and `array.sort_by`. It does not accept a runtime fast path by itself; a direct
+no-heap array higher-order receiver experiment was rejected in this working
+session because the quick benchmark worsened from `14962650` ns to `15213150`
+ns while preserving the checksum.
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench baseline
+```
+
+Expanded benchmark baseline:
+
+| Benchmark | Quick mean ns | Quick checksum | Default mean ns | Default checksum |
+|---|---:|---:|---:|---:|
+| callback_collections | 14870500 | 6661976061914330346 | 185455500 | 4123773336162002392 |
+
+Checkpoint notes:
+
+```text
+The callback_collections benchmark now includes array higher-order callback
+semantics and can be used for future array callback receiver materialization
+work. Remaining array higher-order callback work should be accepted only with
+benchmark evidence from this expanded surface or a targeted array callback
+workload.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native argument materialization cleanup, owned return aggregate storage, array lookup and sort callback receiver fast paths, no-heap callback root/protected-value guards, stack-local/no-heap map callback entries, expanded set/map/array callback benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native argument materialization cleanup, owned return aggregate storage, array lookup and sort callback receiver fast paths, no-heap callback root/protected-value guards, stack-local/no-heap map callback entries, expanded map/set/array callback benchmarks, and numeric dispatch fast paths exist; heap materialization pressure and broader scalar dispatch remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -137,6 +137,11 @@ before debugger/DAP work and Cranelift JIT.
   set `filter`, `map`, `find`, `any`, `all`, and `count`; set callback
   receiver materialization remains an optimization candidate until a runtime
   change improves the expanded benchmark.
+- An M19 array higher-order callback benchmark coverage checkpoint is recorded
+  in [performance.md](performance.md): `callback_collections` now also
+  exercises array `map`, `filter`, `find`, `any`, `all`, and `count`; array
+  higher-order callback receiver materialization remains an optimization
+  candidate until a runtime change improves the expanded benchmark.
 - A gameplay-style M19 benchmark is recorded in [performance.md](performance.md):
   `gameplay_monster_kill` runs the real demo monster-kill script through
   HostPath reads/writes, PatchTx apply, stdlib callbacks, and host method
@@ -151,8 +156,8 @@ before debugger/DAP work and Cranelift JIT.
 - M19: continue optimizing the non-JIT interpreter and managed heap path only
   with before/after benchmark evidence, focusing next on broader stdlib heap
   receiver materialization, host conversion, string and heap-mode callback call
-  overhead, set/array aggregation callback receiver materialization, broader
-  scalar dispatch measurements, and gameplay-host benchmark deltas.
+  overhead, set/array callback receiver materialization, broader scalar
+  dispatch measurements, and gameplay-host benchmark deltas.
 - M20+: keep inline-cache and specialization work behind M19 benchmarked
   interpreter/heap improvements.
 
