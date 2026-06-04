@@ -1,0 +1,4 @@
+fn main() {
+    let player_type = reflect::type_info("Player");
+    return reflect::set(player_type, "name", "Monster");
+}

@@ -24,6 +24,7 @@ cargo run -p vela_cli -- examples/game_server_demo/scripts/reward_preview.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/monster_kill_reward.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/quest_progress.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/reflect_debug.vela
+cargo run -p vela_cli -- examples/game_server_demo/scripts/reflect_schema_mutation_denied.vela # expected schema mutation denial
 cargo run -p vela_cli -- --hot-reload examples/game_server_demo/scripts/hot_reload_function_swap_v1.vela examples/game_server_demo/scripts/hot_reload_function_swap_v2.vela
 cargo run -p vela_cli -- --hot-reload examples/game_server_demo/scripts/hot_reload_function_swap_v1.vela examples/game_server_demo/scripts/hot_reload_function_swap_invalid.vela # expected ABI rejection
 ```

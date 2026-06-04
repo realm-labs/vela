@@ -71,8 +71,8 @@ before debugger/DAP work and Cranelift JIT.
   rejected ABI/schema/effect/access/source changes without advancing the active
   version.
 - CLI demo scripts and conformance fixtures covering gameplay helpers,
-  reflection, permissions, read-only host boundary rejection, and tick-boundary
-  hot reload.
+  reflection, schema-safe mutation denial, permissions, read-only host boundary
+  rejection, and tick-boundary hot reload.
 
 ### Remaining Gaps
 

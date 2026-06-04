@@ -196,6 +196,20 @@ fn reflect_debug_demo_runs_through_cli() {
 }
 
 #[test]
+fn reflect_schema_mutation_demo_reports_invalid_target() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .arg(script_path("reflect_schema_mutation_denied.vela"))
+        .output()
+        .expect("run vela_cli schema mutation denial demo");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("error[reflect::invalid_target]: invalid reflection target"));
+    assert!(stderr.contains("reflect_schema_mutation_denied.vela:3:12"));
+    assert!(stderr.contains("return reflect::set(player_type, \"name\", \"Monster\");"));
+}
+
+#[test]
 fn hot_reload_function_swap_demo_runs_through_cli() {
     assert_eq!(
         run_hot_reload_demo(
