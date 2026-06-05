@@ -59,9 +59,9 @@ fn heap_execution_allocates_array_and_string_literals() {
     let Some(HeapValue::Array(values)) = heap.get(array_ref) else {
         panic!("expected heap array object");
     };
-    assert_eq!(values[0], HeapSlot::Int(1));
-    assert_eq!(values[1], HeapSlot::Int(5));
-    let HeapSlot::Ref(string_ref) = values[2] else {
+    assert_eq!(values[0], Value::Int(1));
+    assert_eq!(values[1], Value::Int(5));
+    let Value::HeapRef(string_ref) = values[2] else {
         panic!("expected heap string ref");
     };
     assert_eq!(

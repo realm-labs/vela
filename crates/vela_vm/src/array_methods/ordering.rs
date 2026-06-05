@@ -351,9 +351,9 @@ fn sort_key_from_heap_slot(
     operation: &'static str,
 ) -> VmResult<SortKey> {
     match value {
-        HeapSlot::Int(value) => Ok(SortKey::Int(*value)),
-        HeapSlot::Float(value) if value.is_finite() => Ok(SortKey::Float(*value)),
-        HeapSlot::Ref(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+        Value::Int(value) => Ok(SortKey::Int(*value)),
+        Value::Float(value) if value.is_finite() => Ok(SortKey::Float(*value)),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
             _ => type_error(operation),
         },

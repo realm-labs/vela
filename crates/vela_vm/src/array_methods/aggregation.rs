@@ -135,18 +135,18 @@ impl NumericTotal {
 
     fn add_heap_slot(&mut self, value: &HeapSlot, operation: &'static str) -> VmResult<()> {
         match (&mut *self, value) {
-            (NumericTotal::Int(total), HeapSlot::Int(value)) => {
+            (NumericTotal::Int(total), Value::Int(value)) => {
                 *total = total
                     .checked_add(*value)
                     .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
             }
-            (NumericTotal::Int(total), HeapSlot::Float(value)) => {
+            (NumericTotal::Int(total), Value::Float(value)) => {
                 *self = NumericTotal::Float(*total as f64 + *value);
             }
-            (NumericTotal::Float(total), HeapSlot::Int(value)) => {
+            (NumericTotal::Float(total), Value::Int(value)) => {
                 *total += *value as f64;
             }
-            (NumericTotal::Float(total), HeapSlot::Float(value)) => {
+            (NumericTotal::Float(total), Value::Float(value)) => {
                 *total += *value;
             }
             _ => return type_error(operation),

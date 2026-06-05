@@ -23,6 +23,7 @@ mod method_runtime;
 mod numeric_ops;
 mod option_result;
 mod option_result_methods;
+pub mod owned_value;
 pub mod ranges;
 mod record_fields;
 mod reflection;

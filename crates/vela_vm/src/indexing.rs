@@ -52,7 +52,10 @@ pub(crate) fn get_index(
                 HeapValue::String(_)
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }
-                | HeapValue::Enum { .. } => Err(VmError::new(VmErrorKind::TypeMismatch {
+                | HeapValue::Enum { .. }
+                | HeapValue::Closure(_)
+                | HeapValue::Iterator(_)
+                | HeapValue::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
                     operation: "index",
                 })),
             }
@@ -116,7 +119,10 @@ pub(crate) fn set_index(
                     HeapValue::String(_)
                     | HeapValue::Set(_)
                     | HeapValue::Record { .. }
-                    | HeapValue::Enum { .. },
+                    | HeapValue::Enum { .. }
+                    | HeapValue::Closure(_)
+                    | HeapValue::Iterator(_)
+                    | HeapValue::PathProxy(_),
                 )
                 | None => Err(VmError::new(VmErrorKind::TypeMismatch {
                     operation: "index assignment",

@@ -299,7 +299,8 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::CallClosure { dst, callee, args } => {
-                    let closure = expect_closure(frame.read(*callee)?, "closure call")?;
+                    let closure =
+                        expect_closure(frame.read(*callee)?, heap.as_deref(), "closure call")?;
                     let values = ScriptCallArgs::from_registers(&frame, args)?;
                     let protected_root_len = heap
                         .as_deref_mut()

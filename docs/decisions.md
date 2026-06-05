@@ -71,6 +71,14 @@ instructions, memory, call depth, and patches. Script heap values use stable,
 generation-checked non-moving handles; host refs and path proxies remain
 external handles and are not traced as Rust-owned state.
 
+`OwnedValue` is the Rust boundary/materialized value name. `Value` is being
+narrowed toward a VM runtime slot, and heap containers store runtime `Value`
+entries directly during that migration. `HeapSlot` is not a separate public
+runtime concept; any remaining use is an internal transition alias. Re-export
+surfaces should stay narrow: embedding convenience modules may expose
+`OwnedValue` when it is part of normal host ergonomics, but internal runtime
+slot types should remain under their owning VM modules.
+
 The compiler may replace a multi-instruction source-level lowering with one
 semantics-equivalent bytecode instruction, such as `Truthy` for dynamic
 truthiness coercion. Execution budgets are charged against the emitted bytecode

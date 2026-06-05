@@ -4,10 +4,11 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::mem;
 
-use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
 
+use crate::iteration::IteratorState;
 use crate::script_object::ScriptFields;
+use crate::value::{ClosureValue, Value};
 use crate::{ExecutionBudget, VmResult};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -34,37 +35,31 @@ impl GcRef {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum HeapSlot {
-    Null,
-    Bool(bool),
-    Int(i64),
-    Float(f64),
-    Ref(GcRef),
-    HostRef(HostRef),
-    PathProxy(PathProxy),
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub enum HeapValue {
     String(String),
-    Array(Vec<HeapSlot>),
-    Map(BTreeMap<String, HeapSlot>),
-    Set(Vec<HeapSlot>),
+    Array(Vec<Value>),
+    Map(BTreeMap<String, Value>),
+    Set(Vec<Value>),
     Record {
         type_name: String,
-        fields: ScriptFields<HeapSlot>,
+        fields: ScriptFields<Value>,
     },
     Enum {
         enum_name: String,
         variant: String,
-        fields: ScriptFields<HeapSlot>,
+        fields: ScriptFields<Value>,
     },
+    Closure(ClosureValue),
+    Iterator(IteratorState),
+    PathProxy(PathProxy),
 }
+
+pub(crate) type HeapSlot = Value;
 
 impl HeapValue {
     fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {
-            Self::String(_) => {}
+            Self::String(_) | Self::PathProxy(_) => {}
             Self::Array(values) | Self::Set(values) => {
                 values.iter().for_each(|value| value.trace_refs(refs));
             }
@@ -74,6 +69,13 @@ impl HeapValue {
             Self::Record { fields, .. } | Self::Enum { fields, .. } => {
                 fields.values().for_each(|value| value.trace_refs(refs));
             }
+            Self::Closure(closure) => {
+                closure
+                    .captures
+                    .iter()
+                    .for_each(|value| value.trace_refs(refs));
+            }
+            Self::Iterator(iterator) => iterator.trace_heap_refs(refs),
         }
     }
 
@@ -81,13 +83,13 @@ impl HeapValue {
         match self {
             Self::String(value) => mem::size_of::<Self>() + value.len(),
             Self::Array(values) | Self::Set(values) => {
-                mem::size_of::<Self>() + values.capacity() * mem::size_of::<HeapSlot>()
+                mem::size_of::<Self>() + values.capacity() * mem::size_of::<Value>()
             }
             Self::Map(values) => {
                 mem::size_of::<Self>()
                     + values
                         .keys()
-                        .map(|key| key.len() + mem::size_of::<HeapSlot>())
+                        .map(|key| key.len() + mem::size_of::<Value>())
                         .sum::<usize>()
             }
             Self::Record { type_name, fields } => {
@@ -95,7 +97,7 @@ impl HeapValue {
                     + type_name.len()
                     + fields
                         .iter()
-                        .map(|(key, _)| key.len() + mem::size_of::<HeapSlot>())
+                        .map(|(key, _)| key.len() + mem::size_of::<Value>())
                         .sum::<usize>()
             }
             Self::Enum {
@@ -108,18 +110,23 @@ impl HeapValue {
                     + variant.len()
                     + fields
                         .iter()
-                        .map(|(key, _)| key.len() + mem::size_of::<HeapSlot>())
+                        .map(|(key, _)| key.len() + mem::size_of::<Value>())
                         .sum::<usize>()
             }
+            Self::Closure(closure) => {
+                mem::size_of::<Self>() + closure.captures.capacity() * mem::size_of::<Value>()
+            }
+            Self::Iterator(iterator) => {
+                mem::size_of::<Self>() + mem::size_of_val(iterator.values())
+            }
+            Self::PathProxy(_) => mem::size_of::<Self>(),
         }
     }
 }
 
-impl HeapSlot {
+impl Value {
     fn trace_refs(&self, refs: &mut Vec<GcRef>) {
-        if let Self::Ref(gc_ref) = self {
-            refs.push(*gc_ref);
-        }
+        self.trace_heap_refs(refs);
     }
 }
 
@@ -536,7 +543,7 @@ impl ScriptHeap {
 mod tests {
     use super::*;
     use vela_common::{FieldId, HostObjectId, HostTypeId};
-    use vela_host::path::HostPath;
+    use vela_host::path::{HostPath, HostRef};
 
     fn host_ref() -> HostRef {
         HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
@@ -546,7 +553,7 @@ mod tests {
     fn live_script_objects_survive_full_gc() {
         let mut heap = ScriptHeap::new();
         let child = heap.allocate(HeapValue::String("gold".into()));
-        let root = heap.allocate(HeapValue::Array(vec![HeapSlot::Ref(child)]));
+        let root = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
 
         let stats = heap.collect_full(&[root]);
 
@@ -561,11 +568,11 @@ mod tests {
     fn cyclic_script_objects_are_reclaimed_without_roots() {
         let mut heap = ScriptHeap::new();
         let first = heap.allocate(HeapValue::Array(Vec::new()));
-        let second = heap.allocate(HeapValue::Array(vec![HeapSlot::Ref(first)]));
+        let second = heap.allocate(HeapValue::Array(vec![Value::HeapRef(first)]));
         let HeapValue::Array(values) = heap.get_mut(first).expect("first object") else {
             panic!("expected array");
         };
-        values.push(HeapSlot::Ref(second));
+        values.push(Value::HeapRef(second));
 
         let stats = heap.collect_full(&[]);
 
@@ -579,7 +586,7 @@ mod tests {
     #[test]
     fn host_refs_are_external_and_do_not_trace_rust_owned_state() {
         let mut heap = ScriptHeap::new();
-        let root = heap.allocate(HeapValue::Array(vec![HeapSlot::HostRef(host_ref())]));
+        let root = heap.allocate(HeapValue::Array(vec![Value::HostRef(host_ref())]));
         let unreachable = heap.allocate(HeapValue::String("unused".into()));
 
         let stats = heap.collect_full(&[root]);
@@ -594,7 +601,7 @@ mod tests {
     fn path_proxies_are_external_and_do_not_trace_rust_owned_state() {
         let mut heap = ScriptHeap::new();
         let proxy = PathProxy::new(HostPath::new(host_ref()).field(FieldId::new(2)));
-        let root = heap.allocate(HeapValue::Array(vec![HeapSlot::PathProxy(proxy)]));
+        let root = heap.allocate(HeapValue::Array(vec![Value::PathProxy(proxy)]));
         let unreachable = heap.allocate(HeapValue::String("unused".into()));
 
         let stats = heap.collect_full(&[root]);
@@ -701,7 +708,7 @@ mod tests {
     fn step_gc_preserves_roots_while_sweeping_incrementally() {
         let mut heap = ScriptHeap::new();
         let child = heap.allocate(HeapValue::String("child".into()));
-        let root = heap.allocate(HeapValue::Array(vec![HeapSlot::Ref(child)]));
+        let root = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
         let garbage = heap.allocate(HeapValue::String("garbage".into()));
 
         let first_step = heap.step_gc(&[root], GcBudget::sweep_slots(1));

@@ -2,37 +2,53 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::Constant;
+use vela_host::value::HostValue;
 
 use crate::budget::ExecutionBudget;
 use crate::error::{VmError, VmErrorKind, VmResult};
-use crate::heap::{HeapSlot, HeapValue};
+use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
+use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedValue};
 use crate::script_object::ScriptFields;
 use crate::value::{ClosureValue, Value};
 
 pub(crate) fn value_from_constant(
     constant: &Constant,
     heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    match (constant, heap) {
-        (Constant::String(value), Some(heap)) => {
+    let Some(mut heap) = heap else {
+        return Ok(Value::from(constant));
+    };
+    match constant {
+        Constant::Null => Ok(Value::Null),
+        Constant::Bool(value) => Ok(Value::Bool(*value)),
+        Constant::Int(value) => Ok(Value::Int(*value)),
+        Constant::Float(value) => Ok(Value::Float(*value)),
+        Constant::String(value) => {
             allocate_heap_value(HeapValue::String(value.clone()), heap, budget)
         }
-        (Constant::Array(values), Some(heap)) => {
-            let values = values.iter().map(Value::from).collect::<Vec<_>>();
-            let slots = values_to_heap_slots(&values, heap, budget.as_deref_mut())?;
-            allocate_heap_value(HeapValue::Array(slots), heap, budget)
+        Constant::Array(values) => {
+            let mut budget = budget;
+            let values = values
+                .iter()
+                .map(|value| value_from_constant(value, Some(&mut heap), budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(HeapValue::Array(values), heap, budget)
         }
-        (Constant::Map(entries), Some(heap)) => {
+        Constant::Map(entries) => {
+            let mut budget = budget;
             let values = entries
                 .iter()
-                .map(|(key, value)| (key.clone(), Value::from(value)))
-                .collect::<BTreeMap<_, _>>();
-            let slots = values_to_heap_map(&values, heap, budget.as_deref_mut())?;
-            allocate_heap_value(HeapValue::Map(slots), heap, budget)
+                .map(|(key, value)| {
+                    Ok((
+                        key.clone(),
+                        value_from_constant(value, Some(&mut heap), budget.as_deref_mut())?,
+                    ))
+                })
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            allocate_heap_value(HeapValue::Map(values), heap, budget)
         }
-        _ => Ok(Value::from(constant)),
     }
 }
 
@@ -49,296 +65,264 @@ pub(crate) fn allocate_heap_value(
     Ok(Value::HeapRef(reference))
 }
 
-pub(crate) fn values_to_heap_slots(
-    values: &[Value],
+pub(crate) fn value_to_heap_slot(
+    value: &Value,
     heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Vec<HeapSlot>> {
-    values
-        .iter()
-        .map(|value| value_to_heap_slot(value, heap, budget.as_deref_mut()))
-        .collect()
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    store_value_in_heap(value.clone(), heap, budget)
 }
 
-pub(crate) fn values_to_heap_map(
-    values: &BTreeMap<String, Value>,
-    heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<BTreeMap<String, HeapSlot>> {
-    values
-        .iter()
-        .map(|(key, value)| {
-            Ok((
-                key.clone(),
-                value_to_heap_slot(value, heap, budget.as_deref_mut())?,
-            ))
-        })
-        .collect()
+pub(crate) fn value_from_heap_slot(slot: &Value) -> Value {
+    slot.clone()
 }
 
-pub(crate) fn values_to_heap_fields(
-    owner: &str,
-    values: &ScriptFields<Value>,
+#[allow(dead_code)]
+pub(crate) fn make_string_value(
+    value: String,
     heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<ScriptFields<HeapSlot>> {
-    values
-        .iter()
-        .map(|(key, value)| {
-            Ok((
-                key.to_owned(),
-                value_to_heap_slot(value, heap, budget.as_deref_mut())?,
-            ))
-        })
-        .collect::<VmResult<Vec<_>>>()
-        .map(|fields| ScriptFields::from_pairs(owner, fields))
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    allocate_heap_value(HeapValue::String(value), heap, budget)
 }
 
-fn values_into_heap_slots(
+#[allow(dead_code)]
+pub(crate) fn make_array_value(
     values: Vec<Value>,
     heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Vec<HeapSlot>> {
-    values
-        .into_iter()
-        .map(|value| value_into_heap_slot(value, heap, budget.as_deref_mut()))
-        .collect()
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    allocate_heap_value(HeapValue::Array(values), heap, budget)
 }
 
-fn values_into_heap_map(
+#[allow(dead_code)]
+pub(crate) fn make_map_value(
     values: BTreeMap<String, Value>,
     heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<BTreeMap<String, HeapSlot>> {
-    values
-        .into_iter()
-        .map(|(key, value)| {
-            Ok((
-                key,
-                value_into_heap_slot(value, heap, budget.as_deref_mut())?,
-            ))
-        })
-        .collect()
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    allocate_heap_value(HeapValue::Map(values), heap, budget)
 }
 
-fn values_into_heap_fields(
-    owner: &str,
-    values: ScriptFields<Value>,
+#[allow(dead_code)]
+pub(crate) fn make_set_value(
+    values: Vec<Value>,
     heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<ScriptFields<HeapSlot>> {
-    values
-        .into_pairs()
-        .map(|(key, value)| {
-            Ok((
-                key,
-                value_into_heap_slot(value, heap, budget.as_deref_mut())?,
-            ))
-        })
-        .collect::<VmResult<Vec<_>>>()
-        .map(|fields| ScriptFields::from_pairs(owner, fields))
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    allocate_heap_value(HeapValue::Set(values), heap, budget)
+}
+
+#[allow(dead_code)]
+pub(crate) fn make_enum_value(
+    enum_name: impl Into<String>,
+    variant: impl Into<String>,
+    fields: Vec<(String, Value)>,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let enum_name = enum_name.into();
+    let variant = variant.into();
+    let owner = enum_variant_owner(&enum_name, &variant);
+    allocate_heap_value(
+        HeapValue::Enum {
+            enum_name,
+            variant,
+            fields: ScriptFields::from_pairs(&owner, fields),
+        },
+        heap,
+        budget,
+    )
 }
 
 pub(crate) fn enum_variant_owner(enum_name: &str, variant: &str) -> String {
     format!("{enum_name}::{variant}")
 }
 
-pub(crate) fn value_to_heap_slot(
-    value: &Value,
-    heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<HeapSlot> {
-    match value {
-        Value::Null => Ok(HeapSlot::Null),
-        Value::Bool(value) => Ok(HeapSlot::Bool(*value)),
-        Value::Int(value) => Ok(HeapSlot::Int(*value)),
-        Value::Float(value) => Ok(HeapSlot::Float(*value)),
-        Value::HeapRef(reference) => Ok(HeapSlot::Ref(*reference)),
-        Value::HostRef(reference) => Ok(HeapSlot::HostRef(*reference)),
-        Value::PathProxy(proxy) => Ok(HeapSlot::PathProxy(proxy.clone())),
-        Value::String(value) => {
-            let Value::HeapRef(reference) =
-                allocate_heap_value(HeapValue::String(value.clone()), heap, budget)?
-            else {
-                unreachable!("heap allocation always returns a heap ref");
-            };
-            Ok(HeapSlot::Ref(reference))
-        }
-        Value::Array(values) => {
-            let slots = values_to_heap_slots(values, heap, budget.as_deref_mut())?;
-            let Value::HeapRef(reference) =
-                allocate_heap_value(HeapValue::Array(slots), heap, budget)?
-            else {
-                unreachable!("heap allocation always returns a heap ref");
-            };
-            Ok(HeapSlot::Ref(reference))
-        }
-        Value::Set(values) => {
-            let slots = values_to_heap_slots(values, heap, budget.as_deref_mut())?;
-            let Value::HeapRef(reference) =
-                allocate_heap_value(HeapValue::Set(slots), heap, budget)?
-            else {
-                unreachable!("heap allocation always returns a heap ref");
-            };
-            Ok(HeapSlot::Ref(reference))
-        }
-        Value::Map(values) => {
-            let slots = values_to_heap_map(values, heap, budget.as_deref_mut())?;
-            let Value::HeapRef(reference) =
-                allocate_heap_value(HeapValue::Map(slots), heap, budget)?
-            else {
-                unreachable!("heap allocation always returns a heap ref");
-            };
-            Ok(HeapSlot::Ref(reference))
-        }
-        Value::Record { type_name, fields } => {
-            let slots = values_to_heap_fields(type_name, fields, heap, budget.as_deref_mut())?;
-            let Value::HeapRef(reference) = allocate_heap_value(
-                HeapValue::Record {
-                    type_name: type_name.clone(),
-                    fields: slots,
-                },
-                heap,
-                budget,
-            )?
-            else {
-                unreachable!("heap allocation always returns a heap ref");
-            };
-            Ok(HeapSlot::Ref(reference))
-        }
-        Value::Enum {
-            enum_name,
-            variant,
-            fields,
-        } => {
-            let owner = enum_variant_owner(enum_name, variant);
-            let slots = values_to_heap_fields(&owner, fields, heap, budget.as_deref_mut())?;
-            let Value::HeapRef(reference) = allocate_heap_value(
-                HeapValue::Enum {
-                    enum_name: enum_name.clone(),
-                    variant: variant.clone(),
-                    fields: slots,
-                },
-                heap,
-                budget,
-            )?
-            else {
-                unreachable!("heap allocation always returns a heap ref");
-            };
-            Ok(HeapSlot::Ref(reference))
-        }
-        Value::Range(_) | Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
-            Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "heap slot",
-            }))
-        }
-    }
-}
-
-fn value_into_heap_slot(
-    value: Value,
-    heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<HeapSlot> {
-    match value {
-        Value::Null => Ok(HeapSlot::Null),
-        Value::Bool(value) => Ok(HeapSlot::Bool(value)),
-        Value::Int(value) => Ok(HeapSlot::Int(value)),
-        Value::Float(value) => Ok(HeapSlot::Float(value)),
-        Value::HeapRef(reference) => Ok(HeapSlot::Ref(reference)),
-        Value::HostRef(reference) => Ok(HeapSlot::HostRef(reference)),
-        Value::PathProxy(proxy) => Ok(HeapSlot::PathProxy(proxy)),
-        Value::String(_)
-        | Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Record { .. }
-        | Value::Enum { .. } => {
-            if let Value::HeapRef(reference) = store_owned_heap_value(value, heap, budget)? {
-                Ok(HeapSlot::Ref(reference))
-            } else {
-                unreachable!("heap allocation always returns a heap ref");
-            }
-        }
-        Value::Range(_) | Value::Closure(_) | Value::Iterator(_) | Value::Missing => {
-            Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "heap slot",
-            }))
-        }
-    }
-}
-
-fn store_owned_heap_value(
-    value: Value,
+#[allow(dead_code)]
+pub(crate) fn owned_to_value(
+    value: OwnedValue,
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match value {
-        Value::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
-        Value::Array(values) => {
-            let slots = values_into_heap_slots(values, heap, budget.as_deref_mut())?;
-            allocate_heap_value(HeapValue::Array(slots), heap, budget)
+        OwnedValue::Missing => Ok(Value::Missing),
+        OwnedValue::Null => Ok(Value::Null),
+        OwnedValue::Bool(value) => Ok(Value::Bool(value)),
+        OwnedValue::Int(value) => Ok(Value::Int(value)),
+        OwnedValue::Float(value) => Ok(Value::Float(value)),
+        OwnedValue::Range(value) => Ok(Value::Range(value)),
+        OwnedValue::HostRef(value) => Ok(Value::HostRef(value)),
+        OwnedValue::String(value) => {
+            allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
         }
-        Value::Set(values) => {
-            let slots = values_into_heap_slots(values, heap, budget.as_deref_mut())?;
-            allocate_heap_value(HeapValue::Set(slots), heap, budget)
+        OwnedValue::Array(values) => {
+            let values = values
+                .into_iter()
+                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(HeapValue::Array(values), heap, budget)
         }
-        Value::Map(values) => {
-            let slots = values_into_heap_map(values, heap, budget.as_deref_mut())?;
-            allocate_heap_value(HeapValue::Map(slots), heap, budget)
+        OwnedValue::Set(values) => {
+            let values = values
+                .into_iter()
+                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(HeapValue::Set(values), heap, budget)
         }
-        Value::Record { type_name, fields } => {
-            let slots = values_into_heap_fields(&type_name, fields, heap, budget.as_deref_mut())?;
+        OwnedValue::Map(values) => {
+            let values = values
+                .into_iter()
+                .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            allocate_heap_value(HeapValue::Map(values), heap, budget)
+        }
+        OwnedValue::Record { type_name, fields } => {
+            let fields = fields
+                .into_pairs()
+                .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
+                .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(
                 HeapValue::Record {
+                    fields: ScriptFields::from_pairs(&type_name, fields),
                     type_name,
-                    fields: slots,
                 },
                 heap,
                 budget,
             )
         }
-        Value::Enum {
+        OwnedValue::Enum {
             enum_name,
             variant,
             fields,
         } => {
             let owner = enum_variant_owner(&enum_name, &variant);
-            let slots = values_into_heap_fields(&owner, fields, heap, budget.as_deref_mut())?;
+            let fields = fields
+                .into_pairs()
+                .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
+                .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(
                 HeapValue::Enum {
+                    fields: ScriptFields::from_pairs(&owner, fields),
                     enum_name,
                     variant,
-                    fields: slots,
                 },
                 heap,
                 budget,
             )
         }
-        _ => unreachable!("only owned heap aggregate values can be stored"),
+        OwnedValue::Closure(closure) => {
+            let captures = closure
+                .captures
+                .into_iter()
+                .map(|capture| owned_to_value(capture, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Closure(ClosureValue {
+                    code: Arc::clone(&closure.code),
+                    captures,
+                }),
+                heap,
+                budget,
+            )
+        }
+        OwnedValue::Iterator(iterator) => {
+            let values = iterator
+                .values()
+                .iter()
+                .cloned()
+                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Iterator(crate::iteration::IteratorState::from_values_at(
+                    values,
+                    iterator.next_index(),
+                )),
+                heap,
+                budget,
+            )
+        }
+        OwnedValue::PathProxy(proxy) => {
+            allocate_heap_value(HeapValue::PathProxy(proxy), heap, budget)
+        }
     }
 }
 
-pub(crate) fn value_from_heap_slot(slot: &HeapSlot) -> Value {
-    match slot {
-        HeapSlot::Null => Value::Null,
-        HeapSlot::Bool(value) => Value::Bool(*value),
-        HeapSlot::Int(value) => Value::Int(*value),
-        HeapSlot::Float(value) => Value::Float(*value),
-        HeapSlot::Ref(reference) => Value::HeapRef(*reference),
-        HeapSlot::HostRef(reference) => Value::HostRef(*reference),
-        HeapSlot::PathProxy(proxy) => Value::PathProxy(proxy.clone()),
-    }
-}
-
-pub(crate) fn materialize_values(
-    values: &[Value],
+#[allow(dead_code)]
+pub(crate) fn value_to_owned(
+    value: &Value,
     heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Vec<Value>> {
-    values
-        .iter()
-        .map(|value| materialize_value(value, heap))
-        .collect()
+) -> VmResult<OwnedValue> {
+    match value {
+        Value::Missing => Ok(OwnedValue::Missing),
+        Value::Null => Ok(OwnedValue::Null),
+        Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
+        Value::Int(value) => Ok(OwnedValue::Int(*value)),
+        Value::Float(value) => Ok(OwnedValue::Float(*value)),
+        Value::Range(value) => Ok(OwnedValue::Range(*value)),
+        Value::HostRef(value) => Ok(OwnedValue::HostRef(*value)),
+        Value::String(value) => Ok(OwnedValue::String(value.clone())),
+        Value::Array(values) => values
+            .iter()
+            .map(|value| value_to_owned(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(OwnedValue::Array),
+        Value::Map(values) => values
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), value_to_owned(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(OwnedValue::Map),
+        Value::Set(values) => values
+            .iter()
+            .map(|value| value_to_owned(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(OwnedValue::Set),
+        Value::Record { type_name, fields } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.to_owned(), value_to_owned(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|fields| OwnedValue::Record {
+                type_name: type_name.clone(),
+                fields: ScriptFields::from_pairs(type_name, fields),
+            }),
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.to_owned(), value_to_owned(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|fields| OwnedValue::Enum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
+            }),
+        Value::Closure(closure) => closure
+            .captures
+            .iter()
+            .map(|capture| value_to_owned(capture, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|captures| {
+                OwnedValue::Closure(OwnedClosureValue {
+                    code: Arc::clone(&closure.code),
+                    captures,
+                })
+            }),
+        Value::Iterator(iterator) => iterator
+            .values()
+            .iter()
+            .map(|value| value_to_owned(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|values| OwnedValue::Iterator(OwnedIteratorState::from_runtime(iterator, values))),
+        Value::PathProxy(proxy) => Ok(OwnedValue::PathProxy(proxy.clone())),
+        Value::HeapRef(reference) => {
+            let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+                return Err(type_error("heap ref"));
+            };
+            heap_value_to_owned(heap_value, heap)
+        }
+    }
 }
 
 pub(crate) fn materialize_value(
@@ -348,14 +332,20 @@ pub(crate) fn materialize_value(
     match value {
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "heap ref",
-                }));
+                return Err(type_error("heap ref"));
             };
-            materialize_heap_value(heap_value, heap)
+            heap_value_to_value(heap_value, heap)
         }
-        Value::Array(values) => Ok(Value::Array(materialize_values(values, heap)?)),
-        Value::Set(values) => Ok(Value::Set(materialize_values(values, heap)?)),
+        Value::Array(values) => values
+            .iter()
+            .map(|value| materialize_value(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(Value::Array),
+        Value::Set(values) => values
+            .iter()
+            .map(|value| materialize_value(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(Value::Set),
         Value::Map(values) => values
             .iter()
             .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
@@ -393,7 +383,19 @@ pub(crate) fn materialize_value(
                     captures,
                 })
             }),
-        Value::Null
+        Value::Iterator(iterator) => iterator
+            .values()
+            .iter()
+            .map(|value| materialize_value(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|values| {
+                Value::Iterator(crate::iteration::IteratorState::from_values_at(
+                    values,
+                    iterator.next_index(),
+                ))
+            }),
+        Value::Missing
+        | Value::Null
         | Value::Bool(_)
         | Value::Int(_)
         | Value::Float(_)
@@ -401,28 +403,30 @@ pub(crate) fn materialize_value(
         | Value::Range(_)
         | Value::HostRef(_)
         | Value::PathProxy(_) => Ok(value.clone()),
-        Value::Iterator(_) | Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "materialize",
-        })),
     }
 }
 
-fn materialize_heap_value(value: &HeapValue, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
+fn heap_value_to_value(value: &HeapValue, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
     match value {
         HeapValue::String(value) => Ok(Value::String(value.clone())),
         HeapValue::Array(values) => values
             .iter()
-            .map(|value| materialize_heap_slot(value, heap))
+            .map(|value| materialize_value(value, heap))
             .collect::<VmResult<Vec<_>>>()
             .map(Value::Array),
         HeapValue::Map(values) => values
             .iter()
-            .map(|(key, value)| Ok((key.clone(), materialize_heap_slot(value, heap)?)))
+            .map(|(key, value)| Ok((key.clone(), materialize_value(value, heap)?)))
             .collect::<VmResult<BTreeMap<_, _>>>()
             .map(Value::Map),
+        HeapValue::Set(values) => values
+            .iter()
+            .map(|value| materialize_value(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(Value::Set),
         HeapValue::Record { type_name, fields } => fields
             .iter()
-            .map(|(key, value)| Ok((key.to_owned(), materialize_heap_slot(value, heap)?)))
+            .map(|(key, value)| Ok((key.to_owned(), materialize_value(value, heap)?)))
             .collect::<VmResult<Vec<_>>>()
             .map(|fields| Value::Record {
                 type_name: type_name.clone(),
@@ -434,26 +438,402 @@ fn materialize_heap_value(value: &HeapValue, heap: Option<&HeapExecution<'_>>) -
             fields,
         } => fields
             .iter()
-            .map(|(key, value)| Ok((key.to_owned(), materialize_heap_slot(value, heap)?)))
+            .map(|(key, value)| Ok((key.to_owned(), materialize_value(value, heap)?)))
             .collect::<VmResult<Vec<_>>>()
             .map(|fields| Value::Enum {
                 enum_name: enum_name.clone(),
                 variant: variant.clone(),
                 fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
             }),
-        HeapValue::Set(values) => values
+        HeapValue::Closure(closure) => closure
+            .captures
             .iter()
-            .map(|value| materialize_heap_slot(value, heap))
+            .map(|capture| materialize_value(capture, heap))
             .collect::<VmResult<Vec<_>>>()
-            .map(Value::Set),
+            .map(|captures| {
+                Value::Closure(ClosureValue {
+                    code: Arc::clone(&closure.code),
+                    captures,
+                })
+            }),
+        HeapValue::Iterator(iterator) => iterator
+            .values()
+            .iter()
+            .map(|value| materialize_value(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|values| {
+                Value::Iterator(crate::iteration::IteratorState::from_values_at(
+                    values,
+                    iterator.next_index(),
+                ))
+            }),
+        HeapValue::PathProxy(proxy) => Ok(Value::PathProxy(proxy.clone())),
     }
 }
 
-fn materialize_heap_slot(slot: &HeapSlot, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
-    match slot {
-        HeapSlot::Ref(reference) => materialize_value(&Value::HeapRef(*reference), heap),
-        _ => Ok(value_from_heap_slot(slot)),
+#[allow(dead_code)]
+fn heap_value_to_owned(
+    value: &HeapValue,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<OwnedValue> {
+    match value {
+        HeapValue::String(value) => Ok(OwnedValue::String(value.clone())),
+        HeapValue::Array(values) => values
+            .iter()
+            .map(|value| value_to_owned(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(OwnedValue::Array),
+        HeapValue::Map(values) => values
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), value_to_owned(value, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(OwnedValue::Map),
+        HeapValue::Set(values) => values
+            .iter()
+            .map(|value| value_to_owned(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(OwnedValue::Set),
+        HeapValue::Record { type_name, fields } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.to_owned(), value_to_owned(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|fields| OwnedValue::Record {
+                type_name: type_name.clone(),
+                fields: ScriptFields::from_pairs(type_name, fields),
+            }),
+        HeapValue::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.to_owned(), value_to_owned(value, heap)?)))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|fields| OwnedValue::Enum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
+            }),
+        HeapValue::Closure(closure) => closure
+            .captures
+            .iter()
+            .map(|capture| value_to_owned(capture, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|captures| {
+                OwnedValue::Closure(OwnedClosureValue {
+                    code: Arc::clone(&closure.code),
+                    captures,
+                })
+            }),
+        HeapValue::Iterator(iterator) => iterator
+            .values()
+            .iter()
+            .map(|value| value_to_owned(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|values| OwnedValue::Iterator(OwnedIteratorState::from_runtime(iterator, values))),
+        HeapValue::PathProxy(proxy) => Ok(OwnedValue::PathProxy(proxy.clone())),
     }
+}
+
+#[allow(dead_code)]
+pub(crate) fn host_to_value(
+    value: HostValue,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    match value {
+        HostValue::Null => Ok(Value::Null),
+        HostValue::Bool(value) => Ok(Value::Bool(value)),
+        HostValue::Int(value) => Ok(Value::Int(value)),
+        HostValue::Float(value) => Ok(Value::Float(value)),
+        HostValue::String(value) => {
+            allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
+        }
+        HostValue::Array(values) => {
+            let values = values
+                .into_iter()
+                .map(|value| host_to_value(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(HeapValue::Array(values), heap, budget)
+        }
+        HostValue::Map(values) => {
+            let values = values
+                .into_iter()
+                .map(|(key, value)| Ok((key, host_to_value(value, heap, budget.as_deref_mut())?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            allocate_heap_value(HeapValue::Map(values), heap, budget)
+        }
+        HostValue::Record { type_name, fields } => {
+            let fields = fields
+                .into_iter()
+                .map(|(key, value)| Ok((key, host_to_value(value, heap, budget.as_deref_mut())?)))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Record {
+                    fields: ScriptFields::from_pairs(&type_name, fields),
+                    type_name,
+                },
+                heap,
+                budget,
+            )
+        }
+        HostValue::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => {
+            let owner = enum_variant_owner(&enum_name, &variant);
+            let fields = fields
+                .into_iter()
+                .map(|(key, value)| Ok((key, host_to_value(value, heap, budget.as_deref_mut())?)))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Enum {
+                    fields: ScriptFields::from_pairs(&owner, fields),
+                    enum_name,
+                    variant,
+                },
+                heap,
+                budget,
+            )
+        }
+        HostValue::HostRef(value) => Ok(Value::HostRef(value)),
+    }
+}
+
+#[allow(dead_code)]
+pub(crate) fn value_to_host(
+    value: &Value,
+    operation: &'static str,
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<HostValue> {
+    match value {
+        Value::Null => Ok(HostValue::Null),
+        Value::Bool(value) => Ok(HostValue::Bool(*value)),
+        Value::Int(value) => Ok(HostValue::Int(*value)),
+        Value::Float(value) => Ok(HostValue::Float(*value)),
+        Value::String(value) => Ok(HostValue::String(value.clone())),
+        Value::Array(values) => values
+            .iter()
+            .map(|value| value_to_host(value, operation, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(HostValue::Array),
+        Value::Map(values) => values
+            .iter()
+            .map(|(key, value)| Ok((key.clone(), value_to_host(value, operation, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(HostValue::Map),
+        Value::Record { type_name, fields } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.to_owned(), value_to_host(value, operation, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|fields| HostValue::Record {
+                type_name: type_name.clone(),
+                fields,
+            }),
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => fields
+            .iter()
+            .map(|(key, value)| Ok((key.to_owned(), value_to_host(value, operation, heap)?)))
+            .collect::<VmResult<BTreeMap<_, _>>>()
+            .map(|fields| HostValue::Enum {
+                enum_name: enum_name.clone(),
+                variant: variant.clone(),
+                fields,
+            }),
+        Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
+            Some(HeapValue::Array(values)) => values
+                .iter()
+                .map(|value| value_to_host(value, operation, heap))
+                .collect::<VmResult<Vec<_>>>()
+                .map(HostValue::Array),
+            Some(HeapValue::Map(values)) => values
+                .iter()
+                .map(|(key, value)| Ok((key.clone(), value_to_host(value, operation, heap)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()
+                .map(HostValue::Map),
+            Some(HeapValue::Record { type_name, fields }) => fields
+                .iter()
+                .map(|(key, value)| Ok((key.to_owned(), value_to_host(value, operation, heap)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()
+                .map(|fields| HostValue::Record {
+                    type_name: type_name.clone(),
+                    fields,
+                }),
+            Some(HeapValue::Enum {
+                enum_name,
+                variant,
+                fields,
+            }) => fields
+                .iter()
+                .map(|(key, value)| Ok((key.to_owned(), value_to_host(value, operation, heap)?)))
+                .collect::<VmResult<BTreeMap<_, _>>>()
+                .map(|fields| HostValue::Enum {
+                    enum_name: enum_name.clone(),
+                    variant: variant.clone(),
+                    fields,
+                }),
+            _ => Err(type_error(operation)),
+        },
+        Value::Missing
+        | Value::Set(_)
+        | Value::Range(_)
+        | Value::Closure(_)
+        | Value::Iterator(_)
+        | Value::PathProxy(_) => Err(type_error(operation)),
+    }
+}
+
+pub(crate) fn store_value_in_heap_if_needed(
+    value: Value,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let Some(heap) = heap else {
+        return if matches!(value, Value::Missing) {
+            Err(type_error("missing value"))
+        } else {
+            Ok(value)
+        };
+    };
+    store_value_in_heap(value, heap, budget)
+}
+
+fn store_value_in_heap(
+    value: Value,
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    match value {
+        Value::Missing => Err(type_error("missing value")),
+        Value::String(value) => {
+            allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
+        }
+        Value::Array(values) => {
+            let values = values
+                .into_iter()
+                .map(|value| store_value_in_heap(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(HeapValue::Array(values), heap, budget)
+        }
+        Value::Set(values) => {
+            let values = values
+                .into_iter()
+                .map(|value| store_value_in_heap(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(HeapValue::Set(values), heap, budget)
+        }
+        Value::Map(values) => {
+            let values = values
+                .into_iter()
+                .map(|(key, value)| {
+                    Ok((
+                        key,
+                        store_value_in_heap(value, heap, budget.as_deref_mut())?,
+                    ))
+                })
+                .collect::<VmResult<BTreeMap<_, _>>>()?;
+            allocate_heap_value(HeapValue::Map(values), heap, budget)
+        }
+        Value::Record { type_name, fields } => {
+            let fields = fields
+                .into_pairs()
+                .map(|(key, value)| {
+                    Ok((
+                        key,
+                        store_value_in_heap(value, heap, budget.as_deref_mut())?,
+                    ))
+                })
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Record {
+                    fields: ScriptFields::from_pairs(&type_name, fields),
+                    type_name,
+                },
+                heap,
+                budget,
+            )
+        }
+        Value::Enum {
+            enum_name,
+            variant,
+            fields,
+        } => {
+            let owner = enum_variant_owner(&enum_name, &variant);
+            let fields = fields
+                .into_pairs()
+                .map(|(key, value)| {
+                    Ok((
+                        key,
+                        store_value_in_heap(value, heap, budget.as_deref_mut())?,
+                    ))
+                })
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Enum {
+                    fields: ScriptFields::from_pairs(&owner, fields),
+                    enum_name,
+                    variant,
+                },
+                heap,
+                budget,
+            )
+        }
+        Value::Closure(closure) => {
+            let captures = closure
+                .captures
+                .into_iter()
+                .map(|capture| store_value_in_heap(capture, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Closure(ClosureValue {
+                    code: Arc::clone(&closure.code),
+                    captures,
+                }),
+                heap,
+                budget,
+            )
+        }
+        Value::Iterator(iterator) => {
+            let next = iterator.next_index();
+            let values = iterator
+                .values()
+                .iter()
+                .cloned()
+                .map(|value| store_value_in_heap(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(
+                HeapValue::Iterator(crate::iteration::IteratorState::from_values_at(
+                    values, next,
+                )),
+                heap,
+                budget,
+            )
+        }
+        Value::PathProxy(proxy) => allocate_heap_value(HeapValue::PathProxy(proxy), heap, budget),
+        Value::Null
+        | Value::Bool(_)
+        | Value::Int(_)
+        | Value::Float(_)
+        | Value::Range(_)
+        | Value::HostRef(_)
+        | Value::HeapRef(_) => Ok(value),
+    }
+}
+
+pub(crate) fn finish_managed_heap_result(
+    result: VmResult<Value>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<Value> {
+    let result = result.and_then(|value| materialize_value(&value, Some(heap)));
+    heap.heap.collect_full_with_budget(&[], Some(budget));
+    result
 }
 
 pub(crate) fn values_equal(
@@ -475,52 +855,14 @@ fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
         (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
         (Value::Int(lhs), Value::Int(rhs)) => Some(lhs == rhs),
         (Value::Float(lhs), Value::Float(rhs)) => Some(lhs == rhs),
-        (Value::String(lhs), Value::String(rhs)) => Some(lhs == rhs),
         (
-            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_),
-            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_) | Value::String(_),
+            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_),
+            Value::Null | Value::Bool(_) | Value::Int(_) | Value::Float(_),
         ) => Some(false),
         _ => None,
     }
 }
 
-pub(crate) fn store_value_in_heap_if_needed(
-    value: Value,
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    let Some(heap) = heap else {
-        return Ok(value);
-    };
-    match value {
-        Value::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
-        Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Record { .. }
-        | Value::Enum { .. } => store_owned_heap_value(value, heap, budget),
-        Value::Null
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::HeapRef(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_)
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::Iterator(_) => Ok(value),
-        Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "missing value",
-        })),
-    }
-}
-
-pub(crate) fn finish_managed_heap_result(
-    result: VmResult<Value>,
-    heap: &mut HeapExecution<'_>,
-    budget: &mut ExecutionBudget,
-) -> VmResult<Value> {
-    let result = result.and_then(|value| materialize_value(&value, Some(heap)));
-    heap.heap.collect_full_with_budget(&[], Some(budget));
-    result
+fn type_error(operation: &'static str) -> VmError {
+    VmError::new(VmErrorKind::TypeMismatch { operation })
 }

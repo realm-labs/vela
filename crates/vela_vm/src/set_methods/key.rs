@@ -63,18 +63,16 @@ impl SetKey {
         operation: &'static str,
     ) -> VmResult<bool> {
         match (self, slot) {
-            (Self::Null, HeapSlot::Null) => Ok(true),
-            (Self::Bool(lhs), HeapSlot::Bool(rhs)) => Ok(*lhs == *rhs),
-            (Self::Int(lhs), HeapSlot::Int(rhs)) => Ok(*lhs == *rhs),
-            (Self::Float(lhs), HeapSlot::Float(rhs)) if rhs.is_finite() => {
-                Ok(*lhs == rhs.to_bits())
-            }
-            (Self::String(lhs), HeapSlot::Ref(reference)) => match heap.heap.get(*reference) {
+            (Self::Null, Value::Null) => Ok(true),
+            (Self::Bool(lhs), Value::Bool(rhs)) => Ok(*lhs == *rhs),
+            (Self::Int(lhs), Value::Int(rhs)) => Ok(*lhs == *rhs),
+            (Self::Float(lhs), Value::Float(rhs)) if rhs.is_finite() => Ok(*lhs == rhs.to_bits()),
+            (Self::String(lhs), Value::HeapRef(reference)) => match heap.heap.get(*reference) {
                 Some(HeapValue::String(rhs)) => Ok(lhs == rhs),
                 _ => type_error(operation),
             },
-            (_, HeapSlot::Null | HeapSlot::Bool(_) | HeapSlot::Int(_)) => Ok(false),
-            (_, HeapSlot::Float(value)) if value.is_finite() => Ok(false),
+            (_, Value::Null | Value::Bool(_) | Value::Int(_)) => Ok(false),
+            (_, Value::Float(value)) if value.is_finite() => Ok(false),
             _ => type_error(operation),
         }
     }
@@ -93,15 +91,26 @@ pub(super) fn set_keys(
 
 pub(super) fn slot_key(slot: &HeapSlot, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
     match slot {
-        HeapSlot::Null => Ok(SetKey::Null),
-        HeapSlot::Bool(value) => Ok(SetKey::Bool(*value)),
-        HeapSlot::Int(value) => Ok(SetKey::Int(*value)),
-        HeapSlot::Float(value) if value.is_finite() => Ok(SetKey::Float(value.to_bits())),
-        HeapSlot::Ref(reference) => match heap.heap.get(*reference) {
+        Value::Null => Ok(SetKey::Null),
+        Value::Bool(value) => Ok(SetKey::Bool(*value)),
+        Value::Int(value) => Ok(SetKey::Int(*value)),
+        Value::Float(value) if value.is_finite() => Ok(SetKey::Float(value.to_bits())),
+        Value::HeapRef(reference) => match heap.heap.get(*reference) {
             Some(HeapValue::String(value)) => Ok(SetKey::String(value.clone())),
             _ => type_error("method set"),
         },
-        HeapSlot::HostRef(_) | HeapSlot::PathProxy(_) => type_error("method set"),
-        HeapSlot::Float(_) => type_error("method set"),
+        Value::Missing
+        | Value::Float(_)
+        | Value::String(_)
+        | Value::Array(_)
+        | Value::Map(_)
+        | Value::Set(_)
+        | Value::Record { .. }
+        | Value::Enum { .. }
+        | Value::Closure(_)
+        | Value::Range(_)
+        | Value::Iterator(_)
+        | Value::HostRef(_)
+        | Value::PathProxy(_) => type_error("method set"),
     }
 }

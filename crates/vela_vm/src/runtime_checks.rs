@@ -1,7 +1,8 @@
 use vela_bytecode::CodeObject;
 use vela_host::path::HostRef;
 
-use crate::{ClosureValue, Value, VmError, VmErrorKind, VmResult};
+use crate::heap::HeapValue;
+use crate::{ClosureValue, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> {
     match value {
@@ -10,9 +11,17 @@ pub(crate) fn expect_host_ref(value: &Value, operation: &'static str) -> VmResul
     }
 }
 
-pub(crate) fn expect_closure(value: &Value, operation: &'static str) -> VmResult<ClosureValue> {
+pub(crate) fn expect_closure(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<ClosureValue> {
     match value {
         Value::Closure(closure) => Ok(closure.clone()),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Closure(closure)) => Ok(closure.clone()),
+            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        },
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }

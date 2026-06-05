@@ -202,7 +202,7 @@ fn main(player) {
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 8192, usize::MAX, usize::MAX);
 
     let result = {
         let mut host = HostExecution {

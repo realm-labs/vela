@@ -141,7 +141,7 @@ fn heap_slot_string_value<'a>(
     heap: Option<&'a HeapExecution<'_>>,
 ) -> VmResult<&'a str> {
     match value {
-        HeapSlot::Ref(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(value),
             _ => type_error("method join"),
         },

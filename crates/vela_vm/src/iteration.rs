@@ -19,6 +19,13 @@ impl IteratorState {
         Self::new(values)
     }
 
+    #[must_use]
+    pub fn from_values_at(values: Vec<Value>, next: usize) -> Self {
+        Self {
+            kind: IteratorKind::Values { values, next },
+        }
+    }
+
     fn new(values: Vec<Value>) -> Self {
         Self {
             kind: IteratorKind::Values { values, next: 0 },
@@ -50,6 +57,20 @@ impl IteratorState {
             IteratorKind::Range(_) => {}
         }
     }
+
+    pub(crate) fn values(&self) -> &[Value] {
+        match &self.kind {
+            IteratorKind::Values { values, .. } => values,
+            IteratorKind::Range(_) => &[],
+        }
+    }
+
+    pub(crate) fn next_index(&self) -> usize {
+        match &self.kind {
+            IteratorKind::Values { next, .. } => *next,
+            IteratorKind::Range(_) => 0,
+        }
+    }
 }
 
 pub(crate) fn make_iterator(
@@ -75,11 +96,14 @@ pub(crate) fn make_iterator(
                 HeapValue::Map(values) => Ok(IteratorState::new(
                     values.values().map(value_from_heap_slot).collect(),
                 )),
-                HeapValue::String(_) | HeapValue::Record { .. } | HeapValue::Enum { .. } => {
-                    Err(VmError::new(VmErrorKind::TypeMismatch {
-                        operation: "for in",
-                    }))
-                }
+                HeapValue::Iterator(iterator) => Ok(iterator.clone()),
+                HeapValue::String(_)
+                | HeapValue::Record { .. }
+                | HeapValue::Enum { .. }
+                | HeapValue::Closure(_)
+                | HeapValue::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "for in",
+                })),
             }
         }
         Value::Null
@@ -91,8 +115,10 @@ pub(crate) fn make_iterator(
         | Value::Record { .. }
         | Value::Enum { .. }
         | Value::Closure(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "for in",
+        })),
+        Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "for in",
         })),
     }
