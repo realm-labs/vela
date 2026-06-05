@@ -12,8 +12,7 @@ use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
-use vela_vm::owned_value::{OwnedValue, owned_to_value_detached, value_to_owned_detached};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
@@ -244,7 +243,6 @@ impl Runtime {
         adapter: &mut dyn ScriptStateAdapter,
         tx: &mut PatchTx,
     ) -> VmResult<OwnedValue> {
-        let runtime_args = owned_args_to_runtime(args);
         let mut budget = options.budget();
         let mut host = HostExecution { adapter, tx };
         let vm = if let Some(hot_reload) = &self.hot_reload {
@@ -254,24 +252,17 @@ impl Runtime {
         } else {
             self.engine.into_vm_for_program(&self.program)
         };
-        let value = if options.managed_heap {
-            vm.run_program_runtime_with_host_managed_heap_and_budget(
+        if options.managed_heap {
+            vm.run_program_with_host_managed_heap_and_budget(
                 &self.program,
                 entry,
-                &runtime_args,
+                args,
                 &mut host,
                 &mut budget,
             )
         } else {
-            vm.run_program_runtime_with_host_and_budget(
-                &self.program,
-                entry,
-                &runtime_args,
-                &mut host,
-                &mut budget,
-            )
-        }?;
-        value_to_owned_detached(&value)
+            vm.run_program_with_host_and_budget(&self.program, entry, args, &mut host, &mut budget)
+        }
     }
 
     pub fn call_at_event_end_safe_point(
@@ -401,11 +392,4 @@ impl Default for CallOptions {
     fn default() -> Self {
         Self::gameplay()
     }
-}
-
-fn owned_args_to_runtime(args: &[OwnedValue]) -> Vec<Value> {
-    args.iter()
-        .cloned()
-        .map(owned_to_value_detached)
-        .collect::<Vec<_>>()
 }

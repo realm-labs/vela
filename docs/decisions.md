@@ -86,7 +86,10 @@ execution frames still use runtime `Value`; the engine installs explicit
 conversion bridges when registering native functions into a VM. Public VM
 program entrypoints use `OwnedValue`; low-level runtime-slot program entrypoints
 are explicitly named `run_program_runtime*` and are reserved for VM internals,
-low-level tests, and benchmark harnesses.
+low-level tests, and benchmark harnesses. Public program entrypoints convert
+`OwnedValue` through a temporary script heap and materialize the return before
+dropping that heap, so they do not depend on `Value` retaining owned aggregate
+variants as a boundary representation.
 
 The compiler may replace a multi-instruction source-level lowering with one
 semantics-equivalent bytecode instruction, such as `Truthy` for dynamic

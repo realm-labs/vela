@@ -54,8 +54,8 @@ use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, materialize_value,
-    store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot, value_to_heap_slot,
-    values_equal,
+    owned_to_value, store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot,
+    value_to_heap_slot, value_to_owned, values_equal,
 };
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};
@@ -63,7 +63,7 @@ use numeric_ops::{
     add_numeric, div_numeric, greater_equal_numeric, greater_numeric, less_equal_numeric,
     less_numeric, mul_numeric, negate_numeric, rem_numeric, sub_numeric,
 };
-use owned_value::{OwnedValue, owned_to_value_detached, value_to_owned_detached};
+use owned_value::OwnedValue;
 use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
@@ -231,9 +231,19 @@ impl Vm {
         entry: &str,
         args: &[OwnedValue],
     ) -> VmResult<OwnedValue> {
-        let args = owned_args_to_runtime(args);
-        self.run_program_runtime(program, entry, &args)
-            .and_then(|value| value_to_owned_detached(&value))
+        let code = program_entry(program, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, None)?;
+        let result = self.execute(
+            code,
+            Some(program),
+            &args,
+            None,
+            Some(&mut heap_execution),
+            None,
+        )?;
+        value_to_owned(&result, Some(&heap_execution))
     }
 
     pub fn run_program_with_budget(
@@ -243,9 +253,19 @@ impl Vm {
         args: &[OwnedValue],
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
-        let args = owned_args_to_runtime(args);
-        self.run_program_runtime_with_budget(program, entry, &args, budget)
-            .and_then(|value| value_to_owned_detached(&value))
+        let code = program_entry(program, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let result = self.execute(
+            code,
+            Some(program),
+            &args,
+            None,
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
     }
 
     pub fn run_program_with_managed_heap_and_budget(
@@ -255,9 +275,7 @@ impl Vm {
         args: &[OwnedValue],
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
-        let args = owned_args_to_runtime(args);
-        self.run_program_runtime_with_managed_heap_and_budget(program, entry, &args, budget)
-            .and_then(|value| value_to_owned_detached(&value))
+        self.run_program_with_budget(program, entry, args, budget)
     }
 
     pub fn run_program_runtime(
@@ -347,9 +365,19 @@ impl Vm {
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
     ) -> VmResult<OwnedValue> {
-        let args = owned_args_to_runtime(args);
-        self.run_program_runtime_with_host(program, entry, &args, host)
-            .and_then(|value| value_to_owned_detached(&value))
+        let code = program_entry(program, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, None)?;
+        let result = self.execute(
+            code,
+            Some(program),
+            &args,
+            Some(host),
+            Some(&mut heap_execution),
+            None,
+        )?;
+        value_to_owned(&result, Some(&heap_execution))
     }
 
     pub fn run_program_with_host_and_budget(
@@ -360,9 +388,19 @@ impl Vm {
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
-        let args = owned_args_to_runtime(args);
-        self.run_program_runtime_with_host_and_budget(program, entry, &args, host, budget)
-            .and_then(|value| value_to_owned_detached(&value))
+        let code = program_entry(program, entry)?;
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let result = self.execute(
+            code,
+            Some(program),
+            &args,
+            Some(host),
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
     }
 
     pub fn run_program_with_host_managed_heap_and_budget(
@@ -373,11 +411,7 @@ impl Vm {
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
-        let args = owned_args_to_runtime(args);
-        self.run_program_runtime_with_host_managed_heap_and_budget(
-            program, entry, &args, host, budget,
-        )
-        .and_then(|value| value_to_owned_detached(&value))
+        self.run_program_with_host_and_budget(program, entry, args, host, budget)
     }
 
     pub fn run_program_runtime_with_host(
@@ -549,11 +583,25 @@ impl Vm {
     }
 }
 
-fn owned_args_to_runtime(args: &[OwnedValue]) -> Vec<Value> {
+fn owned_args_to_runtime(
+    args: &[OwnedValue],
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Vec<Value>> {
     args.iter()
         .cloned()
-        .map(owned_to_value_detached)
-        .collect::<Vec<_>>()
+        .map(|arg| owned_to_value(arg, heap, budget.as_deref_mut()))
+        .collect::<VmResult<Vec<_>>>()
+}
+
+fn owned_heap_result(
+    result: VmResult<Value>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+) -> VmResult<OwnedValue> {
+    let result = result.and_then(|value| value_to_owned(&value, Some(heap)));
+    heap.heap.collect_full_with_budget(&[], Some(budget));
+    result
 }
 
 fn program_entry<'program>(
