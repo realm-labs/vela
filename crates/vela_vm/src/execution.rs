@@ -278,7 +278,11 @@ impl Vm {
                     {
                         heap.truncate_protected_roots(protected_root_len);
                     }
-                    let result = result?;
+                    let result = store_value_in_heap_if_needed(
+                        result?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::MakeClosure {
@@ -290,13 +294,15 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
-                    frame.write(
-                        *dst,
+                    let value = store_value_in_heap_if_needed(
                         Value::Closure(ClosureValue {
                             code: Arc::new((**code).clone()),
                             captures,
                         }),
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
                     )?;
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::CallClosure { dst, callee, args } => {
                     let closure =
@@ -323,7 +329,11 @@ impl Vm {
                     {
                         heap.truncate_protected_roots(protected_root_len);
                     }
-                    let result = result?;
+                    let result = store_value_in_heap_if_needed(
+                        result?,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, result)?;
                 }
                 InstructionKind::CallMethod {
@@ -614,7 +624,16 @@ impl Vm {
                 InstructionKind::IterInit { dst, iterable } => {
                     let iterator =
                         iteration::make_iterator(frame.read(*iterable)?, heap.as_deref())?;
-                    frame.write(*dst, Value::Iterator(iterator))?;
+                    let value = if let Some(heap) = heap.as_deref_mut() {
+                        allocate_heap_value(
+                            HeapValue::Iterator(iterator),
+                            heap,
+                            budget.as_deref_mut(),
+                        )?
+                    } else {
+                        Value::Iterator(iterator)
+                    };
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::IterNext {
                     iterator,
@@ -622,18 +641,34 @@ impl Vm {
                     jump_if_done,
                 } => {
                     let value = frame.read(*iterator)?.clone();
-                    let Value::Iterator(mut iterator_state) = value else {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "iterator",
-                        }));
-                    };
-                    match iterator_state.next() {
-                        Some(value) => {
+                    let next = match value {
+                        Value::Iterator(mut iterator_state) => {
+                            let next = iterator_state.next();
                             frame.write(*iterator, Value::Iterator(iterator_state))?;
+                            next
+                        }
+                        Value::HeapRef(reference) => {
+                            let Some(HeapValue::Iterator(iterator_state)) = heap
+                                .as_deref_mut()
+                                .and_then(|heap| heap.heap.get_mut(reference).ok())
+                            else {
+                                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                                    operation: "iterator",
+                                }));
+                            };
+                            iterator_state.next()
+                        }
+                        _ => {
+                            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "iterator",
+                            }));
+                        }
+                    };
+                    match next {
+                        Some(value) => {
                             frame.write(*dst, value)?;
                         }
                         None => {
-                            frame.write(*iterator, Value::Iterator(iterator_state))?;
                             validate_jump(code, jump_if_done.0)?;
                             ip = jump_if_done.0;
                         }
@@ -701,7 +736,9 @@ impl Vm {
                     let value = host
                         .tx
                         .read_path_at(host.adapter, &path, instruction.span)?;
-                    frame.write(*dst, value_from_host(value))?;
+                    let value =
+                        runtime_value_from_host(value, heap.as_deref_mut(), budget.as_deref_mut())?;
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::GetHostPath {
                     dst,
@@ -725,7 +762,9 @@ impl Vm {
                     let value = host
                         .tx
                         .read_path_at(host.adapter, &path, instruction.span)?;
-                    frame.write(*dst, value_from_host(value))?;
+                    let value =
+                        runtime_value_from_host(value, heap.as_deref_mut(), budget.as_deref_mut())?;
+                    frame.write(*dst, value)?;
                 }
                 InstructionKind::SetHostField { root, field, src } => {
                     let root = expect_host_ref(frame.read(*root)?, "set_host_field")?;
@@ -1038,7 +1077,12 @@ impl Vm {
                     host.tx
                         .call_method(path, *method, values, instruction.span)?;
                     if let Some(dst) = dst {
-                        frame.write(*dst, value_from_host(return_value))?;
+                        let return_value = runtime_value_from_host(
+                            return_value,
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                        )?;
+                        frame.write(*dst, return_value)?;
                     }
                 }
                 InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
@@ -1058,6 +1102,18 @@ fn caller_roots_for_heap(frame: &CallFrame, heap: Option<&HeapExecution<'_>>) ->
         frame.heap_roots()
     } else {
         Vec::new()
+    }
+}
+
+fn runtime_value_from_host(
+    value: vela_host::value::HostValue,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    if let Some(heap) = heap {
+        host_to_value(value, heap, budget)
+    } else {
+        Ok(value_from_host(value))
     }
 }
 

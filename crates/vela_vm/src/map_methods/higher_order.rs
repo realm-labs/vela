@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::method_runtime::{MethodRuntime, call_callback, call_callback_with_protected_values};
 use crate::option_result::option_value;
+use crate::runtime_checks::expect_closure;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::{expect_arity, map_entry, materialize_map_entries, type_error};
@@ -271,10 +272,11 @@ fn call_map_callback(
     value: Value,
     protected_values: &[Value],
 ) -> VmResult<Value> {
-    let Value::Closure(closure) = callback else {
-        return type_error(operation);
-    };
-    match closure.code.params.len() {
+    let param_len = expect_closure(callback, runtime.heap.as_deref(), operation)?
+        .code
+        .params
+        .len();
+    match param_len {
         0 => call_callback(runtime, operation, callback, &[], protected_values),
         1 => call_callback(
             runtime,
@@ -304,10 +306,11 @@ fn call_map_callback_with_protected_values<'value>(
     value: Value,
     protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
-    let Value::Closure(closure) = callback else {
-        return type_error(operation);
-    };
-    match closure.code.params.len() {
+    let param_len = expect_closure(callback, runtime.heap.as_deref(), operation)?
+        .code
+        .params
+        .len();
+    match param_len {
         0 => {
             call_callback_with_protected_values(runtime, operation, callback, &[], protected_values)
         }
