@@ -1,4 +1,5 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
 
 #[test]
 fn runs_compiled_cross_module_imported_script_call() {
@@ -27,7 +28,7 @@ pub fn grant(amount) {
     .expect("compile imported cross-module script call");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(5))
     );
 }
@@ -59,7 +60,7 @@ pub fn main() {
     .expect("compile same-named cross-module functions");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -98,7 +99,7 @@ pub const BASE: int = 4;
     .expect("compile imported cross-module const expression");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(6))
     );
 }
@@ -144,14 +145,14 @@ pub enum Damage { Physical { amount: int } }
     damage_fields.insert("amount".into(), Value::Int(7));
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::make_reward", &[]),
+        Vm::new().run_program(&program, "game::main::make_reward", &[]),
         Ok(Value::Record {
             type_name: "game::reward::Reward".into(),
             fields: ScriptFields::from_pairs("game::reward::Reward", reward_fields),
         })
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::make_damage", &[]),
+        Vm::new().run_program(&program, "game::main::make_damage", &[]),
         Ok(Value::Enum {
             enum_name: "game::damage::Damage".into(),
             variant: "Physical".into(),
@@ -191,7 +192,7 @@ pub struct Reward {
     .expect("compile imported constructor defaults");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(11))
     );
 }
@@ -229,7 +230,7 @@ pub enum Damage {
     .expect("compile imported cross-module match pattern");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -266,7 +267,7 @@ pub const BONUS: int = 5;
     .expect("compile qualified cross-module paths");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "game::main::main", &[]),
+        Vm::new().run_program(&program, "game::main::main", &[]),
         Ok(Value::Int(9))
     );
 }

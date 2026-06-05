@@ -8,7 +8,7 @@ use vela_bytecode::Program;
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::SourceId;
 use vela_vm::Vm;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 const QUICK_REPEATS: usize = 2;
 const QUICK_ITERATIONS: usize = 500;
@@ -743,12 +743,12 @@ fn percentile_ns(samples: &[Duration], percentile: usize) -> u128 {
     samples[index].as_nanos()
 }
 
-fn value_checksum(value: &Value) -> u64 {
+fn value_checksum(value: &OwnedValue) -> u64 {
     match value {
-        Value::Int(value) => *value as u64,
-        Value::Bool(value) => u64::from(*value),
-        Value::Float(value) => value.to_bits(),
-        Value::String(value) => bytes_checksum(value.as_bytes()),
+        OwnedValue::Int(value) => *value as u64,
+        OwnedValue::Bool(value) => u64::from(*value),
+        OwnedValue::Float(value) => value.to_bits(),
+        OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
         _ => 0,
     }
 }

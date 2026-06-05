@@ -2,7 +2,8 @@ use vela_bytecode::HostPathSegment;
 use vela_common::SymbolInterner;
 use vela_host::path::{HostPath, HostRef};
 
-use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult, materialize_value};
+use crate::owned_value::OwnedValue;
+use crate::{CallFrame, HeapExecution, VmError, VmErrorKind, VmResult, value_to_owned};
 
 pub(crate) fn host_path_from_segments(
     root: HostRef,
@@ -17,8 +18,8 @@ pub(crate) fn host_path_from_segments(
             HostPathSegment::Field(field) => path.field(*field),
             HostPathSegment::VariantField(field) => path.variant_field(*field),
             HostPathSegment::Value(register) => {
-                match materialize_value(frame.read(*register)?, heap)? {
-                    Value::Int(index) => {
+                match value_to_owned(frame.read(*register)?, heap)? {
+                    OwnedValue::Int(index) => {
                         let index = u32::try_from(index).map_err(|_| {
                             VmError::new(VmErrorKind::TypeMismatch {
                                 operation: "host path index",
@@ -26,7 +27,7 @@ pub(crate) fn host_path_from_segments(
                         })?;
                         path.index(index)
                     }
-                    Value::String(key) => path.key(symbols.intern(key)),
+                    OwnedValue::String(key) => path.key(symbols.intern(&key)),
                     _ => {
                         return Err(VmError::new(VmErrorKind::TypeMismatch {
                             operation: "host path index",

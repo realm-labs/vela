@@ -25,9 +25,13 @@ pub(crate) fn call_method(
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
-    if let Some(result) =
-        string_method_dispatch::call(method, receiver, args, dispatch.heap.as_deref())
-    {
+    if let Some(result) = string_method_dispatch::call(
+        method,
+        receiver,
+        args,
+        &mut dispatch.heap,
+        &mut dispatch.budget,
+    ) {
         return result;
     }
     {
@@ -87,7 +91,7 @@ pub(crate) fn call_readonly_method_without_callbacks(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
-    if let Some(result) = string_method_dispatch::call(method, receiver, args, heap) {
+    if let Some(result) = string_method_dispatch::call_readonly(method, receiver, args, heap) {
         return Some(result);
     }
 
@@ -100,9 +104,13 @@ pub(crate) fn call_non_mutating_method(
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> Option<VmResult<Value>> {
-    if let Some(result) =
-        string_method_dispatch::call(method, receiver, args, dispatch.heap.as_deref())
-    {
+    if let Some(result) = string_method_dispatch::call(
+        method,
+        receiver,
+        args,
+        &mut dispatch.heap,
+        &mut dispatch.budget,
+    ) {
         return Some(result);
     }
     {
@@ -150,7 +158,9 @@ fn call_script_impl_method(
         }));
     };
 
-    let values = ScriptMethodArgs::from_receiver_and_args(receiver, args);
+    let mut values = Vec::with_capacity(args.len() + 1);
+    values.push(*receiver);
+    values.extend(args.iter().cloned());
     let protected_root_len = dispatch
         .heap
         .as_deref_mut()
@@ -158,7 +168,7 @@ fn call_script_impl_method(
     let result = dispatch.vm.execute_code_object(
         function,
         dispatch.program,
-        values.as_slice(),
+        &values,
         dispatch.host.as_deref_mut(),
         dispatch.heap.as_deref_mut(),
         dispatch.budget.as_deref_mut(),
@@ -169,46 +179,6 @@ fn call_script_impl_method(
         heap.truncate_protected_roots(protected_root_len);
     }
     result
-}
-
-enum ScriptMethodArgs {
-    One([Value; 1]),
-    Two([Value; 2]),
-    Three([Value; 3]),
-    Four([Value; 4]),
-    Many(Vec<Value>),
-}
-
-impl ScriptMethodArgs {
-    fn from_receiver_and_args(receiver: &Value, args: &[Value]) -> Self {
-        match args {
-            [] => Self::One([receiver.clone()]),
-            [first] => Self::Two([receiver.clone(), first.clone()]),
-            [first, second] => Self::Three([receiver.clone(), first.clone(), second.clone()]),
-            [first, second, third] => Self::Four([
-                receiver.clone(),
-                first.clone(),
-                second.clone(),
-                third.clone(),
-            ]),
-            _ => {
-                let mut values = Vec::with_capacity(args.len() + 1);
-                values.push(receiver.clone());
-                values.extend(args.iter().cloned());
-                Self::Many(values)
-            }
-        }
-    }
-
-    fn as_slice(&self) -> &[Value] {
-        match self {
-            Self::One(values) => values,
-            Self::Two(values) => values,
-            Self::Three(values) => values,
-            Self::Four(values) => values,
-            Self::Many(values) => values,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -223,8 +193,6 @@ fn receiver_type_name(
     registry: Option<&TypeRegistry>,
 ) -> Option<String> {
     match receiver {
-        Value::Record { type_name, .. } => Some(type_name.clone()),
-        Value::Enum { enum_name, .. } => Some(enum_name.clone()),
         Value::HostRef(reference) => registry
             .and_then(|registry| registry.type_of_host(*reference))
             .map(|desc| desc.key.name.clone()),

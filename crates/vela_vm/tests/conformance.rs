@@ -2,7 +2,7 @@ use vela_bytecode::compiler::compile_module_sources;
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_vm::Vm;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 #[test]
 fn core_language_fixture_executes() {
@@ -25,7 +25,7 @@ fn core_language_fixture_executes() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program_runtime(&program, "conformance::core::main", &[])
+        .run_program(&program, "conformance::core::main", &[])
         .expect("core language conformance fixture should run");
 
     assert_eq!(result, Value::Int(609));

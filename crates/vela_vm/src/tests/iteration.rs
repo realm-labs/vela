@@ -1,4 +1,5 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
 
 #[test]
 fn runs_compiled_for_in_source() {
@@ -51,7 +52,7 @@ fn main() {
     .expect("compile for-in variant patterns");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -94,11 +95,11 @@ fn main() {
     .expect("compile native iterator for-in source");
     let mut vm = Vm::new();
     vm.register_native("game::values", |_| {
-        Ok(Value::Iterator(IteratorState::from_values(vec![
+        Ok(Value::Array(vec![
             Value::Int(2),
             Value::Int(3),
             Value::Int(5),
-        ])))
+        ]))
     });
 
     assert_eq!(vm.run(&code), Ok(Value::Int(10)));

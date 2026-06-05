@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_to_heap_slot};
 
-use super::{SetKey, expect_arity, materialize_set_values, push_unique, slot_key, type_error};
+use super::{SetKey, expect_arity, set_values, slot_key, type_error};
 
 pub(crate) fn add(
     receiver: &mut Value,
@@ -11,12 +11,6 @@ pub(crate) fn add(
 ) -> VmResult<Value> {
     expect_arity("add", args, 1)?;
     match receiver {
-        Value::Set(values) => Ok(Value::Bool(push_unique(
-            values,
-            args[0].clone(),
-            None,
-            "method add",
-        )?)),
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method add");
@@ -49,14 +43,6 @@ pub(crate) fn remove(
 ) -> VmResult<Value> {
     expect_arity("remove", args, 1)?;
     match receiver {
-        Value::Set(values) => {
-            let key = SetKey::from_value(&args[0], None, "method remove")?;
-            let before = values.len();
-            values.retain(|value| {
-                SetKey::from_value(value, None, "method remove").as_ref() != Ok(&key)
-            });
-            Ok(Value::Bool(values.len() != before))
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method remove");
@@ -92,10 +78,6 @@ pub(crate) fn clear(
 ) -> VmResult<Value> {
     expect_arity("clear", args, 0)?;
     match receiver {
-        Value::Set(values) => {
-            values.clear();
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method clear");
@@ -117,14 +99,8 @@ pub(crate) fn extend(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("extend", args, 1)?;
-    let extension = materialize_set_values(&args[0], heap.as_deref(), "method extend")?;
+    let extension = set_values(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
-        Value::Set(values) => {
-            for value in extension {
-                push_unique(values, value, None, "method extend")?;
-            }
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method extend");

@@ -1,18 +1,26 @@
-use crate::runtime_view::SetView;
-use crate::{HeapExecution, Value, VmResult};
+use crate::heap::HeapValue;
+use crate::heap_values::make_array_value;
+use crate::owned_value::OwnedValue;
+use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
-use super::{SetKey, expect_arity, materialize_set_values, push_unique, type_error};
+use super::{SetKey, expect_arity, set_values, type_error};
 
-pub(crate) fn from_array(args: &[Value]) -> VmResult<Value> {
+pub(crate) fn from_array(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("set::from_array", args, 1)?;
-    let Value::Array(values) = &args[0] else {
-        return type_error("set::from_array");
+    let OwnedValue::Array(values) = &args[0] else {
+        return owned_type_error("set::from_array");
     };
     let mut set = Vec::new();
     for value in values {
-        push_unique(&mut set, value.clone(), None, "set::from_array")?;
+        let key = OwnedSetKey::from_value(value, "set::from_array")?;
+        if set.iter().any(|existing| {
+            OwnedSetKey::from_value(existing, "set::from_array").as_ref() == Ok(&key)
+        }) {
+            continue;
+        }
+        set.push(value.clone());
     }
-    Ok(Value::Set(set))
+    Ok(OwnedValue::Set(set))
 }
 
 pub(crate) fn has(
@@ -22,30 +30,61 @@ pub(crate) fn has(
 ) -> VmResult<bool> {
     expect_arity("has", args, 1)?;
     let key = SetKey::from_value(&args[0], heap, "method has")?;
-    match SetView::from_value(receiver, heap, "method has")? {
-        SetView::Values(values) => {
-            for value in values {
-                if key.matches_value(value, heap, "method has")? {
-                    return Ok(true);
-                }
-            }
-        }
-        SetView::Slots(values, heap) => {
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(heap) = heap else {
+                return type_error("method has");
+            };
+            let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
+                return type_error("method has");
+            };
             for value in values {
                 if key.matches_slot(value, heap, "method has")? {
                     return Ok(true);
                 }
             }
+            Ok(false)
         }
+        _ => type_error("method has"),
     }
-    Ok(false)
 }
 
 pub(crate) fn values(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("values", args, 0)?;
-    materialize_set_values(receiver, heap, "method values").map(Value::Array)
+    let values = set_values(receiver, heap.as_deref(), "method values")?;
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error("method values");
+    };
+    make_array_value(values, heap, budget.as_deref_mut())
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum OwnedSetKey {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(u64),
+    String(String),
+}
+
+impl OwnedSetKey {
+    fn from_value(value: &OwnedValue, operation: &'static str) -> VmResult<Self> {
+        match value {
+            OwnedValue::Null => Ok(Self::Null),
+            OwnedValue::Bool(value) => Ok(Self::Bool(*value)),
+            OwnedValue::Int(value) => Ok(Self::Int(*value)),
+            OwnedValue::Float(value) if value.is_finite() => Ok(Self::Float(value.to_bits())),
+            OwnedValue::String(value) => Ok(Self::String(value.clone())),
+            _ => owned_type_error(operation),
+        }
+    }
+}
+
+fn owned_type_error<T>(operation: &'static str) -> VmResult<T> {
+    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }

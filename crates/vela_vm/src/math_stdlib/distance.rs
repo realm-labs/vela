@@ -1,4 +1,6 @@
-use crate::{Value, VmResult, expect_arity};
+use crate::VmResult;
+
+use super::{Value, expect_arity};
 
 use super::{expect_finite_float, type_error};
 

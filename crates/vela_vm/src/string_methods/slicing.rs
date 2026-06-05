@@ -1,14 +1,15 @@
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
-use super::{expect_arity, index_value, string_value};
+use super::{expect_arity, index_value, make_string, string_value};
 
 pub(crate) fn slice(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("slice", args, 2)?;
-    let value = string_value(receiver, heap, "method slice")?;
+    let value = string_value(receiver, heap.as_deref(), "method slice")?;
     let start = index_value(&args[0], "method slice")?;
     let end = index_value(&args[1], "method slice")?;
     let char_len = value.chars().count();
@@ -24,7 +25,8 @@ pub(crate) fn slice(
 
     let start_byte = char_byte_index(value, start);
     let end_byte = char_byte_index(value, end);
-    Ok(Value::String(value[start_byte..end_byte].to_owned()))
+    let value = value[start_byte..end_byte].to_owned();
+    make_string(value, heap, budget, "method slice")
 }
 
 fn char_byte_index(value: &str, index: usize) -> usize {

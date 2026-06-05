@@ -1,4 +1,5 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
 
 #[test]
 fn compiled_source_reflects_modules_functions_and_exports() {
@@ -57,7 +58,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(2))
     );
 }
@@ -83,7 +84,7 @@ fn main() {
     };
 
     let error = vm
-        .run_program_runtime_with_host(&program, "main", &[], &mut host)
+        .run_program_with_host(&program, "main", &[], &mut host)
         .expect_err("unknown module should report candidates");
 
     assert!(matches!(
@@ -122,7 +123,7 @@ fn main() {
     };
 
     let error = vm
-        .run_program_runtime_with_host(&program, "main", &[], &mut host)
+        .run_program_with_host(&program, "main", &[], &mut host)
         .expect_err("unknown function should report candidates");
 
     assert!(matches!(
@@ -164,7 +165,7 @@ fn main() {
     };
 
     let error = vm
-        .run_program_runtime_with_host(&program, "main", &[], &mut host)
+        .run_program_with_host(&program, "main", &[], &mut host)
         .expect_err("unknown function should report policy-visible candidates");
 
     assert_eq!(
@@ -231,7 +232,7 @@ fn main() {
     };
 
     let error = vm
-        .run_program_runtime_with_host(&program, "main", &[], &mut host)
+        .run_program_with_host(&program, "main", &[], &mut host)
         .expect_err("unknown function call should report callable candidates only");
 
     assert_eq!(
@@ -287,7 +288,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(11111))
     );
 }

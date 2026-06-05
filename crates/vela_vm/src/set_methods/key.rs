@@ -1,4 +1,4 @@
-use crate::heap::{HeapSlot, HeapValue};
+use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmResult};
 
 use super::type_error;
@@ -23,7 +23,6 @@ impl SetKey {
             Value::Bool(value) => Ok(Self::Bool(*value)),
             Value::Int(value) => Ok(Self::Int(*value)),
             Value::Float(value) if value.is_finite() => Ok(Self::Float(value.to_bits())),
-            Value::String(value) => Ok(Self::String(value.clone())),
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
                 _ => type_error(operation),
@@ -32,6 +31,7 @@ impl SetKey {
         }
     }
 
+    #[allow(dead_code)]
     pub(super) fn matches_value(
         &self,
         value: &Value,
@@ -43,14 +43,13 @@ impl SetKey {
             (Self::Bool(lhs), Value::Bool(rhs)) => Ok(*lhs == *rhs),
             (Self::Int(lhs), Value::Int(rhs)) => Ok(*lhs == *rhs),
             (Self::Float(lhs), Value::Float(rhs)) if rhs.is_finite() => Ok(*lhs == rhs.to_bits()),
-            (Self::String(lhs), Value::String(rhs)) => Ok(lhs == rhs),
             (Self::String(lhs), Value::HeapRef(reference)) => {
                 match heap.and_then(|heap| heap.heap.get(*reference)) {
                     Some(HeapValue::String(rhs)) => Ok(lhs == rhs),
                     _ => type_error(operation),
                 }
             }
-            (_, Value::Null | Value::Bool(_) | Value::Int(_) | Value::String(_)) => Ok(false),
+            (_, Value::Null | Value::Bool(_) | Value::Int(_)) => Ok(false),
             (_, Value::Float(value)) if value.is_finite() => Ok(false),
             _ => type_error(operation),
         }
@@ -58,7 +57,7 @@ impl SetKey {
 
     pub(super) fn matches_slot(
         &self,
-        slot: &HeapSlot,
+        slot: &Value,
         heap: &HeapExecution<'_>,
         operation: &'static str,
     ) -> VmResult<bool> {
@@ -89,7 +88,7 @@ pub(super) fn set_keys(
         .collect()
 }
 
-pub(super) fn slot_key(slot: &HeapSlot, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
+pub(super) fn slot_key(slot: &Value, heap: &HeapExecution<'_>) -> VmResult<SetKey> {
     match slot {
         Value::Null => Ok(SetKey::Null),
         Value::Bool(value) => Ok(SetKey::Bool(*value)),
@@ -99,18 +98,8 @@ pub(super) fn slot_key(slot: &HeapSlot, heap: &HeapExecution<'_>) -> VmResult<Se
             Some(HeapValue::String(value)) => Ok(SetKey::String(value.clone())),
             _ => type_error("method set"),
         },
-        Value::Missing
-        | Value::Float(_)
-        | Value::String(_)
-        | Value::Array(_)
-        | Value::Map(_)
-        | Value::Set(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Closure(_)
-        | Value::Range(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => type_error("method set"),
+        Value::Missing | Value::Float(_) | Value::Range(_) | Value::HostRef(_) => {
+            type_error("method set")
+        }
     }
 }

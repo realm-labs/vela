@@ -2,44 +2,53 @@ use std::cmp::Ordering;
 
 use crate::heap::{HeapSlot, HeapValue};
 use crate::method_runtime::MethodRuntime;
-use crate::{HeapExecution, Value, VmResult, value_from_heap_slot};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot};
 
 use super::{
-    call_unary_callback, expect_arity, materialize_array_values, option_value, type_error,
+    array_values, call_unary_callback, expect_arity, make_array_value, option_value, type_error,
 };
 
 pub(crate) fn sort(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("sort", args, 0)?;
     if let Value::HeapRef(reference) = receiver {
-        let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+        let Some(HeapValue::Array(values)) =
+            heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+        else {
             return type_error("method sort");
         };
-        return sort_heap_slots(values, heap, "method sort");
+        let values = sort_heap_slots(values, heap.as_deref(), "method sort")?;
+        return make_array_value(values, heap, budget, "method sort");
     }
-    let values = materialize_array_values(receiver, heap, "method sort")?;
-    sort_values_by_key(values, heap, "method sort", |value, _| Ok(value.clone()))
+    let values = array_values(receiver, heap.as_deref(), "method sort")?;
+    let values = sort_values_by_key(values, heap.as_deref(), "method sort", |value, _| {
+        Ok(*value)
+    })?;
+    make_array_value(values, heap, budget, "method sort")
 }
 
 pub(crate) fn min(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("min", args, 0)?;
-    extremum(receiver, heap, "method min", Extremum::Min)
+    extremum(receiver, heap, budget, "method min", Extremum::Min)
 }
 
 pub(crate) fn max(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("max", args, 0)?;
-    extremum(receiver, heap, "method max", Extremum::Max)
+    extremum(receiver, heap, budget, "method max", Extremum::Max)
 }
 
 pub(crate) fn sort_by(
@@ -48,35 +57,13 @@ pub(crate) fn sort_by(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("sort_by", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Array(values) = receiver
-    {
-        let mut entries = Vec::<SortEntry>::with_capacity(values.len());
-        let mut key_kind = None;
-        for value in values {
-            let key_value =
-                call_unary_callback(&mut runtime, "method sort_by", &args[0], value.clone(), &[])?;
-            push_sort_entry(
-                &mut entries,
-                &mut key_kind,
-                value.clone(),
-                key_value,
-                runtime.heap.as_deref(),
-                "method sort_by",
-            )?;
-        }
-        return sort_entries(entries);
-    }
-    let values = materialize_array_values(receiver, runtime.heap.as_deref(), "method sort_by")?;
+    let values = array_values(receiver, runtime.heap.as_deref(), "method sort_by")?;
     let mut entries = Vec::<SortEntry>::with_capacity(values.len());
     let mut key_kind = None;
     for value in values {
         let protected;
         let protected_values = if runtime.heap.is_some() {
-            protected = entries
-                .iter()
-                .map(|entry| entry.value.clone())
-                .collect::<Vec<_>>();
+            protected = entries.iter().map(|entry| entry.value).collect::<Vec<_>>();
             protected.as_slice()
         } else {
             &[]
@@ -85,7 +72,7 @@ pub(crate) fn sort_by(
             &mut runtime,
             "method sort_by",
             &args[0],
-            value.clone(),
+            value,
             protected_values,
         )?;
         push_sort_entry(
@@ -97,7 +84,13 @@ pub(crate) fn sort_by(
             "method sort_by",
         )?;
     }
-    sort_entries(entries)
+    let values = sort_entries(entries);
+    make_array_value(
+        values,
+        &mut runtime.heap,
+        &mut runtime.budget,
+        "method sort_by",
+    )
 }
 
 fn sort_values_by_key(
@@ -105,7 +98,7 @@ fn sort_values_by_key(
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
     mut key_fn: impl FnMut(&Value, &[SortEntry]) -> VmResult<Value>,
-) -> VmResult<Value> {
+) -> VmResult<Vec<Value>> {
     let mut entries = Vec::<SortEntry>::with_capacity(values.len());
     let mut key_kind = None;
     for value in values {
@@ -119,7 +112,7 @@ fn sort_values_by_key(
             operation,
         )?;
     }
-    sort_entries(entries)
+    Ok(sort_entries(entries))
 }
 
 fn push_sort_entry(
@@ -146,22 +139,20 @@ fn push_sort_entry(
     Ok(())
 }
 
-fn sort_entries(mut entries: Vec<SortEntry>) -> VmResult<Value> {
+fn sort_entries(mut entries: Vec<SortEntry>) -> Vec<Value> {
     entries.sort_by(|left, right| {
         left.key
             .compare(&right.key)
             .then_with(|| left.index.cmp(&right.index))
     });
-    Ok(Value::Array(
-        entries.into_iter().map(|entry| entry.value).collect(),
-    ))
+    entries.into_iter().map(|entry| entry.value).collect()
 }
 
 fn sort_heap_slots(
     values: &[HeapSlot],
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<Value> {
+) -> VmResult<Vec<Value>> {
     let mut entries = Vec::<HeapSlotSortEntry>::with_capacity(values.len());
     let mut key_kind = None;
     for value in values {
@@ -175,7 +166,7 @@ fn sort_heap_slots(
         }
         entries.push(HeapSlotSortEntry {
             key,
-            value: value.clone(),
+            value: *value,
             index: entries.len(),
         });
     }
@@ -184,12 +175,10 @@ fn sort_heap_slots(
             .compare(&right.key)
             .then_with(|| left.index.cmp(&right.index))
     });
-    Ok(Value::Array(
-        entries
-            .into_iter()
-            .map(|entry| value_from_heap_slot(&entry.value))
-            .collect(),
-    ))
+    Ok(entries
+        .into_iter()
+        .map(|entry| value_from_heap_slot(&entry.value))
+        .collect())
 }
 
 #[derive(Clone, Copy)]
@@ -200,67 +189,43 @@ enum Extremum {
 
 fn extremum(
     receiver: &Value,
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
     extremum: Extremum,
 ) -> VmResult<Value> {
     match receiver {
-        Value::Array(values) => value_extremum(values, heap, operation, extremum),
         Value::HeapRef(reference) => {
-            let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            let Some(HeapValue::Array(values)) =
+                heap.as_deref().and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error(operation);
             };
-            heap_slot_extremum(values, heap, operation, extremum)
+            let values = values.clone();
+            let result = heap_slot_extremum(&values, heap.as_deref(), operation, extremum)?;
+            match result {
+                Some(value) => option_value("Some", Some(value), heap, budget),
+                None => option_value("None", None, heap, budget),
+            }
         }
         _ => type_error(operation),
     }
 }
 
-fn value_extremum(
-    values: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-    extremum: Extremum,
-) -> VmResult<Value> {
-    let Some((first, rest)) = values.split_first() else {
-        return Ok(option_value("None", None));
-    };
-    let mut best = first;
-    let mut best_key = sort_key(first, heap, operation)?;
-    let key_kind = best_key.kind();
-    for value in rest {
-        let key = sort_key(value, heap, operation)?;
-        if key.kind() != key_kind {
-            return type_error(operation);
-        }
-        let ordering = key.compare(&best_key);
-        let replace = match extremum {
-            Extremum::Min => ordering.is_lt(),
-            Extremum::Max => ordering.is_gt(),
-        };
-        if replace {
-            best = value;
-            best_key = key;
-        }
-    }
-    Ok(option_value("Some", Some(best.clone())))
-}
-
 fn heap_slot_extremum(
     values: &[HeapSlot],
-    heap: Option<&HeapExecution<'_>>,
+    read_heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
     extremum: Extremum,
-) -> VmResult<Value> {
+) -> VmResult<Option<Value>> {
     let Some((first, rest)) = values.split_first() else {
-        return Ok(option_value("None", None));
+        return Ok(None);
     };
     let mut best = first;
-    let mut best_key = sort_key_from_heap_slot(first, heap, operation)?;
+    let mut best_key = sort_key_from_heap_slot(first, read_heap, operation)?;
     let key_kind = best_key.kind();
     for value in rest {
-        let key = sort_key_from_heap_slot(value, heap, operation)?;
+        let key = sort_key_from_heap_slot(value, read_heap, operation)?;
         if key.kind() != key_kind {
             return type_error(operation);
         }
@@ -274,7 +239,7 @@ fn heap_slot_extremum(
             best_key = key;
         }
     }
-    Ok(option_value("Some", Some(value_from_heap_slot(best))))
+    Ok(Some(value_from_heap_slot(best)))
 }
 
 struct SortEntry {
@@ -336,7 +301,6 @@ fn sort_key(
     match value {
         Value::Int(value) => Ok(SortKey::Int(*value)),
         Value::Float(value) if value.is_finite() => Ok(SortKey::Float(*value)),
-        Value::String(value) => Ok(SortKey::String(value.clone())),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(SortKey::String(value.clone())),
             _ => type_error(operation),

@@ -1,4 +1,4 @@
-use crate::runtime_view::SetView;
+use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 mod basic;
@@ -16,7 +16,15 @@ use key::{SetKey, set_keys, slot_key};
 pub(crate) use mutation::{add, clear, extend, remove};
 
 pub(crate) fn is_set(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
-    SetView::from_value(receiver, heap, "method set").is_ok()
+    match receiver {
+        Value::HeapRef(reference) => {
+            matches!(
+                heap.and_then(|heap| heap.heap.get(*reference)),
+                Some(HeapValue::Set(_))
+            )
+        }
+        _ => false,
+    }
 }
 
 pub(super) fn push_unique(
@@ -36,15 +44,24 @@ pub(super) fn push_unique(
     Ok(true)
 }
 
-pub(super) fn materialize_set_values(
+pub(super) fn set_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    SetView::from_value(receiver, heap, operation).map(|view| view.materialize_values())
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Set(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error(operation);
+            };
+            Ok(values.clone())
+        }
+        _ => type_error(operation),
+    }
 }
 
-pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
+pub(super) fn expect_arity<T>(name: &str, args: &[T], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
     }
@@ -64,7 +81,8 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, Value, Vm};
+    use crate::owned_value::OwnedValue as Value;
+    use crate::{ExecutionBudget, Vm};
 
     #[test]
     fn runs_compiled_set_combination_methods() {

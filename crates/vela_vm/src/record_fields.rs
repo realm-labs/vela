@@ -9,16 +9,6 @@ pub(crate) fn set_record_field_value(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
     match value {
-        Value::Record { type_name, fields } => {
-            let Some(slot) = fields.get_mut(field) else {
-                return Err(VmError::new(VmErrorKind::UnknownRecordField {
-                    type_name: type_name.clone(),
-                    field: field.to_owned(),
-                }));
-            };
-            *slot = src.clone();
-            Ok(())
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("record field assignment");
@@ -63,21 +53,7 @@ pub(crate) fn set_record_field_value(
             })?;
             Ok(())
         }
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::String(_)
-        | Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Enum { .. }
-        | Value::Closure(_)
-        | Value::Range(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => type_error("record field assignment"),
+        _ => type_error("record field assignment"),
     }
 }
 
@@ -90,14 +66,6 @@ pub(crate) fn set_record_slot_value(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
     match value {
-        Value::Record { type_name, fields } => fields
-            .set_slot_existing(slot, field, src.clone())
-            .map_err(|_| {
-                VmError::new(VmErrorKind::UnknownRecordField {
-                    type_name: type_name.clone(),
-                    field: field.to_owned(),
-                })
-            }),
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("record slot assignment");
@@ -145,21 +113,7 @@ pub(crate) fn set_record_slot_value(
                     })
                 })
         }
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::String(_)
-        | Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Enum { .. }
-        | Value::Closure(_)
-        | Value::Range(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => type_error("record slot assignment"),
+        _ => type_error("record slot assignment"),
     }
 }
 

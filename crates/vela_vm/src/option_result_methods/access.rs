@@ -1,5 +1,5 @@
-use crate::runtime_view::EnumView;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::heap::HeapValue;
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
 
 pub(super) struct EnumTag {
     pub(super) kind: EnumKind,
@@ -32,16 +32,24 @@ pub(super) enum EnumVariant {
 }
 
 pub(super) fn enum_tag(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Option<EnumTag> {
-    let view = EnumView::from_value(receiver, heap)?;
+    let (enum_name, variant) = match receiver {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Enum {
+                enum_name, variant, ..
+            }) => (enum_name.as_str(), variant.as_str()),
+            _ => return None,
+        },
+        _ => return None,
+    };
 
-    let kind = match view.enum_name.rsplit("::").next() {
+    let kind = match enum_name.rsplit("::").next() {
         Some("Option") => EnumKind::Option,
         Some("Result") => EnumKind::Result,
         _ => return None,
     };
     Some(EnumTag {
         kind,
-        variant: enum_variant(view.variant),
+        variant: enum_variant(variant),
     })
 }
 
@@ -86,9 +94,20 @@ pub(super) fn enum_payload(
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Value> {
-    EnumView::from_value(receiver, heap)
-        .and_then(|view| view.fields.get_owned("0"))
-        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Enum { fields, .. }) =
+                heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error(operation);
+            };
+            fields
+                .get("0")
+                .map(value_from_heap_slot)
+                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
+        }
+        _ => type_error(operation),
+    }
 }
 
 pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {

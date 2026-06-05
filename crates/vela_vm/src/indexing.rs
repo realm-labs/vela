@@ -10,22 +10,6 @@ pub(crate) fn get_index(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     match base {
-        Value::Array(values) => {
-            let index = array_index(index)?;
-            values.get(index).cloned().ok_or_else(|| {
-                VmError::new(VmErrorKind::IndexOutOfBounds {
-                    index: i64::try_from(index).unwrap_or(i64::MAX),
-                    len: values.len(),
-                })
-            })
-        }
-        Value::Map(values) => {
-            let key = map_key(index, heap)?;
-            values
-                .get(&key)
-                .cloned()
-                .ok_or_else(|| VmError::new(VmErrorKind::UnknownMapKey { key }))
-        }
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -60,20 +44,7 @@ pub(crate) fn get_index(
                 })),
             }
         }
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::String(_)
-        | Value::Set(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "index",
         })),
     }
@@ -87,23 +58,6 @@ pub(crate) fn set_index(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
     match base {
-        Value::Array(values) => {
-            let index = array_index(index)?;
-            let len = values.len();
-            let slot = values.get_mut(index).ok_or_else(|| {
-                VmError::new(VmErrorKind::IndexOutOfBounds {
-                    index: i64::try_from(index).unwrap_or(i64::MAX),
-                    len,
-                })
-            })?;
-            *slot = src.clone();
-            Ok(())
-        }
-        Value::Map(values) => {
-            let key = map_key(index, heap.as_deref())?;
-            values.insert(key, src.clone());
-            Ok(())
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -129,20 +83,7 @@ pub(crate) fn set_index(
                 })),
             }
         }
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::String(_)
-        | Value::Set(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "index assignment",
         })),
     }
@@ -204,23 +145,7 @@ fn set_heap_map_index(
 fn array_index(index: &Value) -> VmResult<usize> {
     match index {
         Value::Int(index) if *index >= 0 => Ok(*index as usize),
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::String(_)
-        | Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::HeapRef(_)
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "array index",
         })),
     }
@@ -228,28 +153,13 @@ fn array_index(index: &Value) -> VmResult<usize> {
 
 fn map_key(index: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<String> {
     match index {
-        Value::String(key) => Ok(key.clone()),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(key)) => Ok(key.clone()),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch {
                 operation: "map key",
             })),
         },
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "map key",
         })),
     }

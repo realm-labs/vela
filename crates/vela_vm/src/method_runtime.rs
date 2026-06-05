@@ -32,7 +32,6 @@ pub(crate) fn call_callback_with_protected_values<'value>(
     protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
     let closure = match callback {
-        Value::Closure(closure) => closure.clone(),
         Value::HeapRef(reference) => {
             let Some(HeapValue::Closure(closure)) = runtime
                 .heap

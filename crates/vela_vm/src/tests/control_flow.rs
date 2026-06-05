@@ -1,4 +1,5 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
 
 #[test]
 fn runs_compiled_break_continue_source() {
@@ -148,23 +149,23 @@ fn match_value(value) {
     .expect("compile returning expression operands");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "block_arg", &[]),
+        Vm::new().run_program(&program, "block_arg", &[]),
         Ok(Value::Int(7))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "if_value", &[Value::Bool(true)]),
+        Vm::new().run_program(&program, "if_value", &[Value::Bool(true)]),
         Ok(Value::Int(1))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "if_value", &[Value::Bool(false)]),
+        Vm::new().run_program(&program, "if_value", &[Value::Bool(false)]),
         Ok(Value::Int(2))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "match_value", &[Value::Int(1)]),
+        Vm::new().run_program(&program, "match_value", &[Value::Int(1)]),
         Ok(Value::Int(10))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "match_value", &[Value::Int(9)]),
+        Vm::new().run_program(&program, "match_value", &[Value::Int(9)]),
         Ok(Value::Int(11))
     );
 }
@@ -195,19 +196,19 @@ fn match_case(value) {
     .expect("compile returning if and match initializers");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "if_case", &[Value::Bool(true)]),
+        Vm::new().run_program(&program, "if_case", &[Value::Bool(true)]),
         Ok(Value::Int(7))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "if_case", &[Value::Bool(false)]),
+        Vm::new().run_program(&program, "if_case", &[Value::Bool(false)]),
         Ok(Value::Int(8))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "match_case", &[Value::Int(1)]),
+        Vm::new().run_program(&program, "match_case", &[Value::Int(1)]),
         Ok(Value::Int(10))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "match_case", &[Value::Int(2)]),
+        Vm::new().run_program(&program, "match_case", &[Value::Int(2)]),
         Ok(Value::Int(11))
     );
 }
@@ -277,7 +278,7 @@ fn main() {
 
     assert_eq!(
         Vm::new()
-            .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+            .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
             .expect("run heap string literal match patterns"),
         Value::Int(2)
     );
@@ -420,12 +421,7 @@ fn main() {
     let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
 
     assert_eq!(
-        Vm::new().run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "main",
-            &[],
-            &mut budget
-        ),
+        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::Int(8))
     );
 }

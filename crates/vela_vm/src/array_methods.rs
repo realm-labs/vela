@@ -12,25 +12,43 @@ pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{max, min, sort, sort_by};
 pub(crate) use transform::{distinct, join, reverse, slice};
 
+use crate::heap::HeapValue;
 use crate::method_runtime::{MethodRuntime, call_callback};
-use crate::runtime_view::{ArrayView, StringView};
 use crate::script_object::ScriptFields;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::{
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
+    value_from_heap_slot,
+};
 
 pub(super) fn string_value<'a>(
     value: &'a Value,
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<&'a str> {
-    StringView::from_value(value, heap, operation).map(|view| view.as_str())
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(value),
+            _ => type_error(operation),
+        },
+        _ => type_error(operation),
+    }
 }
 
-pub(super) fn materialize_array_values(
+pub(super) fn array_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    ArrayView::from_value(receiver, heap, operation).map(|view| view.materialize_values())
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error(operation);
+            };
+            Ok(values.iter().map(value_from_heap_slot).collect())
+        }
+        _ => type_error(operation),
+    }
 }
 
 pub(super) fn index_value(value: &Value, operation: &'static str) -> VmResult<usize> {
@@ -65,15 +83,74 @@ pub(super) fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
 }
 
-pub(super) fn option_value(variant: &str, payload: Option<Value>) -> Value {
+pub(super) fn option_value(
+    variant: &str,
+    payload: Option<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
     let fields = payload
         .map(|payload| vec![("0".to_owned(), payload)])
         .unwrap_or_default();
-    Value::Enum {
-        enum_name: "Option".to_owned(),
-        variant: variant.to_owned(),
-        fields: ScriptFields::from_pairs(&format!("Option.{variant}"), fields),
-    }
+    make_enum_value("Option", variant, fields, heap, budget, "Option")
+}
+
+pub(crate) fn make_string_value(
+    value: String,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
+}
+
+pub(crate) fn make_array_value(
+    values: Vec<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(HeapValue::Array(values), heap, budget.as_deref_mut())
+}
+
+pub(crate) fn make_map_value(
+    values: std::collections::BTreeMap<String, Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(HeapValue::Map(values), heap, budget.as_deref_mut())
+}
+
+pub(crate) fn make_enum_value(
+    enum_name: &str,
+    variant: &str,
+    fields: Vec<(String, Value)>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(
+        HeapValue::Enum {
+            enum_name: enum_name.to_owned(),
+            variant: variant.to_owned(),
+            fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
+        },
+        heap,
+        budget.as_deref_mut(),
+    )
 }
 
 pub(super) fn index_out_of_bounds(index: usize, len: usize) -> VmError {

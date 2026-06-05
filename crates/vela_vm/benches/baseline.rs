@@ -22,6 +22,7 @@ use vela_vm::Vm;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::heap::{GcBudget, GcConfig, HeapValue, ScriptHeap};
 use vela_vm::heap_execution::HeapExecution;
+use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 
 #[path = "baseline/workloads.rs"]
@@ -176,15 +177,13 @@ enum CompiledWorkload {
     },
 }
 
-fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error>> {
+fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn Error>> {
     match workload {
         CompiledWorkload::Function {
             mode: ExecutionMode::Inline,
             code,
         } => Ok(vm.run(code)?),
-        CompiledWorkload::ScriptProgram { program } => {
-            Ok(vm.run_program_runtime(program, "main", &[])?)
-        }
+        CompiledWorkload::ScriptProgram { program } => Ok(vm.run_program(program, "main", &[])?),
         CompiledWorkload::Function {
             mode: ExecutionMode::ManagedHeap,
             code,
@@ -296,7 +295,7 @@ fn gameplay_compiler_options() -> CompilerOptions {
         .with_host_method("add_reward", ADD_REWARD_METHOD)
 }
 
-fn run_gc_pacing(vm: &Vm, code: &CodeObject) -> Result<Value, Box<dyn Error>> {
+fn run_gc_pacing(vm: &Vm, code: &CodeObject) -> Result<OwnedValue, Box<dyn Error>> {
     let mut heap = ScriptHeap::new();
     heap.set_gc_config(GcConfig {
         max_pause_micros: 50,
@@ -320,8 +319,8 @@ fn run_gc_pacing(vm: &Vm, code: &CodeObject) -> Result<Value, Box<dyn Error>> {
         (value, gc_checksum)
     };
 
-    Ok(Value::Int(
-        value_checksum(&value) as i64
+    Ok(OwnedValue::Int(
+        runtime_value_checksum(&value) as i64
             + gc_checksum as i64
             + heap.live_object_count() as i64
             + heap.allocated_bytes() as i64,
@@ -334,7 +333,7 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
     }
 }
 
-fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>> {
+fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(10));
@@ -358,23 +357,26 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>
         adapter: &mut adapter,
         tx: &mut tx,
     };
-    let value = vm.run_program_runtime_with_host_and_budget(
+    let value = vm.run_program_with_host_and_budget(
         program,
         "main",
-        &[Value::HostRef(player)],
+        &[OwnedValue::HostRef(player)],
         &mut host,
         &mut budget,
     )?;
     let patch_count = tx.patches().len();
     tx.apply(&mut adapter)?;
-    Ok(Value::Int(
+    Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + patch_count as i64
             + host_array_len(&adapter, rewards_path)?,
     ))
 }
 
-fn run_managed_heap_host_conversion(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>> {
+fn run_managed_heap_host_conversion(
+    vm: &Vm,
+    program: &Program,
+) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let level_path = HostPath::new(player).field(LEVEL_FIELD);
     let exp_path = HostPath::new(player).field(EXP_FIELD);
@@ -392,17 +394,17 @@ fn run_managed_heap_host_conversion(vm: &Vm, program: &Program) -> Result<Value,
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_runtime_with_host_managed_heap_and_budget(
+        vm.run_program_with_host_and_budget(
             program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host,
             &mut budget,
         )?
     };
     let patch_count = tx.patches().len();
     tx.apply(&mut adapter)?;
-    Ok(Value::Int(
+    Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + patch_count as i64
             + host_map_len(&adapter, level_path)?
@@ -411,7 +413,7 @@ fn run_managed_heap_host_conversion(vm: &Vm, program: &Program) -> Result<Value,
     ))
 }
 
-fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>> {
+fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let ctx = HostRef::new(CTX_TYPE, CTX_OBJECT, 1);
     let monster = HostRef::new(MONSTER_TYPE, MONSTER_OBJECT, 1);
@@ -466,13 +468,13 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<Value, Box<dy
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_runtime_with_host_and_budget(
+        vm.run_program_with_host_and_budget(
             program,
             "main",
             &[
-                Value::HostRef(ctx),
-                Value::HostRef(player),
-                Value::HostRef(monster),
+                OwnedValue::HostRef(ctx),
+                OwnedValue::HostRef(player),
+                OwnedValue::HostRef(monster),
             ],
             &mut host,
             &mut budget,
@@ -481,7 +483,7 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<Value, Box<dy
     let patch_count = tx.patches().len();
     tx.apply(&mut adapter)?;
 
-    Ok(Value::Int(
+    Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + patch_count as i64
             + adapter.method_calls().len() as i64
@@ -566,28 +568,28 @@ fn percentile_ns(samples: &[Duration], percentile: usize) -> u128 {
     samples[index].as_nanos()
 }
 
-fn value_checksum(value: &Value) -> u64 {
+fn value_checksum(value: &OwnedValue) -> u64 {
     match value {
-        Value::Missing => 0x01,
-        Value::Null => 0x02,
-        Value::Bool(value) => u64::from(*value) ^ 0x03,
-        Value::Int(value) => *value as u64,
-        Value::Float(value) => value.to_bits(),
-        Value::String(value) => bytes_checksum(value.as_bytes()),
-        Value::Array(values) | Value::Set(values) => values
+        OwnedValue::Missing => 0x01,
+        OwnedValue::Null => 0x02,
+        OwnedValue::Bool(value) => u64::from(*value) ^ 0x03,
+        OwnedValue::Int(value) => *value as u64,
+        OwnedValue::Float(value) => value.to_bits(),
+        OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
+        OwnedValue::Array(values) | OwnedValue::Set(values) => values
             .iter()
             .fold(0x05, |checksum, value| mix(checksum, value_checksum(value))),
-        Value::Map(values) => values.iter().fold(0x06, |checksum, (key, value)| {
+        OwnedValue::Map(values) => values.iter().fold(0x06, |checksum, (key, value)| {
             mix(
                 mix(checksum, bytes_checksum(key.as_bytes())),
                 value_checksum(value),
             )
         }),
-        Value::Record { type_name, fields } => fields.values().fold(
+        OwnedValue::Record { type_name, fields } => fields.values().fold(
             mix(0x07, bytes_checksum(type_name.as_bytes())),
             |checksum, value| mix(checksum, value_checksum(value)),
         ),
-        Value::Enum {
+        OwnedValue::Enum {
             enum_name,
             variant,
             fields,
@@ -598,9 +600,21 @@ fn value_checksum(value: &Value) -> u64 {
             ),
             |checksum, value| mix(checksum, value_checksum(value)),
         ),
+        OwnedValue::Range(_) => 0x09,
+        OwnedValue::Closure(_) | OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => 0x0a,
+        OwnedValue::Iterator(_) => 0x0b,
+    }
+}
+
+fn runtime_value_checksum(value: &Value) -> u64 {
+    match value {
+        Value::Missing => 0x01,
+        Value::Null => 0x02,
+        Value::Bool(value) => u64::from(*value) ^ 0x03,
+        Value::Int(value) => *value as u64,
+        Value::Float(value) => value.to_bits(),
         Value::Range(_) => 0x09,
-        Value::Closure(_) | Value::HeapRef(_) | Value::HostRef(_) | Value::PathProxy(_) => 0x0a,
-        Value::Iterator(_) => 0x0b,
+        Value::HeapRef(_) | Value::HostRef(_) => 0x0a,
     }
 }
 

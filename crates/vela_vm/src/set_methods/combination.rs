@@ -1,88 +1,107 @@
-use crate::{HeapExecution, Value, VmResult};
+use crate::heap_values::make_set_value;
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{SetKey, expect_arity, materialize_set_values, push_unique, set_keys};
+use super::{SetKey, expect_arity, push_unique, set_keys, set_values};
 
 pub(crate) fn union(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("union", args, 1)?;
     let mut combined = Vec::new();
-    for value in materialize_set_values(receiver, heap, "method union")? {
-        push_unique(&mut combined, value, heap, "method union")?;
+    for value in set_values(receiver, heap.as_deref(), "method union")? {
+        push_unique(&mut combined, value, heap.as_deref(), "method union")?;
     }
-    for value in materialize_set_values(&args[0], heap, "method union")? {
-        push_unique(&mut combined, value, heap, "method union")?;
+    for value in set_values(&args[0], heap.as_deref(), "method union")? {
+        push_unique(&mut combined, value, heap.as_deref(), "method union")?;
     }
-    Ok(Value::Set(combined))
+    make_result_set(combined, heap, budget, "method union")
 }
 
 pub(crate) fn intersection(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("intersection", args, 1)?;
     let right = set_keys(
-        &materialize_set_values(&args[0], heap, "method intersection")?,
-        heap,
+        &set_values(&args[0], heap.as_deref(), "method intersection")?,
+        heap.as_deref(),
         "method intersection",
     )?;
     let mut result = Vec::new();
-    for value in materialize_set_values(receiver, heap, "method intersection")? {
-        let key = SetKey::from_value(&value, heap, "method intersection")?;
+    for value in set_values(receiver, heap.as_deref(), "method intersection")? {
+        let key = SetKey::from_value(&value, heap.as_deref(), "method intersection")?;
         if right.contains(&key) {
-            push_unique(&mut result, value, heap, "method intersection")?;
+            push_unique(&mut result, value, heap.as_deref(), "method intersection")?;
         }
     }
-    Ok(Value::Set(result))
+    make_result_set(result, heap, budget, "method intersection")
 }
 
 pub(crate) fn difference(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("difference", args, 1)?;
     let right = set_keys(
-        &materialize_set_values(&args[0], heap, "method difference")?,
-        heap,
+        &set_values(&args[0], heap.as_deref(), "method difference")?,
+        heap.as_deref(),
         "method difference",
     )?;
     let mut result = Vec::new();
-    for value in materialize_set_values(receiver, heap, "method difference")? {
-        let key = SetKey::from_value(&value, heap, "method difference")?;
+    for value in set_values(receiver, heap.as_deref(), "method difference")? {
+        let key = SetKey::from_value(&value, heap.as_deref(), "method difference")?;
         if !right.contains(&key) {
-            push_unique(&mut result, value, heap, "method difference")?;
+            push_unique(&mut result, value, heap.as_deref(), "method difference")?;
         }
     }
-    Ok(Value::Set(result))
+    make_result_set(result, heap, budget, "method difference")
 }
 
 pub(crate) fn symmetric_difference(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("symmetric_difference", args, 1)?;
-    let left_values = materialize_set_values(receiver, heap, "method symmetric_difference")?;
-    let right_values = materialize_set_values(&args[0], heap, "method symmetric_difference")?;
-    let left_keys = set_keys(&left_values, heap, "method symmetric_difference")?;
-    let right_keys = set_keys(&right_values, heap, "method symmetric_difference")?;
+    let left_values = set_values(receiver, heap.as_deref(), "method symmetric_difference")?;
+    let right_values = set_values(&args[0], heap.as_deref(), "method symmetric_difference")?;
+    let left_keys = set_keys(&left_values, heap.as_deref(), "method symmetric_difference")?;
+    let right_keys = set_keys(
+        &right_values,
+        heap.as_deref(),
+        "method symmetric_difference",
+    )?;
 
     let mut result = Vec::new();
     for (value, key) in left_values.into_iter().zip(left_keys.iter()) {
         if !right_keys.contains(key) {
-            push_unique(&mut result, value, heap, "method symmetric_difference")?;
+            push_unique(
+                &mut result,
+                value,
+                heap.as_deref(),
+                "method symmetric_difference",
+            )?;
         }
     }
     for (value, key) in right_values.into_iter().zip(right_keys.iter()) {
         if !left_keys.contains(key) {
-            push_unique(&mut result, value, heap, "method symmetric_difference")?;
+            push_unique(
+                &mut result,
+                value,
+                heap.as_deref(),
+                "method symmetric_difference",
+            )?;
         }
     }
-    Ok(Value::Set(result))
+    make_result_set(result, heap, budget, "method symmetric_difference")
 }
 
 pub(crate) fn is_subset(
@@ -110,11 +129,11 @@ pub(crate) fn is_disjoint(
 ) -> VmResult<bool> {
     expect_arity("is_disjoint", args, 1)?;
     let right = set_keys(
-        &materialize_set_values(&args[0], heap, "method is_disjoint")?,
+        &set_values(&args[0], heap, "method is_disjoint")?,
         heap,
         "method is_disjoint",
     )?;
-    for value in materialize_set_values(receiver, heap, "method is_disjoint")? {
+    for value in set_values(receiver, heap, "method is_disjoint")? {
         let key = SetKey::from_value(&value, heap, "method is_disjoint")?;
         if right.contains(&key) {
             return Ok(false);
@@ -129,16 +148,24 @@ fn set_contains_all(
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<bool> {
-    let superset = set_keys(
-        &materialize_set_values(superset, heap, operation)?,
-        heap,
-        operation,
-    )?;
-    for value in materialize_set_values(subset, heap, operation)? {
+    let superset = set_keys(&set_values(superset, heap, operation)?, heap, operation)?;
+    for value in set_values(subset, heap, operation)? {
         let key = SetKey::from_value(&value, heap, operation)?;
         if !superset.contains(&key) {
             return Ok(false);
         }
     }
     Ok(true)
+}
+
+fn make_result_set(
+    values: Vec<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return super::type_error(operation);
+    };
+    make_set_value(values, heap, budget.as_deref_mut())
 }

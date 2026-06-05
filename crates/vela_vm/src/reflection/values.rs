@@ -5,9 +5,10 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
+use crate::owned_value::OwnedValue as Value;
 use crate::{
-    ExecutionBudget, HostExecution, HostNativeFunction, NativeFunction, Value, Vm, VmError,
-    VmErrorKind, VmResult, expect_arity, expect_string, value_from_reflect, value_to_reflect,
+    ExecutionBudget, HostExecution, HostNativeFunction, NativeFunction, Vm, VmError, VmErrorKind,
+    VmResult, expect_arity, expect_string, value_from_reflect, value_to_reflect,
 };
 
 use super::common::check_reflect_policy;

@@ -1,4 +1,4 @@
-use crate::runtime_view::{LengthView, length_view};
+use crate::heap::HeapValue;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
     map_methods, option_result_methods, set_methods,
@@ -17,54 +17,52 @@ pub(crate) fn call(
         "is_empty" => expect_no_args(method, args)
             .and_then(|()| is_empty(receiver, heap.as_deref()).map(Value::Bool)),
         "contains" => array_methods::contains(receiver, args, heap.as_deref()).map(Value::Bool),
-        "slice" => array_methods::slice(receiver, args, heap.as_deref()),
+        "slice" => array_methods::slice(receiver, args, heap, budget),
         "push" => array_methods::push(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
-        "pop" => array_methods::pop(receiver, args, heap.as_deref_mut()),
+        "pop" => array_methods::pop(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "insert" => {
             array_methods::insert(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
         }
         "extend" => extend(receiver, args, heap, budget),
-        "first" => array_methods::first(receiver, args, heap.as_deref()),
-        "last" => array_methods::last(receiver, args, heap.as_deref()),
-        "remove_at" => array_methods::remove_at(receiver, args, heap.as_deref_mut()),
-        "join" => array_methods::join(receiver, args, heap.as_deref()),
-        "index_of" => array_methods::index_of(receiver, args, heap.as_deref()),
-        "distinct" => array_methods::distinct(receiver, args, heap.as_deref()),
-        "reverse" => array_methods::reverse(receiver, args, heap.as_deref()),
-        "sort" => array_methods::sort(receiver, args, heap.as_deref()),
-        "min" => array_methods::min(receiver, args, heap.as_deref()),
-        "max" => array_methods::max(receiver, args, heap.as_deref()),
+        "first" => array_methods::first(receiver, args, heap, budget),
+        "last" => array_methods::last(receiver, args, heap, budget),
+        "remove_at" => {
+            array_methods::remove_at(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
+        }
+        "join" => array_methods::join(receiver, args, heap, budget),
+        "index_of" => array_methods::index_of(receiver, args, heap, budget),
+        "distinct" => array_methods::distinct(receiver, args, heap, budget),
+        "reverse" => array_methods::reverse(receiver, args, heap, budget),
+        "sort" => array_methods::sort(receiver, args, heap, budget),
+        "min" => array_methods::min(receiver, args, heap, budget),
+        "max" => array_methods::max(receiver, args, heap, budget),
         "is_some" => option_result_methods::is_some(receiver, args, heap.as_deref()),
         "is_none" => option_result_methods::is_none(receiver, args, heap.as_deref()),
         "is_ok" => option_result_methods::is_ok(receiver, args, heap.as_deref()),
         "is_err" => option_result_methods::is_err(receiver, args, heap.as_deref()),
         "unwrap_or" => option_result_methods::unwrap_or(receiver, args, heap.as_deref()),
-        "ok_or" => option_result_methods::ok_or(receiver, args, heap.as_deref()),
-        "to_option" => option_result_methods::to_option(receiver, args, heap.as_deref()),
-        "to_error_option" => {
-            option_result_methods::to_error_option(receiver, args, heap.as_deref())
-        }
-        "flatten" => flatten(receiver, args, heap.as_deref()),
-        "merge" => map_methods::merge(receiver, args, heap.as_deref()),
+        "ok_or" => option_result_methods::ok_or(receiver, args, heap, budget),
+        "to_option" => option_result_methods::to_option(receiver, args, heap, budget),
+        "to_error_option" => option_result_methods::to_error_option(receiver, args, heap, budget),
+        "flatten" => flatten(receiver, args, heap, budget),
+        "merge" => map_methods::merge(receiver, args, heap, budget),
         "has" => has(receiver, args, heap.as_deref()).map(Value::Bool),
-        "get" => map_methods::get(receiver, args, heap.as_deref()),
+        "get" => map_methods::get(receiver, args, heap, budget),
         "get_or" => map_methods::get_or(receiver, args, heap.as_deref()),
         "add" => set_methods::add(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
         "set" => map_methods::set(receiver, args, heap.as_deref_mut(), budget.as_deref_mut()),
-        "remove" => remove(receiver, args, heap),
+        "remove" => remove(receiver, args, heap, budget),
         "clear" => clear(receiver, args, heap),
-        "keys" => map_methods::keys(receiver, args, heap.as_deref()),
-        "values" => values(receiver, args, heap.as_deref()),
-        "union" => set_methods::union(receiver, args, heap.as_deref()),
-        "intersection" => set_methods::intersection(receiver, args, heap.as_deref()),
-        "difference" => set_methods::difference(receiver, args, heap.as_deref()),
-        "symmetric_difference" => {
-            set_methods::symmetric_difference(receiver, args, heap.as_deref())
-        }
+        "keys" => map_methods::keys(receiver, args, heap, budget),
+        "values" => values(receiver, args, heap, budget),
+        "union" => set_methods::union(receiver, args, heap, budget),
+        "intersection" => set_methods::intersection(receiver, args, heap, budget),
+        "difference" => set_methods::difference(receiver, args, heap, budget),
+        "symmetric_difference" => set_methods::symmetric_difference(receiver, args, heap, budget),
         "is_subset" => set_methods::is_subset(receiver, args, heap.as_deref()).map(Value::Bool),
         "is_superset" => set_methods::is_superset(receiver, args, heap.as_deref()).map(Value::Bool),
         "is_disjoint" => set_methods::is_disjoint(receiver, args, heap.as_deref()).map(Value::Bool),
-        "entries" => map_methods::entries(receiver, args, heap.as_deref()),
+        "entries" => map_methods::entries(receiver, args, heap, budget),
         _ => return None,
     };
     Some(result)
@@ -82,39 +80,16 @@ pub(crate) fn call_readonly(
             expect_no_args(method, args).and_then(|()| is_empty(receiver, heap).map(Value::Bool))
         }
         "contains" => array_methods::contains(receiver, args, heap).map(Value::Bool),
-        "slice" => array_methods::slice(receiver, args, heap),
-        "first" => array_methods::first(receiver, args, heap),
-        "last" => array_methods::last(receiver, args, heap),
-        "join" => array_methods::join(receiver, args, heap),
-        "index_of" => array_methods::index_of(receiver, args, heap),
-        "distinct" => array_methods::distinct(receiver, args, heap),
-        "reverse" => array_methods::reverse(receiver, args, heap),
-        "sort" => array_methods::sort(receiver, args, heap),
-        "min" => array_methods::min(receiver, args, heap),
-        "max" => array_methods::max(receiver, args, heap),
         "is_some" => option_result_methods::is_some(receiver, args, heap),
         "is_none" => option_result_methods::is_none(receiver, args, heap),
         "is_ok" => option_result_methods::is_ok(receiver, args, heap),
         "is_err" => option_result_methods::is_err(receiver, args, heap),
         "unwrap_or" => option_result_methods::unwrap_or(receiver, args, heap),
-        "ok_or" => option_result_methods::ok_or(receiver, args, heap),
-        "to_option" => option_result_methods::to_option(receiver, args, heap),
-        "to_error_option" => option_result_methods::to_error_option(receiver, args, heap),
-        "flatten" => flatten(receiver, args, heap),
-        "merge" => map_methods::merge(receiver, args, heap),
         "has" => has(receiver, args, heap).map(Value::Bool),
-        "get" => map_methods::get(receiver, args, heap),
         "get_or" => map_methods::get_or(receiver, args, heap),
-        "keys" => map_methods::keys(receiver, args, heap),
-        "values" => values(receiver, args, heap),
-        "union" => set_methods::union(receiver, args, heap),
-        "intersection" => set_methods::intersection(receiver, args, heap),
-        "difference" => set_methods::difference(receiver, args, heap),
-        "symmetric_difference" => set_methods::symmetric_difference(receiver, args, heap),
         "is_subset" => set_methods::is_subset(receiver, args, heap).map(Value::Bool),
         "is_superset" => set_methods::is_superset(receiver, args, heap).map(Value::Bool),
         "is_disjoint" => set_methods::is_disjoint(receiver, args, heap).map(Value::Bool),
-        "entries" => map_methods::entries(receiver, args, heap),
         _ => return None,
     };
     Some(result)
@@ -135,9 +110,14 @@ fn extend(
     }
 }
 
-fn flatten(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
-    if option_result_methods::is_option_or_result(receiver, heap) {
-        option_result_methods::flatten(receiver, args, heap)
+fn flatten(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    if option_result_methods::is_option_or_result(receiver, heap.as_deref()) {
+        option_result_methods::flatten(receiver, args, heap, budget)
     } else {
         Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "method flatten",
@@ -157,11 +137,12 @@ fn remove(
     receiver: &mut Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     if set_methods::is_set(receiver, heap.as_deref()) {
         set_methods::remove(receiver, args, heap.as_deref_mut())
     } else {
-        map_methods::remove(receiver, args, heap.as_deref_mut())
+        map_methods::remove(receiver, args, heap.as_deref_mut(), budget.as_deref_mut())
     }
 }
 
@@ -179,27 +160,45 @@ fn clear(
     }
 }
 
-fn values(receiver: &Value, args: &[Value], heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
-    if set_methods::is_set(receiver, heap) {
-        set_methods::values(receiver, args, heap)
+fn values(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    if set_methods::is_set(receiver, heap.as_deref()) {
+        set_methods::values(receiver, args, heap, budget)
     } else {
-        map_methods::values(receiver, args, heap)
+        map_methods::values(receiver, args, heap, budget)
     }
 }
 
 fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<i64> {
-    if let Some(view) = length_view(receiver, heap, "method len") {
-        return match view? {
-            LengthView::String(value) => usize_to_i64(string_char_len(value), "method len"),
-            LengthView::Count(value) => usize_to_i64(value, "method len"),
-        };
-    }
     match receiver {
         Value::Range(range) => range.len().ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
                 operation: "method len",
             })
         }),
+        Value::HeapRef(reference) => {
+            let Some(value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+                return type_error("method len");
+            };
+            match value {
+                HeapValue::String(value) => usize_to_i64(string_char_len(value), "method len"),
+                HeapValue::Array(values) | HeapValue::Set(values) => {
+                    usize_to_i64(values.len(), "method len")
+                }
+                HeapValue::Map(values) => usize_to_i64(values.len(), "method len"),
+                HeapValue::Record { fields: values, .. }
+                | HeapValue::Enum { fields: values, .. } => {
+                    usize_to_i64(values.len(), "method len")
+                }
+                HeapValue::Closure(_) | HeapValue::Iterator(_) | HeapValue::PathProxy(_) => {
+                    type_error("method len")
+                }
+            }
+        }
         _ => type_error("method len"),
     }
 }
@@ -213,11 +212,23 @@ fn string_char_len(value: &str) -> usize {
 }
 
 fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<bool> {
-    if let Some(view) = length_view(receiver, heap, "method is_empty") {
-        return Ok(view?.is_empty());
-    }
     match receiver {
         Value::Range(range) => Ok(range.is_empty()),
+        Value::HeapRef(reference) => {
+            let Some(value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
+                return type_error("method is_empty");
+            };
+            match value {
+                HeapValue::String(value) => Ok(value.is_empty()),
+                HeapValue::Array(values) | HeapValue::Set(values) => Ok(values.is_empty()),
+                HeapValue::Map(values) => Ok(values.is_empty()),
+                HeapValue::Record { fields: values, .. }
+                | HeapValue::Enum { fields: values, .. } => Ok(values.is_empty()),
+                HeapValue::Closure(_) | HeapValue::Iterator(_) | HeapValue::PathProxy(_) => {
+                    type_error("method is_empty")
+                }
+            }
+        }
         _ => type_error("method is_empty"),
     }
 }

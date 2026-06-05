@@ -1,4 +1,5 @@
-use crate::{Value, Vm, VmError, VmErrorKind, VmResult};
+use crate::owned_value::OwnedValue as Value;
+use crate::{Vm, VmError, VmErrorKind, VmResult};
 
 mod distance;
 mod movement;
@@ -41,6 +42,17 @@ pub(super) fn expect_finite_float(value: &Value, operation: &'static str) -> VmR
 
 pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
+pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
+    if args.len() == expected {
+        return Ok(());
+    }
+    Err(VmError::new(VmErrorKind::ArityMismatch {
+        name: name.to_owned(),
+        expected,
+        actual: args.len(),
+    }))
 }
 
 #[cfg(test)]

@@ -1,7 +1,6 @@
 use super::*;
 use crate::budget::ExecutionBudgetKind;
 use crate::heap::{GcBudget, HeapValue, ScriptHeap};
-use crate::iteration::IteratorState;
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;

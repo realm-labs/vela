@@ -90,7 +90,7 @@ fn main() {
     let mut runtime = HotReloadRuntime::new(initial);
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(1))
     );
 }
@@ -134,7 +134,7 @@ fn main() {
     let mut runtime = HotReloadRuntime::new(initial);
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(2))
     );
 }
@@ -231,7 +231,7 @@ fn main() {
     let mut runtime = HotReloadRuntime::new(initial);
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(2))
     );
 }
@@ -487,7 +487,7 @@ fn main() {
     runtime.apply_hot_update(update).expect("apply update");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(7))
     );
 }

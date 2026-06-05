@@ -450,16 +450,16 @@ This lets the host perform atomic validation, range checks, conflict handling, a
 
 ```rust
 pub trait ScriptStateAdapter {
-    fn read_path(&self, path: &HostPath) -> HostResult<Value>;
+    fn read_path(&self, path: &HostPath) -> HostResult<HostValue>;
 
-    fn write_path(&mut self, path: &HostPath, value: Value) -> HostResult<()>;
+    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()>;
 
     fn call_method(
         &mut self,
         path: &HostPath,
         method: HostMethodId,
-        args: &[Value],
-    ) -> HostResult<Value>;
+        args: &[HostValue],
+    ) -> HostResult<HostValue>;
 
     fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
 
@@ -617,15 +617,8 @@ pub struct FunctionDesc {
 The VM should call host functions through a small erased trait:
 
 ```rust
-pub trait NativeFunction: Send + Sync + 'static {
-    fn desc(&self) -> &NativeFunctionDesc;
-
-    fn call(
-        &self,
-        ctx: &mut NativeCallContext,
-        args: &[Value],
-    ) -> HostResult<Value>;
-}
+pub type NativeFunction =
+    Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
 
 pub struct NativeCallContext<'a> {
     pub runtime: &'a mut Runtime,
@@ -639,7 +632,7 @@ pub struct NativeCallContext<'a> {
 `NativeCallContext` is the only native entry point that may touch host services
 or `PatchTx`. A native function must not hand real Rust references back to the
 script. Returned host objects must be represented as `HostRef`, copied
-host-value data, or script-owned `Value`.
+host-value data, or script-owned `OwnedValue`.
 
 The engine owns the executable native function table separately from the
 reflectable descriptors:
@@ -1378,26 +1371,45 @@ field and method access can be specialized
 good fit for later inline caches
 ```
 
-### Value
+### Value Layout
 
-Use a clear first implementation before low-level layout optimization:
+Runtime execution uses three explicit value layers:
+
+```text
+Value       VM runtime slot; Copy; scalars or handles only
+OwnedValue  heap-detached Rust boundary/materialized value
+HeapValue   non-moving script heap object referenced by GcRef
+HostValue   host-adapter boundary value copied across ScriptStateAdapter
+```
+
+The runtime slot stays compact:
 
 ```rust
 pub enum Value {
+    Missing,
     Null,
     Bool(bool),
     Int(i64),
     Float(f64),
-    String(GcRef<ObjString>),
-    Array(GcRef<ObjArray>),
-    Map(GcRef<ObjMap>),
-    Set(GcRef<ObjSet>),
-    Record(GcRef<ObjRecord>),
-    Enum(GcRef<ObjEnum>),
-    Closure(GcRef<ObjClosure>),
+    Range(RangeValue),
+    HeapRef(GcRef),
     HostRef(HostRef),
+}
+```
+
+All non-scalar script objects live in `HeapValue`:
+
+```rust
+pub enum HeapValue {
+    String(String),
+    Array(Vec<Value>),
+    Map(BTreeMap<String, Value>),
+    Set(Vec<Value>),
+    Record { type_name: String, fields: ScriptFields<Value> },
+    Enum { enum_name: String, variant: String, fields: ScriptFields<Value> },
+    Closure(ClosureValue),
+    Iterator(IteratorState),
     PathProxy(PathProxy),
-    TraitObject(TraitObject),
 }
 ```
 

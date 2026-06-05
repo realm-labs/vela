@@ -36,7 +36,7 @@ impl Vm {
                         register: Register(u16::MAX),
                     })
                 })?),
-                capture.clone(),
+                *capture,
             )?;
         }
         let param_offset = usize::from(code.capture_count);
@@ -49,7 +49,7 @@ impl Vm {
                         })
                     })?,
                 ),
-                arg.clone(),
+                *arg,
             )?;
         }
         for index in args.len()..code.params.len() {
@@ -112,7 +112,7 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Move { dst, src } => {
-                    let value = frame.read(*src)?.clone();
+                    let value = *frame.read(*src)?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Not { dst, src } => {
@@ -241,9 +241,13 @@ impl Vm {
                         budget.check_patch_count(host.tx.patches().len())?;
                     }
                     if let Some(dst) = dst {
-                        let result = store_value_in_heap_if_needed(
+                        let result = owned_to_value(
                             result,
-                            heap.as_deref_mut(),
+                            heap.as_deref_mut().ok_or_else(|| {
+                                VmError::new(VmErrorKind::TypeMismatch {
+                                    operation: "native heap",
+                                })
+                            })?,
                             budget.as_deref_mut(),
                         )?;
                         frame.write(*dst, result)?;
@@ -294,12 +298,17 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register).cloned())
                         .collect::<VmResult<Vec<_>>>()?;
-                    let value = store_value_in_heap_if_needed(
-                        Value::Closure(ClosureValue {
+                    let heap = heap.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "closure heap",
+                        })
+                    })?;
+                    let value = allocate_heap_value(
+                        HeapValue::Closure(ClosureValue {
                             code: Arc::new((**code).clone()),
                             captures,
                         }),
-                        heap.as_deref_mut(),
+                        heap,
                         budget.as_deref_mut(),
                     )?;
                     frame.write(*dst, value)?;
@@ -424,35 +433,27 @@ impl Vm {
                     }
                 }
                 InstructionKind::MakeArray { dst, elements } => {
-                    let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots = heap_slots_from_registers(
-                            &frame,
-                            elements,
-                            heap,
-                            budget.as_deref_mut(),
-                        )?;
-                        allocate_heap_value(HeapValue::Array(slots), heap, budget.as_deref_mut())?
-                    } else {
-                        let values = elements
-                            .iter()
-                            .map(|register| frame.read(*register).cloned())
-                            .collect::<VmResult<Vec<_>>>()?;
-                        Value::Array(values)
+                    let Some(heap) = heap.as_deref_mut() else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "array heap",
+                        }));
                     };
+                    let slots =
+                        heap_slots_from_registers(&frame, elements, heap, budget.as_deref_mut())?;
+                    let value =
+                        allocate_heap_value(HeapValue::Array(slots), heap, budget.as_deref_mut())?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeMap { dst, entries } => {
-                    let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots =
-                            heap_map_from_registers(&frame, entries, heap, budget.as_deref_mut())?;
-                        allocate_heap_value(HeapValue::Map(slots), heap, budget.as_deref_mut())?
-                    } else {
-                        let mut values = BTreeMap::new();
-                        for (key, register) in entries {
-                            values.insert(key.clone(), frame.read(*register)?.clone());
-                        }
-                        Value::Map(values)
+                    let Some(heap) = heap.as_deref_mut() else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "map heap",
+                        }));
                     };
+                    let slots =
+                        heap_map_from_registers(&frame, entries, heap, budget.as_deref_mut())?;
+                    let value =
+                        allocate_heap_value(HeapValue::Map(slots), heap, budget.as_deref_mut())?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeRange {
@@ -470,37 +471,26 @@ impl Vm {
                     type_name,
                     fields,
                 } => {
-                    let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots = heap_fields_from_registers(
-                            type_name,
-                            &frame,
-                            fields,
-                            heap,
-                            budget.as_deref_mut(),
-                        )?;
-                        allocate_heap_value(
-                            HeapValue::Record {
-                                type_name: type_name.clone(),
-                                fields: slots,
-                            },
-                            heap,
-                            budget.as_deref_mut(),
-                        )?
-                    } else {
-                        let values = ScriptFields::from_pairs(
-                            type_name,
-                            fields
-                                .iter()
-                                .map(|(name, register)| {
-                                    Ok((name.clone(), frame.read(*register)?.clone()))
-                                })
-                                .collect::<VmResult<Vec<_>>>()?,
-                        );
-                        Value::Record {
-                            type_name: type_name.clone(),
-                            fields: values,
-                        }
+                    let Some(heap) = heap.as_deref_mut() else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "record heap",
+                        }));
                     };
+                    let slots = heap_fields_from_registers(
+                        type_name,
+                        &frame,
+                        fields,
+                        heap,
+                        budget.as_deref_mut(),
+                    )?;
+                    let value = allocate_heap_value(
+                        HeapValue::Record {
+                            type_name: type_name.clone(),
+                            fields: slots,
+                        },
+                        heap,
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeEnum {
@@ -510,39 +500,27 @@ impl Vm {
                     fields,
                 } => {
                     let owner = enum_variant_owner(enum_name, variant);
-                    let value = if let Some(heap) = heap.as_deref_mut() {
-                        let slots = heap_fields_from_registers(
-                            &owner,
-                            &frame,
-                            fields,
-                            heap,
-                            budget.as_deref_mut(),
-                        )?;
-                        allocate_heap_value(
-                            HeapValue::Enum {
-                                enum_name: enum_name.clone(),
-                                variant: variant.clone(),
-                                fields: slots,
-                            },
-                            heap,
-                            budget.as_deref_mut(),
-                        )?
-                    } else {
-                        let values = ScriptFields::from_pairs(
-                            &owner,
-                            fields
-                                .iter()
-                                .map(|(name, register)| {
-                                    Ok((name.clone(), frame.read(*register)?.clone()))
-                                })
-                                .collect::<VmResult<Vec<_>>>()?,
-                        );
-                        Value::Enum {
+                    let Some(heap) = heap.as_deref_mut() else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "enum heap",
+                        }));
+                    };
+                    let slots = heap_fields_from_registers(
+                        &owner,
+                        &frame,
+                        fields,
+                        heap,
+                        budget.as_deref_mut(),
+                    )?;
+                    let value = allocate_heap_value(
+                        HeapValue::Enum {
                             enum_name: enum_name.clone(),
                             variant: variant.clone(),
-                            fields: values,
-                        }
-                    };
+                            fields: slots,
+                        },
+                        heap,
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::GetRecordField { dst, record, field } => {
@@ -561,7 +539,7 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::SetRecordField { record, field, src } => {
-                    let mut record_value = frame.read(*record)?.clone();
+                    let mut record_value = *frame.read(*record)?;
                     record_fields::set_record_field_value(
                         &mut record_value,
                         field,
@@ -577,7 +555,7 @@ impl Vm {
                     slot,
                     src,
                 } => {
-                    let mut record_value = frame.read(*record)?.clone();
+                    let mut record_value = *frame.read(*record)?;
                     record_fields::set_record_slot_value(
                         &mut record_value,
                         field,
@@ -611,7 +589,7 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::SetIndex { base, index, src } => {
-                    let mut base_value = frame.read(*base)?.clone();
+                    let mut base_value = *frame.read(*base)?;
                     indexing::set_index(
                         &mut base_value,
                         frame.read(*index)?,
@@ -624,15 +602,16 @@ impl Vm {
                 InstructionKind::IterInit { dst, iterable } => {
                     let iterator =
                         iteration::make_iterator(frame.read(*iterable)?, heap.as_deref())?;
-                    let value = if let Some(heap) = heap.as_deref_mut() {
-                        allocate_heap_value(
-                            HeapValue::Iterator(iterator),
-                            heap,
-                            budget.as_deref_mut(),
-                        )?
-                    } else {
-                        Value::Iterator(iterator)
+                    let Some(heap) = heap.as_deref_mut() else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "iterator heap",
+                        }));
                     };
+                    let value = allocate_heap_value(
+                        HeapValue::Iterator(iterator),
+                        heap,
+                        budget.as_deref_mut(),
+                    )?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::IterNext {
@@ -640,13 +619,8 @@ impl Vm {
                     dst,
                     jump_if_done,
                 } => {
-                    let value = frame.read(*iterator)?.clone();
+                    let value = *frame.read(*iterator)?;
                     let next = match value {
-                        Value::Iterator(mut iterator_state) => {
-                            let next = iterator_state.next();
-                            frame.write(*iterator, Value::Iterator(iterator_state))?;
-                            next
-                        }
                         Value::HeapRef(reference) => {
                             let Some(HeapValue::Iterator(iterator_state)) = heap
                                 .as_deref_mut()
@@ -1085,7 +1059,7 @@ impl Vm {
                         frame.write(*dst, return_value)?;
                     }
                 }
-                InstructionKind::Return { src } => return Ok(frame.read(*src)?.clone()),
+                InstructionKind::Return { src } => return Ok(*frame.read(*src)?),
             }
 
             if let Some(heap) = heap.as_deref_mut() {
@@ -1163,7 +1137,7 @@ fn dispatch_call_method(
             store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
         frame.write(call.dst, result)?;
     } else {
-        let mut receiver_value = frame.read(call.receiver)?.clone();
+        let mut receiver_value = *frame.read(call.receiver)?;
         let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
         let result = call_method(
             &mut receiver_value,
@@ -1203,7 +1177,7 @@ fn dispatch_call_method_id(
     frame: &mut CallFrame,
     call: MethodIdCall<'_>,
 ) -> VmResult<()> {
-    let receiver_value = frame.read(call.receiver)?.clone();
+    let receiver_value = *frame.read(call.receiver)?;
     let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
     let result = call_method_id(
         &receiver_value,
@@ -1225,11 +1199,11 @@ fn dispatch_call_method_id(
 
 enum NativeCallArgs {
     Empty,
-    One([Value; 1]),
-    Two([Value; 2]),
-    Three([Value; 3]),
-    Four([Value; 4]),
-    Many(Vec<Value>),
+    One([OwnedValue; 1]),
+    Two([OwnedValue; 2]),
+    Three([OwnedValue; 3]),
+    Four([OwnedValue; 4]),
+    Many(Vec<OwnedValue>),
 }
 
 impl NativeCallArgs {
@@ -1240,31 +1214,31 @@ impl NativeCallArgs {
     ) -> VmResult<Self> {
         match registers {
             [] => Ok(Self::Empty),
-            [first] => Ok(Self::One([materialize_value(frame.read(*first)?, heap)?])),
+            [first] => Ok(Self::One([value_to_owned(frame.read(*first)?, heap)?])),
             [first, second] => Ok(Self::Two([
-                materialize_value(frame.read(*first)?, heap)?,
-                materialize_value(frame.read(*second)?, heap)?,
+                value_to_owned(frame.read(*first)?, heap)?,
+                value_to_owned(frame.read(*second)?, heap)?,
             ])),
             [first, second, third] => Ok(Self::Three([
-                materialize_value(frame.read(*first)?, heap)?,
-                materialize_value(frame.read(*second)?, heap)?,
-                materialize_value(frame.read(*third)?, heap)?,
+                value_to_owned(frame.read(*first)?, heap)?,
+                value_to_owned(frame.read(*second)?, heap)?,
+                value_to_owned(frame.read(*third)?, heap)?,
             ])),
             [first, second, third, fourth] => Ok(Self::Four([
-                materialize_value(frame.read(*first)?, heap)?,
-                materialize_value(frame.read(*second)?, heap)?,
-                materialize_value(frame.read(*third)?, heap)?,
-                materialize_value(frame.read(*fourth)?, heap)?,
+                value_to_owned(frame.read(*first)?, heap)?,
+                value_to_owned(frame.read(*second)?, heap)?,
+                value_to_owned(frame.read(*third)?, heap)?,
+                value_to_owned(frame.read(*fourth)?, heap)?,
             ])),
             _ => registers
                 .iter()
-                .map(|register| materialize_value(frame.read(*register)?, heap))
+                .map(|register| value_to_owned(frame.read(*register)?, heap))
                 .collect::<VmResult<Vec<_>>>()
                 .map(Self::Many),
         }
     }
 
-    fn as_slice(&self) -> &[Value] {
+    fn as_slice(&self) -> &[OwnedValue] {
         match self {
             Self::Empty => &[],
             Self::One(values) => values,
@@ -1289,7 +1263,7 @@ impl ScriptCallArgs {
     fn from_call_arguments(frame: &CallFrame, args: &[CallArgument]) -> VmResult<Self> {
         fn value_from_arg(frame: &CallFrame, arg: &CallArgument) -> VmResult<Value> {
             match arg {
-                CallArgument::Register(register) => frame.read(*register).cloned(),
+                CallArgument::Register(register) => Ok(*frame.read(*register)?),
                 CallArgument::Missing => Ok(Value::Missing),
             }
         }
@@ -1323,25 +1297,25 @@ impl ScriptCallArgs {
     fn from_registers(frame: &CallFrame, registers: &[Register]) -> VmResult<Self> {
         match registers {
             [] => Ok(Self::Empty),
-            [first] => Ok(Self::One([frame.read(*first)?.clone()])),
+            [first] => Ok(Self::One([*frame.read(*first)?])),
             [first, second] => Ok(Self::Two([
-                frame.read(*first)?.clone(),
-                frame.read(*second)?.clone(),
+                *frame.read(*first)?,
+                *frame.read(*second)?,
             ])),
             [first, second, third] => Ok(Self::Three([
-                frame.read(*first)?.clone(),
-                frame.read(*second)?.clone(),
-                frame.read(*third)?.clone(),
+                *frame.read(*first)?,
+                *frame.read(*second)?,
+                *frame.read(*third)?,
             ])),
             [first, second, third, fourth] => Ok(Self::Four([
-                frame.read(*first)?.clone(),
-                frame.read(*second)?.clone(),
-                frame.read(*third)?.clone(),
-                frame.read(*fourth)?.clone(),
+                *frame.read(*first)?,
+                *frame.read(*second)?,
+                *frame.read(*third)?,
+                *frame.read(*fourth)?,
             ])),
             _ => registers
                 .iter()
-                .map(|register| frame.read(*register).cloned())
+                .map(|register| Ok(*frame.read(*register)?))
                 .collect::<VmResult<Vec<_>>>()
                 .map(Self::Many),
         }

@@ -1,8 +1,9 @@
+use crate::heap_values::make_set_value;
 use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::option_result::option_value;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
-use super::{expect_arity, materialize_set_values, push_unique};
+use super::{expect_arity, push_unique, set_values, type_error};
 
 pub(crate) fn map(
     receiver: &Value,
@@ -10,23 +11,7 @@ pub(crate) fn map(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("map", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Set(values) = receiver
-    {
-        let mut mapped = Vec::new();
-        for value in values {
-            let mapped_value = call_callback(
-                &mut runtime,
-                "method map",
-                &args[0],
-                std::slice::from_ref(value),
-                &[],
-            )?;
-            push_unique(&mut mapped, mapped_value, None, "method map")?;
-        }
-        return Ok(Value::Set(mapped));
-    }
-    let values = materialize_set_values(receiver, runtime.heap.as_deref(), "method map")?;
+    let values = set_values(receiver, runtime.heap.as_deref(), "method map")?;
     let mut mapped = Vec::new();
     for value in values {
         let mapped_value = call_callback(
@@ -43,7 +28,7 @@ pub(crate) fn map(
             "method map",
         )?;
     }
-    Ok(Value::Set(mapped))
+    make_result_set(mapped, &mut runtime, "method map")
 }
 
 pub(crate) fn filter(
@@ -52,25 +37,7 @@ pub(crate) fn filter(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("filter", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Set(values) = receiver
-    {
-        let mut filtered = Vec::new();
-        for value in values {
-            let predicate = call_callback(
-                &mut runtime,
-                "method filter",
-                &args[0],
-                std::slice::from_ref(value),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                push_unique(&mut filtered, value.clone(), None, "method filter")?;
-            }
-        }
-        return Ok(Value::Set(filtered));
-    }
-    let values = materialize_set_values(receiver, runtime.heap.as_deref(), "method filter")?;
+    let values = set_values(receiver, runtime.heap.as_deref(), "method filter")?;
     let mut filtered = Vec::new();
     for value in values {
         let predicate = call_callback(
@@ -89,7 +56,7 @@ pub(crate) fn filter(
             )?;
         }
     }
-    Ok(Value::Set(filtered))
+    make_result_set(filtered, &mut runtime, "method filter")
 }
 
 pub(crate) fn find(
@@ -98,24 +65,7 @@ pub(crate) fn find(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("find", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Set(values) = receiver
-    {
-        for value in values {
-            let predicate = call_callback(
-                &mut runtime,
-                "method find",
-                &args[0],
-                std::slice::from_ref(value),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                return Ok(option_value(Some(value.clone())));
-            }
-        }
-        return Ok(option_value(None));
-    }
-    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method find")? {
+    for value in set_values(receiver, runtime.heap.as_deref(), "method find")? {
         let predicate = call_callback(
             &mut runtime,
             "method find",
@@ -124,10 +74,10 @@ pub(crate) fn find(
             &[],
         )?;
         if is_truthy(&predicate) {
-            return Ok(option_value(Some(value)));
+            return option_result(Some(value), &mut runtime, "method find");
         }
     }
-    Ok(option_value(None))
+    option_result(None, &mut runtime, "method find")
 }
 
 pub(crate) fn any(
@@ -136,24 +86,7 @@ pub(crate) fn any(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<bool> {
     expect_arity("any", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Set(values) = receiver
-    {
-        for value in values {
-            let predicate = call_callback(
-                &mut runtime,
-                "method any",
-                &args[0],
-                std::slice::from_ref(value),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                return Ok(true);
-            }
-        }
-        return Ok(false);
-    }
-    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method any")? {
+    for value in set_values(receiver, runtime.heap.as_deref(), "method any")? {
         let predicate = call_callback(
             &mut runtime,
             "method any",
@@ -174,24 +107,7 @@ pub(crate) fn all(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<bool> {
     expect_arity("all", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Set(values) = receiver
-    {
-        for value in values {
-            let predicate = call_callback(
-                &mut runtime,
-                "method all",
-                &args[0],
-                std::slice::from_ref(value),
-                &[],
-            )?;
-            if !is_truthy(&predicate) {
-                return Ok(false);
-            }
-        }
-        return Ok(true);
-    }
-    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method all")? {
+    for value in set_values(receiver, runtime.heap.as_deref(), "method all")? {
         let predicate = call_callback(
             &mut runtime,
             "method all",
@@ -212,30 +128,8 @@ pub(crate) fn count(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<i64> {
     expect_arity("count", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Set(values) = receiver
-    {
-        let mut count = 0_i64;
-        for value in values {
-            let predicate = call_callback(
-                &mut runtime,
-                "method count",
-                &args[0],
-                std::slice::from_ref(value),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                count = count.checked_add(1).ok_or_else(|| {
-                    VmError::new(VmErrorKind::TypeMismatch {
-                        operation: "method count",
-                    })
-                })?;
-            }
-        }
-        return Ok(count);
-    }
     let mut count = 0_i64;
-    for value in materialize_set_values(receiver, runtime.heap.as_deref(), "method count")? {
+    for value in set_values(receiver, runtime.heap.as_deref(), "method count")? {
         let predicate = call_callback(
             &mut runtime,
             "method count",
@@ -256,4 +150,26 @@ pub(crate) fn count(
 
 fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Bool(false) | Value::Null)
+}
+
+fn make_result_set(
+    values: Vec<Value>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    make_set_value(values, heap, runtime.budget.as_deref_mut())
+}
+
+fn option_result(
+    payload: Option<Value>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    option_value(payload, heap, runtime.budget.as_deref_mut())
 }

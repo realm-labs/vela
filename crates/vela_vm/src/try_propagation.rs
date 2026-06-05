@@ -18,14 +18,14 @@ pub(crate) fn try_propagate_value(
         match variant {
             "Some" => get_enum_field_value(value, tuple_variant_field_name(0).as_str(), heap)
                 .map(TryPropagation::Continue),
-            "None" => Ok(TryPropagation::Return(value.clone())),
+            "None" => Ok(TryPropagation::Return(*value)),
             _ => type_error(),
         }
     } else if is_builtin_enum(enum_name, "Result") {
         match variant {
             "Ok" => get_enum_field_value(value, tuple_variant_field_name(0).as_str(), heap)
                 .map(TryPropagation::Continue),
-            "Err" => Ok(TryPropagation::Return(value.clone())),
+            "Err" => Ok(TryPropagation::Return(*value)),
             _ => type_error(),
         }
     } else {
@@ -38,9 +38,6 @@ fn enum_tag<'a>(
     heap: Option<&'a HeapExecution<'_>>,
 ) -> Option<(&'a str, &'a str)> {
     match value {
-        Value::Enum {
-            enum_name, variant, ..
-        } => Some((enum_name.as_str(), variant.as_str())),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::Enum {
                 enum_name, variant, ..

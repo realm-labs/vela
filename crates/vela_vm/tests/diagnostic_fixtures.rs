@@ -12,6 +12,7 @@ use vela_reflect::access::FieldAccess;
 use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
 use vela_vm::error::VmError;
+use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{HostExecution, Vm};
 
@@ -255,7 +256,12 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     };
 
     let error = vm
-        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
         .expect_err("fixture should fail during reflection lookup");
 
     let rendered = render_diagnostic(

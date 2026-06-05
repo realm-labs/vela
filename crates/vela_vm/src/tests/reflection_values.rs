@@ -1,4 +1,6 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
+use crate::value::Value as RuntimeValue;
 
 #[test]
 fn compiled_source_reflects_script_record_implements() {
@@ -27,7 +29,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(8))
     );
 }
@@ -63,7 +65,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(1))
     );
     assert!(tx.patches().is_empty());
@@ -91,7 +93,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::InvalidTarget)
     ));
     assert!(tx.patches().is_empty());
@@ -121,7 +123,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownField {
             type_name: "Player".to_owned(),
             field: "leve".to_owned(),
@@ -168,7 +170,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::FieldPermissionDenied {
             type_name: "Player".to_owned(),
             field: "level".to_owned(),
@@ -212,7 +214,7 @@ fn main(player) {
         vm.run_program_runtime_with_host_heap_and_budget(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[RuntimeValue::HostRef(host_ref)],
             &mut host,
             &mut heap_execution,
             &mut budget,
@@ -220,7 +222,7 @@ fn main(player) {
     }
     .expect("run heap reflection fields");
 
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, RuntimeValue::Bool(true));
 }
 
 #[test]
@@ -251,7 +253,7 @@ fn main() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_runtime_with_host_managed_heap_and_budget(
+        vm.run_program_with_host_managed_heap_and_budget(
             &program,
             "main",
             &[],
@@ -305,7 +307,7 @@ pub fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "game::main", &[], &mut host),
+        vm.run_program_with_host(&program, "game::main", &[], &mut host),
         Ok(Value::Int(8))
     );
 }
@@ -335,7 +337,7 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
     };
 
     assert_eq!(result, Ok(Value::Int(1)));

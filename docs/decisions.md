@@ -71,25 +71,27 @@ instructions, memory, call depth, and patches. Script heap values use stable,
 generation-checked non-moving handles; host refs and path proxies remain
 external handles and are not traced as Rust-owned state.
 
-`OwnedValue` is the Rust boundary/materialized value name. `Value` is being
-narrowed toward a VM runtime slot, and heap containers store runtime `Value`
-entries directly during that migration. `HeapSlot` is not a separate public
-runtime concept; any remaining use is an internal transition alias. Re-export
-surfaces should stay narrow: embedding convenience modules may expose
-`OwnedValue` when it is part of normal host ergonomics, but internal runtime
-slot types should remain under their owning VM modules.
+`OwnedValue` is the Rust boundary/materialized value name. `Value` is the VM
+runtime slot and is `Copy`, containing only scalars or handles. `HeapValue`
+stores script heap objects, and heap containers store runtime `Value` entries
+directly. `HeapSlot` is not a separate public runtime concept; any remaining
+use is an internal alias. Re-export surfaces should stay narrow: embedding
+convenience modules may expose `OwnedValue` when it is part of normal host
+ergonomics, but internal runtime slot types should remain under their owning VM
+modules.
 
 Engine embedding APIs, including `Runtime::call`, `args!`, prelude exports,
 registered native functions, typed native conversion traits, and callable native
-methods, use `OwnedValue` at the public Rust boundary. VM native tables and
-execution frames still use runtime `Value`; the engine installs explicit
-conversion bridges when registering native functions into a VM. Public VM
-program entrypoints use `OwnedValue`; low-level runtime-slot program entrypoints
-are explicitly named `run_program_runtime*` and are reserved for VM internals,
-low-level tests, and benchmark harnesses. Public program entrypoints convert
-`OwnedValue` through a temporary script heap and materialize the return before
-dropping that heap, so they do not depend on `Value` retaining owned aggregate
-variants as a boundary representation.
+methods, use `OwnedValue` at the public Rust boundary. VM execution frames,
+closures, iterators, heap containers, and internal method dispatch use runtime
+`Value`; the engine installs explicit conversion bridges when registering
+native functions into a VM. Public VM program entrypoints use `OwnedValue`;
+low-level runtime-slot program entrypoints are explicitly named
+`run_program_runtime*` and are reserved for VM internals, low-level tests, and
+benchmark harnesses. Public program entrypoints convert `OwnedValue` through a
+temporary script heap and materialize the return before dropping that heap, so
+they do not depend on `Value` retaining owned aggregate variants as a boundary
+representation.
 
 The compiler may replace a multi-instruction source-level lowering with one
 semantics-equivalent bytecode instruction, such as `Truthy` for dynamic

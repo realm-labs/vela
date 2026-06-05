@@ -1,4 +1,6 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
+use crate::value::Value as RuntimeValue;
 
 #[test]
 fn compiled_source_host_method_call_records_patch_tx() {
@@ -24,12 +26,7 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_runtime_with_host(
-            &program,
-            "main",
-            &[Value::HostRef(host_ref)],
-            &mut host,
-        )
+        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
     };
 
     assert_eq!(result, Ok(Value::Int(1)));
@@ -76,12 +73,7 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_runtime_with_host(
-            &program,
-            "main",
-            &[Value::HostRef(host_ref)],
-            &mut host,
-        )
+        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
     };
 
     assert_eq!(result, Ok(Value::Int(1)));
@@ -141,12 +133,7 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_runtime_with_host(
-            &program,
-            "main",
-            &[Value::HostRef(host_ref)],
-            &mut host,
-        )
+        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
     };
 
     assert_eq!(result, Ok(Value::Int(1)));
@@ -199,12 +186,7 @@ fn call_host_method_records_patch_and_applies_later() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_runtime_with_host(
-            &program,
-            "main",
-            &[Value::HostRef(host_ref)],
-            &mut host,
-        )
+        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
     };
 
     assert_eq!(result, Ok(Value::Int(12)));
@@ -265,14 +247,14 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
         Vm::new().run_program_runtime_with_host_heap_and_budget(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[RuntimeValue::HostRef(host_ref)],
             &mut host,
             &mut heap_execution,
             &mut budget,
         )
     };
 
-    assert_eq!(result, Ok(Value::Null));
+    assert_eq!(result, Ok(RuntimeValue::Null));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,
@@ -306,12 +288,7 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_runtime_with_host(
-            &program,
-            "main",
-            &[Value::HostRef(host_ref)],
-            &mut host,
-        )
+        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
     };
 
     assert_eq!(result, Ok(Value::String("accepted".into())));

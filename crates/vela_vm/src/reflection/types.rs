@@ -3,6 +3,7 @@ use std::sync::Arc;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
+use crate::owned_value::OwnedValue as Value;
 use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
 use super::common::{check_host_ref_inspection, check_reflect_policy};
@@ -69,7 +70,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::has_type", args, 1)?;
         let type_name = expect_string(&args[0], "reflect::has_type")?;
-        Ok(crate::Value::Bool(reflect::types::has_type(
+        Ok(Value::Bool(reflect::types::has_type(
             &has_type_registry,
             type_name,
         )))
@@ -198,7 +199,7 @@ fn register_attribute_metadata(
         let target = value_to_reflect(&args[0], "reflect::has_attr")?;
         check_host_ref_inspection(&has_attr_policy, &target)?;
         let name = expect_string(&args[1], "reflect::has_attr")?;
-        Ok(crate::Value::Bool(reflect::members::has_attr(
+        Ok(Value::Bool(reflect::members::has_attr(
             &has_attr_registry,
             &target,
             name,

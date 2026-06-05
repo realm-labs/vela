@@ -1,7 +1,10 @@
-use crate::runtime_view::MapView;
+use crate::heap::HeapValue;
 use crate::script_object::ScriptFields;
 use crate::string_methods;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::{
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
+    value_from_heap_slot,
+};
 
 mod higher_order;
 mod introspection;
@@ -16,28 +19,62 @@ pub(crate) use merge::merge;
 pub(crate) use mutation::{clear, extend, remove, set};
 
 pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
-    MapView::from_value(receiver, heap, "method map").is_ok()
+    match receiver {
+        Value::HeapRef(reference) => {
+            matches!(
+                heap.and_then(|heap| heap.heap.get(*reference)),
+                Some(HeapValue::Map(_))
+            )
+        }
+        _ => false,
+    }
 }
 
-pub(super) fn materialize_map_entries(
+pub(super) fn map_entries(
     receiver: &Value,
     heap: Option<&crate::HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<(String, Value)>> {
-    MapView::from_value(receiver, heap, operation).map(|view| view.materialize_entries())
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error(operation);
+            };
+            Ok(values
+                .iter()
+                .map(|(key, value)| (key.clone(), value_from_heap_slot(value)))
+                .collect())
+        }
+        _ => type_error(operation),
+    }
 }
 
-pub(super) fn map_entry(key: &str, value: Value) -> Value {
-    Value::Record {
-        type_name: "MapEntry".to_owned(),
-        fields: ScriptFields::from_pairs(
-            "MapEntry",
-            [
-                ("key".to_owned(), Value::String(key.to_owned())),
-                ("value".to_owned(), value),
-            ],
-        ),
-    }
+pub(super) fn map_entry(
+    key: &str,
+    value: Value,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let Some(heap_ref) = heap.as_deref_mut() else {
+        return type_error("map entry");
+    };
+    let key = allocate_heap_value(
+        HeapValue::String(key.to_owned()),
+        heap_ref,
+        budget.as_deref_mut(),
+    )?;
+    allocate_heap_value(
+        HeapValue::Record {
+            type_name: "MapEntry".to_owned(),
+            fields: ScriptFields::from_pairs(
+                "MapEntry",
+                [("key".to_owned(), key), ("value".to_owned(), value)],
+            ),
+        },
+        heap_ref,
+        budget.as_deref_mut(),
+    )
 }
 
 pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
@@ -68,7 +105,8 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, Value, Vm};
+    use crate::owned_value::OwnedValue as Value;
+    use crate::{ExecutionBudget, Vm};
 
     #[test]
     fn runs_compiled_map_higher_order_methods() {

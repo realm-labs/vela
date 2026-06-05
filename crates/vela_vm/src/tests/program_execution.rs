@@ -1,4 +1,6 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
+use crate::value::Value as RuntimeValue;
 
 #[test]
 fn managed_heap_execution_runs_for_in_source() {
@@ -30,18 +32,13 @@ fn last_name() {
 
     assert_eq!(
         Vm::new()
-            .run_program_runtime_with_managed_heap_and_budget(&program, "sum", &[], &mut budget)
+            .run_program_with_managed_heap_and_budget(&program, "sum", &[], &mut budget)
             .expect("run heap for-in sum"),
         Value::Int(16)
     );
     assert_eq!(
         Vm::new()
-            .run_program_runtime_with_managed_heap_and_budget(
-                &program,
-                "last_name",
-                &[],
-                &mut budget
-            )
+            .run_program_with_managed_heap_and_budget(&program, "last_name", &[], &mut budget)
             .expect("run heap for-in string"),
         Value::String("xp".into())
     );
@@ -66,15 +63,15 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
     vm.register_native("game::names", |_| {
-        Ok(Value::Iterator(IteratorState::from_values(vec![
+        Ok(Value::Array(vec![
             Value::String("gold".to_owned()),
             Value::String("xp".to_owned()),
-        ])))
+        ]))
     });
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        vm.run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+        vm.run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::String("GOLD,XP".to_owned()))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -98,12 +95,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "main",
-            &[],
-            &mut budget
-        ),
+        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::Int(9))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -149,7 +141,7 @@ fn main() {
     vm.register_standard_natives();
 
     assert_eq!(
-        vm.run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+        vm.run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::Int(4))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -179,12 +171,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "main",
-            &[],
-            &mut budget
-        ),
+        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::Int(14))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -213,12 +200,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "main",
-            &[],
-            &mut budget
-        ),
+        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::Int(18))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -282,7 +264,7 @@ fn heap_execution_materializes_native_args_and_stores_result() {
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
         .expect("run heap native call");
 
-    let Value::HeapRef(result_ref) = result else {
+    let RuntimeValue::HeapRef(result_ref) = result else {
         panic!("expected heap-backed native result");
     };
     assert_eq!(
@@ -309,7 +291,7 @@ fn main() {
     .expect("compile program source");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(30))
     );
 }
@@ -331,7 +313,7 @@ fn main() {
     .expect("compile named args and parameter defaults");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(16))
     );
 }
@@ -370,7 +352,7 @@ fn main() {
     .expect("compile captured lambda");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(15))
     );
 }
@@ -397,7 +379,7 @@ fn main() {
     .expect("compile nested captured lambda");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(21))
     );
 }
@@ -451,7 +433,7 @@ fn missing() {
     .expect("compile option propagation");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "present", &[]),
+        Vm::new().run_program(&program, "present", &[]),
         Ok(Value::Enum {
             enum_name: "Option".into(),
             variant: "Some".into(),
@@ -459,7 +441,7 @@ fn missing() {
         })
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "missing", &[]),
+        Vm::new().run_program(&program, "missing", &[]),
         Ok(Value::Enum {
             enum_name: "Option".into(),
             variant: "None".into(),
@@ -500,12 +482,7 @@ fn err_case() {
     let mut budget = ExecutionBudget::new(10_000, 4096, 64, 16);
 
     assert_eq!(
-        Vm::new().run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "ok_case",
-            &[],
-            &mut budget
-        ),
+        Vm::new().run_program_with_managed_heap_and_budget(&program, "ok_case", &[], &mut budget),
         Ok(Value::Enum {
             enum_name: "Result".into(),
             variant: "Ok".into(),
@@ -515,12 +492,7 @@ fn err_case() {
 
     let mut budget = ExecutionBudget::new(10_000, 4096, 64, 16);
     assert_eq!(
-        Vm::new().run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "err_case",
-            &[],
-            &mut budget
-        ),
+        Vm::new().run_program_with_managed_heap_and_budget(&program, "err_case", &[], &mut budget),
         Ok(Value::Enum {
             enum_name: "Result".into(),
             variant: "Err".into(),
@@ -550,12 +522,7 @@ fn main() {
     let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
 
     assert_eq!(
-        Vm::new().run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "main",
-            &[],
-            &mut budget
-        ),
+        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::Bool(true))
     );
 }

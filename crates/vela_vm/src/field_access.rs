@@ -7,12 +7,6 @@ pub(crate) fn get_record_field_value(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     match value {
-        Value::Record { type_name, fields } => fields.get(field).cloned().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownRecordField {
-                type_name: type_name.clone(),
-                field: field.to_owned(),
-            })
-        }),
         Value::HeapRef(reference) => {
             let Some(HeapValue::Record { type_name, fields }) =
                 heap.and_then(|heap| heap.heap.get(*reference))
@@ -37,14 +31,6 @@ pub(crate) fn get_record_slot_value(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     match value {
-        Value::Record { type_name, fields } => {
-            fields.get_slot(slot, field).cloned().ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownRecordField {
-                    type_name: type_name.clone(),
-                    field: field.to_owned(),
-                })
-            })
-        }
         Value::HeapRef(reference) => {
             let Some(HeapValue::Record { type_name, fields }) =
                 heap.and_then(|heap| heap.heap.get(*reference))
@@ -71,17 +57,6 @@ pub(crate) fn get_enum_field_value(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     match value {
-        Value::Enum {
-            enum_name,
-            variant,
-            fields,
-        } => fields.get(field).cloned().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownEnumField {
-                enum_name: enum_name.clone(),
-                variant: variant.clone(),
-                field: field.to_owned(),
-            })
-        }),
         Value::HeapRef(reference) => {
             let Some(HeapValue::Enum {
                 enum_name,
@@ -110,17 +85,6 @@ pub(crate) fn get_enum_slot_value(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<Value> {
     match value {
-        Value::Enum {
-            enum_name,
-            variant,
-            fields,
-        } => fields.get_slot(slot, field).cloned().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownEnumField {
-                enum_name: enum_name.clone(),
-                variant: variant.clone(),
-                field: field.to_owned(),
-            })
-        }),
         Value::HeapRef(reference) => {
             let Some(HeapValue::Enum {
                 enum_name,
@@ -152,11 +116,6 @@ pub(crate) fn enum_tag_equal(
     heap: Option<&HeapExecution<'_>>,
 ) -> bool {
     match value {
-        Value::Enum {
-            enum_name: value_enum,
-            variant: value_variant,
-            ..
-        } => value_enum == enum_name && value_variant == variant,
         Value::HeapRef(reference) => matches!(
             heap.and_then(|heap| heap.heap.get(*reference)),
             Some(HeapValue::Enum {

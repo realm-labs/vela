@@ -5,7 +5,8 @@ use crate::method_runtime::MethodRuntime;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 use super::{
-    call_unary_callback, expect_arity, materialize_array_values, string_value, type_error,
+    array_values, call_unary_callback, expect_arity, make_array_value, make_map_value,
+    string_value, type_error,
 };
 
 pub(crate) fn sum(
@@ -22,7 +23,7 @@ pub(crate) fn sum(
     }
     let mut total = NumericTotal::default();
     if let Some(callback) = args.first() {
-        let values = materialize_array_values(receiver, runtime.heap.as_deref(), "method sum")?;
+        let values = array_values(receiver, runtime.heap.as_deref(), "method sum")?;
         for value in values {
             let mapped = call_unary_callback(&mut runtime, "method sum", callback, value, &[])?;
             total.add_value(&mapped, "method sum")?;
@@ -39,12 +40,15 @@ pub(crate) fn group_by(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("group_by", args, 1)?;
-    let values = materialize_array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
-    let mut groups = BTreeMap::<String, Value>::new();
+    let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;
+    let mut groups = BTreeMap::<String, Vec<Value>>::new();
     for value in values {
         let protected;
         let protected_values = if runtime.heap.is_some() {
-            protected = groups.values().cloned().collect::<Vec<_>>();
+            protected = groups
+                .values()
+                .flat_map(|values| values.iter().copied())
+                .collect::<Vec<_>>();
             protected.as_slice()
         } else {
             &[]
@@ -53,23 +57,35 @@ pub(crate) fn group_by(
             &mut runtime,
             "method group_by",
             &args[0],
-            value.clone(),
+            value,
             protected_values,
         )?;
         let key = group_key(&key_value, runtime.heap.as_deref())?;
         match groups.entry(key) {
             std::collections::btree_map::Entry::Vacant(entry) => {
-                entry.insert(Value::Array(vec![value]));
+                entry.insert(vec![value]);
             }
             std::collections::btree_map::Entry::Occupied(mut entry) => {
-                let Value::Array(values) = entry.get_mut() else {
-                    unreachable!("group_by only stores array group values");
-                };
-                values.push(value);
+                entry.get_mut().push(value);
             }
         }
     }
-    Ok(Value::Map(groups))
+    let mut heap_groups = BTreeMap::new();
+    for (key, values) in groups {
+        let value = make_array_value(
+            values,
+            &mut runtime.heap,
+            &mut runtime.budget,
+            "method group_by",
+        )?;
+        heap_groups.insert(key, value);
+    }
+    make_map_value(
+        heap_groups,
+        &mut runtime.heap,
+        &mut runtime.budget,
+        "method group_by",
+    )
 }
 
 enum NumericTotal {
@@ -91,12 +107,6 @@ impl NumericTotal {
         operation: &'static str,
     ) -> VmResult<()> {
         match receiver {
-            Value::Array(values) => {
-                for value in values {
-                    self.add_value(value, operation)?;
-                }
-                Ok(())
-            }
             Value::HeapRef(reference) => {
                 let Some(HeapValue::Array(values)) =
                     heap.and_then(|heap| heap.heap.get(*reference))

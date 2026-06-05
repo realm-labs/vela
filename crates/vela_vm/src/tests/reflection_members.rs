@@ -1,4 +1,5 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
 
 #[test]
 fn compiled_source_reflect_type_reports_unknown_type_candidates() {
@@ -21,7 +22,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTypeName {
             type_name: "Plyer".to_owned(),
             candidates: vec!["Player".to_owned()],
@@ -51,7 +52,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
             trait_name: "Damagable".to_owned(),
             candidates: vec!["Damageable".to_owned()],
@@ -98,7 +99,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(22))
     );
 }
@@ -125,7 +126,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::FieldNotReflectReadable {
             type_name: "QuestProgress::Active".to_owned(),
             field: "secret".to_owned(),
@@ -170,7 +171,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(1))
     );
     assert!(tx.patches().is_empty());
@@ -217,7 +218,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(1))
     );
     assert!(tx.patches().is_empty());
@@ -263,7 +264,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Ok(Value::Int(11))
     );
 }
@@ -290,7 +291,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
             type_name: "Player".to_owned(),
             method: "grant_xp".to_owned(),
@@ -323,7 +324,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
             type_name: "QuestProgress".to_owned(),
             variant: "Actve".to_owned(),
@@ -359,7 +360,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownVariant {
             type_name: "QuestProgress".to_owned(),
             variant: "Actve".to_owned(),
@@ -395,7 +396,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
             trait_name: "Damagable".to_owned(),
             candidates: vec!["Damageable".to_owned()],
@@ -431,7 +432,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
+        vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(100))
     );
     assert!(tx.patches().is_empty());

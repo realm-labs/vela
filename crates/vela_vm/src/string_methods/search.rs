@@ -1,7 +1,7 @@
 use crate::option_result::option_value;
-use crate::{HeapExecution, Value, VmResult};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{expect_arity, index_value, string_value};
+use super::{expect_arity, index_value, make_string, string_value};
 
 pub(crate) fn contains(
     receiver: &Value,
@@ -51,34 +51,40 @@ pub(crate) fn ends_with(
 pub(crate) fn find(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("find", args, 1)?;
-    let value = string_value(receiver, heap, "method find")?;
-    let needle = string_value(&args[0], heap, "method find")?;
-    let Some(byte_index) = value.find(needle) else {
-        return Ok(option_value(None));
+    let value = string_value(receiver, heap.as_deref(), "method find")?;
+    let needle = string_value(&args[0], heap.as_deref(), "method find")?;
+    let payload = value.find(needle).map(|byte_index| {
+        let char_index = value[..byte_index].chars().count();
+        Value::Int(i64::try_from(char_index).unwrap_or(i64::MAX))
+    });
+    let Some(heap) = heap.as_deref_mut() else {
+        return super::type_error("method find");
     };
-    let char_index = value[..byte_index].chars().count();
-    Ok(option_value(Some(Value::Int(
-        i64::try_from(char_index).unwrap_or(i64::MAX),
-    ))))
+    option_value(payload, heap, budget.as_deref_mut())
 }
 
 pub(crate) fn char_at(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("char_at", args, 1)?;
-    let value = string_value(receiver, heap, "method char_at")?;
+    let value = string_value(receiver, heap.as_deref(), "method char_at")?;
     let index = index_value(&args[0], "method char_at")?;
-    Ok(option_value(
-        value
-            .chars()
-            .nth(index)
-            .map(|ch| Value::String(ch.to_string())),
-    ))
+    let payload = value
+        .chars()
+        .nth(index)
+        .map(|ch| make_string(ch.to_string(), heap, budget, "method char_at"))
+        .transpose()?;
+    let Some(heap) = heap.as_deref_mut() else {
+        return super::type_error("method char_at");
+    };
+    option_value(payload, heap, budget.as_deref_mut())
 }
 
 fn predicate(

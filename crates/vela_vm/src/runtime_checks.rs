@@ -2,6 +2,7 @@ use vela_bytecode::CodeObject;
 use vela_host::path::HostRef;
 
 use crate::heap::HeapValue;
+use crate::owned_value::OwnedValue;
 use crate::{ClosureValue, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> {
@@ -17,7 +18,6 @@ pub(crate) fn expect_closure(
     operation: &'static str,
 ) -> VmResult<ClosureValue> {
     match value {
-        Value::Closure(closure) => Ok(closure.clone()),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::Closure(closure)) => Ok(closure.clone()),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
@@ -26,26 +26,32 @@ pub(crate) fn expect_closure(
     }
 }
 
-pub(crate) fn expect_string<'a>(value: &'a Value, operation: &'static str) -> VmResult<&'a str> {
-    match value {
-        Value::String(value) => Ok(value),
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::Array(_)
-        | Value::Set(_)
-        | Value::Map(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Range(_)
-        | Value::Closure(_)
-        | Value::HeapRef(_)
-        | Value::Iterator(_)
-        | Value::HostRef(_)
-        | Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+pub(crate) trait StringArgument {
+    fn as_string_arg(&self) -> Option<&str>;
+}
+
+impl StringArgument for Value {
+    fn as_string_arg(&self) -> Option<&str> {
+        None
     }
+}
+
+impl StringArgument for OwnedValue {
+    fn as_string_arg(&self) -> Option<&str> {
+        match self {
+            OwnedValue::String(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
+pub(crate) fn expect_string<'a, T: StringArgument + ?Sized>(
+    value: &'a T,
+    operation: &'static str,
+) -> VmResult<&'a str> {
+    value
+        .as_string_arg()
+        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
 pub(crate) fn expect_int(value: &Value, operation: &'static str) -> VmResult<i64> {
@@ -55,7 +61,7 @@ pub(crate) fn expect_int(value: &Value, operation: &'static str) -> VmResult<i64
     }
 }
 
-pub(crate) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
+pub(crate) fn expect_arity<T>(name: &str, args: &[T], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         Ok(())
     } else {

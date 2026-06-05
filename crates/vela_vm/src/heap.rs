@@ -601,7 +601,7 @@ mod tests {
     fn path_proxies_are_external_and_do_not_trace_rust_owned_state() {
         let mut heap = ScriptHeap::new();
         let proxy = PathProxy::new(HostPath::new(host_ref()).field(FieldId::new(2)));
-        let root = heap.allocate(HeapValue::Array(vec![Value::PathProxy(proxy)]));
+        let root = heap.allocate(HeapValue::PathProxy(proxy));
         let unreachable = heap.allocate(HeapValue::String("unused".into()));
 
         let stats = heap.collect_full(&[root]);

@@ -1,26 +1,29 @@
-use crate::runtime_view::ArrayView;
+use crate::heap::HeapValue;
 use crate::{
-    HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot, values_equal,
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
+    values_equal,
 };
 
-use super::{expect_arity, option_value};
+use super::{expect_arity, option_value, type_error};
 
 pub(crate) fn first(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("first", args, 0)?;
-    first_value(receiver, heap)
+    first_value(receiver, heap, budget)
 }
 
 pub(crate) fn last(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("last", args, 0)?;
-    last_value(receiver, heap)
+    last_value(receiver, heap, budget)
 }
 
 pub(crate) fn contains(
@@ -35,26 +38,57 @@ pub(crate) fn contains(
 pub(crate) fn index_of(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("index_of", args, 1)?;
-    array_index_of(receiver, &args[0], heap)
+    array_index_of(receiver, &args[0], heap, budget)
 }
 
-fn first_value(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
-    let values = ArrayView::from_value(receiver, heap, "method first")?;
-    Ok(values.first_owned().map_or_else(
-        || option_value("None", None),
-        |value| option_value("Some", Some(value)),
-    ))
+fn first_value(
+    receiver: &Value,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Array(values)) =
+                heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method first");
+            };
+            let payload = values.first().map(value_from_heap_slot);
+            if payload.is_some() {
+                option_value("Some", payload, heap, budget)
+            } else {
+                option_value("None", None, heap, budget)
+            }
+        }
+        _ => type_error("method first"),
+    }
 }
 
-fn last_value(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<Value> {
-    let values = ArrayView::from_value(receiver, heap, "method last")?;
-    Ok(values.last_owned().map_or_else(
-        || option_value("None", None),
-        |value| option_value("Some", Some(value)),
-    ))
+fn last_value(
+    receiver: &Value,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Array(values)) =
+                heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method last");
+            };
+            let payload = values.last().map(value_from_heap_slot);
+            if payload.is_some() {
+                option_value("Some", payload, heap, budget)
+            } else {
+                option_value("None", None, heap, budget)
+            }
+        }
+        _ => type_error("method last"),
+    }
 }
 
 fn array_contains(
@@ -62,54 +96,56 @@ fn array_contains(
     needle: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
-    match ArrayView::from_value(receiver, heap, "method contains")? {
-        ArrayView::Values(values) => {
-            for value in values {
-                if values_equal(value, needle, heap)? {
-                    return Ok(true);
-                }
-            }
-        }
-        ArrayView::Slots(values, _) => {
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Array(values)) = heap.and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method contains");
+            };
             for value in values {
                 if values_equal(&value_from_heap_slot(value), needle, heap)? {
                     return Ok(true);
                 }
             }
+            Ok(false)
         }
+        _ => type_error("method contains"),
     }
-    Ok(false)
 }
 
 fn array_index_of(
     receiver: &Value,
     needle: &Value,
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    match ArrayView::from_value(receiver, heap, "method index_of")? {
-        ArrayView::Values(values) => {
+    match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Array(values)) =
+                heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method index_of");
+            };
             for (index, value) in values.iter().enumerate() {
-                if values_equal(value, needle, heap)? {
-                    return index_option(index);
+                if values_equal(&value_from_heap_slot(value), needle, heap.as_deref())? {
+                    return index_option(index, heap, budget);
                 }
             }
+            option_value("None", None, heap, budget)
         }
-        ArrayView::Slots(values, _) => {
-            for (index, value) in values.iter().enumerate() {
-                if values_equal(&value_from_heap_slot(value), needle, heap)? {
-                    return index_option(index);
-                }
-            }
-        }
+        _ => type_error("method index_of"),
     }
-    Ok(option_value("None", None))
 }
 
-fn index_option(index: usize) -> VmResult<Value> {
+fn index_option(
+    index: usize,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
     let index = i64::try_from(index).map_err(|_| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "method index_of",
         })
     })?;
-    Ok(option_value("Some", Some(Value::Int(index))))
+    option_value("Some", Some(Value::Int(index)), heap, budget)
 }

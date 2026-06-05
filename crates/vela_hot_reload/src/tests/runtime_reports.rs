@@ -24,7 +24,7 @@ fn new_calls_enter_new_code_after_update() {
     runtime.apply_hot_update(update).expect("apply update");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(30))
     );
 }
@@ -44,7 +44,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert_eq!(runtime.stage_hot_update(update), None);
     assert!(runtime.has_pending_update());
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(20))
     );
 
@@ -56,7 +56,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert_eq!(report.changed_functions, ["main"]);
     assert!(!runtime.has_pending_update());
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(30))
     );
 }
@@ -96,7 +96,7 @@ fn main() {
     assert!(!runtime.has_pending_update());
     assert_eq!(report.errors[0].code, "reload.function.new_denied");
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(20))
     );
 }
@@ -130,7 +130,7 @@ fn main() {
     assert!(report.errors.is_empty());
     let version = report.version().expect("accepted report version");
     assert_eq!(
-        Vm::new().run_program_runtime(&version.to_program(), "main", &[]),
+        Vm::new().run_program(&version.to_program(), "main", &[]),
         Ok(Value::Int(5))
     );
 }
@@ -264,7 +264,7 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
         .expect("main module should be indexed");
     assert!(metadata.module_source_hash(module).is_some());
     assert_eq!(
-        Vm::new().run_program_runtime(&current.to_program(), "game::main::main", &[]),
+        Vm::new().run_program(&current.to_program(), "game::main::main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -346,11 +346,11 @@ fn old_version_lifetime_preserves_old_code() {
     let new = runtime.apply_hot_update(update).expect("apply update");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&old.to_program(), "main", &[]),
+        Vm::new().run_program(&old.to_program(), "main", &[]),
         Ok(Value::Int(20))
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&new.to_program(), "main", &[]),
+        Vm::new().run_program(&new.to_program(), "main", &[]),
         Ok(Value::Int(30))
     );
 }
@@ -569,7 +569,7 @@ fn main() {
         "new function `helper` is denied by reload policy"
     );
     assert_eq!(
-        Vm::new().run_program_runtime(&runtime.current().to_program(), "main", &[]),
+        Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(Value::Int(1))
     );
 }

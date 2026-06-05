@@ -1,62 +1,88 @@
-use crate::runtime_view::MapView;
-use crate::{HeapExecution, Value, VmResult, value_from_heap_slot};
+use crate::heap::HeapValue;
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot};
 
-use super::{expect_no_args, map_entry};
+use super::{expect_no_args, map_entry, type_error};
+use crate::array_methods::{make_array_value, make_string_value};
 
 pub(crate) fn keys(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_no_args("keys", args)?;
-    match MapView::from_value(receiver, heap, "method keys")? {
-        MapView::Values(values) => Ok(Value::Array(
-            values
-                .keys()
-                .map(|key| Value::String(key.clone()))
-                .collect(),
-        )),
-        MapView::Slots(values, _) => Ok(Value::Array(
-            values
-                .keys()
-                .map(|key| Value::String(key.clone()))
-                .collect(),
-        )),
+    match receiver {
+        Value::HeapRef(reference) => {
+            let keys = {
+                let Some(HeapValue::Map(values)) =
+                    heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+                else {
+                    return type_error("method keys");
+                };
+                values.keys().cloned().collect::<Vec<_>>()
+            };
+            let values = keys
+                .into_iter()
+                .map(|key| make_string_value(key, heap, budget, "method keys"))
+                .collect::<VmResult<Vec<_>>>()?;
+            make_array_value(values, heap, budget, "method keys")
+        }
+        _ => type_error("method keys"),
     }
 }
 
 pub(crate) fn values(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_no_args("values", args)?;
-    match MapView::from_value(receiver, heap, "method values")? {
-        MapView::Values(values) => Ok(Value::Array(values.values().cloned().collect())),
-        MapView::Slots(values, _) => Ok(Value::Array(
-            values.values().map(value_from_heap_slot).collect(),
-        )),
+    match receiver {
+        Value::HeapRef(reference) => {
+            let values = {
+                let Some(HeapValue::Map(values)) =
+                    heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+                else {
+                    return type_error("method values");
+                };
+                values
+                    .values()
+                    .map(value_from_heap_slot)
+                    .collect::<Vec<_>>()
+            };
+            make_array_value(values, heap, budget, "method values")
+        }
+        _ => type_error("method values"),
     }
 }
 
 pub(crate) fn entries(
     receiver: &Value,
     args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_no_args("entries", args)?;
-    match MapView::from_value(receiver, heap, "method entries")? {
-        MapView::Values(values) => Ok(Value::Array(
-            values
-                .iter()
-                .map(|(key, value)| map_entry(key, value.clone()))
-                .collect(),
-        )),
-        MapView::Slots(values, _) => Ok(Value::Array(
-            values
-                .iter()
-                .map(|(key, value)| map_entry(key, value_from_heap_slot(value)))
-                .collect(),
-        )),
+    match receiver {
+        Value::HeapRef(reference) => {
+            let entries = {
+                let Some(HeapValue::Map(values)) =
+                    heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+                else {
+                    return type_error("method entries");
+                };
+                values
+                    .iter()
+                    .map(|(key, value)| (key.clone(), value_from_heap_slot(value)))
+                    .collect::<Vec<_>>()
+            };
+            let entries = entries
+                .into_iter()
+                .map(|(key, value)| map_entry(&key, value, heap, budget))
+                .collect::<VmResult<Vec<_>>>()?;
+            make_array_value(entries, heap, budget, "method entries")
+        }
+        _ => type_error("method entries"),
     }
 }

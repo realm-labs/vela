@@ -54,8 +54,8 @@ use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, host_to_value,
-    materialize_value, owned_to_value, store_value_in_heap_if_needed, value_from_constant,
-    value_from_heap_slot, value_to_heap_slot, value_to_owned, values_equal,
+    owned_to_value, store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot,
+    value_to_heap_slot, value_to_owned, values_equal,
 };
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};
@@ -104,13 +104,14 @@ impl ExecutionCall<'_> {
     }
 }
 
-pub type NativeFunction = Arc<dyn Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static>;
+pub type NativeFunction =
+    Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
 pub type HostNativeFunction = Arc<
     dyn for<'host, 'budget> Fn(
-            &[Value],
+            &[OwnedValue],
             &mut HostExecution<'host>,
             Option<&'budget mut ExecutionBudget>,
-        ) -> VmResult<Value>
+        ) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -138,7 +139,7 @@ impl Vm {
     pub fn register_native(
         &mut self,
         name: impl Into<String>,
-        function: impl Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static,
+        function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) {
         self.natives.insert(name.into(), Arc::new(function));
     }
@@ -146,7 +147,7 @@ impl Vm {
     pub fn register_host_native(
         &mut self,
         name: impl Into<String>,
-        function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        function: impl for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -161,10 +162,10 @@ impl Vm {
         &mut self,
         name: impl Into<String>,
         function: impl for<'host, 'budget> Fn(
-            &[Value],
+            &[OwnedValue],
             &mut HostExecution<'host>,
             Option<&'budget mut ExecutionBudget>,
-        ) -> VmResult<Value>
+        ) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -196,16 +197,27 @@ impl Vm {
         self.type_registry.as_deref()
     }
 
-    pub fn run(&self, code: &CodeObject) -> VmResult<Value> {
-        self.execute(code, None, &[], None, None, None)
+    pub fn run(&self, code: &CodeObject) -> VmResult<OwnedValue> {
+        let mut budget = ExecutionBudget::unbounded();
+        self.run_with_budget(code, &mut budget)
     }
 
     pub fn run_with_budget(
         &self,
         code: &CodeObject,
         budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        self.execute(code, None, &[], None, None, Some(budget))
+    ) -> VmResult<OwnedValue> {
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let result = self.execute(
+            code,
+            None,
+            &[],
+            None,
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
     }
 
     pub fn run_with_heap_and_budget(
@@ -221,8 +233,8 @@ impl Vm {
         &self,
         code: &CodeObject,
         budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        self.execute_with_managed_heap_and_budget(code, None, &[], None, budget)
+    ) -> VmResult<OwnedValue> {
+        self.run_with_budget(code, budget)
     }
 
     pub fn run_program(
@@ -326,8 +338,9 @@ impl Vm {
         &self,
         code: &CodeObject,
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
-        self.execute(code, None, &[], Some(host), None, None)
+    ) -> VmResult<OwnedValue> {
+        let mut budget = ExecutionBudget::unbounded();
+        self.run_with_host_and_budget(code, host, &mut budget)
     }
 
     pub fn run_with_host_and_budget(
@@ -335,8 +348,18 @@ impl Vm {
         code: &CodeObject,
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        self.execute(code, None, &[], Some(host), None, Some(budget))
+    ) -> VmResult<OwnedValue> {
+        let mut heap = ScriptHeap::new();
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let result = self.execute(
+            code,
+            None,
+            &[],
+            Some(host),
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        owned_heap_result(result, &mut heap_execution, budget)
     }
 
     pub fn run_with_host_heap_and_budget(
@@ -354,8 +377,8 @@ impl Vm {
         code: &CodeObject,
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        self.execute_with_managed_heap_and_budget(code, None, &[], Some(host), budget)
+    ) -> VmResult<OwnedValue> {
+        self.run_with_host_and_budget(code, host, budget)
     }
 
     pub fn run_program_with_host(

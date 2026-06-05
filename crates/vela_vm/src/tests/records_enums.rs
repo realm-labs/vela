@@ -1,4 +1,6 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
+use crate::value::Value as RuntimeValue;
 
 #[test]
 fn passes_arguments_to_program_entry() {
@@ -13,7 +15,7 @@ fn double(value) {
     .expect("compile program source");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "double", &[Value::Int(9)]),
+        Vm::new().run_program(&program, "double", &[Value::Int(9)]),
         Ok(Value::Int(18))
     );
 }
@@ -53,15 +55,15 @@ fn heap_execution_allocates_array_and_string_literals() {
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
         .expect("run heap-backed array source");
 
-    let Value::HeapRef(array_ref) = result else {
+    let RuntimeValue::HeapRef(array_ref) = result else {
         panic!("expected heap array");
     };
     let Some(HeapValue::Array(values)) = heap.get(array_ref) else {
         panic!("expected heap array object");
     };
-    assert_eq!(values[0], Value::Int(1));
-    assert_eq!(values[1], Value::Int(5));
-    let Value::HeapRef(string_ref) = values[2] else {
+    assert_eq!(values[0], RuntimeValue::Int(1));
+    assert_eq!(values[1], RuntimeValue::Int(5));
+    let RuntimeValue::HeapRef(string_ref) = values[2] else {
         panic!("expected heap string ref");
     };
     assert_eq!(
@@ -177,7 +179,7 @@ fn main() {
     .expect("compile defaulted record constructor");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(16))
     );
 }
@@ -270,7 +272,7 @@ fn main() {
     .expect("compile typed record slot field read");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(2))
     );
 }
@@ -300,7 +302,7 @@ fn main() {
     .expect("compile typed record slot field writes");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -324,7 +326,7 @@ fn main() {
     .expect("compile typed enum variant slot field read");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -382,7 +384,7 @@ fn main() {
     .expect("compile defaulted enum constructors");
 
     assert_eq!(
-        Vm::new().run_program_runtime(&program, "main", &[]),
+        Vm::new().run_program(&program, "main", &[]),
         Ok(Value::Int(19))
     );
 }

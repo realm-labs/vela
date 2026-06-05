@@ -1,5 +1,7 @@
-use crate::runtime_view::StringView;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::heap::HeapValue;
+use crate::{
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
+};
 
 mod affix;
 mod parsing;
@@ -16,7 +18,13 @@ pub(crate) use splitting::{split, split_lines, split_once, split_whitespace};
 pub(crate) use transform::{repeat, replace, to_lower, to_upper, trim, trim_end, trim_start};
 
 pub(crate) fn is_string(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool {
-    StringView::from_value(value, heap, "string").is_ok()
+    match value {
+        Value::HeapRef(reference) => matches!(
+            heap.and_then(|heap| heap.heap.get(*reference)),
+            Some(HeapValue::String(_))
+        ),
+        _ => false,
+    }
 }
 
 pub(crate) fn string_value<'a>(
@@ -24,7 +32,37 @@ pub(crate) fn string_value<'a>(
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<&'a str> {
-    StringView::from_value(value, heap, operation).map(|view| view.as_str())
+    match value {
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(value)) => Ok(value),
+            _ => type_error(operation),
+        },
+        _ => type_error(operation),
+    }
+}
+
+pub(super) fn make_string(
+    value: String,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
+}
+
+pub(super) fn make_array(
+    values: Vec<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(HeapValue::Array(values), heap, budget.as_deref_mut())
 }
 
 pub(super) fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
@@ -58,7 +96,8 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, Value, Vm};
+    use crate::owned_value::OwnedValue as Value;
+    use crate::{ExecutionBudget, Vm};
 
     #[test]
     fn runs_compiled_string_utility_methods() {

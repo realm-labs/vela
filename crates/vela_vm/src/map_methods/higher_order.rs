@@ -5,7 +5,8 @@ use crate::option_result::option_value;
 use crate::runtime_checks::expect_closure;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
-use super::{expect_arity, map_entry, materialize_map_entries, type_error};
+use super::{expect_arity, map_entries, map_entry};
+use crate::array_methods::{make_map_value, make_string_value};
 
 pub(crate) fn map_values(
     receiver: &Value,
@@ -13,24 +14,7 @@ pub(crate) fn map_values(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("map_values", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Map(entries) = receiver
-    {
-        let mut mapped = BTreeMap::new();
-        for (key, value) in entries {
-            let value = call_map_callback(
-                &mut runtime,
-                "method map_values",
-                &args[0],
-                key.clone(),
-                value.clone(),
-                &[],
-            )?;
-            mapped.insert(key.clone(), value);
-        }
-        return Ok(Value::Map(mapped));
-    }
-    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
+    let entries = map_entries(receiver, runtime.heap.as_deref(), "method map_values")?;
     let mut mapped = BTreeMap::new();
     for (key, value) in entries {
         let value = if runtime.heap.is_some() {
@@ -54,7 +38,12 @@ pub(crate) fn map_values(
         };
         mapped.insert(key, value);
     }
-    Ok(Value::Map(mapped))
+    make_map_value(
+        mapped,
+        &mut runtime.heap,
+        &mut runtime.budget,
+        "method map_values",
+    )
 }
 
 pub(crate) fn filter(
@@ -63,26 +52,7 @@ pub(crate) fn filter(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("filter", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Map(entries) = receiver
-    {
-        let mut filtered = BTreeMap::new();
-        for (key, value) in entries {
-            let predicate = call_map_callback(
-                &mut runtime,
-                "method filter",
-                &args[0],
-                key.clone(),
-                value.clone(),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                filtered.insert(key.clone(), value.clone());
-            }
-        }
-        return Ok(Value::Map(filtered));
-    }
-    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
+    let entries = map_entries(receiver, runtime.heap.as_deref(), "method filter")?;
     let mut filtered = BTreeMap::new();
     for (key, value) in entries {
         let predicate = if runtime.heap.is_some() {
@@ -91,7 +61,7 @@ pub(crate) fn filter(
                 "method filter",
                 &args[0],
                 key.clone(),
-                value.clone(),
+                value,
                 filtered.values(),
             )?
         } else {
@@ -100,7 +70,7 @@ pub(crate) fn filter(
                 "method filter",
                 &args[0],
                 key.clone(),
-                value.clone(),
+                value,
                 &[],
             )?
         };
@@ -108,7 +78,12 @@ pub(crate) fn filter(
             filtered.insert(key, value);
         }
     }
-    Ok(Value::Map(filtered))
+    make_map_value(
+        filtered,
+        &mut runtime.heap,
+        &mut runtime.budget,
+        "method filter",
+    )
 }
 
 pub(crate) fn find(
@@ -117,39 +92,28 @@ pub(crate) fn find(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("find", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Map(entries) = receiver
-    {
-        for (key, value) in entries {
-            let predicate = call_map_callback(
-                &mut runtime,
-                "method find",
-                &args[0],
-                key.clone(),
-                value.clone(),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                return Ok(option_value(Some(map_entry(key, value.clone()))));
-            }
-        }
-        return Ok(option_value(None));
-    }
-    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method find")?;
+    let entries = map_entries(receiver, runtime.heap.as_deref(), "method find")?;
     for (key, value) in entries {
         let predicate = call_map_callback(
             &mut runtime,
             "method find",
             &args[0],
             key.clone(),
-            value.clone(),
+            value,
             &[],
         )?;
         if is_truthy(&predicate) {
-            return Ok(option_value(Some(map_entry(&key, value))));
+            let entry = map_entry(&key, value, &mut runtime.heap, &mut runtime.budget)?;
+            let Some(heap) = runtime.heap.as_deref_mut() else {
+                return super::type_error("method find");
+            };
+            return option_value(Some(entry), heap, runtime.budget.as_deref_mut());
         }
     }
-    Ok(option_value(None))
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return super::type_error("method find");
+    };
+    option_value(None, heap, runtime.budget.as_deref_mut())
 }
 
 pub(crate) fn any(
@@ -158,25 +122,7 @@ pub(crate) fn any(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<bool> {
     expect_arity("any", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Map(entries) = receiver
-    {
-        for (key, value) in entries {
-            let predicate = call_map_callback(
-                &mut runtime,
-                "method any",
-                &args[0],
-                key.clone(),
-                value.clone(),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                return Ok(true);
-            }
-        }
-        return Ok(false);
-    }
-    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method any")?;
+    let entries = map_entries(receiver, runtime.heap.as_deref(), "method any")?;
     for (key, value) in entries {
         let predicate = call_map_callback(&mut runtime, "method any", &args[0], key, value, &[])?;
         if is_truthy(&predicate) {
@@ -192,25 +138,7 @@ pub(crate) fn all(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<bool> {
     expect_arity("all", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Map(entries) = receiver
-    {
-        for (key, value) in entries {
-            let predicate = call_map_callback(
-                &mut runtime,
-                "method all",
-                &args[0],
-                key.clone(),
-                value.clone(),
-                &[],
-            )?;
-            if !is_truthy(&predicate) {
-                return Ok(false);
-            }
-        }
-        return Ok(true);
-    }
-    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method all")?;
+    let entries = map_entries(receiver, runtime.heap.as_deref(), "method all")?;
     for (key, value) in entries {
         let predicate = call_map_callback(&mut runtime, "method all", &args[0], key, value, &[])?;
         if !is_truthy(&predicate) {
@@ -226,26 +154,7 @@ pub(crate) fn count(
     mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<i64> {
     expect_arity("count", args, 1)?;
-    if runtime.heap.is_none()
-        && let Value::Map(entries) = receiver
-    {
-        let mut count = 0_i64;
-        for (key, value) in entries {
-            let predicate = call_map_callback(
-                &mut runtime,
-                "method count",
-                &args[0],
-                key.clone(),
-                value.clone(),
-                &[],
-            )?;
-            if is_truthy(&predicate) {
-                count = checked_count_increment(count)?;
-            }
-        }
-        return Ok(count);
-    }
-    let entries = materialize_map_entries(receiver, runtime.heap.as_deref(), "method count")?;
+    let entries = map_entries(receiver, runtime.heap.as_deref(), "method count")?;
     let mut count = 0_i64;
     for (key, value) in entries {
         let predicate = call_map_callback(&mut runtime, "method count", &args[0], key, value, &[])?;
@@ -286,7 +195,8 @@ fn call_map_callback(
             protected_values,
         ),
         _ => {
-            let callback_args = [Value::String(key), value];
+            let key = make_string_value(key, &mut runtime.heap, &mut runtime.budget, operation)?;
+            let callback_args = [key, value];
             call_callback(
                 runtime,
                 operation,
@@ -322,7 +232,8 @@ fn call_map_callback_with_protected_values<'value>(
             protected_values,
         ),
         _ => {
-            let callback_args = [Value::String(key), value];
+            let key = make_string_value(key, &mut runtime.heap, &mut runtime.budget, operation)?;
+            let callback_args = [key, value];
             call_callback_with_protected_values(
                 runtime,
                 operation,

@@ -15,10 +15,6 @@ pub(crate) fn set(
     expect_arity("set", args, 2)?;
     let key = map_key(&args[0], heap.as_deref())?;
     match receiver {
-        Value::Map(values) => {
-            values.insert(key, args[1].clone());
-            Ok(args[1].clone())
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method set");
@@ -28,7 +24,7 @@ pub(crate) fn set(
                 return type_error("method set");
             };
             values.insert(key, slot);
-            Ok(args[1].clone())
+            Ok(args[1])
         }
         _ => type_error("method set"),
     }
@@ -38,11 +34,11 @@ pub(crate) fn remove(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("remove", args, 1)?;
     let key = map_key(&args[0], heap.as_deref())?;
     match receiver {
-        Value::Map(values) => Ok(option_value(values.remove(&key))),
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method remove");
@@ -50,9 +46,8 @@ pub(crate) fn remove(
             let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method remove");
             };
-            Ok(option_value(
-                values.remove(&key).map(|slot| value_from_heap_slot(&slot)),
-            ))
+            let payload = values.remove(&key).map(|slot| value_from_heap_slot(&slot));
+            option_value(payload, heap, budget)
         }
         _ => type_error("method remove"),
     }
@@ -65,10 +60,6 @@ pub(crate) fn clear(
 ) -> VmResult<Value> {
     expect_arity("clear", args, 0)?;
     match receiver {
-        Value::Map(values) => {
-            values.clear();
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method clear");
@@ -92,10 +83,6 @@ pub(crate) fn extend(
     expect_arity("extend", args, 1)?;
     let entries = materialize_map_entries(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
-        Value::Map(values) => {
-            values.extend(entries);
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method extend");

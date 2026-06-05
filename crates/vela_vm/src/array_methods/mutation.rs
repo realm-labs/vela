@@ -16,10 +16,6 @@ pub(crate) fn push(
 ) -> VmResult<Value> {
     expect_arity("push", args, 1)?;
     match receiver {
-        Value::Array(values) => {
-            values.push(args[0].clone());
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method push");
@@ -39,24 +35,25 @@ pub(crate) fn pop(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("pop", args, 0)?;
+    let mut heap = heap;
+    let mut budget = budget;
     match receiver {
-        Value::Array(values) => Ok(values.pop().map_or_else(
-            || option_value("None", None),
-            |value| option_value("Some", Some(value)),
-        )),
         Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
+            let Some(heap_ref) = heap.as_deref_mut() else {
                 return type_error("method pop");
             };
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+            let Some(HeapValue::Array(values)) = heap_ref.heap.get_mut(*reference).ok() else {
                 return type_error("method pop");
             };
-            Ok(values.pop().map_or_else(
-                || option_value("None", None),
-                |slot| option_value("Some", Some(value_from_heap_slot(&slot))),
-            ))
+            let payload = values.pop().map(|slot| value_from_heap_slot(&slot));
+            if payload.is_some() {
+                option_value("Some", payload, &mut heap, &mut budget)
+            } else {
+                option_value("None", None, &mut heap, &mut budget)
+            }
         }
         _ => type_error("method pop"),
     }
@@ -66,28 +63,25 @@ pub(crate) fn remove_at(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("remove_at", args, 1)?;
     let index = index_value(&args[0], "method remove_at")?;
+    let mut heap = heap;
+    let mut budget = budget;
     match receiver {
-        Value::Array(values) => {
-            if index >= values.len() {
-                return Ok(option_value("None", None));
-            }
-            Ok(option_value("Some", Some(values.remove(index))))
-        }
         Value::HeapRef(reference) => {
-            let Some(heap) = heap else {
+            let Some(heap_ref) = heap.as_deref_mut() else {
                 return type_error("method remove_at");
             };
-            let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
+            let Some(HeapValue::Array(values)) = heap_ref.heap.get_mut(*reference).ok() else {
                 return type_error("method remove_at");
             };
             if index >= values.len() {
-                return Ok(option_value("None", None));
+                return option_value("None", None, &mut heap, &mut budget);
             }
             let value = value_from_heap_slot(&values.remove(index));
-            Ok(option_value("Some", Some(value)))
+            option_value("Some", Some(value), &mut heap, &mut budget)
         }
         _ => type_error("method remove_at"),
     }
@@ -102,13 +96,6 @@ pub(crate) fn insert(
     expect_arity("insert", args, 2)?;
     let index = index_value(&args[0], "method insert")?;
     match receiver {
-        Value::Array(values) => {
-            if index > values.len() {
-                return Err(index_out_of_bounds(index, values.len()));
-            }
-            values.insert(index, args[1].clone());
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method insert");
@@ -140,10 +127,6 @@ pub(crate) fn extend(
     expect_arity("extend", args, 1)?;
     let extension = materialize_array_values(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
-        Value::Array(values) => {
-            values.extend(extension);
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method extend");
@@ -169,10 +152,6 @@ pub(crate) fn clear(
 ) -> VmResult<Value> {
     expect_arity("clear", args, 0)?;
     match receiver {
-        Value::Array(values) => {
-            values.clear();
-            Ok(Value::Null)
-        }
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
                 return type_error("method clear");

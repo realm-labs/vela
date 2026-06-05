@@ -1,4 +1,5 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
 
 #[test]
 fn runs_compiled_option_ok_or_with_try_propagation() {
@@ -27,9 +28,9 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program_runtime(&program, "main", &[])
+        .run_program(&program, "main", &[])
         .expect("option ok_or stdlib source should run");
-    assert_eq!(result, crate::Value::Int(42));
+    assert_eq!(result, Value::Int(42));
 }
 
 #[test]
@@ -55,14 +56,14 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap result stdlib source should run");
     assert_eq!(
         result,
-        crate::Value::Enum {
+        Value::Enum {
             enum_name: "Result".to_owned(),
             variant: "Err".to_owned(),
-            fields: [("0".to_owned(), crate::Value::String("bad".to_owned()))].into()
+            fields: [("0".to_owned(), Value::String("bad".to_owned()))].into()
         }
     );
 }
@@ -110,9 +111,9 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option/result helper stdlib source should run");
-    assert_eq!(result, crate::Value::Bool(true));
+    assert_eq!(result, Value::Bool(true));
 }
 
 #[test]
@@ -138,9 +139,9 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option/result map source should run");
-    assert_eq!(result, crate::Value::Bool(true));
+    assert_eq!(result, Value::Bool(true));
 }
 
 #[test]
@@ -167,9 +168,9 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap result map_err source should run");
-    assert_eq!(result, crate::Value::Bool(true));
+    assert_eq!(result, Value::Bool(true));
 }
 
 #[test]
@@ -203,9 +204,9 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option/result and_then source should run");
-    assert_eq!(result, crate::Value::Bool(true));
+    assert_eq!(result, Value::Bool(true));
 }
 
 #[test]
@@ -239,7 +240,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option/result or_else source should run");
-    assert_eq!(result, crate::Value::Bool(true));
+    assert_eq!(result, Value::Bool(true));
 }

@@ -3,7 +3,8 @@ use std::sync::Arc;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
-use crate::{Value, Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
+use crate::owned_value::OwnedValue as Value;
+use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
 use super::common::{check_host_ref_inspection, check_reflect_policy};
 

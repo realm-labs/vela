@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use vela_reflect as reflect;
 
-use crate::{Value, Vm, expect_arity, expect_string};
+use crate::owned_value::OwnedValue as Value;
+use crate::{Vm, expect_arity, expect_string};
 
 use super::common::check_reflect_policy;
 

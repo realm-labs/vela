@@ -78,11 +78,7 @@ pub(crate) fn make_iterator(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<IteratorState> {
     match iterable {
-        Value::Array(values) => Ok(IteratorState::new(values.clone())),
-        Value::Map(values) => Ok(IteratorState::new(values.values().cloned().collect())),
-        Value::Set(values) => Ok(IteratorState::new(values.clone())),
         Value::Range(range) => Ok(IteratorState::range(range.cursor())),
-        Value::Iterator(iterator) => Ok(iterator.clone()),
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch {
@@ -106,19 +102,7 @@ pub(crate) fn make_iterator(
                 })),
             }
         }
-        Value::Null
-        | Value::Missing
-        | Value::Bool(_)
-        | Value::Int(_)
-        | Value::Float(_)
-        | Value::String(_)
-        | Value::Record { .. }
-        | Value::Enum { .. }
-        | Value::Closure(_)
-        | Value::HostRef(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "for in",
-        })),
-        Value::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "for in",
         })),
     }

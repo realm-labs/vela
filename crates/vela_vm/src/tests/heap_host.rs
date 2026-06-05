@@ -1,4 +1,6 @@
 use super::*;
+use crate::owned_value::OwnedValue as Value;
+use crate::value::Value as RuntimeValue;
 
 #[test]
 fn heap_safe_point_gc_preserves_caller_roots_during_nested_calls() {
@@ -38,7 +40,7 @@ fn main() {
         )
         .expect("run nested heap source");
 
-    let Value::HeapRef(result_ref) = result else {
+    let RuntimeValue::HeapRef(result_ref) = result else {
         panic!("expected heap-backed field result");
     };
     assert_eq!(
@@ -76,7 +78,7 @@ fn main() {
     fields.insert("item_id".into(), Value::String("gold".into()));
 
     let result = Vm::new()
-        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("run managed heap source");
 
     assert_eq!(
@@ -114,16 +116,11 @@ fn map_case() {
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
     assert_eq!(
-        vm.run_program_runtime_with_managed_heap_and_budget(
-            &program,
-            "array_case",
-            &[],
-            &mut budget
-        ),
+        vm.run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget),
         Ok(Value::PathProxy(expected.clone()))
     );
     assert_eq!(
-        vm.run_program_runtime_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget),
+        vm.run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget),
         Ok(Value::PathProxy(expected))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
@@ -189,7 +186,7 @@ fn managed_heap_host_execution_materializes_return_and_records_patch() {
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_runtime_with_host_managed_heap_and_budget(
+            .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
                 &[Value::HostRef(host_ref)],
@@ -232,7 +229,7 @@ fn main(player) {
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_runtime_with_host_managed_heap_and_budget(
+            .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
                 &[Value::HostRef(host_ref)],
@@ -284,7 +281,7 @@ fn main(player) {
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_runtime_with_host_managed_heap_and_budget(
+            .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
                 &[Value::HostRef(host_ref)],
@@ -346,7 +343,7 @@ fn main(player) {
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_runtime_with_host_managed_heap_and_budget(
+            .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
                 &[Value::HostRef(host_ref)],
@@ -409,7 +406,7 @@ fn main(player, target) {
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_runtime_with_host_managed_heap_and_budget(
+            .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
                 &[Value::HostRef(host_ref), Value::HostRef(target_ref)],
