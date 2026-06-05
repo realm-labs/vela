@@ -7,7 +7,7 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 use super::ids::{DemoIds, context_type, monster_type, player_type};
 

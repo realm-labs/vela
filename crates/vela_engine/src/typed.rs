@@ -12,9 +12,9 @@ pub use traits::{
 };
 
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
-pub(crate) fn expect_arity(args: &[Value], expected: usize) -> VmResult<()> {
+pub(crate) fn expect_arity(args: &[OwnedValue], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
     }

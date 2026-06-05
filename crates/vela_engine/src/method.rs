@@ -5,7 +5,7 @@ use vela_host::path::HostPath;
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::native::{EffectSet, FunctionAccess, TypeHint};
 
@@ -93,7 +93,7 @@ pub struct NativeMethodParamDesc {
 }
 
 pub type NativeMethodFunction = Arc<
-    dyn for<'host> Fn(&HostPath, &[Value], &mut HostExecution<'host>) -> VmResult<Value>
+    dyn for<'host> Fn(&HostPath, &[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -109,7 +109,11 @@ impl NativeMethodEntry {
     #[must_use]
     pub fn new(
         desc: NativeMethodDesc,
-        function: impl for<'host> Fn(&HostPath, &[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        function: impl for<'host> Fn(
+            &HostPath,
+            &[OwnedValue],
+            &mut HostExecution<'host>,
+        ) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,

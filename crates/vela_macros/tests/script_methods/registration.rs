@@ -314,7 +314,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],

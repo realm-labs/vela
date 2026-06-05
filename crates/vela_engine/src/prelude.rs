@@ -49,4 +49,4 @@ pub use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
     TypeKey, TypeKind, VariantDesc,
 };
-pub use vela_vm::value::Value;
+pub use vela_vm::owned_value::OwnedValue;

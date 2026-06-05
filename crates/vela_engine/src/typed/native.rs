@@ -1,5 +1,5 @@
 use vela_vm::error::VmResult;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::args::FromScriptArg;
 
@@ -10,7 +10,7 @@ where
     F: Fn() -> R + Send + Sync + 'static,
     R: IntoNativeReturn,
 {
-    fn call(&self, args: &[Value]) -> VmResult<Value> {
+    fn call(&self, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         expect_arity(args, 0)?;
         (self)().into_native_return()
     }
@@ -22,7 +22,7 @@ where
     A: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call(&self, args: &[Value]) -> VmResult<Value> {
+    fn call(&self, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         expect_arity(args, 1)?;
         (self)(A::from_script_arg(&args[0])?).into_native_return()
     }
@@ -35,7 +35,7 @@ where
     B: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call(&self, args: &[Value]) -> VmResult<Value> {
+    fn call(&self, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         expect_arity(args, 2)?;
         (self)(A::from_script_arg(&args[0])?, B::from_script_arg(&args[1])?).into_native_return()
     }
@@ -49,7 +49,7 @@ where
     C: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call(&self, args: &[Value]) -> VmResult<Value> {
+    fn call(&self, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         expect_arity(args, 3)?;
         (self)(
             A::from_script_arg(&args[0])?,
@@ -69,7 +69,7 @@ where
     D: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call(&self, args: &[Value]) -> VmResult<Value> {
+    fn call(&self, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         expect_arity(args, 4)?;
         (self)(
             A::from_script_arg(&args[0])?,
@@ -91,7 +91,7 @@ where
     E: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call(&self, args: &[Value]) -> VmResult<Value> {
+    fn call(&self, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         expect_arity(args, 5)?;
         (self)(
             A::from_script_arg(&args[0])?,
@@ -115,7 +115,7 @@ where
     G: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call(&self, args: &[Value]) -> VmResult<Value> {
+    fn call(&self, args: &[OwnedValue]) -> VmResult<OwnedValue> {
         expect_arity(args, 6)?;
         (self)(
             A::from_script_arg(&args[0])?,

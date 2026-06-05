@@ -5,10 +5,10 @@ use vela_common::{HostObjectId, HostTypeId};
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 pub trait IntoScriptArg {
-    fn into_script_arg(self) -> Value;
+    fn into_script_arg(self) -> OwnedValue;
 }
 
 pub trait IntoHostArg {
@@ -18,14 +18,14 @@ pub trait IntoHostArg {
 pub trait FromScriptArg: Sized {
     const TYPE_NAME: &'static str;
 
-    fn from_script_arg(value: &Value) -> VmResult<Self>;
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self>;
 }
 
 pub trait ScriptArgsExt {
     fn required<T: FromScriptArg>(&self, index: usize) -> VmResult<T>;
 }
 
-impl ScriptArgsExt for [Value] {
+impl ScriptArgsExt for [OwnedValue] {
     fn required<T: FromScriptArg>(&self, index: usize) -> VmResult<T> {
         let value = self.get(index).ok_or_else(|| VmError {
             kind: VmErrorKind::ArityMismatch {
@@ -40,29 +40,29 @@ impl ScriptArgsExt for [Value] {
     }
 }
 
-impl IntoScriptArg for Value {
-    fn into_script_arg(self) -> Value {
+impl IntoScriptArg for OwnedValue {
+    fn into_script_arg(self) -> OwnedValue {
         self
     }
 }
 
-impl IntoScriptArg for &Value {
-    fn into_script_arg(self) -> Value {
+impl IntoScriptArg for &OwnedValue {
+    fn into_script_arg(self) -> OwnedValue {
         self.clone()
     }
 }
 
-impl FromScriptArg for Value {
+impl FromScriptArg for OwnedValue {
     const TYPE_NAME: &'static str = "value";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         Ok(value.clone())
     }
 }
 
 impl IntoScriptArg for HostRef {
-    fn into_script_arg(self) -> Value {
-        Value::HostRef(self)
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::HostRef(self)
     }
 }
 
@@ -75,17 +75,17 @@ impl IntoHostArg for HostRef {
 impl FromScriptArg for HostRef {
     const TYPE_NAME: &'static str = "host ref";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::HostRef(host_ref) => Ok(*host_ref),
+            OwnedValue::HostRef(host_ref) => Ok(*host_ref),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
 }
 
 impl IntoScriptArg for &HostRef {
-    fn into_script_arg(self) -> Value {
-        Value::HostRef(*self)
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::HostRef(*self)
     }
 }
 
@@ -112,46 +112,46 @@ impl IntoHostArg for (HostTypeId, HostObjectId, u32) {
 }
 
 impl IntoScriptArg for PathProxy {
-    fn into_script_arg(self) -> Value {
-        Value::PathProxy(self)
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::PathProxy(self)
     }
 }
 
 impl FromScriptArg for PathProxy {
     const TYPE_NAME: &'static str = "path proxy";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::PathProxy(proxy) => Ok(proxy.clone()),
+            OwnedValue::PathProxy(proxy) => Ok(proxy.clone()),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
 }
 
 impl IntoScriptArg for &PathProxy {
-    fn into_script_arg(self) -> Value {
-        Value::PathProxy(self.clone())
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::PathProxy(self.clone())
     }
 }
 
 impl IntoScriptArg for () {
-    fn into_script_arg(self) -> Value {
-        Value::Null
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Null
     }
 }
 
 impl IntoScriptArg for bool {
-    fn into_script_arg(self) -> Value {
-        Value::Bool(self)
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Bool(self)
     }
 }
 
 impl FromScriptArg for bool {
     const TYPE_NAME: &'static str = "bool";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Bool(value) => Ok(*value),
+            OwnedValue::Bool(value) => Ok(*value),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -161,8 +161,8 @@ macro_rules! int_arg {
     ($($ty:ty),* $(,)?) => {
         $(
             impl IntoScriptArg for $ty {
-                fn into_script_arg(self) -> Value {
-                    Value::Int(i64::from(self))
+                fn into_script_arg(self) -> OwnedValue {
+                    OwnedValue::Int(i64::from(self))
                 }
             }
         )*
@@ -177,9 +177,9 @@ macro_rules! signed_from_arg {
             impl FromScriptArg for $ty {
                 const TYPE_NAME: &'static str = "int";
 
-                fn from_script_arg(value: &Value) -> VmResult<Self> {
+                fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
                     match value {
-                        Value::Int(value) => (*value)
+                        OwnedValue::Int(value) => (*value)
                             .try_into()
                             .map_err(|_| type_mismatch(Self::TYPE_NAME)),
                         _ => Err(type_mismatch(Self::TYPE_NAME)),
@@ -193,36 +193,36 @@ macro_rules! signed_from_arg {
 signed_from_arg!(i8, i16, i32, i64, u8, u16, u32);
 
 impl IntoScriptArg for f32 {
-    fn into_script_arg(self) -> Value {
-        Value::Float(f64::from(self))
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Float(f64::from(self))
     }
 }
 
 impl FromScriptArg for f32 {
     const TYPE_NAME: &'static str = "float";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Float(value) => f32_from_f64(*value),
-            Value::Int(value) => f32_from_f64(*value as f64),
+            OwnedValue::Float(value) => f32_from_f64(*value),
+            OwnedValue::Int(value) => f32_from_f64(*value as f64),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
 }
 
 impl IntoScriptArg for f64 {
-    fn into_script_arg(self) -> Value {
-        Value::Float(self)
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Float(self)
     }
 }
 
 impl FromScriptArg for f64 {
     const TYPE_NAME: &'static str = "float";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Float(value) => Ok(*value),
-            Value::Int(value) => Ok(*value as f64),
+            OwnedValue::Float(value) => Ok(*value),
+            OwnedValue::Int(value) => Ok(*value as f64),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -237,23 +237,23 @@ fn f32_from_f64(value: f64) -> VmResult<f32> {
 }
 
 impl IntoScriptArg for String {
-    fn into_script_arg(self) -> Value {
-        Value::String(self)
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::String(self)
     }
 }
 
 impl IntoScriptArg for &str {
-    fn into_script_arg(self) -> Value {
-        Value::String(self.to_owned())
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::String(self.to_owned())
     }
 }
 
 impl FromScriptArg for String {
     const TYPE_NAME: &'static str = "string";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::String(value) => Ok(value.clone()),
+            OwnedValue::String(value) => Ok(value.clone()),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -263,10 +263,10 @@ impl<T> IntoScriptArg for Option<T>
 where
     T: IntoScriptArg,
 {
-    fn into_script_arg(self) -> Value {
+    fn into_script_arg(self) -> OwnedValue {
         match self {
             Some(value) => value.into_script_arg(),
-            None => Value::Null,
+            None => OwnedValue::Null,
         }
     }
 }
@@ -277,10 +277,10 @@ where
 {
     const TYPE_NAME: &'static str = "option";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Null => Ok(None),
-            Value::Enum {
+            OwnedValue::Null => Ok(None),
+            OwnedValue::Enum {
                 enum_name,
                 variant,
                 fields,
@@ -305,7 +305,7 @@ where
     T: IntoScriptArg,
     E: IntoScriptArg,
 {
-    fn into_script_arg(self) -> Value {
+    fn into_script_arg(self) -> OwnedValue {
         match self {
             Ok(value) => enum_payload("Result", "Ok", value.into_script_arg()),
             Err(error) => enum_payload("Result", "Err", error.into_script_arg()),
@@ -320,9 +320,9 @@ where
 {
     const TYPE_NAME: &'static str = "result";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Enum {
+            OwnedValue::Enum {
                 enum_name,
                 variant,
                 fields,
@@ -345,8 +345,8 @@ impl<T> IntoScriptArg for Vec<T>
 where
     T: IntoScriptArg,
 {
-    fn into_script_arg(self) -> Value {
-        Value::Array(
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Array(
             self.into_iter()
                 .map(IntoScriptArg::into_script_arg)
                 .collect(),
@@ -360,9 +360,9 @@ where
 {
     const TYPE_NAME: &'static str = "array";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Array(values) => values.iter().map(T::from_script_arg).collect(),
+            OwnedValue::Array(values) => values.iter().map(T::from_script_arg).collect(),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -372,8 +372,8 @@ impl<T, const N: usize> IntoScriptArg for [T; N]
 where
     T: IntoScriptArg,
 {
-    fn into_script_arg(self) -> Value {
-        Value::Array(
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Array(
             self.into_iter()
                 .map(IntoScriptArg::into_script_arg)
                 .collect(),
@@ -387,8 +387,8 @@ where
 {
     const TYPE_NAME: &'static str = "array";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
-        let Value::Array(values) = value else {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        let OwnedValue::Array(values) = value else {
             return Err(type_mismatch(Self::TYPE_NAME));
         };
         if values.len() != N {
@@ -409,8 +409,8 @@ where
     K: Into<String> + Ord,
     T: IntoScriptArg,
 {
-    fn into_script_arg(self) -> Value {
-        Value::Map(
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Map(
             self.into_iter()
                 .map(|(key, value)| (key.into(), value.into_script_arg()))
                 .collect(),
@@ -424,9 +424,9 @@ where
 {
     const TYPE_NAME: &'static str = "map";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Map(values) => values
+            OwnedValue::Map(values) => values
                 .iter()
                 .map(|(key, value)| Ok((key.clone(), T::from_script_arg(value)?)))
                 .collect(),
@@ -440,8 +440,8 @@ where
     K: Into<String> + Eq + Hash,
     T: IntoScriptArg,
 {
-    fn into_script_arg(self) -> Value {
-        Value::Map(
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Map(
             self.into_iter()
                 .map(|(key, value)| (key.into(), value.into_script_arg()))
                 .collect(),
@@ -455,9 +455,9 @@ where
 {
     const TYPE_NAME: &'static str = "map";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Map(values) => values
+            OwnedValue::Map(values) => values
                 .iter()
                 .map(|(key, value)| Ok((key.clone(), T::from_script_arg(value)?)))
                 .collect(),
@@ -470,8 +470,8 @@ impl<T> IntoScriptArg for BTreeSet<T>
 where
     T: IntoScriptArg,
 {
-    fn into_script_arg(self) -> Value {
-        Value::Set(
+    fn into_script_arg(self) -> OwnedValue {
+        OwnedValue::Set(
             self.into_iter()
                 .map(IntoScriptArg::into_script_arg)
                 .collect(),
@@ -485,9 +485,9 @@ where
 {
     const TYPE_NAME: &'static str = "set";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Set(values) => values.iter().map(T::from_script_arg).collect(),
+            OwnedValue::Set(values) => values.iter().map(T::from_script_arg).collect(),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -497,10 +497,10 @@ impl<T> IntoScriptArg for HashSet<T>
 where
     T: IntoScriptArg + Eq + Hash + Ord,
 {
-    fn into_script_arg(self) -> Value {
+    fn into_script_arg(self) -> OwnedValue {
         let mut values = self.into_iter().collect::<Vec<_>>();
         values.sort();
-        Value::Set(
+        OwnedValue::Set(
             values
                 .into_iter()
                 .map(IntoScriptArg::into_script_arg)
@@ -515,9 +515,9 @@ where
 {
     const TYPE_NAME: &'static str = "set";
 
-    fn from_script_arg(value: &Value) -> VmResult<Self> {
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            Value::Set(values) => values.iter().map(T::from_script_arg).collect(),
+            OwnedValue::Set(values) => values.iter().map(T::from_script_arg).collect(),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
@@ -531,8 +531,8 @@ fn type_mismatch(operation: &'static str) -> VmError {
     }
 }
 
-fn enum_payload(enum_name: &str, variant: &str, payload: Value) -> Value {
-    Value::Enum {
+fn enum_payload(enum_name: &str, variant: &str, payload: OwnedValue) -> OwnedValue {
+    OwnedValue::Enum {
         enum_name: enum_name.to_owned(),
         variant: variant.to_owned(),
         fields: [("0".to_owned(), payload)].into(),
@@ -541,19 +541,19 @@ fn enum_payload(enum_name: &str, variant: &str, payload: Value) -> Value {
 
 #[doc(hidden)]
 #[must_use]
-pub fn empty_args() -> Vec<Value> {
+pub fn empty_args() -> Vec<OwnedValue> {
     Vec::new()
 }
 
 #[doc(hidden)]
 #[must_use]
-pub fn host_ref_value(type_id: u32, object_id: u64, generation: u32) -> Value {
+pub fn host_ref_value(type_id: u32, object_id: u64, generation: u32) -> OwnedValue {
     host((type_id, object_id, generation))
 }
 
 #[must_use]
-pub fn host(host: impl IntoHostArg) -> Value {
-    Value::HostRef(host.into_host_ref())
+pub fn host(host: impl IntoHostArg) -> OwnedValue {
+    OwnedValue::HostRef(host.into_host_ref())
 }
 
 #[macro_export]

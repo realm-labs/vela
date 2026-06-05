@@ -1,5 +1,5 @@
 use vela_vm::error::VmResult;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::args::FromScriptArg;
 use crate::context::NativeCallContext;
@@ -11,7 +11,11 @@ where
     F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>) -> R + Send + Sync + 'static,
     R: IntoNativeReturn,
 {
-    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+    fn call_context(
+        &self,
+        args: &[OwnedValue],
+        ctx: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 0)?;
         (self)(ctx).into_native_return()
     }
@@ -23,7 +27,11 @@ where
     A: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+    fn call_context(
+        &self,
+        args: &[OwnedValue],
+        ctx: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 1)?;
         (self)(ctx, A::from_script_arg(&args[0])?).into_native_return()
     }
@@ -36,7 +44,11 @@ where
     B: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+    fn call_context(
+        &self,
+        args: &[OwnedValue],
+        ctx: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 2)?;
         (self)(
             ctx,
@@ -58,7 +70,11 @@ where
     C: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+    fn call_context(
+        &self,
+        args: &[OwnedValue],
+        ctx: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 3)?;
         (self)(
             ctx,
@@ -82,7 +98,11 @@ where
     D: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+    fn call_context(
+        &self,
+        args: &[OwnedValue],
+        ctx: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 4)?;
         (self)(
             ctx,
@@ -108,7 +128,11 @@ where
     E: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+    fn call_context(
+        &self,
+        args: &[OwnedValue],
+        ctx: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 5)?;
         (self)(
             ctx,
@@ -136,7 +160,11 @@ where
     G: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_context(&self, args: &[Value], ctx: &mut NativeCallContext<'_, '_>) -> VmResult<Value> {
+    fn call_context(
+        &self,
+        args: &[OwnedValue],
+        ctx: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 6)?;
         (self)(
             ctx,

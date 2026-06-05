@@ -39,7 +39,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+            .run_program_owned_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(5))
     );
     assert!(tx.patches().is_empty());
@@ -79,7 +79,7 @@ fn main() {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+            .run_program_owned_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: ReflectPermission::CallMethods,
         })
@@ -120,7 +120,7 @@ fn main() {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+            .run_program_owned_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionNotReflectCallable {
                 function: "game::add".to_owned(),
@@ -184,7 +184,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -263,7 +263,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_owned_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionEffectPermissionDenied {
                 function: "game::set_level".to_owned(),

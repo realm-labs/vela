@@ -1,7 +1,7 @@
 use vela_common::FunctionId;
 use vela_reflect::modules::ModuleDesc;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
@@ -61,9 +61,9 @@ pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEnt
     ]
 }
 
-fn context_value(name: &str, value: i64, args: &[Value]) -> VmResult<Value> {
+fn context_value(name: &str, value: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
     if args.is_empty() {
-        return Ok(Value::Int(value));
+        return Ok(OwnedValue::Int(value));
     }
     Err(VmError {
         kind: VmErrorKind::ArityMismatch {
@@ -76,7 +76,7 @@ fn context_value(name: &str, value: i64, args: &[Value]) -> VmResult<Value> {
     })
 }
 
-fn elapsed_since(now: i64, args: &[Value]) -> VmResult<Value> {
+fn elapsed_since(now: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
     if args.len() != 1 {
         return Err(VmError {
             kind: VmErrorKind::ArityMismatch {
@@ -89,7 +89,7 @@ fn elapsed_since(now: i64, args: &[Value]) -> VmResult<Value> {
         });
     }
 
-    let Value::Int(start) = args[0] else {
+    let OwnedValue::Int(start) = args[0] else {
         return Err(VmError {
             kind: VmErrorKind::TypeMismatch {
                 operation: "ctx::elapsed_since",
@@ -99,7 +99,7 @@ fn elapsed_since(now: i64, args: &[Value]) -> VmResult<Value> {
         });
     };
 
-    now.checked_sub(start).map(Value::Int).ok_or(VmError {
+    now.checked_sub(start).map(OwnedValue::Int).ok_or(VmError {
         kind: VmErrorKind::TypeMismatch {
             operation: "ctx::elapsed_since",
         },

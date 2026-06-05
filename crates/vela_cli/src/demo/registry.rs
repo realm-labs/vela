@@ -8,7 +8,7 @@ use vela_macros::{ScriptHost, ScriptReflect, script_methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_reflect::registry::{FieldDesc, TypeKey, TypeRegistry};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 use super::ids::DemoIds;
 use crate::demo::DemoEngineOptions;

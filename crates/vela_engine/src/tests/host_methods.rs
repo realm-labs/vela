@@ -9,7 +9,7 @@ use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, VariantDesc};
 use vela_vm::HostExecution;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 use crate::engine::Engine;
 use crate::method::NativeMethodDesc;
@@ -99,7 +99,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -155,7 +155,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -221,7 +221,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -272,7 +272,7 @@ fn main(player: Player, monster: Monster) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(player), Value::HostRef(monster)],
@@ -391,7 +391,7 @@ fn main(player: Player) {
         tx: &mut tx,
     };
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -858,7 +858,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],

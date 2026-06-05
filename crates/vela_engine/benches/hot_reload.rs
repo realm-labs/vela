@@ -8,7 +8,7 @@ use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
 use vela_host::tx::PatchTx;
 use vela_hot_reload::version::ProgramVersion;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 const QUICK_REPEATS: usize = 2;
 const QUICK_ITERATIONS: usize = 8;
@@ -252,7 +252,7 @@ fn value_checksum(value: &Value) -> u64 {
             |checksum, value| mix(checksum, value_checksum(value)),
         ),
         Value::Range(_) => 0x09,
-        Value::Closure(_) | Value::HeapRef(_) | Value::HostRef(_) | Value::PathProxy(_) => 0x0a,
+        Value::Closure(_) | Value::HostRef(_) | Value::PathProxy(_) => 0x0a,
         Value::Iterator(_) => 0x0b,
     }
 }

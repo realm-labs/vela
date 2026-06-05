@@ -144,7 +144,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+            .run_program_owned_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true))
     );
     assert!(tx.patches().is_empty());
@@ -204,7 +204,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+            .run_program_owned_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true))
     );
     assert!(tx.patches().is_empty());
@@ -777,7 +777,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+            .run_program_owned_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true))
     );
 }

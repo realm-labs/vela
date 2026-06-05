@@ -6,7 +6,7 @@ use vela_reflect::registry::{
     VariantDesc,
 };
 
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 use crate::engine::Engine;
 use crate::error::EngineErrorKind;

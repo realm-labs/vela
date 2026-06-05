@@ -50,7 +50,7 @@ fn main(player: Player, amount: int) {
         )
         .expect("runtime call should run");
 
-    assert_eq!(result, Value::Int(12));
+    assert_eq!(result, OwnedValue::Int(12));
     assert_eq!(tx.patches()[0].path, HostPath::new(player),);
     assert_eq!(
         tx.patches()[0].op,
@@ -71,7 +71,10 @@ fn prelude_imports_cover_script_arg_conversion_traits() {
     assert_eq!(args.required::<PathProxy>(1), Ok(proxy));
     assert_eq!(args.required::<Option<i64>>(2), Ok(Some(3)));
     assert_eq!(String::from_script_arg(&args[3]), Ok("tag".to_owned()));
-    assert_eq!("done".into_script_arg(), Value::String("done".to_owned()));
+    assert_eq!(
+        "done".into_script_arg(),
+        OwnedValue::String("done".to_owned())
+    );
     assert_eq!((1_u32, 42_u64, 7_u32).into_host_ref(), host_ref);
 }
 
@@ -110,10 +113,10 @@ pub const BASE: int = 10;
                 .access(FunctionAccess::public().require_permission("reward.read")),
             #[allow(clippy::result_large_err)]
             |args| {
-                let [Value::Int(base), Value::Int(amount)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::Int(base), OwnedValue::Int(amount)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
-                Ok(Value::Int(base + amount))
+                Ok(OwnedValue::Int(base + amount))
             },
         )
         .build()
@@ -149,7 +152,7 @@ pub const BASE: int = 10;
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(15))
+        Ok(OwnedValue::Int(15))
     );
     assert!(tx.patches().is_empty());
 }
@@ -201,7 +204,7 @@ fn prelude_imports_cover_source_and_reload_results() {
     accepts_update_result(Err(reload_error));
     accepts_safe_point_report(None);
     accepts_event_safe_point_report(EventCallSafePointReport {
-        value: Value::Null,
+        value: OwnedValue::Null,
         reload: None,
     });
     accepts_patch_safe_point_report(PatchApplySafePointReport::default());

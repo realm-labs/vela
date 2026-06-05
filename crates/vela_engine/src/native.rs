@@ -4,7 +4,7 @@ use vela_common::{FunctionId, Span};
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::context::NativeCallContext;
 use crate::permission::PermissionSet;
@@ -210,15 +210,19 @@ pub enum TypeHint {
     Function,
 }
 
-pub type NativeFunction = Arc<dyn Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static>;
+pub type NativeFunction =
+    Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
 pub type HostNativeFunction = Arc<
-    dyn for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+    dyn for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
 >;
 pub type ContextHostNativeFunction = Arc<
-    dyn for<'ctx, 'host> Fn(&[Value], &mut NativeCallContext<'ctx, 'host>) -> VmResult<Value>
+    dyn for<'ctx, 'host> Fn(
+            &[OwnedValue],
+            &mut NativeCallContext<'ctx, 'host>,
+        ) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -234,7 +238,7 @@ impl NativeFunctionEntry {
     #[must_use]
     pub fn new(
         desc: NativeFunctionDesc,
-        function: impl Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static,
+        function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) -> Self {
         Self {
             desc,
@@ -253,7 +257,7 @@ impl HostNativeFunctionEntry {
     #[must_use]
     pub fn new(
         desc: NativeFunctionDesc,
-        function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        function: impl for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -276,9 +280,9 @@ impl ContextHostNativeFunctionEntry {
     pub fn new(
         desc: NativeFunctionDesc,
         function: impl for<'ctx, 'host> Fn(
-            &[Value],
+            &[OwnedValue],
             &mut NativeCallContext<'ctx, 'host>,
-        ) -> VmResult<Value>
+        ) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,

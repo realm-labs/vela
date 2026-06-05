@@ -4,7 +4,7 @@ use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
 use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPolicy;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 #[test]
 fn runtime_hot_reload_update_waits_for_explicit_apply_safe_point() {

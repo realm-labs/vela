@@ -10,6 +10,7 @@ use vela_hot_reload::policy::HotReloadPolicy;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_reflect::registry::TypeRegistry;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::owned_value::{OwnedValue, owned_to_value_detached, value_to_owned_detached};
 use vela_vm::value::Value;
 use vela_vm::{HostExecution, Vm};
 
@@ -190,9 +191,9 @@ impl Engine {
         &self,
         id: HostMethodId,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         let entry = self.native_method(id).ok_or_else(|| VmError {
             kind: VmErrorKind::UnknownMethod {
                 method: format!("host method {}", id.get()),
@@ -256,7 +257,8 @@ impl Engine {
             let function = Arc::clone(&entry.function);
             vm.register_native(name.clone(), move |args| {
                 check_permissions(&name, &access, &permissions)?;
-                function(args)
+                let args = runtime_args_to_owned(args)?;
+                function(&args).map(owned_to_value_detached)
             });
         }
     }
@@ -269,7 +271,8 @@ impl Engine {
             let function = Arc::clone(&entry.function);
             vm.register_host_native(name.clone(), move |args, host| {
                 check_permissions(&name, &access, &permissions)?;
-                function(args, host)
+                let args = runtime_args_to_owned(args)?;
+                function(&args, host).map(owned_to_value_detached)
             });
         }
     }
@@ -284,7 +287,8 @@ impl Engine {
             vm.register_budgeted_host_native(name.clone(), move |args, host, budget| {
                 check_permissions(&name, &access, &permissions)?;
                 let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
-                function(args, &mut context)
+                let args = runtime_args_to_owned(args)?;
+                function(&args, &mut context).map(owned_to_value_detached)
             });
         }
     }
@@ -302,7 +306,8 @@ impl Engine {
                 let function = Arc::clone(&entry.function);
                 vm.register_native(alias.clone(), move |args| {
                     check_permissions(&alias, &access, &permissions)?;
-                    function(args)
+                    let args = runtime_args_to_owned(args)?;
+                    function(&args).map(owned_to_value_detached)
                 });
             } else if let Some(entry) = self.host_native_functions.get(&id) {
                 let alias = alias.to_owned();
@@ -311,7 +316,8 @@ impl Engine {
                 let function = Arc::clone(&entry.function);
                 vm.register_host_native(alias.clone(), move |args, host| {
                     check_permissions(&alias, &access, &permissions)?;
-                    function(args, host)
+                    let args = runtime_args_to_owned(args)?;
+                    function(&args, host).map(owned_to_value_detached)
                 });
             } else if let Some(entry) = self.context_host_native_functions.get(&id) {
                 let alias = alias.to_owned();
@@ -322,7 +328,8 @@ impl Engine {
                 vm.register_budgeted_host_native(alias.clone(), move |args, host, budget| {
                     check_permissions(&alias, &access, &permissions)?;
                     let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
-                    function(args, &mut context)
+                    let args = runtime_args_to_owned(args)?;
+                    function(&args, &mut context).map(owned_to_value_detached)
                 });
             }
         }
@@ -358,6 +365,12 @@ impl Engine {
         self.install_with_registry_and_abi(&mut vm, self.registry_for_program(program), abi);
         vm
     }
+}
+
+fn runtime_args_to_owned(args: &[Value]) -> VmResult<Vec<OwnedValue>> {
+    args.iter()
+        .map(value_to_owned_detached)
+        .collect::<VmResult<Vec<_>>>()
 }
 
 fn check_permissions(

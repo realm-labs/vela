@@ -1,7 +1,7 @@
 use vela_host::path::HostPath;
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::args::FromScriptArg;
 
@@ -15,9 +15,9 @@ where
     fn call_method(
         &self,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 0)?;
         (self)(receiver, host).into_native_return()
     }
@@ -32,9 +32,9 @@ where
     fn call_method(
         &self,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 1)?;
         (self)(receiver, host, A::from_script_arg(&args[0])?).into_native_return()
     }
@@ -50,9 +50,9 @@ where
     fn call_method(
         &self,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 2)?;
         (self)(
             receiver,
@@ -75,9 +75,9 @@ where
     fn call_method(
         &self,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 3)?;
         (self)(
             receiver,
@@ -102,9 +102,9 @@ where
     fn call_method(
         &self,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 4)?;
         (self)(
             receiver,
@@ -134,9 +134,9 @@ where
     fn call_method(
         &self,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 5)?;
         (self)(
             receiver,
@@ -168,9 +168,9 @@ where
     fn call_method(
         &self,
         receiver: &HostPath,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         expect_arity(args, 6)?;
         (self)(
             receiver,

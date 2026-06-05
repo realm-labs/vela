@@ -13,7 +13,7 @@ use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::{VmError, VmErrorKind};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 #[test]
 fn script_arg_conversions_support_optional_values() {

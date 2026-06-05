@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use vela_common::FunctionId;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
@@ -30,9 +30,9 @@ pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
     )
 }
 
-fn math_random(args: &[Value], rng: &Mutex<SeededRandom>) -> VmResult<Value> {
+fn math_random(args: &[OwnedValue], rng: &Mutex<SeededRandom>) -> VmResult<OwnedValue> {
     expect_arity("math::random", args, 2)?;
-    let (Value::Int(min), Value::Int(max)) = (&args[0], &args[1]) else {
+    let (OwnedValue::Int(min), OwnedValue::Int(max)) = (&args[0], &args[1]) else {
         return type_error("math::random");
     };
     if min > max {
@@ -62,13 +62,15 @@ fn math_random(args: &[Value], rng: &Mutex<SeededRandom>) -> VmResult<Value> {
             source_span: None,
             call_stack: Default::default(),
         })?;
-    i64::try_from(value).map(Value::Int).map_err(|_| VmError {
-        kind: VmErrorKind::TypeMismatch {
-            operation: "math::random",
-        },
-        source_span: None,
-        call_stack: Default::default(),
-    })
+    i64::try_from(value)
+        .map(OwnedValue::Int)
+        .map_err(|_| VmError {
+            kind: VmErrorKind::TypeMismatch {
+                operation: "math::random",
+            },
+            source_span: None,
+            call_stack: Default::default(),
+        })
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -101,7 +103,7 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
     })
 }
 
-fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
+fn expect_arity(name: &str, args: &[OwnedValue], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
     }

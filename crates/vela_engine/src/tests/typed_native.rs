@@ -7,7 +7,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_reflect::registry::TypeKey;
 use vela_vm::error::{VmError, VmErrorKind};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 use crate::engine::Engine;
 use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
@@ -40,7 +40,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Int(10)),
     );
 }
@@ -72,7 +72,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Int(11)),
     );
 }
@@ -111,7 +111,7 @@ fn main(player) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::HostRef(player)]),
+            .run_program_owned(&program, "main", &[Value::HostRef(player)]),
         Ok(Value::Int(49)),
     );
 }
@@ -149,7 +149,7 @@ fn main(path) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::PathProxy(path)]),
+            .run_program_owned(&program, "main", &[Value::PathProxy(path)]),
         Ok(Value::Int(2)),
     );
 }
@@ -179,7 +179,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Int(10)),
     );
 }
@@ -210,7 +210,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Int(15)),
     );
 }
@@ -242,7 +242,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Int(21)),
     );
 }
@@ -273,7 +273,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Int(28)),
     );
 }
@@ -300,7 +300,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Float(3.0)),
     );
 }
@@ -332,7 +332,7 @@ fn main(tags) {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        engine.into_vm().run_program_owned(
             &program,
             "main",
             &[Value::Set(vec![
@@ -372,7 +372,7 @@ fn main(tags) {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        engine.into_vm().run_program_owned(
             &program,
             "main",
             &[Value::Set(vec![
@@ -412,7 +412,7 @@ fn main(weights) {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        engine.into_vm().run_program_owned(
             &program,
             "main",
             &[Value::Array(vec![
@@ -452,7 +452,7 @@ fn main(rewards) {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        engine.into_vm().run_program_owned(
             &program,
             "main",
             &[Value::Array(vec![
@@ -493,7 +493,7 @@ fn main(scores) {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        engine.into_vm().run_program_owned(
             &program,
             "main",
             &[Value::Map(
@@ -536,7 +536,7 @@ fn main(scores) {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(
+        engine.into_vm().run_program_owned(
             &program,
             "main",
             &[Value::Map(
@@ -575,7 +575,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Ok(Value::Enum {
             enum_name: "Result".to_owned(),
             variant: "Err".to_owned(),
@@ -621,7 +621,7 @@ fn main(allowed) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::Bool(false)])
+            .run_program_owned(&program, "main", &[Value::Bool(false)])
             .map_err(|error| error.kind),
         Err(VmErrorKind::PermissionDenied {
             native: "game::require_admin".to_owned(),
@@ -669,7 +669,7 @@ fn main(allowed) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::Bool(false)])
+            .run_program_owned(&program, "main", &[Value::Bool(false)])
             .map_err(|error| error.kind),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: expected_path,

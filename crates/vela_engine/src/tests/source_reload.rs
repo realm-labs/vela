@@ -16,7 +16,7 @@ use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
 use vela_reflect::registry::{MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey};
 use vela_vm::HostExecution;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 use crate::engine::Engine;
 use crate::error::EngineErrorKind;
@@ -66,7 +66,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -125,7 +125,7 @@ pub const BONUS: int = 6;
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "game::main::main", &[]),
+            .run_program_owned(&program, "game::main::main", &[]),
         Ok(Value::Int(10))
     );
     assert!(program.function("ignored.main").is_none());
@@ -2168,9 +2168,11 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
         vec!["game::main".to_owned(), "game::reward".to_owned()]
     );
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&runtime.current().to_program(), "game::main::main", &[]),
+        engine.into_vm().run_program_owned(
+            &runtime.current().to_program(),
+            "game::main::main",
+            &[]
+        ),
         Ok(Value::Int(10))
     );
 }
@@ -2195,9 +2197,11 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&runtime.current().to_program(), "game::main::main", &[]),
+        engine.into_vm().run_program_owned(
+            &runtime.current().to_program(),
+            "game::main::main",
+            &[]
+        ),
         Ok(Value::Int(8))
     );
 }
@@ -2345,7 +2349,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_with_host(
+        engine.into_vm().run_program_owned_with_host(
             &version.to_program(),
             "main",
             &[Value::HostRef(host_ref)],

@@ -5,7 +5,7 @@ use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPermissionSet;
 use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 use crate::engine::Engine;
 use crate::random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
@@ -27,7 +27,7 @@ fn main() {
     .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program(&program, "main", &[]),
+        engine.into_vm().run_program_owned(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
             permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
@@ -61,11 +61,11 @@ fn main() {
 
     let first = first_engine
         .into_vm()
-        .run_program(&program, "main", &[])
+        .run_program_owned(&program, "main", &[])
         .expect("first random run should succeed");
     let second = second_engine
         .into_vm()
-        .run_program(&program, "main", &[])
+        .run_program_owned(&program, "main", &[])
         .expect("second random run should succeed");
 
     assert_eq!(first, second);
@@ -183,7 +183,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[], &mut host),
+            .run_program_owned_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true))
     );
     assert!(tx.patches().is_empty());
@@ -230,11 +230,11 @@ fn main() {
 
     let first = first_engine
         .into_vm()
-        .run_program_with_host(&program, "main", &[], &mut first_host)
+        .run_program_owned_with_host(&program, "main", &[], &mut first_host)
         .expect("first reflected random run should succeed");
     let second = second_engine
         .into_vm()
-        .run_program_with_host(&program, "main", &[], &mut second_host)
+        .run_program_owned_with_host(&program, "main", &[], &mut second_host)
         .expect("second reflected random run should succeed");
 
     assert_eq!(first, second);

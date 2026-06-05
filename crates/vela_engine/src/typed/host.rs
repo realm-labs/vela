@@ -1,6 +1,6 @@
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::args::FromScriptArg;
 
@@ -11,7 +11,7 @@ where
     F: for<'host> Fn(&mut HostExecution<'host>) -> R + Send + Sync + 'static,
     R: IntoNativeReturn,
 {
-    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+    fn call_host(&self, args: &[OwnedValue], host: &mut HostExecution<'_>) -> VmResult<OwnedValue> {
         expect_arity(args, 0)?;
         (self)(host).into_native_return()
     }
@@ -23,7 +23,7 @@ where
     A: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+    fn call_host(&self, args: &[OwnedValue], host: &mut HostExecution<'_>) -> VmResult<OwnedValue> {
         expect_arity(args, 1)?;
         (self)(host, A::from_script_arg(&args[0])?).into_native_return()
     }
@@ -36,7 +36,7 @@ where
     B: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+    fn call_host(&self, args: &[OwnedValue], host: &mut HostExecution<'_>) -> VmResult<OwnedValue> {
         expect_arity(args, 2)?;
         (self)(
             host,
@@ -55,7 +55,7 @@ where
     C: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+    fn call_host(&self, args: &[OwnedValue], host: &mut HostExecution<'_>) -> VmResult<OwnedValue> {
         expect_arity(args, 3)?;
         (self)(
             host,
@@ -76,7 +76,7 @@ where
     D: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+    fn call_host(&self, args: &[OwnedValue], host: &mut HostExecution<'_>) -> VmResult<OwnedValue> {
         expect_arity(args, 4)?;
         (self)(
             host,
@@ -99,7 +99,7 @@ where
     E: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+    fn call_host(&self, args: &[OwnedValue], host: &mut HostExecution<'_>) -> VmResult<OwnedValue> {
         expect_arity(args, 5)?;
         (self)(
             host,
@@ -124,7 +124,7 @@ where
     G: FromScriptArg,
     R: IntoNativeReturn,
 {
-    fn call_host(&self, args: &[Value], host: &mut HostExecution<'_>) -> VmResult<Value> {
+    fn call_host(&self, args: &[OwnedValue], host: &mut HostExecution<'_>) -> VmResult<OwnedValue> {
         expect_arity(args, 6)?;
         (self)(
             host,

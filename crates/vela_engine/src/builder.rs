@@ -4,7 +4,7 @@ use vela_reflect::permissions::{ReflectPermissionSet, ReflectPolicy};
 use vela_reflect::registry::{TypeDesc, TypeRegistry};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::context::NativeCallContext;
 use crate::engine::{Engine, EngineParts};
@@ -170,7 +170,7 @@ impl EngineBuilder {
     pub fn register_native_fn(
         mut self,
         desc: NativeFunctionDesc,
-        function: impl Fn(&[Value]) -> VmResult<Value> + Send + Sync + 'static,
+        function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) -> Self {
         self.native_functions
             .push(NativeFunctionEntry::new(desc, function));
@@ -189,7 +189,7 @@ impl EngineBuilder {
     pub fn register_host_native_fn(
         mut self,
         desc: NativeFunctionDesc,
-        function: impl for<'host> Fn(&[Value], &mut HostExecution<'host>) -> VmResult<Value>
+        function: impl for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -216,9 +216,9 @@ impl EngineBuilder {
         mut self,
         desc: NativeFunctionDesc,
         function: impl for<'ctx, 'host> Fn(
-            &[Value],
+            &[OwnedValue],
             &mut NativeCallContext<'ctx, 'host>,
-        ) -> VmResult<Value>
+        ) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -248,9 +248,9 @@ impl EngineBuilder {
         desc: NativeMethodDesc,
         function: impl for<'host> Fn(
             &vela_host::path::HostPath,
-            &[Value],
+            &[OwnedValue],
             &mut HostExecution<'host>,
-        ) -> VmResult<Value>
+        ) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,

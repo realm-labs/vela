@@ -21,7 +21,7 @@ use vela_reflect::permissions::ReflectPermissionSet;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudgetKind;
 use vela_vm::error::{VmErrorKind, VmResult};
-use vela_vm::value::Value;
+use vela_vm::owned_value::OwnedValue as Value;
 
 macro_rules! compile_source {
     ($engine:expr, $source:expr, $expect:literal) => {
