@@ -102,8 +102,12 @@ fn reads_host_field_through_patch_transaction() {
         tx: &mut tx,
     };
 
-    let result =
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host);
+    let result = Vm::new().run_program_runtime_with_host(
+        &program,
+        "main",
+        &[Value::HostRef(host_ref)],
+        &mut host,
+    );
 
     assert_eq!(result, Ok(Value::Int(9)));
 }
@@ -140,7 +144,12 @@ fn set_host_field_records_patch_and_overlay_read() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(10)));
@@ -187,7 +196,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host_heap_and_budget(
+        Vm::new().run_program_runtime_with_host_heap_and_budget(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -244,7 +253,7 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_with_host_and_budget(
+            .run_program_runtime_with_host_and_budget(
                 &program,
                 "main",
                 &[Value::HostRef(host_ref)],
@@ -301,7 +310,12 @@ fn add_host_field_records_patch_and_overlay_read() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(10)));
@@ -327,7 +341,7 @@ fn host_field_read_rejects_stale_generation() {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
         .expect_err("stale host read");
 
     assert_eq!(
@@ -366,7 +380,7 @@ fn host_field_read_error_keeps_instruction_source_span() {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("denied host read");
 
     assert_eq!(error.source_span, Some(span));
@@ -439,7 +453,7 @@ fn runtime_errors_include_script_call_stack() {
     program.insert_function(leaf);
 
     let error = Vm::new()
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect_err("division by zero should fail");
 
     assert_eq!(error.kind, VmErrorKind::DivisionByZero);

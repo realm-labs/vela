@@ -29,7 +29,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
             limit: 1
         })
@@ -77,7 +77,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::MethodPermissionDenied {
             method: "grant_exp".to_owned(),
             permission: "player.grant_exp".to_owned(),
@@ -137,7 +137,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],

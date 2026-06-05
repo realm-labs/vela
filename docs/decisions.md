@@ -83,10 +83,10 @@ Engine embedding APIs, including `Runtime::call`, `args!`, prelude exports,
 registered native functions, typed native conversion traits, and callable native
 methods, use `OwnedValue` at the public Rust boundary. VM native tables and
 execution frames still use runtime `Value`; the engine installs explicit
-conversion bridges when registering native functions into a VM. Transitional VM
-`*_owned` entrypoints may exist only to keep embedding-side tests and callers on
-the owned boundary while lower-level VM tests continue to exercise runtime
-slots directly.
+conversion bridges when registering native functions into a VM. Public VM
+program entrypoints use `OwnedValue`; low-level runtime-slot program entrypoints
+are explicitly named `run_program_runtime*` and are reserved for VM internals,
+low-level tests, and benchmark harnesses.
 
 The compiler may replace a multi-instruction source-level lowering with one
 semantics-equivalent bytecode instruction, such as `Truthy` for dynamic

@@ -143,7 +143,7 @@ fn main() {
     let mut budget = ExecutionBudget::new(100, usize::MAX, 2, usize::MAX);
 
     let error = Vm::new()
-        .run_program_with_budget(&program, "main", &[], &mut budget)
+        .run_program_runtime_with_budget(&program, "main", &[], &mut budget)
         .expect_err("recursive call exceeds call depth");
 
     assert_eq!(
@@ -419,15 +419,15 @@ fn truthy_case() {
     .expect("compile logical short-circuit source");
 
     assert_eq!(
-        Vm::new().run_program(&program, "and_case", &[]),
+        Vm::new().run_program_runtime(&program, "and_case", &[]),
         Ok(Value::Bool(false))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "or_case", &[]),
+        Vm::new().run_program_runtime(&program, "or_case", &[]),
         Ok(Value::Bool(true))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "truthy_case", &[]),
+        Vm::new().run_program_runtime(&program, "truthy_case", &[]),
         Ok(Value::Bool(true))
     );
 }
@@ -457,11 +457,11 @@ fn or_case() {{
         compile_program_source(SourceId::new(1), &source).expect("compile long logical chains");
 
     assert_eq!(
-        Vm::new().run_program(&program, "and_case", &[]),
+        Vm::new().run_program_runtime(&program, "and_case", &[]),
         Ok(Value::Bool(true))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "or_case", &[]),
+        Vm::new().run_program_runtime(&program, "or_case", &[]),
         Ok(Value::Bool(true))
     );
 }
@@ -528,13 +528,23 @@ fn map_case() {
 
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
+            .run_program_runtime_with_managed_heap_and_budget(
+                &program,
+                "array_case",
+                &[],
+                &mut budget
+            )
             .expect("run heap array index"),
         Value::String("xp".into())
     );
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
+            .run_program_runtime_with_managed_heap_and_budget(
+                &program,
+                "map_case",
+                &[],
+                &mut budget
+            )
             .expect("run heap map index"),
         Value::Int(7)
     );
@@ -653,13 +663,23 @@ fn map_case() {
 
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
+            .run_program_runtime_with_managed_heap_and_budget(
+                &program,
+                "array_case",
+                &[],
+                &mut budget
+            )
             .expect("run heap array index write"),
         Value::String("silver".into())
     );
     assert_eq!(
         Vm::new()
-            .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
+            .run_program_runtime_with_managed_heap_and_budget(
+                &program,
+                "map_case",
+                &[],
+                &mut budget
+            )
             .expect("run heap map index write"),
         Value::Int(15)
     );
@@ -683,7 +703,12 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+        Vm::new().run_program_runtime_with_managed_heap_and_budget(
+            &program,
+            "main",
+            &[],
+            &mut budget
+        ),
         Ok(Value::Int(9))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);

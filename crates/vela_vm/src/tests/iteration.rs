@@ -51,7 +51,7 @@ fn main() {
     .expect("compile for-in variant patterns");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(7))
     );
 }

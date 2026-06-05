@@ -225,23 +225,14 @@ impl Vm {
         self.execute_with_managed_heap_and_budget(code, None, &[], None, budget)
     }
 
-    pub fn run_program(&self, program: &Program, entry: &str, args: &[Value]) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
-        self.execute(code, Some(program), args, None, None, None)
-    }
-
-    pub fn run_program_owned(
+    pub fn run_program(
         &self,
         program: &Program,
         entry: &str,
         args: &[OwnedValue],
     ) -> VmResult<OwnedValue> {
         let args = owned_args_to_runtime(args);
-        self.run_program(program, entry, &args)
+        self.run_program_runtime(program, entry, &args)
             .and_then(|value| value_to_owned_detached(&value))
     }
 
@@ -249,49 +240,15 @@ impl Vm {
         &self,
         program: &Program,
         entry: &str,
-        args: &[Value],
+        args: &[OwnedValue],
         budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
-        self.execute(code, Some(program), args, None, None, Some(budget))
-    }
-
-    pub fn run_program_with_heap_and_budget(
-        &self,
-        program: &Program,
-        entry: &str,
-        args: &[Value],
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
-        self.execute(code, Some(program), args, None, Some(heap), Some(budget))
+    ) -> VmResult<OwnedValue> {
+        let args = owned_args_to_runtime(args);
+        self.run_program_runtime_with_budget(program, entry, &args, budget)
+            .and_then(|value| value_to_owned_detached(&value))
     }
 
     pub fn run_program_with_managed_heap_and_budget(
-        &self,
-        program: &Program,
-        entry: &str,
-        args: &[Value],
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
-        self.execute_with_managed_heap_and_budget(code, Some(program), args, None, budget)
-    }
-
-    pub fn run_program_owned_with_managed_heap_and_budget(
         &self,
         program: &Program,
         entry: &str,
@@ -299,8 +256,52 @@ impl Vm {
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
         let args = owned_args_to_runtime(args);
-        self.run_program_with_managed_heap_and_budget(program, entry, &args, budget)
+        self.run_program_runtime_with_managed_heap_and_budget(program, entry, &args, budget)
             .and_then(|value| value_to_owned_detached(&value))
+    }
+
+    pub fn run_program_runtime(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+    ) -> VmResult<Value> {
+        let code = program_entry(program, entry)?;
+        self.execute(code, Some(program), args, None, None, None)
+    }
+
+    pub fn run_program_runtime_with_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program_entry(program, entry)?;
+        self.execute(code, Some(program), args, None, None, Some(budget))
+    }
+
+    pub fn run_program_runtime_with_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program_entry(program, entry)?;
+        self.execute(code, Some(program), args, None, Some(heap), Some(budget))
+    }
+
+    pub fn run_program_runtime_with_managed_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program_entry(program, entry)?;
+        self.execute_with_managed_heap_and_budget(code, Some(program), args, None, budget)
     }
 
     pub fn run_with_host(
@@ -343,26 +344,11 @@ impl Vm {
         &self,
         program: &Program,
         entry: &str,
-        args: &[Value],
-        host: &mut HostExecution<'_>,
-    ) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
-        self.execute(code, Some(program), args, Some(host), None, None)
-    }
-
-    pub fn run_program_owned_with_host(
-        &self,
-        program: &Program,
-        entry: &str,
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
     ) -> VmResult<OwnedValue> {
         let args = owned_args_to_runtime(args);
-        self.run_program_with_host(program, entry, &args, host)
+        self.run_program_runtime_with_host(program, entry, &args, host)
             .and_then(|value| value_to_owned_detached(&value))
     }
 
@@ -370,19 +356,54 @@ impl Vm {
         &self,
         program: &Program,
         entry: &str,
+        args: &[OwnedValue],
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let args = owned_args_to_runtime(args);
+        self.run_program_runtime_with_host_and_budget(program, entry, &args, host, budget)
+            .and_then(|value| value_to_owned_detached(&value))
+    }
+
+    pub fn run_program_with_host_managed_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[OwnedValue],
+        host: &mut HostExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<OwnedValue> {
+        let args = owned_args_to_runtime(args);
+        self.run_program_runtime_with_host_managed_heap_and_budget(
+            program, entry, &args, host, budget,
+        )
+        .and_then(|value| value_to_owned_detached(&value))
+    }
+
+    pub fn run_program_runtime_with_host(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+    ) -> VmResult<Value> {
+        let code = program_entry(program, entry)?;
+        self.execute(code, Some(program), args, Some(host), None, None)
+    }
+
+    pub fn run_program_runtime_with_host_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
         args: &[Value],
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
+        let code = program_entry(program, entry)?;
         self.execute(code, Some(program), args, Some(host), None, Some(budget))
     }
 
-    pub fn run_program_with_host_heap_and_budget(
+    pub fn run_program_runtime_with_host_heap_and_budget(
         &self,
         program: &Program,
         entry: &str,
@@ -391,11 +412,7 @@ impl Vm {
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
+        let code = program_entry(program, entry)?;
         self.execute(
             code,
             Some(program),
@@ -406,7 +423,7 @@ impl Vm {
         )
     }
 
-    pub fn run_program_with_host_managed_heap_and_budget(
+    pub fn run_program_runtime_with_host_managed_heap_and_budget(
         &self,
         program: &Program,
         entry: &str,
@@ -414,25 +431,8 @@ impl Vm {
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
-        let code = program.function(entry).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
+        let code = program_entry(program, entry)?;
         self.execute_with_managed_heap_and_budget(code, Some(program), args, Some(host), budget)
-    }
-
-    pub fn run_program_owned_with_host_managed_heap_and_budget(
-        &self,
-        program: &Program,
-        entry: &str,
-        args: &[OwnedValue],
-        host: &mut HostExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<OwnedValue> {
-        let args = owned_args_to_runtime(args);
-        self.run_program_with_host_managed_heap_and_budget(program, entry, &args, host, budget)
-            .and_then(|value| value_to_owned_detached(&value))
     }
 
     fn execute_with_managed_heap_and_budget(
@@ -554,6 +554,17 @@ fn owned_args_to_runtime(args: &[OwnedValue]) -> Vec<Value> {
         .cloned()
         .map(owned_to_value_detached)
         .collect::<Vec<_>>()
+}
+
+fn program_entry<'program>(
+    program: &'program Program,
+    entry: &str,
+) -> VmResult<&'program CodeObject> {
+    program.function(entry).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownFunction {
+            name: entry.to_owned(),
+        })
+    })
 }
 
 #[cfg(test)]

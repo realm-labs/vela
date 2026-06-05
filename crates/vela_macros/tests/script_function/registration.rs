@@ -17,7 +17,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(42)),
     );
 }
@@ -44,7 +44,7 @@ fn main() {
         .expect("renamed function should be reflected");
     assert_eq!(registered.id, function_id("game::grant_bonus"));
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(7)),
     );
 }
@@ -65,7 +65,7 @@ fn main(labels) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(
+        engine.into_vm().run_program(
             &program,
             "main",
             &[Value::Set(vec![
@@ -94,7 +94,7 @@ fn main(labels) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(
+        engine.into_vm().run_program(
             &program,
             "main",
             &[Value::Set(vec![
@@ -125,7 +125,7 @@ fn main(weights) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(
+        engine.into_vm().run_program(
             &program,
             "main",
             &[Value::Array(vec![
@@ -154,7 +154,7 @@ fn main(scores) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(
+        engine.into_vm().run_program(
             &program,
             "main",
             &[Value::Map(
@@ -186,7 +186,7 @@ fn main(scores) {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(
+        engine.into_vm().run_program(
             &program,
             "main",
             &[Value::Map(
@@ -217,7 +217,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Float(3.0)),
     );
 }
@@ -242,7 +242,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Bool(true)),
     );
 }
@@ -263,7 +263,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(15)),
     );
 }
@@ -284,7 +284,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(21)),
     );
 }
@@ -308,7 +308,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(13)),
     );
 }
@@ -329,7 +329,7 @@ fn main() {
     );
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(11)),
     );
 }
@@ -358,7 +358,7 @@ fn main(path) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_owned(&program, "main", &[Value::PathProxy(path)]),
+            .run_program(&program, "main", &[Value::PathProxy(path)]),
         Ok(Value::Int(2)),
     );
 }
@@ -393,7 +393,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[], &mut host),
+            .run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true)),
     );
     assert!(tx.patches().is_empty());
@@ -424,7 +424,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -466,7 +466,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -635,7 +635,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -677,7 +677,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],

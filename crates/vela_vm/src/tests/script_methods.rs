@@ -39,7 +39,10 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    assert_eq!(vm.run_program(&program, "main", &[]), Ok(Value::Int(3)));
+    assert_eq!(
+        vm.run_program_runtime(&program, "main", &[]),
+        Ok(Value::Int(3))
+    );
 }
 
 #[test]
@@ -65,7 +68,7 @@ fn main() {
     .expect("compile script impl method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -96,7 +99,7 @@ fn main() {
     .expect("compile script method named/default args");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(29))
     );
 }
@@ -127,7 +130,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[player]),
+        Vm::new().run_program_runtime(&program, "main", &[player]),
         Ok(Value::Int(12))
     );
 }
@@ -154,7 +157,7 @@ fn main() {
     .expect("compile immediate script method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -181,7 +184,7 @@ fn main() {
     .expect("compile trait default method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(16))
     );
 }
@@ -211,7 +214,7 @@ fn main() {
     .expect("compile self method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::String("hero".to_owned()))
     );
 }
@@ -240,7 +243,7 @@ fn main() {
     .expect("compile captured receiver method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -270,7 +273,7 @@ fn main() {
     .expect("compile binding pattern receiver method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -305,7 +308,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Ok(Value::Int(12))
     );
     assert!(tx.patches().is_empty());
@@ -340,7 +343,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Ok(Value::Int(12))
     );
     assert!(tx.patches().is_empty());
@@ -377,7 +380,7 @@ fn main() {
     .expect("compile record variant field method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -413,7 +416,7 @@ fn main() {
     .expect("compile tuple variant field method id dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -443,7 +446,7 @@ fn main() {
     .expect("compile explicit impl method override");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(10))
     );
 }
@@ -472,7 +475,7 @@ pub fn main() {
     .expect("compile module-qualified script impl method dispatch");
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::combat::main", &[]),
+        Vm::new().run_program_runtime(&program, "game::combat::main", &[]),
         Ok(Value::Int(14))
     );
 }
@@ -516,7 +519,7 @@ pub fn main(player: Player) {
     };
 
     assert_eq!(
-        Vm::new().run_program(&program, "game::combat::main", &[player]),
+        Vm::new().run_program_runtime(&program, "game::combat::main", &[player]),
         Ok(Value::Int(12))
     );
 }

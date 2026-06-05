@@ -27,7 +27,8 @@ fn main(player) {
         tx: &mut tx,
     };
 
-    let result = vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host);
+    let result =
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host);
 
     assert_eq!(result, Ok(Value::Bool(true)));
 }
@@ -100,7 +101,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Ok(Value::Int(1))
     );
 }
@@ -141,7 +142,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true))
     );
     assert!(tx.patches().is_empty());
@@ -177,7 +178,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Ok(Value::Bool(true))
     );
     assert!(tx.patches().is_empty());
@@ -213,7 +214,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true))
     );
     assert!(tx.patches().is_empty());
@@ -258,7 +259,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Ok(Value::Int(11))
     );
 }
@@ -358,7 +359,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(
+        vm.run_program_runtime_with_host(
             &program,
             "main",
             &[Value::HostRef(player_ref(3))],
@@ -403,7 +404,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(1))
     );
 }
@@ -447,7 +448,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Ok(Value::String("Player".to_owned()))
     );
 }
@@ -485,7 +486,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Ok(Value::String("Player".to_owned()))
     );
 }

@@ -13,7 +13,7 @@ fn double(value) {
     .expect("compile program source");
 
     assert_eq!(
-        Vm::new().run_program(&program, "double", &[Value::Int(9)]),
+        Vm::new().run_program_runtime(&program, "double", &[Value::Int(9)]),
         Ok(Value::Int(18))
     );
 }
@@ -177,7 +177,7 @@ fn main() {
     .expect("compile defaulted record constructor");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(16))
     );
 }
@@ -270,7 +270,7 @@ fn main() {
     .expect("compile typed record slot field read");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(2))
     );
 }
@@ -300,7 +300,7 @@ fn main() {
     .expect("compile typed record slot field writes");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -324,7 +324,7 @@ fn main() {
     .expect("compile typed enum variant slot field read");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(12))
     );
 }
@@ -382,7 +382,7 @@ fn main() {
     .expect("compile defaulted enum constructors");
 
     assert_eq!(
-        Vm::new().run_program(&program, "main", &[]),
+        Vm::new().run_program_runtime(&program, "main", &[]),
         Ok(Value::Int(19))
     );
 }

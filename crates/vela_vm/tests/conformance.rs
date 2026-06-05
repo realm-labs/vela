@@ -25,7 +25,7 @@ fn core_language_fixture_executes() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "conformance::core::main", &[])
+        .run_program_runtime(&program, "conformance::core::main", &[])
         .expect("core language conformance fixture should run");
 
     assert_eq!(result, Value::Int(609));

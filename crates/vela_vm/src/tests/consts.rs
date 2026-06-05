@@ -21,7 +21,10 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    assert_eq!(vm.run_program(&program, "main", &[]), Ok(Value::Int(331)));
+    assert_eq!(
+        vm.run_program_runtime(&program, "main", &[]),
+        Ok(Value::Int(331))
+    );
 }
 
 #[test]
@@ -48,7 +51,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(
-        vm.run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
+        vm.run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
         Ok(Value::Int(1))
     );
 }
@@ -123,7 +126,7 @@ pub const BASE = 3;
     vm.register_standard_natives();
 
     assert_eq!(
-        vm.run_program(&program, "game::main::main", &[]),
+        vm.run_program_runtime(&program, "game::main::main", &[]),
         Ok(Value::Int(1532))
     );
 }

@@ -52,7 +52,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -98,7 +98,7 @@ fn main() {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[], &mut host),
+            .run_program_with_host(&program, "main", &[], &mut host),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch {
                 operation: "host ref",
@@ -147,7 +147,7 @@ fn main(player) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
             .map_err(|error| error.kind),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(host_ref),
@@ -221,7 +221,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -275,7 +275,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -330,7 +330,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -432,7 +432,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -478,7 +478,7 @@ fn main() {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[], &mut host),
+            .run_program_with_host(&program, "main", &[], &mut host),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch {
                 operation: "host ref",
@@ -530,7 +530,7 @@ fn main(player) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[Value::HostRef(player)], &mut host)
+            .run_program_with_host(&program, "main", &[Value::HostRef(player)], &mut host)
             .map_err(|error| error.kind),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(player),
@@ -611,7 +611,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -665,7 +665,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],
@@ -720,7 +720,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(player)],

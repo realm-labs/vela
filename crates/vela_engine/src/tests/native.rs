@@ -50,7 +50,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(5))
     );
 }
@@ -86,7 +86,7 @@ fn main() {
     .expect("named registered native arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(7))
     );
 }
@@ -109,7 +109,7 @@ fn main() {
     .expect("named stdlib native arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(10))
     );
 }
@@ -133,7 +133,7 @@ fn main() {
     .expect("named stdlib value method arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(4))
     );
 }
@@ -156,7 +156,7 @@ fn main() {
     .expect("receiver-specific named stdlib value method arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Bool(true))
     );
 }
@@ -183,11 +183,9 @@ fn main(text: string) {
     .expect("local receiver named stdlib value method arguments should compile");
 
     assert_eq!(
-        engine.into_vm().run_program_owned(
-            &program,
-            "main",
-            &[Value::String("loot:xp".to_owned())]
-        ),
+        engine
+            .into_vm()
+            .run_program(&program, "main", &[Value::String("loot:xp".to_owned())]),
         Ok(Value::Bool(true))
     );
 }
@@ -287,7 +285,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -370,7 +368,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
+        engine.into_vm().run_program_with_host(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
@@ -1053,7 +1051,7 @@ fn main(player) {
 
     let error = engine
         .into_vm()
-        .run_program_owned_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("host native error should fail");
 
     assert_eq!(
@@ -1135,7 +1133,7 @@ fn main() {
     .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "game::secret".to_owned(),
             permission: "game::secret".to_owned(),
@@ -1191,7 +1189,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "game::set_level".to_owned(),
             permission: "player.write".to_owned(),

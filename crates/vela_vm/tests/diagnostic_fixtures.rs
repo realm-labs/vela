@@ -44,7 +44,7 @@ fn runtime_division_by_zero_fixture_renders_source_span_and_call_stack() {
     let program = compile_program_source(SourceId::new(1), &source)
         .expect("runtime diagnostic fixture should compile");
     let error = Vm::new()
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect_err("fixture should fail at runtime");
 
     let rendered = render_diagnostic(
@@ -89,7 +89,7 @@ fn host_permission_denied_fixture_renders_source_span() {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("fixture should fail at the host boundary");
 
     let rendered = render_diagnostic(
@@ -146,7 +146,7 @@ fn host_patch_conflict_fixture_renders_apply_source_span() {
             tx: &mut tx,
         };
         Vm::new()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
             .expect("fixture should record a host patch");
     }
     adapter
@@ -202,7 +202,7 @@ fn stale_host_ref_fixture_renders_source_span() {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
         .expect_err("fixture should fail on stale host ref generation");
 
     let rendered = render_diagnostic(
@@ -255,7 +255,7 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     };
 
     let error = vm
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("fixture should fail during reflection lookup");
 
     let rendered = render_diagnostic(

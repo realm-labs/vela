@@ -182,7 +182,9 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<Value, Box<dyn Error
             mode: ExecutionMode::Inline,
             code,
         } => Ok(vm.run(code)?),
-        CompiledWorkload::ScriptProgram { program } => Ok(vm.run_program(program, "main", &[])?),
+        CompiledWorkload::ScriptProgram { program } => {
+            Ok(vm.run_program_runtime(program, "main", &[])?)
+        }
         CompiledWorkload::Function {
             mode: ExecutionMode::ManagedHeap,
             code,
@@ -356,7 +358,7 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<Value, Box<dyn Error>
         adapter: &mut adapter,
         tx: &mut tx,
     };
-    let value = vm.run_program_with_host_and_budget(
+    let value = vm.run_program_runtime_with_host_and_budget(
         program,
         "main",
         &[Value::HostRef(player)],
@@ -390,7 +392,7 @@ fn run_managed_heap_host_conversion(vm: &Vm, program: &Program) -> Result<Value,
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_with_host_managed_heap_and_budget(
+        vm.run_program_runtime_with_host_managed_heap_and_budget(
             program,
             "main",
             &[Value::HostRef(player)],
@@ -464,7 +466,7 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<Value, Box<dy
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_with_host_and_budget(
+        vm.run_program_runtime_with_host_and_budget(
             program,
             "main",
             &[

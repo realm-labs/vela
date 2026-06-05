@@ -39,7 +39,7 @@ fn main() {
     .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "ctx::now".to_owned(),
             permission: CONTEXT_TIME_PERMISSION.to_owned(),
@@ -64,7 +64,7 @@ fn main() {
     .expect("program should compile");
 
     assert!(matches!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "ctx::elapsed_since".to_owned(),
             permission: CONTEXT_TIME_PERMISSION.to_owned(),
@@ -97,7 +97,7 @@ fn main() {
         engine
             .clone()
             .into_vm()
-            .run_program_owned(&time_program, "main", &[]),
+            .run_program(&time_program, "main", &[]),
         Ok(Value::Int(1_700_000_042))
     );
 
@@ -111,7 +111,7 @@ fn main() {
     )
     .expect("random program should compile");
     assert!(matches!(
-        engine.into_vm().run_program_owned(&random_program, "main", &[]),
+        engine.into_vm().run_program(&random_program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
             permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
@@ -137,7 +137,7 @@ fn main() {
     .expect("program should compile");
 
     assert_eq!(
-        engine.into_vm().run_program_owned(&program, "main", &[]),
+        engine.into_vm().run_program(&program, "main", &[]),
         Ok(Value::Int(52))
     );
 }
@@ -171,7 +171,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[], &mut host),
+            .run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Int(1_700_000_010))
     );
     assert!(tx.patches().is_empty());
@@ -363,7 +363,7 @@ fn main() {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_owned_with_host(&program, "main", &[], &mut host),
+            .run_program_with_host(&program, "main", &[], &mut host),
         Ok(Value::Bool(true))
     );
     assert!(tx.patches().is_empty());
@@ -407,12 +407,9 @@ fn main(ctx) {
     };
 
     assert_eq!(
-        engine.into_vm().run_program_owned_with_host(
-            &program,
-            "main",
-            &[Value::HostRef(ctx)],
-            &mut host
-        ),
+        engine
+            .into_vm()
+            .run_program_with_host(&program, "main", &[Value::HostRef(ctx)], &mut host),
         Ok(Value::Int(1_700_000_042))
     );
     assert_eq!(tx.patches().len(), 2);

@@ -23,7 +23,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option filter source should run");
     assert_eq!(result, crate::Value::Bool(true));
 }
@@ -71,7 +71,7 @@ fn main() {
     let mut budget = ExecutionBudget::unbounded();
 
     let result = vm
-        .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
+        .run_program_runtime_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option/result helper method source should run");
     assert_eq!(result, crate::Value::Bool(true));
 }
@@ -90,7 +90,7 @@ fn main() {
     vm.register_standard_natives();
 
     let error = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect_err("option helper should reject Result values");
     assert_eq!(
         error.kind,
@@ -114,7 +114,7 @@ fn main() {
     vm.register_standard_natives();
 
     let error = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect_err("invalid option flatten should fail");
     assert_eq!(
         error.kind,
@@ -138,7 +138,7 @@ fn main() {
     vm.register_standard_natives();
 
     let error = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect_err("invalid and_then callback should fail");
     assert_eq!(
         error.kind,
@@ -162,7 +162,7 @@ fn main() {
     vm.register_standard_natives();
 
     let error = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect_err("invalid or_else callback should fail");
     assert_eq!(
         error.kind,

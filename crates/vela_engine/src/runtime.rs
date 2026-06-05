@@ -255,7 +255,7 @@ impl Runtime {
             self.engine.into_vm_for_program(&self.program)
         };
         let value = if options.managed_heap {
-            vm.run_program_with_host_managed_heap_and_budget(
+            vm.run_program_runtime_with_host_managed_heap_and_budget(
                 &self.program,
                 entry,
                 &runtime_args,
@@ -263,7 +263,7 @@ impl Runtime {
                 &mut budget,
             )
         } else {
-            vm.run_program_with_host_and_budget(
+            vm.run_program_runtime_with_host_and_budget(
                 &self.program,
                 entry,
                 &runtime_args,

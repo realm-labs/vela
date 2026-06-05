@@ -75,6 +75,6 @@ fn run_version_main(
 ) -> Result<Value, Box<dyn Error>> {
     engine
         .into_vm()
-        .run_program_owned(&version.to_program(), "main", &[])
+        .run_program(&version.to_program(), "main", &[])
         .map_err(|error| format!("{error:?}").into())
 }

@@ -23,7 +23,12 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(11)));
@@ -64,7 +69,7 @@ fn main(player) {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("host read should fail");
 
     let span = error.source_span.expect("host read error source span");
@@ -103,7 +108,12 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(11)));
@@ -143,7 +153,12 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(7)));
@@ -185,7 +200,12 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(1)));
@@ -230,7 +250,12 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(2)));
@@ -287,7 +312,12 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(1)));
@@ -344,7 +374,12 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(5)));
@@ -398,7 +433,12 @@ fn bytecode_mutates_host_variant_field_through_patch_tx() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_runtime_with_host(
+            &program,
+            "main",
+            &[Value::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
     assert_eq!(result, Ok(Value::Int(5)));
@@ -451,7 +491,7 @@ fn main(ctx) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host_managed_heap_and_budget(
+        Vm::new().run_program_runtime_with_host_managed_heap_and_budget(
             &program,
             "main",
             &[Value::HostRef(ctx_ref)],

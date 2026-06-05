@@ -74,7 +74,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("option/result stdlib source should run");
     assert_eq!(
         result,
@@ -131,7 +131,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("option/result helper stdlib source should run");
     assert_eq!(result, crate::Value::Int(40));
 }
@@ -162,7 +162,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("option/result map source should run");
     assert_eq!(result, crate::Value::Int(1));
 }
@@ -190,7 +190,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("result map_err source should run");
     assert_eq!(result, crate::Value::Bool(true));
 }
@@ -231,7 +231,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("option/result and_then source should run");
     assert_eq!(result, crate::Value::Bool(true));
 }
@@ -266,7 +266,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("option/result or_else source should run");
     assert_eq!(result, crate::Value::Bool(true));
 }
@@ -291,7 +291,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("option filter source should run");
     assert_eq!(result, crate::Value::Bool(true));
 }
@@ -341,7 +341,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm
-        .run_program(&program, "main", &[])
+        .run_program_runtime(&program, "main", &[])
         .expect("option/result helper method source should run");
     assert_eq!(result, crate::Value::Int(40));
 }

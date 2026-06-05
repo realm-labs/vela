@@ -29,7 +29,7 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
     };
 
     assert_eq!(result, Ok(Value::Int(10)));
@@ -72,7 +72,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::WriteValueFields
         })
@@ -107,7 +107,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::CallMethods
         })
@@ -156,7 +156,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::MethodEffectPermissionDenied {
                 method: "grant_exp".to_owned(),
@@ -194,7 +194,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
@@ -228,7 +228,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
@@ -262,7 +262,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
@@ -298,7 +298,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Ok(Value::String("Player".into()))
     );
     assert!(tx.patches().is_empty());
@@ -335,7 +335,7 @@ fn main() {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Ok(Value::Array(vec![
             Value::String("reflect::read_type_info".to_owned()),
             Value::String("reflect::read_value_fields".to_owned()),
@@ -369,7 +369,7 @@ fn main() {
     };
 
     let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[], &mut host)
         .expect_err("unknown permission should diagnose");
     assert_eq!(
         error.kind,
@@ -409,7 +409,7 @@ fn main() {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: reflect::permissions::ReflectPermission::ReadTypeInfo
         })
@@ -450,7 +450,7 @@ fn main() {
     };
 
     let error = vm
-        .run_program_with_host(&program, "main", &[], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[], &mut host)
         .expect_err("function metadata permission should be denied");
     assert_eq!(
         error.kind,
@@ -499,7 +499,7 @@ fn main(player) {
     };
 
     let error = vm
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("hidden field read should be denied");
     assert_eq!(
         error.kind,
@@ -551,7 +551,7 @@ fn main(player) {
     };
 
     let error = vm
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("field permission should be denied");
     assert_eq!(
         error.kind,
@@ -609,7 +609,7 @@ fn main(player) {
     };
 
     let error = vm
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("unknown field should diagnose allowed candidates only");
     assert_eq!(
         error.kind,
@@ -670,7 +670,7 @@ fn main(player) {
     };
 
     let error = vm
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
         .expect_err("unknown method should diagnose allowed candidates only");
     assert_eq!(
         error.kind,
@@ -711,7 +711,7 @@ fn main(player) {
     };
 
     assert!(matches!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+        vm.run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
             limit: 1
         })
@@ -751,7 +751,7 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_with_host_heap_and_budget(
+        vm.run_program_runtime_with_host_heap_and_budget(
             &program,
             "main",
             &[Value::HostRef(host_ref)],
