@@ -1,6 +1,6 @@
 use crate::heap::HeapValue;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value,
     values_equal,
 };
 
@@ -57,7 +57,7 @@ fn first_value(
             else {
                 return type_error("method first");
             };
-            let payload = values.first().map(value_from_heap_slot);
+            let payload = values.first().map(stored_runtime_value);
             if payload.is_some() {
                 option_value("Some", payload, heap, budget)
             } else {
@@ -80,7 +80,7 @@ fn last_value(
             else {
                 return type_error("method last");
             };
-            let payload = values.last().map(value_from_heap_slot);
+            let payload = values.last().map(stored_runtime_value);
             if payload.is_some() {
                 option_value("Some", payload, heap, budget)
             } else {
@@ -103,7 +103,7 @@ fn array_contains(
                 return type_error("method contains");
             };
             for value in values {
-                if values_equal(&value_from_heap_slot(value), needle, heap)? {
+                if values_equal(&stored_runtime_value(value), needle, heap)? {
                     return Ok(true);
                 }
             }
@@ -127,7 +127,7 @@ fn array_index_of(
                 return type_error("method index_of");
             };
             for (index, value) in values.iter().enumerate() {
-                if values_equal(&value_from_heap_slot(value), needle, heap.as_deref())? {
+                if values_equal(&stored_runtime_value(value), needle, heap.as_deref())? {
                     return index_option(index, heap, budget);
                 }
             }

@@ -1,5 +1,5 @@
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value};
 
 pub(super) struct EnumTag {
     pub(super) kind: EnumKind,
@@ -103,7 +103,7 @@ pub(super) fn enum_payload(
             };
             fields
                 .get("0")
-                .map(value_from_heap_slot)
+                .map(stored_runtime_value)
                 .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
         }
         _ => type_error(operation),

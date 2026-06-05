@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_script_value_methods() {
@@ -40,7 +40,10 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    assert_eq!(vm.run_program(&program, "main", &[]), Ok(Value::Int(3)));
+    assert_eq!(
+        vm.run_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(3))
+    );
 }
 
 #[test]
@@ -67,7 +70,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -98,7 +101,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(29))
+        Ok(OwnedValue::Int(29))
     );
 }
 
@@ -122,14 +125,14 @@ fn main(player: Player) {
 "#,
     )
     .expect("compile typed parameter method id dispatch");
-    let player = Value::Record {
+    let player = OwnedValue::Record {
         type_name: "Player".to_owned(),
-        fields: ScriptFields::from_pairs("Player", [("level".to_owned(), Value::Int(7))]),
+        fields: ScriptFields::from_pairs("Player", [("level".to_owned(), OwnedValue::Int(7))]),
     };
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[player]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -156,7 +159,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -183,7 +186,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(16))
+        Ok(OwnedValue::Int(16))
     );
 }
 
@@ -213,7 +216,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::String("hero".to_owned()))
+        Ok(OwnedValue::String("hero".to_owned()))
     );
 }
 
@@ -242,7 +245,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -272,7 +275,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -306,8 +309,13 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
-        Ok(Value::Int(12))
+        vm.run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(OwnedValue::Int(12))
     );
     assert!(tx.patches().is_empty());
 }
@@ -341,8 +349,13 @@ fn main(player) {
     };
 
     assert_eq!(
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
-        Ok(Value::Int(12))
+        vm.run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host
+        ),
+        Ok(OwnedValue::Int(12))
     );
     assert!(tx.patches().is_empty());
 }
@@ -379,7 +392,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -415,7 +428,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -445,7 +458,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(10))
+        Ok(OwnedValue::Int(10))
     );
 }
 
@@ -474,7 +487,7 @@ pub fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "game::combat::main", &[]),
-        Ok(Value::Int(14))
+        Ok(OwnedValue::Int(14))
     );
 }
 
@@ -508,16 +521,16 @@ pub fn main(player: Player) {
         ),
     ])
     .expect("compile module typed parameter method id dispatch");
-    let player = Value::Record {
+    let player = OwnedValue::Record {
         type_name: "game::model::Player".to_owned(),
         fields: ScriptFields::from_pairs(
             "game::model::Player",
-            [("level".to_owned(), Value::Int(7))],
+            [("level".to_owned(), OwnedValue::Int(7))],
         ),
     };
 
     assert_eq!(
         Vm::new().run_program(&program, "game::combat::main", &[player]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }

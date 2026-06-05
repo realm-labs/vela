@@ -29,7 +29,7 @@ fn main() {
     let result = vm
         .run(&code)
         .expect("array higher-order methods should run");
-    assert_eq!(result, Value::Int(3));
+    assert_eq!(result, OwnedValue::Int(3));
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array higher-order methods should run");
-    assert_eq!(result, Value::Int(2));
+    assert_eq!(result, OwnedValue::Int(2));
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm.run(&code).expect("array endpoint methods should run");
-    assert_eq!(result, Value::Int(1));
+    assert_eq!(result, OwnedValue::Int(1));
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array endpoint methods should run");
-    assert_eq!(result, Value::String("wyrm".to_owned()));
+    assert_eq!(result, OwnedValue::String("wyrm".to_owned()));
 }
 
 #[test]
@@ -142,7 +142,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm.run(&code).expect("array remove_at method should run");
-    assert_eq!(result, Value::Int(30));
+    assert_eq!(result, OwnedValue::Int(30));
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array remove_at method should run");
-    assert_eq!(result, Value::String("quest".to_owned()));
+    assert_eq!(result, OwnedValue::String("quest".to_owned()));
 }
 
 #[test]
@@ -197,7 +197,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm.run(&code).expect("array insert method should run");
-    assert_eq!(result, Value::Int(20));
+    assert_eq!(result, OwnedValue::Int(20));
 }
 
 #[test]
@@ -222,7 +222,7 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array insert method should run");
-    assert_eq!(result, Value::String("quest".to_owned()));
+    assert_eq!(result, OwnedValue::String("quest".to_owned()));
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm.run(&code).expect("array extend method should run");
-    assert_eq!(result, Value::Int(40));
+    assert_eq!(result, OwnedValue::Int(40));
 }
 
 #[test]
@@ -294,7 +294,7 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array extend method should run");
-    assert_eq!(result, Value::String("raid".to_owned()));
+    assert_eq!(result, OwnedValue::String("raid".to_owned()));
 }
 
 #[test]
@@ -334,7 +334,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm.run(&code).expect("array clear method should run");
-    assert_eq!(result, Value::Int(40));
+    assert_eq!(result, OwnedValue::Int(40));
 }
 
 #[test]
@@ -359,5 +359,5 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array clear method should run");
-    assert_eq!(result, Value::String("raid".to_owned()));
+    assert_eq!(result, OwnedValue::String("raid".to_owned()));
 }

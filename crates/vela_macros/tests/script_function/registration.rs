@@ -1,4 +1,5 @@
 use super::*;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn script_function_registers_typed_native_with_engine() {
@@ -18,7 +19,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(42)),
+        Ok(OwnedValue::Int(42)),
     );
 }
 
@@ -45,7 +46,7 @@ fn main() {
     assert_eq!(registered.id, function_id("game::grant_bonus"));
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(7)),
+        Ok(OwnedValue::Int(7)),
     );
 }
 
@@ -68,13 +69,13 @@ fn main(labels) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Set(vec![
-                Value::String("raid".to_owned()),
-                Value::String("pvp".to_owned()),
-                Value::String("raid".to_owned()),
+            &[OwnedValue::Set(vec![
+                OwnedValue::String("raid".to_owned()),
+                OwnedValue::String("pvp".to_owned()),
+                OwnedValue::String("raid".to_owned()),
             ])],
         ),
-        Ok(Value::Int(2)),
+        Ok(OwnedValue::Int(2)),
     );
 }
 
@@ -97,13 +98,13 @@ fn main(labels) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Set(vec![
-                Value::String("raid".to_owned()),
-                Value::String("pvp".to_owned()),
-                Value::String("raid".to_owned()),
+            &[OwnedValue::Set(vec![
+                OwnedValue::String("raid".to_owned()),
+                OwnedValue::String("pvp".to_owned()),
+                OwnedValue::String("raid".to_owned()),
             ])],
         ),
-        Ok(Value::Int(2)),
+        Ok(OwnedValue::Int(2)),
     );
 }
 
@@ -128,13 +129,13 @@ fn main(weights) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Array(vec![
-                Value::Int(3),
-                Value::Int(5),
-                Value::Int(7),
+            &[OwnedValue::Array(vec![
+                OwnedValue::Int(3),
+                OwnedValue::Int(5),
+                OwnedValue::Int(7),
             ])],
         ),
-        Ok(Value::Int(27)),
+        Ok(OwnedValue::Int(27)),
     );
 }
 
@@ -157,15 +158,15 @@ fn main(scores) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Map(
+            &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), Value::Int(3)),
-                    ("weekly".to_owned(), Value::Int(7)),
+                    ("daily".to_owned(), OwnedValue::Int(3)),
+                    ("weekly".to_owned(), OwnedValue::Int(7)),
                 ]
                 .into(),
             )],
         ),
-        Ok(Value::Int(10)),
+        Ok(OwnedValue::Int(10)),
     );
 }
 
@@ -189,15 +190,15 @@ fn main(scores) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Map(
+            &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), Value::Int(3)),
-                    ("weekly".to_owned(), Value::Int(7)),
+                    ("daily".to_owned(), OwnedValue::Int(3)),
+                    ("weekly".to_owned(), OwnedValue::Int(7)),
                 ]
                 .into(),
             )],
         ),
-        Ok(Value::Int(13)),
+        Ok(OwnedValue::Int(13)),
     );
 }
 
@@ -218,7 +219,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Float(3.0)),
+        Ok(OwnedValue::Float(3.0)),
     );
 }
 
@@ -243,7 +244,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Bool(true)),
+        Ok(OwnedValue::Bool(true)),
     );
 }
 
@@ -264,7 +265,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(15)),
+        Ok(OwnedValue::Int(15)),
     );
 }
 
@@ -285,7 +286,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(21)),
+        Ok(OwnedValue::Int(21)),
     );
 }
 
@@ -309,7 +310,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(13)),
+        Ok(OwnedValue::Int(13)),
     );
 }
 
@@ -330,7 +331,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(11)),
+        Ok(OwnedValue::Int(11)),
     );
 }
 
@@ -358,8 +359,8 @@ fn main(path) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::PathProxy(path)]),
-        Ok(Value::Int(2)),
+            .run_program(&program, "main", &[OwnedValue::PathProxy(path)]),
+        Ok(OwnedValue::Int(2)),
     );
 }
 
@@ -394,7 +395,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Bool(true)),
+        Ok(OwnedValue::Bool(true)),
     );
     assert!(tx.patches().is_empty());
 }
@@ -427,10 +428,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host,
         ),
-        Ok(Value::Bool(true)),
+        Ok(OwnedValue::Bool(true)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
 }
@@ -469,10 +470,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host,
         ),
-        Ok(Value::Int(11)),
+        Ok(OwnedValue::Int(11)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(11)));
 }
@@ -501,12 +502,12 @@ fn main(player, ok) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(player), Value::Bool(true)],
+            &[OwnedValue::HostRef(player), OwnedValue::Bool(true)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::Int(13)),
+        Ok(OwnedValue::Int(13)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
 
@@ -514,7 +515,7 @@ fn main(player, ok) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(player), Value::Bool(false)],
+            &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut failed_tx,
@@ -552,7 +553,7 @@ fn main(player) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -593,7 +594,7 @@ fn main(player) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             CallOptions::new(2, usize::MAX, usize::MAX, usize::MAX),
             &mut adapter,
             &mut tx,
@@ -638,10 +639,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host,
         ),
-        Ok(Value::Int(12)),
+        Ok(OwnedValue::Int(12)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(12)));
 }
@@ -680,10 +681,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host,
         ),
-        Ok(Value::Int(14)),
+        Ok(OwnedValue::Int(14)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(14)));
 }
@@ -712,12 +713,12 @@ fn main(player, ok) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(player), Value::Bool(true)],
+            &[OwnedValue::HostRef(player), OwnedValue::Bool(true)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::Int(15)),
+        Ok(OwnedValue::Int(15)),
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(15)));
 
@@ -725,7 +726,7 @@ fn main(player, ok) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(player), Value::Bool(false)],
+            &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut failed_tx,

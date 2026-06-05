@@ -8,7 +8,7 @@ use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
 use vela_host::tx::PatchTx;
 use vela_hot_reload::version::ProgramVersion;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 const QUICK_REPEATS: usize = 2;
 const QUICK_ITERATIONS: usize = 8;
@@ -175,11 +175,11 @@ fn run_abi_rejection(engine: &Engine, initial: &ProgramVersion) -> Result<u64, B
     Ok(report_checksum(
         report.accepted,
         Some(active_version),
-        Value::Int(report.errors.len() as i64),
+        OwnedValue::Int(report.errors.len() as i64),
     ))
 }
 
-fn report_checksum(accepted: bool, version: Option<u64>, value: Value) -> u64 {
+fn report_checksum(accepted: bool, version: Option<u64>, value: OwnedValue) -> u64 {
     let accepted = u64::from(accepted);
     let version = version.unwrap_or(u64::MAX);
     mix(mix(accepted, version), value_checksum(&value))
@@ -219,28 +219,28 @@ fn percentile_ns(samples: &[Duration], percentile: usize) -> u128 {
     samples[index].as_nanos()
 }
 
-fn value_checksum(value: &Value) -> u64 {
+fn value_checksum(value: &OwnedValue) -> u64 {
     match value {
-        Value::Missing => 0x01,
-        Value::Null => 0x02,
-        Value::Bool(value) => u64::from(*value) ^ 0x03,
-        Value::Int(value) => *value as u64,
-        Value::Float(value) => value.to_bits(),
-        Value::String(value) => bytes_checksum(value.as_bytes()),
-        Value::Array(values) | Value::Set(values) => values
+        OwnedValue::Missing => 0x01,
+        OwnedValue::Null => 0x02,
+        OwnedValue::Bool(value) => u64::from(*value) ^ 0x03,
+        OwnedValue::Int(value) => *value as u64,
+        OwnedValue::Float(value) => value.to_bits(),
+        OwnedValue::String(value) => bytes_checksum(value.as_bytes()),
+        OwnedValue::Array(values) | OwnedValue::Set(values) => values
             .iter()
             .fold(0x05, |checksum, value| mix(checksum, value_checksum(value))),
-        Value::Map(values) => values.iter().fold(0x06, |checksum, (key, value)| {
+        OwnedValue::Map(values) => values.iter().fold(0x06, |checksum, (key, value)| {
             mix(
                 mix(checksum, bytes_checksum(key.as_bytes())),
                 value_checksum(value),
             )
         }),
-        Value::Record { type_name, fields } => fields.values().fold(
+        OwnedValue::Record { type_name, fields } => fields.values().fold(
             mix(0x07, bytes_checksum(type_name.as_bytes())),
             |checksum, value| mix(checksum, value_checksum(value)),
         ),
-        Value::Enum {
+        OwnedValue::Enum {
             enum_name,
             variant,
             fields,
@@ -251,9 +251,9 @@ fn value_checksum(value: &Value) -> u64 {
             ),
             |checksum, value| mix(checksum, value_checksum(value)),
         ),
-        Value::Range(_) => 0x09,
-        Value::Closure(_) | Value::HostRef(_) | Value::PathProxy(_) => 0x0a,
-        Value::Iterator(_) => 0x0b,
+        OwnedValue::Range(_) => 0x09,
+        OwnedValue::Closure(_) | OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => 0x0a,
+        OwnedValue::Iterator(_) => 0x0b,
     }
 }
 

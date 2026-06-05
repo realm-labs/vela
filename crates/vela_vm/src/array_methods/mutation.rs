@@ -1,11 +1,10 @@
 use crate::heap::HeapValue;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot, value_to_heap_slot,
+    ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value, stored_runtime_value,
 };
 
 use super::{
-    expect_arity, index_out_of_bounds, index_value, materialize_array_values, option_value,
-    type_error,
+    array_values, expect_arity, index_out_of_bounds, index_value, option_value, type_error,
 };
 
 pub(crate) fn push(
@@ -20,7 +19,7 @@ pub(crate) fn push(
             let Some(heap) = heap else {
                 return type_error("method push");
             };
-            let slot = value_to_heap_slot(&args[0], heap, budget)?;
+            let slot = store_runtime_value(&args[0], heap, budget)?;
             let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method push");
             };
@@ -48,7 +47,7 @@ pub(crate) fn pop(
             let Some(HeapValue::Array(values)) = heap_ref.heap.get_mut(*reference).ok() else {
                 return type_error("method pop");
             };
-            let payload = values.pop().map(|slot| value_from_heap_slot(&slot));
+            let payload = values.pop().map(|slot| stored_runtime_value(&slot));
             if payload.is_some() {
                 option_value("Some", payload, &mut heap, &mut budget)
             } else {
@@ -80,7 +79,7 @@ pub(crate) fn remove_at(
             if index >= values.len() {
                 return option_value("None", None, &mut heap, &mut budget);
             }
-            let value = value_from_heap_slot(&values.remove(index));
+            let value = stored_runtime_value(&values.remove(index));
             option_value("Some", Some(value), &mut heap, &mut budget)
         }
         _ => type_error("method remove_at"),
@@ -107,7 +106,7 @@ pub(crate) fn insert(
             if index > len {
                 return Err(index_out_of_bounds(index, len));
             }
-            let slot = value_to_heap_slot(&args[1], heap, budget)?;
+            let slot = store_runtime_value(&args[1], heap, budget)?;
             let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method insert");
             };
@@ -125,7 +124,7 @@ pub(crate) fn extend(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("extend", args, 1)?;
-    let extension = materialize_array_values(&args[0], heap.as_deref(), "method extend")?;
+    let extension = array_values(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
@@ -133,7 +132,7 @@ pub(crate) fn extend(
             };
             let mut slots = Vec::with_capacity(extension.len());
             for value in &extension {
-                slots.push(value_to_heap_slot(value, heap, budget.as_deref_mut())?);
+                slots.push(store_runtime_value(value, heap, budget.as_deref_mut())?);
             }
             let Some(HeapValue::Array(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method extend");

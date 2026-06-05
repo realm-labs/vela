@@ -8,7 +8,7 @@ use vela_macros::{ScriptHost, ScriptReflect, script_methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_reflect::registry::{FieldDesc, TypeKey, TypeRegistry};
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use super::ids::DemoIds;
 use crate::demo::DemoEngineOptions;
@@ -66,7 +66,7 @@ fn demo_reward_grant_desc(ids: DemoIds) -> NativeFunctionDesc {
         .attr("event", "reward")
 }
 
-fn demo_reward_grant(_: Value, _: String) -> bool {
+fn demo_reward_grant(_: OwnedValue, _: String) -> bool {
     true
 }
 

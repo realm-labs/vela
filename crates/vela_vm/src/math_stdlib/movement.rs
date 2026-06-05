@@ -1,29 +1,29 @@
 use crate::{VmError, VmErrorKind, VmResult};
 
-use super::{Value, expect_arity};
+use super::{OwnedValue, expect_arity};
 
 use super::{expect_finite_float, type_error};
 
-pub(crate) fn math_lerp(args: &[Value]) -> VmResult<Value> {
+pub(crate) fn math_lerp(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::lerp", args, 3)?;
     let start = expect_finite_float(&args[0], "math::lerp")?;
     let end = expect_finite_float(&args[1], "math::lerp")?;
     let t = expect_finite_float(&args[2], "math::lerp")?;
     let value = start + (end - start) * t;
     if value.is_finite() {
-        Ok(Value::Float(value))
+        Ok(OwnedValue::Float(value))
     } else {
         type_error("math::lerp")
     }
 }
 
-pub(crate) fn math_move_towards(args: &[Value]) -> VmResult<Value> {
+pub(crate) fn math_move_towards(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::move_towards", args, 3)?;
     match (&args[0], &args[1], &args[2]) {
-        (Value::Int(current), Value::Int(target), Value::Int(max_delta)) => {
-            int_move_towards(*current, *target, *max_delta).map(Value::Int)
+        (OwnedValue::Int(current), OwnedValue::Int(target), OwnedValue::Int(max_delta)) => {
+            int_move_towards(*current, *target, *max_delta).map(OwnedValue::Int)
         }
-        _ => float_move_towards(args).map(Value::Float),
+        _ => float_move_towards(args).map(OwnedValue::Float),
     }
 }
 
@@ -46,7 +46,7 @@ fn int_move_towards(current: i64, target: i64, max_delta: i64) -> VmResult<i64> 
     })
 }
 
-fn float_move_towards(args: &[Value]) -> VmResult<f64> {
+fn float_move_towards(args: &[OwnedValue]) -> VmResult<f64> {
     let current = expect_finite_float(&args[0], "math::move_towards")?;
     let target = expect_finite_float(&args[1], "math::move_towards")?;
     let max_delta = expect_finite_float(&args[2], "math::move_towards")?;

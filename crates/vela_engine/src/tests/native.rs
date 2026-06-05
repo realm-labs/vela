@@ -12,7 +12,7 @@ use vela_reflect::registry::TypeKey;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudgetKind;
 use vela_vm::error::{VmError, VmErrorKind};
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::args::ScriptArgsExt;
 use crate::engine::Engine;
@@ -31,10 +31,10 @@ fn engine_installs_registered_native_functions_into_vm() {
                 .access(FunctionAccess::public())
                 .docs("Adds two integers."),
             |args| {
-                let [Value::Int(lhs), Value::Int(rhs)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::Int(lhs), OwnedValue::Int(rhs)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
-                Ok(Value::Int(lhs + rhs))
+                Ok(OwnedValue::Int(lhs + rhs))
             },
         )
         .build()
@@ -51,7 +51,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 }
 
@@ -66,10 +66,10 @@ fn engine_compiler_options_lower_named_registered_native_arguments() {
                 .effects(EffectSet::pure())
                 .access(FunctionAccess::public()),
             |args| {
-                let [Value::Int(lhs), Value::Int(rhs)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::Int(lhs), OwnedValue::Int(rhs)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
-                Ok(Value::Int(lhs - rhs))
+                Ok(OwnedValue::Int(lhs - rhs))
             },
         )
         .build()
@@ -87,7 +87,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }
 
@@ -110,7 +110,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(10))
+        Ok(OwnedValue::Int(10))
     );
 }
 
@@ -134,7 +134,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(4))
+        Ok(OwnedValue::Int(4))
     );
 }
 
@@ -157,7 +157,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
 }
 
@@ -183,10 +183,12 @@ fn main(text: string) {
     .expect("local receiver named stdlib value method arguments should compile");
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program(&program, "main", &[Value::String("loot:xp".to_owned())]),
-        Ok(Value::Bool(true))
+        engine.into_vm().run_program(
+            &program,
+            "main",
+            &[OwnedValue::String("loot:xp".to_owned())]
+        ),
+        Ok(OwnedValue::Bool(true))
     );
 }
 
@@ -235,7 +237,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     let result = runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
-    assert_eq!(result, Ok(Value::Int(46)),);
+    assert_eq!(result, Ok(OwnedValue::Int(46)),);
 }
 
 #[test]
@@ -253,15 +255,15 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.write")),
             |args, host| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -288,10 +290,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -316,8 +318,8 @@ fn engine_installs_context_host_native_functions_into_vm() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.write")),
             |args, ctx| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Bool(false));
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Bool(false));
                 };
                 assert!(ctx.has_permission("player.write"));
                 assert!(
@@ -335,7 +337,7 @@ fn engine_installs_context_host_native_functions_into_vm() {
                     HostValue::Int(*level),
                     None,
                 )?;
-                Ok(Value::Bool(true))
+                Ok(OwnedValue::Bool(true))
             },
         )
         .build()
@@ -371,10 +373,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -405,8 +407,8 @@ fn context_host_native_read_path_observes_patch_overlay() {
                 assert_eq!(ctx.read_path(&path, None)?, HostValue::Int(3));
                 ctx.set_path(path.clone(), HostValue::Int(level), None)?;
                 match ctx.read_path(&path, None)? {
-                    HostValue::Int(value) => Ok(Value::Int(value)),
-                    _ => Ok(Value::Null),
+                    HostValue::Int(value) => Ok(OwnedValue::Int(value)),
+                    _ => Ok(OwnedValue::Null),
                 }
             },
         )
@@ -431,12 +433,12 @@ fn main(player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::Int(17))
+        Ok(OwnedValue::Int(17))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, level);
@@ -464,8 +466,8 @@ fn context_host_native_previews_method_return_without_applying_patch() {
                 let preview = ctx.preview_method_return(&inventory, method, &method_args, None)?;
                 ctx.call_method(inventory, method, method_args, None)?;
                 match preview {
-                    HostValue::String(value) => Ok(Value::String(value)),
-                    _ => Ok(Value::Null),
+                    HostValue::String(value) => Ok(OwnedValue::String(value)),
+                    _ => Ok(OwnedValue::Null),
                 }
             },
         )
@@ -491,12 +493,12 @@ fn main(player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::String("accepted".to_owned()))
+        Ok(OwnedValue::String("accepted".to_owned()))
     );
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
@@ -532,7 +534,7 @@ fn context_host_native_can_charge_execution_budget_before_patching() {
                     HostValue::Int(level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -555,7 +557,7 @@ fn main(player) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(50, usize::MAX, usize::MAX, usize::MAX),
             &mut adapter,
             &mut tx,
@@ -594,7 +596,7 @@ fn context_host_native_can_charge_memory_budget_before_patching() {
                     HostValue::Int(level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -617,7 +619,7 @@ fn main(player) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(u64::MAX, 64, usize::MAX, usize::MAX),
             &mut adapter,
             &mut tx,
@@ -655,7 +657,7 @@ fn context_host_native_set_path_reserves_patch_budget_before_patching() {
                     HostValue::Int(level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -678,7 +680,7 @@ fn main(player) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),
             &mut adapter,
             &mut tx,
@@ -726,7 +728,7 @@ fn context_host_native_patch_helpers_record_expected_patches() {
                 )?;
                 ctx.remove_path(array, None)?;
                 ctx.call_method(inventory, method, vec![HostValue::Int(4)], None)?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -749,12 +751,12 @@ fn main(player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
@@ -824,7 +826,7 @@ fn context_host_native_patch_helpers_reserve_patch_budget_before_patching() {
                     7 => ctx.call_method(inventory, method, vec![HostValue::Int(1)], None)?,
                     _ => {}
                 }
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -848,7 +850,7 @@ fn main(player, mode) {
         let error = runtime
             .call(
                 "main",
-                &[Value::HostRef(host_ref), Value::Int(mode)],
+                &[OwnedValue::HostRef(host_ref), OwnedValue::Int(mode)],
                 CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),
                 &mut adapter,
                 &mut tx,
@@ -881,15 +883,15 @@ fn host_native_patch_budget_rolls_back_overflow_patch() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.write")),
             |args, host| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -912,7 +914,7 @@ fn main(player) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),
             &mut adapter,
             &mut tx,
@@ -944,8 +946,8 @@ fn host_native_error_rolls_back_recorded_patches() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.write")),
             |args, host| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
@@ -981,7 +983,7 @@ fn main(player) {
     let error = runtime
         .call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -1012,8 +1014,8 @@ fn host_native_error_rolls_back_patches_without_call_options() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.write")),
             |args, host| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
@@ -1051,7 +1053,12 @@ fn main(player) {
 
     let error = engine
         .into_vm()
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
         .expect_err("host native error should fail");
 
     assert_eq!(
@@ -1118,7 +1125,7 @@ fn engine_denies_native_calls_missing_required_permission() {
             NativeFunctionDesc::new("game::secret", NativeFunctionId::new(3))
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public().require_permission("game::secret")),
-            |_| Ok(Value::Int(99)),
+            |_| Ok(OwnedValue::Int(99)),
         )
         .build()
         .expect("engine should build");
@@ -1155,15 +1162,15 @@ fn engine_denies_host_native_before_recording_patches() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.write")),
             |args, host| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -1189,7 +1196,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "game::set_level".to_owned(),
             permission: "player.write".to_owned(),

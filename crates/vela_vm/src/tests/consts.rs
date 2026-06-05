@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_aggregate_const_reads() {
@@ -22,7 +22,10 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_standard_natives();
 
-    assert_eq!(vm.run_program(&program, "main", &[]), Ok(Value::Int(331)));
+    assert_eq!(
+        vm.run_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(331))
+    );
 }
 
 #[test]
@@ -50,7 +53,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -125,6 +128,6 @@ pub const BASE = 3;
 
     assert_eq!(
         vm.run_program(&program, "game::main::main", &[]),
-        Ok(Value::Int(1532))
+        Ok(OwnedValue::Int(1532))
     );
 }

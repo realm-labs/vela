@@ -29,7 +29,6 @@ mod record_fields;
 mod reflection;
 mod reflection_values;
 mod runtime_checks;
-mod runtime_view;
 mod script_builtin_methods;
 mod script_methods;
 mod script_object;
@@ -50,12 +49,12 @@ use field_access::{
     get_record_slot_value,
 };
 pub(crate) use frame::CallFrame;
-use heap::{GcRef, HeapSlot, HeapValue, ScriptHeap};
+use heap::{GcRef, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, host_to_value,
-    owned_to_value, store_value_in_heap_if_needed, value_from_constant, value_from_heap_slot,
-    value_to_heap_slot, value_to_owned, values_equal,
+    owned_to_value, store_runtime_value, store_value_in_heap_if_needed, stored_runtime_value,
+    value_from_constant, value_to_owned, values_equal,
 };
 use host_paths::host_path_from_segments;
 use host_values::{value_from_host, value_to_host};

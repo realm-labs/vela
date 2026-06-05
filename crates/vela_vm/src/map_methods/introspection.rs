@@ -1,5 +1,5 @@
 use crate::heap::HeapValue;
-use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value};
 
 use super::{expect_no_args, map_entry, type_error};
 use crate::array_methods::{make_array_value, make_string_value};
@@ -48,7 +48,7 @@ pub(crate) fn values(
                 };
                 values
                     .values()
-                    .map(value_from_heap_slot)
+                    .map(stored_runtime_value)
                     .collect::<Vec<_>>()
             };
             make_array_value(values, heap, budget, "method values")
@@ -74,7 +74,7 @@ pub(crate) fn entries(
                 };
                 values
                     .iter()
-                    .map(|(key, value)| (key.clone(), value_from_heap_slot(value)))
+                    .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
                     .collect::<Vec<_>>()
             };
             let entries = entries

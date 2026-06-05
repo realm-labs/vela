@@ -3,7 +3,7 @@ use std::sync::Arc;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
 use super::common::check_reflect_policy;
@@ -53,7 +53,7 @@ fn register_module_natives(
         )?;
         expect_arity("reflect::has_module", args, 1)?;
         let module_name = expect_string(&args[0], "reflect::has_module")?;
-        Ok(Value::Bool(reflect::modules::has_module_with_policy(
+        Ok(OwnedValue::Bool(reflect::modules::has_module_with_policy(
             &has_module_registry,
             module_name,
             &has_module_policy,
@@ -130,11 +130,13 @@ fn register_function_natives(
         )?;
         expect_arity("reflect::has_function", args, 1)?;
         let function_name = expect_string(&args[0], "reflect::has_function")?;
-        Ok(Value::Bool(reflect::modules::has_function_with_policy(
-            &has_function_registry,
-            function_name,
-            &has_function_policy,
-        )))
+        Ok(OwnedValue::Bool(
+            reflect::modules::has_function_with_policy(
+                &has_function_registry,
+                function_name,
+                &has_function_policy,
+            ),
+        ))
     });
 
     let functions_registry = Arc::clone(registry);

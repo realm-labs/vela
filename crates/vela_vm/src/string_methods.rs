@@ -96,7 +96,7 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::owned_value::OwnedValue as Value;
+    use crate::owned_value::OwnedValue;
     use crate::{ExecutionBudget, Vm};
 
     #[test]
@@ -122,7 +122,7 @@ fn main() {
         let result = Vm::new()
             .run(&code)
             .expect("string utility methods should run");
-        assert_eq!(result, Value::String("quest".to_owned()));
+        assert_eq!(result, OwnedValue::String("quest".to_owned()));
     }
 
     #[test]
@@ -149,7 +149,7 @@ fn main() {
         let result = Vm::new()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string utility methods should run");
-        assert_eq!(result, Value::String("levelup".to_owned()));
+        assert_eq!(result, OwnedValue::String("levelup".to_owned()));
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
@@ -190,7 +190,7 @@ fn main() {
             .expect("string repeat source should compile");
 
         let result = Vm::new().run(&code).expect("string repeat should run");
-        assert_eq!(result, Value::String("--".to_owned()));
+        assert_eq!(result, OwnedValue::String("--".to_owned()));
     }
 
     #[test]
@@ -227,7 +227,7 @@ fn main() {
         let result = Vm::new()
             .run(&code)
             .expect("unicode string slice should run");
-        assert_eq!(result, Value::String("奖励".to_owned()));
+        assert_eq!(result, OwnedValue::String("奖励".to_owned()));
     }
 
     #[test]
@@ -270,7 +270,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("string find should run");
-        assert_eq!(result, Value::Int(4));
+        assert_eq!(result, OwnedValue::Int(4));
     }
 
     #[test]
@@ -290,7 +290,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string find should run");
-        assert_eq!(result, Value::Int(8));
+        assert_eq!(result, OwnedValue::Int(8));
     }
 
     #[test]
@@ -337,7 +337,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("string char_at should run");
-        assert_eq!(result, Value::String("励".to_owned()));
+        assert_eq!(result, OwnedValue::String("励".to_owned()));
     }
 
     #[test]
@@ -356,7 +356,7 @@ fn main() {
             .with_standard_natives()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string char_at should run");
-        assert_eq!(result, Value::String(".".to_owned()));
+        assert_eq!(result, OwnedValue::String(".".to_owned()));
     }
 
     #[test]
@@ -402,7 +402,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("string strip affix should run");
-        assert_eq!(result, Value::String("奖励".to_owned()));
+        assert_eq!(result, OwnedValue::String("奖励".to_owned()));
     }
 
     #[test]
@@ -423,7 +423,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string strip affix should run");
-        assert_eq!(result, Value::String("wolf".to_owned()));
+        assert_eq!(result, OwnedValue::String("wolf".to_owned()));
     }
 
     #[test]
@@ -467,7 +467,7 @@ fn main() {
             .expect("string split_lines source should compile");
 
         let result = Vm::new().run(&code).expect("string split_lines should run");
-        assert_eq!(result, Value::String("reward".to_owned()));
+        assert_eq!(result, OwnedValue::String("reward".to_owned()));
     }
 
     #[test]
@@ -489,7 +489,7 @@ fn main() {
         let result = Vm::new()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string split_lines should run");
-        assert_eq!(result, Value::String("commit".to_owned()));
+        assert_eq!(result, OwnedValue::String("commit".to_owned()));
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
@@ -509,7 +509,7 @@ fn main() {
             .expect("string split_once source should compile");
 
         let result = Vm::new().run(&code).expect("string split_once should run");
-        assert_eq!(result, Value::Int(3));
+        assert_eq!(result, OwnedValue::Int(3));
     }
 
     #[test]
@@ -527,7 +527,7 @@ fn main() {
         let result = Vm::new()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string split_once should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
@@ -552,7 +552,10 @@ fn main() {
         let mut vm = Vm::new();
         vm.register_standard_natives();
         let result = vm.run(&code).expect("string split_whitespace should run");
-        assert_eq!(result, Value::String("player.level_up.reward".to_owned()));
+        assert_eq!(
+            result,
+            OwnedValue::String("player.level_up.reward".to_owned())
+        );
     }
 
     #[test]
@@ -574,7 +577,7 @@ fn main() {
         let result = Vm::new()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string split_whitespace should run");
-        assert_eq!(result, Value::String("xp:42".to_owned()));
+        assert_eq!(result, OwnedValue::String("xp:42".to_owned()));
         assert_eq!(budget.memory_bytes_allocated(), 0);
     }
 
@@ -602,7 +605,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("string parse_int should run");
-        assert_eq!(result, Value::Int(0));
+        assert_eq!(result, OwnedValue::Int(0));
     }
 
     #[test]
@@ -623,7 +626,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string parse_int should run");
-        assert_eq!(result, Value::Int(12));
+        assert_eq!(result, OwnedValue::Int(12));
     }
 
     #[test]
@@ -650,7 +653,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("string parse_float should run");
-        assert_eq!(result, Value::Float(-0.5));
+        assert_eq!(result, OwnedValue::Float(-0.5));
     }
 
     #[test]
@@ -671,7 +674,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string parse_float should run");
-        assert_eq!(result, Value::Int(3));
+        assert_eq!(result, OwnedValue::Int(3));
     }
 
     #[test]
@@ -698,7 +701,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("string parse_bool should run");
-        assert_eq!(result, Value::Bool(false));
+        assert_eq!(result, OwnedValue::Bool(false));
     }
 
     #[test]
@@ -719,6 +722,6 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string parse_bool should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 }

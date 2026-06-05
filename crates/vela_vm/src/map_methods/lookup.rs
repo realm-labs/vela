@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmResult, string_methods, value_from_heap_slot,
+    ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value, string_methods,
 };
 
 use super::{expect_arity, type_error};
@@ -41,7 +41,7 @@ pub(crate) fn get(
                 else {
                     return type_error("method get");
                 };
-                values.get(key).map(value_from_heap_slot)
+                values.get(key).map(stored_runtime_value)
             };
             let Some(heap) = heap.as_deref_mut() else {
                 return type_error("method get");
@@ -67,7 +67,7 @@ pub(crate) fn get_or(
             };
             Ok(values
                 .get(key)
-                .map_or_else(|| args[1], value_from_heap_slot))
+                .map_or_else(|| args[1], stored_runtime_value))
         }
         _ => type_error("method get_or"),
     }

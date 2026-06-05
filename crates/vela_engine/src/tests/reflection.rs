@@ -13,7 +13,6 @@ use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
-use vela_vm::owned_value::OwnedValue as Value;
 
 use crate::engine::Engine;
 use crate::method::NativeMethodDesc;

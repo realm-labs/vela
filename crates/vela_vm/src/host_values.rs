@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_host::value::HostValue;
 
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value};
 
 pub(crate) fn value_from_host(value: HostValue) -> Value {
     match value {
@@ -35,14 +35,14 @@ pub(crate) fn value_to_host(
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
             Some(HeapValue::Array(values)) => values
                 .iter()
-                .map(value_from_heap_slot)
+                .map(stored_runtime_value)
                 .map(|value| value_to_host(&value, operation, heap))
                 .collect::<VmResult<Vec<_>>>()
                 .map(HostValue::Array),
             Some(HeapValue::Map(values)) => values
                 .iter()
                 .map(|(key, value)| {
-                    let value = value_from_heap_slot(value);
+                    let value = stored_runtime_value(value);
                     Ok((key.clone(), value_to_host(&value, operation, heap)?))
                 })
                 .collect::<VmResult<BTreeMap<_, _>>>()
@@ -50,7 +50,7 @@ pub(crate) fn value_to_host(
             Some(HeapValue::Record { type_name, fields }) => fields
                 .iter()
                 .map(|(key, value)| {
-                    let value = value_from_heap_slot(value);
+                    let value = stored_runtime_value(value);
                     Ok((key.to_owned(), value_to_host(&value, operation, heap)?))
                 })
                 .collect::<VmResult<BTreeMap<_, _>>>()
@@ -65,7 +65,7 @@ pub(crate) fn value_to_host(
             }) => fields
                 .iter()
                 .map(|(key, value)| {
-                    let value = value_from_heap_slot(value);
+                    let value = stored_runtime_value(value);
                     Ok((key.to_owned(), value_to_host(&value, operation, heap)?))
                 })
                 .collect::<VmResult<BTreeMap<_, _>>>()

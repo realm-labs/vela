@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use crate::heap::{HeapSlot, HeapValue};
+use crate::heap::HeapValue;
 use crate::method_runtime::MethodRuntime;
-use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value};
 
 use super::{
     array_values, call_unary_callback, expect_arity, make_array_value, option_value, type_error,
@@ -21,7 +21,7 @@ pub(crate) fn sort(
         else {
             return type_error("method sort");
         };
-        let values = sort_heap_slots(values, heap.as_deref(), "method sort")?;
+        let values = sort_runtime_values(values, heap.as_deref(), "method sort")?;
         return make_array_value(values, heap, budget, "method sort");
     }
     let values = array_values(receiver, heap.as_deref(), "method sort")?;
@@ -148,15 +148,15 @@ fn sort_entries(mut entries: Vec<SortEntry>) -> Vec<Value> {
     entries.into_iter().map(|entry| entry.value).collect()
 }
 
-fn sort_heap_slots(
-    values: &[HeapSlot],
+fn sort_runtime_values(
+    values: &[Value],
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
-    let mut entries = Vec::<HeapSlotSortEntry>::with_capacity(values.len());
+    let mut entries = Vec::<RuntimeValueSortEntry>::with_capacity(values.len());
     let mut key_kind = None;
     for value in values {
-        let key = sort_key_from_heap_slot(value, heap, operation)?;
+        let key = sort_key_from_runtime_value(value, heap, operation)?;
         if let Some(expected) = key_kind {
             if key.kind() != expected {
                 return type_error(operation);
@@ -164,7 +164,7 @@ fn sort_heap_slots(
         } else {
             key_kind = Some(key.kind());
         }
-        entries.push(HeapSlotSortEntry {
+        entries.push(RuntimeValueSortEntry {
             key,
             value: *value,
             index: entries.len(),
@@ -177,7 +177,7 @@ fn sort_heap_slots(
     });
     Ok(entries
         .into_iter()
-        .map(|entry| value_from_heap_slot(&entry.value))
+        .map(|entry| stored_runtime_value(&entry.value))
         .collect())
 }
 
@@ -202,7 +202,7 @@ fn extremum(
                 return type_error(operation);
             };
             let values = values.clone();
-            let result = heap_slot_extremum(&values, heap.as_deref(), operation, extremum)?;
+            let result = runtime_value_extremum(&values, heap.as_deref(), operation, extremum)?;
             match result {
                 Some(value) => option_value("Some", Some(value), heap, budget),
                 None => option_value("None", None, heap, budget),
@@ -212,8 +212,8 @@ fn extremum(
     }
 }
 
-fn heap_slot_extremum(
-    values: &[HeapSlot],
+fn runtime_value_extremum(
+    values: &[Value],
     read_heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
     extremum: Extremum,
@@ -222,10 +222,10 @@ fn heap_slot_extremum(
         return Ok(None);
     };
     let mut best = first;
-    let mut best_key = sort_key_from_heap_slot(first, read_heap, operation)?;
+    let mut best_key = sort_key_from_runtime_value(first, read_heap, operation)?;
     let key_kind = best_key.kind();
     for value in rest {
-        let key = sort_key_from_heap_slot(value, read_heap, operation)?;
+        let key = sort_key_from_runtime_value(value, read_heap, operation)?;
         if key.kind() != key_kind {
             return type_error(operation);
         }
@@ -239,7 +239,7 @@ fn heap_slot_extremum(
             best_key = key;
         }
     }
-    Ok(Some(value_from_heap_slot(best)))
+    Ok(Some(stored_runtime_value(best)))
 }
 
 struct SortEntry {
@@ -248,9 +248,9 @@ struct SortEntry {
     index: usize,
 }
 
-struct HeapSlotSortEntry {
+struct RuntimeValueSortEntry {
     key: SortKey,
-    value: HeapSlot,
+    value: Value,
     index: usize,
 }
 
@@ -309,8 +309,8 @@ fn sort_key(
     }
 }
 
-fn sort_key_from_heap_slot(
-    value: &HeapSlot,
+fn sort_key_from_runtime_value(
+    value: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<SortKey> {

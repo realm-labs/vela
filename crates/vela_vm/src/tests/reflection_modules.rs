@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 
 #[test]
 fn compiled_source_reflects_modules_functions_and_exports() {
@@ -59,7 +59,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -289,6 +289,6 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(11111))
+        Ok(OwnedValue::Int(11111))
     );
 }

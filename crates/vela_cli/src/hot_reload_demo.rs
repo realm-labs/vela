@@ -8,7 +8,7 @@ use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
 use vela_host::tx::PatchTx;
 use vela_hot_reload::version::ProgramVersion;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn Error>> {
     let engine = crate::demo::hot_reload_engine().map_err(|error| format!("{error:?}"))?;
@@ -61,7 +61,7 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
     Ok(())
 }
 
-fn run_current_main(runtime: &mut Runtime) -> Result<Value, Box<dyn Error>> {
+fn run_current_main(runtime: &mut Runtime) -> Result<OwnedValue, Box<dyn Error>> {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     runtime
@@ -72,7 +72,7 @@ fn run_current_main(runtime: &mut Runtime) -> Result<Value, Box<dyn Error>> {
 fn run_version_main(
     engine: &Engine,
     version: &Arc<ProgramVersion>,
-) -> Result<Value, Box<dyn Error>> {
+) -> Result<OwnedValue, Box<dyn Error>> {
     engine
         .into_vm()
         .run_program(&version.to_program(), "main", &[])

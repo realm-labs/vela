@@ -531,7 +531,7 @@ and temporary collection construction outside the GC mark stack.
 This checkpoint removes temporary `Value` aggregate construction in managed heap
 mode for bytecode array, map, record, and enum literals. When a heap execution
 is active, `MakeArray`, `MakeMap`, `MakeRecord`, and `MakeEnum` now convert
-source registers directly into `HeapSlot` collections before allocating the
+source registers directly into runtime `Value` collections before allocating the
 heap object. Non-heap execution still constructs the same `Value` aggregates.
 
 Commands:
@@ -783,8 +783,8 @@ conversion, host conversion, string operations, and callback invocation.
 ### 2026-06-04 M19 Array Lookup Receiver Checkpoint
 
 This checkpoint reduces array stdlib receiver work for `first`, `last`,
-`contains`, and `index_of`. These methods now read or scan `Value::Array`
-receivers directly and iterate heap array slots one element at a time instead
+`contains`, and `index_of`. These methods now read or scan borrowed array
+receiver values directly and iterate heap array slots one element at a time instead
 of first cloning or materializing the whole receiver into a temporary
 `Vec<Value>`. Heap array receivers still materialize individual slots only when
 the method needs to return or compare that element.
@@ -825,7 +825,7 @@ ordering, and callback-heavy methods.
 
 This checkpoint reduces no-heap map callback overhead. `map.map_values`,
 `map.filter`, `map.find`, `map.any`, `map.all`, and `map.count` now iterate
-`Value::Map` receivers directly instead of first cloning the whole receiver
+borrowed map receiver entries directly instead of first cloning the whole receiver
 into a temporary entry vector. Managed-heap map receivers keep the existing
 materialized-entry path so callback execution can borrow `HeapExecution`
 mutably without holding an immutable heap-map borrow across the callback.
@@ -855,7 +855,7 @@ working tree.
 Checkpoint notes:
 
 ```text
-The optimization is scoped to no-heap Value::Map higher-order callbacks and
+The optimization is scoped to no-heap map higher-order callbacks and
 preserves managed-heap callback root behavior. Remaining callback work should
 focus on heap-mode protected values, closure invocation overhead, and set/array
 callback receiver materialization.
@@ -864,7 +864,7 @@ callback receiver materialization.
 ### 2026-06-04 M19 Array Sort Callback Receiver Checkpoint
 
 This checkpoint reduces no-heap `array.sort_by` callback overhead. The method
-now iterates `Value::Array` receivers directly instead of first cloning the
+now iterates borrowed array receiver values directly instead of first cloning the
 whole receiver through `array_values`. Managed-heap receivers keep the existing
 materialized-entry path so already-collected sort entries remain protected as
 callback roots.
@@ -972,7 +972,7 @@ host path reads and numeric patch operations. The benchmark now reads a host
 array, pushes a script string through `PatchTx`, observes the overlay length in
 script code, applies the transaction, and includes the applied host array length
 in the checksum. This gives future host conversion work a focused benchmark
-surface for `HostValue::Array`, `HostValue::String`, `Value::Array`, and
+surface for `HostValue::Array`, `HostValue::String`, owned arrays, and
 `Value::String` conversion in addition to numeric patches.
 
 Commands:
@@ -1252,8 +1252,8 @@ each script function or closure call.
 ### 2026-06-04 M19 Array Higher-Order Receiver Checkpoint
 
 This checkpoint adds no-heap receiver fast paths for array `map`, `filter`,
-`find`, `any`, `all`, and `count`. When the receiver is already a
-`Value::Array` and managed heap execution is not active, these methods now
+`find`, `any`, `all`, and `count`. When borrowed array receiver values are
+available and managed heap execution is not active, these methods now
 iterate the receiver directly instead of cloning the full array through
 `array_values` before invoking callbacks. Managed heap execution keeps the
 existing materializing path so heap-root protection semantics stay unchanged.
@@ -1293,7 +1293,7 @@ unchanged.
 ### 2026-06-04 M19 Set Higher-Order Receiver Checkpoint
 
 This checkpoint adds no-heap receiver fast paths for set `map`, `filter`,
-`find`, `any`, `all`, and `count`. When the receiver is already a `Value::Set`
+`find`, `any`, `all`, and `count`. When the receiver is already available as borrowed set receiver values
 and managed heap execution is not active, these methods now iterate the
 receiver directly instead of cloning the full set through `set_values` before
 invoking callbacks. Managed heap execution keeps the existing materializing
@@ -1334,8 +1334,8 @@ guardrails because their receiver materialization path is unchanged.
 
 This checkpoint adds a targeted `managed_heap_array_sum` benchmark and removes
 receiver materialization from plain array `sum()` calls. When `sum()` has no
-callback, the VM now iterates inline `Value::Array` values directly and reads
-managed-heap array numeric `HeapSlot` values directly instead of cloning the
+callback, the VM now iterates borrowed array receiver values directly and reads
+managed-heap array numeric runtime `Value` entries directly instead of cloning the
 full receiver through `array_values`. Callback-based `sum(|value| ...)` keeps
 the existing materializing callback path so callback argument and heap-root
 semantics stay unchanged.
@@ -1375,8 +1375,8 @@ and non-targeted callback rows remain within normal benchmark noise.
 
 This checkpoint adds a targeted `managed_heap_array_extrema` benchmark and
 removes receiver materialization from array `min()` and `max()` calls. Inline
-`Value::Array` receivers now scan by reference, and managed-heap array receivers
-scan `HeapSlot` values directly before wrapping the winning value in the
+array receivers now scan borrowed runtime values by reference, and managed-heap array receivers
+scan runtime `Value` entries directly before wrapping the winning value in the
 existing Option result shape. Mixed scalar domains and string comparison keep
 the same error and comparison behavior as the previous materializing path.
 
@@ -1407,7 +1407,7 @@ Checkpoint notes:
 
 ```text
 Checksums stayed stable. The targeted benchmark isolates repeated managed-heap
-array extrema calls, where direct HeapSlot scanning removes a Vec<Value> build
+array extrema calls, where direct runtime `Value` scanning removes a Vec<Value> build
 per min/max call. Result payloads still use the same Option wrapper and heap
 reference materialization path as other heap-mode method returns.
 ```
@@ -1416,7 +1416,7 @@ reference materialization path as other heap-mode method returns.
 
 This checkpoint adds a targeted `managed_heap_array_sort` benchmark and removes
 receiver materialization from managed-heap array `sort()` calls. Heap-mode sort
-now builds sort entries directly from array `HeapSlot` values, preserving the
+now builds sort entries directly from array runtime `Value` entries, preserving the
 existing stable tie-breaker and scalar-domain checks, then returns the sorted
 values through the same array result path.
 
@@ -1447,7 +1447,7 @@ Checkpoint notes:
 
 ```text
 Checksums stayed stable. The targeted benchmark isolates repeated managed-heap
-numeric array sorts, where direct HeapSlot key construction avoids cloning the
+numeric array sorts, where direct runtime `Value` key construction avoids cloning the
 full receiver through Vec<Value> before sorting. Callback-based sort_by keeps
 its existing callback and root-protection path.
 ```
@@ -2264,13 +2264,13 @@ The candidate was not accepted because repeated quick runs did not preserve the
 initial improvement signal. The runtime keeps the existing `RangeNext` path for
 both exclusive and inclusive direct range loops.
 
-### 2026-06-04 M19 Runtime View Refactor Checkpoint
+### 2026-06-04 M19 Runtime View Refactor Candidate
 
-This checkpoint introduced a crate-internal borrowed runtime view layer for
-read-only `Value` / `HeapRef` / `HeapSlot` access. The accepted scope keeps the
-public `Value`, `HeapValue`, bytecode, native, host, GC, and hot-reload
-contracts unchanged, and centralizes receiver classification for string,
-array, map, set, enum, and length-style reads.
+This candidate introduced a crate-internal borrowed runtime view layer for
+read-only receiver access. During the later `Value` / `OwnedValue` layout
+rebase, this standalone layer was dropped as obsolete: collection, string, enum,
+and length-style reads now use compact runtime `Value` entries from heap objects
+directly, while the remote call-argument storage optimizations remain preserved.
 
 Validation:
 

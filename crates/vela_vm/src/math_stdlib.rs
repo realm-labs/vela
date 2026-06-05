@@ -1,4 +1,4 @@
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::{Vm, VmError, VmErrorKind, VmResult};
 
 mod distance;
@@ -32,10 +32,10 @@ pub(crate) fn register(vm: &mut Vm) {
     vm.register_native("math::abs", math_abs);
 }
 
-pub(super) fn expect_finite_float(value: &Value, operation: &'static str) -> VmResult<f64> {
+pub(super) fn expect_finite_float(value: &OwnedValue, operation: &'static str) -> VmResult<f64> {
     match value {
-        Value::Int(value) => Ok(*value as f64),
-        Value::Float(value) if value.is_finite() => Ok(*value),
+        OwnedValue::Int(value) => Ok(*value as f64),
+        OwnedValue::Float(value) if value.is_finite() => Ok(*value),
         _ => type_error(operation),
     }
 }
@@ -44,7 +44,7 @@ pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
-pub(super) fn expect_arity(name: &str, args: &[Value], expected: usize) -> VmResult<()> {
+pub(super) fn expect_arity(name: &str, args: &[OwnedValue], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         return Ok(());
     }
@@ -60,7 +60,7 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::{ExecutionBudget, Value, Vm};
+    use crate::{ExecutionBudget, OwnedValue, Vm};
 
     #[test]
     fn runs_compiled_math_distance2d() {
@@ -79,7 +79,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math distance2d should run");
-        assert_eq!(result, Value::Int(5));
+        assert_eq!(result, OwnedValue::Int(5));
     }
 
     #[test]
@@ -99,7 +99,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math distance3d should run");
-        assert_eq!(result, Value::Int(7));
+        assert_eq!(result, OwnedValue::Int(7));
     }
 
     #[test]
@@ -118,7 +118,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math pow should run");
-        assert_eq!(result, Value::Int(8));
+        assert_eq!(result, OwnedValue::Int(8));
     }
 
     #[test]
@@ -137,7 +137,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math sqrt should run");
-        assert_eq!(result, Value::Int(4));
+        assert_eq!(result, OwnedValue::Int(4));
     }
 
     #[test]
@@ -156,7 +156,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math sign should run");
-        assert_eq!(result, Value::Int(0));
+        assert_eq!(result, OwnedValue::Int(0));
     }
 
     #[test]
@@ -179,7 +179,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("math move_towards should run");
-        assert_eq!(result, Value::Int(19));
+        assert_eq!(result, OwnedValue::Int(19));
     }
 
     #[test]
@@ -198,7 +198,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math distance2d should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]
@@ -217,7 +217,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math distance3d should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]
@@ -236,7 +236,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math pow should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]
@@ -255,7 +255,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math sqrt should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]
@@ -274,7 +274,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math sign should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]
@@ -295,7 +295,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap math move_towards should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]

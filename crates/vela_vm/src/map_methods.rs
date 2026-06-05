@@ -3,7 +3,7 @@ use crate::script_object::ScriptFields;
 use crate::string_methods;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
-    value_from_heap_slot,
+    stored_runtime_value,
 };
 
 mod higher_order;
@@ -43,7 +43,7 @@ pub(super) fn map_entries(
             };
             Ok(values
                 .iter()
-                .map(|(key, value)| (key.clone(), value_from_heap_slot(value)))
+                .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
                 .collect())
         }
         _ => type_error(operation),
@@ -105,7 +105,7 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::owned_value::OwnedValue as Value;
+    use crate::owned_value::OwnedValue;
     use crate::{ExecutionBudget, Vm};
 
     #[test]
@@ -134,7 +134,7 @@ fn main() {
         let result = Vm::new()
             .run(&code)
             .expect("map higher-order methods should run");
-        assert_eq!(result, Value::Int(2));
+        assert_eq!(result, OwnedValue::Int(2));
     }
 
     #[test]
@@ -165,7 +165,7 @@ fn main() {
         let result = Vm::new()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map higher-order methods should run");
-        assert_eq!(result, Value::Bool(true));
+        assert_eq!(result, OwnedValue::Bool(true));
     }
 
     #[test]
@@ -188,7 +188,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("map find should run");
-        assert_eq!(result, Value::Int(1));
+        assert_eq!(result, OwnedValue::Int(1));
     }
 
     #[test]
@@ -215,7 +215,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("map zero-arg callbacks should run");
-        assert_eq!(result, Value::Int(2));
+        assert_eq!(result, OwnedValue::Int(2));
     }
 
     #[test]
@@ -241,7 +241,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map find should run");
-        assert_eq!(result, Value::String("wyrm".to_owned()));
+        assert_eq!(result, OwnedValue::String("wyrm".to_owned()));
     }
 
     #[test]
@@ -272,7 +272,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("map introspection methods should run");
-        assert_eq!(result, Value::Int(14));
+        assert_eq!(result, OwnedValue::Int(14));
     }
 
     #[test]
@@ -305,7 +305,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map introspection methods should run");
-        assert_eq!(result, Value::String("done|active|open".to_owned()));
+        assert_eq!(result, OwnedValue::String("done|active|open".to_owned()));
     }
 
     #[test]
@@ -335,7 +335,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map lookup methods should run");
-        assert_eq!(result, Value::Int(6));
+        assert_eq!(result, OwnedValue::Int(6));
     }
 
     #[test]
@@ -361,7 +361,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("map merge should run");
-        assert_eq!(result, Value::String("gold,quest,xp".to_owned()));
+        assert_eq!(result, OwnedValue::String("gold,quest,xp".to_owned()));
     }
 
     #[test]
@@ -390,7 +390,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map merge should run");
-        assert_eq!(result, Value::String("wolf|gold|done".to_owned()));
+        assert_eq!(result, OwnedValue::String("wolf|gold|done".to_owned()));
     }
 
     #[test]
@@ -431,7 +431,7 @@ fn main() {
             .expect("map clear method should compile");
 
         let result = Vm::new().run(&code).expect("map clear method should run");
-        assert_eq!(result, Value::Int(99));
+        assert_eq!(result, OwnedValue::Int(99));
     }
 
     #[test]
@@ -454,7 +454,7 @@ fn main() {
         let result = Vm::new()
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map clear method should run");
-        assert_eq!(result, Value::String("boss".to_owned()));
+        assert_eq!(result, OwnedValue::String("boss".to_owned()));
     }
 
     #[test]
@@ -479,7 +479,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("map extend method should run");
-        assert_eq!(result, Value::String("gold,quest,xp".to_owned()));
+        assert_eq!(result, OwnedValue::String("gold,quest,xp".to_owned()));
     }
 
     #[test]
@@ -504,7 +504,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap map extend method should run");
-        assert_eq!(result, Value::String("claimed|active".to_owned()));
+        assert_eq!(result, OwnedValue::String("claimed|active".to_owned()));
     }
 
     #[test]

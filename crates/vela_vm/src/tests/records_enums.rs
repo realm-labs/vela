@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
 #[test]
@@ -7,16 +7,16 @@ fn passes_arguments_to_program_entry() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
-fn double(value) {
-    return value * 2;
+fn double(OwnedValue) {
+    return OwnedValue * 2;
 }
 "#,
     )
     .expect("compile program source");
 
     assert_eq!(
-        Vm::new().run_program(&program, "double", &[Value::Int(9)]),
-        Ok(Value::Int(18))
+        Vm::new().run_program(&program, "double", &[OwnedValue::Int(9)]),
+        Ok(OwnedValue::Int(18))
     );
 }
 
@@ -31,10 +31,10 @@ fn runs_compiled_array_literal_source() {
 
     assert_eq!(
         Vm::new().run(&code),
-        Ok(Value::Array(vec![
-            Value::Int(1),
-            Value::Int(5),
-            Value::String("gold".into())
+        Ok(OwnedValue::Array(vec![
+            OwnedValue::Int(1),
+            OwnedValue::Int(5),
+            OwnedValue::String("gold".into())
         ]))
     );
 }
@@ -82,10 +82,10 @@ fn runs_compiled_map_literal_source() {
     )
     .expect("compile map literal source");
     let mut expected = BTreeMap::new();
-    expected.insert("level".into(), Value::Int(2));
-    expected.insert("exp".into(), Value::Int(15));
+    expected.insert("level".into(), OwnedValue::Int(2));
+    expected.insert("exp".into(), OwnedValue::Int(15));
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Map(expected)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Map(expected)));
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn main() {
     )
     .expect("compile record source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(10)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(10)));
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn main() {
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
         .expect("run heap-backed record source");
 
-    assert_eq!(result, Value::Int(10));
+    assert_eq!(result, OwnedValue::Int(10));
     assert_eq!(heap.live_object_count(), 1);
 }
 
@@ -145,12 +145,12 @@ fn main() {
     )
     .expect("compile record source");
     let mut fields = BTreeMap::new();
-    fields.insert("count".into(), Value::Int(2));
-    fields.insert("item_id".into(), Value::String("gold".into()));
+    fields.insert("count".into(), OwnedValue::Int(2));
+    fields.insert("item_id".into(), OwnedValue::String("gold".into()));
 
     assert_eq!(
         Vm::new().run(&code),
-        Ok(Value::Record {
+        Ok(OwnedValue::Record {
             type_name: "Reward".into(),
             fields: ScriptFields::from_pairs("Reward", fields),
         })
@@ -180,7 +180,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(16))
+        Ok(OwnedValue::Int(16))
     );
 }
 
@@ -207,14 +207,14 @@ fn main() {
     )
     .expect("compile second record source");
 
-    let Ok(Value::Record {
+    let Ok(OwnedValue::Record {
         fields: first_fields,
         ..
     }) = Vm::new().run(&first)
     else {
         panic!("first record");
     };
-    let Ok(Value::Record {
+    let Ok(OwnedValue::Record {
         fields: second_fields,
         ..
     }) = Vm::new().run(&second)
@@ -246,7 +246,7 @@ fn main() {
     )
     .expect("compile immediate slot field reads");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(9)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(9)));
 }
 
 #[test]
@@ -273,7 +273,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -303,7 +303,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }
 
@@ -327,7 +327,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -344,11 +344,11 @@ fn main() {
     )
     .expect("compile enum source");
     let mut fields = BTreeMap::new();
-    fields.insert("amount".into(), Value::Int(7));
+    fields.insert("amount".into(), OwnedValue::Int(7));
 
     assert_eq!(
         Vm::new().run(&code),
-        Ok(Value::Enum {
+        Ok(OwnedValue::Enum {
             enum_name: "Damage".into(),
             variant: "Physical".into(),
             fields: ScriptFields::from_pairs("Damage::Physical", fields),
@@ -385,7 +385,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(19))
+        Ok(OwnedValue::Int(19))
     );
 }
 
@@ -407,7 +407,7 @@ fn main() {
     )
     .expect("compile enum match source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -435,6 +435,6 @@ fn main() {
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
         .expect("run heap-backed enum source");
 
-    assert_eq!(result, Value::Int(8));
+    assert_eq!(result, OwnedValue::Int(8));
     assert_eq!(heap.live_object_count(), 1);
 }

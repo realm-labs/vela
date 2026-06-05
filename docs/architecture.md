@@ -743,8 +743,8 @@ impl Inventory {
         count: i64,
     ) -> HostResult<()> {
         ctx.tx.push_method_call(inventory, HostMethodId(1), vec![
-            Value::String(item_id.into()),
-            Value::Int(count),
+            HostValue::String(item_id.into()),
+            HostValue::Int(count),
         ])?;
         Ok(())
     }

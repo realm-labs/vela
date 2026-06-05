@@ -7,7 +7,7 @@ use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::clock::{
     CONTEXT_TIME_PERMISSION, CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID,
@@ -98,7 +98,7 @@ fn main() {
             .clone()
             .into_vm()
             .run_program(&time_program, "main", &[]),
-        Ok(Value::Int(1_700_000_042))
+        Ok(OwnedValue::Int(1_700_000_042))
     );
 
     let random_program = compile_program_source(
@@ -138,7 +138,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(52))
+        Ok(OwnedValue::Int(52))
     );
 }
 
@@ -172,7 +172,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(1_700_000_010))
+        Ok(OwnedValue::Int(1_700_000_010))
     );
     assert!(tx.patches().is_empty());
 }
@@ -364,7 +364,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
     assert!(tx.patches().is_empty());
 }
@@ -407,10 +407,13 @@ fn main(ctx) {
     };
 
     assert_eq!(
-        engine
-            .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(ctx)], &mut host),
-        Ok(Value::Int(1_700_000_042))
+        engine.into_vm().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(ctx)],
+            &mut host
+        ),
+        Ok(OwnedValue::Int(1_700_000_042))
     );
     assert_eq!(tx.patches().len(), 2);
     assert_eq!(

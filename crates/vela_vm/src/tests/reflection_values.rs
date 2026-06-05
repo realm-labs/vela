@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
 #[test]
@@ -30,7 +30,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(8))
+        Ok(OwnedValue::Int(8))
     );
 }
 
@@ -66,7 +66,7 @@ fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert!(tx.patches().is_empty());
 }
@@ -262,7 +262,7 @@ fn main() {
         )
     };
 
-    assert_eq!(result, Ok(Value::Int(8)));
+    assert_eq!(result, Ok(OwnedValue::Int(8)));
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
 
@@ -308,7 +308,7 @@ pub fn main() {
 
     assert_eq!(
         vm.run_program_with_host(&program, "game::main", &[], &mut host),
-        Ok(Value::Int(8))
+        Ok(OwnedValue::Int(8))
     );
 }
 
@@ -337,10 +337,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        vm.run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        vm.run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(1)));
+    assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(

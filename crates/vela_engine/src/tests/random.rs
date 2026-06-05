@@ -5,7 +5,7 @@ use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPermissionSet;
 use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
@@ -69,7 +69,7 @@ fn main() {
         .expect("second random run should succeed");
 
     assert_eq!(first, second);
-    assert_ne!(first, Value::Int(0));
+    assert_ne!(first, OwnedValue::Int(0));
 }
 
 #[test]
@@ -184,7 +184,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
     assert!(tx.patches().is_empty());
 }
@@ -238,7 +238,7 @@ fn main() {
         .expect("second reflected random run should succeed");
 
     assert_eq!(first, second);
-    assert_ne!(first, Value::Int(0));
+    assert_ne!(first, OwnedValue::Int(0));
     assert!(first_tx.patches().is_empty());
     assert!(second_tx.patches().is_empty());
 }

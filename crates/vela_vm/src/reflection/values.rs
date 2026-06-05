@@ -5,7 +5,7 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::{
     ExecutionBudget, HostExecution, HostNativeFunction, NativeFunction, Vm, VmError, VmErrorKind,
     VmResult, expect_arity, expect_string, value_from_reflect, value_to_reflect,
@@ -33,10 +33,10 @@ impl ReflectedFunctionCalls {
     fn call(
         &self,
         name: &str,
-        args: &[Value],
+        args: &[OwnedValue],
         host: &mut HostExecution<'_>,
         budget: Option<&mut ExecutionBudget>,
-    ) -> VmResult<Value> {
+    ) -> VmResult<OwnedValue> {
         if let Some(native) = self.natives.get(name) {
             return native(args);
         }

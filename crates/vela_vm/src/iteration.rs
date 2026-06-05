@@ -1,6 +1,6 @@
 use crate::heap::HeapValue;
 use crate::ranges::RangeCursor;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
@@ -87,10 +87,10 @@ pub(crate) fn make_iterator(
             };
             match heap_value {
                 HeapValue::Array(values) | HeapValue::Set(values) => Ok(IteratorState::new(
-                    values.iter().map(value_from_heap_slot).collect(),
+                    values.iter().map(stored_runtime_value).collect(),
                 )),
                 HeapValue::Map(values) => Ok(IteratorState::new(
-                    values.values().map(value_from_heap_slot).collect(),
+                    values.values().map(stored_runtime_value).collect(),
                 )),
                 HeapValue::Iterator(iterator) => Ok(iterator.clone()),
                 HeapValue::String(_)

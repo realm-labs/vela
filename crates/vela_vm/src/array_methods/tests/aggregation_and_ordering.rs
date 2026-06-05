@@ -18,7 +18,7 @@ fn main() {
         .expect("array sum methods should compile");
 
     let result = Vm::new().run(&code).expect("array sum methods should run");
-    assert_eq!(result, Value::Int(1));
+    assert_eq!(result, OwnedValue::Int(1));
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array sum methods should run");
-    assert_eq!(result, Value::Int(30));
+    assert_eq!(result, OwnedValue::Int(30));
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn main() {
     let result = Vm::new()
         .run(&code)
         .expect("array group_by method should run");
-    assert_eq!(result, Value::Int(5));
+    assert_eq!(result, OwnedValue::Int(5));
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array group_by method should run");
-    assert_eq!(result, Value::String("bat".to_owned()));
+    assert_eq!(result, OwnedValue::String("bat".to_owned()));
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn main() {
     let result = Vm::new()
         .run(&code)
         .expect("array sort_by method should run");
-    assert_eq!(result, Value::Int(11));
+    assert_eq!(result, OwnedValue::Int(11));
 }
 
 #[test]
@@ -184,7 +184,7 @@ fn main() {
         .expect("array sort method should compile");
 
     let result = Vm::new().run(&code).expect("array sort method should run");
-    assert_eq!(result, Value::Int(3));
+    assert_eq!(result, OwnedValue::Int(3));
 }
 
 #[test]
@@ -209,7 +209,7 @@ fn main() {
     let result = Vm::new()
         .run(&code)
         .expect("array extrema methods should run");
-    assert_eq!(result, Value::Int(4));
+    assert_eq!(result, OwnedValue::Int(4));
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array sort_by method should run");
-    assert_eq!(result, Value::String("boar".to_owned()));
+    assert_eq!(result, OwnedValue::String("boar".to_owned()));
 }
 
 #[test]
@@ -265,7 +265,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array sort method should run");
-    assert_eq!(result, Value::Int(9));
+    assert_eq!(result, OwnedValue::Int(9));
 }
 
 #[test]
@@ -291,7 +291,7 @@ fn main() {
     let result = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap array extrema methods should run");
-    assert_eq!(result, Value::Int(9));
+    assert_eq!(result, OwnedValue::Int(9));
 }
 
 #[test]

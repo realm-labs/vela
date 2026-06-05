@@ -1,4 +1,5 @@
 use super::*;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn engine_builder_registers_module_reflection_metadata() {
@@ -11,7 +12,7 @@ fn engine_builder_registers_module_reflection_metadata() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(221))
                 .returns(TypeHint::Bool),
-            |_| Ok(Value::Bool(true)),
+            |_| Ok(OwnedValue::Bool(true)),
         )
         .build()
         .expect("engine should build");
@@ -38,7 +39,7 @@ fn engine_registers_native_method_source_span_metadata() {
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
                 .source_span(source_span),
-            |_, _, _| Ok(Value::Int(0)),
+            |_, _, _| Ok(OwnedValue::Int(0)),
         )
         .build()
         .expect("engine should build");
@@ -94,7 +95,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
             permission: ReflectPermission::WriteValueFields
         })
@@ -139,10 +140,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
     assert_eq!(tx.patches().len(), 1);
 }
@@ -166,7 +167,7 @@ fn engine_granted_permissions_unlock_reflection_metadata_lists() {
                         .reflect_callable(true)
                         .require_permission("game::inspect"),
                 ),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .grant_permission("player.inspect")
         .grant_permission("game::inspect")
@@ -202,7 +203,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert!(tx.patches().is_empty());
 }
@@ -226,7 +227,7 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
                         .reflect_callable(true)
                         .require_permission("game::inspect"),
                 ),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
@@ -251,7 +252,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(0))
+        Ok(OwnedValue::Int(0))
     );
     assert!(tx.patches().is_empty());
 }

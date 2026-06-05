@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 
 #[test]
 fn managed_heap_execution_runs_option_filter_method() {
@@ -26,7 +26,7 @@ fn main() {
     let result = vm
         .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option filter source should run");
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, OwnedValue::Bool(true));
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn main() {
     let result = vm
         .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
         .expect("heap option/result helper method source should run");
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, OwnedValue::Bool(true));
 }
 
 #[test]
@@ -203,7 +203,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm.run(&code).expect("set stdlib source should run");
-    assert_eq!(result, Value::Int(2));
+    assert_eq!(result, OwnedValue::Int(2));
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap set stdlib source should run");
-    assert_eq!(result, Value::Int(8));
+    assert_eq!(result, OwnedValue::Int(8));
 }
 
 #[test]

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
 use super::common::{check_host_ref_inspection, check_reflect_policy};
@@ -73,7 +73,7 @@ pub(super) fn register(
         let target = value_to_reflect(&args[0], "reflect::has_field")?;
         check_host_ref_inspection(&has_field_policy, &target)?;
         let field_name = expect_string(&args[1], "reflect::has_field")?;
-        Ok(Value::Bool(reflect::members::has_field_with_policy(
+        Ok(OwnedValue::Bool(reflect::members::has_field_with_policy(
             &has_field_registry,
             &target,
             field_name,

@@ -1,4 +1,5 @@
 use super::*;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn engine_installs_reflection_lookup_budget() {
@@ -29,7 +30,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded {
             limit: 1
         })
@@ -51,7 +52,7 @@ fn engine_reflect_call_denies_unapproved_native_methods() {
                         .reflect_callable(true)
                         .require_permission("player.grant_exp"),
                 ),
-            |_, _, _| Ok(Value::Null),
+            |_, _, _| Ok(OwnedValue::Null),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -77,7 +78,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::MethodPermissionDenied {
             method: "grant_exp".to_owned(),
             permission: "player.grant_exp".to_owned(),
@@ -102,7 +103,7 @@ fn engine_reflect_call_records_approved_native_methods() {
                         .reflect_callable(true)
                         .require_permission("player.grant_exp"),
                 ),
-            |_, _, _| Ok(Value::Null),
+            |_, _, _| Ok(OwnedValue::Null),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -140,10 +141,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(

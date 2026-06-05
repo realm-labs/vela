@@ -139,11 +139,11 @@ before debugger/DAP work and Cranelift JIT.
   reading or scanning elements.
 - An M19 map callback entry checkpoint is recorded in
   [performance.md](performance.md): no-heap map higher-order callbacks now
-  iterate `Value::Map` receivers directly instead of cloning the receiver into
+  iterate borrowed map receiver entries directly instead of cloning the receiver into
   a temporary entry vector before callback dispatch.
 - An M19 array sort callback receiver checkpoint is recorded in
   [performance.md](performance.md): no-heap `array.sort_by` now iterates
-  `Value::Array` receivers directly instead of cloning the receiver into a
+  borrowed array receiver values directly instead of cloning the receiver into a
   temporary vector before callback dispatch.
 - An M19 set callback benchmark coverage checkpoint is recorded in
   [performance.md](performance.md): `callback_collections` now also exercises
@@ -155,11 +155,11 @@ before debugger/DAP work and Cranelift JIT.
   array higher-order receiver materialization a measured benchmark surface.
 - An M19 array higher-order receiver checkpoint is recorded in
   [performance.md](performance.md): no-heap array `map`, `filter`, `find`,
-  `any`, `all`, and `count` now iterate `Value::Array` receivers directly
+  `any`, `all`, and `count` now iterate borrowed array receiver values directly
   instead of cloning the full receiver before callback dispatch.
 - An M19 set higher-order receiver checkpoint is recorded in
   [performance.md](performance.md): no-heap set `map`, `filter`, `find`,
-  `any`, `all`, and `count` now iterate `Value::Set` receivers directly
+  `any`, `all`, and `count` now iterate borrowed set receiver values directly
   instead of cloning the full receiver before callback dispatch.
 - An M19 managed-heap array sum receiver checkpoint is recorded in
   [performance.md](performance.md): `managed_heap_array_sum` now measures

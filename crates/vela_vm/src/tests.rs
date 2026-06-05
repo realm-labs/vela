@@ -30,6 +30,16 @@ use vela_reflect::registry::{
     TypeKind, VariantDesc,
 };
 
+#[cfg(target_pointer_width = "64")]
+#[test]
+fn value_runtime_slot_stays_compact() {
+    assert!(
+        std::mem::size_of::<Value>() <= 32,
+        "Value runtime slot grew to {} bytes",
+        std::mem::size_of::<Value>()
+    );
+}
+
 mod consts;
 mod control_flow;
 mod execution_core;

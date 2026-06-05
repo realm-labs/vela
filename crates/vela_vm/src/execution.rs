@@ -438,8 +438,12 @@ impl Vm {
                             operation: "array heap",
                         }));
                     };
-                    let slots =
-                        heap_slots_from_registers(&frame, elements, heap, budget.as_deref_mut())?;
+                    let slots = runtime_values_from_registers(
+                        &frame,
+                        elements,
+                        heap,
+                        budget.as_deref_mut(),
+                    )?;
                     let value =
                         allocate_heap_value(HeapValue::Array(slots), heap, budget.as_deref_mut())?;
                     frame.write(*dst, value)?;
@@ -451,7 +455,7 @@ impl Vm {
                         }));
                     };
                     let slots =
-                        heap_map_from_registers(&frame, entries, heap, budget.as_deref_mut())?;
+                        runtime_map_from_registers(&frame, entries, heap, budget.as_deref_mut())?;
                     let value =
                         allocate_heap_value(HeapValue::Map(slots), heap, budget.as_deref_mut())?;
                     frame.write(*dst, value)?;
@@ -476,7 +480,7 @@ impl Vm {
                             operation: "record heap",
                         }));
                     };
-                    let slots = heap_fields_from_registers(
+                    let slots = runtime_fields_from_registers(
                         type_name,
                         &frame,
                         fields,
@@ -505,7 +509,7 @@ impl Vm {
                             operation: "enum heap",
                         }));
                     };
-                    let slots = heap_fields_from_registers(
+                    let slots = runtime_fields_from_registers(
                         &owner,
                         &frame,
                         fields,
@@ -1298,10 +1302,7 @@ impl ScriptCallArgs {
         match registers {
             [] => Ok(Self::Empty),
             [first] => Ok(Self::One([*frame.read(*first)?])),
-            [first, second] => Ok(Self::Two([
-                *frame.read(*first)?,
-                *frame.read(*second)?,
-            ])),
+            [first, second] => Ok(Self::Two([*frame.read(*first)?, *frame.read(*second)?])),
             [first, second, third] => Ok(Self::Three([
                 *frame.read(*first)?,
                 *frame.read(*second)?,
@@ -1333,48 +1334,48 @@ impl ScriptCallArgs {
     }
 }
 
-fn heap_slots_from_registers(
+fn runtime_values_from_registers(
     frame: &CallFrame,
     registers: &[Register],
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Vec<HeapSlot>> {
+) -> VmResult<Vec<Value>> {
     registers
         .iter()
-        .map(|register| value_to_heap_slot(frame.read(*register)?, heap, budget.as_deref_mut()))
+        .map(|register| store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut()))
         .collect()
 }
 
-fn heap_map_from_registers(
+fn runtime_map_from_registers(
     frame: &CallFrame,
     entries: &[(String, Register)],
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<BTreeMap<String, HeapSlot>> {
+) -> VmResult<BTreeMap<String, Value>> {
     entries
         .iter()
         .map(|(key, register)| {
             Ok((
                 key.clone(),
-                value_to_heap_slot(frame.read(*register)?, heap, budget.as_deref_mut())?,
+                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
             ))
         })
         .collect()
 }
 
-fn heap_fields_from_registers(
+fn runtime_fields_from_registers(
     owner: &str,
     frame: &CallFrame,
     fields: &[(String, Register)],
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<ScriptFields<HeapSlot>> {
+) -> VmResult<ScriptFields<Value>> {
     fields
         .iter()
         .map(|(name, register)| {
             Ok((
                 name.clone(),
-                value_to_heap_slot(frame.read(*register)?, heap, budget.as_deref_mut())?,
+                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
             ))
         })
         .collect::<VmResult<Vec<_>>>()

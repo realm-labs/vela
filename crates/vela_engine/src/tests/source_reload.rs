@@ -16,7 +16,7 @@ use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
 use vela_reflect::registry::{MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey};
 use vela_vm::HostExecution;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::error::EngineErrorKind;
@@ -69,10 +69,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(11))
+        Ok(OwnedValue::Int(11))
     );
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
     assert_eq!(
@@ -126,7 +126,7 @@ pub const BONUS: int = 6;
         engine
             .into_vm()
             .run_program(&program, "game::main::main", &[]),
-        Ok(Value::Int(10))
+        Ok(OwnedValue::Int(10))
     );
     assert!(program.function("ignored.main").is_none());
 }
@@ -172,7 +172,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 
     std::fs::write(
@@ -211,7 +211,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(8))
+        Ok(OwnedValue::Int(8))
     );
 }
 
@@ -235,7 +235,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -256,7 +256,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -284,7 +284,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -316,7 +316,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -339,7 +339,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -379,7 +379,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_typed_reward_module(&reward_file, "float", "6.0");
@@ -395,7 +395,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -432,7 +432,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -456,7 +456,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
@@ -472,7 +472,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -502,7 +502,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -559,7 +559,7 @@ fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     std::fs::write(
@@ -592,7 +592,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -612,7 +612,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -801,7 +801,7 @@ pub fn grant() {
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .build()
         .expect("old engine should build");
@@ -813,7 +813,7 @@ pub fn grant() {
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .build()
         .expect("new engine should build");
@@ -829,7 +829,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 
     std::fs::write(
@@ -861,7 +861,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 }
 
@@ -918,12 +918,12 @@ pub fn grant(player: Player) {
     assert_eq!(
         runtime.call(
             "game::main::main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(
         tx.patches()[0].op,
@@ -952,12 +952,12 @@ pub fn grant(player: Player) {
     assert_eq!(
         runtime.call(
             "game::main::main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(
         tx.patches()[0].op,
@@ -978,12 +978,12 @@ pub fn grant(player: Player) {
     assert_eq!(
         runtime.call(
             "game::main::main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     assert_eq!(
         tx.patches()[0].op,
@@ -1176,7 +1176,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Defaulted);
@@ -1192,7 +1192,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1210,7 +1210,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -1234,7 +1234,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_stable_schema_rename_module(&reward_file, 6, true);
@@ -1250,7 +1250,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1268,7 +1268,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -1292,7 +1292,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Required);
@@ -1308,7 +1308,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1332,7 +1332,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1356,7 +1356,7 @@ fn runtime_stages_dir_removed_schema_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     std::fs::write(
@@ -1380,7 +1380,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1415,7 +1415,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1439,7 +1439,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Float);
@@ -1455,7 +1455,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1479,7 +1479,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1503,7 +1503,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Defaulted);
@@ -1519,7 +1519,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1537,7 +1537,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -1561,7 +1561,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Required);
@@ -1577,7 +1577,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1601,7 +1601,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1625,7 +1625,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Float);
@@ -1641,7 +1641,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1665,7 +1665,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1689,7 +1689,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_impl_module(&reward_file, 6, false);
@@ -1705,7 +1705,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1729,7 +1729,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1753,7 +1753,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_impl_module(&reward_file, 6, true);
@@ -1769,7 +1769,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1791,7 +1791,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -1815,7 +1815,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -1831,7 +1831,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1855,7 +1855,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1879,7 +1879,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_abi_module(&reward_file, 6, "float");
@@ -1895,7 +1895,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1919,7 +1919,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -1943,7 +1943,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_abi_module_with_required_method(&reward_file, 6);
@@ -1959,7 +1959,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -1983,7 +1983,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -2007,7 +2007,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_abi_module_with_defaulted_method(&reward_file, 6);
@@ -2023,7 +2023,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -2046,7 +2046,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -2085,7 +2085,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -2111,7 +2111,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -2171,7 +2171,7 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
         engine
             .into_vm()
             .run_program(&runtime.current().to_program(), "game::main::main", &[]),
-        Ok(Value::Int(10))
+        Ok(OwnedValue::Int(10))
     );
 }
 
@@ -2198,7 +2198,7 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
         engine
             .into_vm()
             .run_program(&runtime.current().to_program(), "game::main::main", &[]),
-        Ok(Value::Int(8))
+        Ok(OwnedValue::Int(8))
     );
 }
 
@@ -2307,7 +2307,7 @@ fn engine_exposes_registry_hot_reload_abi() {
                         .reflect_callable(true)
                         .require_permission("reward.grant"),
                 ),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("engine should build");
@@ -2348,10 +2348,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &version.to_program(),
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -2378,7 +2378,7 @@ fn runtime_applies_engine_hot_reload_updates() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime.apply_hot_update(update).expect("apply update");
@@ -2393,7 +2393,7 @@ fn runtime_applies_engine_hot_reload_updates() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -2420,7 +2420,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2437,7 +2437,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -2461,7 +2461,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2473,7 +2473,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -2492,7 +2492,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         .expect("stage rejected source text update");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2516,7 +2516,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -2538,7 +2538,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
         .expect("stage pending update");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2555,7 +2555,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     assert_eq!(
         runtime
@@ -2611,7 +2611,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -2641,7 +2641,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2661,7 +2661,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     assert_eq!(new, &Vec::<ModuleExportAbi>::new());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -2692,7 +2692,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2715,7 +2715,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     assert_eq!(function, "host::reward::grant");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -2747,7 +2747,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2770,7 +2770,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     assert_eq!(method, "grant_exp");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -2797,7 +2797,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -2816,7 +2816,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     assert_eq!(module, "host::reward");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -2840,7 +2840,7 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
         .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run");
 
-    assert_eq!(report.value, Value::Int(1));
+    assert_eq!(report.value, OwnedValue::Int(1));
     let reload = report.reload.expect("staged reload should be consumed");
     assert!(reload.accepted);
     assert_eq!(reload.changed_functions, vec!["main".to_owned()]);
@@ -2851,7 +2851,7 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -2898,7 +2898,7 @@ fn main() {
         .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run on the old version");
 
-    assert_eq!(report.value, Value::Int(1));
+    assert_eq!(report.value, OwnedValue::Int(1));
     let reload = report.reload.expect("staged reload should be consumed");
     assert!(reload.accepted);
     assert_eq!(
@@ -2912,7 +2912,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -2940,7 +2940,7 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
         .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run before reporting reload rejection");
 
-    assert_eq!(report.value, Value::Int(1));
+    assert_eq!(report.value, OwnedValue::Int(1));
     let reload = report.reload.expect("staged rejection should be consumed");
     assert!(!reload.accepted);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
@@ -2963,7 +2963,7 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -3006,12 +3006,12 @@ fn main(player: Player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::Int(11))
+        Ok(OwnedValue::Int(11))
     );
     runtime
         .stage_hot_update(update)
@@ -3032,12 +3032,12 @@ fn main(player: Player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut next_tx,
         ),
-        Ok(Value::Int(113))
+        Ok(OwnedValue::Int(113))
     );
 }
 
@@ -3080,12 +3080,12 @@ fn main(player: Player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::Int(11))
+        Ok(OwnedValue::Int(11))
     );
     runtime
         .stage_hot_update(update)
@@ -3146,7 +3146,7 @@ fn main() {
     assert!(first_report.accepted);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let rejected_update = runtime
@@ -3190,7 +3190,7 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
     let mut tx = PatchTx::new();
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 }
 
@@ -3210,7 +3210,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     std::fs::write(&path, "fn main() { return 5; }").expect("write updated source");
@@ -3225,7 +3225,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3242,7 +3242,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 }
 
@@ -3267,7 +3267,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3279,7 +3279,7 @@ fn main() {
     assert_eq!(report.changed_functions, vec!["helper", "main"]);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }
 
@@ -3304,7 +3304,7 @@ pub fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3316,7 +3316,7 @@ pub fn main() {
     assert_eq!(report.changed_functions, vec!["helper", "main"]);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
     assert_eq!(
         runtime.call(
@@ -3326,7 +3326,7 @@ pub fn main() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }
 
@@ -3358,7 +3358,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 
     let report = runtime
@@ -3376,7 +3376,7 @@ fn main() {
     assert_eq!(function, "helper");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }
 
@@ -3413,7 +3413,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3425,7 +3425,7 @@ fn main() {
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -3479,7 +3479,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3491,7 +3491,7 @@ fn main() {
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -3528,7 +3528,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3543,7 +3543,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -3576,7 +3576,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3602,7 +3602,7 @@ fn main() {
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -3640,7 +3640,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3655,7 +3655,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -3696,7 +3696,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3708,7 +3708,7 @@ fn main() {
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -3749,7 +3749,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3764,7 +3764,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -3806,7 +3806,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3821,7 +3821,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -3867,7 +3867,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3882,7 +3882,7 @@ fn main() {
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -3928,7 +3928,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3940,7 +3940,7 @@ fn main() {
     assert!(report.changed_functions.contains(&"main".to_owned()));
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -3972,7 +3972,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -3987,7 +3987,7 @@ fn main() {
     assert_removed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4023,7 +4023,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4038,7 +4038,7 @@ fn main() {
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4075,7 +4075,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4090,7 +4090,7 @@ fn main() {
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4127,7 +4127,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4140,7 +4140,7 @@ fn main() {
     assert!(report.changed_functions.contains(&"main".to_owned()));
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -4171,12 +4171,12 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call(
             "on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4198,12 +4198,12 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call(
             "on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4234,12 +4234,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call(
             "on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4266,12 +4266,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call(
             "on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4299,7 +4299,7 @@ fn main() -> float {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4330,7 +4330,7 @@ fn main() -> float {
     assert!(source_span.is_some());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4359,12 +4359,12 @@ fn main(player_id: int, amount: int) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::Int(7)],
+            &[OwnedValue::Int(7)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 
     let report = runtime
@@ -4389,12 +4389,12 @@ fn main(player_id: int, amount: int) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::Int(7)],
+            &[OwnedValue::Int(7)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }
 
@@ -4418,7 +4418,7 @@ fn main() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     stage_source_update(
@@ -4435,7 +4435,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -4449,7 +4449,7 @@ fn main() {
     assert_changed_function_access_rejection(&report, "grant");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -4459,7 +4459,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -4468,7 +4468,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_write()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -4479,7 +4479,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4508,7 +4508,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4521,7 +4521,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
                     .reflect_callable(true)
                     .require_permission("reward.read"),
             ),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -4533,7 +4533,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
                     .reflect_callable(true)
                     .require_permission("reward.write"),
             ),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -4544,7 +4544,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4573,7 +4573,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4583,7 +4583,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Int),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -4592,7 +4592,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Float),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -4603,7 +4603,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4637,7 +4637,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4647,7 +4647,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .returns(TypeHint::Int),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -4656,7 +4656,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .returns(TypeHint::Float),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -4667,7 +4667,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4694,7 +4694,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4704,7 +4704,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -4717,7 +4717,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4744,7 +4744,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4754,7 +4754,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -4763,7 +4763,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(23))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -4774,7 +4774,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4801,7 +4801,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4812,7 +4812,7 @@ fn runtime_stages_source_file_native_stable_id_rename_until_safe_point() {
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .build()
         .expect("old engine should build");
@@ -4829,7 +4829,7 @@ fn main() {
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .build()
         .expect("new engine should build");
@@ -4839,7 +4839,7 @@ fn main() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 
     stage_source_update(
@@ -4852,7 +4852,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 
     let report = runtime
@@ -4864,7 +4864,7 @@ fn main() {
     assert!(report.errors.is_empty());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -4891,7 +4891,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4917,7 +4917,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -4945,7 +4945,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -4971,7 +4971,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -5009,12 +5009,12 @@ fn main(player: Player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_host_method_patch(&tx, method, 7);
 
@@ -5031,12 +5031,12 @@ fn main(player: Player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_host_method_patch(&tx, method, 7);
 
@@ -5051,12 +5051,12 @@ fn main(player: Player) {
     assert_eq!(
         runtime.call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     assert_host_method_patch(&tx, method, 7);
 }
@@ -5094,7 +5094,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -5125,7 +5125,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -5168,7 +5168,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -5199,7 +5199,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -5236,7 +5236,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -5269,7 +5269,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -5300,7 +5300,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -5329,7 +5329,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -5357,7 +5357,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -5374,7 +5374,7 @@ fn main() {
     ));
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -5397,7 +5397,7 @@ fn main() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -5417,7 +5417,7 @@ fn main() {
     assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -5472,7 +5472,7 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -5494,7 +5494,7 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -5518,7 +5518,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -5539,7 +5539,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -5567,7 +5567,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -5615,7 +5615,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -5638,7 +5638,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -5662,7 +5662,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_typed_reward_module(&reward_file, "float", "6.0");
@@ -5678,7 +5678,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -5711,7 +5711,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -5735,7 +5735,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module_with_signature(&reward_file, "(amount: int) -> int", "amount");
@@ -5751,7 +5751,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -5781,7 +5781,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -5806,7 +5806,7 @@ fn runtime_stages_changed_file_script_function_access_rejection_until_safe_point
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     std::fs::write(
@@ -5839,7 +5839,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -5859,7 +5859,7 @@ fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -5884,7 +5884,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -5895,7 +5895,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_write()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -5911,7 +5911,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -5927,7 +5927,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -5962,7 +5962,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -5977,7 +5977,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
                     .reflect_callable(true)
                     .require_permission("reward.read"),
             ),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -5991,7 +5991,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
                     .reflect_callable(true)
                     .require_permission("reward.write"),
             ),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -6007,7 +6007,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -6023,7 +6023,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6058,7 +6058,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -6070,7 +6070,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Int),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -6081,7 +6081,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Float),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -6097,7 +6097,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -6113,7 +6113,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6153,7 +6153,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -6165,7 +6165,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .param("path", TypeHint::PathProxy),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -6176,7 +6176,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .param("path", TypeHint::Int),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -6192,7 +6192,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -6208,7 +6208,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6248,7 +6248,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -6260,7 +6260,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -6271,7 +6271,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Float),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -6287,7 +6287,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -6303,7 +6303,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6336,7 +6336,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -6348,7 +6348,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .returns(TypeHint::PathProxy),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -6359,7 +6359,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .returns(TypeHint::Int),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -6375,7 +6375,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -6391,7 +6391,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6424,7 +6424,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -6474,7 +6474,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .build()
         .expect("old engine should build");
@@ -6486,7 +6486,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Int(5)),
+            |_| Ok(OwnedValue::Int(5)),
         )
         .build()
         .expect("new engine should build");
@@ -6502,7 +6502,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 
     write_native_reward_module(&reward_file, "grant_bonus_v2", " + 1");
@@ -6519,7 +6519,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 
     let report = runtime
@@ -6537,7 +6537,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -6733,12 +6733,12 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     assert_eq!(
         runtime.call(
             "game::main::main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_host_method_patch(&tx, method, 7);
 
@@ -6752,12 +6752,12 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     assert_eq!(
         runtime.call(
             "game::main::main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_host_method_patch(&tx, method, 7);
 
@@ -6772,12 +6772,12 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     assert_eq!(
         runtime.call(
             "game::main::main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     assert_host_method_patch(&tx, method, 7);
 }
@@ -6802,7 +6802,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Defaulted);
@@ -6818,7 +6818,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6836,7 +6836,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -6860,7 +6860,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_stable_schema_rename_module(&reward_file, 6, true);
@@ -6876,7 +6876,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6894,7 +6894,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -6918,7 +6918,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Required);
@@ -6934,7 +6934,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -6958,7 +6958,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -6982,7 +6982,7 @@ fn runtime_stages_changed_file_removed_schema_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     std::fs::write(
@@ -7006,7 +7006,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7041,7 +7041,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7065,7 +7065,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Float);
@@ -7081,7 +7081,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7105,7 +7105,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7129,7 +7129,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Defaulted);
@@ -7145,7 +7145,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7163,7 +7163,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -7187,7 +7187,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Required);
@@ -7203,7 +7203,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7227,7 +7227,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7251,7 +7251,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Float);
@@ -7267,7 +7267,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7291,7 +7291,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7315,7 +7315,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_impl_module(&reward_file, 6, false);
@@ -7331,7 +7331,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7355,7 +7355,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7379,7 +7379,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_impl_module(&reward_file, 6, true);
@@ -7395,7 +7395,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7417,7 +7417,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -7441,7 +7441,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -7457,7 +7457,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7481,7 +7481,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7505,7 +7505,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_abi_module(&reward_file, 6, "float");
@@ -7521,7 +7521,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7545,7 +7545,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7569,7 +7569,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_abi_module_with_required_method(&reward_file, 6);
@@ -7585,7 +7585,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7609,7 +7609,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7633,7 +7633,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_trait_abi_module_with_defaulted_method(&reward_file, 6);
@@ -7649,7 +7649,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7672,7 +7672,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -7711,7 +7711,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -7737,7 +7737,7 @@ pub fn grant() {
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -7804,7 +7804,7 @@ fn main() {
     assert_eq!(report.to_version, None);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -8322,7 +8322,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module_calling_helper(&reward_file, 6);
@@ -8344,7 +8344,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -8371,7 +8371,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -8394,7 +8394,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module_calling_public_helper(&reward_file, 6);
@@ -8416,7 +8416,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     assert!(
         runtime
@@ -8454,7 +8454,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
     assert_eq!(
         runtime.call(
@@ -8464,7 +8464,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(6))
+        Ok(OwnedValue::Int(6))
     );
 }
 
@@ -8499,12 +8499,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call(
             "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     std::fs::write(
@@ -8530,12 +8530,12 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call(
             "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -8557,12 +8557,12 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(
         runtime.call(
             "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -8592,12 +8592,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call(
             "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     std::fs::write(
@@ -8623,12 +8623,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call(
             "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -8655,12 +8655,12 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(
         runtime.call(
             "game::events::on_kill",
-            &[Value::Int(7), Value::Int(11)],
+            &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -8838,7 +8838,7 @@ fn removed_script_function_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -8860,7 +8860,7 @@ fn removed_script_function_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -8883,7 +8883,7 @@ fn removed_script_function_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }
@@ -8903,7 +8903,7 @@ fn removed_native_descriptor_rejection_kind(
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -8923,7 +8923,7 @@ fn removed_native_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -8945,7 +8945,7 @@ fn removed_native_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -8969,7 +8969,7 @@ fn removed_native_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }
@@ -8984,7 +8984,7 @@ fn native_stable_id_churn_rejection_kind(
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
@@ -8995,7 +8995,7 @@ fn native_stable_id_churn_rejection_kind(
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(23))
                 .effects(EffectSet::host_read()),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("new engine should build");
@@ -9011,7 +9011,7 @@ fn native_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -9033,7 +9033,7 @@ fn native_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -9057,7 +9057,7 @@ fn native_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }
@@ -9071,14 +9071,14 @@ fn dir_native_rejection_kind(
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
-        .register_native_fn(old_desc, |_| Ok(Value::Null))
+        .register_native_fn(old_desc, |_| Ok(OwnedValue::Null))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
-        .register_native_fn(new_desc, |_| Ok(Value::Null))
+        .register_native_fn(new_desc, |_| Ok(OwnedValue::Null))
         .build()
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
@@ -9093,7 +9093,7 @@ fn dir_native_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -9109,7 +9109,7 @@ fn dir_native_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -9140,7 +9140,7 @@ fn dir_native_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }
@@ -9184,7 +9184,7 @@ fn removed_method_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -9206,7 +9206,7 @@ fn removed_method_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -9227,7 +9227,7 @@ fn removed_method_descriptor_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }
@@ -9267,7 +9267,7 @@ fn method_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -9289,7 +9289,7 @@ fn method_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -9310,7 +9310,7 @@ fn method_stable_id_churn_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }
@@ -9346,7 +9346,7 @@ fn dir_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -9362,7 +9362,7 @@ fn dir_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -9393,7 +9393,7 @@ fn dir_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }
@@ -9429,7 +9429,7 @@ fn changed_file_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     write_reward_module(&reward_file, 6);
@@ -9445,7 +9445,7 @@ fn changed_file_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 
     let report = runtime
@@ -9476,7 +9476,7 @@ fn changed_file_method_rejection_kind(
             &mut adapter,
             &mut tx
         ),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
     report.errors[0].error.kind.clone()
 }

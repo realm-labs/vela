@@ -1,6 +1,7 @@
 use super::*;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_vm::owned_value::OwnedValue;
 
 const HOT_RELOAD_PARAMETER_ABI_V1: &str =
     include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi_v1.vela");
@@ -25,7 +26,7 @@ fn new_calls_enter_new_code_after_update() {
 
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(30))
+        Ok(OwnedValue::Int(30))
     );
 }
 
@@ -45,7 +46,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert!(runtime.has_pending_update());
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(20))
+        Ok(OwnedValue::Int(20))
     );
 
     let report = runtime
@@ -57,7 +58,7 @@ fn staged_update_waits_for_check_reload_safe_point() {
     assert!(!runtime.has_pending_update());
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(30))
+        Ok(OwnedValue::Int(30))
     );
 }
 
@@ -97,7 +98,7 @@ fn main() {
     assert_eq!(report.errors[0].code, "reload.function.new_denied");
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(20))
+        Ok(OwnedValue::Int(20))
     );
 }
 
@@ -131,7 +132,7 @@ fn main() {
     let version = report.version().expect("accepted report version");
     assert_eq!(
         Vm::new().run_program(&version.to_program(), "main", &[]),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
 }
 
@@ -265,7 +266,7 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
     assert!(metadata.module_source_hash(module).is_some());
     assert_eq!(
         Vm::new().run_program(&current.to_program(), "game::main::main", &[]),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 }
 
@@ -347,11 +348,11 @@ fn old_version_lifetime_preserves_old_code() {
 
     assert_eq!(
         Vm::new().run_program(&old.to_program(), "main", &[]),
-        Ok(Value::Int(20))
+        Ok(OwnedValue::Int(20))
     );
     assert_eq!(
         Vm::new().run_program(&new.to_program(), "main", &[]),
-        Ok(Value::Int(30))
+        Ok(OwnedValue::Int(30))
     );
 }
 
@@ -570,7 +571,7 @@ fn main() {
     );
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 

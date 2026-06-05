@@ -3,7 +3,7 @@ use std::sync::Arc;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
 use super::common::{check_host_ref_inspection, check_reflect_policy};
@@ -73,7 +73,7 @@ pub(super) fn register(
         let target = value_to_reflect(&args[0], "reflect::has_variant")?;
         check_host_ref_inspection(&has_variant_policy, &target)?;
         let variant_name = expect_string(&args[1], "reflect::has_variant")?;
-        Ok(Value::Bool(reflect::members::has_variant(
+        Ok(OwnedValue::Bool(reflect::members::has_variant(
             &has_variant_registry,
             &target,
             variant_name,
@@ -107,7 +107,7 @@ pub(super) fn register(
         let target = value_to_reflect(&args[0], "reflect::variant_is")?;
         check_host_ref_inspection(&variant_is_policy, &target)?;
         let variant_name = expect_string(&args[1], "reflect::variant_is")?;
-        Ok(Value::Bool(reflect::members::variant_is(
+        Ok(OwnedValue::Bool(reflect::members::variant_is(
             &variant_is_registry,
             &target,
             variant_name,

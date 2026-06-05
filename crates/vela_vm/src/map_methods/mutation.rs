@@ -1,10 +1,10 @@
 use crate::heap::HeapValue;
 use crate::option_result::option_value;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot, value_to_heap_slot,
+    ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value, stored_runtime_value,
 };
 
-use super::{expect_arity, map_key, materialize_map_entries, type_error};
+use super::{expect_arity, map_entries, map_key, type_error};
 
 pub(crate) fn set(
     receiver: &mut Value,
@@ -19,7 +19,7 @@ pub(crate) fn set(
             let Some(heap) = heap else {
                 return type_error("method set");
             };
-            let slot = value_to_heap_slot(&args[1], heap, budget)?;
+            let slot = store_runtime_value(&args[1], heap, budget)?;
             let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method set");
             };
@@ -46,7 +46,7 @@ pub(crate) fn remove(
             let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method remove");
             };
-            let payload = values.remove(&key).map(|slot| value_from_heap_slot(&slot));
+            let payload = values.remove(&key).map(|slot| stored_runtime_value(&slot));
             option_value(payload, heap, budget)
         }
         _ => type_error("method remove"),
@@ -81,7 +81,7 @@ pub(crate) fn extend(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     expect_arity("extend", args, 1)?;
-    let entries = materialize_map_entries(&args[0], heap.as_deref(), "method extend")?;
+    let entries = map_entries(&args[0], heap.as_deref(), "method extend")?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
@@ -91,7 +91,7 @@ pub(crate) fn extend(
             for (key, value) in entries {
                 slots.push((
                     key,
-                    value_to_heap_slot(&value, heap, budget.as_deref_mut())?,
+                    store_runtime_value(&value, heap, budget.as_deref_mut())?,
                 ));
             }
             let Some(HeapValue::Map(values)) = heap.heap.get_mut(*reference).ok() else {

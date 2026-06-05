@@ -71,7 +71,7 @@ pub(crate) fn allocate_heap_value(
     Ok(Value::HeapRef(reference))
 }
 
-pub(crate) fn value_to_heap_slot(
+pub(crate) fn store_runtime_value(
     value: &Value,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
@@ -79,8 +79,8 @@ pub(crate) fn value_to_heap_slot(
     store_value_in_heap(*value, heap, budget)
 }
 
-pub(crate) fn value_from_heap_slot(slot: &Value) -> Value {
-    *slot
+pub(crate) fn stored_runtime_value(value: &Value) -> Value {
+    *value
 }
 
 #[allow(dead_code)]

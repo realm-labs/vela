@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_math_standard_natives() {
@@ -23,7 +23,7 @@ fn main() {
     vm.register_standard_natives();
 
     let result = vm.run(&code).expect("math stdlib source should run");
-    assert_eq!(result, Value::Int(42));
+    assert_eq!(result, OwnedValue::Int(42));
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn main() {
     let result = vm
         .run_with_managed_heap_and_budget(&code, &mut budget)
         .expect("heap math stdlib source should run");
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, OwnedValue::Bool(true));
 }
 
 #[test]
@@ -79,10 +79,10 @@ fn main() {
         .expect("option/result stdlib source should run");
     assert_eq!(
         result,
-        Value::Enum {
+        OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Ok".to_owned(),
-            fields: [("0".to_owned(), Value::Int(10))].into()
+            fields: [("0".to_owned(), OwnedValue::Int(10))].into()
         }
     );
 }
@@ -134,7 +134,7 @@ fn main() {
     let result = vm
         .run_program(&program, "main", &[])
         .expect("option/result helper stdlib source should run");
-    assert_eq!(result, Value::Int(40));
+    assert_eq!(result, OwnedValue::Int(40));
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn main() {
     let result = vm
         .run_program(&program, "main", &[])
         .expect("option/result map source should run");
-    assert_eq!(result, Value::Int(1));
+    assert_eq!(result, OwnedValue::Int(1));
 }
 
 #[test]
@@ -193,7 +193,7 @@ fn main() {
     let result = vm
         .run_program(&program, "main", &[])
         .expect("result map_err source should run");
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, OwnedValue::Bool(true));
 }
 
 #[test]
@@ -234,7 +234,7 @@ fn main() {
     let result = vm
         .run_program(&program, "main", &[])
         .expect("option/result and_then source should run");
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, OwnedValue::Bool(true));
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn main() {
     let result = vm
         .run_program(&program, "main", &[])
         .expect("option/result or_else source should run");
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, OwnedValue::Bool(true));
 }
 
 #[test]
@@ -294,7 +294,7 @@ fn main() {
     let result = vm
         .run_program(&program, "main", &[])
         .expect("option filter source should run");
-    assert_eq!(result, Value::Bool(true));
+    assert_eq!(result, OwnedValue::Bool(true));
 }
 
 #[test]
@@ -344,5 +344,5 @@ fn main() {
     let result = vm
         .run_program(&program, "main", &[])
         .expect("option/result helper method source should run");
-    assert_eq!(result, Value::Int(40));
+    assert_eq!(result, OwnedValue::Int(40));
 }

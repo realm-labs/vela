@@ -4,7 +4,7 @@ use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
 use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPolicy;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn runtime_hot_reload_update_waits_for_explicit_apply_safe_point() {
@@ -22,7 +22,7 @@ fn runtime_hot_reload_update_waits_for_explicit_apply_safe_point() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let update = runtime
@@ -39,7 +39,7 @@ fn runtime_hot_reload_update_waits_for_explicit_apply_safe_point() {
     );
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -49,7 +49,7 @@ fn runtime_hot_reload_update_waits_for_explicit_apply_safe_point() {
     assert!(report.accepted);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -89,7 +89,7 @@ fn main() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let update = runtime
@@ -121,7 +121,7 @@ fn main() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     let report = runtime
@@ -131,7 +131,7 @@ fn main() {
     assert!(report.accepted);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -168,7 +168,7 @@ fn main() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 
     let update = runtime
@@ -199,7 +199,7 @@ fn main() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
 
     let report = runtime
@@ -209,6 +209,6 @@ fn main() {
     assert!(report.accepted);
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
-        Ok(Value::Int(17))
+        Ok(OwnedValue::Int(17))
     );
 }

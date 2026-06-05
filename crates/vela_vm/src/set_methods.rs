@@ -81,7 +81,7 @@ mod tests {
     use vela_bytecode::compiler::compile_function_source;
     use vela_common::SourceId;
 
-    use crate::owned_value::OwnedValue as Value;
+    use crate::owned_value::OwnedValue;
     use crate::{ExecutionBudget, Vm};
 
     #[test]
@@ -115,7 +115,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("set combination methods should run");
-        assert_eq!(result, Value::String("daily,quest".to_owned()));
+        assert_eq!(result, OwnedValue::String("daily,quest".to_owned()));
     }
 
     #[test]
@@ -148,7 +148,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set combination methods should run");
-        assert_eq!(result, Value::Int(34));
+        assert_eq!(result, OwnedValue::Int(34));
     }
 
     #[test]
@@ -184,7 +184,10 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap string set predicates should run");
-        assert_eq!(result, Value::String("bonus,daily,quest,raid".to_owned()));
+        assert_eq!(
+            result,
+            OwnedValue::String("bonus,daily,quest,raid".to_owned())
+        );
     }
 
     #[test]
@@ -208,7 +211,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set has method should run");
-        assert_eq!(result, Value::Int(6));
+        assert_eq!(result, OwnedValue::Int(6));
     }
 
     #[test]
@@ -230,7 +233,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("set filter should run");
-        assert_eq!(result, Value::String("quest,raid".to_owned()));
+        assert_eq!(result, OwnedValue::String("quest,raid".to_owned()));
     }
 
     #[test]
@@ -251,7 +254,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set filter should run");
-        assert_eq!(result, Value::Int(23));
+        assert_eq!(result, OwnedValue::Int(23));
     }
 
     #[test]
@@ -273,7 +276,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("set map should run");
-        assert_eq!(result, Value::String("DAILY,QUEST,RAID".to_owned()));
+        assert_eq!(result, OwnedValue::String("DAILY,QUEST,RAID".to_owned()));
     }
 
     #[test]
@@ -295,7 +298,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set map should run");
-        assert_eq!(result, Value::Int(21));
+        assert_eq!(result, OwnedValue::Int(21));
     }
 
     #[test]
@@ -319,7 +322,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("set higher-order methods should run");
-        assert_eq!(result, Value::String("quest".to_owned()));
+        assert_eq!(result, OwnedValue::String("quest".to_owned()));
     }
 
     #[test]
@@ -346,7 +349,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set higher-order methods should run");
-        assert_eq!(result, Value::Int(27));
+        assert_eq!(result, OwnedValue::Int(27));
     }
 
     #[test]
@@ -455,7 +458,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("set clear method should run");
-        assert_eq!(result, Value::String("raid".to_owned()));
+        assert_eq!(result, OwnedValue::String("raid".to_owned()));
     }
 
     #[test]
@@ -481,7 +484,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set clear method should run");
-        assert_eq!(result, Value::Int(9));
+        assert_eq!(result, OwnedValue::Int(9));
     }
 
     #[test]
@@ -502,7 +505,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = vm.run(&code).expect("set extend method should run");
-        assert_eq!(result, Value::String("daily|quest|raid".to_owned()));
+        assert_eq!(result, OwnedValue::String("daily|quest|raid".to_owned()));
     }
 
     #[test]
@@ -527,7 +530,7 @@ fn main() {
         let result = vm
             .run_with_managed_heap_and_budget(&code, &mut budget)
             .expect("heap set extend method should run");
-        assert_eq!(result, Value::Int(20));
+        assert_eq!(result, OwnedValue::Int(20));
     }
 
     #[test]

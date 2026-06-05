@@ -1,5 +1,5 @@
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot};
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value};
 
 pub(crate) fn get_record_field_value(
     value: &Value,
@@ -13,7 +13,7 @@ pub(crate) fn get_record_field_value(
             else {
                 return type_error("record field");
             };
-            fields.get(field).map(value_from_heap_slot).ok_or_else(|| {
+            fields.get(field).map(stored_runtime_value).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownRecordField {
                     type_name: type_name.clone(),
                     field: field.to_owned(),
@@ -39,7 +39,7 @@ pub(crate) fn get_record_slot_value(
             };
             fields
                 .get_slot(slot, field)
-                .map(value_from_heap_slot)
+                .map(stored_runtime_value)
                 .ok_or_else(|| {
                     VmError::new(VmErrorKind::UnknownRecordField {
                         type_name: type_name.clone(),
@@ -66,7 +66,7 @@ pub(crate) fn get_enum_field_value(
             else {
                 return type_error("enum field");
             };
-            fields.get(field).map(value_from_heap_slot).ok_or_else(|| {
+            fields.get(field).map(stored_runtime_value).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownEnumField {
                     enum_name: enum_name.clone(),
                     variant: variant.clone(),
@@ -96,7 +96,7 @@ pub(crate) fn get_enum_slot_value(
             };
             fields
                 .get_slot(slot, field)
-                .map(value_from_heap_slot)
+                .map(stored_runtime_value)
                 .ok_or_else(|| {
                     VmError::new(VmErrorKind::UnknownEnumField {
                         enum_name: enum_name.clone(),

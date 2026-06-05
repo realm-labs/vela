@@ -1,10 +1,10 @@
 use crate::VmResult;
 
-use super::{Value, expect_arity};
+use super::{OwnedValue, expect_arity};
 
 use super::{expect_finite_float, type_error};
 
-pub(crate) fn math_sqrt(args: &[Value]) -> VmResult<Value> {
+pub(crate) fn math_sqrt(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("math::sqrt", args, 1)?;
     let value = expect_finite_float(&args[0], "math::sqrt")?;
     if value < 0.0 {
@@ -13,7 +13,7 @@ pub(crate) fn math_sqrt(args: &[Value]) -> VmResult<Value> {
 
     let root = value.sqrt();
     if root.is_finite() {
-        Ok(Value::Float(root))
+        Ok(OwnedValue::Float(root))
     } else {
         type_error("math::sqrt")
     }

@@ -17,7 +17,6 @@ use vela_reflect::registry::{
     TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
 use vela_vm::Vm;
-use vela_vm::owned_value::OwnedValue as Value;
 
 mod function_abi;
 mod function_policy;

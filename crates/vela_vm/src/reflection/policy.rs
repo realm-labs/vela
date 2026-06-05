@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use vela_reflect as reflect;
 
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::{Vm, expect_arity, expect_string};
 
 use super::common::check_reflect_policy;
@@ -21,10 +21,10 @@ pub(super) fn register(
             reflect::permissions::ReflectPermission::ReadTypeInfo,
         )?;
         expect_arity("reflect::permissions", args, 0)?;
-        Ok(Value::Array(
+        Ok(OwnedValue::Array(
             reflect::permissions::permission_names(&permissions_policy)
                 .into_iter()
-                .map(|permission| Value::String(permission.to_owned()))
+                .map(|permission| OwnedValue::String(permission.to_owned()))
                 .collect(),
         ))
     });
@@ -39,7 +39,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::has_permission", args, 1)?;
         let permission = expect_string(&args[0], "reflect::has_permission")?;
-        Ok(Value::Bool(reflect::permissions::has_permission(
+        Ok(OwnedValue::Bool(reflect::permissions::has_permission(
             &has_permission_policy,
             permission,
         )?))

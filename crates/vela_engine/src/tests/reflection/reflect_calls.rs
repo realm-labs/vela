@@ -1,4 +1,5 @@
 use super::*;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn engine_reflect_call_invokes_reflect_callable_native_functions() {
@@ -10,10 +11,10 @@ fn engine_reflect_call_invokes_reflect_callable_native_functions() {
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args| {
-                let [Value::Int(lhs), Value::Int(rhs)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::Int(lhs), OwnedValue::Int(rhs)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
-                Ok(Value::Int(lhs + rhs))
+                Ok(OwnedValue::Int(lhs + rhs))
             },
         )
         .reflection_permissions(ReflectPermissionSet::all())
@@ -40,7 +41,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
     assert!(tx.patches().is_empty());
 }
@@ -54,7 +55,7 @@ fn engine_reflect_call_requires_call_permission_for_function_descriptors() {
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_| Ok(Value::Int(0)),
+            |_| Ok(OwnedValue::Int(0)),
         )
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
@@ -95,7 +96,7 @@ fn engine_reflect_call_rejects_non_callable_native_functions() {
                 .param("lhs", TypeHint::Int)
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int),
-            |_| Ok(Value::Int(0)),
+            |_| Ok(OwnedValue::Int(0)),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -150,15 +151,15 @@ fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
                         .require_permission("player.write"),
                 ),
             |args, host| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .reflection_permissions(ReflectPermissionSet::all())
@@ -187,10 +188,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -223,15 +224,15 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                         .require_permission("player.write"),
                 ),
             |args, host| {
-                let [Value::HostRef(player), Value::Int(level)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .reflection_permissions(
@@ -263,7 +264,7 @@ fn main(player) {
     assert!(matches!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host),
+            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(
             ReflectErrorKind::FunctionEffectPermissionDenied {
                 function: "game::set_level".to_owned(),

@@ -7,7 +7,7 @@ use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
 use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPolicy;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 fn unique_test_dir(name: &str) -> PathBuf {
     let mut path = std::env::temp_dir();
@@ -72,7 +72,7 @@ fn main() {
 
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx,),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -152,7 +152,7 @@ fn main() {
             &mut adapter,
             &mut tx,
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 
     fs::remove_dir_all(root).expect("clean temp dir");

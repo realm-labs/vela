@@ -13,43 +13,46 @@ use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::{VmError, VmErrorKind};
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn script_arg_conversions_support_optional_values() {
-    let some_value = Value::Enum {
+    let some_value = OwnedValue::Enum {
         enum_name: "Option".to_owned(),
         variant: "Some".to_owned(),
-        fields: [("0".to_owned(), Value::Int(3))].into(),
+        fields: [("0".to_owned(), OwnedValue::Int(3))].into(),
     };
-    let none_value = Value::Enum {
+    let none_value = OwnedValue::Enum {
         enum_name: "game::std::Option".to_owned(),
         variant: "None".to_owned(),
         fields: [].into(),
     };
 
-    assert_eq!(Option::<i64>::from_script_arg(&Value::Null), Ok(None));
-    assert_eq!(Option::<i64>::from_script_arg(&Value::Int(3)), Ok(Some(3)));
+    assert_eq!(Option::<i64>::from_script_arg(&OwnedValue::Null), Ok(None));
+    assert_eq!(
+        Option::<i64>::from_script_arg(&OwnedValue::Int(3)),
+        Ok(Some(3))
+    );
     assert_eq!(Option::<i64>::from_script_arg(&some_value), Ok(Some(3)));
     assert_eq!(Option::<i64>::from_script_arg(&none_value), Ok(None));
     assert_eq!(
         Some("reward").into_script_arg(),
-        Value::String("reward".to_owned())
+        OwnedValue::String("reward".to_owned())
     );
-    assert_eq!(Option::<i64>::None.into_script_arg(), Value::Null);
+    assert_eq!(Option::<i64>::None.into_script_arg(), OwnedValue::Null);
     assert_eq!(
         vela_engine::args![Some(2_i64), Option::<i64>::None],
-        vec![Value::Int(2), Value::Null],
+        vec![OwnedValue::Int(2), OwnedValue::Null],
     );
     assert!(matches!(
-        Option::<i64>::from_script_arg(&Value::String("bad".to_owned())),
+        Option::<i64>::from_script_arg(&OwnedValue::String("bad".to_owned())),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "int" },
             ..
         })
     ));
     assert!(matches!(
-        Option::<i64>::from_script_arg(&Value::Enum {
+        Option::<i64>::from_script_arg(&OwnedValue::Enum {
             enum_name: "Option".to_owned(),
             variant: "Missing".to_owned(),
             fields: [].into(),
@@ -80,17 +83,17 @@ fn script_arg_conversions_support_result_values() {
         vela_engine::args![std::result::Result::<i64, String>::Err(
             "missing".to_owned()
         )],
-        vec![Value::Enum {
+        vec![OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Err".to_owned(),
-            fields: [("0".to_owned(), Value::String("missing".to_owned()))].into(),
+            fields: [("0".to_owned(), OwnedValue::String("missing".to_owned()))].into(),
         }],
     );
     assert!(matches!(
-        std::result::Result::<i64, String>::from_script_arg(&Value::Enum {
+        std::result::Result::<i64, String>::from_script_arg(&OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Ok".to_owned(),
-            fields: [("0".to_owned(), Value::String("bad".to_owned()))].into(),
+            fields: [("0".to_owned(), OwnedValue::String("bad".to_owned()))].into(),
         }),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "int" },
@@ -98,10 +101,10 @@ fn script_arg_conversions_support_result_values() {
         })
     ));
     assert!(matches!(
-        std::result::Result::<i64, String>::from_script_arg(&Value::Enum {
+        std::result::Result::<i64, String>::from_script_arg(&OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Unknown".to_owned(),
-            fields: [("0".to_owned(), Value::Int(1))].into(),
+            fields: [("0".to_owned(), OwnedValue::Int(1))].into(),
         }),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch {
@@ -119,16 +122,16 @@ fn script_arg_conversions_support_set_values() {
     tree.insert("ice".to_owned());
     assert_eq!(
         tree.clone().into_script_arg(),
-        Value::Set(vec![
-            Value::String("fire".to_owned()),
-            Value::String("ice".to_owned()),
+        OwnedValue::Set(vec![
+            OwnedValue::String("fire".to_owned()),
+            OwnedValue::String("ice".to_owned()),
         ]),
     );
     assert_eq!(
-        BTreeSet::<String>::from_script_arg(&Value::Set(vec![
-            Value::String("ice".to_owned()),
-            Value::String("fire".to_owned()),
-            Value::String("fire".to_owned()),
+        BTreeSet::<String>::from_script_arg(&OwnedValue::Set(vec![
+            OwnedValue::String("ice".to_owned()),
+            OwnedValue::String("fire".to_owned()),
+            OwnedValue::String("fire".to_owned()),
         ])),
         Ok(tree),
     );
@@ -138,18 +141,18 @@ fn script_arg_conversions_support_set_values() {
     hash.insert(1_i64);
     assert_eq!(
         hash.clone().into_script_arg(),
-        Value::Set(vec![Value::Int(1), Value::Int(2)]),
+        OwnedValue::Set(vec![OwnedValue::Int(1), OwnedValue::Int(2)]),
     );
     assert_eq!(
-        HashSet::<i64>::from_script_arg(&Value::Set(vec![
-            Value::Int(1),
-            Value::Int(2),
-            Value::Int(2),
+        HashSet::<i64>::from_script_arg(&OwnedValue::Set(vec![
+            OwnedValue::Int(1),
+            OwnedValue::Int(2),
+            OwnedValue::Int(2),
         ])),
         Ok(hash),
     );
     assert!(matches!(
-        BTreeSet::<i64>::from_script_arg(&Value::Array(vec![Value::Int(1)])),
+        BTreeSet::<i64>::from_script_arg(&OwnedValue::Array(vec![OwnedValue::Int(1)])),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "set" },
             ..
@@ -182,32 +185,35 @@ fn args_macro_converts_rust_values_and_host_refs() {
     assert_eq!(
         args,
         vec![
-            Value::Null,
-            Value::Bool(true),
-            Value::Int(5),
-            Value::Float(2.5),
-            Value::String("title".to_owned()),
-            Value::Array(vec![
-                Value::String("a".to_owned()),
-                Value::String("b".to_owned())
+            OwnedValue::Null,
+            OwnedValue::Bool(true),
+            OwnedValue::Int(5),
+            OwnedValue::Float(2.5),
+            OwnedValue::String("title".to_owned()),
+            OwnedValue::Array(vec![
+                OwnedValue::String("a".to_owned()),
+                OwnedValue::String("b".to_owned())
             ]),
-            Value::Map([("key".to_owned(), Value::Int(9))].into()),
-            Value::Map([("hash".to_owned(), Value::Int(11))].into()),
-            Value::HostRef(host_ref),
-            Value::PathProxy(proxy),
+            OwnedValue::Map([("key".to_owned(), OwnedValue::Int(9))].into()),
+            OwnedValue::Map([("hash".to_owned(), OwnedValue::Int(11))].into()),
+            OwnedValue::HostRef(host_ref),
+            OwnedValue::PathProxy(proxy),
         ]
     );
-    assert_eq!(vela_engine::args!(), Vec::<Value>::new());
-    assert_eq!(vela_engine::host!(1, 42, 7), Value::HostRef(host_ref));
-    assert_eq!(vela_engine::host!(host_ref), Value::HostRef(host_ref));
-    assert_eq!(vela_engine::args::host(host_ref), Value::HostRef(host_ref));
+    assert_eq!(vela_engine::args!(), Vec::<OwnedValue>::new());
+    assert_eq!(vela_engine::host!(1, 42, 7), OwnedValue::HostRef(host_ref));
+    assert_eq!(vela_engine::host!(host_ref), OwnedValue::HostRef(host_ref));
+    assert_eq!(
+        vela_engine::args::host(host_ref),
+        OwnedValue::HostRef(host_ref)
+    );
     assert_eq!(
         vela_engine::args::host((1_u32, 42_u64, 7_u32)),
-        Value::HostRef(host_ref)
+        OwnedValue::HostRef(host_ref)
     );
     assert_eq!(
         vela_engine::args::host((HostTypeId::new(1), HostObjectId::new(42), 7_u32)),
-        Value::HostRef(host_ref)
+        OwnedValue::HostRef(host_ref)
     );
 }
 
@@ -256,7 +262,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
         })
     ));
     assert!(matches!(
-        f32::from_script_arg(&Value::Float(f64::MAX)),
+        f32::from_script_arg(&OwnedValue::Float(f64::MAX)),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "float" },
             source_span: None,
@@ -322,7 +328,7 @@ fn main(player: Player, amount: int) {
         )
         .expect("runtime call should run");
 
-    assert_eq!(result, Value::Int(12));
+    assert_eq!(result, OwnedValue::Int(12));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,

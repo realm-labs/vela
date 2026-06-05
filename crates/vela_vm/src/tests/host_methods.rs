@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
 #[test]
@@ -26,10 +26,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(1)));
+    assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -73,10 +78,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(1)));
+    assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -133,10 +143,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(1)));
+    assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, item_path);
@@ -186,10 +201,15 @@ fn call_host_method_records_patch_and_applies_later() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(12)));
+    assert_eq!(result, Ok(OwnedValue::Int(12)));
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -288,10 +308,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::String("accepted".into())));
+    assert_eq!(result, Ok(OwnedValue::String("accepted".into())));
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(

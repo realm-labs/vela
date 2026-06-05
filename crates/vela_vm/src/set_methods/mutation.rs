@@ -1,5 +1,5 @@
 use crate::heap::HeapValue;
-use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_to_heap_slot};
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value};
 
 use super::{SetKey, expect_arity, set_values, slot_key, type_error};
 
@@ -25,7 +25,7 @@ pub(crate) fn add(
             {
                 return Ok(Value::Bool(false));
             }
-            let slot = value_to_heap_slot(&args[0], heap, budget)?;
+            let slot = store_runtime_value(&args[0], heap, budget)?;
             let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method add");
             };
@@ -119,7 +119,7 @@ pub(crate) fn extend(
                     continue;
                 }
                 keys.push(key);
-                slots.push(value_to_heap_slot(&value, heap, budget.as_deref_mut())?);
+                slots.push(store_runtime_value(&value, heap, budget.as_deref_mut())?);
             }
             let Some(HeapValue::Set(values)) = heap.heap.get_mut(*reference).ok() else {
                 return type_error("method extend");

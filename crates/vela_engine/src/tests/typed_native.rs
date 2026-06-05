@@ -7,7 +7,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_reflect::registry::TypeKey;
 use vela_vm::error::{VmError, VmErrorKind};
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
@@ -41,7 +41,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(10)),
+        Ok(OwnedValue::Int(10)),
     );
 }
 
@@ -73,7 +73,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(11)),
+        Ok(OwnedValue::Int(11)),
     );
 }
 
@@ -111,8 +111,8 @@ fn main(player) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::HostRef(player)]),
-        Ok(Value::Int(49)),
+            .run_program(&program, "main", &[OwnedValue::HostRef(player)]),
+        Ok(OwnedValue::Int(49)),
     );
 }
 
@@ -149,8 +149,8 @@ fn main(path) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::PathProxy(path)]),
-        Ok(Value::Int(2)),
+            .run_program(&program, "main", &[OwnedValue::PathProxy(path)]),
+        Ok(OwnedValue::Int(2)),
     );
 }
 
@@ -180,7 +180,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(10)),
+        Ok(OwnedValue::Int(10)),
     );
 }
 
@@ -211,7 +211,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(15)),
+        Ok(OwnedValue::Int(15)),
     );
 }
 
@@ -243,7 +243,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(21)),
+        Ok(OwnedValue::Int(21)),
     );
 }
 
@@ -274,7 +274,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Int(28)),
+        Ok(OwnedValue::Int(28)),
     );
 }
 
@@ -301,7 +301,7 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Float(3.0)),
+        Ok(OwnedValue::Float(3.0)),
     );
 }
 
@@ -335,13 +335,13 @@ fn main(tags) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Set(vec![
-                Value::String("fire".to_owned()),
-                Value::String("ice".to_owned()),
-                Value::String("fire".to_owned()),
+            &[OwnedValue::Set(vec![
+                OwnedValue::String("fire".to_owned()),
+                OwnedValue::String("ice".to_owned()),
+                OwnedValue::String("fire".to_owned()),
             ])],
         ),
-        Ok(Value::Int(4)),
+        Ok(OwnedValue::Int(4)),
     );
 }
 
@@ -375,13 +375,13 @@ fn main(tags) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Set(vec![
-                Value::String("fire".to_owned()),
-                Value::String("ice".to_owned()),
-                Value::String("fire".to_owned()),
+            &[OwnedValue::Set(vec![
+                OwnedValue::String("fire".to_owned()),
+                OwnedValue::String("ice".to_owned()),
+                OwnedValue::String("fire".to_owned()),
             ])],
         ),
-        Ok(Value::Int(4)),
+        Ok(OwnedValue::Int(4)),
     );
 }
 
@@ -415,13 +415,13 @@ fn main(weights) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Array(vec![
-                Value::Int(3),
-                Value::Int(5),
-                Value::Int(7),
+            &[OwnedValue::Array(vec![
+                OwnedValue::Int(3),
+                OwnedValue::Int(5),
+                OwnedValue::Int(7),
             ])],
         ),
-        Ok(Value::Int(27)),
+        Ok(OwnedValue::Int(27)),
     );
 }
 
@@ -455,13 +455,13 @@ fn main(rewards) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Array(vec![
-                Value::Int(3),
-                Value::Int(5),
-                Value::Int(7),
+            &[OwnedValue::Array(vec![
+                OwnedValue::Int(3),
+                OwnedValue::Int(5),
+                OwnedValue::Int(7),
             ])],
         ),
-        Ok(Value::Int(27)),
+        Ok(OwnedValue::Int(27)),
     );
 }
 
@@ -496,15 +496,15 @@ fn main(scores) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Map(
+            &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), Value::Int(2)),
-                    ("weekly".to_owned(), Value::Int(5)),
+                    ("daily".to_owned(), OwnedValue::Int(2)),
+                    ("weekly".to_owned(), OwnedValue::Int(5)),
                 ]
                 .into(),
             )],
         ),
-        Ok(Value::Int(11)),
+        Ok(OwnedValue::Int(11)),
     );
 }
 
@@ -539,15 +539,15 @@ fn main(scores) {
         engine.into_vm().run_program(
             &program,
             "main",
-            &[Value::Map(
+            &[OwnedValue::Map(
                 [
-                    ("daily".to_owned(), Value::Int(2)),
-                    ("weekly".to_owned(), Value::Int(5)),
+                    ("daily".to_owned(), OwnedValue::Int(2)),
+                    ("weekly".to_owned(), OwnedValue::Int(5)),
                 ]
                 .into(),
             )],
         ),
-        Ok(Value::Int(13)),
+        Ok(OwnedValue::Int(13)),
     );
 }
 
@@ -576,10 +576,10 @@ fn main() {
 
     assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Ok(Value::Enum {
+        Ok(OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Err".to_owned(),
-            fields: [("0".to_owned(), Value::String("denied".to_owned()))].into(),
+            fields: [("0".to_owned(), OwnedValue::String("denied".to_owned()))].into(),
         }),
     );
 }
@@ -621,7 +621,7 @@ fn main(allowed) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::Bool(false)])
+            .run_program(&program, "main", &[OwnedValue::Bool(false)])
             .map_err(|error| error.kind),
         Err(VmErrorKind::PermissionDenied {
             native: "game::require_admin".to_owned(),
@@ -669,7 +669,7 @@ fn main(allowed) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program(&program, "main", &[Value::Bool(false)])
+            .run_program(&program, "main", &[OwnedValue::Bool(false)])
             .map_err(|error| error.kind),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: expected_path,
@@ -692,7 +692,7 @@ fn typed_native_functions_report_arity_and_type_errors() {
         .expect("typed native should be registered");
 
     assert!(matches!(
-        (function.function)(&[Value::Int(1)]),
+        (function.function)(&[OwnedValue::Int(1)]),
         Err(VmError {
             kind: VmErrorKind::ArityMismatch {
                 expected: 2,
@@ -703,7 +703,7 @@ fn typed_native_functions_report_arity_and_type_errors() {
         })
     ));
     assert!(matches!(
-        (function.function)(&[Value::String("x".to_owned()), Value::Int(1)]),
+        (function.function)(&[OwnedValue::String("x".to_owned()), OwnedValue::Int(1)]),
         Err(VmError {
             kind: VmErrorKind::TypeMismatch { operation: "int" },
             ..

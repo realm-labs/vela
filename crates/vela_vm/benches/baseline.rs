@@ -151,10 +151,16 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
 
 fn register_bench_natives(vm: &mut Vm) {
     vm.register_native("bench::mix4", |args| {
-        let [Value::Int(a), Value::Int(b), Value::Int(c), Value::Int(d)] = args else {
-            return Ok(Value::Null);
+        let [
+            OwnedValue::Int(a),
+            OwnedValue::Int(b),
+            OwnedValue::Int(c),
+            OwnedValue::Int(d),
+        ] = args
+        else {
+            return Ok(OwnedValue::Null);
         };
-        Ok(Value::Int(a * 3 + b * 2 - c + d))
+        Ok(OwnedValue::Int(a * 3 + b * 2 - c + d))
     });
 }
 

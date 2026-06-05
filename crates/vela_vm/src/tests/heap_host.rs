@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
 #[test]
@@ -74,8 +74,8 @@ fn main() {
     .expect("compile record return source");
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
     let mut fields = BTreeMap::new();
-    fields.insert("count".into(), Value::Int(2));
-    fields.insert("item_id".into(), Value::String("gold".into()));
+    fields.insert("count".into(), OwnedValue::Int(2));
+    fields.insert("item_id".into(), OwnedValue::String("gold".into()));
 
     let result = Vm::new()
         .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
@@ -83,7 +83,7 @@ fn main() {
 
     assert_eq!(
         result,
-        Value::Record {
+        OwnedValue::Record {
             type_name: "Reward".into(),
             fields: ScriptFields::from_pairs("Reward", fields),
         }
@@ -97,7 +97,9 @@ fn managed_heap_execution_preserves_path_proxy_slots() {
     let proxy = PathProxy::new(HostPath::new(host_ref).field(FieldId::new(2)));
     let expected = proxy.clone();
     let mut vm = Vm::new();
-    vm.register_native("game::path", move |_| Ok(Value::PathProxy(proxy.clone())));
+    vm.register_native("game::path", move |_| {
+        Ok(OwnedValue::PathProxy(proxy.clone()))
+    });
     let program = compile_program_source(
         SourceId::new(1),
         r#"
@@ -117,11 +119,11 @@ fn map_case() {
 
     assert_eq!(
         vm.run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget),
-        Ok(Value::PathProxy(expected.clone()))
+        Ok(OwnedValue::PathProxy(expected.clone()))
     );
     assert_eq!(
         vm.run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget),
-        Ok(Value::PathProxy(expected))
+        Ok(OwnedValue::PathProxy(expected))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -189,14 +191,14 @@ fn managed_heap_host_execution_materializes_return_and_records_patch() {
             .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
-                &[Value::HostRef(host_ref)],
+                &[OwnedValue::HostRef(host_ref)],
                 &mut host,
                 &mut budget,
             )
             .expect("run managed host heap source")
     };
 
-    assert_eq!(result, Value::String("gold".into()));
+    assert_eq!(result, OwnedValue::String("gold".into()));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,
@@ -232,7 +234,7 @@ fn main(player) {
             .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
-                &[Value::HostRef(host_ref)],
+                &[OwnedValue::HostRef(host_ref)],
                 &mut host,
                 &mut budget,
             )
@@ -242,7 +244,7 @@ fn main(player) {
     let mut expected = BTreeMap::new();
     expected.insert("class".into(), HostValue::String("mage".into()));
     expected.insert("score".into(), HostValue::Int(3));
-    assert_eq!(result, Value::Int(2));
+    assert_eq!(result, OwnedValue::Int(2));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Map(expected)));
     assert_eq!(
@@ -284,7 +286,7 @@ fn main(player) {
             .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
-                &[Value::HostRef(host_ref)],
+                &[OwnedValue::HostRef(host_ref)],
                 &mut host,
                 &mut budget,
             )
@@ -292,14 +294,14 @@ fn main(player) {
     };
 
     let mut expected_script_fields = BTreeMap::new();
-    expected_script_fields.insert("count".into(), Value::Int(2));
-    expected_script_fields.insert("item_id".into(), Value::String("gold".into()));
+    expected_script_fields.insert("count".into(), OwnedValue::Int(2));
+    expected_script_fields.insert("item_id".into(), OwnedValue::String("gold".into()));
     let mut expected_host_fields = BTreeMap::new();
     expected_host_fields.insert("count".into(), HostValue::Int(2));
     expected_host_fields.insert("item_id".into(), HostValue::String("gold".into()));
     assert_eq!(
         result,
-        Value::Record {
+        OwnedValue::Record {
             type_name: "Reward".into(),
             fields: ScriptFields::from_pairs("Reward", expected_script_fields),
         }
@@ -346,7 +348,7 @@ fn main(player) {
             .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
-                &[Value::HostRef(host_ref)],
+                &[OwnedValue::HostRef(host_ref)],
                 &mut host,
                 &mut budget,
             )
@@ -354,12 +356,12 @@ fn main(player) {
     };
 
     let mut expected_script_fields = BTreeMap::new();
-    expected_script_fields.insert("amount".into(), Value::Int(7));
+    expected_script_fields.insert("amount".into(), OwnedValue::Int(7));
     let mut expected_host_fields = BTreeMap::new();
     expected_host_fields.insert("amount".into(), HostValue::Int(7));
     assert_eq!(
         result,
-        Value::Enum {
+        OwnedValue::Enum {
             enum_name: "Damage".into(),
             variant: "Physical".into(),
             fields: ScriptFields::from_pairs("Damage::Physical", expected_script_fields),
@@ -409,14 +411,17 @@ fn main(player, target) {
             .run_program_with_host_managed_heap_and_budget(
                 &program,
                 "main",
-                &[Value::HostRef(host_ref), Value::HostRef(target_ref)],
+                &[
+                    OwnedValue::HostRef(host_ref),
+                    OwnedValue::HostRef(target_ref),
+                ],
                 &mut host,
                 &mut budget,
             )
             .expect("run managed host ref source")
     };
 
-    assert_eq!(result, Value::HostRef(target_ref));
+    assert_eq!(result, OwnedValue::HostRef(target_ref));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,

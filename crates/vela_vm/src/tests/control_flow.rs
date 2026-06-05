@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_break_continue_source() {
@@ -24,7 +24,7 @@ fn main() {
     )
     .expect("compile break and continue source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn main() {
     )
     .expect("compile block and if expression values");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(5)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(5)));
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn main() {
     )
     .expect("compile no-else if expression");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn main() {
     )
     .expect("compile no-else if expression");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn main() {
     )
     .expect("compile returning block initializer");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -150,23 +150,23 @@ fn match_value(value) {
 
     assert_eq!(
         Vm::new().run_program(&program, "block_arg", &[]),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "if_value", &[Value::Bool(true)]),
-        Ok(Value::Int(1))
+        Vm::new().run_program(&program, "if_value", &[OwnedValue::Bool(true)]),
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "if_value", &[Value::Bool(false)]),
-        Ok(Value::Int(2))
+        Vm::new().run_program(&program, "if_value", &[OwnedValue::Bool(false)]),
+        Ok(OwnedValue::Int(2))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_value", &[Value::Int(1)]),
-        Ok(Value::Int(10))
+        Vm::new().run_program(&program, "match_value", &[OwnedValue::Int(1)]),
+        Ok(OwnedValue::Int(10))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_value", &[Value::Int(9)]),
-        Ok(Value::Int(11))
+        Vm::new().run_program(&program, "match_value", &[OwnedValue::Int(9)]),
+        Ok(OwnedValue::Int(11))
     );
 }
 
@@ -196,20 +196,20 @@ fn match_case(value) {
     .expect("compile returning if and match initializers");
 
     assert_eq!(
-        Vm::new().run_program(&program, "if_case", &[Value::Bool(true)]),
-        Ok(Value::Int(7))
+        Vm::new().run_program(&program, "if_case", &[OwnedValue::Bool(true)]),
+        Ok(OwnedValue::Int(7))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "if_case", &[Value::Bool(false)]),
-        Ok(Value::Int(8))
+        Vm::new().run_program(&program, "if_case", &[OwnedValue::Bool(false)]),
+        Ok(OwnedValue::Int(8))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_case", &[Value::Int(1)]),
-        Ok(Value::Int(10))
+        Vm::new().run_program(&program, "match_case", &[OwnedValue::Int(1)]),
+        Ok(OwnedValue::Int(10))
     );
     assert_eq!(
-        Vm::new().run_program(&program, "match_case", &[Value::Int(2)]),
-        Ok(Value::Int(11))
+        Vm::new().run_program(&program, "match_case", &[OwnedValue::Int(2)]),
+        Ok(OwnedValue::Int(11))
     );
 }
 
@@ -234,7 +234,7 @@ fn main() {
     )
     .expect("compile match expression values");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn main() {
     )
     .expect("compile literal match patterns");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(20)));
 }
 
 #[test]
@@ -280,7 +280,7 @@ fn main() {
         Vm::new()
             .run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget)
             .expect("run heap string literal match patterns"),
-        Value::Int(2)
+        OwnedValue::Int(2)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -301,7 +301,7 @@ fn main() {
     )
     .expect("compile binding match patterns");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -323,7 +323,7 @@ fn main() {
     )
     .expect("compile binding match assignment");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -344,7 +344,7 @@ fn main() {
     )
     .expect("compile match guards");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -365,7 +365,7 @@ fn main() {
     )
     .expect("compile tuple variant literal pattern");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -390,7 +390,7 @@ fn main() {
     )
     .expect("compile record variant field patterns");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(8)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(8)));
 }
 
 #[test]
@@ -422,7 +422,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
-        Ok(Value::Int(8))
+        Ok(OwnedValue::Int(8))
     );
 }
 
@@ -448,7 +448,7 @@ fn main() {
     )
     .expect("compile tuple variant constructor and pattern");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(9)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(9)));
 }
 
 #[test]
@@ -476,6 +476,6 @@ fn main() {
     let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
     assert_eq!(
         Vm::new().run_with_managed_heap_and_budget(&code, &mut budget),
-        Ok(Value::Int(8))
+        Ok(OwnedValue::Int(8))
     );
 }

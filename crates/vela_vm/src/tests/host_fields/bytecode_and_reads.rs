@@ -45,7 +45,7 @@ fn main() {
     )
     .expect("compile if source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(10)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(10)));
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn main() {
     )
     .expect("compile if source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(20)));
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn main() {
     )
     .expect("compile operator source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -103,10 +103,14 @@ fn reads_host_field_through_patch_transaction() {
         tx: &mut tx,
     };
 
-    let result =
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host);
+    let result = Vm::new().run_program_with_host(
+        &program,
+        "main",
+        &[OwnedValue::HostRef(host_ref)],
+        &mut host,
+    );
 
-    assert_eq!(result, Ok(Value::Int(9)));
+    assert_eq!(result, Ok(OwnedValue::Int(9)));
 }
 
 #[test]
@@ -141,10 +145,15 @@ fn set_host_field_records_patch_and_overlay_read() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(10)));
+    assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(9))
@@ -248,7 +257,7 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
             .run_program_with_host_and_budget(
                 &program,
                 "main",
-                &[Value::HostRef(host_ref)],
+                &[OwnedValue::HostRef(host_ref)],
                 &mut host,
                 &mut budget,
             )
@@ -302,10 +311,15 @@ fn add_host_field_records_patch_and_overlay_read() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(10)));
+    assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
     tx.apply(&mut adapter).expect("apply patches");
@@ -328,7 +342,12 @@ fn host_field_read_rejects_stale_generation() {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(stale_ref)], &mut host)
+        .run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(stale_ref)],
+            &mut host,
+        )
         .expect_err("stale host read");
 
     assert_eq!(
@@ -367,7 +386,12 @@ fn host_field_read_error_keeps_instruction_source_span() {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
         .expect_err("denied host read");
 
     assert_eq!(error.source_span, Some(span));

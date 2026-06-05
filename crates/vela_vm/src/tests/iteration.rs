@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_for_in_source() {
@@ -22,7 +22,7 @@ fn main() {
     )
     .expect("compile for-in source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(16)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(16)));
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&program, "main", &[]),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }
 
@@ -74,7 +74,7 @@ fn main() {
     )
     .expect("compile statement attributes");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(3)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(3)));
 }
 
 #[test]
@@ -95,14 +95,14 @@ fn main() {
     .expect("compile native iterator for-in source");
     let mut vm = Vm::new();
     vm.register_native("game::values", |_| {
-        Ok(Value::Array(vec![
-            Value::Int(2),
-            Value::Int(3),
-            Value::Int(5),
+        Ok(OwnedValue::Array(vec![
+            OwnedValue::Int(2),
+            OwnedValue::Int(3),
+            OwnedValue::Int(5),
         ]))
     });
 
-    assert_eq!(vm.run(&code), Ok(Value::Int(10)));
+    assert_eq!(vm.run(&code), Ok(OwnedValue::Int(10)));
 }
 
 #[test]
@@ -136,5 +136,5 @@ fn main() {
     )
     .expect("compile range for-in source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(16)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(16)));
 }

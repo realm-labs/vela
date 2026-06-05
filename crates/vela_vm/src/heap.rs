@@ -54,8 +54,6 @@ pub enum HeapValue {
     PathProxy(PathProxy),
 }
 
-pub(crate) type HeapSlot = Value;
-
 impl HeapValue {
     fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {

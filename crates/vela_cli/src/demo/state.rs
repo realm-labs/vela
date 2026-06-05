@@ -7,7 +7,7 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use super::ids::{DemoIds, context_type, monster_type, player_type};
 
@@ -150,13 +150,13 @@ impl DemoHostState {
         }
     }
 
-    pub(crate) fn main_args(&self, main: &CodeObject) -> Result<Vec<Value>, Box<dyn Error>> {
+    pub(crate) fn main_args(&self, main: &CodeObject) -> Result<Vec<OwnedValue>, Box<dyn Error>> {
         main.params
             .iter()
             .map(|param| match param.as_str() {
-                "player" => Ok(Value::HostRef(self.player_arg)),
-                "ctx" => Ok(Value::HostRef(self.ctx)),
-                "monster" => Ok(Value::HostRef(self.monster)),
+                "player" => Ok(OwnedValue::HostRef(self.player_arg)),
+                "ctx" => Ok(OwnedValue::HostRef(self.ctx)),
+                "monster" => Ok(OwnedValue::HostRef(self.monster)),
                 _ => Err(format!("unsupported demo main parameter `{param}`").into()),
             })
             .collect()
@@ -170,7 +170,7 @@ impl DemoHostState {
 
     pub(crate) fn print_result(
         &self,
-        result: Value,
+        result: OwnedValue,
         patch_count: usize,
     ) -> Result<(), Box<dyn Error>> {
         let level = self.read(&self.level_path)?;

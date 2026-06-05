@@ -1,4 +1,5 @@
 use super::*;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn engine_builder_registers_reflect_schema_metadata() {
@@ -57,7 +58,7 @@ fn engine_registers_native_function_reflection_metadata() {
                 .attr("domain", "gameplay")
                 .attr("stable", "true")
                 .source_span(source_span),
-            |_| Ok(Value::Int(0)),
+            |_| Ok(OwnedValue::Int(0)),
         )
         .build()
         .expect("engine should build");
@@ -109,7 +110,7 @@ fn engine_native_private_functions_are_hidden_from_reflection() {
             NativeFunctionDesc::new("game::private_roll", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
                 .access(FunctionAccess::private()),
-            |_| Ok(Value::Int(4)),
+            |_| Ok(OwnedValue::Int(4)),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -145,7 +146,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
     assert!(tx.patches().is_empty());
 }
@@ -161,7 +162,7 @@ fn engine_native_private_functions_can_remain_reflect_visible() {
                         .reflect_visible(true)
                         .reflect_callable(false),
                 ),
-            |_| Ok(Value::Bool(true)),
+            |_| Ok(OwnedValue::Bool(true)),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -205,7 +206,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
     assert!(tx.patches().is_empty());
 }
@@ -778,6 +779,6 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
 }

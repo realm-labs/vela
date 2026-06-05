@@ -1,7 +1,7 @@
 use crate::heap::HeapValue;
 use crate::{
-    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, value_from_heap_slot,
-    value_to_heap_slot,
+    ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, store_runtime_value,
+    stored_runtime_value,
 };
 
 pub(crate) fn get_index(
@@ -19,7 +19,7 @@ pub(crate) fn get_index(
             match heap_value {
                 HeapValue::Array(values) => {
                     let index = array_index(index)?;
-                    values.get(index).map(value_from_heap_slot).ok_or_else(|| {
+                    values.get(index).map(stored_runtime_value).ok_or_else(|| {
                         VmError::new(VmErrorKind::IndexOutOfBounds {
                             index: i64::try_from(index).unwrap_or(i64::MAX),
                             len: values.len(),
@@ -30,7 +30,7 @@ pub(crate) fn get_index(
                     let key = map_key(index, heap)?;
                     values
                         .get(&key)
-                        .map(value_from_heap_slot)
+                        .map(stored_runtime_value)
                         .ok_or_else(|| VmError::new(VmErrorKind::UnknownMapKey { key }))
                 }
                 HeapValue::String(_)
@@ -97,7 +97,7 @@ fn set_heap_array_index(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
     let index = array_index(index)?;
-    let slot = value_to_heap_slot(src, heap, budget)?;
+    let slot = store_runtime_value(src, heap, budget)?;
     let HeapValue::Array(values) = heap.heap.get_mut(reference).map_err(|_| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "index assignment",
@@ -127,7 +127,7 @@ fn set_heap_map_index(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
     let key = map_key(index, Some(&*heap))?;
-    let slot = value_to_heap_slot(src, heap, budget)?;
+    let slot = store_runtime_value(src, heap, budget)?;
     let HeapValue::Map(values) = heap.heap.get_mut(reference).map_err(|_| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "index assignment",

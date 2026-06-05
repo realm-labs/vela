@@ -23,10 +23,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(11)));
+    assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(9))
@@ -64,7 +69,12 @@ fn main(player) {
     };
 
     let error = Vm::new()
-        .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        .run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
         .expect_err("host read should fail");
 
     let span = error.source_span.expect("host read error source span");
@@ -103,10 +113,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(11)));
+    assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(9)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, stats_level);
@@ -143,10 +158,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(7)));
+    assert_eq!(result, Ok(OwnedValue::Int(7)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(9)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, stats_level);
@@ -185,10 +205,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(1)));
+    assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(4)));
     assert_eq!(tx.patches().len(), 3);
     assert_eq!(tx.patches()[0].op, PatchOp::Mul(HostValue::Int(3)));
@@ -230,10 +255,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(2)));
+    assert_eq!(result, Ok(OwnedValue::Int(2)));
     assert_eq!(
         adapter.read_path(&reward_path),
         Ok(HostValue::Array(vec![HostValue::String("xp".into())]))
@@ -287,10 +317,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(1)));
+    assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert_eq!(
         adapter.read_path(&item_path),
         Ok(HostValue::String("gold".into()))
@@ -344,10 +379,15 @@ fn main(player) {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(5)));
+    assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(4)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, item_count);
@@ -398,10 +438,15 @@ fn bytecode_mutates_host_variant_field_through_patch_tx() {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+        Vm::new().run_program_with_host(
+            &program,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+        )
     };
 
-    assert_eq!(result, Ok(Value::Int(5)));
+    assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(4)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, quest_count);
@@ -454,13 +499,13 @@ fn main(ctx) {
         Vm::new().run_program_with_host_managed_heap_and_budget(
             &program,
             "main",
-            &[Value::HostRef(ctx_ref)],
+            &[OwnedValue::HostRef(ctx_ref)],
             &mut host,
             &mut budget,
         )
     };
 
-    assert_eq!(result, Ok(Value::Int(1042)));
+    assert_eq!(result, Ok(OwnedValue::Int(1042)));
     assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 2);
     assert_eq!(

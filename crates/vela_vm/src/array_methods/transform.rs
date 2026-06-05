@@ -1,5 +1,5 @@
-use crate::heap::{HeapSlot, HeapValue};
-use crate::{ExecutionBudget, HeapExecution, Value, VmResult, value_from_heap_slot, values_equal};
+use crate::heap::HeapValue;
+use crate::{ExecutionBudget, HeapExecution, Value, VmResult, stored_runtime_value, values_equal};
 
 use super::{
     array_values, expect_arity, index_out_of_bounds, index_value, make_array_value,
@@ -20,7 +20,7 @@ pub(crate) fn join(
         else {
             return type_error("method join");
         };
-        let joined = join_heap_slots(values, heap.as_deref(), &separator)?;
+        let joined = join_runtime_values(values, heap.as_deref(), &separator)?;
         return make_string_value(joined, heap, budget, "method join");
     }
     let values = array_values(receiver, heap.as_deref(), "method join")?;
@@ -64,7 +64,7 @@ pub(crate) fn reverse(
         else {
             return type_error("method reverse");
         };
-        let values = reverse_heap_slots(values);
+        let values = reverse_runtime_values(values);
         return make_array_value(values, heap, budget, "method reverse");
     }
     let mut values = array_values(receiver, heap.as_deref(), "method reverse")?;
@@ -85,7 +85,7 @@ pub(crate) fn slice(
         else {
             return type_error("method slice");
         };
-        let values = slice_heap_slots(values, args)?;
+        let values = slice_runtime_values(values, args)?;
         return make_array_value(values, heap, budget, "method slice");
     }
     let values = array_values(receiver, heap.as_deref(), "method slice")?;
@@ -103,7 +103,7 @@ pub(crate) fn slice(
     make_array_value(values[start..end].to_vec(), heap, budget, "method slice")
 }
 
-fn slice_heap_slots(values: &[HeapSlot], args: &[Value]) -> VmResult<Vec<Value>> {
+fn slice_runtime_values(values: &[Value], args: &[Value]) -> VmResult<Vec<Value>> {
     let start = index_value(&args[0], "method slice")?;
     let end = index_value(&args[1], "method slice")?;
     if start > end {
@@ -117,16 +117,16 @@ fn slice_heap_slots(values: &[HeapSlot], args: &[Value]) -> VmResult<Vec<Value>>
     }
     Ok(values[start..end]
         .iter()
-        .map(value_from_heap_slot)
+        .map(stored_runtime_value)
         .collect())
 }
 
-fn reverse_heap_slots(values: &[HeapSlot]) -> Vec<Value> {
-    values.iter().rev().map(value_from_heap_slot).collect()
+fn reverse_runtime_values(values: &[Value]) -> Vec<Value> {
+    values.iter().rev().map(stored_runtime_value).collect()
 }
 
-fn join_heap_slots(
-    values: &[HeapSlot],
+fn join_runtime_values(
+    values: &[Value],
     heap: Option<&HeapExecution<'_>>,
     separator: &str,
 ) -> VmResult<String> {
@@ -134,7 +134,7 @@ fn join_heap_slots(
         .len()
         .saturating_mul(values.len().saturating_sub(1));
     for value in values {
-        capacity = capacity.saturating_add(heap_slot_string_value(value, heap)?.len());
+        capacity = capacity.saturating_add(runtime_string_value(value, heap)?.len());
     }
 
     let mut joined = String::with_capacity(capacity);
@@ -142,13 +142,13 @@ fn join_heap_slots(
         if index > 0 {
             joined.push_str(separator);
         }
-        joined.push_str(heap_slot_string_value(value, heap)?);
+        joined.push_str(runtime_string_value(value, heap)?);
     }
     Ok(joined)
 }
 
-fn heap_slot_string_value<'a>(
-    value: &'a HeapSlot,
+fn runtime_string_value<'a>(
+    value: &'a Value,
     heap: Option<&'a HeapExecution<'_>>,
 ) -> VmResult<&'a str> {
     match value {

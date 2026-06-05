@@ -17,7 +17,7 @@ use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, allocate_heap_value,
-    value_from_heap_slot,
+    stored_runtime_value,
 };
 
 pub(super) fn string_value<'a>(
@@ -45,7 +45,7 @@ pub(super) fn array_values(
             else {
                 return type_error(operation);
             };
-            Ok(values.iter().map(value_from_heap_slot).collect())
+            Ok(values.iter().map(stored_runtime_value).collect())
         }
         _ => type_error(operation),
     }

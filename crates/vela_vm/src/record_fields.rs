@@ -35,7 +35,7 @@ pub(crate) fn set_record_field_value(
                 )
                 | None => return type_error("record field assignment"),
             };
-            let slot = crate::value_to_heap_slot(src, heap, budget)?;
+            let slot = crate::store_runtime_value(src, heap, budget)?;
             let HeapValue::Record { fields, .. } = heap.heap.get_mut(*reference).map_err(|_| {
                 VmError::new(VmErrorKind::UnknownRecordField {
                     type_name: type_name.clone(),
@@ -94,7 +94,7 @@ pub(crate) fn set_record_slot_value(
                 )
                 | None => return type_error("record slot assignment"),
             };
-            let heap_slot = crate::value_to_heap_slot(src, heap, budget)?;
+            let stored_value = crate::store_runtime_value(src, heap, budget)?;
             let HeapValue::Record { fields, .. } = heap.heap.get_mut(*reference).map_err(|_| {
                 VmError::new(VmErrorKind::UnknownRecordField {
                     type_name: type_name.clone(),
@@ -105,7 +105,7 @@ pub(crate) fn set_record_slot_value(
                 return type_error("record slot assignment");
             };
             fields
-                .set_slot_existing(slot, field, heap_slot)
+                .set_slot_existing(slot, field, stored_value)
                 .map_err(|_| {
                     VmError::new(VmErrorKind::UnknownRecordField {
                         type_name,

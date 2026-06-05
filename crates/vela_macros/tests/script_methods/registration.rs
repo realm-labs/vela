@@ -1,4 +1,5 @@
 use super::*;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn script_macros_feed_engine_builder_registration() {
@@ -10,7 +11,7 @@ fn script_macros_feed_engine_builder_registration() {
     let engine = Engine::builder()
         .register_host_type::<Player>()
         .grant_permission("player.write")
-        .register_native_method_fn(desc, |_, _, _| Ok(Value::Null))
+        .register_native_method_fn(desc, |_, _, _| Ok(OwnedValue::Null))
         .build()
         .expect("engine should build from macro metadata");
 
@@ -47,10 +48,10 @@ fn script_methods_generate_callable_native_registration() {
         engine.call_native_method(
             method_id("grant_score"),
             &HostPath::new(player),
-            &[Value::Int(13)],
+            &[OwnedValue::Int(13)],
             &mut host,
         ),
-        Ok(Value::Int(13)),
+        Ok(OwnedValue::Int(13)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -99,15 +100,15 @@ fn script_methods_feed_stable_engine_registration_api() {
             method_id("sum_score"),
             &HostPath::new(player),
             &[
-                Value::Int(1),
-                Value::Int(2),
-                Value::Int(3),
-                Value::Int(4),
-                Value::Int(5),
+                OwnedValue::Int(1),
+                OwnedValue::Int(2),
+                OwnedValue::Int(3),
+                OwnedValue::Int(4),
+                OwnedValue::Int(5),
             ],
             &mut host,
         ),
-        Ok(Value::Int(15)),
+        Ok(OwnedValue::Int(15)),
     );
 
     assert_eq!(
@@ -115,16 +116,16 @@ fn script_methods_feed_stable_engine_registration_api() {
             method_id("sum6_score"),
             &HostPath::new(player),
             &[
-                Value::Int(1),
-                Value::Int(2),
-                Value::Int(3),
-                Value::Int(4),
-                Value::Int(5),
-                Value::Int(6),
+                OwnedValue::Int(1),
+                OwnedValue::Int(2),
+                OwnedValue::Int(3),
+                OwnedValue::Int(4),
+                OwnedValue::Int(5),
+                OwnedValue::Int(6),
             ],
             &mut host,
         ),
-        Ok(Value::Int(21)),
+        Ok(OwnedValue::Int(21)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -225,26 +226,26 @@ fn script_methods_generate_callable_result_native_registration() {
         engine.call_native_method(
             method_id("checked_preview"),
             &HostPath::new(player),
-            &[Value::Bool(true)],
+            &[OwnedValue::Bool(true)],
             &mut host,
         ),
-        Ok(Value::Enum {
+        Ok(OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Ok".to_owned(),
-            fields: [("0".to_owned(), Value::Int(17))].into(),
+            fields: [("0".to_owned(), OwnedValue::Int(17))].into(),
         }),
     );
     assert_eq!(
         engine.call_native_method(
             method_id("checked_preview"),
             &HostPath::new(player),
-            &[Value::Bool(false)],
+            &[OwnedValue::Bool(false)],
             &mut host,
         ),
-        Ok(Value::Enum {
+        Ok(OwnedValue::Enum {
             enum_name: "Result".to_owned(),
             variant: "Err".to_owned(),
-            fields: [("0".to_owned(), Value::String("blocked".to_owned()))].into(),
+            fields: [("0".to_owned(), OwnedValue::String("blocked".to_owned()))].into(),
         }),
     );
     assert!(tx.patches().is_empty());
@@ -271,19 +272,19 @@ fn script_methods_generate_callable_option_native_registration() {
         engine.call_native_method(
             method_id("preview_bonus"),
             &HostPath::new(player),
-            &[Value::Null],
+            &[OwnedValue::Null],
             &mut host,
         ),
-        Ok(Value::Null),
+        Ok(OwnedValue::Null),
     );
     assert_eq!(
         engine.call_native_method(
             method_id("preview_bonus"),
             &HostPath::new(player),
-            &[Value::Int(4)],
+            &[OwnedValue::Int(4)],
             &mut host,
         ),
-        Ok(Value::Int(5)),
+        Ok(OwnedValue::Int(5)),
     );
     assert!(tx.patches().is_empty());
 }
@@ -317,10 +318,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host
         ),
-        Ok(Value::Int(1)),
+        Ok(OwnedValue::Int(1)),
     );
     assert_eq!(
         tx.patches()[0].op,

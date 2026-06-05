@@ -6,7 +6,7 @@ use vela_reflect::registry::{
     VariantDesc,
 };
 
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::error::EngineErrorKind;
@@ -25,7 +25,7 @@ fn engine_rejects_native_methods_for_unknown_owner_types() {
                 HostMethodId::new(1),
                 "grant_exp",
             ),
-            |_, _, _| Ok(Value::Null),
+            |_, _, _| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -42,11 +42,11 @@ fn engine_rejects_duplicate_native_function_ids() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::first", NativeFunctionId::new(10)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .register_native_fn(
             NativeFunctionDesc::new("game::second", NativeFunctionId::new(10)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -89,11 +89,11 @@ fn engine_rejects_duplicate_names_across_host_and_pure_natives() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::same", NativeFunctionId::new(10)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .register_host_native_fn(
             NativeFunctionDesc::new("game::same", NativeFunctionId::new(11)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -110,11 +110,11 @@ fn engine_rejects_duplicate_ids_across_host_and_pure_natives() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::first", NativeFunctionId::new(16)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .register_host_native_fn(
             NativeFunctionDesc::new("game::second", NativeFunctionId::new(16)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -129,11 +129,11 @@ fn engine_rejects_duplicate_names_across_context_host_and_pure_natives() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::same", NativeFunctionId::new(12)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::same", NativeFunctionId::new(13)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -150,11 +150,11 @@ fn engine_rejects_duplicate_names_across_context_host_and_host_natives() {
     let result = Engine::builder()
         .register_host_native_fn(
             NativeFunctionDesc::new("game::same", NativeFunctionId::new(14)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::same", NativeFunctionId::new(15)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -171,11 +171,11 @@ fn engine_rejects_duplicate_context_host_native_ids() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::first", NativeFunctionId::new(30)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::second", NativeFunctionId::new(30)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -190,11 +190,11 @@ fn engine_rejects_duplicate_ids_across_host_and_context_host_natives() {
     let result = Engine::builder()
         .register_host_native_fn(
             NativeFunctionDesc::new("game::first", NativeFunctionId::new(40)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::second", NativeFunctionId::new(40)),
-            |_, _| Ok(Value::Null),
+            |_, _| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -211,7 +211,7 @@ fn engine_rejects_duplicate_native_function_param_names() {
             NativeFunctionDesc::new("game::grant_reward", NativeFunctionId::new(31))
                 .param("amount", TypeHint::Int)
                 .param("amount", TypeHint::String),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -230,7 +230,7 @@ fn engine_rejects_empty_native_function_required_permissions() {
         .register_native_fn(
             NativeFunctionDesc::new("game::grant_reward", NativeFunctionId::new(38))
                 .access(FunctionAccess::public().require_permission("")),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -249,7 +249,7 @@ fn engine_rejects_empty_native_function_attribute_names() {
         .register_native_fn(
             NativeFunctionDesc::new("game::grant_reward", NativeFunctionId::new(39))
                 .attr("", "bad"),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -267,7 +267,7 @@ fn engine_rejects_malformed_native_function_names() {
     let result = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game..grant_reward", NativeFunctionId::new(32)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -285,7 +285,7 @@ fn engine_rejects_malformed_native_function_param_names() {
         .register_native_fn(
             NativeFunctionDesc::new("game::grant_reward", NativeFunctionId::new(33))
                 .param("", TypeHint::Int),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -306,7 +306,7 @@ fn engine_rejects_unknown_native_function_param_type_hints() {
                 "player",
                 TypeHint::Record(TypeKey::new(TypeId::new(99), "Missing")),
             ),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -325,7 +325,7 @@ fn engine_rejects_unknown_native_function_return_type_hints() {
         .register_native_fn(
             NativeFunctionDesc::new("game::find_player", NativeFunctionId::new(35))
                 .returns(TypeHint::Enum(TypeKey::new(TypeId::new(99), "Missing"))),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -347,7 +347,7 @@ fn engine_accepts_registered_native_function_record_type_hints() {
             NativeFunctionDesc::new("game::inspect_reward", NativeFunctionId::new(36))
                 .param("reward", TypeHint::Record(reward_key.clone()))
                 .returns(TypeHint::Record(reward_key)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -360,7 +360,7 @@ fn engine_rejects_unknown_native_function_trait_type_hints() {
         .register_native_fn(
             NativeFunctionDesc::new("game::inspect_damageable", NativeFunctionId::new(37))
                 .param("target", TypeHint::Trait("Damageable".to_owned())),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -379,7 +379,7 @@ fn engine_rejects_native_function_names_that_shadow_standard_natives() {
         .with_standard_natives()
         .register_native_fn(
             NativeFunctionDesc::new("math::clamp", NativeFunctionId::new(0x1234)),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -397,7 +397,7 @@ fn engine_rejects_native_function_ids_that_collide_with_standard_natives() {
         .with_standard_natives()
         .register_native_fn(
             NativeFunctionDesc::new("game::custom_clamp", MATH_CLAMP_FUNCTION_ID),
-            |_| Ok(Value::Null),
+            |_| Ok(OwnedValue::Null),
         )
         .build();
 
@@ -1265,11 +1265,11 @@ fn engine_rejects_duplicate_native_method_ids() {
         .register_type(player_type(player_key.id, HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(player_key.clone(), HostMethodId::new(44), "grant_exp"),
-            |_, _, _| Ok(Value::Null),
+            |_, _, _| Ok(OwnedValue::Null),
         )
         .register_native_method_fn(
             NativeMethodDesc::new(player_key, HostMethodId::new(44), "heal"),
-            |_, _, _| Ok(Value::Null),
+            |_, _, _| Ok(OwnedValue::Null),
         )
         .build();
 

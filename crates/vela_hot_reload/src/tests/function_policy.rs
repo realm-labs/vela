@@ -1,4 +1,5 @@
 use super::*;
+use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn deleted_function_parameters_are_rejected() {
@@ -91,7 +92,7 @@ fn main() {
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
 }
 
@@ -135,7 +136,7 @@ fn main() {
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -232,7 +233,7 @@ fn main() {
     runtime.apply_hot_update(update).expect("apply update");
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(2))
+        Ok(OwnedValue::Int(2))
     );
 }
 
@@ -488,6 +489,6 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
-        Ok(Value::Int(7))
+        Ok(OwnedValue::Int(7))
     );
 }

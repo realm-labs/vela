@@ -9,7 +9,7 @@ use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, VariantDesc};
 use vela_vm::HostExecution;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::method::NativeMethodDesc;
@@ -47,14 +47,14 @@ fn main(player: Player) {
     let result = runtime
         .call(
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             CallOptions::gameplay(),
             &mut adapter,
             &mut tx,
         )
         .expect("runtime call should run");
 
-    assert_eq!(result, Value::String("done".to_owned()));
+    assert_eq!(result, OwnedValue::String("done".to_owned()));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,
@@ -102,10 +102,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, HostPath::new(host_ref));
@@ -158,10 +158,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -224,10 +224,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(5))
+        Ok(OwnedValue::Int(5))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, quest_count);
@@ -275,10 +275,10 @@ fn main(player: Player, monster: Monster) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player), Value::HostRef(monster)],
+            &[OwnedValue::HostRef(player), OwnedValue::HostRef(monster)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(tx.patches().len(), 2);
     assert_eq!(
@@ -314,8 +314,8 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                 .attr("domain", "gameplay")
                 .attr("effect", "reward"),
             move |receiver, args, host| {
-                let [Value::Int(amount)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::Int(amount)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.call_method(
                     receiver.clone(),
@@ -323,7 +323,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                     vec![HostValue::Int(*amount)],
                     None,
                 )?;
-                Ok(Value::Null)
+                Ok(OwnedValue::Null)
             },
         )
         .build()
@@ -370,10 +370,10 @@ fn main(player: Player) {
         engine.call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[Value::Int(10)],
+            &[OwnedValue::Int(10)],
             &mut host,
         ),
-        Ok(Value::Null)
+        Ok(OwnedValue::Null)
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -394,10 +394,10 @@ fn main(player: Player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(1))
+        Ok(OwnedValue::Int(1))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, HostPath::new(host_ref));
@@ -432,10 +432,10 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
         engine.call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[Value::Int(15)],
+            &[OwnedValue::Int(15)],
             &mut host,
         ),
-        Ok(Value::Int(15))
+        Ok(OwnedValue::Int(15))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
@@ -473,7 +473,7 @@ fn typed_callable_native_method_conversion_errors_before_patch() {
         engine.call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[Value::String("bad".to_owned())],
+            &[OwnedValue::String("bad".to_owned())],
             &mut host,
         ),
         Err(VmError {
@@ -512,7 +512,12 @@ fn typed_callable_native_method_maps_host_result_errors() {
 
     assert_eq!(
         engine
-            .call_native_method(method, &expected_path, &[Value::Bool(false)], &mut host)
+            .call_native_method(
+                method,
+                &expected_path,
+                &[OwnedValue::Bool(false)],
+                &mut host
+            )
             .map_err(|error| error.kind),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: expected_path,
@@ -536,8 +541,8 @@ fn callable_native_method_errors_roll_back_recorded_patches() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().require_permission("player.fail")),
             move |receiver, args, host| {
-                let [Value::Int(amount)] = args else {
-                    return Ok(Value::Null);
+                let [OwnedValue::Int(amount)] = args else {
+                    return Ok(OwnedValue::Null);
                 };
                 host.tx.call_method(
                     receiver.clone(),
@@ -568,7 +573,7 @@ fn callable_native_method_errors_roll_back_recorded_patches() {
         .call_native_method(
             method,
             &HostPath::new(host_ref),
-            &[Value::Int(15)],
+            &[OwnedValue::Int(15)],
             &mut host,
         )
         .expect_err("native method should fail");
@@ -646,10 +651,15 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
         engine.call_native_method(
             method,
             &HostPath::new(player),
-            &[Value::Int(1), Value::Int(2), Value::Int(3), Value::Int(4)],
+            &[
+                OwnedValue::Int(1),
+                OwnedValue::Int(2),
+                OwnedValue::Int(3),
+                OwnedValue::Int(4)
+            ],
             &mut host,
         ),
-        Ok(Value::Int(10))
+        Ok(OwnedValue::Int(10))
     );
     assert_eq!(
         tx.patches()[0].op,
@@ -694,15 +704,15 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
             method,
             &HostPath::new(player),
             &[
-                Value::Int(1),
-                Value::Int(2),
-                Value::Int(3),
-                Value::Int(4),
-                Value::Int(5),
+                OwnedValue::Int(1),
+                OwnedValue::Int(2),
+                OwnedValue::Int(3),
+                OwnedValue::Int(4),
+                OwnedValue::Int(5),
             ],
             &mut host,
         ),
-        Ok(Value::Int(15))
+        Ok(OwnedValue::Int(15))
     );
     assert_eq!(
         tx.patches()[0].op,
@@ -748,16 +758,16 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
             method,
             &HostPath::new(player),
             &[
-                Value::Int(1),
-                Value::Int(2),
-                Value::Int(3),
-                Value::Int(4),
-                Value::Int(5),
-                Value::Int(6),
+                OwnedValue::Int(1),
+                OwnedValue::Int(2),
+                OwnedValue::Int(3),
+                OwnedValue::Int(4),
+                OwnedValue::Int(5),
+                OwnedValue::Int(6),
             ],
             &mut host,
         ),
-        Ok(Value::Int(21))
+        Ok(OwnedValue::Int(21))
     );
     assert_eq!(
         tx.patches()[0].op,
@@ -861,10 +871,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host
         ),
-        Ok(Value::Int(12))
+        Ok(OwnedValue::Int(12))
     );
     assert!(tx.patches().is_empty());
 }

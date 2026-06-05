@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::heap::{HeapSlot, HeapValue};
+use crate::heap::HeapValue;
 use crate::method_runtime::MethodRuntime;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
@@ -114,7 +114,7 @@ impl NumericTotal {
                     return type_error(operation);
                 };
                 for value in values {
-                    self.add_heap_slot(value, operation)?;
+                    self.add_runtime_value(value, operation)?;
                 }
                 Ok(())
             }
@@ -143,7 +143,7 @@ impl NumericTotal {
         Ok(())
     }
 
-    fn add_heap_slot(&mut self, value: &HeapSlot, operation: &'static str) -> VmResult<()> {
+    fn add_runtime_value(&mut self, value: &Value, operation: &'static str) -> VmResult<()> {
         match (&mut *self, value) {
             (NumericTotal::Int(total), Value::Int(value)) => {
                 *total = total

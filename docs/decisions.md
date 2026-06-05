@@ -74,8 +74,7 @@ external handles and are not traced as Rust-owned state.
 `OwnedValue` is the Rust boundary/materialized value name. `Value` is the VM
 runtime slot and is `Copy`, containing only scalars or handles. `HeapValue`
 stores script heap objects, and heap containers store runtime `Value` entries
-directly. `HeapSlot` is not a separate public runtime concept; any remaining
-use is an internal alias. Re-export surfaces should stay narrow: embedding
+directly. There is no separate heap-slot type. Re-export surfaces should stay narrow: embedding
 convenience modules may expose `OwnedValue` when it is part of normal host
 ergonomics, but internal runtime slot types should remain under their owning VM
 modules.
@@ -103,11 +102,11 @@ Managed heap entrypoints materialize return values at API boundaries. Native
 calls materialize heap-backed values as needed so existing host/native APIs do
 not own script GC state.
 
-Read-only runtime access should prefer crate-internal borrowed view helpers
-over repeating `Value` / `HeapRef` / `HeapSlot` receiver classification in
-each stdlib method. Views may centralize string, collection, enum, and
-length-style reads, but mutable accessors, callback calls, host/native
-interfaces, GC tracing, and hot-reload ABI remain separate boundaries.
+Read-only runtime access should avoid materializing owned boundary values.
+After the `Value` / `OwnedValue` split, stdlib helpers read compact runtime
+`Value` entries from heap objects directly. Mutable accessors, callback calls,
+host/native interfaces, GC tracing, and hot-reload ABI remain separate
+boundaries.
 
 ### Host Boundary
 

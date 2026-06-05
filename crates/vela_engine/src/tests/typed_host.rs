@@ -9,7 +9,7 @@ use vela_host::value::HostValue;
 use vela_reflect::registry::TypeKey;
 use vela_vm::HostExecution;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::owned_value::OwnedValue as Value;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::context::NativeCallContext;
 use crate::engine::Engine;
@@ -55,10 +55,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host,
         ),
-        Ok(Value::Int(1)),
+        Ok(OwnedValue::Int(1)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -147,7 +147,12 @@ fn main(player) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
+            .run_program_with_host(
+                &program,
+                "main",
+                &[OwnedValue::HostRef(host_ref)],
+                &mut host
+            )
             .map_err(|error| error.kind),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(host_ref),
@@ -224,10 +229,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host
         ),
-        Ok(Value::Int(9)),
+        Ok(OwnedValue::Int(9)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -278,10 +283,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host
         ),
-        Ok(Value::Int(14)),
+        Ok(OwnedValue::Int(14)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -333,10 +338,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host
         ),
-        Ok(Value::Int(20)),
+        Ok(OwnedValue::Int(20)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -435,10 +440,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(host_ref)],
+            &[OwnedValue::HostRef(host_ref)],
             &mut host,
         ),
-        Ok(Value::Bool(true)),
+        Ok(OwnedValue::Bool(true)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -530,7 +535,7 @@ fn main(player) {
     assert_eq!(
         engine
             .into_vm()
-            .run_program_with_host(&program, "main", &[Value::HostRef(player)], &mut host)
+            .run_program_with_host(&program, "main", &[OwnedValue::HostRef(player)], &mut host)
             .map_err(|error| error.kind),
         Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path: HostPath::new(player),
@@ -614,10 +619,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host
         ),
-        Ok(Value::Int(18)),
+        Ok(OwnedValue::Int(18)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -668,10 +673,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host
         ),
-        Ok(Value::Int(26)),
+        Ok(OwnedValue::Int(26)),
     );
     assert_eq!(
         tx.patches()[0].path,
@@ -723,10 +728,10 @@ fn main(player) {
         engine.into_vm().run_program_with_host(
             &program,
             "main",
-            &[Value::HostRef(player)],
+            &[OwnedValue::HostRef(player)],
             &mut host
         ),
-        Ok(Value::Int(35)),
+        Ok(OwnedValue::Int(35)),
     );
     assert_eq!(
         tx.patches()[0].path,

@@ -1,5 +1,5 @@
 use super::*;
-use crate::owned_value::OwnedValue as Value;
+use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
 #[test]
@@ -34,7 +34,7 @@ fn runs_basic_arithmetic() {
         src: Register(4),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(14)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(14)));
 }
 
 #[test]
@@ -66,15 +66,15 @@ fn branches_on_false_conditions() {
         src: Register(1),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(2)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(2)));
 }
 
 #[test]
 fn calls_registered_native_functions() {
     let mut vm = Vm::new();
     vm.register_native("log", |args| {
-        assert_eq!(args, [Value::String("level up".into())]);
-        Ok(Value::Null)
+        assert_eq!(args, [OwnedValue::String("level up".into())]);
+        Ok(OwnedValue::Null)
     });
 
     let mut code = CodeObject::new("native", 2);
@@ -92,7 +92,7 @@ fn calls_registered_native_functions() {
         src: Register(1),
     }));
 
-    assert_eq!(vm.run(&code), Ok(Value::Null));
+    assert_eq!(vm.run(&code), Ok(OwnedValue::Null));
 }
 
 #[test]
@@ -243,7 +243,7 @@ fn record_slot_bytecode_reads_and_writes_by_slot() {
         src: Register(2),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(5)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(5)));
 }
 
 #[test]
@@ -270,7 +270,7 @@ fn enum_slot_bytecode_reads_by_slot() {
         src: Register(2),
     }));
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn runs_compiled_arithmetic_source() {
     )
     .expect("compile arithmetic source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(14)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(14)));
 }
 
 #[test]
@@ -303,7 +303,7 @@ fn main() {
     )
     .expect("compile numeric literal source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Float(14.0)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Float(14.0)));
 }
 
 #[test]
@@ -324,7 +324,7 @@ fn main() {
     )
     .expect("compile large int comparison source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -352,7 +352,7 @@ fn main() {
     )
     .expect("compile scalar equality source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(1)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(1)));
 }
 
 #[test]
@@ -364,7 +364,7 @@ fn runs_compiled_shebang_source() {
     )
     .expect("compile shebang source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -376,7 +376,7 @@ fn runs_compiled_unicode_string_escapes() {
     )
     .expect("compile unicode escaped string source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::String("Az".into())));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::String("Az".into())));
 }
 
 #[test]
@@ -395,7 +395,7 @@ fn main() {
     )
     .expect("compile unary operator source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(-5)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(-5)));
 }
 
 #[test]
@@ -420,15 +420,15 @@ fn truthy_case() {
 
     assert_eq!(
         Vm::new().run_program(&program, "and_case", &[]),
-        Ok(Value::Bool(false))
+        Ok(OwnedValue::Bool(false))
     );
     assert_eq!(
         Vm::new().run_program(&program, "or_case", &[]),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
         Vm::new().run_program(&program, "truthy_case", &[]),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
 }
 
@@ -458,11 +458,11 @@ fn or_case() {{
 
     assert_eq!(
         Vm::new().run_program(&program, "and_case", &[]),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
     assert_eq!(
         Vm::new().run_program(&program, "or_case", &[]),
-        Ok(Value::Bool(true))
+        Ok(OwnedValue::Bool(true))
     );
 }
 
@@ -486,7 +486,7 @@ fn main() {
     )
     .expect("compile local assignment source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(20)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(20)));
 }
 
 #[test]
@@ -504,7 +504,7 @@ fn main() {
     )
     .expect("compile index read source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(10)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(10)));
 }
 
 #[test]
@@ -530,13 +530,13 @@ fn map_case() {
         Vm::new()
             .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
             .expect("run heap array index"),
-        Value::String("xp".into())
+        OwnedValue::String("xp".into())
     );
     assert_eq!(
         Vm::new()
             .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
             .expect("run heap map index"),
-        Value::Int(7)
+        OwnedValue::Int(7)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -561,7 +561,7 @@ fn main() {
     )
     .expect("compile index write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(45)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(45)));
 }
 
 #[test]
@@ -580,7 +580,7 @@ fn main() {
     )
     .expect("compile record field write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(7)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(7)));
 }
 
 #[test]
@@ -604,7 +604,7 @@ fn main() {
     )
     .expect("compile nested record field write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(11)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(11)));
 }
 
 #[test]
@@ -626,7 +626,7 @@ fn main() {
     )
     .expect("compile indexed record field write source");
 
-    assert_eq!(Vm::new().run(&code), Ok(Value::Int(14)));
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(14)));
 }
 
 #[test]
@@ -655,13 +655,13 @@ fn map_case() {
         Vm::new()
             .run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget)
             .expect("run heap array index write"),
-        Value::String("silver".into())
+        OwnedValue::String("silver".into())
     );
     assert_eq!(
         Vm::new()
             .run_program_with_managed_heap_and_budget(&program, "map_case", &[], &mut budget)
             .expect("run heap map index write"),
-        Value::Int(15)
+        OwnedValue::Int(15)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -684,7 +684,7 @@ fn main() {
 
     assert_eq!(
         Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
-        Ok(Value::Int(9))
+        Ok(OwnedValue::Int(9))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }

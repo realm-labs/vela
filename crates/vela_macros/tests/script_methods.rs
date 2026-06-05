@@ -15,7 +15,6 @@ use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
-use vela_vm::owned_value::OwnedValue as Value;
 
 macro_rules! compile_source {
     ($engine:expr, $source:expr, $expect:literal) => {
