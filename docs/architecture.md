@@ -370,7 +370,7 @@ pub struct HostRef {
 ```rust
 pub struct HostPath {
     pub root: HostRef,
-    pub segments: SmallVec<[PathSegment; 4]>,
+    pub segments: Vec<PathSegment>,
 }
 
 pub enum PathSegment {
@@ -392,18 +392,22 @@ pub struct PatchTx {
 pub struct Patch {
     pub path: HostPath,
     pub op: PatchOp,
-    pub source_span: SourceSpan,
+    pub expected_base: Option<HostValue>,
+    pub source_span: Option<Span>,
 }
 
 pub enum PatchOp {
-    Set(Value),
-    Add(Value),
-    Sub(Value),
+    Set(HostValue),
+    Add(HostValue),
+    Sub(HostValue),
+    Mul(HostValue),
+    Div(HostValue),
+    Rem(HostValue),
     Remove,
-    Push(Value),
+    Push(HostValue),
     CallHostMethod {
         method: HostMethodId,
-        args: Vec<Value>,
+        args: Vec<HostValue>,
     },
 }
 ```
@@ -441,7 +445,7 @@ write_path(path, value):
 `player.level += 1` should prefer an explicit operation:
 
 ```rust
-PatchOp::Add(Value::Int(1))
+PatchOp::Add(HostValue::Int(1))
 ```
 
 This lets the host perform atomic validation, range checks, conflict handling, and logging during apply.
@@ -515,7 +519,7 @@ impl Player {
         player: HostRef<Player>,
         amount: i64,
     ) -> HostResult<()> {
-        ctx.tx.push_add(player.field(FieldId(2)), Value::Int(amount))
+        ctx.tx.push_add(player.field(FieldId(2)), HostValue::Int(amount))
     }
 }
 ```
@@ -1373,7 +1377,7 @@ good fit for later inline caches
 
 ### Value Layout
 
-Runtime execution uses three explicit value layers:
+Runtime execution uses four explicit value layers:
 
 ```text
 Value       VM runtime slot; Copy; scalars or handles only
@@ -1382,7 +1386,8 @@ HeapValue   non-moving script heap object referenced by GcRef
 HostValue   host-adapter boundary value copied across ScriptStateAdapter
 ```
 
-The runtime slot stays compact:
+The runtime slot stays compact and is guarded by tests to remain at or below
+32 bytes on 64-bit targets:
 
 ```rust
 pub enum Value {
