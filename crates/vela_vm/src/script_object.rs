@@ -50,29 +50,13 @@ impl<T> ScriptFields<T> {
         second_name: impl Into<String>,
         second_value: T,
     ) -> Self {
-        let first_name = first_name.into();
-        let second_name = second_name.into();
-        if first_name == second_name {
-            return Self::single(owner, second_name, second_value);
-        }
-        let (first_slot, second_slot) = if first_name < second_name {
-            (
-                FieldSlot::new(first_name, first_value),
-                FieldSlot::new(second_name, second_value),
-            )
-        } else {
-            (
-                FieldSlot::new(second_name, second_value),
-                FieldSlot::new(first_name, first_value),
-            )
-        };
-        Self {
-            shape_id: shape_id(
-                owner,
-                [first_slot.name.as_str(), second_slot.name.as_str()].into_iter(),
-            ),
-            slots: vec![first_slot, second_slot],
-        }
+        Self::small(
+            owner,
+            [
+                (first_name.into(), first_value),
+                (second_name.into(), second_value),
+            ],
+        )
     }
 
     #[must_use]
@@ -85,148 +69,36 @@ impl<T> ScriptFields<T> {
         third_name: impl Into<String>,
         third_value: T,
     ) -> Self {
-        let first_name = first_name.into();
-        let second_name = second_name.into();
-        let third_name = third_name.into();
-        if first_name == second_name || first_name == third_name || second_name == third_name {
-            return Self::from_pairs(
-                owner,
-                [
-                    (first_name, first_value),
-                    (second_name, second_value),
-                    (third_name, third_value),
-                ],
-            );
-        }
-        let mut slots = vec![
-            FieldSlot::new(first_name, first_value),
-            FieldSlot::new(second_name, second_value),
-            FieldSlot::new(third_name, third_value),
-        ];
-        slots.sort_by(|left, right| left.name.cmp(&right.name));
-        Self {
-            shape_id: shape_id(owner, slots.iter().map(|slot| slot.name.as_str())),
-            slots,
-        }
+        Self::small(
+            owner,
+            [
+                (first_name.into(), first_value),
+                (second_name.into(), second_value),
+                (third_name.into(), third_value),
+            ],
+        )
     }
 
     #[must_use]
     pub fn four(owner: &str, fields: [(String, T); 4]) -> Self {
-        let [
-            (first_name, first_value),
-            (second_name, second_value),
-            (third_name, third_value),
-            (fourth_name, fourth_value),
-        ] = fields;
-        if first_name == second_name
-            || first_name == third_name
-            || first_name == fourth_name
-            || second_name == third_name
-            || second_name == fourth_name
-            || third_name == fourth_name
-        {
-            return Self::from_pairs(
-                owner,
-                [
-                    (first_name, first_value),
-                    (second_name, second_value),
-                    (third_name, third_value),
-                    (fourth_name, fourth_value),
-                ],
-            );
-        }
-        let mut slots = vec![
-            FieldSlot::new(first_name, first_value),
-            FieldSlot::new(second_name, second_value),
-            FieldSlot::new(third_name, third_value),
-            FieldSlot::new(fourth_name, fourth_value),
-        ];
-        slots.sort_by(|left, right| left.name.cmp(&right.name));
-        Self {
-            shape_id: shape_id(owner, slots.iter().map(|slot| slot.name.as_str())),
-            slots,
-        }
+        Self::small(owner, fields)
     }
 
     #[must_use]
     pub fn five(owner: &str, fields: [(String, T); 5]) -> Self {
-        let [
-            (first_name, first_value),
-            (second_name, second_value),
-            (third_name, third_value),
-            (fourth_name, fourth_value),
-            (fifth_name, fifth_value),
-        ] = fields;
-        if has_duplicate_names([
-            first_name.as_str(),
-            second_name.as_str(),
-            third_name.as_str(),
-            fourth_name.as_str(),
-            fifth_name.as_str(),
-        ]) {
-            return Self::from_pairs(
-                owner,
-                [
-                    (first_name, first_value),
-                    (second_name, second_value),
-                    (third_name, third_value),
-                    (fourth_name, fourth_value),
-                    (fifth_name, fifth_value),
-                ],
-            );
-        }
-        let mut slots = vec![
-            FieldSlot::new(first_name, first_value),
-            FieldSlot::new(second_name, second_value),
-            FieldSlot::new(third_name, third_value),
-            FieldSlot::new(fourth_name, fourth_value),
-            FieldSlot::new(fifth_name, fifth_value),
-        ];
-        slots.sort_by(|left, right| left.name.cmp(&right.name));
-        Self {
-            shape_id: shape_id(owner, slots.iter().map(|slot| slot.name.as_str())),
-            slots,
-        }
+        Self::small(owner, fields)
     }
 
     #[must_use]
     pub fn six(owner: &str, fields: [(String, T); 6]) -> Self {
-        let [
-            (first_name, first_value),
-            (second_name, second_value),
-            (third_name, third_value),
-            (fourth_name, fourth_value),
-            (fifth_name, fifth_value),
-            (sixth_name, sixth_value),
-        ] = fields;
-        if has_duplicate_names([
-            first_name.as_str(),
-            second_name.as_str(),
-            third_name.as_str(),
-            fourth_name.as_str(),
-            fifth_name.as_str(),
-            sixth_name.as_str(),
-        ]) {
-            return Self::from_pairs(
-                owner,
-                [
-                    (first_name, first_value),
-                    (second_name, second_value),
-                    (third_name, third_value),
-                    (fourth_name, fourth_value),
-                    (fifth_name, fifth_value),
-                    (sixth_name, sixth_value),
-                ],
-            );
+        Self::small(owner, fields)
+    }
+
+    fn small<const N: usize>(owner: &str, fields: [(String, T); N]) -> Self {
+        if has_duplicate_field_names(&fields) {
+            return Self::from_pairs(owner, fields);
         }
-        let mut slots = vec![
-            FieldSlot::new(first_name, first_value),
-            FieldSlot::new(second_name, second_value),
-            FieldSlot::new(third_name, third_value),
-            FieldSlot::new(fourth_name, fourth_value),
-            FieldSlot::new(fifth_name, fifth_value),
-            FieldSlot::new(sixth_name, sixth_value),
-        ];
+        let mut slots = Vec::from(fields.map(|(name, value)| FieldSlot::new(name, value)));
         slots.sort_by(|left, right| left.name.cmp(&right.name));
         Self {
             shape_id: shape_id(owner, slots.iter().map(|slot| slot.name.as_str())),
@@ -367,10 +239,10 @@ fn hash_bytes(hash: &mut u32, bytes: &[u8]) {
     }
 }
 
-fn has_duplicate_names<const N: usize>(names: [&str; N]) -> bool {
+fn has_duplicate_field_names<T, const N: usize>(fields: &[(String, T); N]) -> bool {
     for left in 0..N {
         for right in (left + 1)..N {
-            if names[left] == names[right] {
+            if fields[left].0 == fields[right].0 {
                 return true;
             }
         }

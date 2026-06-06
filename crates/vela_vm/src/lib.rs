@@ -33,6 +33,7 @@ mod script_builtin_methods;
 mod script_methods;
 mod script_object;
 mod set_methods;
+mod small_storage;
 mod stdlib;
 mod string_method_dispatch;
 mod string_methods;
@@ -72,6 +73,7 @@ use script_methods::{
     call_readonly_method_without_callbacks,
 };
 use script_object::ScriptFields;
+use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
     CallArgument, CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register,

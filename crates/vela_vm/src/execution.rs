@@ -227,7 +227,7 @@ impl Vm {
                     ip = target.0;
                 }
                 InstructionKind::CallNative { dst, name, args } => {
-                    let values = NativeCallArgs::from_registers(&frame, args, heap.as_deref())?;
+                    let values = native_call_args_from_registers(&frame, args, heap.as_deref())?;
                     let result = if let Some(native) = self.natives.get(name) {
                         native(values.as_slice())
                             .map_err(|error| error.with_source_span_if_absent(instruction.span))?
@@ -281,7 +281,7 @@ impl Vm {
                     let function = program.function(name).ok_or_else(|| {
                         VmError::new(VmErrorKind::UnknownFunction { name: name.clone() })
                     })?;
-                    let values = ScriptCallArgs::from_call_arguments(&frame, args)?;
+                    let values = script_call_args_from_call_arguments(&frame, args)?;
                     let protected_root_len = heap
                         .as_deref_mut()
                         .map(|heap| heap.push_frame_roots(&frame));
@@ -337,7 +337,7 @@ impl Vm {
                 InstructionKind::CallClosure { dst, callee, args } => {
                     let closure =
                         expect_closure(frame.read(*callee)?, heap.as_deref(), "closure call")?;
-                    let values = ScriptCallArgs::from_registers(&frame, args)?;
+                    let values = script_call_args_from_registers(&frame, args)?;
                     let protected_root_len = heap
                         .as_deref_mut()
                         .map(|heap| heap.push_frame_roots(&frame));
@@ -388,7 +388,7 @@ impl Vm {
                             },
                         )?;
                     } else {
-                        let values = ScriptCallArgs::from_call_arguments(&frame, args)?;
+                        let values = script_call_args_from_call_arguments(&frame, args)?;
                         dispatch_call_method(
                             self,
                             program,
@@ -429,7 +429,7 @@ impl Vm {
                             },
                         )?;
                     } else {
-                        let values = ScriptCallArgs::from_call_arguments(&frame, args)?;
+                        let values = script_call_args_from_call_arguments(&frame, args)?;
                         dispatch_call_method_id(
                             self,
                             program,
@@ -1222,137 +1222,31 @@ fn dispatch_call_method_id(
     frame.write(call.dst, result)
 }
 
-enum NativeCallArgs {
-    Empty,
-    One([OwnedValue; 1]),
-    Two([OwnedValue; 2]),
-    Three([OwnedValue; 3]),
-    Four([OwnedValue; 4]),
-    Many(Vec<OwnedValue>),
+fn native_call_args_from_registers(
+    frame: &CallFrame,
+    registers: &[Register],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<SmallStorage<OwnedValue>> {
+    SmallStorage::try_from_slice_map(registers, 4, |register| {
+        value_to_owned(frame.read(*register)?, heap)
+    })
 }
 
-impl NativeCallArgs {
-    fn from_registers(
-        frame: &CallFrame,
-        registers: &[Register],
-        heap: Option<&HeapExecution<'_>>,
-    ) -> VmResult<Self> {
-        match registers {
-            [] => Ok(Self::Empty),
-            [first] => Ok(Self::One([value_to_owned(frame.read(*first)?, heap)?])),
-            [first, second] => Ok(Self::Two([
-                value_to_owned(frame.read(*first)?, heap)?,
-                value_to_owned(frame.read(*second)?, heap)?,
-            ])),
-            [first, second, third] => Ok(Self::Three([
-                value_to_owned(frame.read(*first)?, heap)?,
-                value_to_owned(frame.read(*second)?, heap)?,
-                value_to_owned(frame.read(*third)?, heap)?,
-            ])),
-            [first, second, third, fourth] => Ok(Self::Four([
-                value_to_owned(frame.read(*first)?, heap)?,
-                value_to_owned(frame.read(*second)?, heap)?,
-                value_to_owned(frame.read(*third)?, heap)?,
-                value_to_owned(frame.read(*fourth)?, heap)?,
-            ])),
-            _ => registers
-                .iter()
-                .map(|register| value_to_owned(frame.read(*register)?, heap))
-                .collect::<VmResult<Vec<_>>>()
-                .map(Self::Many),
-        }
-    }
-
-    fn as_slice(&self) -> &[OwnedValue] {
-        match self {
-            Self::Empty => &[],
-            Self::One(values) => values,
-            Self::Two(values) => values,
-            Self::Three(values) => values,
-            Self::Four(values) => values,
-            Self::Many(values) => values,
-        }
-    }
+fn script_call_args_from_call_arguments(
+    frame: &CallFrame,
+    args: &[CallArgument],
+) -> VmResult<SmallStorage<Value>> {
+    SmallStorage::try_from_slice_map(args, 4, |arg| match arg {
+        CallArgument::Register(register) => Ok(*frame.read(*register)?),
+        CallArgument::Missing => Ok(Value::Missing),
+    })
 }
 
-enum ScriptCallArgs {
-    Empty,
-    One([Value; 1]),
-    Two([Value; 2]),
-    Three([Value; 3]),
-    Four([Value; 4]),
-    Many(Vec<Value>),
-}
-
-impl ScriptCallArgs {
-    fn from_call_arguments(frame: &CallFrame, args: &[CallArgument]) -> VmResult<Self> {
-        fn value_from_arg(frame: &CallFrame, arg: &CallArgument) -> VmResult<Value> {
-            match arg {
-                CallArgument::Register(register) => Ok(*frame.read(*register)?),
-                CallArgument::Missing => Ok(Value::Missing),
-            }
-        }
-
-        match args {
-            [] => Ok(Self::Empty),
-            [first] => Ok(Self::One([value_from_arg(frame, first)?])),
-            [first, second] => Ok(Self::Two([
-                value_from_arg(frame, first)?,
-                value_from_arg(frame, second)?,
-            ])),
-            [first, second, third] => Ok(Self::Three([
-                value_from_arg(frame, first)?,
-                value_from_arg(frame, second)?,
-                value_from_arg(frame, third)?,
-            ])),
-            [first, second, third, fourth] => Ok(Self::Four([
-                value_from_arg(frame, first)?,
-                value_from_arg(frame, second)?,
-                value_from_arg(frame, third)?,
-                value_from_arg(frame, fourth)?,
-            ])),
-            _ => args
-                .iter()
-                .map(|arg| value_from_arg(frame, arg))
-                .collect::<VmResult<Vec<_>>>()
-                .map(Self::Many),
-        }
-    }
-
-    fn from_registers(frame: &CallFrame, registers: &[Register]) -> VmResult<Self> {
-        match registers {
-            [] => Ok(Self::Empty),
-            [first] => Ok(Self::One([*frame.read(*first)?])),
-            [first, second] => Ok(Self::Two([*frame.read(*first)?, *frame.read(*second)?])),
-            [first, second, third] => Ok(Self::Three([
-                *frame.read(*first)?,
-                *frame.read(*second)?,
-                *frame.read(*third)?,
-            ])),
-            [first, second, third, fourth] => Ok(Self::Four([
-                *frame.read(*first)?,
-                *frame.read(*second)?,
-                *frame.read(*third)?,
-                *frame.read(*fourth)?,
-            ])),
-            _ => registers
-                .iter()
-                .map(|register| Ok(*frame.read(*register)?))
-                .collect::<VmResult<Vec<_>>>()
-                .map(Self::Many),
-        }
-    }
-
-    fn as_slice(&self) -> &[Value] {
-        match self {
-            Self::Empty => &[],
-            Self::One(values) => values,
-            Self::Two(values) => values,
-            Self::Three(values) => values,
-            Self::Four(values) => values,
-            Self::Many(values) => values,
-        }
-    }
+fn script_call_args_from_registers(
+    frame: &CallFrame,
+    registers: &[Register],
+) -> VmResult<SmallStorage<Value>> {
+    SmallStorage::try_from_slice_map(registers, 4, |register| Ok(*frame.read(*register)?))
 }
 
 fn runtime_values_from_registers(
@@ -1361,85 +1255,10 @@ fn runtime_values_from_registers(
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Vec<Value>> {
-    match registers {
-        [] => Ok(Vec::new()),
-        [first] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            Ok(vec![first])
-        }
-        [first, second] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
-            Ok(vec![first, second])
-        }
-        [first, second, third] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
-            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
-            Ok(vec![first, second, third])
-        }
-        [first, second, third, fourth] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
-            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
-            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
-            Ok(vec![first, second, third, fourth])
-        }
-        [first, second, third, fourth, fifth] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
-            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
-            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
-            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
-            Ok(vec![first, second, third, fourth, fifth])
-        }
-        [first, second, third, fourth, fifth, sixth] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
-            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
-            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
-            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
-            let sixth = runtime_value_from_register(frame, *sixth, heap, budget.as_deref_mut())?;
-            Ok(vec![first, second, third, fourth, fifth, sixth])
-        }
-        [first, second, third, fourth, fifth, sixth, seventh] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
-            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
-            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
-            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
-            let sixth = runtime_value_from_register(frame, *sixth, heap, budget.as_deref_mut())?;
-            let seventh =
-                runtime_value_from_register(frame, *seventh, heap, budget.as_deref_mut())?;
-            Ok(vec![first, second, third, fourth, fifth, sixth, seventh])
-        }
-        [first, second, third, fourth, fifth, sixth, seventh, eighth] => {
-            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
-            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
-            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
-            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
-            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
-            let sixth = runtime_value_from_register(frame, *sixth, heap, budget.as_deref_mut())?;
-            let seventh =
-                runtime_value_from_register(frame, *seventh, heap, budget.as_deref_mut())?;
-            let eighth = runtime_value_from_register(frame, *eighth, heap, budget.as_deref_mut())?;
-            Ok(vec![
-                first, second, third, fourth, fifth, sixth, seventh, eighth,
-            ])
-        }
-        _ => {
-            let mut slots = Vec::with_capacity(registers.len());
-            for register in registers {
-                slots.push(runtime_value_from_register(
-                    frame,
-                    *register,
-                    heap,
-                    budget.as_deref_mut(),
-                )?);
-            }
-            Ok(slots)
-        }
-    }
+    SmallStorage::try_from_slice_map(registers, 8, |register| {
+        runtime_value_from_register(frame, *register, heap, budget.as_deref_mut())
+    })
+    .map(SmallStorage::into_vec)
 }
 
 fn runtime_value_from_register(
