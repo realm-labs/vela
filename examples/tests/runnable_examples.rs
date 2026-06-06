@@ -63,6 +63,10 @@ fn game_server_examples_run() {
             "script_result=Int(10) final_count=10 score=7 reward_calls=3\n",
         ),
         (env!("CARGO_BIN_EXE_modules"), "module_result=Int(16)\n"),
+        (
+            env!("CARGO_BIN_EXE_native_function"),
+            "native_function_result=Int(29)\n",
+        ),
     ];
 
     for (bin, expected) in cases {

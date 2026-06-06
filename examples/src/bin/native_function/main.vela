@@ -1,0 +1,5 @@
+fn main() {
+    let manual = game::bonus_manual(3, 4);
+    let generated = game::bonus_macro(10, 7);
+    return manual + generated;
+}
