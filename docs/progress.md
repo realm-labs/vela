@@ -112,7 +112,9 @@ Cranelift JIT.
   host-access boundary, giving later path-key or direct-adapter work one
   replacement point. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
-  index/key conversion and future path-key reuse has a single insertion point.
+  index/key conversion, and PatchTx overlay identity now uses a dedicated
+  HostPathKey sidecar while patches retain full HostPath values for apply and
+  diagnostics.
   Source and module compilation now verifies bytecode before returning
   `CodeObject` or `Program` values, covering register, constant, jump,
   frame-slot, call-argument, host-path dynamic segment, and nested closure

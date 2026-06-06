@@ -14,6 +14,18 @@ fn set_path_records_patch_and_overlay_value() {
 }
 
 #[test]
+fn overlay_reads_through_equivalent_path_keys() {
+    let mut tx = PatchTx::new();
+    let write_path = level_path();
+    let read_path = level_path();
+
+    tx.set_path(write_path, HostValue::Int(10), None)
+        .expect("set path");
+
+    assert_eq!(tx.read_overlay(&read_path), Some(&HostValue::Int(10)));
+}
+
+#[test]
 fn variant_field_paths_record_overlay_and_apply() {
     let path = quest_variant_count_path();
     let mut adapter = MockStateAdapter::new();

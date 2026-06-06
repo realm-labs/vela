@@ -64,6 +64,11 @@ impl HostPath {
         self.segments.push(PathSegment::VariantField(field));
         self
     }
+
+    #[must_use]
+    pub fn path_key(&self) -> HostPathKey {
+        HostPathKey::from_path(self)
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -74,9 +79,87 @@ pub enum PathSegment {
     VariantField(FieldId),
 }
 
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct HostPathKey {
+    pub root: HostRef,
+    pub segments: Vec<PathKeySegment>,
+}
+
+impl HostPathKey {
+    #[must_use]
+    pub fn new(root: HostRef) -> Self {
+        Self {
+            root,
+            segments: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_segment_capacity(root: HostRef, capacity: usize) -> Self {
+        Self {
+            root,
+            segments: Vec::with_capacity(capacity),
+        }
+    }
+
+    #[must_use]
+    pub fn from_path(path: &HostPath) -> Self {
+        let mut key = Self::with_segment_capacity(path.root, path.segments.len());
+        for segment in &path.segments {
+            key = match segment {
+                PathSegment::Field(field) => key.field(*field),
+                PathSegment::Index(index) => key.index(*index),
+                PathSegment::Key(symbol) => key.key(*symbol),
+                PathSegment::VariantField(field) => key.variant_field(*field),
+            };
+        }
+        key
+    }
+
+    #[must_use]
+    pub fn field(mut self, field: FieldId) -> Self {
+        self.segments.push(PathKeySegment::Field(field));
+        self
+    }
+
+    #[must_use]
+    pub fn index(mut self, index: u32) -> Self {
+        self.segments.push(PathKeySegment::Index(index));
+        self
+    }
+
+    #[must_use]
+    pub fn key(mut self, key: Symbol) -> Self {
+        self.segments.push(PathKeySegment::Key(key));
+        self
+    }
+
+    #[must_use]
+    pub fn variant_field(mut self, field: FieldId) -> Self {
+        self.segments.push(PathKeySegment::VariantField(field));
+        self
+    }
+}
+
+impl From<&HostPath> for HostPathKey {
+    fn from(path: &HostPath) -> Self {
+        Self::from_path(path)
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum PathKeySegment {
+    Field(FieldId),
+    Index(u32),
+    Key(Symbol),
+    VariantField(FieldId),
+}
+
 #[cfg(test)]
 mod tests {
-    use vela_common::{FieldId, HostObjectId, HostTypeId};
+    use std::num::NonZeroU32;
+
+    use vela_common::{FieldId, HostObjectId, HostTypeId, Symbol};
 
     use super::*;
 
@@ -92,5 +175,26 @@ mod tests {
             .variant_field(FieldId::new(5));
 
         assert_eq!(reserved, regular);
+    }
+
+    #[test]
+    fn host_path_key_matches_path_identity() {
+        let root = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3);
+        let path = HostPath::new(root)
+            .field(FieldId::new(2))
+            .index(4)
+            .key(Symbol::new(NonZeroU32::new(9).expect("non-zero symbol")))
+            .variant_field(FieldId::new(5));
+
+        let key = path.path_key();
+
+        assert_eq!(
+            key,
+            HostPathKey::new(root)
+                .field(FieldId::new(2))
+                .index(4)
+                .key(Symbol::new(NonZeroU32::new(9).expect("non-zero symbol")))
+                .variant_field(FieldId::new(5))
+        );
     }
 }
