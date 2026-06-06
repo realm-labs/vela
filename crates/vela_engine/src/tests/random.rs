@@ -183,7 +183,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -236,6 +236,6 @@ fn main() {
 
     assert_eq!(first, second);
     assert_ne!(first, OwnedValue::Int(0));
-    assert!(first_tx.patches().is_empty());
-    assert!(second_tx.patches().is_empty());
+    assert!(first_tx.is_empty());
+    assert!(second_tx.is_empty());
 }

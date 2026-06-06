@@ -60,7 +60,7 @@ Cranelift JIT.
 - `.vela` source parsing, HIR lowering, bytecode compilation, VM execution,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.
 - Host mutation through `HostRef`, `HostPath`, `PathProxy`, write-through
-  `PatchTx`, capability-gated effects, and mutation journals.
+  `PatchTx`, capability-gated effects, and mutation-count budgeting.
 - Reflection for types, fields, methods, variants, traits, modules, functions,
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
@@ -114,10 +114,9 @@ Cranelift JIT.
   replacement point. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion, and HostPath/PatchTx identity now uses a dedicated
-  HostPathKey sidecar with inline storage for common short paths while patches
-  retain full HostPath values for diagnostics. Host-boundary
-  conversion failures are covered as PatchTx slow paths that leave patches
-  unrecorded.
+  HostPathKey sidecar with inline storage for common short paths while PatchTx
+  keeps only successful mutation counts. Host-boundary conversion failures are
+  covered as PatchTx slow paths that leave mutation counts unchanged.
   Source and module compilation now verifies bytecode before returning
   `CodeObject` or `Program` values, covering register, constant, jump,
   frame-slot, call-argument, host-path dynamic segment, and nested closure

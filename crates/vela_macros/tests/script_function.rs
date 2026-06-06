@@ -12,7 +12,6 @@ use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_host::tx::PatchTx;

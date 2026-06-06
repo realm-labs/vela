@@ -82,7 +82,7 @@ fn unique_test_dir(name: &str) -> PathBuf {
 fn level_up_demo_runs_through_cli() {
     assert_eq!(
         run_demo("level_up.vela"),
-        "result=Int(10) level=Int(10) patches=1\n"
+        "result=Int(10) level=Int(10) mutations=1\n"
     );
 }
 
@@ -91,7 +91,7 @@ fn context_event_demo_runs_through_cli() {
     assert_eq!(
         run_demo("context_event.vela"),
         "result=Int(1700000042) level=Int(9) ctx_now=Int(1700000000) \
-         ctx_tick=Int(42) emits=1 logs=1 patches=2\n"
+         ctx_tick=Int(42) emits=1 logs=1 mutations=2\n"
     );
 }
 
@@ -99,7 +99,7 @@ fn context_event_demo_runs_through_cli() {
 fn time_clock_demo_runs_through_cli() {
     assert_eq!(
         run_demo("time_clock.vela"),
-        "result=Int(52) level=Int(9) patches=0\n"
+        "result=Int(52) level=Int(9) mutations=0\n"
     );
 }
 
@@ -107,7 +107,7 @@ fn time_clock_demo_runs_through_cli() {
 fn gameplay_helpers_demo_runs_through_cli() {
     assert_eq!(
         run_demo("gameplay_helpers.vela"),
-        "result=Int(9) level=Int(9) patches=0\n"
+        "result=Int(9) level=Int(9) mutations=0\n"
     );
 }
 
@@ -115,7 +115,7 @@ fn gameplay_helpers_demo_runs_through_cli() {
 fn random_allowed_demo_runs_through_cli() {
     assert_eq!(
         run_demo_allow_random("random_allowed.vela"),
-        "result=Int(310) level=Int(9) patches=0\n"
+        "result=Int(310) level=Int(9) mutations=0\n"
     );
 }
 
@@ -123,7 +123,7 @@ fn random_allowed_demo_runs_through_cli() {
 fn random_reflect_allowed_demo_runs_through_cli() {
     assert_eq!(
         run_demo_allow_random("random_reflect_allowed.vela"),
-        "result=Int(310) level=Int(9) patches=0\n"
+        "result=Int(310) level=Int(9) mutations=0\n"
     );
 }
 
@@ -131,7 +131,7 @@ fn random_reflect_allowed_demo_runs_through_cli() {
 fn reward_preview_demo_runs_through_cli() {
     assert_eq!(
         run_demo("reward_preview.vela"),
-        "result=Int(22) level=Int(1) patches=0\n"
+        "result=Int(22) level=Int(1) mutations=0\n"
     );
 }
 
@@ -291,7 +291,7 @@ fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.vela"),
         "result=Int(2) level=Int(2) exp=Int(0) quest_count=Int(3) \
-         quest_done=Bool(true) inventory_gold=Int(2) reward_calls=1 emits=3 patches=10\n"
+         quest_done=Bool(true) inventory_gold=Int(2) reward_calls=1 emits=3 mutations=10\n"
     );
 }
 
@@ -300,7 +300,7 @@ fn quest_progress_demo_runs_through_cli() {
     assert_eq!(
         run_demo("quest_progress.vela"),
         "result=Int(3) level=Int(1) exp=Int(90) quest_count=Int(3) \
-         quest_done=Bool(true) inventory_gold=Int(0) reward_calls=0 emits=1 patches=3\n"
+         quest_done=Bool(true) inventory_gold=Int(0) reward_calls=0 emits=1 mutations=3\n"
     );
 }
 
@@ -309,7 +309,7 @@ fn reflect_debug_demo_runs_through_cli() {
     assert_eq!(
         run_demo("reflect_debug.vela"),
         "result=Int(22) level=Int(12) ctx_now=Int(1700000000) \
-         ctx_tick=Int(42) emits=1 patches=2\n"
+         ctx_tick=Int(42) emits=1 mutations=2\n"
     );
 }
 

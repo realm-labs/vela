@@ -18,9 +18,9 @@ pub struct HostObjectSnapshot {
     pub generation: u32,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct PatchTx {
-    patches: Vec<Patch>,
+    mutation_count: usize,
 }
 
 impl PatchTx {
@@ -30,13 +30,13 @@ impl PatchTx {
     }
 
     #[must_use]
-    pub fn patches(&self) -> &[Patch] {
-        &self.patches
+    pub const fn mutation_count(&self) -> usize {
+        self.mutation_count
     }
 
     #[must_use]
-    pub fn into_patches(self) -> Vec<Patch> {
-        self.patches
+    pub const fn is_empty(&self) -> bool {
+        self.mutation_count == 0
     }
 
     pub fn read_path(
@@ -71,7 +71,7 @@ impl PatchTx {
             expected_base: None,
             source_span,
         };
-        self.validate_and_record_after(adapter, patch, |adapter| adapter.write_path(&path, value))
+        self.validate_and_count_after(adapter, patch, |adapter| adapter.write_path(&path, value))
     }
 
     pub fn add_path(
@@ -153,7 +153,7 @@ impl PatchTx {
         adapter
             .remove_path(&patch.path)
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        self.patches.push(patch);
+        self.record_mutation();
         Ok(())
     }
 
@@ -180,7 +180,7 @@ impl PatchTx {
         let result = adapter
             .call_method(&path, method, &args)
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        self.patches.push(patch);
+        self.record_mutation();
         Ok(result)
     }
 
@@ -228,10 +228,10 @@ impl PatchTx {
             expected_base: Some(current),
             source_span,
         };
-        self.validate_and_record_after(adapter, patch, |adapter| adapter.write_path(&path, next))
+        self.validate_and_count_after(adapter, patch, |adapter| adapter.write_path(&path, next))
     }
 
-    fn validate_and_record_after<Adapter>(
+    fn validate_and_count_after<Adapter>(
         &mut self,
         adapter: &mut Adapter,
         patch: Patch,
@@ -245,8 +245,12 @@ impl PatchTx {
             .validate_patch(&patch)
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
         write(adapter).map_err(|error| error.with_source_span_if_absent(source_span))?;
-        self.patches.push(patch);
+        self.record_mutation();
         Ok(())
+    }
+
+    fn record_mutation(&mut self) {
+        self.mutation_count += 1;
     }
 }
 

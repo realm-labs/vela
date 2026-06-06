@@ -36,9 +36,7 @@ fn main(player) {
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
     );
-    assert_eq!(tx.patches().len(), 2);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
-    assert_eq!(tx.patches()[1].op, PatchOp::Add(HostValue::Int(1)));
+    assert_eq!(tx.mutation_count(), 2);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
@@ -122,9 +120,7 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, stats_level);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
 }
 
@@ -166,9 +162,7 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(7)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, stats_level);
-    assert_eq!(tx.patches()[0].op, PatchOp::Sub(HostValue::Int(2)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
 }
 
@@ -212,10 +206,7 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
-    assert_eq!(tx.patches().len(), 3);
-    assert_eq!(tx.patches()[0].op, PatchOp::Mul(HostValue::Int(3)));
-    assert_eq!(tx.patches()[1].op, PatchOp::Div(HostValue::Int(2)));
-    assert_eq!(tx.patches()[2].op, PatchOp::Rem(HostValue::Int(5)));
+    assert_eq!(tx.mutation_count(), 3);
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
 }
 
@@ -263,7 +254,7 @@ fn main(player) {
             path: reward_path.clone()
         })
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
     assert_eq!(adapter.read_path(&reward_path), Ok(HostValue::Int(0)));
 }
 
@@ -309,9 +300,7 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, item_path);
-    assert_eq!(tx.patches()[0].op, PatchOp::Remove);
+    assert_eq!(tx.mutation_count(), 1);
     assert!(matches!(
         adapter.read_path(&item_path),
         Err(error)
@@ -367,9 +356,7 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, item_count);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
 }
 
@@ -425,14 +412,12 @@ fn bytecode_mutates_host_variant_field_through_patch_tx() {
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, quest_count);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
 }
 
 #[test]
-fn compiled_source_context_time_and_emit_records_patch_tx() {
+fn compiled_source_context_time_and_emit_counts_mutations() {
     let ctx_ref = HostRef::new(HostTypeId::new(9), HostObjectId::new(11), 1);
     let now_field = FieldId::new(6);
     let tick_field = FieldId::new(7);
@@ -481,28 +466,7 @@ fn main(ctx) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1042)));
-    assert_eq!(tx.patches().len(), 2);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method: emit_method,
-            args: vec![
-                HostValue::String("player.level_checked".into()),
-                HostValue::Int(1042)
-            ]
-        }
-    );
-    assert_eq!(
-        tx.patches()[1].op,
-        PatchOp::CallHostMethod {
-            method: log_method,
-            args: vec![
-                HostValue::String("info".into()),
-                HostValue::String("player.level_checked".into()),
-                HostValue::Int(1042)
-            ]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 2);
     assert_eq!(
         adapter.method_calls(),
         &[
@@ -528,7 +492,7 @@ fn main(ctx) {
 }
 
 #[test]
-fn host_field_write_conversion_error_records_no_patch() {
+fn host_field_write_conversion_error_counts_no_mutation() {
     let host_ref = player_ref(3);
     let program = compile_program_source_with_options(
         SourceId::new(1),
@@ -568,7 +532,7 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(9))

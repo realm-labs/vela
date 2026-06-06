@@ -138,7 +138,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -195,7 +195,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]

@@ -43,7 +43,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(5))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn main() {
             permission: ReflectPermission::CallMethods,
         })
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn main() {
             }
         )
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -190,12 +190,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(host_ref).field(FieldId::new(1))
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(12)));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -263,5 +258,5 @@ fn main(player) {
             }
         )
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }

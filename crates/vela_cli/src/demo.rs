@@ -104,8 +104,8 @@ fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Bo
             &mut host_state.adapter,
         )
         .map_err(|error| crate::diagnostics::render_vm_error(path, &error))?;
-    let patch_count = output.patches().len();
-    host_state.print_result(output.into_value(), patch_count)
+    let mutation_count = output.mutation_count();
+    host_state.print_result(output.into_value(), mutation_count)
 }
 
 pub(crate) fn hot_reload_engine() -> EngineResult<Engine> {

@@ -374,8 +374,8 @@ impl CallOutput {
     }
 
     #[must_use]
-    pub fn patches(&self) -> &[Patch] {
-        self.tx.patches()
+    pub const fn mutation_count(&self) -> usize {
+        self.tx.mutation_count()
     }
 
     #[must_use]

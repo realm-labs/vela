@@ -155,7 +155,7 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -196,7 +196,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -232,7 +232,7 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]

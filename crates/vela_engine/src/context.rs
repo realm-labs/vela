@@ -73,9 +73,9 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         Ok(())
     }
 
-    pub fn reserve_patch(&self) -> VmResult<()> {
+    pub fn reserve_host_mutation(&self) -> VmResult<()> {
         if let Some(budget) = self.budget.as_deref() {
-            budget.reserve_patch(self.host.tx.patches().len())?;
+            budget.reserve_host_mutation(self.host.tx.mutation_count())?;
         }
         Ok(())
     }
@@ -86,7 +86,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .set_path(self.host.adapter, path, value, source_span)?;
@@ -99,7 +99,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .add_path(self.host.adapter, path, value, source_span)?;
@@ -112,7 +112,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .sub_path(self.host.adapter, path, value, source_span)?;
@@ -125,7 +125,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .mul_path(self.host.adapter, path, value, source_span)?;
@@ -138,7 +138,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .div_path(self.host.adapter, path, value, source_span)?;
@@ -151,7 +151,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .rem_path(self.host.adapter, path, value, source_span)?;
@@ -164,7 +164,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .push_path(self.host.adapter, path, value, source_span)?;
@@ -172,7 +172,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     }
 
     pub fn remove_path(&mut self, path: HostPath, source_span: Option<Span>) -> VmResult<()> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         self.host
             .tx
             .remove_path(self.host.adapter, path, source_span)?;
@@ -186,7 +186,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         args: Vec<HostValue>,
         source_span: Option<Span>,
     ) -> VmResult<HostValue> {
-        self.reserve_patch()?;
+        self.reserve_host_mutation()?;
         Ok(self
             .host
             .tx

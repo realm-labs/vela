@@ -154,7 +154,7 @@ VM bytecode execution
         ↓
 HostRef / PathProxy
         ↓
-PatchTx validates and journals write-through host mutations
+PatchTx validates and counts write-through host mutations
         ↓
 Rust adapter state is updated immediately
         ↓

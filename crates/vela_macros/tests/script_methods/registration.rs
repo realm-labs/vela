@@ -51,11 +51,6 @@ fn script_methods_generate_callable_native_registration() {
         ),
         Ok(OwnedValue::Int(13)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(Player::vela_field_id_level()),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
 }
 
 #[test]
@@ -125,16 +120,6 @@ fn script_methods_feed_stable_engine_registration_api() {
         ),
         Ok(OwnedValue::Int(21)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(Player::vela_field_id_level()),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(15)));
-    assert_eq!(
-        tx.patches()[1].path,
-        HostPath::new(player).field(Player::vela_field_id_level()),
-    );
-    assert_eq!(tx.patches()[1].op, PatchOp::Set(HostValue::Int(21)));
 }
 
 fn assert_registered_method_matches_native_desc(
@@ -238,7 +223,7 @@ fn script_methods_generate_callable_result_native_registration() {
             fields: [("0".to_owned(), OwnedValue::String("blocked".to_owned()))].into(),
         }),
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -277,7 +262,7 @@ fn script_methods_generate_callable_option_native_registration() {
         ),
         Ok(OwnedValue::Int(5)),
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -313,12 +298,5 @@ fn main(player: Player) {
             &mut host
         ),
         Ok(OwnedValue::Int(1)),
-    );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method: method_id("grant_exp"),
-            args: vec![HostValue::Int(5)],
-        },
     );
 }

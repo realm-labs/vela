@@ -1,7 +1,6 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{HostObjectId, SourceId};
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
@@ -166,7 +165,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(1_700_000_010))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -351,7 +350,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -400,25 +399,7 @@ fn main(ctx) {
         ),
         Ok(OwnedValue::Int(1_700_000_042))
     );
-    assert_eq!(tx.patches().len(), 2);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method: CONTEXT_EMIT_METHOD_ID,
-            args: vec![HostValue::String("player.level_checked".to_owned())],
-        }
-    );
-    assert_eq!(
-        tx.patches()[1].op,
-        PatchOp::CallHostMethod {
-            method: CONTEXT_LOG_METHOD_ID,
-            args: vec![
-                HostValue::String("info".to_owned()),
-                HostValue::String("player.level_checked".to_owned()),
-                HostValue::Int(1_700_000_042),
-            ],
-        }
-    );
+    assert_eq!(tx.mutation_count(), 2);
     assert_eq!(
         adapter.method_calls(),
         &[

@@ -68,7 +68,7 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::InvalidTarget)
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn main() {
             related: vec![ReflectCandidate::new("level", None)],
         })
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn main() {
             source_span: None,
         })
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -313,7 +313,7 @@ pub fn main() {
 }
 
 #[test]
-fn compiled_source_reflect_call_records_host_method_patch() {
+fn compiled_source_reflect_call_counts_host_method_mutation() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(5);
     let program = compile_program_source(
@@ -346,14 +346,7 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(20)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]

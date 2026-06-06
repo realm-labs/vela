@@ -2,7 +2,6 @@ use vela_bytecode::compiler::{compile_program_source, compile_program_source_wit
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
@@ -20,7 +19,7 @@ use crate::runtime::{CallOptions, Runtime};
 use super::player_type;
 
 #[test]
-fn runtime_call_writes_through_host_method_and_records_patch() {
+fn runtime_call_writes_through_host_method_and_counts_mutation() {
     let method = HostMethodId::new(23);
     let engine = Engine::builder()
         .register_type(
@@ -56,14 +55,7 @@ fn main(player: Player) {
         .expect("runtime call should run");
 
     assert_eq!(result, OwnedValue::String("done".to_owned()));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(12)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(12)])]
@@ -108,15 +100,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, HostPath::new(host_ref));
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(10)],
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -164,18 +148,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(host_ref).field(inventory)
-    );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::String("gold".to_owned()), HostValue::Int(20)],
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -230,9 +203,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(5))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, quest_count);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -281,21 +252,7 @@ fn main(player: Player, monster: Monster) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.patches().len(), 2);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method: player_method,
-            args: vec![HostValue::Int(10)],
-        }
-    );
-    assert_eq!(
-        tx.patches()[1].op,
-        PatchOp::CallHostMethod {
-            method: monster_method,
-            args: vec![HostValue::Int(3)],
-        }
-    );
+    assert_eq!(tx.mutation_count(), 2);
 }
 
 #[test]
@@ -377,14 +334,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Null)
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(10)],
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -401,8 +351,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, HostPath::new(host_ref));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -439,18 +388,11 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
         ),
         Ok(OwnedValue::Int(15))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(15)],
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
-fn typed_callable_native_method_conversion_errors_before_journaling() {
+fn typed_callable_native_method_conversion_errors_before_mutation_counting() {
     let method = HostMethodId::new(8);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
@@ -483,7 +425,7 @@ fn typed_callable_native_method_conversion_errors_before_journaling() {
             ..
         })
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -526,11 +468,11 @@ fn typed_callable_native_method_maps_host_result_errors() {
             action: "call",
         })),
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
-fn callable_native_method_error_retains_recorded_patch() {
+fn callable_native_method_error_retains_written_mutation() {
     let method = HostMethodId::new(12);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
@@ -587,7 +529,7 @@ fn callable_native_method_error_retains_recorded_patch() {
             operation: "failing native method",
         }
     );
-    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.method_calls().len(), 1);
 }
 
@@ -666,13 +608,6 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
         ),
         Ok(OwnedValue::Int(10))
     );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(10)],
-        }
-    );
 }
 
 #[test]
@@ -718,13 +653,6 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
             &mut host,
         ),
         Ok(OwnedValue::Int(15))
-    );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(15)],
-        }
     );
 }
 
@@ -773,13 +701,6 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
             &mut host,
         ),
         Ok(OwnedValue::Int(21))
-    );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(21)],
-        }
     );
 }
 
@@ -884,5 +805,5 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(12))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }

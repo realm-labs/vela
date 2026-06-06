@@ -491,13 +491,6 @@ pub fn grant(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(7)]
-        }
-    );
 
     std::fs::write(
         &reward_file,
@@ -525,13 +518,6 @@ pub fn grant(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(7)]
-        }
-    );
 
     let report = runtime
         .check_reload()
@@ -550,13 +536,6 @@ pub fn grant(player: Player) {
             &mut tx
         ),
         Ok(OwnedValue::Int(2))
-    );
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(7)]
-        }
     );
 }
 

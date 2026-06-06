@@ -317,7 +317,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(12))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -357,7 +357,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(12))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]

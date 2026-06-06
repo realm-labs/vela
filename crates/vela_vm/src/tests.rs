@@ -17,7 +17,6 @@ use vela_common::{
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use vela_host::error::HostErrorKind;
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_host::value::HostValue;

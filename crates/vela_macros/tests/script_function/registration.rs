@@ -396,7 +396,7 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true)),
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -432,7 +432,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Bool(true)),
     );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
 }
 
 #[test]
@@ -474,7 +473,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(11)),
     );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(11)));
 }
 
 #[test]
@@ -508,7 +506,6 @@ fn main(player, ok) {
         ),
         Ok(OwnedValue::Int(13)),
     );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
 
     let mut failed_tx = PatchTx::new();
     let error = runtime
@@ -527,7 +524,7 @@ fn main(player, ok) {
             path: HostPath::new(player).field(FieldId::new(1)),
         }),
     );
-    assert!(failed_tx.patches().is_empty());
+    assert!(failed_tx.is_empty());
 }
 
 #[test]
@@ -566,7 +563,7 @@ fn main(player) {
             capability: Capability::HostWrite.as_str().to_owned(),
         },
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -607,7 +604,7 @@ fn main(player) {
             limit: 2,
         },
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -643,7 +640,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(12)),
     );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(12)));
 }
 
 #[test]
@@ -685,7 +681,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(14)),
     );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(14)));
 }
 
 #[test]
@@ -719,7 +714,6 @@ fn main(player, ok) {
         ),
         Ok(OwnedValue::Int(15)),
     );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(15)));
 
     let mut failed_tx = PatchTx::new();
     let error = runtime
@@ -738,5 +732,5 @@ fn main(player, ok) {
             path: HostPath::new(player).field(FieldId::new(2)),
         }),
     );
-    assert!(failed_tx.patches().is_empty());
+    assert!(failed_tx.is_empty());
 }

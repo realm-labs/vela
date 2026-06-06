@@ -2,7 +2,6 @@ use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
@@ -61,11 +60,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(1)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(host_ref).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(19)));
 }
 
 #[test]
@@ -107,7 +101,7 @@ fn main() {
             ..
         })
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -236,11 +230,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(9)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
 }
 
 #[test]
@@ -290,11 +279,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(14)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(14)));
 }
 
 #[test]
@@ -345,11 +329,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(20)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(20)));
 }
 
 fn typed_host_sum_level(
@@ -450,11 +429,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Bool(true)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(host_ref).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(17)));
 }
 
 #[test]
@@ -496,7 +470,7 @@ fn main() {
             ..
         })
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -547,7 +521,7 @@ fn main(player) {
             action: "write",
         })),
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 fn typed_set_level(
@@ -629,11 +603,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(18)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(18)));
 }
 
 #[test]
@@ -683,11 +652,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(26)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(26)));
 }
 
 #[test]
@@ -738,11 +702,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(35)),
     );
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(player).field(FieldId::new(1)),
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(35)));
 }
 
 fn typed_context_sum_level(

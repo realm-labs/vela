@@ -4,7 +4,6 @@ use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::object::ScriptHostObject;
-use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef, PathSegment};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
@@ -91,8 +90,7 @@ fn main(player: Player, amount, bonus = 1) {
 
     assert_eq!(result, OwnedValue::Int(12));
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(11)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -255,12 +253,11 @@ fn main(player: Player, amount) {
 
     assert_eq!(&*output, &OwnedValue::Int(13));
     assert_eq!(player.level, 13);
-    assert_eq!(output.patches().len(), 1);
-    assert_eq!(output.patches()[0].op, PatchOp::Add(HostValue::Int(4)));
+    assert_eq!(output.mutation_count(), 1);
 }
 
 #[test]
-fn runtime_call_returns_value_like_output_and_patches() {
+fn runtime_call_returns_value_like_output_and_mutation_count() {
     let engine = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
@@ -291,8 +288,7 @@ fn main(player: Player, amount) {
 
     assert_eq!(&*output, &OwnedValue::Int(13));
     assert_eq!(player.level, 13);
-    assert_eq!(output.patches().len(), 1);
-    assert_eq!(output.patches()[0].op, PatchOp::Add(HostValue::Int(4)));
+    assert_eq!(output.mutation_count(), 1);
 }
 
 #[test]
@@ -332,7 +328,7 @@ fn main(player: Player) {
     assert_eq!(report.reload, None);
     drop(args);
     assert_eq!(player.level, 10);
-    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]

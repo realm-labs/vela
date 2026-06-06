@@ -114,7 +114,7 @@ fn reads_host_field_through_patch_transaction() {
 }
 
 #[test]
-fn set_host_field_writes_through_and_records_patch() {
+fn set_host_field_writes_through_and_counts_mutation() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
@@ -158,8 +158,7 @@ fn set_host_field_writes_through_and_records_patch() {
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
@@ -207,11 +206,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
     };
 
     assert!(matches!(result, Ok(RuntimeValue::HeapRef(_))));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::Set(HostValue::String("gold".into()))
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -266,12 +261,11 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
     assert_eq!(
         error.kind,
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Patches,
+            budget: ExecutionBudgetKind::HostMutations,
             limit: 1,
         }
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
@@ -279,7 +273,7 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
 }
 
 #[test]
-fn add_host_field_writes_through_and_records_patch() {
+fn add_host_field_writes_through_and_counts_mutation() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
@@ -319,8 +313,7 @@ fn add_host_field_writes_through_and_records_patch() {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(10)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))

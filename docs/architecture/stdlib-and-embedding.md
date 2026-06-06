@@ -191,9 +191,9 @@ state adapter can pass an existing low-level handle with
 `runtime.call_with_adapter` with that adapter.
 
 `call` returns `CallOutput`, which dereferences to the returned
-`OwnedValue` for ordinary use. Hosts that need audit or diagnostics can inspect
-`output.patches()` or `output.tx()`; most call sites do not need to construct
-or pass a `PatchTx` explicitly.
+`OwnedValue` for ordinary use. Hosts that need mutation diagnostics can inspect
+`output.mutation_count()` or `output.tx()`; most call sites do not need to
+construct or pass a `PatchTx` explicitly.
 
 ### Hot Reload
 
@@ -216,7 +216,7 @@ ABI or policy rejections are staged until the host calls `runtime.check_reload()
 at a safe point. Tick-loop hosts can call
 `runtime.check_reload_at_tick_boundary()` when no event boundary is active. Host
 mutations write through during the call, so reload checks are separate from host
-mutation journaling.
+mutation counting.
 
 For full module-root workflows, hosts can call
 `runtime.stage_hot_reload_update_dir("scripts")` with the same safe-point

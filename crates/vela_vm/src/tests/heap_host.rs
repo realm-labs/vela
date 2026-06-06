@@ -161,7 +161,7 @@ fn managed_heap_execution_releases_budget_after_errors() {
 }
 
 #[test]
-fn managed_heap_host_execution_materializes_return_and_records_patch() {
+fn managed_heap_host_execution_materializes_return_and_counts_mutation() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
     let gold = code.push_constant(Constant::String("gold".into()));
@@ -200,11 +200,7 @@ fn managed_heap_host_execution_materializes_return_and_records_patch() {
     };
 
     assert_eq!(result, OwnedValue::String("gold".into()));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::Set(HostValue::String("gold".into()))
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
 
@@ -248,7 +244,7 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -301,7 +297,7 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -349,7 +345,7 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -396,11 +392,7 @@ fn main(player, target) {
     };
 
     assert_eq!(result, OwnedValue::HostRef(target_ref));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::Set(HostValue::HostRef(target_ref))
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::HostRef(target_ref))

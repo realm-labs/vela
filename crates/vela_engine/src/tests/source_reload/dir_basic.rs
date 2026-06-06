@@ -48,14 +48,6 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(11))
     );
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
-    assert_eq!(
-        tx.patches()[1].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(7)]
-        }
-    );
 }
 
 #[test]

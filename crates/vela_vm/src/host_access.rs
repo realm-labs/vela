@@ -159,7 +159,7 @@ pub(crate) fn push_host_path(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_patch(host.tx.patches().len())?;
+        budget.reserve_host_mutation(host.tx.mutation_count())?;
     }
     host.tx
         .push_path(host.adapter, path, value, runtime.source_span)?;
@@ -186,7 +186,7 @@ pub(crate) fn remove_host_path(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_patch(host.tx.patches().len())?;
+        budget.reserve_host_mutation(host.tx.mutation_count())?;
     }
     host.tx
         .remove_path(host.adapter, path, runtime.source_span)?;
@@ -226,7 +226,7 @@ pub(crate) fn call_host_method(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_patch(host.tx.patches().len())?;
+        budget.reserve_host_mutation(host.tx.mutation_count())?;
     }
     let return_value =
         host.tx
@@ -261,7 +261,7 @@ fn set_host_path_value(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_patch(host.tx.patches().len())?;
+        budget.reserve_host_mutation(host.tx.mutation_count())?;
     }
     host.tx
         .set_path(host.adapter, path, value, runtime.source_span)?;

@@ -56,12 +56,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(host_ref).field(FieldId::new(1))
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(9)));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -136,12 +131,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Bool(true))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].path,
-        HostPath::new(host_ref).field(FieldId::new(1))
-    );
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(11)));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -199,9 +189,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(17))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, level);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(17)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(17)));
 }
 
@@ -258,15 +246,7 @@ fn main(player) {
         ),
         Ok(OwnedValue::String("accepted".to_owned()))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, inventory);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::String("gold".to_owned()), HostValue::Int(2)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -278,7 +258,7 @@ fn main(player) {
 }
 
 #[test]
-fn context_host_native_can_charge_execution_budget_before_journaling() {
+fn context_host_native_can_charge_execution_budget_before_mutation_counting() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_context_host_native_fn(
@@ -337,11 +317,11 @@ fn main(player) {
             limit: 50
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
-fn context_host_native_can_charge_memory_budget_before_journaling() {
+fn context_host_native_can_charge_memory_budget_before_mutation_counting() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_context_host_native_fn(
@@ -402,7 +382,7 @@ fn main(player) {
             limit: 64
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -455,25 +435,25 @@ fn main(player) {
             &mut adapter,
             &mut tx,
         )
-        .expect_err("native patch budget reservation should fail");
+        .expect_err("native host mutation budget reservation should fail");
 
     assert_eq!(
         error.kind,
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Patches,
+            budget: ExecutionBudgetKind::HostMutations,
             limit: 0
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
-fn context_host_native_patch_helpers_record_expected_patches() {
+fn context_host_native_patch_helpers_counts_expected_mutations() {
     let method = HostMethodId::new(77);
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_context_host_native_fn(
-            NativeFunctionDesc::new("game::record_patch_helpers", NativeFunctionId::new(31))
+            NativeFunctionDesc::new("game::count_patch_helpers", NativeFunctionId::new(31))
                 .param(
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
@@ -502,7 +482,7 @@ fn context_host_native_patch_helpers_record_expected_patches() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    game::record_patch_helpers(player);
+    game::count_patch_helpers(player);
     return 1;
 }
 "#,
@@ -528,32 +508,11 @@ fn main(player) {
         Ok(OwnedValue::Int(1))
     );
 
-    let inventory = HostPath::new(host_ref).field(FieldId::new(3));
-    assert_eq!(tx.patches().len(), 7);
-    assert_eq!(tx.patches()[0].path, numeric);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
-    assert_eq!(tx.patches()[1].path, numeric);
-    assert_eq!(tx.patches()[1].op, PatchOp::Sub(HostValue::Int(3)));
-    assert_eq!(tx.patches()[2].path, numeric);
-    assert_eq!(tx.patches()[2].op, PatchOp::Mul(HostValue::Int(4)));
-    assert_eq!(tx.patches()[3].path, numeric);
-    assert_eq!(tx.patches()[3].op, PatchOp::Div(HostValue::Int(2)));
-    assert_eq!(tx.patches()[4].path, numeric);
-    assert_eq!(tx.patches()[4].op, PatchOp::Rem(HostValue::Int(5)));
-    assert_eq!(tx.patches()[5].path, scratch);
-    assert_eq!(tx.patches()[5].op, PatchOp::Remove);
-    assert_eq!(tx.patches()[6].path, inventory);
-    assert_eq!(
-        tx.patches()[6].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(4)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 7);
 }
 
 #[test]
-fn context_host_native_patch_helpers_reserve_patch_budget_before_writing() {
+fn context_host_native_patch_helpers_reserve_host_mutation_budget_before_writing() {
     let method = HostMethodId::new(78);
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
@@ -621,10 +580,10 @@ fn main(player, mode) {
         assert_eq!(
             error.kind,
             VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::Patches,
+                budget: ExecutionBudgetKind::HostMutations,
                 limit: 0
             }
         );
-        assert!(tx.patches().is_empty());
+        assert!(tx.is_empty());
     }
 }

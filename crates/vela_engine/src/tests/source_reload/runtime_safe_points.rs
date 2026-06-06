@@ -220,14 +220,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(2))
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(11)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]

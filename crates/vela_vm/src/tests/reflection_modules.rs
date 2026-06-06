@@ -176,7 +176,7 @@ fn main() {
             related: vec![ReflectCandidate::new("game::reward::grant", None)],
         })
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -243,7 +243,7 @@ fn main() {
             related: vec![ReflectCandidate::new("game::reward::grant", None)],
         })
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]

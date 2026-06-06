@@ -6,7 +6,6 @@ use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
 use vela_engine::permission::Capability;
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;

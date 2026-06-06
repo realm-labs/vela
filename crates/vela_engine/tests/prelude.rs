@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use vela_engine::prelude::*;
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 
 #[test]
 fn prelude_imports_cover_runtime_embedding_flow() {
@@ -51,14 +50,6 @@ fn main(player: Player, amount: int) {
         .expect("runtime call should run");
 
     assert_eq!(result, OwnedValue::Int(12));
-    assert_eq!(tx.patches()[0].path, HostPath::new(player),);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(12)],
-        },
-    );
 }
 
 #[test]
@@ -150,7 +141,7 @@ pub const BASE: int = 10;
         ),
         Ok(OwnedValue::Int(15))
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]

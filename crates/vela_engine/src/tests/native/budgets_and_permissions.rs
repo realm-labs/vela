@@ -57,18 +57,17 @@ fn main(player) {
     assert_eq!(
         error.kind,
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Patches,
+            budget: ExecutionBudgetKind::HostMutations,
             limit: 0
         }
     );
     let level = HostPath::new(host_ref).field(FieldId::new(1));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
 }
 
 #[test]
-fn host_native_error_retains_recorded_patches() {
+fn host_native_error_retains_written_mutations() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_host_native_fn(
@@ -134,13 +133,12 @@ fn main(player) {
         }
     );
     let level = HostPath::new(host_ref).field(FieldId::new(1));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
 }
 
 #[test]
-fn host_native_error_retains_patches_without_call_options() {
+fn host_native_error_retains_mutations_without_call_options() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_host_native_fn(
@@ -209,8 +207,7 @@ fn main(player) {
         }
     );
     let level = HostPath::new(host_ref).field(FieldId::new(1));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
 }
 
@@ -259,7 +256,7 @@ fn main() {
             }]),
         }
     );
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }
 
 #[test]
@@ -290,7 +287,7 @@ fn main() {
 }
 
 #[test]
-fn engine_denies_host_native_before_recording_patches() {
+fn engine_denies_host_native_before_mutation_counting() {
     let engine = Engine::builder()
         .register_host_native_fn(
             NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(4))
@@ -344,5 +341,5 @@ fn main(player) {
             capability: Capability::HostWrite.as_str().to_owned(),
         }
     ));
-    assert!(tx.patches().is_empty());
+    assert!(tx.is_empty());
 }

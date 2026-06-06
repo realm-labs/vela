@@ -177,7 +177,7 @@ without moving references or owning host state.
 Scope:
 
 ```text
-ExecutionBudget for instruction count, memory bytes, call depth, patch count
+ExecutionBudget for instruction count, memory bytes, call depth, host mutation count
 budget charging in VM dispatch, native calls, reflection, and host patching
 script heap with stable GcRef handles
 non-moving mark-sweep collector
@@ -192,7 +192,7 @@ Acceptance:
 ```text
 recursive scripts stop at max_call_depth
 infinite loops stop at instruction budget once loops exist
-patch floods stop at max_patches
+host mutation floods stop at max_host_mutations
 live script objects survive GC
 cyclic script objects are reclaimed
 host refs are never traced as Rust-owned objects
@@ -333,7 +333,7 @@ GET_HOST_PATH, SET_HOST_PATH, RMW_HOST_PATH, CALL_HOST_METHOD lowering
 HostValue scalar and HostRef conversion for host field reads/writes
 explicit owned serialization for arrays, maps, records, enums, and nullables
 PatchTx write-through operations for Set, Add, Sub, Remove, Push, and method calls
-patch validation, budgets, source spans, diagnostics, and mutation journaling
+patch validation, budgets, source spans, diagnostics, and mutation counting
 host access policies for read/write/call permissions
 source-span propagation into patches and host errors
 ```
@@ -341,7 +341,7 @@ source-span propagation into patches and host errors
 Acceptance:
 
 ```text
-account.ledger.entries[entry_id].amount += 1 writes through and journals a nested RMW patch
+account.ledger.entries[entry_id].amount += 1 writes through a nested RMW mutation
 reads after nested writes observe current Rust adapter values
 read-only and permission-denied host paths fail before mutation
 later script traps do not roll back earlier host writes
@@ -908,7 +908,8 @@ Control:
 ```text
 Host handle mutation semantics must be explicit.
 Reads after writes must observe current Rust adapter values.
-PatchTx writes must be validatable, budgeted, source-spanned, and journaled.
+PatchTx writes must be validatable, budgeted, source-spanned, and counted
+without retaining a growing journal by default.
 ```
 
 ### Premature Hot Reload State Migration
@@ -994,7 +995,7 @@ fn invoice_payment_updates_account_through_patch_tx() {
 
     assert_eq!(state.account(account).balance, 110);
     assert_eq!(state.account(account).status, "preferred");
-    assert!(!output.patches().is_empty());
+    assert!(output.mutation_count() > 0);
 }
 ```
 

@@ -113,7 +113,7 @@ fn write_host_numeric_patch(
         })
     })?;
     if let Some(budget) = runtime.budget {
-        budget.reserve_patch(host.tx.patches().len())?;
+        budget.reserve_host_mutation(host.tx.mutation_count())?;
     }
     patch.write_through(host, path, value, runtime.source_span)
 }

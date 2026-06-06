@@ -41,7 +41,7 @@ pub(crate) fn dispatch_native_function_call(
             let result = native(values.as_slice(), host, budget.as_deref_mut())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?;
             if let Some(budget) = budget.as_deref()
-                && let Err(error) = budget.check_patch_count(host.tx.patches().len())
+                && let Err(error) = budget.check_host_mutation_count(host.tx.mutation_count())
             {
                 return Err(error.with_source_span_if_absent(call.call_site));
             }
@@ -55,7 +55,7 @@ pub(crate) fn dispatch_native_function_call(
         }
     };
     if let (Some(budget), Some(host)) = (budget.as_deref(), host.as_deref()) {
-        budget.check_patch_count(host.tx.patches().len())?;
+        budget.check_host_mutation_count(host.tx.mutation_count())?;
     }
     if let Some(dst) = call.dst {
         let result = owned_to_value(

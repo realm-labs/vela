@@ -17,7 +17,7 @@ fn read_path_reads_current_adapter_state() {
 }
 
 #[test]
-fn compound_patch_expected_base_records_current_adapter_value() {
+fn compound_patch_validates_against_current_adapter_value() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_value(path.clone(), HostValue::Int(9));
@@ -27,10 +27,7 @@ fn compound_patch_expected_base_records_current_adapter_value() {
         .expect("add path");
 
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(10)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, path);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
-    assert_eq!(tx.patches()[0].expected_base, Some(HostValue::Int(9)));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -46,8 +43,7 @@ fn repeated_alias_writes_read_current_host_state() {
         .expect("second alias add");
 
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(4)));
-    assert_eq!(tx.patches()[0].expected_base, Some(HostValue::Int(1)));
-    assert_eq!(tx.patches()[1].expected_base, Some(HostValue::Int(2)));
+    assert_eq!(tx.mutation_count(), 2);
 }
 
 #[test]
@@ -60,9 +56,8 @@ fn variant_field_paths_write_through() {
     tx.add_path(&mut adapter, path.clone(), HostValue::Int(1), None)
         .expect("variant field add");
 
-    assert_eq!(tx.patches()[0].path, path.clone());
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(3)));
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -101,7 +96,7 @@ fn stale_generation_reports_error() {
 }
 
 #[test]
-fn into_patches_returns_write_journal() {
+fn mutation_count_tracks_successful_writes_without_retained_journal() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_value(path.clone(), HostValue::Int(9));
@@ -109,8 +104,6 @@ fn into_patches_returns_write_journal() {
 
     tx.set_path(&mut adapter, path, HostValue::Int(10), None)
         .expect("set path");
-    let patches = tx.into_patches();
 
-    assert_eq!(patches.len(), 1);
-    assert_eq!(patches[0].op, PatchOp::Set(HostValue::Int(10)));
+    assert_eq!(tx.mutation_count(), 1);
 }

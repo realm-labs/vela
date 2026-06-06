@@ -9,7 +9,6 @@ use crate::{
     adapter::ScriptStateAdapter,
     error::{HostError, HostErrorKind},
     mock::MockStateAdapter,
-    patch::PatchOp,
     path::{HostPath, HostRef},
     proxy::PathProxy,
     tx::{HostObjectSnapshot, PatchTx},

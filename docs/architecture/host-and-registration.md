@@ -64,7 +64,7 @@ pub enum PathSegment {
 
 ```rust
 pub struct PatchTx {
-    pub patches: Vec<Patch>,
+    pub mutation_count: usize,
 }
 
 pub struct Patch {
@@ -120,14 +120,15 @@ Write logic:
 
 ```text
 write_path(path, value):
-    validate access, patch budget, and patch metadata
+    validate access, host mutation budget, and mutation metadata
     write adapter immediately
-    record patch in PatchTx journal
+    increment PatchTx mutation count
 ```
 
 If a later script operation traps, previous host writes are retained. `PatchTx`
-is the controlled mutation context and audit journal; it is not a rollback
-transaction and there is no default end-of-call apply.
+is the controlled mutation context for validation, source spans, and budget
+accounting; it is not a rollback transaction, audit log, or default
+end-of-call apply container.
 
 ### Read-Modify-Write
 
@@ -138,15 +139,16 @@ PatchOp::Add(HostValue::Int(1))
 ```
 
 The VM reads the current adapter value, computes the scalar result, validates
-the patch, writes the adapter, and records the patch. This keeps range checks,
-permissions, budgets, diagnostics, and logging in one host mutation boundary.
+the mutation descriptor, writes the adapter, and increments the mutation count.
+This keeps range checks, permissions, budgets, and source-spanned diagnostics
+in one host mutation boundary without retaining a growing patch journal.
 
 Collection-shaped host mutations must be adapter-defined write-through
 operations. The default host boundary must not read a complex host collection,
 clone it into `HostValue`, modify the clone, and write it back. `PatchOp::Push`
-may journal a scalar pushed value when an adapter supports that operation, but
-scalar-only `HostValue` conversion cannot synthesize collection mutation by
-copying arrays or maps.
+may be used as the current operation descriptor when an adapter supports that
+operation, but scalar-only `HostValue` conversion cannot synthesize collection
+mutation by copying arrays or maps.
 
 ### Host State Adapter
 
@@ -205,8 +207,8 @@ handle whose mutations write through immediately through `PatchTx`. Hosts that
 already store state behind their own adapter should pass existing handles with
 `with_host_handle` and use `runtime.call_with_adapter` with that adapter.
 The high-level direct call result dereferences to the returned `OwnedValue`;
-hosts can inspect the retained transaction journal only when they need patch
-audit data.
+hosts can inspect `CallOutput::mutation_count()` or `output.tx()` when they
+need mutation-count diagnostics.
 
 ## Rust Host Macros
 

@@ -139,8 +139,10 @@ boundaries.
 Host state is mutated through write-through `PatchTx` operations. Direct host
 field, host path, and host method bytecode routes through `HostExecution`,
 `ScriptStateAdapter`, and `PatchTx`; the adapter is updated immediately and the
-patch is retained as a journal entry for budgets, diagnostics, auditing, and
-debugging.
+transaction retains only a successful mutation count for budgets and lightweight
+diagnostics. The current `Patch` descriptor is still passed to adapters for
+permission, range, source-span, and conflict checks, but `PatchTx` does not
+retain a growing journal by default.
 
 Embedding APIs may accept Rust `&T` and `&mut T` at a `CallArgs` invocation
 boundary, but these references are immediately represented inside the VM as
@@ -151,8 +153,8 @@ script code.
 
 High-level embedding calls may construct `PatchTx` internally and return a
 `CallOutput` that dereferences to the script return `OwnedValue`. This keeps
-ordinary call sites value-focused while still retaining the patch journal for
-hosts that need audit, diagnostics, or debugging data.
+ordinary call sites value-focused while still exposing `mutation_count()` for
+hosts that need lightweight diagnostics.
 The shortest runtime method name, `Runtime::call`, is reserved for this common
 high-level `CallArgs -> CallOutput` path. Lower-level entrypoints that expose
 adapter or `PatchTx` internals use explicit names such as `call_with_adapter`,
@@ -244,7 +246,7 @@ active ProgramVersion; hosts must call the runtime reload check at event, tick,
 or explicit call-boundary safe points to consume the pending update and receive
 the accepted or rejected report. Host mutations write through immediately via
 `PatchTx` and `ScriptStateAdapter`, so reload checks do not commit, inspect, or
-rewrite recorded patches.
+rewrite patch journals; `PatchTx` does not retain one by default.
 
 Function, method, module, trait, schema, effect, access, parameter, return, and
 source-span metadata participate in ABI validation. Engine registries are the

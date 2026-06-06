@@ -3,7 +3,7 @@ use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
 #[test]
-fn compiled_source_host_method_call_records_patch_tx() {
+fn compiled_source_host_method_call_counts_mutations() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(5);
     let program = compile_program_source_with_options(
@@ -35,14 +35,7 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(20)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]
@@ -50,7 +43,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_host_field_method_call_records_path_patch_tx() {
+fn compiled_source_host_field_method_call_counts_path_mutation() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let method = HostMethodId::new(9);
@@ -85,14 +78,7 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::String("gold".into()), HostValue::Int(100)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -104,7 +90,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_host_indexed_method_call_records_path_patch_tx() {
+fn compiled_source_host_indexed_method_call_counts_path_mutation() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
@@ -148,15 +134,7 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, item_path);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(20)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(item_path, method, vec![HostValue::Int(20)])]
@@ -164,7 +142,7 @@ fn main(player) {
 }
 
 #[test]
-fn call_host_method_writes_through_and_records_patch() {
+fn call_host_method_writes_through_and_counts_mutation() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(8);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
@@ -203,14 +181,7 @@ fn call_host_method_writes_through_and_records_patch() {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(12)));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::String("gold".into())]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -266,14 +237,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
     };
 
     assert_eq!(result, Ok(RuntimeValue::Null));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::String("gold".into())]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -308,12 +272,5 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::String("accepted".into())));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(20)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }

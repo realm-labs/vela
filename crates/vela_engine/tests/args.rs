@@ -6,11 +6,9 @@ use vela_engine::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::CallOptions;
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::PatchOp;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_host::tx::PatchTx;
-use vela_host::value::HostValue;
 use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::{VmError, VmErrorKind};
 use vela_vm::owned_value::OwnedValue;
@@ -329,12 +327,5 @@ fn main(player: Player, amount: int) {
         .expect("runtime call should run");
 
     assert_eq!(result, OwnedValue::Int(12));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::CallHostMethod {
-            method,
-            args: vec![HostValue::Int(12)]
-        }
-    );
+    assert_eq!(tx.mutation_count(), 1);
 }
