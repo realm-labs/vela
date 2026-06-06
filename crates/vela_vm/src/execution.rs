@@ -823,78 +823,78 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::AddHostField { root, field, rhs } => {
-                    host_patches::apply_host_field_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_field_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         *field,
                         *rhs,
-                        host_patches::HostNumericPatch::Add,
+                        host_access::HostNumericPatch::Add,
                     )?;
                 }
                 InstructionKind::SubHostField { root, field, rhs } => {
-                    host_patches::apply_host_field_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_field_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         *field,
                         *rhs,
-                        host_patches::HostNumericPatch::Sub,
+                        host_access::HostNumericPatch::Sub,
                     )?;
                 }
                 InstructionKind::MulHostField { root, field, rhs } => {
-                    host_patches::apply_host_field_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_field_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         *field,
                         *rhs,
-                        host_patches::HostNumericPatch::Mul,
+                        host_access::HostNumericPatch::Mul,
                     )?;
                 }
                 InstructionKind::DivHostField { root, field, rhs } => {
-                    host_patches::apply_host_field_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_field_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         *field,
                         *rhs,
-                        host_patches::HostNumericPatch::Div,
+                        host_access::HostNumericPatch::Div,
                     )?;
                 }
                 InstructionKind::RemHostField { root, field, rhs } => {
-                    host_patches::apply_host_field_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_field_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         *field,
                         *rhs,
-                        host_patches::HostNumericPatch::Rem,
+                        host_access::HostNumericPatch::Rem,
                     )?;
                 }
                 InstructionKind::AddHostPath {
@@ -903,18 +903,18 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_patches::apply_host_path_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_path_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         segments,
                         *rhs,
-                        host_patches::HostNumericPatch::Add,
+                        host_access::HostNumericPatch::Add,
                         &mut symbols,
                     )?;
                 }
@@ -924,18 +924,18 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_patches::apply_host_path_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_path_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         segments,
                         *rhs,
-                        host_patches::HostNumericPatch::Sub,
+                        host_access::HostNumericPatch::Sub,
                         &mut symbols,
                     )?;
                 }
@@ -945,18 +945,18 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_patches::apply_host_path_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_path_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         segments,
                         *rhs,
-                        host_patches::HostNumericPatch::Mul,
+                        host_access::HostNumericPatch::Mul,
                         &mut symbols,
                     )?;
                 }
@@ -966,18 +966,18 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_patches::apply_host_path_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_path_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         segments,
                         *rhs,
-                        host_patches::HostNumericPatch::Div,
+                        host_access::HostNumericPatch::Div,
                         &mut symbols,
                     )?;
                 }
@@ -987,18 +987,18 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_patches::apply_host_path_numeric_patch(
-                        host_patches::HostPatchRuntime {
+                    host_access::apply_host_path_numeric_patch(
+                        host_access::HostAccessRuntime {
                             frame: &frame,
-                            heap: heap.as_deref(),
-                            budget: budget.as_deref(),
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
                             source_span: instruction.span,
                         },
                         *root,
                         segments,
                         *rhs,
-                        host_patches::HostNumericPatch::Rem,
+                        host_access::HostNumericPatch::Rem,
                         &mut symbols,
                     )?;
                 }

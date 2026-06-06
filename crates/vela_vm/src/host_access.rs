@@ -4,6 +4,8 @@ use vela_host::path::HostPath;
 use vela_host::value::HostValue;
 
 use crate::heap_values::host_to_value;
+use crate::host_patches;
+pub(crate) use crate::host_patches::HostNumericPatch;
 use crate::host_paths::host_path_from_segments;
 use crate::host_values::{value_from_host, value_to_host};
 use crate::{
@@ -83,6 +85,52 @@ pub(crate) fn set_host_path(
         symbols,
     )?;
     set_host_path_value(path, value, runtime)
+}
+
+pub(crate) fn apply_host_field_numeric_patch(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    field: FieldId,
+    rhs: Register,
+    patch: HostNumericPatch,
+) -> VmResult<()> {
+    host_patches::apply_host_field_numeric_patch(
+        host_patches::HostPatchRuntime {
+            frame: runtime.frame,
+            heap: runtime.heap.as_deref(),
+            budget: runtime.budget.as_deref(),
+            host: runtime.host,
+            source_span: runtime.source_span,
+        },
+        root,
+        field,
+        rhs,
+        patch,
+    )
+}
+
+pub(crate) fn apply_host_path_numeric_patch(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    segments: &[HostPathSegment],
+    rhs: Register,
+    patch: HostNumericPatch,
+    symbols: &mut SymbolInterner,
+) -> VmResult<()> {
+    host_patches::apply_host_path_numeric_patch(
+        host_patches::HostPatchRuntime {
+            frame: runtime.frame,
+            heap: runtime.heap.as_deref(),
+            budget: runtime.budget.as_deref(),
+            host: runtime.host,
+            source_span: runtime.source_span,
+        },
+        root,
+        segments,
+        rhs,
+        patch,
+        symbols,
+    )
 }
 
 pub(crate) fn push_host_path(

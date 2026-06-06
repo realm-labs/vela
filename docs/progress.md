@@ -102,9 +102,9 @@ Cranelift JIT.
   fallback, and Engine-installed plus standard native functions register ID
   lookup targets. Standard value method calls can also carry optional
   `HostMethodId` metadata, with `len`/`is_empty` using an ID fast path before
-  name fallback. Host field/path reads, writes, collection patches, and method
-  calls are routed through a focused VM host-access boundary, giving later
-  path-key or direct-adapter work one replacement point.
+  name fallback. Host field/path reads, writes, compound and collection
+  patches, and method calls are routed through a focused VM host-access
+  boundary, giving later path-key or direct-adapter work one replacement point.
 
 ### Remaining Gaps
 
