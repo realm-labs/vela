@@ -2264,6 +2264,37 @@ The candidate was not accepted because repeated quick runs did not preserve the
 initial improvement signal. The runtime keeps the existing `RangeNext` path for
 both exclusive and inclusive direct range loops.
 
+### 2026-06-06 M19 Rejected Inline HostPath Segment Candidate
+
+This measurement checkpoint tested replacing `HostPath.segments: Vec<PathSegment>`
+with `SmallVec<[PathSegment; 4]>` to avoid heap allocation for the common
+one- to four-segment host paths. The candidate preserved host transaction
+semantics, `PathProxy`, `PatchTx` overlay behavior, source spans, and checksums.
+
+Validation:
+
+```bash
+cargo test -p vela_host
+cargo test -p vela_vm host_fields
+cargo test -p vela_engine typed_host
+cargo bench -p vela_vm --bench baseline host_patch_tx -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| host_patch_tx | 27145 | 31020 | 44958 | 8875875486420011969 |
+| gameplay_monster_kill | 76562 | 72375 | 80083 | 11641737387043360531 |
+
+The candidate was not accepted because the focused `host_patch_tx` row regressed
+across repeated quick runs, even though one gameplay-host run improved. The
+larger inline path key may also increase copy and comparison cost in current
+`BTreeMap<HostPath, ...>` overlay and mock adapter paths. Future host-path
+optimization should measure narrower alternatives such as compact single-field
+keys, overlay-specific short transaction storage, or specialized host-field
+opcodes instead of broadening every `HostPath` value.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for
