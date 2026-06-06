@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::heap::HeapValue;
 use crate::script_object::ScriptFields;
 use crate::string_methods;
@@ -35,16 +37,26 @@ pub(super) fn map_entries(
     heap: Option<&crate::HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<(String, Value)>> {
+    map_slots(receiver, heap, operation).map(|values| {
+        values
+            .iter()
+            .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
+            .collect()
+    })
+}
+
+pub(super) fn map_slots<'a>(
+    receiver: &Value,
+    heap: Option<&'a crate::HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<&'a BTreeMap<String, Value>> {
     match receiver {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error(operation);
             };
-            Ok(values
-                .iter()
-                .map(|(key, value)| (key.clone(), stored_runtime_value(value)))
-                .collect())
+            Ok(values)
         }
         _ => type_error(operation),
     }

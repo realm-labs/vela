@@ -419,6 +419,39 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_map_merge",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let base = {
+            "daily": 3,
+            "raid": 8,
+            "boss": 13,
+            "event": 5,
+        };
+        let patch = {
+            "raid": 21,
+            "bonus": 34,
+            "season": 55,
+        };
+        let merged = base.merge(patch);
+        if merged.len() != 6
+            || merged["daily"] != 3
+            || merged["raid"] != 21
+            || merged["bonus"] != 34
+            || merged["season"] != 55
+        {
+            return 0;
+        }
+        total += merged.len() + merged["raid"] + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "host_patch_tx",
         mode: ExecutionMode::HostPatchTx,
         source: r#"

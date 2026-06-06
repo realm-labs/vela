@@ -2386,6 +2386,30 @@ Checksums stayed stable. The improvement is scoped to set combination and
 predicate methods; set higher-order callback methods keep their existing
 callback-root behavior.
 
+### 2026-06-06 M19 Managed Heap Map Merge Checkpoint
+
+This checkpoint adds `managed_heap_map_merge`, a focused benchmark for
+heap-mode `map.merge()`. The accepted runtime change introduces borrowed map
+slot access and updates merge to iterate heap map entries directly instead of
+first cloning each receiver map into a temporary `Vec<(String, Value)>`.
+
+Validation:
+
+```bash
+cargo test -p vela_vm map_merge
+cargo bench -p vela_vm --bench baseline managed_heap_map_merge -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_map_merge | 1959896 | 1878541 | 1905520 | 9835646933200830753 |
+
+Checksums stayed stable. The improvement is scoped to map merge; map callback
+methods keep their existing callback-root behavior and map introspection still
+materializes returned keys, values, and entries by design.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for
