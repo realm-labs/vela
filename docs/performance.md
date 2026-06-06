@@ -2897,6 +2897,39 @@ reusing a matching string constant register reduces repeated string allocation
 pressure while preserving the script return value.
 ```
 
+### 2026-06-06 M19 Short Array Construction Checkpoint
+
+This checkpoint specializes heap-mode `MakeArray` construction for zero through
+eight source registers. The accepted path still reads frame slots through the
+same runtime storage helper, preserves `Missing` errors, budget plumbing, heap
+allocation, GC roots, and array layout, and falls back to the general
+preallocated path for wider arrays. The target is fixed-size gameplay literals
+that appear heavily in Option/Result helper chains and string/array workloads.
+
+Validation:
+
+```bash
+cargo test -p vela_vm execution_core -- --nocapture
+cargo bench -p vela_vm --bench baseline managed_heap_option_result_helpers -- --quick
+cargo bench -p vela_vm --bench baseline managed_heap_array_join -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before run 1 mean ns | Before run 2 mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|---:|
+| managed_heap_option_result_helpers | 20295791 | 20148500 | 18586791 | 18891604 | 1812806599834733941 |
+| managed_heap_array_join | 832541 | 924396 | 811354 | 820042 | 10496681859814292569 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The focused win is in heap-mode workloads that
+repeatedly build short array literals before Option/Result helper calls or
+string joins. Wider arrays keep the existing semantics through a preallocated
+loop-backed fallback.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

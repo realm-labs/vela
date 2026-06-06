@@ -1361,10 +1361,94 @@ fn runtime_values_from_registers(
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Vec<Value>> {
-    registers
-        .iter()
-        .map(|register| store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut()))
-        .collect()
+    match registers {
+        [] => Ok(Vec::new()),
+        [first] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            Ok(vec![first])
+        }
+        [first, second] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
+            Ok(vec![first, second])
+        }
+        [first, second, third] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
+            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
+            Ok(vec![first, second, third])
+        }
+        [first, second, third, fourth] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
+            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
+            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
+            Ok(vec![first, second, third, fourth])
+        }
+        [first, second, third, fourth, fifth] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
+            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
+            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
+            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
+            Ok(vec![first, second, third, fourth, fifth])
+        }
+        [first, second, third, fourth, fifth, sixth] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
+            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
+            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
+            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
+            let sixth = runtime_value_from_register(frame, *sixth, heap, budget.as_deref_mut())?;
+            Ok(vec![first, second, third, fourth, fifth, sixth])
+        }
+        [first, second, third, fourth, fifth, sixth, seventh] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
+            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
+            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
+            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
+            let sixth = runtime_value_from_register(frame, *sixth, heap, budget.as_deref_mut())?;
+            let seventh =
+                runtime_value_from_register(frame, *seventh, heap, budget.as_deref_mut())?;
+            Ok(vec![first, second, third, fourth, fifth, sixth, seventh])
+        }
+        [first, second, third, fourth, fifth, sixth, seventh, eighth] => {
+            let first = runtime_value_from_register(frame, *first, heap, budget.as_deref_mut())?;
+            let second = runtime_value_from_register(frame, *second, heap, budget.as_deref_mut())?;
+            let third = runtime_value_from_register(frame, *third, heap, budget.as_deref_mut())?;
+            let fourth = runtime_value_from_register(frame, *fourth, heap, budget.as_deref_mut())?;
+            let fifth = runtime_value_from_register(frame, *fifth, heap, budget.as_deref_mut())?;
+            let sixth = runtime_value_from_register(frame, *sixth, heap, budget.as_deref_mut())?;
+            let seventh =
+                runtime_value_from_register(frame, *seventh, heap, budget.as_deref_mut())?;
+            let eighth = runtime_value_from_register(frame, *eighth, heap, budget.as_deref_mut())?;
+            Ok(vec![
+                first, second, third, fourth, fifth, sixth, seventh, eighth,
+            ])
+        }
+        _ => {
+            let mut slots = Vec::with_capacity(registers.len());
+            for register in registers {
+                slots.push(runtime_value_from_register(
+                    frame,
+                    *register,
+                    heap,
+                    budget.as_deref_mut(),
+                )?);
+            }
+            Ok(slots)
+        }
+    }
+}
+
+fn runtime_value_from_register(
+    frame: &CallFrame,
+    register: Register,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    store_runtime_value(frame.read(register)?, heap, budget)
 }
 
 fn runtime_map_from_registers(
