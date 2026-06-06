@@ -2475,6 +2475,32 @@ Quick before/after reruns:
 Checksums stayed stable. The accepted improvement is scoped to scalar constant
 loading; heap constants keep the existing allocation and budget behavior.
 
+### 2026-06-06 M19 Aggregate Slot Copy Candidate
+
+This candidate changed managed-heap aggregate construction helpers for arrays,
+maps, records, and enums to copy frame register `Value` slots directly after a
+`Missing` check instead of calling `store_runtime_value` for each field or
+element. The candidate preserved behavior in the focused execution tests, but
+was not accepted because repeated quick benchmark runs were flat to slower.
+
+Validation:
+
+```bash
+cargo test -p vela_vm execution_core
+cargo bench -p vela_vm --bench baseline managed_heap_materialization -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_materialization | 41250 | 41895 | 41416 | 11773534860610571856 |
+
+The candidate was not accepted because removing the tiny helper call did not
+improve the focused row. Future aggregate work should measure a larger storage
+shape change or compiler-level specialization rather than this local helper
+substitution.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for
