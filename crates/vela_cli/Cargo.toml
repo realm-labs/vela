@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
 vela_bytecode = { path = "../vela_bytecode" }
 vela_common = { path = "../vela_common" }
 vela_engine = { path = "../vela_engine" }

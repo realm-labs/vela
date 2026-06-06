@@ -1,9 +1,21 @@
-use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod diagnostics;
 
+use clap::Parser;
 use vela_engine::prelude::*;
+
+#[derive(Debug, Parser)]
+#[command(
+    name = "vela_cli",
+    about = "Run a Vela script file",
+    version,
+    disable_help_subcommand = true
+)]
+struct Cli {
+    /// Vela script file to execute.
+    script: PathBuf,
+}
 
 fn main() {
     if let Err(error) = run() {
@@ -13,11 +25,8 @@ fn main() {
 }
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let args = env::args().skip(1).collect::<Vec<_>>();
-    match args.as_slice() {
-        [path] => run_script(Path::new(path)),
-        _ => Err("usage: vela_cli <script-path>".into()),
-    }
+    let cli = Cli::parse();
+    run_script(&cli.script)
 }
 
 fn run_script(path: &Path) -> Result<(), Box<dyn std::error::Error>> {

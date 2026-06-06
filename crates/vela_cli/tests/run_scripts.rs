@@ -9,6 +9,13 @@ fn run_cli(script: &str) -> std::process::Output {
         .expect("run vela_cli")
 }
 
+fn run_cli_args(args: &[&str]) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+        .args(args)
+        .output()
+        .expect("run vela_cli")
+}
+
 fn unique_test_dir(name: &str) -> PathBuf {
     let mut path = std::env::temp_dir();
     path.push(format!(
@@ -129,4 +136,14 @@ fn main() {
     assert!(stderr.contains("return helper();"));
     assert!(stderr.contains("while executing `helper`"));
     fs::remove_dir_all(root).expect("clean temp dir");
+}
+
+#[test]
+fn cli_renders_clap_help() {
+    let output = run_cli_args(&["--help"]);
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be utf8");
+    assert!(stdout.contains("Run a Vela script file"));
+    assert!(stdout.contains("Usage: vela_cli <SCRIPT>"));
 }
