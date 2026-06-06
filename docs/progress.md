@@ -113,10 +113,11 @@ Cranelift JIT.
   replacement point. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion and future path-key reuse has a single insertion point.
-  Bytecode objects now expose verifier entrypoints that validate register,
-  constant, jump, frame-slot, call-argument, host-path dynamic segment, and
-  nested closure invariants before future unchecked register, operand, or cache
-  fast paths are introduced.
+  Source and module compilation now verifies bytecode before returning
+  `CodeObject` or `Program` values, covering register, constant, jump,
+  frame-slot, call-argument, host-path dynamic segment, and nested closure
+  invariants before future unchecked register, operand, or cache fast paths
+  are introduced.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

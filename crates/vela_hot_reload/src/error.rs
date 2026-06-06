@@ -335,6 +335,7 @@ fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
         | CompileErrorKind::InvalidIntLiteral { .. }
         | CompileErrorKind::InvalidFloatLiteral { .. }
         | CompileErrorKind::RegisterOverflow
+        | CompileErrorKind::BytecodeVerification(_)
         | CompileErrorKind::UnsupportedSyntax(_) => None,
     }
 }

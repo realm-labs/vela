@@ -116,7 +116,9 @@ pub fn compile_function_source_with_options(
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
     })?;
 
-    Compiler::new(function.name.clone(), function, signature, bindings, facts)?.compile()
+    verify_code_object(
+        Compiler::new(function.name.clone(), function, signature, bindings, facts)?.compile()?,
+    )
 }
 
 pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<Program> {
@@ -170,7 +172,7 @@ pub fn compile_program_source_with_options(
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
     program.set_script_metadata(semantic.script_metadata_graph());
 
-    Ok(program)
+    verify_program(program)
 }
 
 pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<Program> {
@@ -221,7 +223,20 @@ pub fn compile_module_sources_with_options(
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
     program.set_script_metadata(semantic.script_metadata_graph());
 
+    verify_program(program)
+}
+
+fn verify_program(program: Program) -> CompileResult<Program> {
+    program
+        .verify()
+        .map_err(|error| CompileError::new(CompileErrorKind::BytecodeVerification(error)))?;
     Ok(program)
+}
+
+fn verify_code_object(code: CodeObject) -> CompileResult<CodeObject> {
+    code.verify()
+        .map_err(|error| CompileError::new(CompileErrorKind::BytecodeVerification(error)))?;
+    Ok(code)
 }
 
 fn insert_script_impl_methods(

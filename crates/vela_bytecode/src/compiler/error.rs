@@ -1,5 +1,7 @@
 use vela_common::Diagnostic;
 
+use crate::verification::VerificationError;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompileError {
     pub kind: CompileErrorKind,
@@ -20,6 +22,7 @@ pub enum CompileErrorKind {
     InvalidIntLiteral { literal: String, error: String },
     InvalidFloatLiteral { literal: String, error: String },
     RegisterOverflow,
+    BytecodeVerification(VerificationError),
     UnsupportedSyntax(&'static str),
 }
 
