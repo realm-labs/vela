@@ -516,6 +516,9 @@ pub(crate) fn values_equal(
     if let Some(equal) = scalar_values_equal(lhs, rhs) {
         return Ok(equal);
     }
+    if let Some(equal) = heap_string_values_equal(lhs, rhs, heap) {
+        return Ok(equal);
+    }
     let lhs = materialize_value(lhs, heap)?;
     let rhs = materialize_value(rhs, heap)?;
     Ok(lhs == rhs)
@@ -535,6 +538,54 @@ fn scalar_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
     }
 }
 
+fn heap_string_values_equal(
+    lhs: &Value,
+    rhs: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<bool> {
+    let (Value::HeapRef(lhs), Value::HeapRef(rhs)) = (lhs, rhs) else {
+        return None;
+    };
+    let heap = heap?;
+    let lhs = match heap.heap.get(*lhs)? {
+        HeapValue::String(value) => value,
+        _ => return None,
+    };
+    let rhs = match heap.heap.get(*rhs)? {
+        HeapValue::String(value) => value,
+        _ => return None,
+    };
+    Some(lhs == rhs)
+}
+
 fn type_error(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::heap::ScriptHeap;
+
+    use super::*;
+
+    #[test]
+    fn heap_string_equality_compares_borrowed_string_slots() {
+        let mut heap = ScriptHeap::new();
+        let gold = Value::HeapRef(heap.allocate(HeapValue::String("gold".to_owned())));
+        let gold_again = Value::HeapRef(heap.allocate(HeapValue::String("gold".to_owned())));
+        let xp = Value::HeapRef(heap.allocate(HeapValue::String("xp".to_owned())));
+        let array = Value::HeapRef(heap.allocate(HeapValue::Array(Vec::new())));
+        let heap = HeapExecution::new(&mut heap);
+
+        assert_eq!(
+            heap_string_values_equal(&gold, &gold_again, Some(&heap)),
+            Some(true)
+        );
+        assert_eq!(
+            heap_string_values_equal(&gold, &xp, Some(&heap)),
+            Some(false)
+        );
+        assert_eq!(heap_string_values_equal(&gold, &array, Some(&heap)), None);
+        assert_eq!(heap_string_values_equal(&gold, &gold_again, None), None);
+    }
 }

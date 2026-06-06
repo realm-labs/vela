@@ -2826,6 +2826,40 @@ while preserving sorted field slots, shape IDs, heap storage, budget charging,
 source-spanned errors, and duplicate-field fallback behavior.
 ```
 
+### 2026-06-06 M19 Heap String Equality Checkpoint
+
+This checkpoint restores a direct string equality fast path for the compact
+heap-ref value layout. `values_equal` now compares two `HeapRef` values
+directly when both point at heap strings, avoiding materializing and cloning
+both strings into owned values. Scalar values still use the existing direct
+path, and non-string heap refs continue through the existing materialized
+aggregate equality path.
+
+Validation:
+
+```bash
+cargo test -p vela_vm heap_string_equality -- --nocapture
+cargo test -p vela_vm execution_core -- --nocapture
+cargo fmt --all -- --check
+cargo clippy -p vela_vm --all-targets -- -D warnings
+cargo bench -p vela_vm --bench baseline scalar_dispatch_mix -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| scalar_dispatch_mix | 790374 | 711958 | 695354 | 15308784822820424249 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The focused win is in scalar_dispatch_mix, where the
+hot loop repeatedly compares the script string label against a string literal.
+The accepted path preserves no-heap and non-string heap-ref fallback behavior,
+while avoiding cloned owned string materialization for heap string equality.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
