@@ -1,5 +1,11 @@
-fn main() {
+fn main(player) {
     let manual = game::bonus_manual(3, 4);
     let generated = game::bonus_macro(10, 7);
-    return manual + generated;
+    let collection = game::collection_bonus(
+        { "quest": 5, "raid": 8 },
+        ["vip", "daily"],
+    );
+    let level = game::grant_level(player, collection);
+
+    return manual + generated + level;
 }

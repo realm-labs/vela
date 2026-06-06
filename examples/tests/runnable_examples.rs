@@ -65,7 +65,7 @@ fn game_server_examples_run() {
         (env!("CARGO_BIN_EXE_modules"), "module_result=Int(16)\n"),
         (
             env!("CARGO_BIN_EXE_native_function"),
-            "native_function_result=Int(29)\n",
+            "native_function_result=Int(45) final_level=16\n",
         ),
     ];
 
