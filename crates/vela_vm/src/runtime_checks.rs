@@ -3,7 +3,8 @@ use vela_host::path::HostRef;
 
 use crate::heap::HeapValue;
 use crate::owned_value::OwnedValue;
-use crate::{ClosureValue, HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::value::ClosureValue;
+use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> {
     match value {

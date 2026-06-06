@@ -5,10 +5,10 @@ use vela_common::Span;
 
 use crate::heap::HeapValue;
 use crate::runtime_checks::expect_closure;
+use crate::value::ClosureValue;
 use crate::{
-    CallFrame, ClosureValue, ExecutionBudget, ExecutionCall, HeapExecution, HostExecution,
-    SmallStorage, Value, Vm, VmError, VmErrorKind, VmResult, allocate_heap_value,
-    store_value_in_heap_if_needed,
+    CallFrame, ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value,
+    Vm, VmError, VmErrorKind, VmResult, allocate_heap_value, store_value_in_heap_if_needed,
 };
 
 pub(crate) struct MakeClosure<'a> {

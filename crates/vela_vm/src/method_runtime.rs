@@ -2,7 +2,8 @@ use vela_bytecode::Program;
 
 use crate::heap::{GcRef, HeapValue};
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
+    ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmError,
+    VmErrorKind, VmResult,
 };
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
@@ -31,7 +32,7 @@ pub(crate) fn call_callback_with_protected_values<'value>(
     args: &[Value],
     protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
-    let closure = match callback {
+    let (code, captures) = match callback {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Closure(closure)) = runtime
                 .heap
@@ -40,7 +41,12 @@ pub(crate) fn call_callback_with_protected_values<'value>(
             else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
             };
-            closure.clone()
+            (
+                closure.code.clone(),
+                SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
+                    Ok::<_, VmError>(*value)
+                })?,
+            )
         }
         _ => return Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     };
@@ -50,10 +56,15 @@ pub(crate) fn call_callback_with_protected_values<'value>(
         heap.protect_value_refs(protected_values);
         protected_root_len
     });
-    let result = runtime.vm.execute_closure_value(
-        &closure,
-        runtime.program,
-        args,
+    let result = runtime.vm.execute_call(
+        ExecutionCall {
+            code: &code,
+            program: runtime.program,
+            captures: captures.as_slice(),
+            args,
+            call_site: None,
+            call_site_offset: None,
+        },
         runtime.host.as_deref_mut(),
         runtime.heap.as_deref_mut(),
         runtime.budget.as_deref_mut(),

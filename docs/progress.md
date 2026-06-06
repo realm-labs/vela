@@ -128,7 +128,9 @@ Cranelift JIT.
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a
   focused VM boundary that preserves capture materialization, protected roots,
-  and call-site offsets while leaving room for callback/closure allocation work.
+  and call-site offsets. Higher-order callback dispatch now reuses the shared
+  execution-call descriptor and materializes closure captures through inline
+  small storage instead of cloning the full closure value on each callback.
 
 ### Remaining Gaps
 

@@ -84,15 +84,15 @@ use vela_reflect as reflect;
 use vela_reflect::registry::TypeRegistry;
 
 use budget::ExecutionBudget;
-use value::{ClosureValue, Value};
+use value::Value;
 
-struct ExecutionCall<'a> {
-    code: &'a CodeObject,
-    program: Option<&'a Program>,
-    captures: &'a [Value],
-    args: &'a [Value],
-    call_site: Option<Span>,
-    call_site_offset: Option<InstructionOffset>,
+pub(crate) struct ExecutionCall<'a> {
+    pub(crate) code: &'a CodeObject,
+    pub(crate) program: Option<&'a Program>,
+    pub(crate) captures: &'a [Value],
+    pub(crate) args: &'a [Value],
+    pub(crate) call_site: Option<Span>,
+    pub(crate) call_site_offset: Option<InstructionOffset>,
 }
 
 impl ExecutionCall<'_> {
@@ -582,7 +582,7 @@ impl Vm {
         )
     }
 
-    fn execute_call(
+    pub(crate) fn execute_call(
         &self,
         call: ExecutionCall<'_>,
         host: Option<&mut HostExecution<'_>>,
@@ -612,30 +612,6 @@ impl Vm {
             budget.exit_call();
         }
         result
-    }
-
-    pub(crate) fn execute_closure_value(
-        &self,
-        closure: &ClosureValue,
-        program: Option<&Program>,
-        args: &[Value],
-        host: Option<&mut HostExecution<'_>>,
-        heap: Option<&mut HeapExecution<'_>>,
-        budget: Option<&mut ExecutionBudget>,
-    ) -> VmResult<Value> {
-        self.execute_call(
-            ExecutionCall {
-                code: &closure.code,
-                program,
-                captures: &closure.captures,
-                args,
-                call_site: None,
-                call_site_offset: None,
-            },
-            host,
-            heap,
-            budget,
-        )
     }
 
     pub(crate) fn execute_code_object(
