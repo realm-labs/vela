@@ -109,13 +109,26 @@ impl Vm {
                         Constant::Bool(value) => Value::Bool(*value),
                         Constant::Int(value) => Value::Int(*value),
                         Constant::Float(value) => Value::Float(*value),
-                        Constant::String(_) | Constant::Array(_) | Constant::Map(_) => {
-                            value_from_constant(
-                                constant_value,
-                                heap.as_deref_mut(),
-                                budget.as_deref_mut(),
-                            )?
+                        Constant::String(value) => {
+                            if let Some(value) = loaded_string_constant(
+                                frame.read(*dst).ok(),
+                                value,
+                                heap.as_deref(),
+                            ) {
+                                value
+                            } else {
+                                value_from_constant(
+                                    constant_value,
+                                    heap.as_deref_mut(),
+                                    budget.as_deref_mut(),
+                                )?
+                            }
                         }
+                        Constant::Array(_) | Constant::Map(_) => value_from_constant(
+                            constant_value,
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                        )?,
                     };
                     frame.write(*dst, value)?;
                 }
@@ -1512,5 +1525,53 @@ fn runtime_fields_from_registers(
             })
             .collect::<VmResult<Vec<_>>>()
             .map(|fields| ScriptFields::from_pairs(owner, fields)),
+    }
+}
+
+fn loaded_string_constant(
+    current: Option<&Value>,
+    constant: &str,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<Value> {
+    let Value::HeapRef(reference) = current? else {
+        return None;
+    };
+    match heap?.heap.get(*reference)? {
+        HeapValue::String(value) if value == constant => Some(Value::HeapRef(*reference)),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::heap::ScriptHeap;
+
+    use super::*;
+
+    #[test]
+    fn loaded_string_constant_reuses_matching_heap_string() {
+        let mut heap = ScriptHeap::new();
+        let tick = Value::HeapRef(heap.allocate(HeapValue::String("tick".to_owned())));
+        let other = Value::HeapRef(heap.allocate(HeapValue::String("other".to_owned())));
+        let array = Value::HeapRef(heap.allocate(HeapValue::Array(Vec::new())));
+        let heap = HeapExecution::new(&mut heap);
+
+        assert_eq!(
+            loaded_string_constant(Some(&tick), "tick", Some(&heap)),
+            Some(tick)
+        );
+        assert_eq!(
+            loaded_string_constant(Some(&other), "tick", Some(&heap)),
+            None
+        );
+        assert_eq!(
+            loaded_string_constant(Some(&array), "tick", Some(&heap)),
+            None
+        );
+        assert_eq!(loaded_string_constant(Some(&tick), "tick", None), None);
+        assert_eq!(
+            loaded_string_constant(Some(&Value::Null), "tick", Some(&heap)),
+            None
+        );
     }
 }

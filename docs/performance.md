@@ -2860,6 +2860,43 @@ The accepted path preserves no-heap and non-string heap-ref fallback behavior,
 while avoiding cloned owned string materialization for heap string equality.
 ```
 
+### 2026-06-06 M19 String Constant Register Reuse Checkpoint
+
+This checkpoint keeps repeated string constant loads from allocating a new heap
+string when the destination register already holds the same heap string. The
+optimization is deliberately local to the current register slot: it does not
+introduce global string interning, does not reuse array or map constants, and
+falls back to the existing heap allocation path when the current slot is empty,
+non-string, different text, or not backed by a live heap object.
+
+Validation:
+
+```bash
+cargo test -p vela_vm loaded_string_constant -- --nocapture
+cargo test -p vela_vm execution_core -- --nocapture
+cargo test -p vela_vm consts -- --nocapture
+cargo fmt --all -- --check
+cargo clippy -p vela_vm --all-targets -- -D warnings
+cargo bench -p vela_vm --bench baseline scalar_dispatch_mix -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| scalar_dispatch_mix | 689937 | 625292 | 564645 | 15308784822820424249 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable for the accepted scalar target. The focused win comes
+from the hot loop repeatedly loading and comparing the same "tick" string
+literal. The `gc_pacing` guardrail checksum changes under this optimization
+because its checksum intentionally includes GC statistics and live heap bytes;
+reusing a matching string constant register reduces repeated string allocation
+pressure while preserving the script return value.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
