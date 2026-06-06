@@ -78,7 +78,7 @@ use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
     CallArgument, CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register,
 };
-use vela_common::{Span, SymbolInterner};
+use vela_common::{FunctionId, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::path::HostPath;
 use vela_host::tx::PatchTx;
@@ -121,7 +121,9 @@ pub type HostNativeFunction = Arc<
 #[derive(Clone, Default)]
 pub struct Vm {
     natives: HashMap<String, NativeFunction>,
+    native_ids: HashMap<FunctionId, NativeFunction>,
     host_natives: HashMap<String, HostNativeFunction>,
+    host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     type_registry: Option<Arc<TypeRegistry>>,
     host_path_symbols: RefCell<SymbolInterner>,
 }
@@ -145,6 +147,17 @@ impl Vm {
         self.natives.insert(name.into(), Arc::new(function));
     }
 
+    pub fn register_native_with_id(
+        &mut self,
+        id: FunctionId,
+        name: impl Into<String>,
+        function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
+    ) {
+        let function = Arc::new(function) as NativeFunction;
+        self.natives.insert(name.into(), Arc::clone(&function));
+        self.native_ids.insert(id, function);
+    }
+
     pub fn register_host_native(
         &mut self,
         name: impl Into<String>,
@@ -157,6 +170,22 @@ impl Vm {
             name.into(),
             Arc::new(move |args, host, _budget| function(args, host)),
         );
+    }
+
+    pub fn register_host_native_with_id(
+        &mut self,
+        id: FunctionId,
+        name: impl Into<String>,
+        function: impl for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let name = name.into();
+        self.register_host_native(name.clone(), function);
+        if let Some(function) = self.host_natives.get(&name) {
+            self.host_native_ids.insert(id, Arc::clone(function));
+        }
     }
 
     pub fn register_budgeted_host_native(
@@ -172,6 +201,24 @@ impl Vm {
         + 'static,
     ) {
         self.host_natives.insert(name.into(), Arc::new(function));
+    }
+
+    pub fn register_budgeted_host_native_with_id(
+        &mut self,
+        id: FunctionId,
+        name: impl Into<String>,
+        function: impl for<'host, 'budget> Fn(
+            &[OwnedValue],
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let function = Arc::new(function) as HostNativeFunction;
+        self.host_natives.insert(name.into(), Arc::clone(&function));
+        self.host_native_ids.insert(id, function);
     }
 
     pub fn register_standard_natives(&mut self) {

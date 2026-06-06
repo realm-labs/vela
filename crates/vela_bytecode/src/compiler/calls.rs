@@ -86,10 +86,12 @@ impl Compiler<'_> {
         } else {
             let fallback_name = callable_name(callee)?;
             let arg_registers = self.compile_native_call_args(&fallback_name, args, callee.span)?;
+            let native = self.facts.options.native_function_id(&fallback_name);
             self.emit_spanned(
                 InstructionKind::CallNative {
                     dst: Some(dst),
                     name: fallback_name,
+                    native,
                     args: arg_registers,
                 },
                 expr.span,

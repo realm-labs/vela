@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use vela_common::{FieldId, HostMethodId};
+use vela_common::{FieldId, FunctionId, HostMethodId};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompilerOptions {
@@ -14,7 +14,7 @@ pub struct CompilerOptions {
     pub(super) value_method_params_by_type: HashMap<(String, String), Vec<ValueMethodParam>>,
     pub(super) host_types: HashSet<String>,
     pub(super) native_module_roots: HashSet<String>,
-    pub(super) native_function_params: HashMap<String, Vec<NativeFunctionParam>>,
+    pub(super) native_functions: HashMap<String, NativeFunctionInfo>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -33,6 +33,12 @@ pub(super) struct HostFieldInfo {
 pub(super) struct ValueMethodParam {
     pub(super) name: String,
     pub(super) has_default: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct NativeFunctionInfo {
+    pub(super) id: Option<FunctionId>,
+    pub(super) params: Vec<NativeFunctionParam>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -195,12 +201,33 @@ impl CompilerOptions {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.native_function_params.insert(
+        self.native_functions.insert(
             name.into(),
-            params
-                .into_iter()
-                .map(|name| NativeFunctionParam { name: name.into() })
-                .collect(),
+            NativeFunctionInfo {
+                id: None,
+                params: native_function_params(params),
+            },
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn with_native_function<I, S>(
+        mut self,
+        name: impl Into<String>,
+        id: FunctionId,
+        params: I,
+    ) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.native_functions.insert(
+            name.into(),
+            NativeFunctionInfo {
+                id: Some(id),
+                params: native_function_params(params),
+            },
         );
         self
     }
@@ -275,6 +302,25 @@ impl CompilerOptions {
     }
 
     pub(super) fn native_function_params(&self, name: &str) -> Option<&[NativeFunctionParam]> {
-        self.native_function_params.get(name).map(Vec::as_slice)
+        self.native_functions
+            .get(name)
+            .map(|function| function.params.as_slice())
     }
+
+    pub(super) fn native_function_id(&self, name: &str) -> Option<FunctionId> {
+        self.native_functions
+            .get(name)
+            .and_then(|function| function.id)
+    }
+}
+
+fn native_function_params<I, S>(params: I) -> Vec<NativeFunctionParam>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    params
+        .into_iter()
+        .map(|name| NativeFunctionParam { name: name.into() })
+        .collect()
 }

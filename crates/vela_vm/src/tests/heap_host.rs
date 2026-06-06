@@ -139,6 +139,7 @@ fn managed_heap_execution_releases_budget_after_errors() {
     code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(1)),
         name: "missing".into(),
+        native: None,
         args: Vec::new(),
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {

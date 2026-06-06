@@ -13,8 +13,9 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
         }
     }
     for function in registry.functions() {
-        options = options.with_native_function_params(
+        options = options.with_native_function(
             function.name.clone(),
+            function.id,
             function.params.iter().map(|param| param.name.clone()),
         );
     }

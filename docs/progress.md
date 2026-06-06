@@ -97,6 +97,9 @@ Cranelift JIT.
   need reusable path keys, method and stdlib dispatch need ID/target lookup,
   callback and closure calls need lower materialization overhead, and hot
   bytecode offsets need versioned ownership for invalidation.
+- M19.5 has started with native call operands: compiled native calls can carry
+  stable `FunctionId` metadata while preserving names for diagnostics and
+  fallback, and Engine-installed native functions register ID lookup targets.
 
 ### Remaining Gaps
 

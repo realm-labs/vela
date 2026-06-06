@@ -86,6 +86,7 @@ fn calls_registered_native_functions() {
     code.push_instruction(Instruction::new(InstructionKind::CallNative {
         dst: Some(Register(1)),
         name: "log".into(),
+        native: None,
         args: vec![Register(0)],
     }));
     code.push_instruction(Instruction::new(InstructionKind::Return {
@@ -93,6 +94,55 @@ fn calls_registered_native_functions() {
     }));
 
     assert_eq!(vm.run(&code), Ok(OwnedValue::Null));
+}
+
+#[test]
+fn call_native_uses_resolved_id_before_name_fallback() {
+    let native_id = vela_common::FunctionId::new(77);
+    let mut vm = Vm::new();
+    vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
+    vm.register_native_with_id(native_id, "resolved_name", |_| Ok(OwnedValue::Int(2)));
+
+    let mut code = CodeObject::new("native_id", 1);
+    code.push_instruction(Instruction::new(InstructionKind::CallNative {
+        dst: Some(Register(0)),
+        name: "diagnostic_name".into(),
+        native: Some(native_id),
+        args: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(0),
+    }));
+
+    assert_eq!(vm.run(&code), Ok(OwnedValue::Int(2)));
+}
+
+#[test]
+fn call_native_uses_resolved_host_id_before_name_fallback() {
+    let native_id = FunctionId::new(78);
+    let mut vm = Vm::new();
+    vm.register_native("diagnostic_name", |_| Ok(OwnedValue::Int(1)));
+    vm.register_host_native_with_id(native_id, "resolved_host", |_, _| Ok(OwnedValue::Int(3)));
+
+    let mut code = CodeObject::new("host_native_id", 1);
+    code.push_instruction(Instruction::new(InstructionKind::CallNative {
+        dst: Some(Register(0)),
+        name: "diagnostic_name".into(),
+        native: Some(native_id),
+        args: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(0),
+    }));
+
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(vm.run_with_host(&code, &mut host), Ok(OwnedValue::Int(3)));
 }
 
 #[test]

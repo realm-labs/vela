@@ -226,37 +226,64 @@ impl Vm {
                     validate_jump(code, target.0)?;
                     ip = target.0;
                 }
-                InstructionKind::CallNative { dst, name, args } => {
+                InstructionKind::CallNative {
+                    dst,
+                    name,
+                    native,
+                    args,
+                } => {
+                    enum NativeCallTarget<'a> {
+                        Pure(&'a NativeFunction),
+                        Host(&'a HostNativeFunction),
+                    }
+
                     let values = native_call_args_from_registers(&frame, args, heap.as_deref())?;
-                    let result = if let Some(native) = self.natives.get(name) {
-                        native(values.as_slice())
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?
-                    } else if let Some(native) = self.host_natives.get(name) {
-                        let host = host.as_deref_mut().ok_or_else(|| {
-                            VmError::new(VmErrorKind::TypeMismatch {
-                                operation: "host context",
-                            })
-                        })?;
-                        let tx_checkpoint = host.tx.clone();
-                        let result = match native(values.as_slice(), host, budget.as_deref_mut()) {
-                            Ok(result) => result,
-                            Err(error) => {
+                    let target = native
+                        .and_then(|id| {
+                            self.native_ids
+                                .get(&id)
+                                .map(NativeCallTarget::Pure)
+                                .or_else(|| {
+                                    self.host_native_ids.get(&id).map(NativeCallTarget::Host)
+                                })
+                        })
+                        .or_else(|| self.natives.get(name).map(NativeCallTarget::Pure))
+                        .or_else(|| self.host_natives.get(name).map(NativeCallTarget::Host));
+                    let result = match target {
+                        Some(NativeCallTarget::Pure(native)) => native(values.as_slice())
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
+                        Some(NativeCallTarget::Host(native)) => {
+                            let host = host.as_deref_mut().ok_or_else(|| {
+                                VmError::new(VmErrorKind::TypeMismatch {
+                                    operation: "host context",
+                                })
+                            })?;
+                            let tx_checkpoint = host.tx.clone();
+                            let result =
+                                match native(values.as_slice(), host, budget.as_deref_mut()) {
+                                    Ok(result) => result,
+                                    Err(error) => {
+                                        *host.tx = tx_checkpoint;
+                                        return Err(
+                                            error.with_source_span_if_absent(instruction.span)
+                                        );
+                                    }
+                                };
+                            if let Some(budget) = budget.as_deref()
+                                && let Err(error) =
+                                    budget.check_patch_count(host.tx.patches().len())
+                            {
                                 *host.tx = tx_checkpoint;
                                 return Err(error.with_source_span_if_absent(instruction.span));
                             }
-                        };
-                        if let Some(budget) = budget.as_deref()
-                            && let Err(error) = budget.check_patch_count(host.tx.patches().len())
-                        {
-                            *host.tx = tx_checkpoint;
-                            return Err(error.with_source_span_if_absent(instruction.span));
+                            result
                         }
-                        result
-                    } else {
-                        return Err(VmError::new(VmErrorKind::UnknownNative {
-                            name: name.clone(),
-                        })
-                        .with_source_span_if_absent(instruction.span));
+                        None => {
+                            return Err(VmError::new(VmErrorKind::UnknownNative {
+                                name: name.clone(),
+                            })
+                            .with_source_span_if_absent(instruction.span));
+                        }
                     };
                     if let (Some(budget), Some(host)) = (budget.as_deref(), host.as_deref()) {
                         budget.check_patch_count(host.tx.patches().len())?;

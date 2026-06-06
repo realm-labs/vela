@@ -123,6 +123,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_named_native_args_from_compiler_options() {
+    let native_id = vela_common::FunctionId::new(77);
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"
@@ -132,14 +133,15 @@ fn main() {
 "#,
         &CompilerOptions::new()
             .with_native_module_root("game")
-            .with_native_function_params("game::add", ["lhs", "rhs"]),
+            .with_native_function("game::add", native_id, ["lhs", "rhs"]),
     )
     .expect("named native args should compile with descriptor metadata");
     let main = program.function("main").expect("main function");
 
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        InstructionKind::CallNative { name, args, .. } if name == "game::add" && args.len() == 2
+        InstructionKind::CallNative { name, native, args, .. }
+            if name == "game::add" && *native == Some(native_id) && args.len() == 2
     )));
 }
 

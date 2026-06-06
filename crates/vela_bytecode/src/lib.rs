@@ -5,7 +5,7 @@ pub mod script_methods;
 
 use std::collections::BTreeMap;
 
-use vela_common::{FieldId, HostMethodId, MethodId, Span};
+use vela_common::{FieldId, FunctionId, HostMethodId, MethodId, Span};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 
@@ -354,6 +354,7 @@ pub enum InstructionKind {
     CallNative {
         dst: Option<Register>,
         name: String,
+        native: Option<FunctionId>,
         args: Vec<Register>,
     },
     CallFunction {
