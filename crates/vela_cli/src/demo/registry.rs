@@ -1,3 +1,4 @@
+use vela_engine::clock::CONTEXT_TIME_PERMISSION;
 use vela_engine::context_schema::context_host_type_desc;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
@@ -15,7 +16,7 @@ use crate::demo::DemoEngineOptions;
 
 pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine> {
     let registry = demo_support_type_registry(ids);
-    let mut permissions = PermissionSet::gameplay();
+    let mut permissions = PermissionSet::new().with(CONTEXT_TIME_PERMISSION);
     if options.allow_random {
         permissions.insert(CONTROLLED_RANDOM_PERMISSION);
     }
@@ -115,7 +116,7 @@ struct Monster {
 #[derive(ScriptHost)]
 #[script(
     path = "game::config::Config",
-    docs = "Demo gameplay configuration exposed through context host paths."
+    docs = "Demo host configuration exposed through context host paths."
 )]
 struct Config {
     #[script(get, hint = "int", docs = "Experience threshold for the next level.")]

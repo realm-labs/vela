@@ -44,7 +44,7 @@ fn main(player: Player, amount: int) {
         .call(
             "main",
             &args,
-            CallOptions::gameplay(),
+            CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         )
@@ -148,7 +148,7 @@ pub const BASE: int = 10;
         runtime.call(
             "game::main::main",
             &args![5],
-            CallOptions::gameplay(),
+            CallOptions::unbounded(),
             &mut adapter,
             &mut tx
         ),

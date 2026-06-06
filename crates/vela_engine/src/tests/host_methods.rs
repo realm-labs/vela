@@ -48,7 +48,7 @@ fn main(player: Player) {
         .call(
             "main",
             &[OwnedValue::HostRef(host_ref)],
-            CallOptions::gameplay(),
+            CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         )

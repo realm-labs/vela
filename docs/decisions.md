@@ -26,6 +26,9 @@ decision history lives in
   commerce-specific, or other business-domain capabilities belong in Engine
   host registration, native functions, schemas, or examples, not in builtin
   language surface.
+- Runtime call budget presets should stay domain-neutral. Hosts should choose
+  per-script or per-call budgets explicitly with `CallOptions::new(...)`;
+  `CallOptions` intentionally has no default preset.
 
 ## Active Architecture Decisions
 

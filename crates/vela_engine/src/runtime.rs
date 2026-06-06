@@ -363,11 +363,6 @@ impl CallOptions {
     }
 
     #[must_use]
-    pub const fn gameplay() -> Self {
-        Self::new(50_000, 4 * 1024 * 1024, 64, 1024)
-    }
-
-    #[must_use]
     pub const fn unbounded() -> Self {
         Self::new(u64::MAX, usize::MAX, usize::MAX, usize::MAX)
     }
@@ -385,11 +380,5 @@ impl CallOptions {
             self.call_depth,
             self.patch_budget,
         )
-    }
-}
-
-impl Default for CallOptions {
-    fn default() -> Self {
-        Self::gameplay()
     }
 }

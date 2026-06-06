@@ -16,7 +16,7 @@ pub(crate) fn context_module_desc() -> ModuleDesc {
     ModuleDesc::new("ctx")
         .docs("Deterministic context helpers.")
         .attr("stdlib", "context")
-        .attr("domain", "gameplay")
+        .attr("domain", "context")
 }
 
 pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry; 3] {

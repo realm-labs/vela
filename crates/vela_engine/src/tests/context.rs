@@ -73,8 +73,8 @@ fn main() {
 }
 
 #[test]
-fn gameplay_permissions_allow_context_time_but_not_random() {
-    let permissions = PermissionSet::gameplay();
+fn explicit_permissions_allow_context_time_but_not_random() {
+    let permissions = PermissionSet::new().with(CONTEXT_TIME_PERMISSION);
     assert!(permissions.contains(CONTEXT_TIME_PERMISSION));
     assert!(!permissions.contains(CONTROLLED_RANDOM_PERMISSION));
 
@@ -191,7 +191,7 @@ fn engine_context_clock_registers_metadata() {
         Some("Deterministic context helpers.")
     );
     assert_eq!(module.attrs.get("stdlib"), Some("context"));
-    assert_eq!(module.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(module.attrs.get("domain"), Some("context"));
     assert_eq!(module.exports.len(), 3);
     assert!(
         module
@@ -269,18 +269,18 @@ fn engine_context_host_schema_registers_metadata() {
     assert_eq!(context.key.id, CONTEXT_TYPE_ID);
     assert_eq!(context.host_type_id, Some(CONTEXT_HOST_TYPE_ID));
     assert_eq!(context.attrs.get("stdlib"), Some("context"));
-    assert_eq!(context.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(context.attrs.get("domain"), Some("context"));
     assert_eq!(context.fields.len(), 2);
     assert_eq!(context.fields[0].id, CONTEXT_NOW_FIELD_ID);
     assert_eq!(context.fields[0].name, "now");
     assert_eq!(context.fields[0].type_hint.as_deref(), Some("int"));
     assert_eq!(context.fields[0].attrs.get("stdlib"), Some("context"));
-    assert_eq!(context.fields[0].attrs.get("domain"), Some("gameplay"));
+    assert_eq!(context.fields[0].attrs.get("domain"), Some("context"));
     assert_eq!(context.fields[1].id, CONTEXT_TICK_FIELD_ID);
     assert_eq!(context.fields[1].name, "tick");
     assert_eq!(context.fields[1].type_hint.as_deref(), Some("int"));
     assert_eq!(context.fields[1].attrs.get("stdlib"), Some("context"));
-    assert_eq!(context.fields[1].attrs.get("domain"), Some("gameplay"));
+    assert_eq!(context.fields[1].attrs.get("domain"), Some("context"));
 
     let emit = context
         .methods
@@ -294,7 +294,7 @@ fn engine_context_host_schema_registers_metadata() {
     assert_eq!(emit.params[0].type_hint.as_deref(), Some("string"));
     assert_eq!(emit.return_type.as_deref(), Some("null"));
     assert_eq!(emit.attrs.get("stdlib"), Some("context"));
-    assert_eq!(emit.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(emit.attrs.get("domain"), Some("context"));
 
     let log = context
         .methods
@@ -308,7 +308,7 @@ fn engine_context_host_schema_registers_metadata() {
     assert_eq!(log.params[1].name, "message");
     assert_eq!(log.return_type.as_deref(), Some("null"));
     assert_eq!(log.attrs.get("stdlib"), Some("context"));
-    assert_eq!(log.attrs.get("domain"), Some("gameplay"));
+    assert_eq!(log.attrs.get("domain"), Some("context"));
 }
 
 #[test]
@@ -329,25 +329,25 @@ fn main() {
     let log = reflect::method(context, "log");
     return reflect::docs(context) == "Standard host context object for deterministic time, events, and logging."
         && reflect::attr(context, "stdlib") == "context"
-        && reflect::attr(context, "domain") == "gameplay"
+        && reflect::attr(context, "domain") == "context"
         && fields.len() == 2
         && fields[0].name == "now"
         && reflect::docs(fields[0]) == "Current deterministic context timestamp."
         && reflect::attr(fields[0], "stdlib") == "context"
-        && reflect::attr(fields[0], "domain") == "gameplay"
+        && reflect::attr(fields[0], "domain") == "context"
         && fields[1].name == "tick"
         && reflect::docs(fields[1]) == "Current deterministic context tick."
         && reflect::attr(fields[1], "stdlib") == "context"
-        && reflect::attr(fields[1], "domain") == "gameplay"
+        && reflect::attr(fields[1], "domain") == "context"
         && methods.len() == 2
         && emit.owner == "Context"
         && reflect::docs(emit) == "Records an event emission patch for the host safe point."
         && reflect::attr(emit, "stdlib") == "context"
-        && reflect::attr(emit, "domain") == "gameplay"
+        && reflect::attr(emit, "domain") == "context"
         && log.owner == "Context"
         && reflect::docs(log) == "Records a log patch for the host safe point."
         && reflect::attr(log, "stdlib") == "context"
-        && reflect::attr(log, "domain") == "gameplay";
+        && reflect::attr(log, "domain") == "context";
 }
 "#,
         &engine.compiler_options(),

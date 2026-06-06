@@ -18,20 +18,20 @@ pub fn context_host_type_desc() -> TypeDesc {
         .host_type(CONTEXT_HOST_TYPE_ID)
         .docs("Standard host context object for deterministic time, events, and logging.")
         .attr("stdlib", "context")
-        .attr("domain", "gameplay")
+        .attr("domain", "context")
         .field(
             FieldDesc::new(CONTEXT_NOW_FIELD_ID, "now")
                 .type_hint("int")
                 .docs("Current deterministic context timestamp.")
                 .attr("stdlib", "context")
-                .attr("domain", "gameplay"),
+                .attr("domain", "context"),
         )
         .field(
             FieldDesc::new(CONTEXT_TICK_FIELD_ID, "tick")
                 .type_hint("int")
                 .docs("Current deterministic context tick.")
                 .attr("stdlib", "context")
-                .attr("domain", "gameplay"),
+                .attr("domain", "context"),
         )
         .method(
             MethodDesc::new(CONTEXT_EMIT_METHOD_ID, "emit")
@@ -46,7 +46,7 @@ pub fn context_host_type_desc() -> TypeDesc {
                 .access(MethodAccess::new().reflect_callable(true))
                 .docs("Records an event emission patch for the host safe point.")
                 .attr("stdlib", "context")
-                .attr("domain", "gameplay"),
+                .attr("domain", "context"),
         )
         .method(
             MethodDesc::new(CONTEXT_LOG_METHOD_ID, "log")
@@ -62,6 +62,6 @@ pub fn context_host_type_desc() -> TypeDesc {
                 .access(MethodAccess::new().reflect_callable(true))
                 .docs("Records a log patch for the host safe point.")
                 .attr("stdlib", "context")
-                .attr("domain", "gameplay"),
+                .attr("domain", "context"),
         )
 }

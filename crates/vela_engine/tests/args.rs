@@ -322,7 +322,7 @@ fn main(player: Player, amount: int) {
         .call(
             "main",
             &args,
-            CallOptions::gameplay(),
+            CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
         )
