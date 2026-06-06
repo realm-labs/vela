@@ -26,6 +26,23 @@ pub struct ScriptFields<T> {
 
 impl<T> ScriptFields<T> {
     #[must_use]
+    pub fn empty(owner: &str) -> Self {
+        Self {
+            shape_id: shape_id(owner, std::iter::empty()),
+            slots: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn single(owner: &str, name: impl Into<String>, value: T) -> Self {
+        let name = name.into();
+        Self {
+            shape_id: shape_id(owner, std::iter::once(name.as_str())),
+            slots: vec![FieldSlot::new(name, value)],
+        }
+    }
+
+    #[must_use]
     pub fn from_pairs(owner: &str, fields: impl IntoIterator<Item = (String, T)>) -> Self {
         let fields = fields.into_iter().collect::<BTreeMap<_, _>>();
         let shape_id = shape_id(owner, fields.keys().map(String::as_str));
@@ -178,5 +195,23 @@ mod tests {
             first.iter().map(|(name, _)| name).collect::<Vec<_>>(),
             ["count", "item_id"]
         );
+    }
+
+    #[test]
+    fn single_field_constructor_matches_pair_shape() {
+        let from_pairs = ScriptFields::from_pairs("Option::Some", [("0".to_owned(), 7)]);
+        let single = ScriptFields::single("Option::Some", "0", 7);
+
+        assert_eq!(from_pairs.shape_id(), single.shape_id());
+        assert_eq!(from_pairs, single);
+    }
+
+    #[test]
+    fn empty_field_constructor_matches_empty_pair_shape() {
+        let from_pairs = ScriptFields::<i32>::from_pairs("Option::None", []);
+        let empty = ScriptFields::empty("Option::None");
+
+        assert_eq!(from_pairs.shape_id(), empty.shape_id());
+        assert_eq!(from_pairs, empty);
     }
 }

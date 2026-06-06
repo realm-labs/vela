@@ -2542,6 +2542,38 @@ were within noise or slightly slower, while the main value is concentrating
 materialization and receiver classification before later M19/M20 specialization
 work.
 
+### 2026-06-06 M19 Option/Result Fixed Field Construction Checkpoint
+
+This checkpoint adds `ScriptFields::empty` and `ScriptFields::single` for known
+empty and single-field shapes, then routes managed-heap and owned
+Option/Result constructors through those helpers. `Option::Some`, `Option::None`,
+`Result::Ok`, and `Result::Err` keep the same enum names, variant names, field
+names, shape IDs, GC tracing, and owned boundary behavior, but avoid building a
+temporary `Vec<(String, Value)>` and `BTreeMap` for the fixed `"0"` payload or
+empty field list.
+
+Validation:
+
+```bash
+cargo test -p vela_vm option_result
+cargo test -p vela_vm script_object
+cargo fmt --all -- --check
+cargo clippy -p vela_vm --all-targets -- -D warnings
+cargo bench -p vela_vm --bench baseline managed_heap_option_result_helpers -- --quick
+```
+
+Quick before/final means:
+
+| Benchmark | Before mean ns | Final mean ns | Checksum |
+|---|---:|---:|---:|
+| managed_heap_option_result_helpers | 22856042 | 20935166 | 1812806599834733941 |
+
+Checksums stayed stable. The focused helper workload improved by about 8.2% in
+the final quick run because repeated Option/Result construction no longer
+normalizes fixed one-field and empty shapes through the general pair-sorting
+path. Earlier quick reruns without static owner strings were flat to slower, so
+the accepted path keeps the optimization scoped to known Option/Result variants.
+
 ## Targets
 
 The post-MVP non-JIT target is:

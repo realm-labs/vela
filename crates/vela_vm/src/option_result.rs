@@ -3,7 +3,6 @@ use crate::owned_value::OwnedValue;
 use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, Value, Vm, VmError, VmErrorKind, VmResult, allocate_heap_value,
-    enum_variant_owner,
 };
 
 pub(crate) fn register(vm: &mut Vm) {
@@ -30,13 +29,9 @@ pub(crate) fn option_value(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match payload {
-        Some(payload) => enum_heap_value(
-            "Option",
-            "Some",
-            vec![("0".to_owned(), payload)],
-            heap,
-            budget,
-        ),
+        Some(payload) => {
+            enum_heap_payload_value("Option", "Some", "Option::Some", payload, heap, budget)
+        }
         None => option_none_value(heap, budget),
     }
 }
@@ -45,7 +40,7 @@ pub(crate) fn option_none_value(
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    enum_heap_value("Option", "None", Vec::new(), heap, budget)
+    enum_heap_empty_value("Option", "None", "Option::None", heap, budget)
 }
 
 pub(crate) fn result_value(
@@ -54,10 +49,36 @@ pub(crate) fn result_value(
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
+    let owner = match variant {
+        "Ok" => "Result::Ok",
+        "Err" => "Result::Err",
+        _ => return type_error("method result"),
+    };
+    enum_heap_payload_value("Result", variant, owner, payload, heap, budget)
+}
+
+fn enum_heap_empty_value(
+    enum_name: &str,
+    variant: &str,
+    owner: &str,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    enum_heap_value(enum_name, variant, ScriptFields::empty(owner), heap, budget)
+}
+
+fn enum_heap_payload_value(
+    enum_name: &str,
+    variant: &str,
+    owner: &str,
+    payload: Value,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
     enum_heap_value(
-        "Result",
+        enum_name,
         variant,
-        vec![("0".to_owned(), payload)],
+        ScriptFields::single(owner, "0", payload),
         heap,
         budget,
     )
@@ -66,7 +87,7 @@ pub(crate) fn result_value(
 fn enum_heap_value(
     enum_name: &str,
     variant: &str,
-    fields: Vec<(String, Value)>,
+    fields: ScriptFields<Value>,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
@@ -74,7 +95,7 @@ fn enum_heap_value(
         HeapValue::Enum {
             enum_name: enum_name.to_owned(),
             variant: variant.to_owned(),
-            fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
+            fields,
         },
         heap,
         budget,
@@ -82,11 +103,10 @@ fn enum_heap_value(
 }
 
 fn owned_option_value(payload: Option<OwnedValue>) -> OwnedValue {
-    let (variant, fields) = match payload {
-        Some(value) => ("Some", vec![("0".to_owned(), value)]),
-        None => ("None", Vec::new()),
-    };
-    owned_enum_value("Option", variant, fields)
+    match payload {
+        Some(value) => owned_enum_payload_value("Option", "Some", "Option::Some", value),
+        None => owned_enum_empty_value("Option", "None", "Option::None"),
+    }
 }
 
 fn option_some(args: &[OwnedValue]) -> VmResult<OwnedValue> {
@@ -208,18 +228,40 @@ fn result_flatten(args: &[OwnedValue]) -> VmResult<OwnedValue> {
 }
 
 fn owned_result_value(variant: &str, payload: OwnedValue) -> OwnedValue {
-    owned_enum_value("Result", variant, vec![("0".to_owned(), payload)])
+    let owner = match variant {
+        "Ok" => "Result::Ok",
+        "Err" => "Result::Err",
+        _ => "Result",
+    };
+    owned_enum_payload_value("Result", variant, owner, payload)
+}
+
+fn owned_enum_empty_value(enum_name: &str, variant: &str, owner: &str) -> OwnedValue {
+    owned_enum_value(enum_name, variant, ScriptFields::empty(owner))
+}
+
+fn owned_enum_payload_value(
+    enum_name: &str,
+    variant: &str,
+    owner: &str,
+    payload: OwnedValue,
+) -> OwnedValue {
+    owned_enum_value(
+        enum_name,
+        variant,
+        ScriptFields::single(owner, "0", payload),
+    )
 }
 
 fn owned_enum_value(
     enum_name: &str,
     variant: &str,
-    fields: Vec<(String, OwnedValue)>,
+    fields: ScriptFields<OwnedValue>,
 ) -> OwnedValue {
     OwnedValue::Enum {
         enum_name: enum_name.to_owned(),
         variant: variant.to_owned(),
-        fields: ScriptFields::from_pairs(&format!("{enum_name}::{variant}"), fields),
+        fields,
     }
 }
 
