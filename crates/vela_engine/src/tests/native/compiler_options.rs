@@ -96,6 +96,35 @@ fn main() {
 }
 
 #[test]
+fn engine_compiler_options_emit_standard_native_ids() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .build()
+        .expect("engine should build with standard natives");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return math::clamp(max = 10, value = 15, min = 1);
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("standard native should compile");
+    let main = program.function("main").expect("main should compile");
+
+    let native = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            InstructionKind::CallNative { name, native, .. } if name == "math::clamp" => *native,
+            _ => None,
+        });
+
+    assert_eq!(native, Some(crate::standard::MATH_CLAMP_FUNCTION_ID));
+}
+
+#[test]
 fn engine_compiler_options_lower_named_standard_value_method_arguments() {
     let engine = Engine::builder()
         .with_standard_natives()

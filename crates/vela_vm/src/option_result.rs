@@ -4,23 +4,62 @@ use crate::script_object::ScriptFields;
 use crate::{
     ExecutionBudget, HeapExecution, Value, Vm, VmError, VmErrorKind, VmResult, allocate_heap_value,
 };
+use vela_common::standard_ids::{
+    OPTION_FLATTEN_FUNCTION_ID, OPTION_IS_NONE_FUNCTION_ID, OPTION_IS_SOME_FUNCTION_ID,
+    OPTION_NONE_FUNCTION_ID, OPTION_OK_OR_FUNCTION_ID, OPTION_SOME_FUNCTION_ID,
+    OPTION_UNWRAP_OR_FUNCTION_ID, RESULT_ERR_FUNCTION_ID, RESULT_FLATTEN_FUNCTION_ID,
+    RESULT_IS_ERR_FUNCTION_ID, RESULT_IS_OK_FUNCTION_ID, RESULT_OK_FUNCTION_ID,
+    RESULT_TO_ERROR_OPTION_FUNCTION_ID, RESULT_TO_OPTION_FUNCTION_ID, RESULT_UNWRAP_OR_FUNCTION_ID,
+};
 
 pub(crate) fn register(vm: &mut Vm) {
-    vm.register_native("option::some", option_some);
-    vm.register_native("option::none", option_none);
-    vm.register_native("option::is_some", option_is_some);
-    vm.register_native("option::is_none", option_is_none);
-    vm.register_native("option::unwrap_or", option_unwrap_or);
-    vm.register_native("option::ok_or", option_ok_or);
-    vm.register_native("option::flatten", option_flatten);
-    vm.register_native("result::ok", result_ok);
-    vm.register_native("result::err", result_err);
-    vm.register_native("result::is_ok", result_is_ok);
-    vm.register_native("result::is_err", result_is_err);
-    vm.register_native("result::unwrap_or", result_unwrap_or);
-    vm.register_native("result::to_option", result_to_option);
-    vm.register_native("result::to_error_option", result_to_error_option);
-    vm.register_native("result::flatten", result_flatten);
+    vm.register_native_with_id(OPTION_SOME_FUNCTION_ID, "option::some", option_some);
+    vm.register_native_with_id(OPTION_NONE_FUNCTION_ID, "option::none", option_none);
+    vm.register_native_with_id(
+        OPTION_IS_SOME_FUNCTION_ID,
+        "option::is_some",
+        option_is_some,
+    );
+    vm.register_native_with_id(
+        OPTION_IS_NONE_FUNCTION_ID,
+        "option::is_none",
+        option_is_none,
+    );
+    vm.register_native_with_id(
+        OPTION_UNWRAP_OR_FUNCTION_ID,
+        "option::unwrap_or",
+        option_unwrap_or,
+    );
+    vm.register_native_with_id(OPTION_OK_OR_FUNCTION_ID, "option::ok_or", option_ok_or);
+    vm.register_native_with_id(
+        OPTION_FLATTEN_FUNCTION_ID,
+        "option::flatten",
+        option_flatten,
+    );
+    vm.register_native_with_id(RESULT_OK_FUNCTION_ID, "result::ok", result_ok);
+    vm.register_native_with_id(RESULT_ERR_FUNCTION_ID, "result::err", result_err);
+    vm.register_native_with_id(RESULT_IS_OK_FUNCTION_ID, "result::is_ok", result_is_ok);
+    vm.register_native_with_id(RESULT_IS_ERR_FUNCTION_ID, "result::is_err", result_is_err);
+    vm.register_native_with_id(
+        RESULT_UNWRAP_OR_FUNCTION_ID,
+        "result::unwrap_or",
+        result_unwrap_or,
+    );
+    vm.register_native_with_id(
+        RESULT_TO_OPTION_FUNCTION_ID,
+        "result::to_option",
+        result_to_option,
+    );
+    vm.register_native_with_id(
+        RESULT_TO_ERROR_OPTION_FUNCTION_ID,
+        "result::to_error_option",
+        result_to_error_option,
+    );
+    vm.register_native_with_id(
+        RESULT_FLATTEN_FUNCTION_ID,
+        "result::flatten",
+        result_flatten,
+    );
 }
 
 pub(crate) fn option_value(

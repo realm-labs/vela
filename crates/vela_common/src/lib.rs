@@ -1,6 +1,7 @@
 //! Shared foundations for Vela crates.
 
 pub mod diagnostic_render;
+pub mod standard_ids;
 
 use std::collections::HashMap;
 use std::fmt;

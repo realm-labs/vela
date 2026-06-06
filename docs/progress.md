@@ -99,7 +99,8 @@ Cranelift JIT.
   bytecode offsets need versioned ownership for invalidation.
 - M19.5 has started with native call operands: compiled native calls can carry
   stable `FunctionId` metadata while preserving names for diagnostics and
-  fallback, and Engine-installed native functions register ID lookup targets.
+  fallback, and Engine-installed plus standard native functions register ID
+  lookup targets.
 
 ### Remaining Gaps
 

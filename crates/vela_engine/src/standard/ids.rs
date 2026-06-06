@@ -1,40 +1,17 @@
-use vela_common::{FieldId, FunctionId, HostMethodId, TypeId, VariantId};
+use vela_common::{FieldId, HostMethodId, TypeId, VariantId};
 
-use crate::native::NativeFunctionId;
-
-pub const MATH_MAX_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0100);
-pub const MATH_MIN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0101);
-pub const MATH_CLAMP_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0102);
-pub const MATH_LERP_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0103);
-pub const MATH_MOVE_TOWARDS_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0104);
-pub const MATH_DISTANCE2D_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0105);
-pub const MATH_DISTANCE3D_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0106);
-pub const MATH_POW_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0107);
-pub const MATH_SQRT_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0108);
-pub const MATH_SIGN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0109);
-pub const MATH_FLOOR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_010a);
-pub const MATH_CEIL_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_010b);
-pub const MATH_ROUND_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_010c);
-pub const MATH_ABS_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_010d);
-
-pub const OPTION_SOME_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0200);
-pub const OPTION_NONE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0201);
-pub const OPTION_IS_SOME_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0202);
-pub const OPTION_IS_NONE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0203);
-pub const OPTION_UNWRAP_OR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0204);
-pub const OPTION_OK_OR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0205);
-pub const OPTION_FLATTEN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0206);
-
-pub const RESULT_OK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0300);
-pub const RESULT_ERR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0301);
-pub const RESULT_IS_OK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0302);
-pub const RESULT_IS_ERR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0303);
-pub const RESULT_UNWRAP_OR_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0304);
-pub const RESULT_TO_OPTION_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0305);
-pub const RESULT_TO_ERROR_OPTION_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0306);
-pub const RESULT_FLATTEN_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0307);
-
-pub const SET_FROM_ARRAY_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0400);
+pub use vela_common::standard_ids::{
+    MATH_ABS_FUNCTION_ID, MATH_CEIL_FUNCTION_ID, MATH_CLAMP_FUNCTION_ID,
+    MATH_DISTANCE2D_FUNCTION_ID, MATH_DISTANCE3D_FUNCTION_ID, MATH_FLOOR_FUNCTION_ID,
+    MATH_LERP_FUNCTION_ID, MATH_MAX_FUNCTION_ID, MATH_MIN_FUNCTION_ID,
+    MATH_MOVE_TOWARDS_FUNCTION_ID, MATH_POW_FUNCTION_ID, MATH_ROUND_FUNCTION_ID,
+    MATH_SIGN_FUNCTION_ID, MATH_SQRT_FUNCTION_ID, OPTION_FLATTEN_FUNCTION_ID,
+    OPTION_IS_NONE_FUNCTION_ID, OPTION_IS_SOME_FUNCTION_ID, OPTION_NONE_FUNCTION_ID,
+    OPTION_OK_OR_FUNCTION_ID, OPTION_SOME_FUNCTION_ID, OPTION_UNWRAP_OR_FUNCTION_ID,
+    RESULT_ERR_FUNCTION_ID, RESULT_FLATTEN_FUNCTION_ID, RESULT_IS_ERR_FUNCTION_ID,
+    RESULT_IS_OK_FUNCTION_ID, RESULT_OK_FUNCTION_ID, RESULT_TO_ERROR_OPTION_FUNCTION_ID,
+    RESULT_TO_OPTION_FUNCTION_ID, RESULT_UNWRAP_OR_FUNCTION_ID, SET_FROM_ARRAY_FUNCTION_ID,
+};
 
 pub const NULL_TYPE_ID: TypeId = TypeId::new(0xff00_0500);
 pub const BOOL_TYPE_ID: TypeId = TypeId::new(0xff00_0501);
