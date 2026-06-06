@@ -851,6 +851,69 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_record_quints",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+struct Reward {
+    item_id,
+    count,
+    bonus,
+    rarity,
+    quality,
+}
+
+enum ResultState {
+    Scored { item_id, count, bonus, rarity, quality }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..72 {
+        let gold = Reward {
+            item_id: "gold",
+            count: tick + 1,
+            bonus: tick % 7,
+            rarity: 3,
+            quality: tick % 11,
+        };
+        let gold_state = ResultState::Scored {
+            item_id: gold.item_id,
+            count: gold.count,
+            bonus: gold.bonus,
+            rarity: gold.rarity,
+            quality: gold.quality,
+        };
+        match gold_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality } => {
+                total += item_id.len() + count + bonus + rarity + quality;
+            }
+        }
+
+        let xp = Reward {
+            item_id: "xp",
+            count: tick + 2,
+            bonus: tick % 5,
+            rarity: 1,
+            quality: tick % 13,
+        };
+        let xp_state = ResultState::Scored {
+            item_id: xp.item_id,
+            count: xp.count,
+            bonus: xp.bonus,
+            rarity: xp.rarity,
+            quality: xp.quality,
+        };
+        match xp_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality } => {
+                total += item_id.len() + count + bonus + rarity + quality;
+            }
+        }
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "gc_pacing",
         mode: ExecutionMode::GcPacing,
         source: r#"

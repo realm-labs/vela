@@ -2760,6 +2760,39 @@ IDs, heap storage, budget charging, source-spanned errors, and duplicate-field
 fallback behavior.
 ```
 
+### 2026-06-06 M19 Five-Field Script Field Construction Checkpoint
+
+This checkpoint adds `managed_heap_record_quints`, a focused heap-mode
+benchmark for five-field record and enum construction, field reads, and match
+binding. It extends the small `ScriptFields` construction fast path to unique
+five-field shapes. Duplicate five-field input falls back to the general
+`from_pairs` path, preserving the existing duplicate-field behavior.
+
+Validation:
+
+```bash
+cargo test -p vela_vm script_object -- --nocapture
+cargo test -p vela_vm records_enums -- --nocapture
+cargo fmt --all -- --check
+cargo clippy -p vela_vm --all-targets -- -D warnings
+cargo bench -p vela_vm --bench baseline managed_heap_record_quints -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_record_quints | 2038771 | 1520979 | 1440854 | 15502884859430946984 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The accepted path removes general BTreeMap field
+normalization for common unique five-field record and enum materialization,
+while preserving sorted field slots, shape IDs, heap storage, budget charging,
+source-spanned errors, and duplicate-field fallback behavior.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
