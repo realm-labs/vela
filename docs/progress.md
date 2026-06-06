@@ -112,7 +112,9 @@ Cranelift JIT.
   replacement point.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
-  hot-reload rename semantics.
+  hot-reload rename semantics. Closure creation and invocation now have a
+  focused VM boundary that preserves capture materialization, protected roots,
+  and call-site offsets while leaving room for callback/closure allocation work.
 
 ### Remaining Gaps
 

@@ -109,7 +109,7 @@ impl Vm {
                         Constant::Int(value) => Value::Int(*value),
                         Constant::Float(value) => Value::Float(*value),
                         Constant::String(value) => {
-                            if let Some(value) = loaded_string_constant(
+                            if let Some(value) = constant_loads::loaded_string_constant(
                                 frame.read(*dst).ok(),
                                 value,
                                 heap.as_deref(),
@@ -268,56 +268,33 @@ impl Vm {
                     code,
                     captures,
                 } => {
-                    let captures = captures
-                        .iter()
-                        .map(|register| frame.read(*register).cloned())
-                        .collect::<VmResult<Vec<_>>>()?;
-                    let heap = heap.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "closure heap",
-                        })
-                    })?;
-                    let value = allocate_heap_value(
-                        HeapValue::Closure(ClosureValue {
-                            code: Arc::new((**code).clone()),
+                    closure_calls::make_closure(
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        closure_calls::MakeClosure {
+                            dst: *dst,
+                            code,
                             captures,
-                        }),
-                        heap,
-                        budget.as_deref_mut(),
+                        },
                     )?;
-                    frame.write(*dst, value)?;
                 }
                 InstructionKind::CallClosure { dst, callee, args } => {
-                    let closure =
-                        expect_closure(frame.read(*callee)?, heap.as_deref(), "closure call")?;
-                    let values = script_call_args_from_registers(&frame, args)?;
-                    let protected_root_len = heap
-                        .as_deref_mut()
-                        .map(|heap| heap.push_frame_roots(&frame));
-                    let result = self.execute_call(
-                        ExecutionCall {
-                            code: &closure.code,
-                            program,
-                            captures: &closure.captures,
-                            args: values.as_slice(),
+                    closure_calls::dispatch_closure_call(
+                        self,
+                        program,
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        closure_calls::ClosureCall {
+                            dst: *dst,
+                            callee: *callee,
+                            args,
                             call_site: instruction.span,
-                            call_site_offset: Some(instruction_offset),
+                            call_site_offset: instruction_offset,
                         },
-                        host.as_deref_mut(),
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    );
-                    if let (Some(heap), Some(protected_root_len)) =
-                        (heap.as_deref_mut(), protected_root_len)
-                    {
-                        heap.truncate_protected_roots(protected_root_len);
-                    }
-                    let result = store_value_in_heap_if_needed(
-                        result?,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
                     )?;
-                    frame.write(*dst, result)?;
                 }
                 InstructionKind::CallMethod {
                     dst,
@@ -1007,14 +984,6 @@ impl Vm {
 }
 
 #[inline]
-fn script_call_args_from_registers(
-    frame: &CallFrame,
-    registers: &[Register],
-) -> VmResult<SmallStorage<Value>> {
-    SmallStorage::try_from_slice_map(registers, 4, |register| Ok(*frame.read(*register)?))
-}
-
-#[inline]
 fn runtime_values_from_registers(
     frame: &CallFrame,
     registers: &[Register],
@@ -1195,53 +1164,5 @@ fn runtime_fields_from_registers(
             })
             .collect::<VmResult<Vec<_>>>()
             .map(|fields| ScriptFields::from_pairs(owner, fields)),
-    }
-}
-
-fn loaded_string_constant(
-    current: Option<&Value>,
-    constant: &str,
-    heap: Option<&HeapExecution<'_>>,
-) -> Option<Value> {
-    let Value::HeapRef(reference) = current? else {
-        return None;
-    };
-    match heap?.heap.get(*reference)? {
-        HeapValue::String(value) if value == constant => Some(Value::HeapRef(*reference)),
-        _ => None,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::heap::ScriptHeap;
-
-    use super::*;
-
-    #[test]
-    fn loaded_string_constant_reuses_matching_heap_string() {
-        let mut heap = ScriptHeap::new();
-        let tick = Value::HeapRef(heap.allocate(HeapValue::String("tick".to_owned())));
-        let other = Value::HeapRef(heap.allocate(HeapValue::String("other".to_owned())));
-        let array = Value::HeapRef(heap.allocate(HeapValue::Array(Vec::new())));
-        let heap = HeapExecution::new(&mut heap);
-
-        assert_eq!(
-            loaded_string_constant(Some(&tick), "tick", Some(&heap)),
-            Some(tick)
-        );
-        assert_eq!(
-            loaded_string_constant(Some(&other), "tick", Some(&heap)),
-            None
-        );
-        assert_eq!(
-            loaded_string_constant(Some(&array), "tick", Some(&heap)),
-            None
-        );
-        assert_eq!(loaded_string_constant(Some(&tick), "tick", None), None);
-        assert_eq!(
-            loaded_string_constant(Some(&Value::Null), "tick", Some(&heap)),
-            None
-        );
     }
 }

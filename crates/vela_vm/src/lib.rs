@@ -5,6 +5,8 @@
 mod array_methods;
 pub mod budget;
 mod callback_method_dispatch;
+mod closure_calls;
+mod constant_loads;
 pub mod error;
 mod execution;
 mod field_access;
@@ -69,7 +71,7 @@ use owned_value::OwnedValue;
 use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
-use runtime_checks::{expect_closure, expect_int, is_truthy, validate_jump};
+use runtime_checks::{expect_int, is_truthy, validate_jump};
 use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
