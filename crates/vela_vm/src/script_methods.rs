@@ -162,23 +162,26 @@ fn call_script_impl_method(
     args: &[Value],
     dispatch: &mut ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
-    let type_name = receiver_type_name(
-        receiver,
-        dispatch.heap.as_deref(),
-        dispatch.vm.type_registry(),
-    )
-    .ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownMethod {
-            method: method.to_owned(),
-        })
-    })?;
-    let Some(function) = dispatch.program.and_then(|program| match lookup {
-        ScriptMethodLookup::Name(name) => program.script_method(&type_name, name),
-        ScriptMethodLookup::Id(method_id) => program.script_method_by_id(&type_name, method_id),
-    }) else {
-        return Err(VmError::new(VmErrorKind::UnknownMethod {
-            method: method.to_owned(),
-        }));
+    let function = {
+        let type_name = receiver_type_name(
+            receiver,
+            dispatch.heap.as_deref(),
+            dispatch.vm.type_registry(),
+        )
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMethod {
+                method: method.to_owned(),
+            })
+        })?;
+        let Some(function) = dispatch.program.and_then(|program| match lookup {
+            ScriptMethodLookup::Name(name) => program.script_method(type_name, name),
+            ScriptMethodLookup::Id(method_id) => program.script_method_by_id(type_name, method_id),
+        }) else {
+            return Err(VmError::new(VmErrorKind::UnknownMethod {
+                method: method.to_owned(),
+            }));
+        };
+        function
     };
 
     let mut values = Vec::with_capacity(args.len() + 1);
@@ -210,18 +213,18 @@ enum ScriptMethodLookup<'a> {
     Id(MethodId),
 }
 
-fn receiver_type_name(
+fn receiver_type_name<'a>(
     receiver: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    registry: Option<&TypeRegistry>,
-) -> Option<String> {
+    heap: Option<&'a HeapExecution<'_>>,
+    registry: Option<&'a TypeRegistry>,
+) -> Option<&'a str> {
     match receiver {
         Value::HostRef(reference) => registry
             .and_then(|registry| registry.type_of_host(*reference))
-            .map(|desc| desc.key.name.clone()),
+            .map(|desc| desc.key.name.as_str()),
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
-            HeapValue::Record { type_name, .. } => Some(type_name.clone()),
-            HeapValue::Enum { enum_name, .. } => Some(enum_name.clone()),
+            HeapValue::Record { type_name, .. } => Some(type_name.as_str()),
+            HeapValue::Enum { enum_name, .. } => Some(enum_name.as_str()),
             _ => None,
         },
         _ => None,
