@@ -60,8 +60,17 @@ fn run_hot_reload_paths(initial: &Path, updated: &Path) -> std::process::Output 
 }
 
 fn script_path(script: &str) -> PathBuf {
+    let stem = Path::new(script)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .expect("demo script should have a valid file stem");
+    let example = stem
+        .strip_suffix("_v1")
+        .or_else(|| stem.strip_suffix("_v2"))
+        .unwrap_or(stem);
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../examples/game_server_demo/scripts")
+        .join("../../examples/src/bin")
+        .join(example)
         .join(script)
 }
 

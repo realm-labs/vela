@@ -12,6 +12,7 @@ members = [
     "crates/vela_reflect",
     "crates/vela_syntax",
     "crates/vela_vm",
+    "examples",
 ]
 resolver = "3"
 

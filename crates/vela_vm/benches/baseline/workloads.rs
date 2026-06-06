@@ -585,7 +585,7 @@ fn main(player) {
         name: "gameplay_monster_kill",
         mode: ExecutionMode::GameplayHost,
         source: include_str!(
-            "../../../../examples/game_server_demo/scripts/monster_kill_reward.vela"
+            "../../../../examples/src/bin/monster_kill_reward/monster_kill_reward.vela"
         ),
     },
     Workload {

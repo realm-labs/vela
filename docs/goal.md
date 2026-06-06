@@ -563,7 +563,7 @@ source of builtin domain models.
 Scope:
 
 ```text
-examples/game_server_demo host world
+examples/src/bin game-server examples with standalone main.rs and colocated .vela scripts
 level_up script
 monster_kill_reward script
 quest_progress script

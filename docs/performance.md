@@ -40,7 +40,7 @@ host field reads, writes, RMW mutations, and method calls
 reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
-domain-demo workflows from examples/game_server_demo
+domain-demo workflows from examples/src/bin game-server examples
 external_compare against available Lua 5.x, LuaJIT, Node.js, and Rhai
 ```
 

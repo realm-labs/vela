@@ -2,9 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
-use std::path::PathBuf;
 
 use vela_engine::prelude::*;
+use vela_examples::example_file;
 use vela_macros::{ScriptHost, script_methods};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -181,6 +181,6 @@ impl RewardSink {
     }
 }
 
-fn script_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/host_type_methods/handle.vela")
+fn script_path() -> std::path::PathBuf {
+    example_file("host_type_methods", "handle.vela")
 }

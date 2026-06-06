@@ -12,29 +12,30 @@ Milestones after M6 should also validate at least one runnable game server demo
 script:
 
 ```bash
-cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/context_event.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/time_clock.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/gameplay_helpers.vela
-cargo run -p vela_cli -- --allow-random examples/game_server_demo/scripts/random_allowed.vela
-cargo run -p vela_cli -- --allow-random examples/game_server_demo/scripts/random_reflect_allowed.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/random_permission_denied.vela # expected permission-denied failure
-cargo run -p vela_cli -- examples/game_server_demo/scripts/host_read_only_denied.vela # expected read-only host field failure
-cargo run -p vela_cli -- --deny-player-level-read examples/game_server_demo/scripts/host_permission_denied.vela # expected host read permission failure
-cargo run -p vela_cli -- --deny-player-level-write examples/game_server_demo/scripts/host_write_permission_denied.vela # expected host write permission failure
-cargo run -p vela_cli -- --deny-ctx-emit-call examples/game_server_demo/scripts/host_call_permission_denied.vela # expected host call permission failure
-cargo run -p vela_cli -- --deny-player-level-write examples/game_server_demo/scripts/host_compound_write_denied.vela # expected host compound write permission failure
-cargo run -p vela_cli -- --stale-player examples/game_server_demo/scripts/stale_host_ref.vela # expected stale host ref failure
-cargo run -p vela_cli -- examples/game_server_demo/scripts/bad_schema_duplicate_field.vela # expected bad-schema failure
-cargo run -p vela_cli -- examples/game_server_demo/scripts/generic_type_hint_denied.vela # expected generic type hint failure
-cargo run -p vela_cli -- examples/game_server_demo/scripts/reward_preview.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/monster_kill_reward.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/quest_progress.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/reflect_debug.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/reflect_schema_mutation_denied.vela # expected schema mutation denial
-cargo run -p vela_cli -- examples/game_server_demo/scripts/reflect_unknown_field_denied.vela # expected reflection candidate failure
-cargo run -p vela_cli -- --hot-reload examples/game_server_demo/scripts/hot_reload_function_swap_v1.vela examples/game_server_demo/scripts/hot_reload_function_swap_v2.vela
-cargo run -p vela_cli -- --hot-reload examples/game_server_demo/scripts/hot_reload_function_swap_v1.vela examples/game_server_demo/scripts/hot_reload_function_swap_invalid.vela # expected ABI rejection
+cargo run -p vela_examples --bin level_up
+cargo run -p vela_examples --bin context_event
+cargo run -p vela_examples --bin time_clock
+cargo run -p vela_examples --bin gameplay_helpers
+cargo run -p vela_examples --bin random_allowed
+cargo run -p vela_examples --bin random_reflect_allowed
+cargo run -p vela_examples --bin random_permission_denied
+cargo run -p vela_examples --bin host_read_only_denied
+cargo run -p vela_examples --bin host_permission_denied
+cargo run -p vela_examples --bin host_write_permission_denied
+cargo run -p vela_examples --bin host_call_permission_denied
+cargo run -p vela_examples --bin host_compound_write_denied
+cargo run -p vela_examples --bin stale_host_ref
+cargo run -p vela_examples --bin bad_schema_duplicate_field
+cargo run -p vela_examples --bin generic_type_hint_denied
+cargo run -p vela_examples --bin reward_preview
+cargo run -p vela_examples --bin monster_kill_reward
+cargo run -p vela_examples --bin quest_progress
+cargo run -p vela_examples --bin reflect_debug
+cargo run -p vela_examples --bin reflect_schema_mutation_denied
+cargo run -p vela_examples --bin reflect_unknown_field_denied
+cargo run -p vela_examples --bin hot_reload_function_swap
+cargo run -p vela_examples --bin hot_reload_function_swap_invalid
+cargo run -p vela_examples --bin host_type_methods
 ```
 
 Benchmark targets are optional until the related crates exist. The parser fuzz

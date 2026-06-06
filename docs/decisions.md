@@ -325,6 +325,14 @@ narrowing, Option/Result predicate narrowing, and pattern diagnostics are
 analysis/tooling data. They should not change VM semantics unless a separate
 compiler/runtime decision says so.
 
+### Example Layout
+
+Runnable examples live in the `vela_examples` workspace package as standalone
+Cargo bins under `examples/src/bin/<example>/`. Each example keeps its `main.rs`
+and `.vela` source files in the same directory so users can inspect and run one
+capability without following a parameter-dispatched demo runner or a separate
+script tree.
+
 ### Debugger Support
 
 Debugger support is a post-MVP runtime and Debug Adapter Protocol capability,

@@ -12,8 +12,8 @@ fn host_type_methods_example_runs() {
         .args([
             "run",
             "-p",
-            "vela_engine",
-            "--example",
+            "vela_examples",
+            "--bin",
             "host_type_methods",
             "--quiet",
         ])

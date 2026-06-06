@@ -382,7 +382,7 @@ ABI mismatch rejects update
 ### Example Tests
 
 ```text
-examples/game_server_demo
+examples/src/bin/<example> directories with standalone main.rs and colocated .vela scripts
   player_level_up
   monster_kill_reward
   quest_progress
@@ -396,7 +396,7 @@ examples/game_server_demo
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
+cargo run -p vela_examples --bin level_up
 ```
 
 Later:

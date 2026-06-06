@@ -1,0 +1,18 @@
+[package]
+name = "vela_examples"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+vela_bytecode = { path = "../crates/vela_bytecode" }
+vela_common = { path = "../crates/vela_common" }
+vela_engine = { path = "../crates/vela_engine" }
+vela_hot_reload = { path = "../crates/vela_hot_reload" }
+vela_host = { path = "../crates/vela_host" }
+vela_macros = { path = "../crates/vela_macros" }
+vela_reflect = { path = "../crates/vela_reflect" }
+vela_vm = { path = "../crates/vela_vm" }
+
+[lints]
+workspace = true
