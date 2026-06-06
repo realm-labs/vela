@@ -54,6 +54,7 @@ pub(crate) fn expect_string<'a, T: StringArgument + ?Sized>(
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
+#[inline]
 pub(crate) fn expect_int(value: &Value, operation: &'static str) -> VmResult<i64> {
     match value {
         Value::Int(value) => Ok(*value),
@@ -61,6 +62,7 @@ pub(crate) fn expect_int(value: &Value, operation: &'static str) -> VmResult<i64
     }
 }
 
+#[inline]
 pub(crate) fn expect_arity<T>(name: &str, args: &[T], expected: usize) -> VmResult<()> {
     if args.len() == expected {
         Ok(())
@@ -73,6 +75,7 @@ pub(crate) fn expect_arity<T>(name: &str, args: &[T], expected: usize) -> VmResu
     }
 }
 
+#[inline]
 pub(crate) fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
 }

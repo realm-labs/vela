@@ -1222,6 +1222,7 @@ fn dispatch_call_method_id(
     frame.write(call.dst, result)
 }
 
+#[inline]
 fn native_call_args_from_registers(
     frame: &CallFrame,
     registers: &[Register],
@@ -1232,6 +1233,7 @@ fn native_call_args_from_registers(
     })
 }
 
+#[inline]
 fn script_call_args_from_call_arguments(
     frame: &CallFrame,
     args: &[CallArgument],
@@ -1242,6 +1244,7 @@ fn script_call_args_from_call_arguments(
     })
 }
 
+#[inline]
 fn script_call_args_from_registers(
     frame: &CallFrame,
     registers: &[Register],
@@ -1249,6 +1252,7 @@ fn script_call_args_from_registers(
     SmallStorage::try_from_slice_map(registers, 4, |register| Ok(*frame.read(*register)?))
 }
 
+#[inline]
 fn runtime_values_from_registers(
     frame: &CallFrame,
     registers: &[Register],
@@ -1261,6 +1265,7 @@ fn runtime_values_from_registers(
     .map(SmallStorage::into_vec)
 }
 
+#[inline]
 fn runtime_value_from_register(
     frame: &CallFrame,
     register: Register,

@@ -12,6 +12,7 @@ pub(crate) enum SmallStorage<T> {
 }
 
 impl<T> SmallStorage<T> {
+    #[inline]
     pub(crate) fn try_from_slice_map<U, E>(
         items: &[U],
         inline_limit: usize,
@@ -78,6 +79,7 @@ impl<T> SmallStorage<T> {
         }
     }
 
+    #[inline]
     pub(crate) fn as_slice(&self) -> &[T] {
         match self {
             Self::Empty => &[],
@@ -93,6 +95,7 @@ impl<T> SmallStorage<T> {
         }
     }
 
+    #[inline]
     pub(crate) fn into_vec(self) -> Vec<T> {
         match self {
             Self::Empty => Vec::new(),

@@ -94,6 +94,7 @@ impl<T> ScriptFields<T> {
         Self::small(owner, fields)
     }
 
+    #[inline]
     fn small<const N: usize>(owner: &str, fields: [(String, T); N]) -> Self {
         if has_duplicate_field_names(&fields) {
             return Self::from_pairs(owner, fields);
@@ -143,6 +144,7 @@ impl<T> ScriptFields<T> {
     }
 
     #[must_use]
+    #[inline]
     pub fn get_slot(&self, slot: usize, expected_field: &str) -> Option<&T> {
         let field = self.slots.get(slot)?;
         (field.name == expected_field).then_some(&field.value)
@@ -157,6 +159,7 @@ impl<T> ScriptFields<T> {
     }
 
     #[must_use]
+    #[inline]
     pub fn get_slot_mut(&mut self, slot: usize, expected_field: &str) -> Option<&mut T> {
         let field = self.slots.get_mut(slot)?;
         (field.name == expected_field).then_some(&mut field.value)
@@ -175,6 +178,7 @@ impl<T> ScriptFields<T> {
         Ok(())
     }
 
+    #[inline]
     pub fn set_slot_existing(
         &mut self,
         slot: usize,
@@ -239,6 +243,7 @@ fn hash_bytes(hash: &mut u32, bytes: &[u8]) {
     }
 }
 
+#[inline]
 fn has_duplicate_field_names<T, const N: usize>(fields: &[(String, T); N]) -> bool {
     for left in 0..N {
         for right in (left + 1)..N {
