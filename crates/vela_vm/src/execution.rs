@@ -232,74 +232,20 @@ impl Vm {
                     native,
                     args,
                 } => {
-                    enum NativeCallTarget<'a> {
-                        Pure(&'a NativeFunction),
-                        Host(&'a HostNativeFunction),
-                    }
-
-                    let values = native_call_args_from_registers(&frame, args, heap.as_deref())?;
-                    let target = native
-                        .and_then(|id| {
-                            self.native_ids
-                                .get(&id)
-                                .map(NativeCallTarget::Pure)
-                                .or_else(|| {
-                                    self.host_native_ids.get(&id).map(NativeCallTarget::Host)
-                                })
-                        })
-                        .or_else(|| self.natives.get(name).map(NativeCallTarget::Pure))
-                        .or_else(|| self.host_natives.get(name).map(NativeCallTarget::Host));
-                    let result = match target {
-                        Some(NativeCallTarget::Pure(native)) => native(values.as_slice())
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
-                        Some(NativeCallTarget::Host(native)) => {
-                            let host = host.as_deref_mut().ok_or_else(|| {
-                                VmError::new(VmErrorKind::TypeMismatch {
-                                    operation: "host context",
-                                })
-                            })?;
-                            let tx_checkpoint = host.tx.clone();
-                            let result =
-                                match native(values.as_slice(), host, budget.as_deref_mut()) {
-                                    Ok(result) => result,
-                                    Err(error) => {
-                                        *host.tx = tx_checkpoint;
-                                        return Err(
-                                            error.with_source_span_if_absent(instruction.span)
-                                        );
-                                    }
-                                };
-                            if let Some(budget) = budget.as_deref()
-                                && let Err(error) =
-                                    budget.check_patch_count(host.tx.patches().len())
-                            {
-                                *host.tx = tx_checkpoint;
-                                return Err(error.with_source_span_if_absent(instruction.span));
-                            }
-                            result
-                        }
-                        None => {
-                            return Err(VmError::new(VmErrorKind::UnknownNative {
-                                name: name.clone(),
-                            })
-                            .with_source_span_if_absent(instruction.span));
-                        }
-                    };
-                    if let (Some(budget), Some(host)) = (budget.as_deref(), host.as_deref()) {
-                        budget.check_patch_count(host.tx.patches().len())?;
-                    }
-                    if let Some(dst) = dst {
-                        let result = owned_to_value(
-                            result,
-                            heap.as_deref_mut().ok_or_else(|| {
-                                VmError::new(VmErrorKind::TypeMismatch {
-                                    operation: "native heap",
-                                })
-                            })?,
-                            budget.as_deref_mut(),
-                        )?;
-                        frame.write(*dst, result)?;
-                    }
+                    native_function_calls::dispatch_native_function_call(
+                        self,
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        native_function_calls::NativeFunctionCall {
+                            dst: *dst,
+                            name,
+                            native: *native,
+                            args,
+                            call_site: instruction.span,
+                        },
+                    )?;
                 }
                 InstructionKind::CallFunction { dst, name, args } => {
                     script_function_calls::dispatch_script_function_call(
@@ -1177,17 +1123,6 @@ fn dispatch_call_method_id(
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
     frame.write(call.dst, result)
-}
-
-#[inline]
-fn native_call_args_from_registers(
-    frame: &CallFrame,
-    registers: &[Register],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<SmallStorage<OwnedValue>> {
-    SmallStorage::try_from_slice_map(registers, 4, |register| {
-        value_to_owned(frame.read(*register)?, heap)
-    })
 }
 
 #[inline]

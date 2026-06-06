@@ -21,6 +21,7 @@ pub mod iteration;
 mod map_methods;
 mod math_stdlib;
 mod method_runtime;
+mod native_function_calls;
 mod numeric_ops;
 mod option_result;
 mod option_result_methods;

@@ -101,9 +101,11 @@ Cranelift JIT.
 - M19.5 has started with native call operands: compiled native calls can carry
   stable `FunctionId` metadata while preserving names for diagnostics and
   fallback, and Engine-installed plus standard native functions register ID
-  lookup targets. Standard value method calls can also carry optional
-  `HostMethodId` metadata, with `len`/`is_empty` using an ID fast path before
-  name fallback. Host field/path reads, writes, compound and collection
+  lookup targets. Native call dispatch is routed through a focused VM call
+  boundary, preserving ID-first lookup, name fallback, PatchTx rollback, budget
+  checks, and source-spanned errors. Standard value method calls can also carry
+  optional `HostMethodId` metadata, with `len`/`is_empty` using an ID fast path
+  before name fallback. Host field/path reads, writes, compound and collection
   patches, and method calls are routed through a focused VM host-access
   boundary, giving later path-key or direct-adapter work one replacement point.
   Script function dispatch is being isolated behind a focused call boundary so
