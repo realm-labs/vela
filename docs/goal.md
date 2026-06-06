@@ -74,6 +74,11 @@ Engineering principles:
     cohesive parameter structs or option objects, and replace accumulating
     `if` chains with `match`, enum-driven dispatch, tables, or focused helper
     types when that better expresses the design.
+12. Keep roadmap and status docs concise. `docs/goal.md`, `docs/progress.md`,
+    and `docs/performance.md` are decision documents, not changelogs. Routine
+    implementation notes, long benchmark logs, rejected micro-candidates, and
+    per-commit before/after tables belong in commit messages, PR notes, or
+    `docs/archive/` when they need to be preserved.
 
 ## Long-Term Codex Goal
 
@@ -93,6 +98,11 @@ the smallest verifiable task that advances the current milestone, validate it
 with the relevant subset of docs/validation.md, update docs/progress.md only
 when current focus, milestone status, or current gaps change, and commit
 appropriate verified checkpoints with Conventional Commit messages.
+Keep durable docs compact: update `docs/progress.md` only for focus, status,
+validation, or remaining-gap changes; update `docs/performance.md` only for
+baseline checkpoints, target thresholds, benchmark harness changes, milestone
+exit conclusions, or durable measurement rules. Archive long historical detail
+instead of appending it to current docs.
 ```
 
 Post-MVP performance work is a first-class roadmap track. The initial release
@@ -120,6 +130,22 @@ must exist in tests, examples, docs, or benchmarks. If a milestone is marked
 `Complete enough` in [progress.md](progress.md), future work should not return
 to it unless the current checkpoint or a regression test exposes a concrete
 gap.
+
+### Documentation Checkpoint Rules
+
+Milestone docs should record current truth, not implementation chronology.
+
+```text
+docs/progress.md: active focus, milestone status, current gaps, validation
+docs/performance.md: current rules, current baseline, target thresholds, exit summaries
+docs/archive/: long benchmark histories or durable historical context
+commit/PR notes: routine before/after measurements and rejected candidates
+```
+
+Do not append raw benchmark output, repeated candidate logs, or per-commit
+implementation summaries to current docs. A milestone checkpoint may cite the
+commands and the final numbers that changed direction; detailed tables should
+be archived only when they are needed for later audit.
 
 ### M7: Runtime Safety, Budgets, And GC
 
@@ -565,7 +591,7 @@ record, enum, Option, and Result benchmarks
 HostRef/HostPath/PatchTx benchmark
 hot reload safe-point and ABI benchmark
 GC pacing benchmark
-profile capture notes in docs/performance.md
+concise baseline and measurement rules in docs/performance.md
 ```
 
 Acceptance:
@@ -582,8 +608,8 @@ Checkpoint:
 
 ```text
 cargo bench records reproducible internal baselines with checksums and
-environment notes, and docs/performance.md records external runtime versions
-when available
+environment notes; docs/performance.md summarizes the current baseline and
+external runtime versions when available
 docs/progress.md marks optimization work blocked until benchmark gaps are named
 or M18 is complete enough
 ```
@@ -623,8 +649,9 @@ no optimization bypasses ExecutionBudget, PatchTx, reflection policy, or GC root
 Checkpoint:
 
 ```text
-cargo test, cargo bench, and docs/performance.md show before/after results for
-each accepted interpreter or heap optimization
+cargo test and cargo bench show before/after results for accepted interpreter
+or heap optimizations; docs/performance.md summarizes only the current
+baseline, target status, and milestone exit conclusion
 docs/progress.md names remaining measured bottlenecks or marks M19 complete
 enough for inline caches
 ```
@@ -662,7 +689,9 @@ Checkpoint:
 cargo test covers cache hits, misses, guard failures, fallback behavior, hot
 reload invalidation, and schema invalidation
 cargo bench reports interpreter-only versus cache-enabled benchmark groups
-docs/progress.md names remaining cache families or marks M20 complete enough
+docs/performance.md records only durable cache-enabled baseline summaries and
+target status; docs/progress.md names remaining cache families or marks M20
+complete enough
 ```
 
 ### M21: Debugger Runtime And DAP Integration
@@ -754,7 +783,7 @@ performance regression thresholds for key benchmarks
 runtime configuration docs for budgets, GC, heap mode, and caches
 public API docs and examples
 release validation command set
-benchmark result archive and trend notes
+release-level benchmark archive and trend summary
 clear guidance for Lua-comparable, LuaJIT-comparable, and host-heavy workloads
 ```
 
@@ -778,9 +807,11 @@ docs/progress.md and docs/performance.md state achieved targets and known gaps
 ## Current Status Tracking
 
 The current implementation status, active milestone focus, and remaining
-current gaps are tracked in [progress.md](progress.md). Keep this file stable as
-the product roadmap and milestone contract; do not use it as a changelog or a
-per-commit progress ledger.
+current gaps are tracked in [progress.md](progress.md). Current performance
+rules, baselines, target bands, and milestone exit summaries are tracked in
+[performance.md](performance.md). Keep these files stable as decision
+documents; do not use them as changelogs, raw benchmark ledgers, or per-commit
+progress logs.
 
 ## Key Risks
 
