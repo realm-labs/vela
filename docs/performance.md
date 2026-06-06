@@ -2327,6 +2327,38 @@ clear host-focused win. Future overlay work should use a more targeted hybrid
 or compact-key design instead of replacing all overlay lookups with a linear
 scan.
 
+### 2026-06-06 M19 Rejected Compact Overlay Field Key Candidate
+
+This measurement checkpoint tested keeping the existing `BTreeMap` overlay but
+using a compact internal key for single-field paths. `PatchOverlay` stored
+`HostRef + FieldId` for paths shaped like `HostPath::new(root).field(field)`,
+while other paths still stored the full `HostPath`. The candidate preserved
+public `PatchTx` behavior and kept patches themselves as full `HostPath`
+values.
+
+Validation:
+
+```bash
+cargo test -p vela_host
+cargo test -p vela_vm host_fields
+cargo test -p vela_engine typed_host
+cargo bench -p vela_vm --bench baseline host_patch_tx -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| host_patch_tx | 29542 | 29958 | 31666 | 8875875486420011969 |
+| gameplay_monster_kill | 77771 | 109395 | 83541 | 11641737387043360531 |
+
+The candidate was not accepted because repeated quick runs did not improve the
+focused host row and made the gameplay-host row noisy to slower. The added key
+classification and non-field fallback cloning outweighed the smaller stored key
+for this workload. Future host overlay optimization should measure a more
+direct specialized host-field opcode or adapter-side batch path rather than an
+internal overlay key split alone.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for
