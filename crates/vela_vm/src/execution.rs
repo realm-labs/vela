@@ -542,52 +542,33 @@ impl Vm {
                     frame.write(*base, base_value)?;
                 }
                 InstructionKind::IterInit { dst, iterable } => {
-                    let iterator =
-                        iteration::make_iterator(frame.read(*iterable)?, heap.as_deref())?;
-                    let Some(heap) = heap.as_deref_mut() else {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "iterator heap",
-                        }));
-                    };
-                    let value = allocate_heap_value(
-                        HeapValue::Iterator(iterator),
-                        heap,
-                        budget.as_deref_mut(),
+                    iteration::dispatch_iter_init(
+                        iteration::IterRuntime {
+                            frame: &mut frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
+                        *dst,
+                        *iterable,
                     )?;
-                    frame.write(*dst, value)?;
                 }
                 InstructionKind::IterNext {
                     iterator,
                     dst,
                     jump_if_done,
                 } => {
-                    let value = *frame.read(*iterator)?;
-                    let next = match value {
-                        Value::HeapRef(reference) => {
-                            let Some(HeapValue::Iterator(iterator_state)) = heap
-                                .as_deref_mut()
-                                .and_then(|heap| heap.heap.get_mut(reference).ok())
-                            else {
-                                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                                    operation: "iterator",
-                                }));
-                            };
-                            iterator_state.next()
-                        }
-                        _ => {
-                            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                                operation: "iterator",
-                            }));
-                        }
-                    };
-                    match next {
-                        Some(value) => {
-                            frame.write(*dst, value)?;
-                        }
-                        None => {
-                            validate_jump(code, jump_if_done.0)?;
-                            ip = jump_if_done.0;
-                        }
+                    if let Some(target) = iteration::dispatch_iter_next(
+                        iteration::IterRuntime {
+                            frame: &mut frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
+                        code,
+                        *iterator,
+                        *dst,
+                        *jump_if_done,
+                    )? {
+                        ip = target;
                     }
                 }
                 InstructionKind::RangeNext {
@@ -598,37 +579,23 @@ impl Vm {
                     dst,
                     jump_if_done,
                 } => {
-                    let is_done = match frame.read(*done)? {
-                        Value::Bool(value) => *value,
-                        _ => {
-                            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                                operation: "range",
-                            }));
-                        }
-                    };
-                    if is_done {
-                        validate_jump(code, jump_if_done.0)?;
-                        ip = jump_if_done.0;
-                    } else {
-                        let current = expect_int(frame.read(*cursor)?, "range")?;
-                        let end = expect_int(frame.read(*end)?, "range")?;
-                        let has_next = if *inclusive {
-                            current <= end
-                        } else {
-                            current < end
-                        };
-                        if has_next {
-                            frame.write(*dst, Value::Int(current))?;
-                            if current == i64::MAX {
-                                frame.write(*done, Value::Bool(true))?;
-                            } else {
-                                frame.write(*cursor, Value::Int(current + 1))?;
-                            }
-                        } else {
-                            frame.write(*done, Value::Bool(true))?;
-                            validate_jump(code, jump_if_done.0)?;
-                            ip = jump_if_done.0;
-                        }
+                    if let Some(target) = iteration::dispatch_range_next(
+                        iteration::IterRuntime {
+                            frame: &mut frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
+                        code,
+                        iteration::RangeNextStep {
+                            cursor: *cursor,
+                            end: *end,
+                            done: *done,
+                            inclusive: *inclusive,
+                            dst: *dst,
+                            jump_if_done: *jump_if_done,
+                        },
+                    )? {
+                        ip = target;
                     }
                 }
                 InstructionKind::EnumTagEqual {

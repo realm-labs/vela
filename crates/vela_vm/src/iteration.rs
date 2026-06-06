@@ -1,6 +1,27 @@
 use crate::heap::HeapValue;
+use crate::heap_values::allocate_heap_value;
 use crate::ranges::RangeCursor;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value};
+use crate::runtime_checks::{expect_int, validate_jump};
+use crate::{
+    CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
+    stored_runtime_value,
+};
+use vela_bytecode::{CodeObject, InstructionOffset, Register};
+
+pub(crate) struct IterRuntime<'a, 'heap> {
+    pub(crate) frame: &'a mut CallFrame,
+    pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
+    pub(crate) budget: Option<&'a mut ExecutionBudget>,
+}
+
+pub(crate) struct RangeNextStep {
+    pub(crate) cursor: Register,
+    pub(crate) end: Register,
+    pub(crate) done: Register,
+    pub(crate) inclusive: bool,
+    pub(crate) dst: Register,
+    pub(crate) jump_if_done: InstructionOffset,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
@@ -105,5 +126,120 @@ pub(crate) fn make_iterator(
         _ => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "for in",
         })),
+    }
+}
+
+pub(crate) fn dispatch_iter_init(
+    mut runtime: IterRuntime<'_, '_>,
+    dst: Register,
+    iterable: Register,
+) -> VmResult<()> {
+    let iterator = make_iterator(runtime.frame.read(iterable)?, runtime.heap.as_deref())?;
+    let Some(heap) = heap_ref(&mut runtime.heap) else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "iterator heap",
+        }));
+    };
+    let value = allocate_heap_value(
+        HeapValue::Iterator(iterator),
+        heap,
+        budget_ref(&mut runtime.budget),
+    )?;
+    runtime.frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_iter_next(
+    mut runtime: IterRuntime<'_, '_>,
+    code: &CodeObject,
+    iterator: Register,
+    dst: Register,
+    jump_if_done: InstructionOffset,
+) -> VmResult<Option<usize>> {
+    let value = *runtime.frame.read(iterator)?;
+    let next = match value {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Iterator(iterator_state)) =
+                heap_ref(&mut runtime.heap).and_then(|heap| heap.heap.get_mut(reference).ok())
+            else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "iterator",
+                }));
+            };
+            iterator_state.next()
+        }
+        _ => {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "iterator",
+            }));
+        }
+    };
+    match next {
+        Some(value) => {
+            runtime.frame.write(dst, value)?;
+            Ok(None)
+        }
+        None => {
+            validate_jump(code, jump_if_done.0)?;
+            Ok(Some(jump_if_done.0))
+        }
+    }
+}
+
+pub(crate) fn dispatch_range_next(
+    runtime: IterRuntime<'_, '_>,
+    code: &CodeObject,
+    step: RangeNextStep,
+) -> VmResult<Option<usize>> {
+    let frame = runtime.frame;
+    let is_done = match frame.read(step.done)? {
+        Value::Bool(value) => *value,
+        _ => {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "range",
+            }));
+        }
+    };
+    if is_done {
+        validate_jump(code, step.jump_if_done.0)?;
+        return Ok(Some(step.jump_if_done.0));
+    }
+
+    let current = expect_int(frame.read(step.cursor)?, "range")?;
+    let end = expect_int(frame.read(step.end)?, "range")?;
+    let has_next = if step.inclusive {
+        current <= end
+    } else {
+        current < end
+    };
+    if has_next {
+        frame.write(step.dst, Value::Int(current))?;
+        if current == i64::MAX {
+            frame.write(step.done, Value::Bool(true))?;
+        } else {
+            frame.write(step.cursor, Value::Int(current + 1))?;
+        }
+        Ok(None)
+    } else {
+        frame.write(step.done, Value::Bool(true))?;
+        validate_jump(code, step.jump_if_done.0)?;
+        Ok(Some(step.jump_if_done.0))
+    }
+}
+
+#[inline]
+fn heap_ref<'a, 'heap>(
+    heap: &'a mut Option<&mut HeapExecution<'heap>>,
+) -> Option<&'a mut HeapExecution<'heap>> {
+    match heap {
+        Some(heap) => Some(&mut **heap),
+        None => None,
+    }
+}
+
+#[inline]
+fn budget_ref<'a>(budget: &'a mut Option<&mut ExecutionBudget>) -> Option<&'a mut ExecutionBudget> {
+    match budget {
+        Some(budget) => Some(&mut **budget),
+        None => None,
     }
 }

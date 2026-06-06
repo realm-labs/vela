@@ -134,7 +134,9 @@ Cranelift JIT.
   Script array/map/range construction, record/enum construction, and script
   field reads/writes now route through focused script aggregate/object
   boundaries while preserving current name fallback, small-field construction,
-  and slot guards.
+  and slot guards. Generic iterator and range-loop stepping now route through a
+  focused iteration boundary with jump validation kept on the VM side of the
+  bytecode contract.
 
 ### Remaining Gaps
 
