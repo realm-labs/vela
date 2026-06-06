@@ -2930,6 +2930,61 @@ string joins. Wider arrays keep the existing semantics through a preallocated
 loop-backed fallback.
 ```
 
+### 2026-06-06 M19 Rejected HeapRef Identity Equality Candidate
+
+This measurement checkpoint tested a narrow equality fast path for comparing a
+heap reference with itself. The candidate only returned true after confirming
+the reference was still live in the heap, so stale or missing references still
+fell through to the existing materialization error behavior. It was intended to
+avoid materializing aggregate heap objects for self-comparisons, but the focused
+array-distinct workload does not hit that pattern strongly enough.
+
+Validation:
+
+```bash
+cargo test -p vela_vm heap_ref_identity -- --nocapture
+cargo test -p vela_vm heap_string_equality -- --nocapture
+cargo bench -p vela_vm --bench baseline managed_heap_array_distinct -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_distinct | 1730292 | 1737520 | 1789333 | 11693250208589619173 |
+
+The candidate was not accepted because repeated quick runs were flat to slower.
+Future aggregate equality work should target cached comparison materialization
+or shape-specific aggregate comparison rather than adding another generic
+branch to every heap-ref equality check.
+
+### 2026-06-06 M19 Rejected Map Values Loop Candidate
+
+This measurement checkpoint tested replacing the iterator `collect()` in
+`map.values()` with an explicit preallocated loop over borrowed map slots. The
+candidate preserved receiver validation, returned array layout, heap
+allocation, checksums, and map introspection behavior, but did not improve the
+focused map-callback workload.
+
+Validation:
+
+```bash
+cargo test -p vela_vm map_methods -- --nocapture
+cargo bench -p vela_vm --bench baseline managed_heap_map_callbacks -- --quick
+cargo bench -p vela_vm --bench baseline callback_collections -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_map_callbacks | 5102750 | 5289645 | 5301188 | 2601892725534891372 |
+
+The candidate was not accepted because the focused row regressed in repeated
+quick runs. The existing iterator path remains in place; future
+`map.values().sum()` work should look for a broader fused map-value aggregate
+strategy rather than a local collection rewrite.
+
 ## Targets
 
 The post-MVP non-JIT target is:
