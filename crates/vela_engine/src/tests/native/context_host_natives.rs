@@ -19,6 +19,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
+                    host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
@@ -144,7 +145,7 @@ fn main(player) {
 }
 
 #[test]
-fn context_host_native_read_path_observes_patch_overlay() {
+fn context_host_native_read_path_observes_write_through_state() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_context_host_native_fn(
@@ -201,11 +202,11 @@ fn main(player) {
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, level);
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(17)));
-    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(3)));
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(17)));
 }
 
 #[test]
-fn context_host_native_previews_method_return_without_applying_patch() {
+fn context_host_native_returns_immediate_method_result() {
     let method = HostMethodId::new(79);
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
@@ -222,9 +223,8 @@ fn context_host_native_previews_method_return_without_applying_patch() {
                 let player = args.required::<HostRef>(0)?;
                 let inventory = HostPath::new(player).field(FieldId::new(3));
                 let method_args = vec![HostValue::String("gold".to_owned()), HostValue::Int(2)];
-                let preview = ctx.preview_method_return(&inventory, method, &method_args, None)?;
-                ctx.call_method(inventory, method, method_args, None)?;
-                match preview {
+                let result = ctx.call_method(inventory, method, method_args, None)?;
+                match result {
                     HostValue::String(value) => Ok(OwnedValue::String(value)),
                     _ => Ok(OwnedValue::Null),
                 }
@@ -259,7 +259,6 @@ fn main(player) {
         ),
         Ok(OwnedValue::String("accepted".to_owned()))
     );
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, inventory);
     assert_eq!(
@@ -269,10 +268,18 @@ fn main(player) {
             args: vec![HostValue::String("gold".to_owned()), HostValue::Int(2)]
         }
     );
+    assert_eq!(
+        adapter.method_calls(),
+        &[(
+            inventory,
+            method,
+            vec![HostValue::String("gold".to_owned()), HostValue::Int(2)]
+        )]
+    );
 }
 
 #[test]
-fn context_host_native_can_charge_execution_budget_before_patching() {
+fn context_host_native_can_charge_execution_budget_before_journaling() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_context_host_native_fn(
@@ -335,7 +342,7 @@ fn main(player) {
 }
 
 #[test]
-fn context_host_native_can_charge_memory_budget_before_patching() {
+fn context_host_native_can_charge_memory_budget_before_journaling() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_context_host_native_fn(
@@ -375,6 +382,10 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
+    let numeric = HostPath::new(host_ref).field(FieldId::new(1));
+    let array = HostPath::new(host_ref).field(FieldId::new(2));
+    adapter.insert_value(numeric.clone(), HostValue::Int(10));
+    adapter.insert_value(array.clone(), HostValue::Array(vec![]));
     let mut tx = PatchTx::new();
 
     let error = runtime
@@ -398,7 +409,7 @@ fn main(player) {
 }
 
 #[test]
-fn context_host_native_set_path_reserves_patch_budget_before_patching() {
+fn context_host_native_set_path_reserves_patch_budget_before_writing() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_context_host_native_fn(
@@ -478,17 +489,12 @@ fn context_host_native_patch_helpers_record_expected_patches() {
                 let numeric = HostPath::new(player).field(FieldId::new(1));
                 let array = HostPath::new(player).field(FieldId::new(2));
                 let inventory = HostPath::new(player).field(FieldId::new(3));
-                ctx.add_path(numeric.clone(), HostValue::Int(2), HostValue::Int(10), None)?;
-                ctx.sub_path(numeric.clone(), HostValue::Int(3), HostValue::Int(12), None)?;
-                ctx.mul_path(numeric.clone(), HostValue::Int(4), HostValue::Int(9), None)?;
-                ctx.div_path(numeric.clone(), HostValue::Int(2), HostValue::Int(36), None)?;
-                ctx.rem_path(numeric.clone(), HostValue::Int(5), HostValue::Int(18), None)?;
-                ctx.push_path(
-                    array.clone(),
-                    HostValue::String("gold".to_owned()),
-                    HostValue::Array(vec![]),
-                    None,
-                )?;
+                ctx.add_path(numeric.clone(), HostValue::Int(2), None)?;
+                ctx.sub_path(numeric.clone(), HostValue::Int(3), None)?;
+                ctx.mul_path(numeric.clone(), HostValue::Int(4), None)?;
+                ctx.div_path(numeric.clone(), HostValue::Int(2), None)?;
+                ctx.rem_path(numeric.clone(), HostValue::Int(5), None)?;
+                ctx.push_path(array.clone(), HostValue::String("gold".to_owned()), None)?;
                 ctx.remove_path(array, None)?;
                 ctx.call_method(inventory, method, vec![HostValue::Int(4)], None)?;
                 Ok(OwnedValue::Null)
@@ -509,6 +515,10 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
+    let numeric = HostPath::new(host_ref).field(FieldId::new(1));
+    let array = HostPath::new(host_ref).field(FieldId::new(2));
+    adapter.insert_value(numeric.clone(), HostValue::Int(10));
+    adapter.insert_value(array.clone(), HostValue::Array(vec![]));
     let mut tx = PatchTx::new();
 
     assert_eq!(
@@ -522,8 +532,6 @@ fn main(player) {
         Ok(OwnedValue::Int(1))
     );
 
-    let numeric = HostPath::new(host_ref).field(FieldId::new(1));
-    let array = HostPath::new(host_ref).field(FieldId::new(2));
     let inventory = HostPath::new(host_ref).field(FieldId::new(3));
     assert_eq!(tx.patches().len(), 8);
     assert_eq!(tx.patches()[0].path, numeric);
@@ -554,7 +562,7 @@ fn main(player) {
 }
 
 #[test]
-fn context_host_native_patch_helpers_reserve_patch_budget_before_patching() {
+fn context_host_native_patch_helpers_reserve_patch_budget_before_writing() {
     let method = HostMethodId::new(78);
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
@@ -575,19 +583,17 @@ fn context_host_native_patch_helpers_reserve_patch_budget_before_patching() {
                 let array = HostPath::new(player).field(FieldId::new(2));
                 let inventory = HostPath::new(player).field(FieldId::new(3));
                 match mode {
-                    0 => ctx.add_path(numeric, HostValue::Int(1), HostValue::Int(10), None)?,
-                    1 => ctx.sub_path(numeric, HostValue::Int(1), HostValue::Int(10), None)?,
-                    2 => ctx.mul_path(numeric, HostValue::Int(2), HostValue::Int(10), None)?,
-                    3 => ctx.div_path(numeric, HostValue::Int(2), HostValue::Int(10), None)?,
-                    4 => ctx.rem_path(numeric, HostValue::Int(3), HostValue::Int(10), None)?,
-                    5 => ctx.push_path(
-                        array,
-                        HostValue::String("gold".to_owned()),
-                        HostValue::Array(vec![]),
-                        None,
-                    )?,
+                    0 => ctx.add_path(numeric, HostValue::Int(1), None)?,
+                    1 => ctx.sub_path(numeric, HostValue::Int(1), None)?,
+                    2 => ctx.mul_path(numeric, HostValue::Int(2), None)?,
+                    3 => ctx.div_path(numeric, HostValue::Int(2), None)?,
+                    4 => ctx.rem_path(numeric, HostValue::Int(3), None)?,
+                    5 => ctx.push_path(array, HostValue::String("gold".to_owned()), None)?,
                     6 => ctx.remove_path(array, None)?,
-                    7 => ctx.call_method(inventory, method, vec![HostValue::Int(1)], None)?,
+                    7 => {
+                        let _ =
+                            ctx.call_method(inventory, method, vec![HostValue::Int(1)], None)?;
+                    }
                     _ => {}
                 }
                 Ok(OwnedValue::Null)

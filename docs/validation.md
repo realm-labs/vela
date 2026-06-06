@@ -23,7 +23,7 @@ cargo run -p vela_cli -- examples/game_server_demo/scripts/host_read_only_denied
 cargo run -p vela_cli -- --deny-player-level-read examples/game_server_demo/scripts/host_permission_denied.vela # expected host read permission failure
 cargo run -p vela_cli -- --deny-player-level-write examples/game_server_demo/scripts/host_write_permission_denied.vela # expected host write permission failure
 cargo run -p vela_cli -- --deny-ctx-emit-call examples/game_server_demo/scripts/host_call_permission_denied.vela # expected host call permission failure
-cargo run -p vela_cli -- --conflict-player-level-before-apply examples/game_server_demo/scripts/host_patch_conflict.vela # expected host patch conflict failure
+cargo run -p vela_cli -- --deny-player-level-write examples/game_server_demo/scripts/host_compound_write_denied.vela # expected host compound write permission failure
 cargo run -p vela_cli -- --stale-player examples/game_server_demo/scripts/stale_host_ref.vela # expected stale host ref failure
 cargo run -p vela_cli -- examples/game_server_demo/scripts/bad_schema_duplicate_field.vela # expected bad-schema failure
 cargo run -p vela_cli -- examples/game_server_demo/scripts/generic_type_hint_denied.vela # expected generic type hint failure

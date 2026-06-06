@@ -136,14 +136,18 @@ boundaries.
 
 ### Host Boundary
 
-Host state is mutated only by recording patches. Direct host field, host path,
-and host method bytecode routes through `HostExecution`, `ScriptStateAdapter`,
-and `PatchTx`. RMW patches carry expected base values, overlays are read before
-adapter state, and adapter mutation happens only at safe-point apply.
+Host state is mutated through write-through `PatchTx` operations. Direct host
+field, host path, and host method bytecode routes through `HostExecution`,
+`ScriptStateAdapter`, and `PatchTx`; the adapter is updated immediately and the
+patch is retained as a journal entry for budgets, diagnostics, auditing, and
+debugging.
 
-PathProxy wraps HostPath and requires PatchTx. Host values may represent
-primitives, arrays, maps, records, enums, and HostRef handles, but not real Rust
-references.
+There is no default end-of-call apply or automatic rollback. If a script writes
+a host field and later traps, the earlier Rust-side mutation remains. PathProxy
+wraps HostPath and requires PatchTx, but complex Rust objects remain handles
+and paths; the high-frequency host field boundary accepts only scalar
+HostValue conversion. Owned complex script values cross through explicit
+serialization/owned-value paths.
 
 `ScriptHost` derives may declare reflected host trait implementations with
 static `implements` metadata. This records TypeRegistry trait metadata for
@@ -221,12 +225,10 @@ versions, and reports carry copied diagnostics plus ABI details.
 
 Compiled updates may be staged before a safe point. Staging never advances the
 active ProgramVersion; hosts must call the runtime reload check at event, tick,
-or patch-apply safe points to consume the pending update and receive the
-accepted or rejected report.
-
-Patch apply safe-point helpers must continue to route host mutation through
-`PatchTx` and `ScriptStateAdapter`; reload checks may bracket the commit, but
-they must not inspect or rewrite the recorded patches.
+or explicit call-boundary safe points to consume the pending update and receive
+the accepted or rejected report. Host mutations write through immediately via
+`PatchTx` and `ScriptStateAdapter`, so reload checks do not commit, inspect, or
+rewrite recorded patches.
 
 Function, method, module, trait, schema, effect, access, parameter, return, and
 source-span metadata participate in ABI validation. Engine registries are the

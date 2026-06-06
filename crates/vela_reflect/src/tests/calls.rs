@@ -3,11 +3,11 @@ use super::*;
 #[test]
 fn reflect_call_rejects_non_host_args() {
     let registry = registry();
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -24,7 +24,7 @@ fn reflect_call_rejects_non_host_args() {
 }
 
 #[test]
-fn reflect_call_with_policy_denies_unapproved_methods_before_patch() {
+fn reflect_call_with_policy_denies_unapproved_methods_before_journaling() {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
@@ -38,11 +38,11 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_patch() {
                     .access(MethodAccess::new().require_permission("player.admin")),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -94,11 +94,11 @@ fn reflect_call_with_policy_requires_call_methods_permission() {
                     .access(MethodAccess::new().reflect_callable(true)),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -132,11 +132,11 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
                     .access(MethodAccess::new().reflect_callable(true)),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
     let policy = ReflectPolicy::new(
@@ -165,10 +165,7 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
     );
     assert!(ctx.tx.patches().is_empty());
 
-    let allowed_permissions = policy
-        .permissions()
-        .clone()
-        .with(ReflectPermission::CallHostWriteMethods);
+    let allowed_permissions = (*policy.permissions()).with(ReflectPermission::CallHostWriteMethods);
     let policy = policy.with_permissions(allowed_permissions);
     let value = call_with_policy(
         &mut ctx,
@@ -198,11 +195,11 @@ fn reflect_call_with_policy_denies_private_methods_without_permission() {
                 ),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
     let policy = ReflectPolicy::new(
@@ -245,11 +242,11 @@ fn reflect_call_with_policy_allows_private_methods_with_permission() {
                 ),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
     let policy = ReflectPolicy::new(
@@ -303,11 +300,11 @@ fn reflect_call_with_policy_filters_unknown_method_candidates() {
                     .access(MethodAccess::new().require_permission("player.admin")),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -339,11 +336,11 @@ fn reflect_call_with_policy_filters_unknown_method_candidates() {
 #[test]
 fn unknown_methods_include_candidate_hints() {
     let registry = registry();
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 

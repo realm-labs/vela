@@ -154,9 +154,9 @@ VM bytecode execution
         ↓
 HostRef / PathProxy
         ↓
-PatchTx collects changes
+PatchTx validates and journals write-through host mutations
         ↓
-host safe-point commit
+Rust adapter state is updated immediately
         ↓
 hot reload replaces function CodeObject values
 ```

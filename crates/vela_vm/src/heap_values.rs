@@ -351,64 +351,18 @@ fn heap_value_to_owned(
 pub(crate) fn host_to_value(
     value: HostValue,
     heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match value {
         HostValue::Null => Ok(Value::Null),
         HostValue::Bool(value) => Ok(Value::Bool(value)),
         HostValue::Int(value) => Ok(Value::Int(value)),
         HostValue::Float(value) => Ok(Value::Float(value)),
-        HostValue::String(value) => {
-            allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
-        }
-        HostValue::Array(values) => {
-            let values = values
-                .into_iter()
-                .map(|value| host_to_value(value, heap, budget.as_deref_mut()))
-                .collect::<VmResult<Vec<_>>>()?;
-            allocate_heap_value(HeapValue::Array(values), heap, budget)
-        }
-        HostValue::Map(values) => {
-            let values = values
-                .into_iter()
-                .map(|(key, value)| Ok((key, host_to_value(value, heap, budget.as_deref_mut())?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()?;
-            allocate_heap_value(HeapValue::Map(values), heap, budget)
-        }
-        HostValue::Record { type_name, fields } => {
-            let fields = fields
-                .into_iter()
-                .map(|(key, value)| Ok((key, host_to_value(value, heap, budget.as_deref_mut())?)))
-                .collect::<VmResult<Vec<_>>>()?;
-            allocate_heap_value(
-                HeapValue::Record {
-                    fields: ScriptFields::from_pairs(&type_name, fields),
-                    type_name,
-                },
-                heap,
-                budget,
-            )
-        }
-        HostValue::Enum {
-            enum_name,
-            variant,
-            fields,
-        } => {
-            let owner = enum_variant_owner(&enum_name, &variant);
-            let fields = fields
-                .into_iter()
-                .map(|(key, value)| Ok((key, host_to_value(value, heap, budget.as_deref_mut())?)))
-                .collect::<VmResult<Vec<_>>>()?;
-            allocate_heap_value(
-                HeapValue::Enum {
-                    fields: ScriptFields::from_pairs(&owner, fields),
-                    enum_name,
-                    variant,
-                },
-                heap,
-                budget,
-            )
-        }
+        HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
+        HostValue::Array(_)
+        | HostValue::Map(_)
+        | HostValue::Record { .. }
+        | HostValue::Enum { .. } => Err(type_error("host complex value conversion")),
         HostValue::HostRef(value) => Ok(Value::HostRef(value)),
     }
 }
@@ -427,37 +381,13 @@ pub(crate) fn value_to_host(
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
-            Some(HeapValue::Array(values)) => values
-                .iter()
-                .map(|value| value_to_host(value, operation, heap))
-                .collect::<VmResult<Vec<_>>>()
-                .map(HostValue::Array),
-            Some(HeapValue::Map(values)) => values
-                .iter()
-                .map(|(key, value)| Ok((key.clone(), value_to_host(value, operation, heap)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()
-                .map(HostValue::Map),
-            Some(HeapValue::Record { type_name, fields }) => fields
-                .iter()
-                .map(|(key, value)| Ok((key.to_owned(), value_to_host(value, operation, heap)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()
-                .map(|fields| HostValue::Record {
-                    type_name: type_name.clone(),
-                    fields,
-                }),
-            Some(HeapValue::Enum {
-                enum_name,
-                variant,
-                fields,
-            }) => fields
-                .iter()
-                .map(|(key, value)| Ok((key.to_owned(), value_to_host(value, operation, heap)?)))
-                .collect::<VmResult<BTreeMap<_, _>>>()
-                .map(|fields| HostValue::Enum {
-                    enum_name: enum_name.clone(),
-                    variant: variant.clone(),
-                    fields,
-                }),
+            Some(
+                HeapValue::Array(_)
+                | HeapValue::Map(_)
+                | HeapValue::Set(_)
+                | HeapValue::Record { .. }
+                | HeapValue::Enum { .. },
+            ) => Err(type_error(operation)),
             _ => Err(type_error(operation)),
         },
         Value::Missing | Value::Range(_) => Err(type_error(operation)),

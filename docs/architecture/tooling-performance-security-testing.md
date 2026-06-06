@@ -142,7 +142,7 @@ step into, step over, step out, pause, and continue
 call stack with source spans, function names, and ProgramVersion identity
 parameters, locals, captures, and watch/evaluate expressions
 safe HostRef display through reflection and host access policy
-PatchTx preview without applying host mutations
+read-only host inspection through reflection and host access policy
 runtime exception and host error breakpoints
 hot reload breakpoint rebinding across ProgramVersion changes
 ```
@@ -278,7 +278,7 @@ runtime debug hooks and suspension points
 source breakpoint binding and conditional breakpoint evaluation
 frame maps for parameters, locals, captures, registers, and GC roots
 watch/evaluate through controlled reflection and host policies
-PatchTx preview and host error breakpoints
+read-only host inspection and host error breakpoints
 Debug Adapter Protocol boundary for IDE integration
 hot reload breakpoint rebinding through ProgramVersion metadata
 ```

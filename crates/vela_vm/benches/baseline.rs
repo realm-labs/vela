@@ -386,7 +386,6 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn E
         &mut budget,
     )?;
     let patch_count = tx.patches().len();
-    tx.apply(&mut adapter)?;
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + patch_count as i64
@@ -424,7 +423,6 @@ fn run_managed_heap_host_conversion(
         )?
     };
     let patch_count = tx.patches().len();
-    tx.apply(&mut adapter)?;
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + patch_count as i64
@@ -570,7 +568,6 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
         )?
     };
     let patch_count = tx.patches().len();
-    tx.apply(&mut adapter)?;
 
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64

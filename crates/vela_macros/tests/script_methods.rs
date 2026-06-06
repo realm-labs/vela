@@ -58,6 +58,7 @@ impl Player {
         amount: i64,
     ) -> VmResult<i64> {
         host.tx.set_path(
+            host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(amount),
             None,
@@ -88,6 +89,7 @@ impl Player {
     ) -> VmResult<i64> {
         let total = a + b + c + d + e;
         host.tx.set_path(
+            host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),
             None,
@@ -110,6 +112,7 @@ impl Player {
     ) -> VmResult<i64> {
         let total = a + b + c + d + e + f;
         host.tx.set_path(
+            host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),
             None,

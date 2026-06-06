@@ -1,13 +1,12 @@
-use vela_common::Span;
+use vela_common::{HostMethodId, Span};
 
 use crate::{
     adapter::ScriptStateAdapter,
     add_values, div_values,
     error::{HostError, HostErrorKind, HostResult},
     mul_values,
-    overlay::PatchOverlay,
     patch::{Patch, PatchOp},
-    path::{HostPath, HostPathKey, HostRef},
+    path::{HostPath, HostRef},
     push_value, rem_values, sub_values,
     value::HostValue,
 };
@@ -22,7 +21,6 @@ pub struct HostObjectSnapshot {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PatchTx {
     patches: Vec<Patch>,
-    overlay: PatchOverlay,
 }
 
 impl PatchTx {
@@ -37,8 +35,8 @@ impl PatchTx {
     }
 
     #[must_use]
-    pub fn read_overlay(&self, path: &HostPath) -> Option<&HostValue> {
-        self.overlay.read(path)
+    pub fn into_patches(self) -> Vec<Patch> {
+        self.patches
     }
 
     pub fn read_path(
@@ -55,193 +53,135 @@ impl PatchTx {
         path: &HostPath,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        match self.overlay.overlaid_value(path, source_span)? {
-            Some(value) => Ok(value),
-            None => adapter
-                .read_path(path)
-                .map_err(|error| error.with_source_span_if_absent(source_span)),
-        }
+        adapter
+            .read_path(path)
+            .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
     pub fn set_path(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        self.push_patch(path, PatchOp::Set(value), source_span)
+        let patch = Patch {
+            path: path.clone(),
+            op: PatchOp::Set(value.clone()),
+            expected_base: None,
+            source_span,
+        };
+        self.validate_and_record_after(adapter, patch, |adapter| adapter.write_path(&path, value))
     }
 
     pub fn add_path(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
-        base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let path_key = path.path_key();
-        let expected_base = self.overlay.expected_base_key(&path_key, &base_value);
-        let current = self.overlay_value_or_base_key(&path_key, &path, base_value, source_span)?;
-        let next = add_values(&current, &value).ok_or_else(|| {
-            HostError::new(HostErrorKind::InvalidAdd { path: path.clone() })
-                .with_source_span(source_span)
-        })?;
-        self.patches.push(Patch {
-            path: path.clone(),
-            op: PatchOp::Add(value),
-            expected_base,
-            source_span,
-        });
-        self.overlay.set_value_key(path_key, next);
-        Ok(())
+        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Add)
     }
 
     pub fn sub_path(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
-        base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let path_key = path.path_key();
-        let expected_base = self.overlay.expected_base_key(&path_key, &base_value);
-        let current = self.overlay_value_or_base_key(&path_key, &path, base_value, source_span)?;
-        let next = sub_values(&current, &value).ok_or_else(|| {
-            HostError::new(HostErrorKind::InvalidSub { path: path.clone() })
-                .with_source_span(source_span)
-        })?;
-        self.patches.push(Patch {
-            path: path.clone(),
-            op: PatchOp::Sub(value),
-            expected_base,
-            source_span,
-        });
-        self.overlay.set_value_key(path_key, next);
-        Ok(())
+        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Sub)
     }
 
     pub fn mul_path(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
-        base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let path_key = path.path_key();
-        let expected_base = self.overlay.expected_base_key(&path_key, &base_value);
-        let current = self.overlay_value_or_base_key(&path_key, &path, base_value, source_span)?;
-        let next = mul_values(&current, &value).ok_or_else(|| {
-            HostError::new(HostErrorKind::InvalidMul { path: path.clone() })
-                .with_source_span(source_span)
-        })?;
-        self.patches.push(Patch {
-            path: path.clone(),
-            op: PatchOp::Mul(value),
-            expected_base,
-            source_span,
-        });
-        self.overlay.set_value_key(path_key, next);
-        Ok(())
+        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Mul)
     }
 
     pub fn div_path(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
-        base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let path_key = path.path_key();
-        let expected_base = self.overlay.expected_base_key(&path_key, &base_value);
-        let current = self.overlay_value_or_base_key(&path_key, &path, base_value, source_span)?;
-        let next = div_values(&current, &value).ok_or_else(|| {
-            HostError::new(HostErrorKind::InvalidDiv { path: path.clone() })
-                .with_source_span(source_span)
-        })?;
-        self.patches.push(Patch {
-            path: path.clone(),
-            op: PatchOp::Div(value),
-            expected_base,
-            source_span,
-        });
-        self.overlay.set_value_key(path_key, next);
-        Ok(())
+        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Div)
     }
 
     pub fn rem_path(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
-        base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let path_key = path.path_key();
-        let expected_base = self.overlay.expected_base_key(&path_key, &base_value);
-        let current = self.overlay_value_or_base_key(&path_key, &path, base_value, source_span)?;
-        let next = rem_values(&current, &value).ok_or_else(|| {
-            HostError::new(HostErrorKind::InvalidRem { path: path.clone() })
-                .with_source_span(source_span)
-        })?;
-        self.patches.push(Patch {
-            path: path.clone(),
-            op: PatchOp::Rem(value),
-            expected_base,
-            source_span,
-        });
-        self.overlay.set_value_key(path_key, next);
-        Ok(())
+        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Rem)
     }
 
     pub fn push_path(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
         value: HostValue,
-        base_value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let path_key = path.path_key();
-        let expected_base = self.overlay.expected_base_key(&path_key, &base_value);
-        let current = self.overlay_value_or_base_key(&path_key, &path, base_value, source_span)?;
-        let next = push_value(&current, value.clone()).ok_or_else(|| {
-            HostError::new(HostErrorKind::InvalidPush { path: path.clone() })
-                .with_source_span(source_span)
-        })?;
-        self.patches.push(Patch {
-            path: path.clone(),
-            op: PatchOp::Push(value),
-            expected_base,
-            source_span,
-        });
-        self.overlay.set_value_key(path_key, next);
-        Ok(())
+        self.write_compound_path(adapter, path, value, source_span, CompoundWrite::Push)
     }
 
-    pub fn remove_path(&mut self, path: HostPath, source_span: Option<Span>) -> HostResult<()> {
-        let path_key = path.path_key();
-        self.patches.push(Patch {
-            path: path.clone(),
+    pub fn remove_path(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        path: HostPath,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        let patch = Patch {
+            path,
             op: PatchOp::Remove,
             expected_base: None,
             source_span,
-        });
-        self.overlay.remove_key(path_key);
+        };
+        let source_span = patch.source_span;
+        adapter
+            .validate_patch(&patch)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        adapter
+            .remove_path(&patch.path)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.patches.push(patch);
         Ok(())
     }
 
     pub fn call_method(
         &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         path: HostPath,
-        method: vela_common::HostMethodId,
+        method: HostMethodId,
         args: Vec<HostValue>,
         source_span: Option<Span>,
-    ) -> HostResult<()> {
-        self.patches.push(Patch {
-            path,
-            op: PatchOp::CallHostMethod { method, args },
+    ) -> HostResult<HostValue> {
+        let patch = Patch {
+            path: path.clone(),
+            op: PatchOp::CallHostMethod {
+                method,
+                args: args.clone(),
+            },
             expected_base: None,
             source_span,
-        });
-        Ok(())
+        };
+        adapter
+            .validate_patch(&patch)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        let result = adapter
+            .call_method(&path, method, &args)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.patches.push(patch);
+        Ok(result)
     }
 
     pub fn require_fresh_ref(host_ref: HostRef, snapshot: &HostObjectSnapshot) -> HostResult<()> {
@@ -266,36 +206,91 @@ impl PatchTx {
         Ok(())
     }
 
-    pub fn apply(self, adapter: &mut impl ScriptStateAdapter) -> HostResult<()> {
-        adapter.apply_patches(self.patches)
+    fn write_compound_path(
+        &mut self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        path: HostPath,
+        value: HostValue,
+        source_span: Option<Span>,
+        write: CompoundWrite,
+    ) -> HostResult<()> {
+        let current = adapter
+            .read_path(&path)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        let next = write.compute(&current, &value).ok_or_else(|| {
+            write
+                .invalid_error(path.clone())
+                .with_source_span(source_span)
+        })?;
+        let patch = Patch {
+            path: path.clone(),
+            op: write.patch_op(value),
+            expected_base: Some(current),
+            source_span,
+        };
+        self.validate_and_record_after(adapter, patch, |adapter| adapter.write_path(&path, next))
     }
 
-    fn push_patch(
+    fn validate_and_record_after<Adapter>(
         &mut self,
-        path: HostPath,
-        op: PatchOp,
-        source_span: Option<Span>,
-    ) -> HostResult<()> {
-        if let PatchOp::Set(value) = &op {
-            self.overlay.set_value_key(path.path_key(), value.clone());
-        }
-        self.patches.push(Patch {
-            path,
-            op,
-            expected_base: None,
-            source_span,
-        });
+        adapter: &mut Adapter,
+        patch: Patch,
+        write: impl FnOnce(&mut Adapter) -> HostResult<()>,
+    ) -> HostResult<()>
+    where
+        Adapter: ScriptStateAdapter + ?Sized,
+    {
+        let source_span = patch.source_span;
+        adapter
+            .validate_patch(&patch)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        write(adapter).map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.patches.push(patch);
         Ok(())
     }
+}
 
-    fn overlay_value_or_base_key(
-        &self,
-        key: &HostPathKey,
-        path: &HostPath,
-        base_value: HostValue,
-        source_span: Option<Span>,
-    ) -> HostResult<HostValue> {
-        self.overlay
-            .read_or_base_key(key, path, base_value, source_span)
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CompoundWrite {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Push,
+}
+
+impl CompoundWrite {
+    fn patch_op(self, value: HostValue) -> PatchOp {
+        match self {
+            Self::Add => PatchOp::Add(value),
+            Self::Sub => PatchOp::Sub(value),
+            Self::Mul => PatchOp::Mul(value),
+            Self::Div => PatchOp::Div(value),
+            Self::Rem => PatchOp::Rem(value),
+            Self::Push => PatchOp::Push(value),
+        }
+    }
+
+    fn invalid_error(self, path: HostPath) -> HostError {
+        match self {
+            Self::Add => HostError::new(HostErrorKind::InvalidAdd { path }),
+            Self::Sub => HostError::new(HostErrorKind::InvalidSub { path }),
+            Self::Mul => HostError::new(HostErrorKind::InvalidMul { path }),
+            Self::Div => HostError::new(HostErrorKind::InvalidDiv { path }),
+            Self::Rem => HostError::new(HostErrorKind::InvalidRem { path }),
+            Self::Push => HostError::new(HostErrorKind::InvalidPush { path }),
+        }
+    }
+
+    fn compute(self, current: &HostValue, value: &HostValue) -> Option<HostValue> {
+        match self {
+            Self::Add => add_values(current, value),
+            Self::Sub => sub_values(current, value),
+            Self::Mul => mul_values(current, value),
+            Self::Div => div_values(current, value),
+            Self::Rem => rem_values(current, value),
+            Self::Push => push_value(current, value.clone()),
+        }
     }
 }

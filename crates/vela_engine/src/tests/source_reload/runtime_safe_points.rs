@@ -874,7 +874,7 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
 }
 
 #[test]
-fn runtime_checks_reload_around_patch_apply_safe_point() {
+fn runtime_checks_reload_at_explicit_safe_point() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
@@ -924,16 +924,12 @@ fn main(player: Player) {
         .stage_hot_update(update)
         .expect("stage pending update");
 
-    let safe_point = runtime
-        .apply_patch_tx_at_safe_point(tx, &mut adapter)
-        .expect("apply patches at safe point");
-
-    let before = safe_point
-        .before_apply_reload
-        .expect("pending update should be consumed before patch apply");
-    assert!(before.accepted);
-    assert_eq!(before.changed_functions, vec!["main".to_owned()]);
-    assert_eq!(safe_point.after_apply_reload, None);
+    let report = runtime
+        .check_reload_at_tick_boundary()
+        .expect("reload check should run")
+        .expect("pending update should be consumed");
+    assert!(report.accepted);
+    assert_eq!(report.changed_functions, vec!["main".to_owned()]);
 
     let mut next_tx = PatchTx::new();
     assert_eq!(
@@ -949,7 +945,7 @@ fn main(player: Player) {
 }
 
 #[test]
-fn runtime_safe_point_error_keeps_before_apply_reload_report() {
+fn runtime_write_error_does_not_consume_pending_reload() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
@@ -983,42 +979,32 @@ fn main(player: Player) {
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path.clone(), HostValue::Int(10));
+    runtime
+        .stage_hot_update(update)
+        .expect("stage pending update");
+    adapter.deny_write(level_path.clone());
     let mut tx = PatchTx::new();
 
-    assert_eq!(
-        runtime.call(
+    let error = runtime
+        .call(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
-        ),
-        Ok(OwnedValue::Int(11))
-    );
-    runtime
-        .stage_hot_update(update)
-        .expect("stage pending update");
-    adapter.deny_write(level_path.clone());
-
-    let error = runtime
-        .apply_patch_tx_at_safe_point(tx, &mut adapter)
-        .expect_err("denied host write should fail patch apply");
+        )
+        .expect_err("denied host write should fail during call");
 
     assert!(matches!(
-        error.host_error.kind,
-        HostErrorKind::PermissionDenied {
+        error.kind,
+        VmErrorKind::Host(HostErrorKind::PermissionDenied {
             path,
             action: "write",
-        } if path == level_path
+        }) if path == level_path
     ));
-    let before = error
-        .before_apply_reload
-        .expect("pending reload report should be preserved on host error");
-    assert!(before.accepted);
-    assert_eq!(before.changed_functions, vec!["main".to_owned()]);
     assert!(
-        !runtime
+        runtime
             .has_pending_hot_update()
-            .expect("reload report was consumed before patch apply")
+            .expect("failed write should not consume pending reload")
     );
 }

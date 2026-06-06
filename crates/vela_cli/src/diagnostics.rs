@@ -5,7 +5,6 @@ use vela_common::diagnostic_render::{DiagnosticRenderer, DiagnosticSource};
 use vela_common::{Diagnostic, SourceId};
 use vela_engine::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use vela_engine::source::{EngineSourceError, EngineSourceErrorKind};
-use vela_host::error::HostError;
 use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
 use vela_hot_reload::report::HotReloadReport;
 use vela_vm::error::VmError;
@@ -34,10 +33,6 @@ pub(crate) fn render_vm_error(path: &Path, error: &VmError) -> String {
         .ok()
         .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
     render_diagnostics(&[error.to_diagnostic()], source)
-}
-
-pub(crate) fn render_host_error(path: &Path, error: &HostError) -> String {
-    render_vm_error(path, &VmError::from(error.clone()))
 }
 
 pub(crate) fn render_hot_reload_report(path: &Path, report: &HotReloadReport) -> String {
@@ -84,6 +79,7 @@ fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
         | CompileErrorKind::InvalidIntLiteral { .. }
         | CompileErrorKind::InvalidFloatLiteral { .. }
         | CompileErrorKind::RegisterOverflow
+        | CompileErrorKind::BytecodeVerification(_)
         | CompileErrorKind::UnsupportedSyntax(_) => None,
     }
 }

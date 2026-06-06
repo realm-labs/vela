@@ -171,8 +171,6 @@ runtime.call(
     &mut state_adapter,
     &mut tx,
 )?;
-
-tx.apply(&mut state_adapter)?;
 ```
 
 ### Hot Reload
@@ -194,10 +192,9 @@ do not need to separately fetch the current version before compiling an update.
 Source load and path errors are returned immediately, while accepted updates and
 ABI or policy rejections are staged until the host calls `runtime.check_reload()`
 at a safe point. Tick-loop hosts can call
-`runtime.check_reload_at_tick_boundary()` when no event or patch apply boundary
-is active. Hosts that already have a `PatchTx` can use
-`runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a pending
-reload before and after successful host patch apply.
+`runtime.check_reload_at_tick_boundary()` when no event boundary is active. Host
+mutations write through during the call, so reload checks are separate from host
+mutation journaling.
 
 For full module-root workflows, hosts can call
 `runtime.stage_hot_reload_update_dir("scripts")` with the same safe-point

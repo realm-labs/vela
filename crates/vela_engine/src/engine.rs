@@ -201,14 +201,7 @@ impl Engine {
             call_stack: Default::default(),
         })?;
         check_capabilities(&entry.desc.name, &entry.desc.effects, self.capabilities)?;
-        let tx_checkpoint = host.tx.clone();
-        match (entry.function)(receiver, args, host) {
-            Ok(value) => Ok(value),
-            Err(error) => {
-                *host.tx = tx_checkpoint;
-                Err(error)
-            }
-        }
+        (entry.function)(receiver, args, host)
     }
 
     pub fn install(&self, vm: &mut Vm) {

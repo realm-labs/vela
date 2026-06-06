@@ -34,12 +34,11 @@ fn main(player) {
     assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
-        Ok(HostValue::Int(9))
+        Ok(HostValue::Int(11))
     );
     assert_eq!(tx.patches().len(), 2);
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
     assert_eq!(tx.patches()[1].op, PatchOp::Add(HostValue::Int(1)));
-    tx.apply(&mut adapter).expect("apply patches");
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
@@ -122,11 +121,10 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(11)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(9)));
+    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, stats_level);
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
-    tx.apply(&mut adapter).expect("apply nested host patch");
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
 }
 
@@ -167,16 +165,15 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(7)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(9)));
+    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, stats_level);
     assert_eq!(tx.patches()[0].op, PatchOp::Sub(HostValue::Int(2)));
-    tx.apply(&mut adapter).expect("apply nested host sub patch");
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
 }
 
 #[test]
-fn compiled_source_applies_host_numeric_compound_assignments_through_patch_tx() {
+fn compiled_source_writes_host_numeric_compound_assignments_through_patch_tx() {
     let host_ref = player_ref(3);
     let stats = FieldId::new(8);
     let level = FieldId::new(9);
@@ -214,13 +211,11 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(4)));
+    assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
     assert_eq!(tx.patches().len(), 3);
     assert_eq!(tx.patches()[0].op, PatchOp::Mul(HostValue::Int(3)));
     assert_eq!(tx.patches()[1].op, PatchOp::Div(HostValue::Int(2)));
     assert_eq!(tx.patches()[2].op, PatchOp::Rem(HostValue::Int(5)));
-    tx.apply(&mut adapter)
-        .expect("apply nested host numeric compound patches");
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
 }
 
@@ -250,31 +245,33 @@ fn main(player) {
     );
     let mut tx = PatchTx::new();
 
-    let result = {
+    let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
         };
-        Vm::new().run_program_with_host(
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
+        Vm::new()
+            .run_program_with_host(
+                &program,
+                "main",
+                &[OwnedValue::HostRef(host_ref)],
+                &mut host,
+            )
+            .expect_err("reading host array length should reject complex host conversion")
     };
 
-    assert_eq!(result, Ok(OwnedValue::Int(2)));
     assert_eq!(
-        adapter.read_path(&reward_path),
-        Ok(HostValue::Array(vec![HostValue::String("xp".into())]))
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "host complex value conversion"
+        }
     );
     assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, reward_path);
+    assert_eq!(tx.patches()[0].path, reward_path.clone());
     assert_eq!(
         tx.patches()[0].op,
         PatchOp::Push(HostValue::String("gold".into()))
     );
-    tx.apply(&mut adapter).expect("apply host push patch");
     assert_eq!(
         adapter.read_path(&reward_path),
         Ok(HostValue::Array(vec![
@@ -326,14 +323,9 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(
-        adapter.read_path(&item_path),
-        Ok(HostValue::String("gold".into()))
-    );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, item_path);
     assert_eq!(tx.patches()[0].op, PatchOp::Remove);
-    tx.apply(&mut adapter).expect("apply host remove patch");
     assert!(matches!(
         adapter.read_path(&item_path),
         Err(error)
@@ -388,11 +380,10 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
-    assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(4)));
+    assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, item_count);
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
-    tx.apply(&mut adapter).expect("apply indexed host patch");
     assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
 }
 
@@ -447,12 +438,10 @@ fn bytecode_mutates_host_variant_field_through_patch_tx() {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
-    assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(4)));
+    assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, quest_count);
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
-    tx.apply(&mut adapter)
-        .expect("apply host variant field patch");
     assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
 }
 
@@ -506,7 +495,6 @@ fn main(ctx) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1042)));
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 2);
     assert_eq!(
         tx.patches()[0].op,
@@ -529,7 +517,6 @@ fn main(ctx) {
             ]
         }
     );
-    tx.apply(&mut adapter).expect("apply context patches");
     assert_eq!(
         adapter.method_calls(),
         &[

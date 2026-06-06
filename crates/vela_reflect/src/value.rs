@@ -40,7 +40,7 @@ pub enum ReflectValue {
 
 pub struct ReflectContext<'a> {
     pub registry: &'a TypeRegistry,
-    pub adapter: &'a dyn ScriptStateAdapter,
+    pub adapter: &'a mut dyn ScriptStateAdapter,
     pub tx: &'a mut PatchTx,
 }
 
@@ -254,7 +254,12 @@ fn set_impl(
                 return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
             };
             ctx.tx
-                .set_path(HostPath::new(*host_ref).field(field_desc.id), value, None)
+                .set_path(
+                    ctx.adapter,
+                    HostPath::new(*host_ref).field(field_desc.id),
+                    value,
+                    None,
+                )
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
             Ok(ReflectValue::Host(HostValue::Null))
         }
@@ -374,10 +379,17 @@ fn call_impl(
         .into_iter()
         .map(host_arg)
         .collect::<ReflectResult<Vec<_>>>()?;
-    ctx.tx
-        .call_method(HostPath::new(*host_ref), method_desc.id, args, None)
+    let result = ctx
+        .tx
+        .call_method(
+            ctx.adapter,
+            HostPath::new(*host_ref),
+            method_desc.id,
+            args,
+            None,
+        )
         .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
-    Ok(ReflectValue::Host(HostValue::Null))
+    Ok(ReflectValue::Host(result))
 }
 
 pub fn implements(

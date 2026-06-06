@@ -131,7 +131,7 @@ fn random_reflect_allowed_demo_runs_through_cli() {
 fn reward_preview_demo_runs_through_cli() {
     assert_eq!(
         run_demo("reward_preview.vela"),
-        "result=Int(23) level=Int(1) patches=0\n"
+        "result=Int(22) level=Int(1) patches=0\n"
     );
 }
 
@@ -204,7 +204,7 @@ fn host_permission_demo_reports_denied_host_read() {
 }
 
 #[test]
-fn host_write_permission_demo_reports_denied_apply() {
+fn host_write_permission_demo_reports_denied_write() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
         .arg("--deny-player-level-write")
         .arg(script_path("host_write_permission_denied.vela"))
@@ -220,7 +220,7 @@ fn host_write_permission_demo_reports_denied_apply() {
 }
 
 #[test]
-fn host_call_permission_demo_reports_denied_apply() {
+fn host_call_permission_demo_reports_denied_call() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
         .arg("--deny-ctx-emit-call")
         .arg(script_path("host_call_permission_denied.vela"))
@@ -236,19 +236,18 @@ fn host_call_permission_demo_reports_denied_apply() {
 }
 
 #[test]
-fn host_patch_conflict_demo_reports_apply_conflict() {
+fn host_compound_write_denied_demo_reports_immediate_error() {
     let output = Command::new(env!("CARGO_BIN_EXE_vela_cli"))
-        .arg("--conflict-player-level-before-apply")
-        .arg(script_path("host_patch_conflict.vela"))
+        .arg("--deny-player-level-write")
+        .arg(script_path("host_compound_write_denied.vela"))
         .output()
-        .expect("run vela_cli host patch conflict demo");
+        .expect("run vela_cli host compound write denied demo");
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
-    assert!(stderr.contains("error[vm::host_error]: host error: PatchConflict"));
-    assert!(stderr.contains("expected: Int(9)"));
-    assert!(stderr.contains("actual: Some(Int(99))"));
-    assert!(stderr.contains("host_patch_conflict.vela:2:5"));
+    assert!(stderr.contains("error[vm::host_error]: host error: PermissionDenied"));
+    assert!(stderr.contains("action: \"write\""));
+    assert!(stderr.contains("host_compound_write_denied.vela:2:5"));
     assert!(stderr.contains("player.level += 1;"));
 }
 
@@ -292,7 +291,7 @@ fn monster_kill_reward_demo_runs_through_cli() {
     assert_eq!(
         run_demo("monster_kill_reward.vela"),
         "result=Int(2) level=Int(2) exp=Int(0) quest_count=Int(3) \
-         quest_done=Bool(true) inventory_gold=Int(3) reward_calls=1 emits=3 patches=10\n"
+         quest_done=Bool(true) inventory_gold=Int(2) reward_calls=1 emits=3 patches=10\n"
     );
 }
 

@@ -346,7 +346,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,
@@ -355,7 +354,6 @@ fn main(player) {
             args: vec![HostValue::Int(20)]
         }
     );
-    tx.apply(&mut adapter).expect("apply reflection call");
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]

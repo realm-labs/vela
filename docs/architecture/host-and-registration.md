@@ -65,7 +65,6 @@ pub enum PathSegment {
 ```rust
 pub struct PatchTx {
     pub patches: Vec<Patch>,
-    pub overlay: PatchOverlay,
 }
 
 pub struct Patch {
@@ -93,7 +92,16 @@ pub enum PatchOp {
 
 ### Read And Write Semantics
 
-Scripts must observe writes made earlier in the same transaction:
+Host handles are call-scope references to Rust-owned state. Complex Rust
+objects stay behind `HostRef` and `HostPath`; child field access appends path
+segments instead of cloning parent structures. Host field reads and writes use
+scalar `HostValue` conversion at the boundary: null, bool, int, float, string,
+and handles. Complex script-owned records, arrays, maps, and enums cross via
+the explicit owned-value serialization path, not the high-frequency host
+handle path.
+
+Scripts observe writes made earlier in the same call because writes mutate the
+adapter immediately:
 
 ```rust
 account.balance = 10
@@ -104,20 +112,22 @@ Read logic:
 
 ```text
 read_path(path):
-    if tx.overlay has path:
-        return overlay value
-    else:
-        return host snapshot value
+    validate generation and read permission
+    return current adapter value
 ```
 
 Write logic:
 
 ```text
 write_path(path, value):
-    validate access
-    record patch
-    update overlay
+    validate access, patch budget, and patch metadata
+    write adapter immediately
+    record patch in PatchTx journal
 ```
+
+If a later script operation traps, previous host writes are retained. `PatchTx`
+is the controlled mutation context and audit journal; it is not a rollback
+transaction and there is no default end-of-call apply.
 
 ### Read-Modify-Write
 
@@ -127,7 +137,9 @@ write_path(path, value):
 PatchOp::Add(HostValue::Int(1))
 ```
 
-This lets the host perform atomic validation, range checks, conflict handling, and logging during apply.
+The VM reads the current adapter value, computes the scalar result, validates
+the patch, writes the adapter, and records the patch. This keeps range checks,
+permissions, budgets, diagnostics, and logging in one host mutation boundary.
 
 ### Host State Adapter
 
@@ -137,6 +149,8 @@ pub trait ScriptStateAdapter {
 
     fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()>;
 
+    fn remove_path(&mut self, path: &HostPath) -> HostResult<()>;
+
     fn call_method(
         &mut self,
         path: &HostPath,
@@ -145,8 +159,6 @@ pub trait ScriptStateAdapter {
     ) -> HostResult<HostValue>;
 
     fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
-
-    fn apply_patch(&mut self, patch: Patch) -> HostResult<()>;
 }
 ```
 
@@ -203,9 +215,9 @@ impl Account {
 }
 ```
 
-Host method implementations may mutate real Rust state later inside the host
-adapter apply path, but the VM-facing callable receives `HostRef`, `HostPath`,
-or copied values rather than `&mut self`.
+Host method implementations mutate real Rust state through the adapter
+immediately. The VM-facing callable receives `HostRef`, `HostPath`, or copied
+scalar values rather than `&mut self`.
 
 ### Generated Items
 

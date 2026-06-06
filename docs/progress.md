@@ -38,7 +38,7 @@ Cranelift JIT.
 | M8 | Complete enough | HIR, module graph, imports, declarations, binding maps, and compiler integration are active. |
 | M9 | Complete enough | Broad executable language surface works; conformance catches edge cases. |
 | M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist. |
-| M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx overlays, and rollback-safe host boundaries exist. |
+| M11 | Complete enough | HostRef, HostPath, PathProxy, and write-through PatchTx host boundaries exist. |
 | M12 | Complete enough | Reflection metadata, permission-aware queries, candidate spans, and schema-safe mutation denial are covered. |
 | M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random capability gating, lambda facts, and domain-neutral helper coverage are validated. |
 | M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, capability profiles, signature conversion, and macro parity are covered. |
@@ -59,8 +59,8 @@ Cranelift JIT.
 
 - `.vela` source parsing, HIR lowering, bytecode compilation, VM execution,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.
-- Host mutation through `HostRef`, `HostPath`, `PathProxy`, `PatchTx`, overlays,
-  capability-gated effects, and safe-point apply.
+- Host mutation through `HostRef`, `HostPath`, `PathProxy`, write-through
+  `PatchTx`, capability-gated effects, and mutation journals.
 - Reflection for types, fields, methods, variants, traits, modules, functions,
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
@@ -79,9 +79,9 @@ Cranelift JIT.
 - CLI demo scripts and conformance fixtures covering domain-neutral stdlib helpers,
   reflection, schema-safe mutation denial, capability gating, read-only host boundary
   rejection, host read/write/call capability denial, stale host ref generation
-  rejection, host patch conflict reporting, reflection candidate diagnostics,
-  bad schema diagnostics, generic type hint rejection, and tick-boundary hot
-  reload.
+  rejection, host write/call denial diagnostics, reflection candidate
+  diagnostics, bad schema diagnostics, generic type hint rejection, and
+  tick-boundary hot reload.
 - A parser fuzz target exists under `fuzz/` and can be compile-checked even
   when the local machine has not installed `cargo-fuzz`.
 - Current benchmark rules, baseline summaries, and M19 exit conclusions live in
@@ -103,7 +103,7 @@ Cranelift JIT.
   stable `FunctionId` metadata while preserving names for diagnostics and
   fallback, and Engine-installed plus standard native functions register ID
   lookup targets. Native call dispatch is routed through a focused VM call
-  boundary, preserving ID-first lookup, name fallback, PatchTx rollback, budget
+    boundary, preserving ID-first lookup, name fallback, PatchTx budget
   checks, and source-spanned errors. Standard value method calls can also carry
   optional `HostMethodId` metadata, with `len`/`is_empty` using an ID fast path
   before name fallback, and script/value method dispatch is routed through a
@@ -112,9 +112,9 @@ Cranelift JIT.
   host-access boundary, giving later path-key or direct-adapter work one
   replacement point. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
-  index/key conversion, and PatchTx overlay identity now uses a dedicated
+  index/key conversion, and HostPath/PatchTx identity now uses a dedicated
   HostPathKey sidecar with inline storage for common short paths while patches
-  retain full HostPath values for apply and diagnostics. Host-boundary
+  retain full HostPath values for diagnostics. Host-boundary
   conversion failures are covered as PatchTx slow paths that leave patches
   unrecorded.
   Source and module compilation now verifies bytecode before returning

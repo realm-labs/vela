@@ -191,7 +191,7 @@ do not call the same Runtime concurrently from multiple threads
 do not share script GC objects across runtimes or threads
 do not let native functions store borrowed Value references after a call
 do not expose host locks, atomics, or thread handles to scripts
-do not apply PatchTx concurrently with VM execution for the same host object set
+do not mutate the same host object set concurrently through multiple runtimes
 ```
 
 Data crossing host threads must be copied, serialized, or represented by stable

@@ -151,6 +151,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
+                    host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
@@ -216,6 +217,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
+                    host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,

@@ -330,9 +330,10 @@ Scope:
 PathProxy value category
 nested HostPath lowering for fields, indexes, keys, and variant fields
 GET_HOST_PATH, SET_HOST_PATH, RMW_HOST_PATH, CALL_HOST_METHOD lowering
-HostValue conversion for arrays, maps, records, enums, host refs, and nullables
-PatchTx overlay for Set, Add, Sub, Remove, Push, and method-call return effects
-patch validation, rollback-safe apply, and conflict reporting
+HostValue scalar and HostRef conversion for host field reads/writes
+explicit owned serialization for arrays, maps, records, enums, and nullables
+PatchTx write-through operations for Set, Add, Sub, Remove, Push, and method calls
+patch validation, budgets, source spans, diagnostics, and mutation journaling
 host access policies for read/write/call permissions
 source-span propagation into patches and host errors
 ```
@@ -340,18 +341,18 @@ source-span propagation into patches and host errors
 Acceptance:
 
 ```text
-account.ledger.entries[entry_id].amount += 1 records a nested RMW patch
-reads after nested writes observe overlay values
-read-only and permission-denied host paths fail before apply
-failed apply leaves adapter state unchanged
-host method calls can return script-visible copied values without exposing &mut
+account.ledger.entries[entry_id].amount += 1 writes through and journals a nested RMW patch
+reads after nested writes observe current Rust adapter values
+read-only and permission-denied host paths fail before mutation
+later script traps do not roll back earlier host writes
+host method calls return script-visible copied values without exposing &mut
 ```
 
 Checkpoint:
 
 ```text
-cargo test covers nested HostPath reads/writes, overlay read-after-write,
-read-only and permission failures, rollback-safe apply, and copied host returns
+cargo test covers nested HostPath reads/writes, write-through read-after-write,
+read-only and permission failures, error-after-write retention, and copied host returns
 docs/progress.md marks M11 complete enough or names the missing host boundary
 ```
 
@@ -486,7 +487,7 @@ Scope:
 ```text
 Runtime current ProgramVersion with registry, modules, functions, and code objects
 active version epochs and old-version lifetime tracking
-safe points at event end, tick boundary, and before/after patch apply
+safe points at event end, tick boundary, and explicit runtime checks
 compile_update for changed files and module dependency invalidation
 ABI diff for exported functions, event handlers, native descriptors, effects
 schema diff for structs, enums, fields, variants, methods, traits
@@ -778,7 +779,7 @@ step into, step over, step out, pause, and continue
 call stack and frame inspection with source spans and bytecode offsets
 locals, parameters, captured values, and watch/evaluate expressions
 safe HostRef display through reflection and host access policy
-PatchTx preview without applying host mutations
+read-only host inspection through reflection without bypassing permissions
 runtime exception and host error breakpoints
 hot reload breakpoint rebinding across ProgramVersion changes
 Debug Adapter Protocol server or adapter boundary for IDE integration
@@ -790,7 +791,7 @@ Acceptance:
 debugger can pause at source breakpoints and resume deterministically
 single-step behavior matches VM instruction/source-span mapping
 watch/evaluate respects reflection permissions and cannot expose Rust references
-PatchTx preview never applies mutations by itself
+debug inspection never mutates host state unless it explicitly uses PatchTx write-through
 hot reload preserves or reports breakpoint rebinding across compatible updates
 debug hooks can be disabled for normal embedded execution
 ```
@@ -799,7 +800,7 @@ Checkpoint:
 
 ```text
 cargo test or adapter fixtures cover breakpoints, stepping, frame inspection,
-watch/evaluate permissions, PatchTx preview, exception breaks, hot-reload
+watch/evaluate permissions, host inspection, exception breaks, hot-reload
 rebinding, and disabled-debug execution
 docs/progress.md names remaining debugger workflows or marks M21 complete enough
 ```
@@ -905,9 +906,9 @@ Risk: scripts and host state diverge in surprising ways.
 Control:
 
 ```text
-Transaction overlay semantics must be explicit.
-Reads after writes must observe transaction values.
-Patch apply must be validatable, roll-backable, and loggable.
+Host handle mutation semantics must be explicit.
+Reads after writes must observe current Rust adapter values.
+PatchTx writes must be validatable, budgeted, source-spanned, and journaled.
 ```
 
 ### Premature Hot Reload State Migration
@@ -991,8 +992,6 @@ fn invoice_payment_updates_account_through_patch_tx() {
         &mut state,
         &mut tx,
     ).unwrap();
-
-    state.apply(tx).unwrap();
 
     assert_eq!(state.account(account).balance, 110);
     assert_eq!(state.account(account).status, "preferred");

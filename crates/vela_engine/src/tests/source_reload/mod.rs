@@ -16,6 +16,7 @@ use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
 use vela_reflect::registry::{MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey};
 use vela_vm::HostExecution;
+use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;

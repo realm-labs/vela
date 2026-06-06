@@ -74,7 +74,7 @@ fn demo_reward_grant(_: OwnedValue, _: String) -> bool {
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::player::Player", implements = "Damageable")]
-struct Player {
+pub(crate) struct Player {
     #[script(get)]
     id: i64,
     #[script(get, set)]
@@ -105,7 +105,7 @@ impl Player {
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::monster::Monster")]
-struct Monster {
+pub(crate) struct Monster {
     #[script(get)]
     id: i64,
     #[script(get)]
@@ -118,7 +118,7 @@ struct Monster {
     path = "game::config::Config",
     docs = "Demo host configuration exposed through context host paths."
 )]
-struct Config {
+pub(crate) struct Config {
     #[script(get, hint = "int", docs = "Experience threshold for the next level.")]
     exp_to_next_level: i64,
     #[script(get, hint = "array", docs = "Configured monster reward table.")]
@@ -128,7 +128,7 @@ struct Config {
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::Inventory")]
-struct Inventory {
+pub(crate) struct Inventory {
     #[script(get, hint = "map")]
     items: std::collections::BTreeMap<String, ItemStack>,
 }
@@ -136,7 +136,7 @@ struct Inventory {
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::ItemStack")]
-struct ItemStack {
+pub(crate) struct ItemStack {
     #[script(get, set, hint = "int")]
     count: i64,
 }

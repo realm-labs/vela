@@ -38,18 +38,11 @@ pub(crate) fn dispatch_native_function_call(
                     operation: "host context",
                 })
             })?;
-            let tx_checkpoint = host.tx.clone();
-            let result = match native(values.as_slice(), host, budget.as_deref_mut()) {
-                Ok(result) => result,
-                Err(error) => {
-                    *host.tx = tx_checkpoint;
-                    return Err(error.with_source_span_if_absent(call.call_site));
-                }
-            };
+            let result = native(values.as_slice(), host, budget.as_deref_mut())
+                .map_err(|error| error.with_source_span_if_absent(call.call_site))?;
             if let Some(budget) = budget.as_deref()
                 && let Err(error) = budget.check_patch_count(host.tx.patches().len())
             {
-                *host.tx = tx_checkpoint;
                 return Err(error.with_source_span_if_absent(call.call_site));
             }
             result

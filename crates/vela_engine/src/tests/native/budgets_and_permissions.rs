@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn host_native_patch_budget_rolls_back_overflow_patch() {
+fn host_native_patch_budget_error_retains_prior_write() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_host_native_fn(
@@ -19,6 +19,7 @@ fn host_native_patch_budget_rolls_back_overflow_patch() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
+                    host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
@@ -60,11 +61,14 @@ fn main(player) {
             limit: 0
         }
     );
-    assert!(tx.patches().is_empty());
+    let level = HostPath::new(host_ref).field(FieldId::new(1));
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
 }
 
 #[test]
-fn host_native_error_rolls_back_recorded_patches() {
+fn host_native_error_retains_recorded_patches() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_host_native_fn(
@@ -82,6 +86,7 @@ fn host_native_error_rolls_back_recorded_patches() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
+                    host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
@@ -128,11 +133,14 @@ fn main(player) {
             operation: "failing host native"
         }
     );
-    assert!(tx.patches().is_empty());
+    let level = HostPath::new(host_ref).field(FieldId::new(1));
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
 }
 
 #[test]
-fn host_native_error_rolls_back_patches_without_call_options() {
+fn host_native_error_retains_patches_without_call_options() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_host_native_fn(
@@ -150,6 +158,7 @@ fn host_native_error_rolls_back_patches_without_call_options() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
+                    host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,
@@ -199,7 +208,10 @@ fn main(player) {
             operation: "direct failing host native"
         }
     );
-    assert!(tx.patches().is_empty());
+    let level = HostPath::new(host_ref).field(FieldId::new(1));
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(13)));
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(13)));
 }
 
 #[test]
@@ -295,6 +307,7 @@ fn engine_denies_host_native_before_recording_patches() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.set_path(
+                    host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
                     None,

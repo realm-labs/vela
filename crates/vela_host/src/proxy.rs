@@ -45,7 +45,7 @@ impl PathProxy {
 
     pub fn read(
         &self,
-        adapter: &(impl ScriptStateAdapter + ?Sized),
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &PatchTx,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
@@ -54,90 +54,91 @@ impl PathProxy {
 
     pub fn set(
         &self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.set_path(self.path.clone(), value, source_span)
+        tx.set_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn add(
         &self,
-        adapter: &(impl ScriptStateAdapter + ?Sized),
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
-        tx.add_path(self.path.clone(), value, base_value, source_span)
+        tx.add_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn sub(
         &self,
-        adapter: &(impl ScriptStateAdapter + ?Sized),
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
-        tx.sub_path(self.path.clone(), value, base_value, source_span)
+        tx.sub_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn mul(
         &self,
-        adapter: &(impl ScriptStateAdapter + ?Sized),
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
-        tx.mul_path(self.path.clone(), value, base_value, source_span)
+        tx.mul_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn div(
         &self,
-        adapter: &(impl ScriptStateAdapter + ?Sized),
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
-        tx.div_path(self.path.clone(), value, base_value, source_span)
+        tx.div_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn rem(
         &self,
-        adapter: &(impl ScriptStateAdapter + ?Sized),
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
-        tx.rem_path(self.path.clone(), value, base_value, source_span)
+        tx.rem_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn push(
         &self,
-        adapter: &(impl ScriptStateAdapter + ?Sized),
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let base_value = tx.read_path_at(adapter, &self.path, source_span)?;
-        tx.push_path(self.path.clone(), value, base_value, source_span)
+        tx.push_path(adapter, self.path.clone(), value, source_span)
     }
 
-    pub fn remove(&self, tx: &mut PatchTx, source_span: Option<Span>) -> HostResult<()> {
-        tx.remove_path(self.path.clone(), source_span)
+    pub fn remove(
+        &self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        tx: &mut PatchTx,
+        source_span: Option<Span>,
+    ) -> HostResult<()> {
+        tx.remove_path(adapter, self.path.clone(), source_span)
     }
 
     pub fn call_method(
         &self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
         tx: &mut PatchTx,
         method: HostMethodId,
         args: Vec<HostValue>,
         source_span: Option<Span>,
-    ) -> HostResult<()> {
-        tx.call_method(self.path.clone(), method, args, source_span)
+    ) -> HostResult<HostValue> {
+        tx.call_method(adapter, self.path.clone(), method, args, source_span)
     }
 }

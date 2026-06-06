@@ -3,13 +3,13 @@ use super::*;
 #[test]
 fn reflect_get_record_field_reads_value() {
     let registry = TypeRegistry::new();
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut record = BTreeMap::new();
     record.insert("field".to_owned(), ReflectValue::Host(HostValue::Int(42)));
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -27,7 +27,7 @@ fn reflect_get_script_record_unknown_field_uses_schema_candidates() {
             .kind(TypeKind::ScriptStruct)
             .field(FieldDesc::new(FieldId::new(2), "level").source_span(field_span)),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut fields = BTreeMap::new();
     fields.insert("level".to_owned(), ReflectValue::Host(HostValue::Int(7)));
@@ -37,7 +37,7 @@ fn reflect_get_script_record_unknown_field_uses_schema_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -57,7 +57,7 @@ fn reflect_get_script_record_unknown_field_uses_schema_candidates() {
 #[test]
 fn reflect_set_script_record_returns_updated_copy() {
     let registry = TypeRegistry::new();
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut fields = BTreeMap::new();
     fields.insert("level".to_owned(), ReflectValue::Host(HostValue::Int(7)));
@@ -71,7 +71,7 @@ fn reflect_set_script_record_returns_updated_copy() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -100,7 +100,7 @@ fn reflect_set_script_record_returns_updated_copy() {
 #[test]
 fn reflect_set_metadata_record_is_not_a_schema_mutation_path() {
     let registry = TypeRegistry::new();
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "ReflectType".to_owned(),
@@ -111,7 +111,7 @@ fn reflect_set_metadata_record_is_not_a_schema_mutation_path() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -136,7 +136,7 @@ fn reflect_set_script_record_rejects_unknown_fields() {
             .kind(TypeKind::ScriptStruct)
             .field(FieldDesc::new(FieldId::new(2), "level").source_span(field_span)),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut fields = BTreeMap::new();
     fields.insert("level".to_owned(), ReflectValue::Host(HostValue::Int(7)));
@@ -146,7 +146,7 @@ fn reflect_set_script_record_rejects_unknown_fields() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -189,7 +189,7 @@ fn reflect_get_denies_non_reflect_readable_host_fields() {
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -216,11 +216,11 @@ fn reflect_set_denies_non_reflect_writable_host_fields() {
                     .access(FieldAccess::new().writable(true).reflect_writable(false)),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -258,11 +258,11 @@ fn reflect_get_and_set_with_policy_require_field_permission() {
                 ),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -343,11 +343,11 @@ fn reflect_get_with_policy_filters_unknown_host_field_candidates() {
                     .access(FieldAccess::new().require_permission("player.level.admin")),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -393,11 +393,11 @@ fn reflect_set_with_policy_filters_unknown_host_field_candidates() {
                 ),
             ),
     );
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -437,7 +437,7 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
                 ),
             ),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let mut fields = BTreeMap::new();
     fields.insert("level".to_owned(), ReflectValue::Host(HostValue::Int(7)));
@@ -447,7 +447,7 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -515,7 +515,7 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_fields() {
                     .access(FieldAccess::new().writable(true).reflect_writable(false)),
             ),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "Player".to_owned(),
@@ -523,7 +523,7 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_fields() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -563,7 +563,7 @@ fn reflect_get_with_policy_filters_unknown_script_field_candidates() {
                     .access(FieldAccess::new().require_permission("player.level.admin")),
             ),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "Player".to_owned(),
@@ -571,7 +571,7 @@ fn reflect_get_with_policy_filters_unknown_script_field_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -614,7 +614,7 @@ fn reflect_set_with_policy_filters_unknown_script_field_candidates() {
                 ),
             ),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "Player".to_owned(),
@@ -622,7 +622,7 @@ fn reflect_set_with_policy_filters_unknown_script_field_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -666,7 +666,7 @@ fn reflect_get_with_policy_filters_unknown_script_enum_field_candidates() {
                     ),
             ),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let value = ReflectValue::ScriptEnum {
         enum_name: "QuestProgress".to_owned(),
@@ -675,7 +675,7 @@ fn reflect_get_with_policy_filters_unknown_script_enum_field_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -711,7 +711,7 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
                 ),
             ),
     );
-    let adapter = MockStateAdapter::new();
+    let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     let value = ReflectValue::ScriptEnum {
         enum_name: "QuestProgress".to_owned(),
@@ -720,7 +720,7 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -747,11 +747,11 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
 #[test]
 fn unknown_fields_include_candidate_hints() {
     let registry = registry();
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -796,7 +796,7 @@ fn reflect_get_propagates_host_generation_errors() {
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 

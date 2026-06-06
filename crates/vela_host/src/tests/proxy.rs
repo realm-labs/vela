@@ -9,17 +9,17 @@ fn path_proxy_routes_reads_and_writes_through_patch_tx() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        proxy.read(&adapter, &tx, None).expect("read host path"),
+        proxy.read(&mut adapter, &tx, None).expect("read host path"),
         HostValue::Int(9)
     );
 
     proxy
-        .set(&mut tx, HostValue::Int(10), None)
-        .expect("record set through proxy");
+        .set(&mut adapter, &mut tx, HostValue::Int(10), None)
+        .expect("set through proxy");
 
-    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(9)));
+    assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(10)));
     assert_eq!(
-        proxy.read(&adapter, &tx, None).expect("read overlay"),
+        proxy.read(&mut adapter, &tx, None).expect("read host path"),
         HostValue::Int(10)
     );
     assert_eq!(tx.patches()[0].path, path);
@@ -34,34 +34,45 @@ fn path_proxy_records_rmw_push_remove_and_calls() {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level.clone(), HostValue::Int(9));
     adapter.insert_value(rewards.clone(), HostValue::Array(Vec::new()));
+    adapter.insert_method_return(method, HostValue::String("ok".into()));
     let mut tx = PatchTx::new();
 
     PathProxy::new(level.clone())
-        .add(&adapter, &mut tx, HostValue::Int(2), None)
-        .expect("record add through proxy");
+        .add(&mut adapter, &mut tx, HostValue::Int(2), None)
+        .expect("add through proxy");
     PathProxy::new(level.clone())
-        .sub(&adapter, &mut tx, HostValue::Int(1), None)
-        .expect("record sub through proxy");
+        .sub(&mut adapter, &mut tx, HostValue::Int(1), None)
+        .expect("sub through proxy");
     PathProxy::new(level.clone())
-        .mul(&adapter, &mut tx, HostValue::Int(3), None)
-        .expect("record mul through proxy");
+        .mul(&mut adapter, &mut tx, HostValue::Int(3), None)
+        .expect("mul through proxy");
     PathProxy::new(level.clone())
-        .div(&adapter, &mut tx, HostValue::Int(2), None)
-        .expect("record div through proxy");
+        .div(&mut adapter, &mut tx, HostValue::Int(2), None)
+        .expect("div through proxy");
     PathProxy::new(level.clone())
-        .rem(&adapter, &mut tx, HostValue::Int(5), None)
-        .expect("record rem through proxy");
+        .rem(&mut adapter, &mut tx, HostValue::Int(5), None)
+        .expect("rem through proxy");
     PathProxy::new(rewards.clone())
-        .push(&adapter, &mut tx, HostValue::String("gold".into()), None)
-        .expect("record push through proxy");
+        .push(
+            &mut adapter,
+            &mut tx,
+            HostValue::String("gold".into()),
+            None,
+        )
+        .expect("push through proxy");
+    let result = PathProxy::new(level.clone())
+        .call_method(&mut adapter, &mut tx, method, vec![HostValue::Int(5)], None)
+        .expect("method call through proxy");
     PathProxy::new(rewards.clone())
-        .remove(&mut tx, None)
-        .expect("record remove through proxy");
-    PathProxy::new(level.clone())
-        .call_method(&mut tx, method, vec![HostValue::Int(5)], None)
-        .expect("record method call through proxy");
+        .remove(&mut adapter, &mut tx, None)
+        .expect("remove through proxy");
 
-    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(9)));
+    assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(0)));
+    assert_eq!(
+        adapter.read_path(&rewards),
+        Err(HostError::new(HostErrorKind::MissingPath { path: rewards }))
+    );
+    assert_eq!(result, HostValue::String("ok".into()));
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
     assert_eq!(tx.patches()[1].op, PatchOp::Sub(HostValue::Int(1)));
     assert_eq!(tx.patches()[2].op, PatchOp::Mul(HostValue::Int(3)));
@@ -71,12 +82,12 @@ fn path_proxy_records_rmw_push_remove_and_calls() {
         tx.patches()[5].op,
         PatchOp::Push(HostValue::String("gold".into()))
     );
-    assert_eq!(tx.patches()[6].op, PatchOp::Remove);
     assert_eq!(
-        tx.patches()[7].op,
+        tx.patches()[6].op,
         PatchOp::CallHostMethod {
             method,
             args: vec![HostValue::Int(5)]
         }
     );
+    assert_eq!(tx.patches()[7].op, PatchOp::Remove);
 }

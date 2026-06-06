@@ -42,11 +42,10 @@ fn main(player) {
     assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
-        Ok(HostValue::Int(9))
+        Ok(HostValue::Int(10))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
-    tx.apply(&mut adapter).expect("apply reflection patch");
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
@@ -54,7 +53,7 @@ fn main(player) {
 }
 
 #[test]
-fn reflection_permissions_deny_writes_before_patches() {
+fn reflection_permissions_deny_writes_before_journaling() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
         SourceId::new(1),
@@ -88,7 +87,7 @@ fn main(player) {
 }
 
 #[test]
-fn reflection_permissions_deny_calls_before_patches() {
+fn reflection_permissions_deny_calls_before_journaling() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
         SourceId::new(1),
@@ -123,7 +122,7 @@ fn main(player) {
 }
 
 #[test]
-fn reflection_permissions_deny_host_write_effect_calls_before_patches() {
+fn reflection_permissions_deny_host_write_effect_calls_before_journaling() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
         SourceId::new(1),
@@ -525,7 +524,7 @@ fn main(player) {
 }
 
 #[test]
-fn reflection_field_permissions_deny_host_field_reads_before_patch() {
+fn reflection_field_permissions_deny_host_field_reads_before_journaling() {
     let host_ref = player_ref(3);
     let title_field = FieldId::new(78);
     let program = compile_program_source(

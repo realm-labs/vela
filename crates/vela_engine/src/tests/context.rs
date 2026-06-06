@@ -419,9 +419,6 @@ fn main(ctx) {
             ],
         }
     );
-    assert!(adapter.method_calls().is_empty());
-
-    tx.apply(&mut adapter).expect("context patches apply");
     assert_eq!(
         adapter.method_calls(),
         &[

@@ -209,7 +209,7 @@ fn managed_heap_host_execution_materializes_return_and_records_patch() {
 }
 
 #[test]
-fn managed_heap_host_execution_converts_map_for_host_write_and_overlay_read() {
+fn managed_heap_host_execution_rejects_map_for_host_write() {
     let host_ref = player_ref(3);
     let program = compile_program_source_with_options(
         SourceId::new(1),
@@ -226,7 +226,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
-    let result = {
+    let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
@@ -239,15 +239,16 @@ fn main(player) {
                 &mut host,
                 &mut budget,
             )
-            .expect("run managed host map source")
+            .expect_err("host map write should be rejected")
     };
 
-    let mut expected = BTreeMap::new();
-    expected.insert("class".into(), HostValue::String("mage".into()));
-    expected.insert("score".into(), HostValue::Int(3));
-    assert_eq!(result, OwnedValue::Int(2));
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Map(expected)));
+    assert_eq!(
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "set_host_field"
+        }
+    );
+    assert!(tx.patches().is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -256,7 +257,7 @@ fn main(player) {
 }
 
 #[test]
-fn managed_heap_host_execution_converts_record_for_host_write_and_overlay_read() {
+fn managed_heap_host_execution_rejects_record_for_host_write() {
     let host_ref = player_ref(3);
     let program = compile_program_source_with_options(
         SourceId::new(1),
@@ -278,7 +279,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
-    let result = {
+    let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
@@ -291,30 +292,16 @@ fn main(player) {
                 &mut host,
                 &mut budget,
             )
-            .expect("run managed host record source")
+            .expect_err("host record write should be rejected")
     };
 
-    let mut expected_script_fields = BTreeMap::new();
-    expected_script_fields.insert("count".into(), OwnedValue::Int(2));
-    expected_script_fields.insert("item_id".into(), OwnedValue::String("gold".into()));
-    let mut expected_host_fields = BTreeMap::new();
-    expected_host_fields.insert("count".into(), HostValue::Int(2));
-    expected_host_fields.insert("item_id".into(), HostValue::String("gold".into()));
     assert_eq!(
-        result,
-        OwnedValue::Record {
-            type_name: "Reward".into(),
-            fields: ScriptFields::from_pairs("Reward", expected_script_fields),
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "set_host_field"
         }
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::Set(HostValue::Record {
-            type_name: "Reward".into(),
-            fields: expected_host_fields,
-        })
-    );
+    assert!(tx.patches().is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -323,7 +310,7 @@ fn main(player) {
 }
 
 #[test]
-fn managed_heap_host_execution_converts_enum_for_host_write_and_overlay_read() {
+fn managed_heap_host_execution_rejects_enum_for_host_write() {
     let host_ref = player_ref(3);
     let program = compile_program_source_with_options(
         SourceId::new(1),
@@ -340,7 +327,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
-    let result = {
+    let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
@@ -353,30 +340,16 @@ fn main(player) {
                 &mut host,
                 &mut budget,
             )
-            .expect("run managed host enum source")
+            .expect_err("host enum write should be rejected")
     };
 
-    let mut expected_script_fields = BTreeMap::new();
-    expected_script_fields.insert("amount".into(), OwnedValue::Int(7));
-    let mut expected_host_fields = BTreeMap::new();
-    expected_host_fields.insert("amount".into(), HostValue::Int(7));
     assert_eq!(
-        result,
-        OwnedValue::Enum {
-            enum_name: "Damage".into(),
-            variant: "Physical".into(),
-            fields: ScriptFields::from_pairs("Damage::Physical", expected_script_fields),
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "set_host_field"
         }
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::Set(HostValue::Enum {
-            enum_name: "Damage".into(),
-            variant: "Physical".into(),
-            fields: expected_host_fields,
-        })
-    );
+    assert!(tx.patches().is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -385,7 +358,7 @@ fn main(player) {
 }
 
 #[test]
-fn managed_heap_host_execution_converts_host_ref_for_host_write_and_overlay_read() {
+fn managed_heap_host_execution_converts_host_ref_for_host_write_and_readback() {
     let host_ref = player_ref(3);
     let target_ref = HostRef::new(HostTypeId::new(2), HostObjectId::new(11), 4);
     let program = compile_program_source_with_options(
@@ -430,7 +403,7 @@ fn main(player, target) {
     );
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
-        Ok(HostValue::Null)
+        Ok(HostValue::HostRef(target_ref))
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }

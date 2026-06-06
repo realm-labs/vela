@@ -1,7 +1,6 @@
 use vela_bytecode::{HostPathSegment, Register};
 use vela_common::{FieldId, Span, SymbolInterner};
 use vela_host::path::HostPath;
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 
 use crate::host_paths::{host_field_path, host_path_from_segments};
@@ -49,26 +48,25 @@ impl HostNumericPatch {
         }
     }
 
-    fn apply(
+    fn write_through(
         self,
-        tx: &mut PatchTx,
+        host: &mut HostExecution<'_>,
         path: HostPath,
         value: HostValue,
-        base_value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
         match self {
-            Self::Add => tx.add_path(path, value, base_value, source_span),
-            Self::Sub => tx.sub_path(path, value, base_value, source_span),
-            Self::Mul => tx.mul_path(path, value, base_value, source_span),
-            Self::Div => tx.div_path(path, value, base_value, source_span),
-            Self::Rem => tx.rem_path(path, value, base_value, source_span),
+            Self::Add => host.tx.add_path(host.adapter, path, value, source_span),
+            Self::Sub => host.tx.sub_path(host.adapter, path, value, source_span),
+            Self::Mul => host.tx.mul_path(host.adapter, path, value, source_span),
+            Self::Div => host.tx.div_path(host.adapter, path, value, source_span),
+            Self::Rem => host.tx.rem_path(host.adapter, path, value, source_span),
         }?;
         Ok(())
     }
 }
 
-pub(crate) fn apply_host_field_numeric_patch(
+pub(crate) fn write_host_field_numeric_patch(
     runtime: HostPatchRuntime<'_, '_, '_>,
     root: Register,
     field: FieldId,
@@ -82,10 +80,10 @@ pub(crate) fn apply_host_field_numeric_patch(
         runtime.heap,
     )?;
     let path = host_field_path(root, field);
-    apply_host_numeric_patch(path, value, patch, runtime)
+    write_host_numeric_patch(path, value, patch, runtime)
 }
 
-pub(crate) fn apply_host_path_numeric_patch(
+pub(crate) fn write_host_path_numeric_patch(
     runtime: HostPatchRuntime<'_, '_, '_>,
     root: Register,
     segments: &[HostPathSegment],
@@ -100,10 +98,10 @@ pub(crate) fn apply_host_path_numeric_patch(
         runtime.heap,
     )?;
     let path = host_path_from_segments(root, segments, runtime.frame, runtime.heap, symbols)?;
-    apply_host_numeric_patch(path, value, patch, runtime)
+    write_host_numeric_patch(path, value, patch, runtime)
 }
 
-fn apply_host_numeric_patch(
+fn write_host_numeric_patch(
     path: HostPath,
     value: HostValue,
     patch: HostNumericPatch,
@@ -114,11 +112,8 @@ fn apply_host_numeric_patch(
             operation: "host context",
         })
     })?;
-    let base_value = host
-        .tx
-        .read_path_at(host.adapter, &path, runtime.source_span)?;
     if let Some(budget) = runtime.budget {
         budget.reserve_patch(host.tx.patches().len())?;
     }
-    patch.apply(host.tx, path, value, base_value, runtime.source_span)
+    patch.write_through(host, path, value, runtime.source_span)
 }

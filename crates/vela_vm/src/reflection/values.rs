@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use vela_host::adapter::ScriptStateAdapter;
 use vela_reflect::registry::TypeRegistry;
 use vela_reflect::{self as reflect};
 
@@ -68,10 +67,9 @@ pub(super) fn register(
         expect_arity("reflect::get", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::get")?;
         let field = expect_string(&args[1], "reflect::get")?;
-        let adapter: &dyn ScriptStateAdapter = &*host.adapter;
         let mut ctx = reflect::value::ReflectContext {
             registry: &get_registry,
-            adapter,
+            adapter: host.adapter,
             tx: &mut *host.tx,
         };
         let value = reflect::value::get_with_policy(&mut ctx, &target, field, &get_policy)?;
@@ -91,10 +89,9 @@ pub(super) fn register(
         let target = value_to_reflect(&args[0], "reflect::set")?;
         let field = expect_string(&args[1], "reflect::set")?;
         let value = value_to_reflect(&args[2], "reflect::set")?;
-        let adapter: &dyn ScriptStateAdapter = &*host.adapter;
         let mut ctx = reflect::value::ReflectContext {
             registry: &set_registry,
-            adapter,
+            adapter: host.adapter,
             tx: &mut *host.tx,
         };
         value_from_reflect(reflect::value::set_with_policy(
@@ -142,10 +139,9 @@ pub(super) fn register(
             .iter()
             .map(|arg| value_to_reflect(arg, "reflect::call"))
             .collect::<VmResult<Vec<_>>>()?;
-        let adapter: &dyn ScriptStateAdapter = &*host.adapter;
         let mut ctx = reflect::value::ReflectContext {
             registry: &call_registry,
-            adapter,
+            adapter: host.adapter,
             tx: &mut *host.tx,
         };
         let value =

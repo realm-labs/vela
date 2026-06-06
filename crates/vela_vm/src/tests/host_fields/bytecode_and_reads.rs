@@ -114,7 +114,7 @@ fn reads_host_field_through_patch_transaction() {
 }
 
 #[test]
-fn set_host_field_records_patch_and_overlay_read() {
+fn set_host_field_writes_through_and_records_patch() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
@@ -156,11 +156,10 @@ fn set_host_field_records_patch_and_overlay_read() {
     assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
-        Ok(HostValue::Int(9))
+        Ok(HostValue::Int(10))
     );
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
-    tx.apply(&mut adapter).expect("apply patches");
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
@@ -275,12 +274,12 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
     assert_eq!(tx.patches()[0].op, PatchOp::Set(HostValue::Int(10)));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
-        Ok(HostValue::Int(9))
+        Ok(HostValue::Int(10))
     );
 }
 
 #[test]
-fn add_host_field_records_patch_and_overlay_read() {
+fn add_host_field_writes_through_and_records_patch() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
@@ -322,7 +321,6 @@ fn add_host_field_records_patch_and_overlay_read() {
     assert_eq!(result, Ok(OwnedValue::Int(10)));
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(1)));
-    tx.apply(&mut adapter).expect("apply patches");
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))

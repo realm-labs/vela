@@ -58,8 +58,6 @@ Suggested safe points:
 ```text
 event end
 tick boundary
-before host patch apply
-after host patch apply
 explicit runtime.check_reload()
 ```
 

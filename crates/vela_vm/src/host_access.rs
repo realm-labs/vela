@@ -87,14 +87,14 @@ pub(crate) fn set_host_path(
     set_host_path_value(path, value, runtime)
 }
 
-pub(crate) fn apply_host_field_numeric_patch(
+pub(crate) fn write_host_field_numeric_patch(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
     field: FieldId,
     rhs: Register,
     patch: HostNumericPatch,
 ) -> VmResult<()> {
-    host_patches::apply_host_field_numeric_patch(
+    host_patches::write_host_field_numeric_patch(
         host_patches::HostPatchRuntime {
             frame: runtime.frame,
             heap: runtime.heap.as_deref(),
@@ -109,7 +109,7 @@ pub(crate) fn apply_host_field_numeric_patch(
     )
 }
 
-pub(crate) fn apply_host_path_numeric_patch(
+pub(crate) fn write_host_path_numeric_patch(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
     segments: &[HostPathSegment],
@@ -117,7 +117,7 @@ pub(crate) fn apply_host_path_numeric_patch(
     patch: HostNumericPatch,
     symbols: &mut SymbolInterner,
 ) -> VmResult<()> {
-    host_patches::apply_host_path_numeric_patch(
+    host_patches::write_host_path_numeric_patch(
         host_patches::HostPatchRuntime {
             frame: runtime.frame,
             heap: runtime.heap.as_deref(),
@@ -158,14 +158,11 @@ pub(crate) fn push_host_path(
             operation: "host context",
         })
     })?;
-    let base_value = host
-        .tx
-        .read_path_at(host.adapter, &path, runtime.source_span)?;
     if let Some(budget) = runtime.budget.as_deref() {
         budget.reserve_patch(host.tx.patches().len())?;
     }
     host.tx
-        .push_path(path, value, base_value, runtime.source_span)?;
+        .push_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())
 }
 
@@ -191,7 +188,8 @@ pub(crate) fn remove_host_path(
     if let Some(budget) = runtime.budget.as_deref() {
         budget.reserve_patch(host.tx.patches().len())?;
     }
-    host.tx.remove_path(path, runtime.source_span)?;
+    host.tx
+        .remove_path(host.adapter, path, runtime.source_span)?;
     Ok(())
 }
 
@@ -230,12 +228,9 @@ pub(crate) fn call_host_method(
     if let Some(budget) = runtime.budget.as_deref() {
         budget.reserve_patch(host.tx.patches().len())?;
     }
-    let return_value = host
-        .adapter
-        .preview_method_return(&path, method, &values)
-        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    host.tx
-        .call_method(path, method, values, runtime.source_span)?;
+    let return_value =
+        host.tx
+            .call_method(host.adapter, path, method, values, runtime.source_span)?;
     if wants_return {
         runtime_value_from_host(return_value, runtime.heap, runtime.budget).map(Some)
     } else {
@@ -268,7 +263,8 @@ fn set_host_path_value(
     if let Some(budget) = runtime.budget.as_deref() {
         budget.reserve_patch(host.tx.patches().len())?;
     }
-    host.tx.set_path(path, value, runtime.source_span)?;
+    host.tx
+        .set_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())
 }
 

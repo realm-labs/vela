@@ -7,7 +7,7 @@ use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
 
 #[test]
-fn runtime_hot_reload_update_waits_for_explicit_apply_safe_point() {
+fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
@@ -54,7 +54,7 @@ fn runtime_hot_reload_update_waits_for_explicit_apply_safe_point() {
 }
 
 #[test]
-fn hot_reload_runtime_reflection_tracks_script_metadata_after_apply() {
+fn hot_reload_runtime_reflection_tracks_script_metadata_after_reload() {
     let engine = Engine::builder()
         .reflection_policy(ReflectPolicy::all())
         .build()

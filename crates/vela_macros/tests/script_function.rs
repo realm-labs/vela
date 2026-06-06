@@ -94,15 +94,16 @@ fn checked_level(
     player: HostRef,
     level: i64,
     ok: bool,
-) -> HostResult<i64> {
+) -> VmResult<i64> {
     let path = HostPath::new(player).field(FieldId::new(1));
     if !ok {
         return Err(HostError {
             kind: HostErrorKind::MissingPath { path },
             source_span: None,
-        });
+        }
+        .into());
     }
-    ctx.tx().set_path(path, HostValue::Int(level), None)?;
+    ctx.set_path(path, HostValue::Int(level), None)?;
     Ok(level)
 }
 
@@ -110,6 +111,7 @@ fn checked_level(
 #[script_host_function(name = "game::set_score", effect = "write_host", reflect = true)]
 fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
     host.tx.set_path(
+        host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
         HostValue::Int(score),
         None,
@@ -126,6 +128,7 @@ fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmRes
 )]
 fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
     host.tx.set_path(
+        host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
         HostValue::Int(score),
         None,
@@ -148,7 +151,8 @@ fn checked_score(
             source_span: None,
         });
     }
-    host.tx.set_path(path, HostValue::Int(score), None)?;
+    host.tx
+        .set_path(host.adapter, path, HostValue::Int(score), None)?;
     Ok(score)
 }
 

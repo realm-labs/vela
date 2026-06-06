@@ -69,7 +69,7 @@ fn main(player) {
 }
 
 #[test]
-fn typed_host_native_conversion_errors_before_patch() {
+fn typed_host_native_conversion_errors_before_host_write() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_typed_host_native_fn::<(HostRef, i64), _>(
@@ -164,6 +164,7 @@ fn main(player) {
 
 fn typed_host_set_level(host: &mut HostExecution<'_>, player: HostRef, level: i64) -> VmResult<()> {
     host.tx.set_path(
+        host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
@@ -360,6 +361,7 @@ fn typed_host_sum_level(
 ) -> VmResult<i64> {
     let level = a + b + c;
     host.tx.set_path(
+        host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
@@ -377,6 +379,7 @@ fn typed_host_sum5_level(
 ) -> VmResult<i64> {
     let level = a + b + c + d;
     host.tx.set_path(
+        host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
@@ -395,6 +398,7 @@ fn typed_host_sum6_level(
 ) -> VmResult<i64> {
     let level = a + b + c + d + e;
     host.tx.set_path(
+        host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
         None,
@@ -454,7 +458,7 @@ fn main(player) {
 }
 
 #[test]
-fn typed_context_host_native_conversion_errors_before_patch() {
+fn typed_context_host_native_conversion_errors_before_host_write() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_typed_context_host_native_fn::<(HostRef, i64), _>(

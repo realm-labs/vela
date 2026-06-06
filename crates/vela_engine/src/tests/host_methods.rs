@@ -20,7 +20,7 @@ use crate::runtime::{CallOptions, Runtime};
 use super::player_type;
 
 #[test]
-fn runtime_call_records_host_patches_without_applying() {
+fn runtime_call_writes_through_host_method_and_records_patch() {
     let method = HostMethodId::new(23);
     let engine = Engine::builder()
         .register_type(
@@ -64,9 +64,9 @@ fn main(player: Player) {
             args: vec![HostValue::Int(12)]
         }
     );
-    assert!(
-        adapter.method_calls().is_empty(),
-        "runtime call must not apply patches"
+    assert_eq!(
+        adapter.method_calls(),
+        &[(HostPath::new(host_ref), method, vec![HostValue::Int(12)])]
     );
 }
 
@@ -319,6 +319,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.call_method(
+                    host.adapter,
                     receiver.clone(),
                     method,
                     vec![HostValue::Int(*amount)],
@@ -449,7 +450,7 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
 }
 
 #[test]
-fn typed_callable_native_method_conversion_errors_before_patch() {
+fn typed_callable_native_method_conversion_errors_before_journaling() {
     let method = HostMethodId::new(8);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
@@ -529,7 +530,7 @@ fn typed_callable_native_method_maps_host_result_errors() {
 }
 
 #[test]
-fn callable_native_method_errors_roll_back_recorded_patches() {
+fn callable_native_method_error_retains_recorded_patch() {
     let method = HostMethodId::new(12);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
@@ -546,6 +547,7 @@ fn callable_native_method_errors_roll_back_recorded_patches() {
                     return Ok(OwnedValue::Null);
                 };
                 host.tx.call_method(
+                    host.adapter,
                     receiver.clone(),
                     method,
                     vec![HostValue::Int(*amount)],
@@ -585,7 +587,8 @@ fn callable_native_method_errors_roll_back_recorded_patches() {
             operation: "failing native method",
         }
     );
-    assert!(tx.patches().is_empty());
+    assert_eq!(tx.patches().len(), 1);
+    assert_eq!(adapter.method_calls().len(), 1);
 }
 
 fn typed_grant_exp(
@@ -594,6 +597,7 @@ fn typed_grant_exp(
     amount: i64,
 ) -> VmResult<Option<i64>> {
     host.tx.call_method(
+        host.adapter,
         receiver.clone(),
         HostMethodId::new(8),
         vec![HostValue::Int(amount)],
@@ -789,6 +793,7 @@ fn typed_sum4(
 ) -> VmResult<i64> {
     let total = a + b + c + d;
     host.tx.call_method(
+        host.adapter,
         receiver.clone(),
         HostMethodId::new(9),
         vec![HostValue::Int(total)],
@@ -808,6 +813,7 @@ fn typed_sum5(
 ) -> VmResult<i64> {
     let total = a + b + c + d + e;
     host.tx.call_method(
+        host.adapter,
         receiver.clone(),
         HostMethodId::new(10),
         vec![HostValue::Int(total)],
@@ -829,6 +835,7 @@ fn typed_sum6(
 ) -> VmResult<i64> {
     let total = a + b + c + d + e + f;
     host.tx.call_method(
+        host.adapter,
         receiver.clone(),
         HostMethodId::new(11),
         vec![HostValue::Int(total)],

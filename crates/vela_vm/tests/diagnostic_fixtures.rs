@@ -3,7 +3,6 @@ use std::sync::Arc;
 use vela_bytecode::compiler::compile_program_source;
 use vela_bytecode::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
-use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
@@ -11,7 +10,6 @@ use vela_host::value::HostValue;
 use vela_reflect::access::FieldAccess;
 use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
-use vela_vm::error::VmError;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{HostExecution, Vm};
@@ -26,10 +24,10 @@ const HOST_PERMISSION_DENIED: &str =
     include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.vela");
 const HOST_PERMISSION_DENIED_EXPECTED: &str =
     include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.expected");
-const HOST_PATCH_CONFLICT: &str =
-    include_str!("../../../tests/fixtures/diagnostics/host_patch_conflict.vela");
-const HOST_PATCH_CONFLICT_EXPECTED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/host_patch_conflict.expected");
+const HOST_COMPOUND_WRITE_DENIED: &str =
+    include_str!("../../../tests/fixtures/diagnostics/host_compound_write_denied.vela");
+const HOST_COMPOUND_WRITE_DENIED_EXPECTED: &str =
+    include_str!("../../../tests/fixtures/diagnostics/host_compound_write_denied.expected");
 const STALE_HOST_REF: &str =
     include_str!("../../../tests/fixtures/diagnostics/stale_host_ref.vela");
 const STALE_HOST_REF_EXPECTED: &str =
@@ -106,7 +104,7 @@ fn host_permission_denied_fixture_renders_source_span() {
 }
 
 #[test]
-fn host_patch_conflict_fixture_renders_apply_source_span() {
+fn host_compound_write_denied_fixture_renders_source_span() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_field = FieldId::new(1);
     let level_path = HostPath::new(host_ref).field(level_field);
@@ -140,34 +138,28 @@ fn host_patch_conflict_fixture_renders_apply_source_span() {
 
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path.clone(), HostValue::Int(9));
+    adapter.deny_write(level_path.clone());
     let mut tx = PatchTx::new();
-    {
+    let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             tx: &mut tx,
         };
         Vm::new()
             .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
-            .expect("fixture should record a host patch");
-    }
-    adapter
-        .write_path(&level_path, HostValue::Int(12))
-        .expect("simulate host state changing before apply");
-    let error = tx
-        .apply(&mut adapter)
-        .map_err(VmError::from)
-        .expect_err("changed host base value should conflict");
+            .expect_err("fixture should fail on immediate host write")
+    };
 
     let rendered = render_diagnostic(
         &error.to_diagnostic(),
         [diagnostic_source(
-            "host_patch_conflict.vela",
-            normalized_fixture(HOST_PATCH_CONFLICT),
+            "host_compound_write_denied.vela",
+            normalized_fixture(HOST_COMPOUND_WRITE_DENIED),
         )],
     )
     .join("\n");
 
-    assert_rendered_eq(&rendered, HOST_PATCH_CONFLICT_EXPECTED);
+    assert_rendered_eq(&rendered, HOST_COMPOUND_WRITE_DENIED_EXPECTED);
 }
 
 #[test]

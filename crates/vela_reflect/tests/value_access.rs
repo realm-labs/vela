@@ -33,11 +33,11 @@ fn adapter_with_level(value: HostValue) -> MockStateAdapter {
 #[test]
 fn reflect_set_host_ref_creates_patch() {
     let registry = registry();
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -54,19 +54,20 @@ fn reflect_set_host_ref_creates_patch() {
 }
 
 #[test]
-fn reflect_get_host_ref_reads_overlay_before_adapter() {
+fn reflect_get_host_ref_reads_write_through_state() {
     let registry = registry();
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     tx.set_path(
+        &mut adapter,
         HostPath::new(player_ref()).field(FieldId::new(2)),
         HostValue::Int(12),
         None,
     )
-    .expect("set overlay");
+    .expect("set host path");
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -78,11 +79,11 @@ fn reflect_get_host_ref_reads_overlay_before_adapter() {
 #[test]
 fn reflect_set_read_only_host_field_fails_without_patch() {
     let registry = registry();
-    let adapter = adapter_with_level(HostValue::Int(9));
+    let mut adapter = adapter_with_level(HostValue::Int(9));
     let mut tx = PatchTx::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &adapter,
+        adapter: &mut adapter,
         tx: &mut tx,
     };
 
@@ -106,7 +107,7 @@ fn reflect_set_read_only_host_field_fails_without_patch() {
 }
 
 #[test]
-fn reflect_call_host_ref_records_patch_until_safe_point_apply() {
+fn reflect_call_host_ref_writes_through_and_records_patch() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
     adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
@@ -114,7 +115,7 @@ fn reflect_call_host_ref_records_patch_until_safe_point_apply() {
     {
         let mut ctx = ReflectContext {
             registry: &registry,
-            adapter: &adapter,
+            adapter: &mut adapter,
             tx: &mut tx,
         };
 
@@ -135,10 +136,7 @@ fn reflect_call_host_ref_records_patch_until_safe_point_apply() {
                 args: vec![HostValue::Int(20)]
             }
         );
-        assert!(adapter.method_calls().is_empty());
     }
-
-    tx.apply(&mut adapter).expect("apply reflect call");
     assert_eq!(
         adapter.method_calls(),
         &[(

@@ -75,65 +75,37 @@ pub(super) fn module_detail(desc: &ModuleDesc) -> String {
 }
 
 fn function_effect_detail(effects: &FunctionEffectSet) -> String {
-    effect_detail(
-        effects.reads_host,
-        effects.writes_host,
-        effects.emits_events,
-        effects.reads_time,
-        effects.uses_random,
-        effects.reads_reflection,
-        effects.writes_reflection,
-        effects.calls_reflection,
-    )
+    effect_detail([
+        ("reads_host", effects.reads_host),
+        ("writes_host", effects.writes_host),
+        ("emits_events", effects.emits_events),
+        ("reads_time", effects.reads_time),
+        ("uses_random", effects.uses_random),
+        ("reads_reflection", effects.reads_reflection),
+        ("writes_reflection", effects.writes_reflection),
+        ("calls_reflection", effects.calls_reflection),
+    ])
 }
 
 fn method_effect_detail(effects: &MethodEffectSet) -> String {
-    effect_detail(
-        effects.reads_host,
-        effects.writes_host,
-        effects.emits_events,
-        effects.reads_time,
-        effects.uses_random,
-        effects.reads_reflection,
-        effects.writes_reflection,
-        effects.calls_reflection,
-    )
+    effect_detail([
+        ("reads_host", effects.reads_host),
+        ("writes_host", effects.writes_host),
+        ("emits_events", effects.emits_events),
+        ("reads_time", effects.reads_time),
+        ("uses_random", effects.uses_random),
+        ("reads_reflection", effects.reads_reflection),
+        ("writes_reflection", effects.writes_reflection),
+        ("calls_reflection", effects.calls_reflection),
+    ])
 }
 
-fn effect_detail(
-    reads_host: bool,
-    writes_host: bool,
-    emits_events: bool,
-    reads_time: bool,
-    uses_random: bool,
-    reads_reflection: bool,
-    writes_reflection: bool,
-    calls_reflection: bool,
-) -> String {
+fn effect_detail<const N: usize>(items: [(&'static str, bool); N]) -> String {
     let mut effects = Vec::new();
-    if reads_host {
-        effects.push("reads_host");
-    }
-    if writes_host {
-        effects.push("writes_host");
-    }
-    if emits_events {
-        effects.push("emits_events");
-    }
-    if reads_time {
-        effects.push("reads_time");
-    }
-    if uses_random {
-        effects.push("uses_random");
-    }
-    if reads_reflection {
-        effects.push("reads_reflection");
-    }
-    if writes_reflection {
-        effects.push("writes_reflection");
-    }
-    if calls_reflection {
-        effects.push("calls_reflection");
+    for (name, enabled) in items {
+        if enabled {
+            effects.push(name);
+        }
     }
     if effects.is_empty() {
         "effects: pure".to_owned()

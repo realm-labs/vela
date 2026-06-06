@@ -35,7 +35,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,
@@ -44,7 +43,6 @@ fn main(player) {
             args: vec![HostValue::Int(20)]
         }
     );
-    tx.apply(&mut adapter).expect("apply host method patch");
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]
@@ -87,7 +85,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,
@@ -96,7 +93,6 @@ fn main(player) {
             args: vec![HostValue::String("gold".into()), HostValue::Int(100)]
         }
     );
-    tx.apply(&mut adapter).expect("apply host method patch");
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -152,7 +148,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(tx.patches()[0].path, item_path);
     assert_eq!(
@@ -162,8 +157,6 @@ fn main(player) {
             args: vec![HostValue::Int(20)]
         }
     );
-    tx.apply(&mut adapter)
-        .expect("apply indexed host method patch");
     assert_eq!(
         adapter.method_calls(),
         &[(item_path, method, vec![HostValue::Int(20)])]
@@ -171,7 +164,7 @@ fn main(player) {
 }
 
 #[test]
-fn call_host_method_records_patch_and_applies_later() {
+fn call_host_method_writes_through_and_records_patch() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(8);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
@@ -210,7 +203,6 @@ fn call_host_method_records_patch_and_applies_later() {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(12)));
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,
@@ -219,7 +211,6 @@ fn call_host_method_records_patch_and_applies_later() {
             args: vec![HostValue::String("gold".into())]
         }
     );
-    tx.apply(&mut adapter).expect("apply method call");
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -286,7 +277,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
 }
 
 #[test]
-fn compiled_source_host_method_call_returns_copied_preview_value() {
+fn compiled_source_host_method_call_returns_adapter_value() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(5);
     let program = compile_program_source_with_options(
@@ -317,7 +308,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::String("accepted".into())));
-    assert!(adapter.method_calls().is_empty());
     assert_eq!(tx.patches().len(), 1);
     assert_eq!(
         tx.patches()[0].op,

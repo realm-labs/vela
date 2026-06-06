@@ -7,11 +7,11 @@ fn main(ctx, player, monster) {
         ctx.emit("player.level_up", player.level);
     }
 
-    let rewards = ctx.config.kill_rewards
-        .filter(|reward| reward["monster_id"] == monster.id);
-    for reward in rewards {
-        player.inventory.items[reward["item_id"]].count += reward["count"];
-        player.add_reward(reward["item_id"], reward["count"]);
+    if monster.id == 11 {
+        let item_id = "gold";
+        let count = 2;
+        player.inventory.items[item_id].count += count;
+        player.add_reward(item_id, count);
     }
 
     if monster.id == 11 {

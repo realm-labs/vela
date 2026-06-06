@@ -4,12 +4,9 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
     adapter::ScriptStateAdapter,
-    add_values, div_values,
     error::{HostError, HostErrorKind, HostResult},
-    mul_values,
     patch::{Patch, PatchOp},
     path::{HostPath, HostRef},
-    push_value, rem_values, sub_values,
     tx::{HostObjectSnapshot, PatchTx},
     value::HostValue,
 };
@@ -47,9 +44,13 @@ impl MockStateAdapter {
     }
 
     pub fn insert_value(&mut self, path: HostPath, value: HostValue) {
-        self.objects
-            .insert(HostObjectKey::from_ref(path.root), path.root.generation);
+        self.insert_object(path.root);
         self.values.insert(path, value);
+    }
+
+    pub fn insert_object(&mut self, host_ref: HostRef) {
+        self.objects
+            .insert(HostObjectKey::from_ref(host_ref), host_ref.generation);
     }
 
     pub fn insert_method_return(&mut self, method: HostMethodId, value: HostValue) {
@@ -74,8 +75,19 @@ impl MockStateAdapter {
     }
 
     fn validate_path(&self, path: &HostPath) -> HostResult<()> {
+        self.validate_root(path, false)
+    }
+
+    fn validate_writable_path(&self, path: &HostPath) -> HostResult<()> {
+        self.validate_root(path, true)
+    }
+
+    fn validate_root(&self, path: &HostPath, allow_unknown: bool) -> HostResult<()> {
         let key = HostObjectKey::from_ref(path.root);
         let Some(generation) = self.objects.get(&key).copied() else {
+            if allow_unknown {
+                return Ok(());
+            }
             return Err(HostError::new(HostErrorKind::MissingPath {
                 path: path.clone(),
             }));
@@ -86,6 +98,12 @@ impl MockStateAdapter {
             generation,
         };
         PatchTx::require_fresh_ref(path.root, &snapshot)
+    }
+
+    fn ensure_object(&mut self, host_ref: HostRef) {
+        self.objects
+            .entry(HostObjectKey::from_ref(host_ref))
+            .or_insert(host_ref.generation);
     }
 
     fn validate_access(&self, path: &HostPath, action: &'static str) -> HostResult<()> {
@@ -133,10 +151,23 @@ impl ScriptStateAdapter for MockStateAdapter {
     }
 
     fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
-        self.validate_path(path)?;
         self.validate_access(path, "write")?;
+        self.validate_writable_path(path)?;
+        self.ensure_object(path.root);
         self.values.insert(path.clone(), value);
         Ok(())
+    }
+
+    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
+        self.validate_access(path, "write")?;
+        self.validate_path(path)?;
+        if self.values.remove(path).is_some() {
+            Ok(())
+        } else {
+            Err(HostError::new(HostErrorKind::MissingPath {
+                path: path.clone(),
+            }))
+        }
     }
 
     fn call_method(
@@ -145,35 +176,22 @@ impl ScriptStateAdapter for MockStateAdapter {
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        self.validate_path(path)?;
         self.validate_access(path, "call")?;
+        self.validate_writable_path(path)?;
         let value = self
             .method_returns
             .get(&method)
             .cloned()
-            .ok_or_else(|| HostError::new(HostErrorKind::UnsupportedMethod { method }))?;
+            .unwrap_or(HostValue::Null);
+        self.ensure_object(path.root);
         self.method_calls
             .push((path.clone(), method, args.to_vec()));
         Ok(value)
     }
 
-    fn preview_method_return(
-        &self,
-        path: &HostPath,
-        method: HostMethodId,
-        _args: &[HostValue],
-    ) -> HostResult<HostValue> {
-        self.validate_access(path, "call")?;
-        Ok(self
-            .method_returns
-            .get(&method)
-            .cloned()
-            .unwrap_or(HostValue::Null))
-    }
-
     fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
         let result = self
-            .validate_path(&patch.path)
+            .validate_writable_path(&patch.path)
             .and_then(|()| match &patch.op {
                 PatchOp::Set(_)
                 | PatchOp::Add(_)
@@ -183,106 +201,9 @@ impl ScriptStateAdapter for MockStateAdapter {
                 | PatchOp::Rem(_)
                 | PatchOp::Push(_)
                 | PatchOp::Remove => self.validate_access(&patch.path, "write"),
-                PatchOp::CallHostMethod { method, .. }
-                    if self.method_returns.contains_key(method) =>
-                {
-                    self.validate_access(&patch.path, "call")
-                }
-                PatchOp::CallHostMethod { method, .. } => {
-                    Err(HostError::new(HostErrorKind::UnsupportedMethod {
-                        method: *method,
-                    }))
-                }
+                PatchOp::CallHostMethod { .. } => self.validate_access(&patch.path, "call"),
             })
             .and_then(|()| self.validate_expected_base(patch));
         result.map_err(|error| error.with_source_span_if_absent(patch.source_span))
-    }
-
-    fn apply_patch(&mut self, patch: Patch) -> HostResult<()> {
-        let source_span = patch.source_span;
-        let result = (|| {
-            self.validate_patch(&patch)?;
-            match patch.op {
-                PatchOp::Set(value) => self.write_path(&patch.path, value),
-                PatchOp::Add(value) => {
-                    let current = self.read_path(&patch.path)?;
-                    let next = add_values(&current, &value).ok_or_else(|| {
-                        HostError::new(HostErrorKind::InvalidAdd {
-                            path: patch.path.clone(),
-                        })
-                    })?;
-                    self.write_path(&patch.path, next)
-                }
-                PatchOp::Sub(value) => {
-                    let current = self.read_path(&patch.path)?;
-                    let next = sub_values(&current, &value).ok_or_else(|| {
-                        HostError::new(HostErrorKind::InvalidSub {
-                            path: patch.path.clone(),
-                        })
-                    })?;
-                    self.write_path(&patch.path, next)
-                }
-                PatchOp::Mul(value) => {
-                    let current = self.read_path(&patch.path)?;
-                    let next = mul_values(&current, &value).ok_or_else(|| {
-                        HostError::new(HostErrorKind::InvalidMul {
-                            path: patch.path.clone(),
-                        })
-                    })?;
-                    self.write_path(&patch.path, next)
-                }
-                PatchOp::Div(value) => {
-                    let current = self.read_path(&patch.path)?;
-                    let next = div_values(&current, &value).ok_or_else(|| {
-                        HostError::new(HostErrorKind::InvalidDiv {
-                            path: patch.path.clone(),
-                        })
-                    })?;
-                    self.write_path(&patch.path, next)
-                }
-                PatchOp::Rem(value) => {
-                    let current = self.read_path(&patch.path)?;
-                    let next = rem_values(&current, &value).ok_or_else(|| {
-                        HostError::new(HostErrorKind::InvalidRem {
-                            path: patch.path.clone(),
-                        })
-                    })?;
-                    self.write_path(&patch.path, next)
-                }
-                PatchOp::Remove => {
-                    self.read_path(&patch.path)?;
-                    self.values.remove(&patch.path);
-                    Ok(())
-                }
-                PatchOp::Push(value) => {
-                    let current = self.read_path(&patch.path)?;
-                    let next = push_value(&current, value).ok_or_else(|| {
-                        HostError::new(HostErrorKind::InvalidPush {
-                            path: patch.path.clone(),
-                        })
-                    })?;
-                    self.write_path(&patch.path, next)
-                }
-                PatchOp::CallHostMethod { method, args } => {
-                    self.call_method(&patch.path, method, &args).map(|_| ())
-                }
-            }
-        })();
-        result.map_err(|error| error.with_source_span_if_absent(source_span))
-    }
-
-    fn apply_patches(&mut self, patches: Vec<Patch>) -> HostResult<()> {
-        for patch in &patches {
-            self.validate_patch(patch)?;
-        }
-
-        let snapshot = self.clone();
-        for patch in patches {
-            if let Err(error) = self.apply_patch(patch) {
-                *self = snapshot;
-                return Err(error);
-            }
-        }
-        Ok(())
     }
 }
