@@ -1,5 +1,4 @@
 use super::*;
-use vela_common::{HostMethodId, MethodId};
 
 impl Vm {
     pub(super) fn execute_body(
@@ -328,14 +327,14 @@ impl Vm {
                     args,
                 } => {
                     if args.is_empty() {
-                        dispatch_call_method(
+                        script_method_calls::dispatch_script_method_call(
                             self,
                             program,
                             &mut host,
                             &mut heap,
                             &mut budget,
                             &mut frame,
-                            MethodCall {
+                            script_method_calls::ScriptMethodCall {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
@@ -347,14 +346,14 @@ impl Vm {
                         let values = script_function_calls::script_call_args_from_call_arguments(
                             &frame, args,
                         )?;
-                        dispatch_call_method(
+                        script_method_calls::dispatch_script_method_call(
                             self,
                             program,
                             &mut host,
                             &mut heap,
                             &mut budget,
                             &mut frame,
-                            MethodCall {
+                            script_method_calls::ScriptMethodCall {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
@@ -372,14 +371,14 @@ impl Vm {
                     args,
                 } => {
                     if args.is_empty() {
-                        dispatch_call_method_id(
+                        script_method_calls::dispatch_script_method_id_call(
                             self,
                             program,
                             &mut host,
                             &mut heap,
                             &mut budget,
                             &mut frame,
-                            MethodIdCall {
+                            script_method_calls::ScriptMethodIdCall {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
@@ -391,14 +390,14 @@ impl Vm {
                         let values = script_function_calls::script_call_args_from_call_arguments(
                             &frame, args,
                         )?;
-                        dispatch_call_method_id(
+                        script_method_calls::dispatch_script_method_id_call(
                             self,
                             program,
                             &mut host,
                             &mut heap,
                             &mut budget,
                             &mut frame,
-                            MethodIdCall {
+                            script_method_calls::ScriptMethodIdCall {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
@@ -1005,124 +1004,6 @@ impl Vm {
 
         Err(VmError::new(VmErrorKind::MissingReturn))
     }
-}
-
-fn caller_roots_for_heap(frame: &CallFrame, heap: Option<&HeapExecution<'_>>) -> Vec<GcRef> {
-    if heap.is_some() {
-        frame.heap_roots()
-    } else {
-        Vec::new()
-    }
-}
-
-struct MethodCall<'a> {
-    dst: Register,
-    receiver: Register,
-    method: &'a str,
-    value_method_id: Option<HostMethodId>,
-    values: &'a [Value],
-}
-
-fn dispatch_call_method(
-    vm: &Vm,
-    program: Option<&Program>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: MethodCall<'_>,
-) -> VmResult<()> {
-    if let Some(result) = call_readonly_method_without_callbacks(
-        frame.read(call.receiver)?,
-        call.method,
-        call.value_method_id,
-        call.values,
-        heap.as_deref(),
-    ) {
-        let result =
-            store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
-        frame.write(call.dst, result)?;
-        return Ok(());
-    }
-
-    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
-    if let Some(result) = call_non_mutating_method(
-        frame.read(call.receiver)?,
-        call.method,
-        call.value_method_id,
-        call.values,
-        ScriptMethodDispatch {
-            vm,
-            program,
-            host: host.as_deref_mut(),
-            heap: heap.as_deref_mut(),
-            budget: budget.as_deref_mut(),
-            caller_roots,
-        },
-    ) {
-        let result =
-            store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
-        frame.write(call.dst, result)?;
-    } else {
-        let mut receiver_value = *frame.read(call.receiver)?;
-        let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
-        let result = call_method(
-            &mut receiver_value,
-            call.method,
-            call.value_method_id,
-            call.values,
-            ScriptMethodDispatch {
-                vm,
-                program,
-                host: host.as_deref_mut(),
-                heap: heap.as_deref_mut(),
-                budget: budget.as_deref_mut(),
-                caller_roots,
-            },
-        )?;
-        let result =
-            store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
-        frame.write(call.receiver, receiver_value)?;
-        frame.write(call.dst, result)?;
-    }
-    Ok(())
-}
-
-struct MethodIdCall<'a> {
-    dst: Register,
-    receiver: Register,
-    method: &'a str,
-    method_id: MethodId,
-    values: &'a [Value],
-}
-
-fn dispatch_call_method_id(
-    vm: &Vm,
-    program: Option<&Program>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: MethodIdCall<'_>,
-) -> VmResult<()> {
-    let receiver_value = *frame.read(call.receiver)?;
-    let caller_roots = caller_roots_for_heap(frame, heap.as_deref());
-    let result = call_method_id(
-        &receiver_value,
-        call.method,
-        call.method_id,
-        call.values,
-        ScriptMethodDispatch {
-            vm,
-            program,
-            host: host.as_deref_mut(),
-            heap: heap.as_deref_mut(),
-            budget: budget.as_deref_mut(),
-            caller_roots,
-        },
-    )?;
-    let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
-    frame.write(call.dst, result)
 }
 
 #[inline]

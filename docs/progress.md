@@ -105,9 +105,11 @@ Cranelift JIT.
   boundary, preserving ID-first lookup, name fallback, PatchTx rollback, budget
   checks, and source-spanned errors. Standard value method calls can also carry
   optional `HostMethodId` metadata, with `len`/`is_empty` using an ID fast path
-  before name fallback. Host field/path reads, writes, compound and collection
-  patches, and method calls are routed through a focused VM host-access
-  boundary, giving later path-key or direct-adapter work one replacement point.
+  before name fallback, and script/value method dispatch is routed through a
+  focused VM call boundary. Host field/path reads, writes, compound and
+  collection patches, and host method calls are routed through a focused VM
+  host-access boundary, giving later path-key or direct-adapter work one
+  replacement point.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics.

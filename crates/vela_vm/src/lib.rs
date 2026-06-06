@@ -33,6 +33,7 @@ mod reflection_values;
 mod runtime_checks;
 mod script_builtin_methods;
 mod script_function_calls;
+mod script_method_calls;
 mod script_methods;
 mod script_object;
 mod set_methods;
@@ -53,7 +54,7 @@ use field_access::{
     get_record_slot_value,
 };
 pub(crate) use frame::CallFrame;
-use heap::{GcRef, HeapValue, ScriptHeap};
+use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, finish_managed_heap_result, owned_to_value,
@@ -69,10 +70,6 @@ use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_closure, expect_int, is_truthy, validate_jump};
-use script_methods::{
-    ScriptMethodDispatch, call_method, call_method_id, call_non_mutating_method,
-    call_readonly_method_without_callbacks,
-};
 use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
