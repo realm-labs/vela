@@ -62,9 +62,9 @@ Use register-based bytecode:
 
 ```text
 LOAD_CONST      r0, const#10
-GET_HOST_FIELD  r1, player, FieldId(level)
+GET_HOST_FIELD  r1, account, FieldId(balance)
 ADD             r2, r1, r0
-SET_HOST_FIELD  player, FieldId(level), r2
+SET_HOST_FIELD  account, FieldId(balance), r2
 RETURN          null
 ```
 
@@ -169,7 +169,7 @@ channels
 parallel iterators
 ```
 
-If a game server needs concurrency, the Rust host owns it. The host may run
+If a host application needs concurrency, the Rust host owns it. The host may run
 multiple independent Vela runtimes on different threads, shard actors across
 workers, schedule events on an async runtime, or perform IO in background tasks.
 Each script invocation still observes a single-threaded VM boundary.
@@ -178,7 +178,7 @@ Allowed host-level concurrency models:
 
 ```text
 one Runtime per actor worker
-one Runtime per shard or scene
+one Runtime per shard, tenant, or worker
 runtime pool with no concurrent use of the same Runtime
 host async tasks that call into Vela only at explicit scheduling points
 background IO that returns copied data or HostRef handles to later script calls
@@ -263,4 +263,3 @@ reflection objects
 call frames
 FFI/native functions
 ```
-

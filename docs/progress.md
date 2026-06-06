@@ -12,7 +12,7 @@ to be archived.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
-game-server/conformance proof, measured performance baselines, and non-JIT
+embedding/conformance proof, measured performance baselines, and non-JIT
 interpreter/heap optimization checkpoint. Current work is centered on M20
 inline caches and specialization:
 
@@ -23,7 +23,7 @@ keep guarded slow-path fallback for cache misses and invalidation
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
-non-JIT bytecode interpreter toward Lua 5.x comparable gameplay workloads
+non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
 through M20 cache work before debugger/DAP work and Cranelift JIT.
 
 ## Milestone Snapshot
@@ -37,7 +37,7 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
 | M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist. |
 | M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx overlays, and rollback-safe host boundaries exist. |
 | M12 | Complete enough | Reflection metadata, permission-aware queries, candidate spans, and schema-safe mutation denial are covered. |
-| M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and demo helper coverage are validated. |
+| M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and domain-neutral helper coverage are validated. |
 | M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, permissions, signature conversion, and macro parity are covered. |
 | M15 | Complete enough | Safe-point staging, old-frame lifetime, new-call entry, source workflows, ABI/schema rejection, compatible additions, and repair reports are covered. |
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
@@ -61,8 +61,8 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
   strings, Option/Result helpers and propagation, math, context time/event/log
-  helpers, controlled random permissions, lambda TypeFacts, and gameplay demo
-  helpers.
+  helpers, controlled random permissions, lambda TypeFacts, and
+  domain-neutral helpers.
 - Engine registration for host types, native functions, context helpers,
   standard natives, reflection permissions, compiler options, hot-reload
   policies, derive-generated host bindings, and reflection schemas.
@@ -72,7 +72,7 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
   changed-file workflows, including accepted compatible additions/renames and
   rejected ABI/schema/effect/access/source changes without advancing the active
   version.
-- CLI demo scripts and conformance fixtures covering gameplay helpers,
+- CLI demo scripts and conformance fixtures covering domain-neutral stdlib helpers,
   reflection, schema-safe mutation denial, permissions, read-only host boundary
   rejection, host read/write/call permission denial, stale host ref generation
   rejection, host patch conflict reporting, reflection candidate diagnostics,
@@ -102,7 +102,7 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
   and schema ABI changes must fall back or invalidate without changing
   semantics.
 - Lua 5.x comparable performance remains a measured target for cache-enabled
-  non-JIT gameplay workloads; scalar, array, string, function-call, and
+  non-JIT host-boundary workloads; scalar, array, string, function-call, and
   callback deltas should be tracked separately from host-boundary benchmarks.
 
 ### Validation

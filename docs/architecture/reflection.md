@@ -404,9 +404,9 @@ pub type AttrMap = HashMap<Symbol, AttrValue>;
 Example:
 
 ```rust
-#[event("monster.kill")]
+#[event("invoice.paid")]
 #[budget(instructions = 50000)]
-pub fn on_kill(ctx, player, monster) {
+pub fn on_invoice_paid(ctx, account, invoice) {
     // ...
 }
 ```
@@ -465,7 +465,7 @@ reflect::permissions()
 reflect::has_permission(name)
 ```
 
-For `HostRef`, `reflect::set(player, "level", 10)` creates a `Patch` instead of mutating Rust directly.
+For `HostRef`, `reflect::set(account, "balance", 10)` creates a `Patch` instead of mutating Rust directly.
 For script records and enum payload records, `reflect::set(value, name, new_value)`
 returns an updated copied value. It does not mutate the caller's existing local
 binding unless the script assigns the returned value, and it rejects unknown
@@ -474,8 +474,8 @@ fields instead of adding runtime schema members.
 Dot syntax and reflection share the same path foundation:
 
 ```text
-player.level = 10                -> compile-time FieldId, fast
-reflect::set(player, "level", 10) -> runtime FieldId lookup, slower but flexible
+account.balance = 10                  -> compile-time FieldId, fast
+reflect::set(account, "balance", 10)  -> runtime FieldId lookup, slower but flexible
 ```
 
 ### Reflection Permissions
@@ -498,7 +498,7 @@ Suggested defaults:
 
 | Script Kind | Read Types | Read Fields | Write Fields | Call Methods | Host Read Effects | Host Write Effects | Event Effects | Private | Inspect HostPath |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| gameplay | yes | yes | cautious | yes | yes | cautious | cautious | no | no |
+| embedded app | yes | yes | cautious | yes | yes | cautious | cautious | no | no |
 | config validation | yes | yes | no | pure only | no | no | no | no | no |
 | GM/admin | yes | yes | yes | yes | configurable | configurable | configurable | configurable | yes |
 | test script | yes | yes | yes | yes | yes | yes | yes | configurable | yes |
@@ -511,4 +511,3 @@ lacks a required field permission. Dynamic script record and enum payload
 reflection uses the same permission metadata when the registry knows the script
 field, while `reflect::set` still returns an updated copied value rather than
 mutating type structure.
-

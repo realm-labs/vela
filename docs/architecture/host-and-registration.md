@@ -5,31 +5,31 @@ The host state bridge is the central differentiator. Scripts must not receive re
 Wrong direction:
 
 ```rust
-&mut Player
+&mut Account
 ```
 
 Correct direction:
 
 ```rust
-HostRef<Player>
-PathProxy<Player.level>
+HostRef<Account>
+PathProxy<Account.balance>
 PatchTx
 ```
 
 Script code looks natural:
 
 ```rust
-player.level += 1
-player.exp = 0
-player.inventory.add("gold", 100)
+account.balance += 1
+account.status = "preferred"
+account.ledger.add("credit", 100)
 ```
 
 Runtime operations are explicit:
 
 ```text
-ReadModifyWrite(player.level, Add(1))
-Set(player.exp, 0)
-CallHostMethod(player.inventory, add, ["gold", 100])
+ReadModifyWrite(account.balance, Add(1))
+Set(account.status, "preferred")
+CallHostMethod(account.ledger, add, ["credit", 100])
 ```
 
 ### HostRef
@@ -96,8 +96,8 @@ pub enum PatchOp {
 Scripts must observe writes made earlier in the same transaction:
 
 ```rust
-player.level = 10
-print(player.level) // prints 10
+account.balance = 10
+print(account.balance) // prints 10
 ```
 
 Read logic:
@@ -121,7 +121,7 @@ write_path(path, value):
 
 ### Read-Modify-Write
 
-`player.level += 1` should prefer an explicit operation:
+`account.balance += 1` should prefer an explicit operation:
 
 ```rust
 PatchOp::Add(HostValue::Int(1))
@@ -167,19 +167,19 @@ test mock state
 
 ```rust
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "game::player::Player")]
-pub struct Player {
+#[script(path = "billing::account::Account")]
+pub struct Account {
     #[script(get, set)]
-    pub level: u32,
+    pub balance: i64,
 
     #[script(get, set)]
-    pub exp: u64,
+    pub status: String,
 
     #[script(get, set)]
-    pub title: String,
+    pub owner: String,
 
     #[script(get)]
-    pub inventory: Inventory,
+    pub ledger: Ledger,
 }
 ```
 
@@ -191,14 +191,14 @@ runtime handles, but host authors do not choose them in derive/function macros.
 
 ```rust
 #[script_methods]
-impl Player {
+impl Account {
     #[script_method(effect = "write_host")]
-    pub fn add_exp(
+    pub fn credit(
         ctx: &mut NativeCallContext,
-        player: HostRef<Player>,
+        account: HostRef<Account>,
         amount: i64,
     ) -> HostResult<()> {
-        ctx.tx.push_add(player.field(FieldId(2)), HostValue::Int(amount))
+        ctx.tx.push_add(account.field(FieldId(1)), HostValue::Int(amount))
     }
 }
 ```
@@ -229,7 +229,7 @@ helpers, config access, controlled random, metrics, and host-provided services.
 
 Native functions follow the same no-overload rule as script functions. Each
 public native callable has one canonical module/name and one stable ID. Hosts
-should use explicit names such as `spawn_monster` and `spawn_monster_at`
+should use explicit names such as `create_invoice` and `create_invoice_with_terms`
 instead of registering multiple signatures under the same script-visible name.
 
 There are three registration shapes:
@@ -237,7 +237,7 @@ There are three registration shapes:
 ```text
 global function       log("message")
 module function       math::clamp(value, min, max)
-host type method      player.inventory.add(item_id, count)
+host type method      account.ledger.add(code, amount)
 ```
 
 All three shapes must become registry entries with stable IDs, signatures,
@@ -335,12 +335,12 @@ The engine builder should support explicit descriptors for stable schemas:
 ```rust
 let engine = Engine::builder()
     .register_native_fn(
-        NativeFunctionDesc::new("game::log", NativeFunctionId(10_001))
+        NativeFunctionDesc::new("audit::log", NativeFunctionId(10_001))
             .param("message", TypeHint::String)
             .returns(TypeHint::Null)
             .effects(EffectSet::pure_host_log())
-            .docs("Writes to the game log."),
-        game_log,
+            .docs("Writes to the host audit log."),
+        audit_log,
     )
     .register_native_fn(
         NativeFunctionDesc::new("math::clamp", NativeFunctionId(20_001))
@@ -367,8 +367,8 @@ tests that need explicit IDs:
 ```rust
 let engine = Engine::builder()
     .register_native_fn(
-        NativeFunctionDesc::new("game::log", NativeFunctionId(10_001)),
-        game_log,
+        NativeFunctionDesc::new("audit::log", NativeFunctionId(10_001)),
+        audit_log,
     )?
     .build()?;
 ```
@@ -413,21 +413,21 @@ receiver as a host path or host ref, not as `&mut T` in the VM.
 
 ```rust
 #[script_methods]
-impl Inventory {
+impl Ledger {
     #[script_method(
         name = "add",
         effect = "write_host",
-        docs = "Adds an item stack to this inventory."
+        docs = "Adds an entry to this ledger."
     )]
     pub fn add(
         ctx: &mut NativeCallContext,
-        inventory: HostRef<Inventory>,
-        item_id: String,
-        count: i64,
+        ledger: HostRef<Ledger>,
+        code: String,
+        amount: i64,
     ) -> HostResult<()> {
-        ctx.tx.push_method_call(inventory, HostMethodId(1), vec![
-            HostValue::String(item_id.into()),
-            HostValue::Int(count),
+        ctx.tx.push_method_call(ledger, HostMethodId(1), vec![
+            HostValue::String(code.into()),
+            HostValue::Int(amount),
         ])?;
         Ok(())
     }
@@ -437,13 +437,13 @@ impl Inventory {
 This keeps method syntax ergonomic:
 
 ```rust
-player.inventory.add("gold", 100)
+account.ledger.add("credit", 100)
 ```
 
 while preserving the host boundary:
 
 ```text
-CallHostMethod(player.inventory, add, ["gold", 100])
+CallHostMethod(account.ledger, add, ["credit", 100])
 ```
 
 ### Registration Rules
@@ -460,4 +460,3 @@ native functions cannot mutate TypeRegistry at runtime
 reflection can call only reflect_callable native functions
 hot reload can replace script functions, but host native function ABI is fixed for the engine version
 ```
-

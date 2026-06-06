@@ -21,13 +21,13 @@ pub struct ProgramVersion {
 Calling:
 
 ```rust
-combat.on_kill(player, monster)
+billing.on_invoice_paid(account, invoice)
 ```
 
 Internally uses:
 
 ```text
-FunctionSymbolId("combat.on_kill")
+FunctionSymbolId("billing.on_invoice_paid")
 ```
 
 At call time:
@@ -93,8 +93,8 @@ random call
 Event registration should happen through attributes and reflection scanning:
 
 ```rust
-#[event("monster.kill")]
-pub fn on_kill(ctx, player, monster) {
+#[event("invoice.paid")]
+pub fn on_invoice_paid(ctx, account, invoice) {
     // ...
 }
 ```
@@ -152,4 +152,3 @@ deleted variant
 changed existing variant field structure
 VariantId reuse
 ```
-

@@ -22,6 +22,10 @@ decision history lives in
 - Ordinary active source files should stay under 1200 lines unless a clear
   exception is documented. Over-threshold implementation and test files should
   be reviewed and split by responsibility when no exception exists.
+- Standard library and builtin APIs must remain domain-neutral. Game-specific,
+  commerce-specific, or other business-domain capabilities belong in Engine
+  host registration, native functions, schemas, or examples, not in builtin
+  language surface.
 
 ## Active Architecture Decisions
 
@@ -219,9 +223,9 @@ and missing metadata. Expected absence should use `Option::None`, recoverable
 business failure should use `Result::Err`, and unrecoverable script/runtime
 failures should use VM diagnostics rather than `Result::Err`.
 
-Array, map, set, string, range, math, context, random, and gameplay helpers are
-deterministic unless an Engine-installed permissioned native explicitly provides
-controlled nondeterminism.
+Array, map, set, string, range, math, context, random, and other
+domain-neutral helpers are deterministic unless an Engine-installed
+permissioned native explicitly provides controlled nondeterminism.
 
 ### Reflection Permissions
 

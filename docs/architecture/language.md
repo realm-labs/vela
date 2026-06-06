@@ -9,52 +9,52 @@ go-to-definition, rename, hover, and incremental reparsing. The compiler may
 lower into a simpler AST/HIR, but the syntax layer should keep a lossless CST or
 equivalent token tree with comments and newlines.
 
-Example script:
+Example script. `Account`, `Invoice`, and event names are host-registered
+domain concepts, not builtin language or stdlib items:
 
 ```rust
-use game::player::Player
-use game::reward::Reward
+use billing::account::Account
+use billing::invoice::Invoice
 
-struct KillReward {
-    item_id
-    count
+struct PaymentAdjustment {
+    code
+    amount
 }
 
-enum QuestProgress {
+enum WorkflowState {
     None
-    Active { quest_id, count }
-    Finished { quest_id }
+    Active { workflow_id, count }
+    Finished { workflow_id }
 }
 
-trait Damageable {
-    fn damage(self, amount)
+trait Auditable {
+    fn audit(self, message)
 }
 
-#[event("monster.kill")]
-pub fn on_kill(ctx, player, monster) {
-    player.exp += monster.exp
+#[event("invoice.paid")]
+pub fn on_invoice_paid(ctx, account, invoice) {
+    account.balance += invoice.amount
 
-    if player.exp >= ctx.config.exp_to_next_level(player.level) {
-        player.level += 1
-        player.exp = 0
-        ctx.emit("player.level_up", player.id, player.level)
+    if account.balance >= ctx.config.preferred_balance {
+        account.status = "preferred"
+        ctx.emit("account.preferred", account.id, account.balance)
     }
 
-    let rewards = ctx.config.kill_rewards
-        .filter(|r| r.monster_id == monster.id)
-        .map(|r| KillReward {
-            item_id: r.item_id,
-            count: r.count,
+    let adjustments = ctx.config.payment_adjustments
+        .filter(|a| a.kind == invoice.kind)
+        .map(|a| PaymentAdjustment {
+            code: a.code,
+            amount: a.amount,
         })
 
-    for reward in rewards {
-        player.inventory.add(reward.item_id, reward.count)
+    for adjustment in adjustments {
+        account.ledger.add(adjustment.code, adjustment.amount)
     }
 
-    match player.quest_progress {
-        QuestProgress::Active { quest_id, count } => {
-            player.quest_progress = QuestProgress::Active {
-                quest_id,
+    match account.workflow {
+        WorkflowState::Active { workflow_id, count } => {
+            account.workflow = WorkflowState::Active {
+                workflow_id,
                 count: count + 1,
             }
         }
@@ -125,7 +125,7 @@ enum Result {
 
 ```text
 null        no meaningful value, void-like results, host nullable boundaries, or missing metadata
-Option::None expected absence in gameplay or lookup logic
+Option::None expected absence in business or lookup logic
 Result::Err  recoverable failure with a script-visible reason
 VM error    unrecoverable trap, script bug, contract violation, budget failure, or sandbox denial
 ```
@@ -164,4 +164,3 @@ complex where clauses
 traits participating in object memory layout
 static monomorphization
 ```
-

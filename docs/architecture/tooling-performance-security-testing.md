@@ -15,9 +15,9 @@ Examples:
 
 ```text
 FieldNotFound:
-  type: game::player::Player
-  field: levle
-  candidates: ["level"]
+  type: billing::account::Account
+  field: balnace
+  candidates: ["balance"]
 ```
 
 Copied reflection records for script-defined modules, functions, types, traits,
@@ -43,23 +43,23 @@ and `returns` metadata. `return` matches function reflection naming, while
 
 ```text
 FieldNotWritable:
-  type: game::player::Player
-  field: inventory
+  type: billing::account::Account
+  field: ledger
   reason: field is read-only
-  hint: player::inventory::add(...) instead
+  hint: account.ledger.add(...) instead
 ```
 
 ```text
 HotReloadAbiMismatch:
-  function: combat.on_kill
-  old_params: [ctx, player, monster]
-  new_params: [ctx, player]
+  function: billing.on_invoice_paid
+  old_params: [ctx, account, invoice]
+  new_params: [ctx, account]
   reason: exported event function cannot remove parameters
 ```
 
 ```text
 StaleHostRef:
-  type: game::player::Player
+  type: billing::account::Account
   object_id: 1024
   reason: generation mismatch
 ```
@@ -118,9 +118,9 @@ do not require full static type success before bytecode generation
 Record literals and map literals intentionally stay distinct:
 
 ```text
-Player { level: 1 }    typed record or host-like constructor
-{ "level": 1 }         map literal
-{ level: 1 }           map literal with identifier key
+Account { balance: 1 }    typed record or host-like constructor
+{ "balance": 1 }          map literal
+{ balance: 1 }            map literal with identifier key
 ```
 
 The parser may use context to disambiguate blocks from map literals, but LSP
@@ -196,7 +196,7 @@ dynamic type hints and TypeFacts guide optimization but are not correctness guar
 
 The non-JIT performance target is intentionally part of the post-MVP roadmap:
 an optimized bytecode interpreter should aim for Lua 5.x comparable performance
-on representative gameplay workloads. LuaJIT and Node.js are useful reference
+on representative host-boundary workloads. LuaJIT and Node.js are useful reference
 ceilings for hot scalar loops and future JIT work, but they are not the first
 release target.
 
@@ -205,7 +205,7 @@ release target.
 ### Phase 1: Measurement And Baselines
 
 ```text
-official microbenchmarks and gameplay-style benchmarks
+official microbenchmarks and domain-style host-boundary benchmarks
 release-mode benchmark parameters and checksum validation
 VM scalar dispatch, function-call, heap, stdlib, record, string, and PatchTx cases
 external reference comparison harness for Lua 5.x, LuaJIT, Rhai, and JavaScript
@@ -266,7 +266,7 @@ Debug Adapter Protocol boundary for IDE integration
 hot reload breakpoint rebinding through ProgramVersion metadata
 ```
 
-Debugger support must stay disableable for normal gameplay execution. Optimized
+Debugger support must stay disableable for normal embedded execution. Optimized
 interpreter paths, inline caches, and later JIT code must preserve the metadata
 needed to reconstruct a bytecode-equivalent debug frame.
 
@@ -304,13 +304,13 @@ pub struct PermissionSet {
 }
 ```
 
-Default gameplay script settings:
+Default embedded script settings:
 
 ```text
 allow_io = false
 allow_network = false
-allow_random = false, or only through ctx.rng
-allow_time_now = false; ctx::now
+allow_random = false, or only through controlled host context
+allow_time_now = false, or only through controlled host context
 host_write = only objects provided by the event context
 reflect_write = disabled by default or tightly controlled
 ```
@@ -354,7 +354,7 @@ ABI diff tests
 script reads host field
 script writes host field through PatchTx
 reflect::set creates PatchTx
-player.level += 1 creates Add patch
+account.balance += 1 creates Add patch
 lambda parameter facts are inferred from array/map receiver facts
 host schema fields are available through TypeRegistry
 hot reload replaces function body

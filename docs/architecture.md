@@ -1,11 +1,14 @@
 # Architecture
 
-This document describes the technical architecture for a Hot Reload First dynamic scripting language implemented in Rust for game server logic.
+This document describes the technical architecture for a Hot Reload First
+dynamic scripting language implemented in Rust for host-owned business logic.
+Game server scripting is a primary application, but the core language, stdlib,
+builtins, and runtime contract stay domain-neutral.
 
 The core idea is:
 
 ```text
-Scripts describe game logic with natural syntax.
+Scripts describe host-boundary business logic with natural syntax.
 The VM represents mutations to the Rust world as PatchTx operations.
 The runtime performs reliable function-level hot reload by replacing CodeObject mappings.
 ```
@@ -20,7 +23,7 @@ These projects are useful references, but this language should not copy them dir
 | Wren | Small embedded VM and restrained syntax | The Rust host patch model needs custom design |
 | Rhai | Rust embedding experience and small-language strategy | Expression power and hot reload are not enough for this goal |
 | Rune | Rust-like dynamic language, VM, hot reload, Rust embedding | The host state PatchTx model is more specialized |
-| Starlark | Determinism, restraint, and tool friendliness | It is not a direct fit for high-performance game server logic |
+| Starlark | Determinism, restraint, and tool friendliness | It is not a direct fit for high-performance mutable host-boundary logic |
 | Mun | Hot Reload First runtime ideas | Static typing and LLVM/AOT are different from this project |
 
 References:

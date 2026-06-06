@@ -1,15 +1,24 @@
 # Goal
 
-Build a dynamic scripting language in Rust for game server logic. The language is Hot Reload First, embeds deeply into Rust host state, and lets gameplay scripts mutate host objects through safe patch transactions instead of direct mutable references.
+Build a dynamic scripting language in Rust for host-owned business logic. Game
+server scripting is a primary proving ground, but the language core, standard
+library, builtins, and runtime contract must remain domain-neutral. Scripts can
+mutate host objects through safe patch transactions instead of direct mutable
+references.
 
-The language is not "dynamic Rust" and is not a Lua rewrite. It is a scripting language designed around Rust game server state models, controlled reflection, host patching, and reliable function-level hot reload.
+The language is not "dynamic Rust" and is not a Lua rewrite. It is a scripting
+language designed around Rust host state models, controlled reflection, host
+patching, and reliable function-level hot reload. Domain objects, event names,
+and business rules such as players, quests, rewards, orders, accounts, or
+workflows come from host registration, native functions, schemas, and examples,
+not from builtin language or standard-library surface.
 
 ## Product Goals
 
 The language should provide:
 
-1. Better gameplay expression than Lua: structs, enums, `match`, method calls, rich array/map APIs, and Option/Result-style error handling.
-2. Deep Rust host integration: scripts can naturally read and write host state with syntax such as `player.level += 1`.
+1. Better host-script expression than Lua: structs, enums, `match`, method calls, rich array/map APIs, and Option/Result-style error handling.
+2. Deep Rust host integration: scripts can naturally read and write host state with syntax such as `account.balance += 1`.
 3. Safe mutable state boundaries: scripts never hold Rust `&mut T`; they produce `HostPath` operations inside `PatchTx`, and the host applies them at safe points.
 4. Hot Reload First semantics: hot reload replaces function-level or module-level code objects. Existing call frames continue on old code, and new calls enter new code.
 5. Controlled reflection: scripts can inspect types, fields, methods, variants, traits, modules, and functions, and can perform controlled dynamic reads, writes, and calls. Runtime schema mutation is not allowed.
@@ -17,7 +26,7 @@ The language should provide:
 7. Practical performance: the MVP should keep the bytecode VM, stable IDs,
    field slots, native standard library functions, and GC boundaries ready for
    optimization. After the MVP, the non-JIT interpreter should target
-   Lua-comparable performance on representative gameplay workloads before
+   Lua-comparable performance on representative host-boundary workloads before
    post-MVP Cranelift JIT work.
 
 ## Non-Goals
@@ -94,7 +103,8 @@ The following goal can be used as a persistent implementation target:
 /goal Treat docs/goal.md as the stable product roadmap, docs/architecture.md as
 the technical contract, and docs/progress.md as the rolling source of current
 status and remaining milestone gaps. Continue implementing Vela into a complete
-Hot Reload First dynamic scripting language for game server logic, always
+Hot Reload First dynamic scripting language for host-owned business logic,
+always
 starting from the active checkpoint in docs/progress.md. Preserve the standing
 constraints in this roadmap: no script-language generics, no Rust &mut exposed
 to scripts, all host mutation through HostRef, HostPath, PathProxy, and PatchTx,
@@ -111,11 +121,15 @@ exit conclusions, or durable measurement rules. Archive long historical detail
 instead of appending it to current docs. Keep ordinary source files below 1200
 lines unless a clear exception is documented, and split over-threshold active
 code or tests by responsibility when no such exception exists.
+Keep the language core, stdlib, builtin APIs, and runtime contract
+domain-neutral. Game-specific or other business-specific capabilities must be
+provided by Engine host registration, native functions, schemas, or examples,
+not by builtin language features.
 ```
 
 Post-MVP performance work is a first-class roadmap track. The initial release
 should not depend on JIT, but the optimized interpreter should eventually be
-measured against Lua 5.x on equivalent gameplay-style workloads. LuaJIT and
+measured against Lua 5.x on equivalent host-boundary workloads. LuaJIT and
 Node.js remain useful upper-reference points for hot scalar loops and future
 JIT decisions, not the baseline required for the MVP. Cranelift JIT is a
 post-MVP backend milestone after the optimized interpreter and inline-cache
@@ -326,7 +340,7 @@ source-span propagation into patches and host errors
 Acceptance:
 
 ```text
-player.inventory.items[item_id].count += 1 records a nested RMW patch
+account.ledger.entries[entry_id].amount += 1 records a nested RMW patch
 reads after nested writes observe overlay values
 read-only and permission-denied host paths fail before apply
 failed apply leaves adapter state unchanged
@@ -365,8 +379,8 @@ Acceptance:
 
 ```text
 reflection cannot mutate type structure at runtime
-gameplay permissions allow approved field reads and method calls only
-GM/admin permissions can inspect configured host paths
+embedded-script permissions allow approved field reads and method calls only
+admin/debug permissions can inspect configured host paths
 unknown-name diagnostics include ranked candidates and related schema spans
 reflective calls respect EffectSet and MethodAccess
 ```
@@ -383,7 +397,7 @@ complete enough and moves broad diagnostics polish to M16
 
 ### M13: Standard Library And Language Conveniences
 
-Goal: common game-server logic is compact, readable, deterministic, and
+Goal: common host-boundary business logic is compact, readable, deterministic, and
 permission-aware.
 
 Scope:
@@ -392,7 +406,7 @@ Scope:
 array.len/is_empty/push/pop/map/filter/find/any/all/count/sum/group_by/sort_by
 map.len/has/get/get_or/set/remove/keys/values/entries/map_values/filter
 set APIs
-string APIs needed for gameplay scripts and diagnostics
+string APIs needed for business scripts and diagnostics
 Option and Result as dynamic enums
 ? operator lowering for Option/Result propagation
 math::max/min/clamp/floor/ceil/abs
@@ -407,7 +421,7 @@ Acceptance:
 collection methods work with lambdas and preserve dynamic values
 ? propagates None and Err through script functions
 random and wall-clock APIs require explicit permissions
-monster kill reward script is readable without custom native glue
+domain-specific rule scripts are readable without custom native glue
 stdlib methods expose analysis facts for lambda parameter hints
 ```
 
@@ -416,7 +430,7 @@ Checkpoint:
 ```text
 cargo test covers array, map, set, string, Option, Result, math, context,
 random/time permission, and lambda callback behavior
-game_server_demo uses stdlib helpers without custom glue for core rewards
+example host demos use stdlib helpers without custom glue for domain rules
 docs/progress.md names the next missing stdlib family or marks M13 complete enough
 ```
 
@@ -445,7 +459,7 @@ generated schema hashes, field accessors, method dispatch, and docs/origin data
 Acceptance:
 
 ```text
-sample Rust host registers Player, Monster, Inventory, and config types
+sample Rust host registers domain objects, state containers, and config types
 derive macro output matches explicit hand-written TypeRegistry metadata
 duplicate stable IDs are rejected at registration or compile time
 native calls consume budgets and enforce permissions
@@ -542,8 +556,9 @@ enough
 
 ### M17: Game Server Demo And Conformance Suite
 
-Goal: the language is proven by realistic gameplay workflows and reusable
-conformance fixtures.
+Goal: the language is proven by realistic host-boundary workflows and reusable
+conformance fixtures. The game-server demo is an embedding example, not a
+source of builtin domain models.
 
 Scope:
 
@@ -565,7 +580,7 @@ Acceptance:
 
 ```text
 all game_server_demo scripts run through Engine and Runtime APIs
-monster kill updates player exp, level, inventory, and quest progress via PatchTx
+example domain mutations flow through PatchTx rather than direct Rust mutation
 reflect debug script can inspect allowed fields but cannot mutate schema
 hot reload demo proves old frames and new calls observe correct code versions
 conformance suite guards every supported grammar feature
@@ -590,7 +605,7 @@ Scope:
 
 ```text
 criterion benchmark suite
-official microbench and gameplay-style benchmark cases
+official microbench and representative host-boundary benchmark cases
 external comparison harness for Lua 5.x, LuaJIT, Rhai, and JavaScript when available
 VM scalar dispatch benchmark
 managed heap allocation and materialization benchmark
@@ -625,7 +640,7 @@ or M18 is complete enough
 ### M19: Non-JIT Interpreter And Heap Optimization
 
 Goal: improve the bytecode interpreter enough that non-JIT Vela can target
-Lua-comparable performance on representative gameplay workloads.
+Lua-comparable performance on representative host-boundary workloads.
 
 Scope:
 
@@ -649,7 +664,7 @@ Acceptance:
 ```text
 optimized interpreter preserves all conformance and host-boundary behavior
 benchmarks show before/after changes for each accepted optimization
-non-JIT gameplay-style benchmark group is within the documented Lua 5.x target band
+non-JIT host-boundary benchmark group is within the documented Lua 5.x target band
 slow-path diagnostics remain source-spanned and debuggable
 no optimization bypasses ExecutionBudget, PatchTx, reflection policy, or GC roots
 ```
@@ -730,7 +745,7 @@ single-step behavior matches VM instruction/source-span mapping
 watch/evaluate respects reflection permissions and cannot expose Rust references
 PatchTx preview never applies mutations by itself
 hot reload preserves or reports breakpoint rebinding across compatible updates
-debug hooks can be disabled for normal gameplay execution
+debug hooks can be disabled for normal embedded execution
 ```
 
 Checkpoint:
@@ -833,7 +848,7 @@ Control:
 The first complete interpreter excludes script generics, JIT, script async,
 and script macros.
 Rust host derive macros are allowed only to reduce embedding boilerplate.
-Every syntax feature must serve game server logic or the host patch model.
+Every syntax feature must serve domain-neutral host scripting or the host patch model.
 ```
 
 ### Unclear Host Patch Semantics
@@ -876,7 +891,7 @@ reflect::set writes values only; it never changes schema.
 
 Risk: early NaN boxing, JIT, or moving GC makes the system hard to maintain, or
 unmeasured micro-optimizations obscure the path to Lua-comparable non-JIT
-gameplay performance.
+host-boundary performance.
 
 Control:
 
@@ -889,20 +904,23 @@ debugger contracts, and inline caches before implementing Cranelift JIT.
 
 ## Final Acceptance Demo
 
+This demo uses a neutral host business workflow. Game-server examples remain
+valid embedding demos, but their domain concepts are not builtin language or
+stdlib features.
+
 Script:
 
 ```rust
-#[event("monster.kill")]
-pub fn on_kill(ctx, player, monster) {
-    player.exp += monster.exp
+#[event("invoice.paid")]
+pub fn on_invoice_paid(ctx, account, invoice) {
+    account.balance += invoice.amount
 
-    if player.exp >= ctx.config.exp_to_next_level(player.level) {
-        player.level += 1
-        player.exp = 0
+    if account.balance >= ctx.config.preferred_balance {
+        account.status = "preferred"
     }
 
-    for reward in ctx.config.kill_rewards.filter(|r| r.monster_id == monster.id) {
-        player.inventory.add(reward.item_id, reward.count)
+    for adjustment in ctx.config.payment_adjustments.filter(|a| a.kind == invoice.kind) {
+        account.ledger.add(adjustment.code, adjustment.amount)
     }
 }
 ```
@@ -911,33 +929,33 @@ Rust host test:
 
 ```rust
 #[test]
-fn monster_kill_updates_player_through_patch_tx() {
-    let mut world = TestWorld::new();
-    let player = world.spawn_player(Player { level: 1, exp: 90, ..Default::default() });
-    let monster = world.spawn_monster(Monster { exp: 20, ..Default::default() });
+fn invoice_payment_updates_account_through_patch_tx() {
+    let mut state = TestState::new();
+    let account = state.insert_account(Account { balance: 90, status: "standard".into() });
+    let invoice = state.insert_invoice(Invoice { amount: 20, kind: "renewal".into() });
 
     let mut runtime = compile_demo_runtime();
     let mut tx = PatchTx::new();
 
     runtime.call(
-        "combat.on_kill",
-        args![host(player), host(monster)],
-        CallOptions::gameplay(),
-        &mut world,
+        "billing.on_invoice_paid",
+        args![host(account), host(invoice)],
+        CallOptions::unbounded(),
+        &mut state,
         &mut tx,
     ).unwrap();
 
-    world.apply(tx).unwrap();
+    state.apply(tx).unwrap();
 
-    assert_eq!(world.player(player).level, 2);
-    assert_eq!(world.player(player).exp, 0);
+    assert_eq!(state.account(account).balance, 110);
+    assert_eq!(state.account(account).status, "preferred");
 }
 ```
 
 Hot reload demo:
 
-1. Old function grants 20 exp for a kill.
-2. Hot updated function grants 30 exp for a kill.
-3. Old call frames still grant 20 exp.
-4. New calls grant 30 exp.
+1. Old function applies a 20-unit payment adjustment.
+2. Hot updated function applies a 30-unit payment adjustment.
+3. Old call frames still apply the 20-unit adjustment.
+4. New calls apply the 30-unit adjustment.
 5. Module top-level side effects are not re-executed.

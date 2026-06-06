@@ -10,7 +10,7 @@ benchmark notes were archived to
   reload ownership, and source-spanned diagnostics take priority over speed.
 - Measure loaded repeated execution separately from parsing, HIR, compilation,
   bytecode loading, hot reload apply, and cold start.
-- Pure VM, managed-heap, host-boundary, reflection, hot-reload, and gameplay
+- Pure VM, managed-heap, host-boundary, reflection, hot-reload, and domain-demo
   workloads must be reported separately.
 - Accepted optimizations need focused before/after evidence and stable
   checksums. Rejected candidates belong in commit/PR notes unless they change
@@ -40,7 +40,7 @@ host field reads, writes, RMW patches, and method calls
 reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
-gameplay workflows from examples/game_server_demo
+domain-demo workflows from examples/game_server_demo
 external_compare against available Lua 5.x, LuaJIT, Node.js, and Rhai
 ```
 
@@ -116,7 +116,7 @@ Primary post-MVP target:
 
 ```text
 optimized non-JIT bytecode interpreter performance comparable to Lua 5.x on
-representative gameplay workloads
+representative host-boundary workloads
 ```
 
 Reference tiers:

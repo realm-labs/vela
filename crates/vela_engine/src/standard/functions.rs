@@ -116,7 +116,7 @@ fn option_descs() -> [NativeFunctionDesc; 7] {
         option_desc("option::flatten", OPTION_FLATTEN_FUNCTION_ID)
             .param("option", TypeHint::Any)
             .returns(TypeHint::Any)
-            .docs("Flattens a nested Option value by one level."),
+            .docs("Flattens a nested Option value by one nesting layer."),
     ]
 }
 
@@ -157,7 +157,7 @@ fn result_descs() -> [NativeFunctionDesc; 8] {
         result_desc("result::flatten", RESULT_FLATTEN_FUNCTION_ID)
             .param("result", TypeHint::Any)
             .returns(TypeHint::Any)
-            .docs("Flattens a nested Result value by one level."),
+            .docs("Flattens a nested Result value by one nesting layer."),
     ]
 }
 
