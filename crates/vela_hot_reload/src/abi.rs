@@ -833,6 +833,7 @@ impl EffectAbi {
     }
 
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub const fn new(
         reads_host: bool,
         writes_host: bool,
