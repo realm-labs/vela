@@ -1,0 +1,214 @@
+## Standard Library
+
+### Array
+
+```rust
+arr.len()
+arr.is_empty()
+arr.push(value)
+arr.pop()
+arr.map(|x| ...)
+arr.filter(|x| ...)
+arr.find(|x| ...)
+arr.any(|x| ...)
+arr.all(|x| ...)
+arr.count(|x| ...)
+arr.sum(|x| ...)
+arr.group_by(|x| ...)
+arr.sort_by(|x| ...)
+```
+
+Array methods should expose analysis-only signatures so LSP can infer lambda
+parameter facts without adding script generics. For example, if `arr` has
+`TypeFact::Array { element: E }`, then:
+
+```text
+arr.filter(|x| predicate) gives x: E and returns Array(element = E)
+arr.map(|x| value) gives x: E and returns Array(element = TypeFact(value))
+arr.find(|x| predicate) gives x: E and returns Option-like enum containing E
+arr.sum(|x| value) gives x: E and returns int or float depending on value
+```
+
+### Map
+
+```rust
+map.len()
+map.has(key)
+map.get(key)
+map.get_or(key, default)
+map.set(key, value)
+map.remove(key)
+map.keys()
+map.values()
+map.entries()
+map.map_values(|v| ...)
+map.filter(|k, v| ...)
+```
+
+Map methods follow the same rule. If `map` has
+`TypeFact::Map { key: K, value: V }`, `map.filter(|k, v| ...)` gives `k: K`,
+`v: V`, and returns `Map(key = K, value = V)` as an internal fact only.
+
+These analysis rules are not user-visible generic syntax. They are part of the
+standard library metadata consumed by `vela_analysis` and future LSP tooling.
+
+### Option And Result
+
+```rust
+enum Option {
+    Some(value)
+    None
+}
+
+enum Result {
+    Ok(value)
+    Err(error)
+}
+```
+
+The `?` operator should support Option/Result-style propagation.
+
+Use `Option` when absence is an ordinary script-visible branch, such as
+collection lookup or search. Use `Result` when the caller needs a recoverable
+failure reason. Runtime traps such as division by zero, type mismatch,
+permission denial, budget exhaustion, and future explicit panic-style
+operations should return VM diagnostics, not `Result::Err`.
+
+### String
+
+```rust
+text.len()
+text.is_empty()
+text.contains(needle)
+text.find(needle)
+text.starts_with(prefix)
+text.ends_with(suffix)
+text.strip_prefix(prefix)
+text.strip_suffix(suffix)
+text.to_upper()
+text.to_lower()
+text.trim()
+text.trim_start()
+text.trim_end()
+text.replace(old, new)
+text.repeat(count)
+text.slice(start, end)
+text.char_at(index)
+text.split(separator)
+text.split_once(separator)
+text.split_lines()
+text.split_whitespace()
+text.parse_int()
+text.parse_float()
+text.parse_bool()
+```
+
+### Math And Time
+
+```text
+math::max
+math::min
+math::clamp
+math::lerp
+math::move_towards
+math::distance2d
+math::distance3d
+math::pow
+math::sqrt
+math::sign
+math::floor
+math::ceil
+math::round
+math::abs
+math::random  # only with permission
+```
+
+Time should come from host context, not direct system time:
+
+```rust
+ctx::now()
+ctx::tick()
+ctx::elapsed_since(start)
+```
+
+## Embedding API
+
+### Engine
+
+```rust
+let engine = Engine::builder()
+    .with_standard_natives()
+    .register_host_type::<Player>()
+    .register_host_type::<Monster>()
+    .register_host_type::<Inventory>()
+    .register_reflect_schema::<RewardView>()
+    .register_typed_native_fn::<(String,), _>(
+        NativeFunctionDesc::new("game::log", NativeFunctionId::new(10_001))
+            .param("message", TypeHint::String)
+            .returns(TypeHint::Null)
+            .effects(EffectSet::pure()),
+        game_log,
+    )
+    .build()?;
+```
+
+### Compile
+
+```rust
+let program = engine.compile_dir("scripts")?;
+let mut runtime = Runtime::new(engine, program);
+```
+
+### Call
+
+```rust
+let mut tx = PatchTx::new();
+
+runtime.call(
+    "combat.on_kill",
+    &args![host(player), host(monster)],
+    CallOptions::gameplay(),
+    &mut state_adapter,
+    &mut tx,
+)?;
+
+tx.apply(&mut state_adapter)?;
+```
+
+### Hot Reload
+
+```rust
+runtime
+    .stage_hot_reload_update_file("scripts/combat.vela")?
+    ?;
+
+if let Some(report) = runtime.check_reload()? {
+    if !report.accepted {
+        log::error!("hot reload failed: {:#?}", report.errors);
+    }
+}
+```
+
+Runtime update compilation uses the runtime's active `ProgramVersion`, so hosts
+do not need to separately fetch the current version before compiling an update.
+Source load and path errors are returned immediately, while accepted updates and
+ABI or policy rejections are staged until the host calls `runtime.check_reload()`
+at a safe point. Tick-loop hosts can call
+`runtime.check_reload_at_tick_boundary()` when no event or patch apply boundary
+is active. Hosts that already have a `PatchTx` can use
+`runtime.apply_patch_tx_at_safe_point(tx, &mut state)` to check for a pending
+reload before and after successful host patch apply.
+
+For full module-root workflows, hosts can call
+`runtime.stage_hot_reload_update_dir("scripts")` with the same safe-point
+semantics. For file-watcher workflows, hosts may stage an update from a changed
+`.vela` file inside a module root. The engine validates the changed path and
+recompiles the full root so imports, module dependency impact, and ABI checks
+are based on the same complete module graph as directory reloads.
+
+Hot-reload ABI manifests copy optional declaration spans from reflected schema,
+function, and method descriptors. When schema, function effect/access, or method
+effect/access ABI checks reject an update, the rejected diagnostic points at the
+new declaration span when it is known, and rendered report lines preserve that
+span for editor/admin tooling.
+

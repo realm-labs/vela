@@ -19,6 +19,9 @@ decision history lives in
 - Pre-release code should replace obsolete internal APIs instead of preserving
   compatibility shims. Product-level hot reload ABI and schema compatibility
   checks remain required.
+- Ordinary active source files should stay under 1200 lines unless a clear
+  exception is documented. Over-threshold implementation and test files should
+  be reviewed and split by responsibility when no exception exists.
 
 ## Active Architecture Decisions
 

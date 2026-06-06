@@ -74,7 +74,13 @@ Engineering principles:
     cohesive parameter structs or option objects, and replace accumulating
     `if` chains with `match`, enum-driven dispatch, tables, or focused helper
     types when that better expresses the design.
-12. Keep roadmap and status docs concise. `docs/goal.md`, `docs/progress.md`,
+12. Keep ordinary source files under 1200 lines unless there is a concrete,
+    documented reason. Files that cross the threshold should be reviewed and
+    split by responsibility when the split improves readability, test focus, or
+    ownership boundaries. Generated files, archived documents, and dense
+    fixture data may be exempt, but active implementation and test files should
+    not grow past the threshold by default.
+13. Keep roadmap and status docs concise. `docs/goal.md`, `docs/progress.md`,
     and `docs/performance.md` are decision documents, not changelogs. Routine
     implementation notes, long benchmark logs, rejected micro-candidates, and
     per-commit before/after tables belong in commit messages, PR notes, or
@@ -102,7 +108,9 @@ Keep durable docs compact: update `docs/progress.md` only for focus, status,
 validation, or remaining-gap changes; update `docs/performance.md` only for
 baseline checkpoints, target thresholds, benchmark harness changes, milestone
 exit conclusions, or durable measurement rules. Archive long historical detail
-instead of appending it to current docs.
+instead of appending it to current docs. Keep ordinary source files below 1200
+lines unless a clear exception is documented, and split over-threshold active
+code or tests by responsibility when no such exception exists.
 ```
 
 Post-MVP performance work is a first-class roadmap track. The initial release
