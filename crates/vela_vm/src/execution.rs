@@ -391,32 +391,22 @@ impl Vm {
                     }
                 }
                 InstructionKind::MakeArray { dst, elements } => {
-                    let Some(heap) = heap.as_deref_mut() else {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "array heap",
-                        }));
-                    };
-                    let slots = runtime_values_from_registers(
-                        &frame,
-                        elements,
-                        heap,
+                    script_aggregate_construction::make_array(
+                        &mut frame,
+                        heap.as_deref_mut(),
                         budget.as_deref_mut(),
+                        *dst,
+                        elements,
                     )?;
-                    let value =
-                        allocate_heap_value(HeapValue::Array(slots), heap, budget.as_deref_mut())?;
-                    frame.write(*dst, value)?;
                 }
                 InstructionKind::MakeMap { dst, entries } => {
-                    let Some(heap) = heap.as_deref_mut() else {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "map heap",
-                        }));
-                    };
-                    let slots =
-                        runtime_map_from_registers(&frame, entries, heap, budget.as_deref_mut())?;
-                    let value =
-                        allocate_heap_value(HeapValue::Map(slots), heap, budget.as_deref_mut())?;
-                    frame.write(*dst, value)?;
+                    script_aggregate_construction::make_map(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        entries,
+                    )?;
                 }
                 InstructionKind::MakeRange {
                     dst,
@@ -424,9 +414,9 @@ impl Vm {
                     end,
                     inclusive,
                 } => {
-                    let start = expect_int(frame.read(*start)?, "range")?;
-                    let end = expect_int(frame.read(*end)?, "range")?;
-                    frame.write(*dst, Value::Range(RangeValue::new(start, end, *inclusive)))?;
+                    script_aggregate_construction::make_range(
+                        &mut frame, *dst, *start, *end, *inclusive,
+                    )?;
                 }
                 InstructionKind::MakeRecord {
                     dst,
@@ -975,44 +965,4 @@ impl Vm {
 
         Err(VmError::new(VmErrorKind::MissingReturn))
     }
-}
-
-#[inline]
-fn runtime_values_from_registers(
-    frame: &CallFrame,
-    registers: &[Register],
-    heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Vec<Value>> {
-    SmallStorage::try_from_slice_map(registers, 8, |register| {
-        runtime_value_from_register(frame, *register, heap, budget.as_deref_mut())
-    })
-    .map(SmallStorage::into_vec)
-}
-
-#[inline]
-fn runtime_value_from_register(
-    frame: &CallFrame,
-    register: Register,
-    heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    store_runtime_value(frame.read(register)?, heap, budget)
-}
-
-fn runtime_map_from_registers(
-    frame: &CallFrame,
-    entries: &[(String, Register)],
-    heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<BTreeMap<String, Value>> {
-    entries
-        .iter()
-        .map(|(key, register)| {
-            Ok((
-                key.clone(),
-                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
-            ))
-        })
-        .collect()
 }

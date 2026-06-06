@@ -1,0 +1,105 @@
+use std::collections::BTreeMap;
+
+use crate::heap::HeapValue;
+use crate::{
+    CallFrame, ExecutionBudget, HeapExecution, SmallStorage, Value, VmError, VmErrorKind, VmResult,
+    allocate_heap_value, expect_int, store_runtime_value,
+};
+use vela_bytecode::Register;
+
+pub(crate) fn make_array(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    elements: &[Register],
+) -> VmResult<()> {
+    let Some(heap) = heap else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "array heap",
+        }));
+    };
+    let slots = runtime_values_from_registers(frame, elements, heap, budget_ref(&mut budget))?;
+    let value = allocate_heap_value(HeapValue::Array(slots), heap, budget_ref(&mut budget))?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn make_map(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    entries: &[(String, Register)],
+) -> VmResult<()> {
+    let Some(heap) = heap else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "map heap",
+        }));
+    };
+    let slots = runtime_map_from_registers(frame, entries, heap, budget_ref(&mut budget))?;
+    let value = allocate_heap_value(HeapValue::Map(slots), heap, budget_ref(&mut budget))?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn make_range(
+    frame: &mut CallFrame,
+    dst: Register,
+    start: Register,
+    end: Register,
+    inclusive: bool,
+) -> VmResult<()> {
+    let start = expect_int(frame.read(start)?, "range")?;
+    let end = expect_int(frame.read(end)?, "range")?;
+    frame.write(
+        dst,
+        Value::Range(crate::ranges::RangeValue::new(start, end, inclusive)),
+    )
+}
+
+#[inline]
+fn runtime_values_from_registers(
+    frame: &CallFrame,
+    registers: &[Register],
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Vec<Value>> {
+    SmallStorage::try_from_slice_map(registers, 8, |register| {
+        runtime_value_from_register(frame, *register, heap, budget.as_deref_mut())
+    })
+    .map(SmallStorage::into_vec)
+}
+
+#[inline]
+fn runtime_value_from_register(
+    frame: &CallFrame,
+    register: Register,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    store_runtime_value(frame.read(register)?, heap, budget)
+}
+
+fn runtime_map_from_registers(
+    frame: &CallFrame,
+    entries: &[(String, Register)],
+    heap: &mut HeapExecution<'_>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<BTreeMap<String, Value>> {
+    entries
+        .iter()
+        .map(|(key, register)| {
+            Ok((
+                key.clone(),
+                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
+            ))
+        })
+        .collect()
+}
+
+#[inline]
+fn budget_ref<'a>(budget: &'a mut Option<&mut ExecutionBudget>) -> Option<&'a mut ExecutionBudget> {
+    match budget {
+        Some(budget) => Some(&mut **budget),
+        None => None,
+    }
+}

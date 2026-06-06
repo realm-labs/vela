@@ -33,6 +33,7 @@ mod record_fields;
 mod reflection;
 mod reflection_values;
 mod runtime_checks;
+mod script_aggregate_construction;
 mod script_builtin_methods;
 mod script_function_calls;
 mod script_method_calls;
@@ -48,7 +49,7 @@ mod try_propagation;
 pub mod value;
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
@@ -65,7 +66,6 @@ use numeric_ops::{
     less_numeric, mul_numeric, negate_numeric, rem_numeric, sub_numeric,
 };
 use owned_value::OwnedValue;
-use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_int, is_truthy, validate_jump};

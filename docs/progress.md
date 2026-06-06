@@ -131,9 +131,10 @@ Cranelift JIT.
   and call-site offsets. Higher-order callback dispatch now reuses the shared
   execution-call descriptor and materializes closure captures through inline
   small storage instead of cloning the full closure value on each callback.
-  Script record/enum construction plus field reads and writes now route through
-  focused script-object boundaries while preserving current name fallback,
-  small-field construction, and slot guards.
+  Script array/map/range construction, record/enum construction, and script
+  field reads/writes now route through focused script aggregate/object
+  boundaries while preserving current name fallback, small-field construction,
+  and slot guards.
 
 ### Remaining Gaps
 
