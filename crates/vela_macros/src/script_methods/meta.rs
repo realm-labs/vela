@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 
 use syn::{
-    Attribute, FnArg, ImplItem, ImplItemFn, ItemImpl, LitBool, LitStr, PatType, Result, ReturnType,
-    Type,
+    Attribute, FnArg, ImplItem, ImplItemFn, ItemImpl, LitBool, LitStr, PatType, Receiver, Result,
+    ReturnType, Type,
 };
 
 use crate::attrs::{error, parse_key_value_attr, reject_duplicate_attr_keys, spanned_error};
@@ -25,6 +25,7 @@ pub(super) struct MethodMeta {
     pub(super) params: Vec<ParamMeta>,
     pub(super) returns: HintKind,
     pub(super) callable_native: bool,
+    pub(super) receiver: MethodReceiver,
 }
 
 #[derive(Clone)]
@@ -32,6 +33,13 @@ pub(super) struct ParamMeta {
     pub(super) name: String,
     pub(super) ty: Type,
     pub(super) hint: HintKind,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum MethodReceiver {
+    HostBoundary,
+    SharedSelf,
+    MutSelf,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -196,14 +204,13 @@ fn method_meta(
 
     let mut params = Vec::new();
     let mut skipped_receiver = false;
+    let mut receiver = MethodReceiver::HostBoundary;
     for input in &method.sig.inputs {
         let param = match input {
             FnArg::Typed(param) => param,
             FnArg::Receiver(_) => {
-                return Err(spanned_error(
-                    input,
-                    "script methods must use HostRef receiver parameters instead of self",
-                ));
+                receiver = self_receiver_kind(input)?;
+                continue;
             }
         };
         if is_context_type(param) {
@@ -226,6 +233,7 @@ fn method_meta(
         }
         if !skipped_receiver && (is_host_ref(&param.ty) || is_host_path(&param.ty)) {
             skipped_receiver = true;
+            receiver = MethodReceiver::HostBoundary;
             continue;
         }
         reject_script_reference_param(param)?;
@@ -249,6 +257,26 @@ fn method_meta(
         params,
         returns: return_hint(&method.sig.output),
         callable_native: has_callable_native_boundary(method),
+        receiver,
+    })
+}
+
+fn self_receiver_kind(input: &FnArg) -> Result<MethodReceiver> {
+    let FnArg::Receiver(Receiver {
+        reference: Some(_),
+        mutability,
+        ..
+    }) = input
+    else {
+        return Err(spanned_error(
+            input,
+            "script methods support only &self or &mut self receivers",
+        ));
+    };
+    Ok(if mutability.is_some() {
+        MethodReceiver::MutSelf
+    } else {
+        MethodReceiver::SharedSelf
     })
 }
 

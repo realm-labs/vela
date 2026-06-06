@@ -44,6 +44,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
     let native_registration_tokens = emission::native_method_registration_tokens(&methods);
     let host_method_registration_tokens =
         emission::script_host_method_registration_tokens(&methods);
+    let host_object_impl_tokens = emission::script_host_object_impl_tokens(&self_ty, &methods);
     Ok(quote! {
         #item
 
@@ -90,6 +91,8 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 Self::vela_register_host_methods(builder)
             }
         }
+
+        #host_object_impl_tokens
     })
 }
 
@@ -166,16 +169,17 @@ mod tests {
     }
 
     #[test]
-    fn rejects_self_receivers() {
-        let error = expand_result(quote! {
+    fn accepts_self_receivers_for_direct_host_methods() {
+        let tokens = expand_result(quote! {
             impl Player {
                 #[script_method()]
                 pub fn add_exp(&mut self, amount: i64) {}
             }
         })
-        .expect_err("self receiver should fail macro expansion");
+        .expect("self receiver should generate direct host method dispatch");
 
-        assert!(error.to_string().contains("HostRef receiver parameters"));
+        let expanded = tokens.to_string();
+        assert!(expanded.contains("impl :: vela_host :: object :: ScriptHostObject for Player"));
     }
 
     #[test]

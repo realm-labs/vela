@@ -14,6 +14,6 @@ This example covers the host type method and argument model:
 - `player.inventory.items["gold"].count` as a keyed host path without cloning a Rust collection
 - root and child host method calls through `receiver_path + HostMethodId`
 
-The main example file shows the intended embedding shape. The sibling support
-module contains the current low-level direct-object adapter glue that a derive
-or registration helper should generate for production code.
+The Rust side uses `#[derive(ScriptHost)]` for field/path bindings and
+`#[script_methods]` for `&self` / `&mut self` host methods. The example does
+not hand-write `ScriptHostObject` or `PathSegment` dispatch.

@@ -13,6 +13,9 @@ vela_host = { path = "../vela_host" }
 vela_reflect = { path = "../vela_reflect" }
 vela_vm = { path = "../vela_vm" }
 
+[dev-dependencies]
+vela_macros = { path = "../vela_macros" }
+
 [[bench]]
 name = "hot_reload"
 harness = false

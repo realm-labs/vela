@@ -17,6 +17,8 @@ pub(crate) struct ScriptAttrs {
     pub(crate) traits: Vec<String>,
     pub(crate) get: bool,
     pub(crate) set: bool,
+    pub(crate) direct: bool,
+    pub(crate) call: bool,
     pub(crate) type_hint: Option<String>,
     pub(crate) permissions: Vec<String>,
 }
@@ -55,6 +57,14 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             }
             if path_name(&meta.path, "set") {
                 parsed.set = true;
+                return Ok(());
+            }
+            if path_name(&meta.path, "direct") {
+                parsed.direct = true;
+                return Ok(());
+            }
+            if path_name(&meta.path, "call") {
+                parsed.call = true;
                 return Ok(());
             }
 

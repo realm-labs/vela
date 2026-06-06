@@ -83,6 +83,7 @@ dependencies = [
  "vela_hir",
  "vela_host",
  "vela_hot_reload",
+ "vela_macros",
  "vela_reflect",
  "vela_vm",
 ]

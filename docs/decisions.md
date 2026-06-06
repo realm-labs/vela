@@ -157,6 +157,15 @@ Host object method dispatch receives the full receiver `HostPath`, so root
 methods, child collection methods, and trait-object field methods share the
 same registration and permission model.
 
+`#[derive(ScriptHost)]` owns generated direct-object field/path access for
+fields explicitly marked as direct host paths. Plain `get`/`set` fields may be
+metadata-only and do not force their Rust type to support direct object access.
+`#[script_methods]` owns generated direct-object method dispatch for `&self`
+and `&mut self` receiver methods; method arguments cross the host boundary
+through scalar `HostValue` conversions. Fields that should forward child
+receiver method calls declare that explicitly in metadata, so ordinary nested
+fields do not need method dispatch support.
+
 Host collection and trait-object surfaces use the same concrete host type
 registration model as structs. Rust-side helpers may generate concrete specs
 for `HashMap<K,V>`, `HashSet<T>`, `Vec<T>`, or trait-object fields, but scripts

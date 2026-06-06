@@ -139,6 +139,10 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
         }
         GeneratedMethod::Reflect => quote! {},
     };
+    let field_access_impl = match generated_method {
+        GeneratedMethod::Host => emission::field_access_impl_tokens(&ident, &fields),
+        GeneratedMethod::Reflect => quote! {},
+    };
     let type_helper_tokens = match generated_method {
         GeneratedMethod::Host => quote! {
             #[must_use]
@@ -188,6 +192,8 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
         }
 
         #trait_impl
+
+        #field_access_impl
     })
 }
 
