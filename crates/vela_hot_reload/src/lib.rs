@@ -6,6 +6,7 @@ pub mod error;
 mod function_signature;
 pub mod module_abi;
 pub mod policy;
+pub mod profile;
 pub mod report;
 pub mod report_detail;
 pub mod report_render;

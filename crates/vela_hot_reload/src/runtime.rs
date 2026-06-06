@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::error::HotReloadResult;
+use crate::profile::ProgramProfile;
 use crate::report::HotReloadReport;
 use crate::symbol::ProgramVersionId;
 use crate::version::{HotUpdate, ProgramVersion};
@@ -63,12 +64,14 @@ impl HotReloadRuntime {
         for (name, function) in update.functions {
             functions.insert(name, function);
         }
+        let profile = ProgramProfile::from_functions(&functions);
         let next = Arc::new(ProgramVersion {
             id: ProgramVersionId(self.current.id.0.saturating_add(1)),
             functions,
             script_methods: update.script_methods,
             script_metadata: update.script_metadata,
             abi: update.abi,
+            profile,
         });
         self.current = Arc::clone(&next);
         HotReloadReport::accepted(from_version, next, changes)

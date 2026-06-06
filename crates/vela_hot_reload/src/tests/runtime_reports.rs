@@ -1,4 +1,5 @@
 use super::*;
+use vela_bytecode::InstructionOffset;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_vm::owned_value::OwnedValue;
@@ -27,6 +28,77 @@ fn new_calls_enter_new_code_after_update() {
     assert_eq!(
         Vm::new().run_program(&runtime.current().to_program(), "main", &[]),
         Ok(OwnedValue::Int(30))
+    );
+}
+
+#[test]
+fn program_version_owns_bytecode_offset_profile_slots() {
+    let version = compile_initial(
+        SourceId::new(1),
+        r#"
+fn helper() {
+    return 5;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("compile initial");
+
+    let main = version.function("main").expect("main function");
+    let main_profile = version.function_profile("main").expect("main profile");
+    let helper = version.function("helper").expect("helper function");
+    let helper_profile = version.function_profile("helper").expect("helper profile");
+
+    assert_eq!(main_profile.instruction_count(), main.instructions.len());
+    assert_eq!(
+        helper_profile.instruction_count(),
+        helper.instructions.len()
+    );
+    assert!(main_profile.contains_offset(InstructionOffset(0)));
+    assert!(!main_profile.contains_offset(InstructionOffset(main.instructions.len())));
+    assert_eq!(
+        version.profile().function_names().collect::<Vec<_>>(),
+        vec!["helper", "main"]
+    );
+}
+
+#[test]
+fn hot_reload_rebuilds_profile_for_next_version() {
+    let initial =
+        compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let old = runtime.current();
+    assert!(old.function_profile("helper").is_none());
+
+    let update = compile_update(
+        &old,
+        SourceId::new(2),
+        r#"
+fn helper() {
+    return 5;
+}
+
+fn main() {
+    return helper();
+}
+"#,
+    )
+    .expect("compile update");
+
+    runtime.apply_hot_update(update).expect("apply update");
+    let new = runtime.current();
+
+    assert_eq!(old.id, ProgramVersionId(0));
+    assert_eq!(new.id, ProgramVersionId(1));
+    assert!(old.function_profile("helper").is_none());
+    let helper = new.function("helper").expect("new helper function");
+    let helper_profile = new.function_profile("helper").expect("new helper profile");
+    assert_eq!(
+        helper_profile.instruction_count(),
+        helper.instructions.len()
     );
 }
 

@@ -9,6 +9,7 @@ use vela_common::MethodId;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::abi::HotReloadAbi;
+use crate::profile::{FunctionProfile, ProgramProfile};
 use crate::report::AcceptedHotReloadChanges;
 use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 
@@ -19,6 +20,7 @@ pub struct ProgramVersion {
     pub(crate) script_methods: ScriptMethodTable,
     pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
+    pub(crate) profile: ProgramProfile,
 }
 
 impl ProgramVersion {
@@ -40,12 +42,14 @@ impl ProgramVersion {
             .into_iter()
             .map(|(name, code)| (FunctionSymbolId::new(name), Arc::new(code)))
             .collect();
+        let profile = ProgramProfile::from_functions(&functions);
         Self {
             id,
             functions,
             script_methods,
             script_metadata,
             abi,
+            profile,
         }
     }
 
@@ -101,6 +105,16 @@ impl ProgramVersion {
     #[must_use]
     pub fn abi(&self) -> &HotReloadAbi {
         &self.abi
+    }
+
+    #[must_use]
+    pub fn profile(&self) -> &ProgramProfile {
+        &self.profile
+    }
+
+    #[must_use]
+    pub fn function_profile(&self, name: &str) -> Option<&FunctionProfile> {
+        self.profile.function(name)
     }
 
     #[must_use]

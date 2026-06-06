@@ -118,6 +118,10 @@ Cranelift JIT.
   frame-slot, call-argument, host-path dynamic segment, and nested closure
   invariants before future unchecked register, operand, or cache fast paths
   are introduced.
+  ProgramVersion now owns bytecode-offset profile layout metadata for each
+  function and rebuilds that sidecar when hot reload creates a new version, so
+  future counters, cache state, or JIT decisions can be version-scoped and
+  invalidated with the version.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a
