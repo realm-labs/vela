@@ -5,11 +5,11 @@ use vela_engine::engine::Engine;
 use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
 use vela_engine::permission::Capability;
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
@@ -56,7 +56,7 @@ impl Player {
         host: &mut HostExecution<'_>,
         amount: i64,
     ) -> VmResult<i64> {
-        host.tx.set_path(
+        host.access.set_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(amount),
@@ -87,7 +87,7 @@ impl Player {
         e: i64,
     ) -> VmResult<i64> {
         let total = a + b + c + d + e;
-        host.tx.set_path(
+        host.access.set_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),
@@ -110,7 +110,7 @@ impl Player {
         f: i64,
     ) -> VmResult<i64> {
         let total = a + b + c + d + e + f;
-        host.tx.set_path(
+        host.access.set_path(
             host.adapter,
             receiver.clone().field(Player::vela_field_id_level()),
             HostValue::Int(total),

@@ -4,8 +4,8 @@ use vela_host::path::HostPath;
 use vela_host::value::HostValue;
 
 use crate::heap_values::host_to_value;
-use crate::host_patches;
-pub(crate) use crate::host_patches::HostNumericPatch;
+use crate::host_mutations;
+pub(crate) use crate::host_mutations::HostNumericMutation;
 use crate::host_paths::{host_field_path, host_path_from_segments};
 use crate::host_values::{value_from_host, value_to_host};
 use crate::{
@@ -87,15 +87,15 @@ pub(crate) fn set_host_path(
     set_host_path_value(path, value, runtime)
 }
 
-pub(crate) fn write_host_field_numeric_patch(
+pub(crate) fn write_host_field_numeric_mutation(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
     field: FieldId,
     rhs: Register,
-    patch: HostNumericPatch,
+    patch: HostNumericMutation,
 ) -> VmResult<()> {
-    host_patches::write_host_field_numeric_patch(
-        host_patches::HostPatchRuntime {
+    host_mutations::write_host_field_numeric_mutation(
+        host_mutations::HostMutationRuntime {
             frame: runtime.frame,
             heap: runtime.heap.as_deref(),
             budget: runtime.budget.as_deref(),
@@ -109,16 +109,16 @@ pub(crate) fn write_host_field_numeric_patch(
     )
 }
 
-pub(crate) fn write_host_path_numeric_patch(
+pub(crate) fn write_host_path_numeric_mutation(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,
     segments: &[HostPathSegment],
     rhs: Register,
-    patch: HostNumericPatch,
+    patch: HostNumericMutation,
     symbols: &mut SymbolInterner,
 ) -> VmResult<()> {
-    host_patches::write_host_path_numeric_patch(
-        host_patches::HostPatchRuntime {
+    host_mutations::write_host_path_numeric_mutation(
+        host_mutations::HostMutationRuntime {
             frame: runtime.frame,
             heap: runtime.heap.as_deref(),
             budget: runtime.budget.as_deref(),
@@ -159,9 +159,9 @@ pub(crate) fn push_host_path(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.tx.mutation_count())?;
+        budget.reserve_host_mutation(host.access.mutation_count())?;
     }
-    host.tx
+    host.access
         .push_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())
 }
@@ -186,9 +186,9 @@ pub(crate) fn remove_host_path(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.tx.mutation_count())?;
+        budget.reserve_host_mutation(host.access.mutation_count())?;
     }
-    host.tx
+    host.access
         .remove_path(host.adapter, path, runtime.source_span)?;
     Ok(())
 }
@@ -226,10 +226,10 @@ pub(crate) fn call_host_method(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.tx.mutation_count())?;
+        budget.reserve_host_mutation(host.access.mutation_count())?;
     }
     let return_value =
-        host.tx
+        host.access
             .call_method(host.adapter, path, method, values, runtime.source_span)?;
     if wants_return {
         runtime_value_from_host(return_value, runtime.heap, runtime.budget).map(Some)
@@ -245,7 +245,7 @@ fn read_host_path_value(path: HostPath, runtime: HostAccessRuntime<'_, '_, '_>) 
         })
     })?;
     let value = host
-        .tx
+        .access
         .read_path_at(host.adapter, &path, runtime.source_span)?;
     runtime_value_from_host(value, runtime.heap, runtime.budget)
 }
@@ -261,9 +261,9 @@ fn set_host_path_value(
         })
     })?;
     if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.tx.mutation_count())?;
+        budget.reserve_host_mutation(host.access.mutation_count())?;
     }
-    host.tx
+    host.access
         .set_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())
 }

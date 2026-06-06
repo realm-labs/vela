@@ -19,7 +19,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -79,7 +79,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -140,7 +140,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -196,7 +196,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -258,7 +258,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -315,7 +315,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -371,7 +371,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -431,7 +431,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -494,7 +494,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -556,7 +556,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -613,7 +613,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -663,7 +663,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -717,7 +717,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -772,7 +772,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -822,7 +822,7 @@ fn on_kill(player_id: int, monster_id: int) {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -888,7 +888,7 @@ fn on_kill(player_id: int, monster_id: int) {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -958,7 +958,7 @@ fn main() -> int {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -1020,7 +1020,7 @@ fn main(player_id: int) {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -1091,7 +1091,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),

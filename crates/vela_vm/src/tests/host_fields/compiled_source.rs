@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn compiled_source_mutates_host_field_through_patch_tx() {
+fn compiled_source_mutates_host_field_through_host_access() {
     let host_ref = player_ref(3);
     let program = compile_program_source_with_options(
         SourceId::new(1),
@@ -16,12 +16,12 @@ fn main(player) {
     )
     .expect("compile host field source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -59,10 +59,10 @@ fn main(player) {
     .expect("compile host field source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.deny_read(level_path(host_ref));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = Vm::new()
@@ -83,7 +83,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_mutates_nested_host_field_through_patch_tx() {
+fn compiled_source_mutates_nested_host_field_through_host_access() {
     let host_ref = player_ref(3);
     let stats = FieldId::new(8);
     let level = FieldId::new(9);
@@ -103,12 +103,12 @@ fn main(player) {
     .expect("compile nested host field source");
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(stats_level.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -125,7 +125,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_subtracts_nested_host_field_through_patch_tx() {
+fn compiled_source_subtracts_nested_host_field_through_host_access() {
     let host_ref = player_ref(3);
     let stats = FieldId::new(8);
     let level = FieldId::new(9);
@@ -145,12 +145,12 @@ fn main(player) {
     .expect("compile nested host subtraction source");
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(stats_level.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -167,7 +167,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_writes_host_numeric_compound_assignments_through_patch_tx() {
+fn compiled_source_writes_host_numeric_compound_assignments_through_host_access() {
     let host_ref = player_ref(3);
     let stats = FieldId::new(8);
     let level = FieldId::new(9);
@@ -189,12 +189,12 @@ fn main(player) {
     .expect("compile nested host numeric compound source");
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(stats_level.clone(), HostValue::Int(4));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -231,12 +231,12 @@ fn main(player) {
     .expect("compile host path push source");
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(reward_path.clone(), HostValue::Int(0));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host(
@@ -259,7 +259,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_removes_host_path_through_patch_tx() {
+fn compiled_source_removes_host_path_through_host_access() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
@@ -283,12 +283,12 @@ fn main(player) {
     .expect("compile host path remove source");
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(item_path.clone(), HostValue::String("gold".into()));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -310,7 +310,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_mutates_indexed_host_field_through_patch_tx() {
+fn compiled_source_mutates_indexed_host_field_through_host_access() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
@@ -337,12 +337,12 @@ fn main(player) {
     .expect("compile indexed host field source");
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(item_count.clone(), HostValue::Int(4));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -359,7 +359,7 @@ fn main(player) {
 }
 
 #[test]
-fn bytecode_mutates_host_variant_field_through_patch_tx() {
+fn bytecode_mutates_host_variant_field_through_host_access() {
     let host_ref = player_ref(3);
     let quest_progress = FieldId::new(8);
     let count = FieldId::new(9);
@@ -393,12 +393,12 @@ fn bytecode_mutates_host_variant_field_through_patch_tx() {
     program.insert_function(code);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(quest_count.clone(), HostValue::Int(4));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -446,13 +446,13 @@ fn main(ctx) {
     adapter.insert_value(HostPath::new(ctx_ref).field(tick_field), HostValue::Int(42));
     adapter.insert_method_return(emit_method, HostValue::Null);
     adapter.insert_method_return(log_method, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host_managed_heap_and_budget(
             &program,
@@ -505,13 +505,13 @@ fn main(player) {
     )
     .expect("compile host closure write source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
 
     let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(

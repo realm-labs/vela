@@ -18,7 +18,7 @@ fn host_native_patch_budget_error_retains_prior_write() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.set_path(
+                host.access.set_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -42,7 +42,7 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = runtime
         .call_raw(
@@ -84,7 +84,7 @@ fn host_native_error_retains_written_mutations() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.set_path(
+                host.access.set_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -114,7 +114,7 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = runtime
         .call_raw(
@@ -155,7 +155,7 @@ fn host_native_error_retains_mutations_without_call_options() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.set_path(
+                host.access.set_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -184,10 +184,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = engine
@@ -229,7 +229,7 @@ fn main() {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = runtime
         .call_raw(
@@ -303,7 +303,7 @@ fn engine_denies_host_native_before_mutation_counting() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.set_path(
+                host.access.set_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -326,10 +326,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(

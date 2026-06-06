@@ -155,7 +155,7 @@ too many state writes in a single event
 
 Vela is a single-threaded scripting language from the script author's point of
 view. A single `Runtime` executes one script call at a time on one OS thread,
-with one VM stack, one active `PatchTx`, and one script heap/GC context.
+with one VM stack, one active `HostAccess`, and one script heap/GC context.
 
 The language does not expose:
 

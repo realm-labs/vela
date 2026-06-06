@@ -9,9 +9,9 @@ pub(crate) enum ExecutionMode {
     Inline,
     ScriptProgram,
     ManagedHeap,
-    HostPatchTx,
+    HostAccess,
     HostManagedHeapReadConversion,
-    HostManagedHeapPatchTx,
+    HostManagedHeapHostAccess,
     GameplayHost,
     GcPacing,
 }
@@ -541,8 +541,8 @@ fn main() {
 "#,
     },
     Workload {
-        name: "host_patch_tx",
-        mode: ExecutionMode::HostPatchTx,
+        name: "host_access",
+        mode: ExecutionMode::HostAccess,
         source: r#"
 fn main(player) {
     player.level += 1;
@@ -554,7 +554,7 @@ fn main(player) {
     },
     Workload {
         name: "managed_heap_host_conversion",
-        mode: ExecutionMode::HostManagedHeapPatchTx,
+        mode: ExecutionMode::HostManagedHeapHostAccess,
         source: r#"
 fn main(player) {
     let total = 0;

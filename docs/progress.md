@@ -21,7 +21,7 @@ preserve all runtime, host, reflection, GC, and hot-reload semantics
 move hot dispatch operands from names to IDs, slots, or resolved targets
 split growing VM hot dispatch families behind focused boundaries
 prepare cache/JIT-facing invariants while keeping generic fallback behavior
-finish verified-bytecode, profile ownership, HostPath/PatchTx key, and callback/closure materialization prep before M20
+finish verified-bytecode, profile ownership, HostPath/HostAccess keys, and callback/closure materialization prep before M20
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
@@ -33,12 +33,12 @@ Cranelift JIT.
 
 | Milestone | Status | Current note |
 |---|---|---|
-| M0-M6 | Complete | Source -> bytecode -> VM -> HostRef/HostPath/PatchTx -> hot reload loop exists. |
+| M0-M6 | Complete | Source -> bytecode -> VM -> HostRef/HostPath/HostAccess -> hot reload loop exists. |
 | M7 | Complete | Execution budgets, managed heap, GC roots, and managed heap entrypoints exist. |
 | M8 | Complete enough | HIR, module graph, imports, declarations, binding maps, and compiler integration are active. |
 | M9 | Complete enough | Broad executable language surface works; conformance catches edge cases. |
 | M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist. |
-| M11 | Complete enough | HostRef, HostPath, PathProxy, and write-through PatchTx host boundaries exist. |
+| M11 | Complete enough | HostRef, HostPath, PathProxy, and write-through HostAccess host boundaries exist. |
 | M12 | Complete enough | Reflection metadata, permission-aware queries, candidate spans, and schema-safe mutation denial are covered. |
 | M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random capability gating, lambda facts, and domain-neutral helper coverage are validated. |
 | M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, capability profiles, signature conversion, and macro parity are covered. |
@@ -47,7 +47,7 @@ Cranelift JIT.
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
-| M19.5 | Active | Required M20 gate: resolve hot call sites to IDs/slots/targets, split hot dispatch families out of the main VM loop, prepare method/native/stdlib dispatch for cache-ready lookup, prepare HostPath/PatchTx fast-path keys, reduce callback/closure materialization, and define verified-bytecode/profile/JIT-facing interpreter invariants before M20 cache state. |
+| M19.5 | Active | Required M20 gate: resolve hot call sites to IDs/slots/targets, split hot dispatch families out of the main VM loop, prepare method/native/stdlib dispatch for cache-ready lookup, prepare HostPath/HostAccess fast-path keys, reduce callback/closure materialization, and define verified-bytecode/profile/JIT-facing interpreter invariants before M20 cache state. |
 | M20 | Not started | Inline caches and specialization start after M19.5, beginning with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -60,7 +60,7 @@ Cranelift JIT.
 - `.vela` source parsing, HIR lowering, bytecode compilation, VM execution,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.
 - Host mutation through `HostRef`, `HostPath`, `PathProxy`, write-through
-  `PatchTx`, capability-gated effects, and mutation-count budgeting.
+  `HostAccess`, capability-gated effects, and mutation-count budgeting.
 - Reflection for types, fields, methods, variants, traits, modules, functions,
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
@@ -109,19 +109,19 @@ Cranelift JIT.
   stable `FunctionId` metadata while preserving names for diagnostics and
   fallback, and Engine-installed plus standard native functions register ID
   lookup targets. Native call dispatch is routed through a focused VM call
-    boundary, preserving ID-first lookup, name fallback, PatchTx budget
+    boundary, preserving ID-first lookup, name fallback, HostAccess budget
   checks, and source-spanned errors. Standard value method calls can also carry
   optional `HostMethodId` metadata, with `len`/`is_empty` using an ID fast path
   before name fallback, and script/value method dispatch is routed through a
-  focused VM call boundary. Host field/path reads, writes, compound and
-  collection patches, and host method calls are routed through a focused VM
+  focused VM call boundary. Host field/path reads, writes, compound
+  mutations, and host method calls are routed through a focused VM
   host-access boundary, giving later path-key or direct-adapter work one
   replacement point. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
-  index/key conversion, and HostPath/PatchTx identity now uses a dedicated
-  HostPathKey sidecar with inline storage for common short paths while PatchTx
+  index/key conversion, and HostPath/HostAccess identity now uses a dedicated
+  HostPathKey sidecar with inline storage for common short paths while HostAccess
   keeps only successful mutation counts. Host-boundary conversion failures are
-  covered as PatchTx slow paths that leave mutation counts unchanged.
+  covered as HostAccess slow paths that leave mutation counts unchanged.
   Source and module compilation now verifies bytecode before returning
   `CodeObject` or `Program` values, covering register, constant, jump,
   frame-slot, call-argument, host-path dynamic segment, and nested closure
@@ -162,7 +162,7 @@ Cranelift JIT.
     through focused boundaries instead of growing `execution.rs`;
   - native and stdlib hot paths have borrowed `Value` view coverage or a named
     reason to defer the remaining conversions to M20/JIT work;
-  - HostPath/PatchTx reusable path keys or direct adapter-thunk boundaries are
+  - HostPath/HostAccess reusable path keys or direct adapter-thunk boundaries are
     implemented enough for M20 host field/path caches;
   - root host receiver index lowering such as `scores[1]` needs HIR/TypeFacts
     receiver-type plumbing before compile-time index capability diagnostics can
@@ -174,7 +174,7 @@ Cranelift JIT.
     unchecked register, operand, and cache fast paths;
   - ProgramVersion-owned profile metadata covers hot bytecode offsets and has
     hot-reload/schema invalidation tests;
-  - frame-map, GC-root, budget-checkpoint, PatchTx slow-path, and hot-reload
+  - frame-map, GC-root, budget-checkpoint, HostAccess slow-path, and hot-reload
     invalidation contracts are documented or tested as interpreter contracts;
   - interpreter-only benchmark rows identify which remaining costs belong to
     M20 cache work versus later JIT work.
@@ -201,22 +201,22 @@ cargo test --workspace
 For current M19.5 work, run focused correctness tests for touched bytecode,
 runtime dispatch, host-boundary, and stdlib/native call paths plus
 interpreter-only before/after benchmark rows. Preparatory fast paths must
-preserve ExecutionBudget, PatchTx, reflection policy, GC roots, hot reload
+preserve ExecutionBudget, HostAccess, reflection policy, GC roots, hot reload
 ownership, schema invalidation, and source-spanned diagnostics.
 
 ## Next Up
 
 - Continue M19.5 before M20: first finish ID/slot/target-ready focused modules
   for native, stdlib, script function, method, callback, and host-boundary
-  dispatch; then prepare HostPath/PatchTx reusable keys or direct adapter
+  dispatch; then prepare HostPath/HostAccess reusable keys or direct adapter
   thunks; then reduce callback/closure materialization; then define
-  version-owned profile metadata and JIT-facing frame/GC/budget/PatchTx
+  version-owned profile metadata and JIT-facing frame/GC/budget/HostAccess
   invariants for future cache state.
 - Keep benchmark evidence ahead of M20 specialization work. M19.5 reports
   interpreter-only before/after rows; M20 reports interpreter-only versus
   cache-enabled rows.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
-  frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
+  frame-map, GC-root, budget, HostAccess, hot-reload, and conformance contracts.
 
 ## Update Rules
 

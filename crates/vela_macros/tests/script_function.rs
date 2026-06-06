@@ -10,11 +10,11 @@ use vela_engine::native::{
 };
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::access::HostAccess;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_macros::{script_context_function, script_function, script_host_function};
 use vela_reflect::permissions::ReflectPermissionSet;
@@ -58,7 +58,7 @@ fn grant_bonus_v2(amount: i64) -> i64 {
     amount + 2
 }
 
-/// Sets a copied player level through PatchTx.
+/// Sets a copied player level through HostAccess.
 #[script_context_function(name = "game::set_level", effect = "write_host", reflect = true)]
 fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<bool> {
     ctx.charge_instructions(3)?;
@@ -70,7 +70,7 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
     Ok(ctx.has_capability(Capability::HostWrite))
 }
 
-/// Sets a renamed copied player level through PatchTx.
+/// Sets a renamed copied player level through HostAccess.
 #[script_context_function(
     name = "game::set_level_v2",
     alias = "game::set_level",
@@ -86,7 +86,7 @@ fn set_level_v2(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64
     Ok(level)
 }
 
-/// Returns a fallible copied player level through PatchTx.
+/// Returns a fallible copied player level through HostAccess.
 #[script_context_function(name = "game::checked_level", effect = "write_host", reflect = true)]
 fn checked_level(
     ctx: &mut NativeCallContext<'_, '_>,
@@ -109,7 +109,7 @@ fn checked_level(
 /// Sets a copied player score through host execution.
 #[script_host_function(name = "game::set_score", effect = "write_host", reflect = true)]
 fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
-    host.tx.set_path(
+    host.access.set_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
         HostValue::Int(score),
@@ -126,7 +126,7 @@ fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmRes
     reflect = true
 )]
 fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
-    host.tx.set_path(
+    host.access.set_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(2)),
         HostValue::Int(score),
@@ -150,7 +150,7 @@ fn checked_score(
             source_span: None,
         });
     }
-    host.tx
+    host.access
         .set_path(host.adapter, path, HostValue::Int(score), None)?;
     Ok(score)
 }

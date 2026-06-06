@@ -5,8 +5,8 @@ use std::sync::Arc;
 use vela_engine::engine::Engine;
 use vela_engine::reload::EngineHotReloadSourceErrorKind;
 use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
-use vela_host::tx::PatchTx;
 use vela_hot_reload::version::ProgramVersion;
 use vela_vm::owned_value::OwnedValue;
 
@@ -63,7 +63,7 @@ pub(crate) fn run(initial_path: &str, updated_path: &str) -> Result<(), Box<dyn 
 
 fn run_current_main(runtime: &mut Runtime) -> Result<OwnedValue, Box<dyn Error>> {
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     runtime
         .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .map_err(|error| format!("{error:?}").into())

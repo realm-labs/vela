@@ -300,12 +300,12 @@ fn main(player) {
     )
     .expect("compile host ref script impl method dispatch");
     let mut adapter = host_adapter(host_ref, HostValue::Int(7));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -341,11 +341,11 @@ fn main(player) {
     )
     .expect("compile host ref script impl method dispatch");
     let mut adapter = host_adapter(host_ref, HostValue::Int(7));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(

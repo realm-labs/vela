@@ -2,7 +2,7 @@ use std::fmt;
 
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, Span};
 
-use crate::{path::HostPath, value::HostValue};
+use crate::path::HostPath;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HostError {
@@ -55,20 +55,12 @@ pub enum HostErrorKind {
         expected: HostTypeId,
         actual: HostTypeId,
     },
-    MissingOverlay {
-        path: HostPath,
-    },
     MissingPath {
         path: HostPath,
     },
     PermissionDenied {
         path: HostPath,
         action: &'static str,
-    },
-    PatchConflict {
-        path: HostPath,
-        expected: Box<HostValue>,
-        actual: Option<Box<HostValue>>,
     },
     InvalidAdd {
         path: HostPath,
@@ -88,8 +80,8 @@ pub enum HostErrorKind {
     InvalidPush {
         path: HostPath,
     },
-    UnsupportedPatch {
-        op: &'static str,
+    InvalidArgument {
+        expected: &'static str,
     },
     UnsupportedMethod {
         method: HostMethodId,

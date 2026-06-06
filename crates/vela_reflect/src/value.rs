@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 
 use crate::{
@@ -54,7 +54,7 @@ impl PartialEq<ReflectValue> for HostValue {
 pub struct ReflectContext<'a> {
     pub registry: &'a TypeRegistry,
     pub adapter: &'a mut dyn ScriptStateAdapter,
-    pub tx: &'a mut PatchTx,
+    pub access: &'a mut HostAccess,
 }
 
 pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&'a TypeDesc> {
@@ -138,7 +138,7 @@ fn get_impl(
                 ));
             }
             let value = ctx
-                .tx
+                .access
                 .read_path(ctx.adapter, &HostPath::new(*host_ref).field(field_desc.id))
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
             Ok(ReflectValue::Host(value))
@@ -264,7 +264,7 @@ fn set_impl(
             let ReflectValue::Host(value) = value else {
                 return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
             };
-            ctx.tx
+            ctx.access
                 .set_path(
                     ctx.adapter,
                     HostPath::new(*host_ref).field(field_desc.id),
@@ -392,7 +392,7 @@ fn call_impl(
         .map(host_arg)
         .collect::<ReflectResult<Vec<_>>>()?;
     let result = ctx
-        .tx
+        .access
         .call_method(
             ctx.adapter,
             HostPath::new(*host_ref),

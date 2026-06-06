@@ -3,12 +3,12 @@
 Build a dynamic scripting language in Rust for host-owned business logic. Game
 server scripting is a primary proving ground, but the language core, standard
 library, builtins, and runtime contract must remain domain-neutral. Scripts can
-mutate host objects through safe patch transactions instead of direct mutable
-references.
+mutate host objects through safe call-scoped host access instead of direct
+mutable references.
 
 The language is not "dynamic Rust" and is not a Lua rewrite. It is a scripting
 language designed around Rust host state models, controlled reflection, host
-patching, and reliable function-level hot reload. Domain objects, event names,
+access, and reliable function-level hot reload. Domain objects, event names,
 and business rules such as players, quests, rewards, orders, accounts, or
 workflows come from host registration, native functions, schemas, and examples,
 not from builtin language or standard-library surface.
@@ -19,7 +19,7 @@ The language should provide:
 
 1. Better host-script expression than Lua: structs, enums, `match`, method calls, rich array/map APIs, and Option/Result-style error handling.
 2. Deep Rust host integration: scripts can naturally read and write host state with syntax such as `account.balance += 1`.
-3. Safe mutable state boundaries: scripts never hold Rust `&mut T`; they produce `HostPath` operations inside `PatchTx`, and the host applies them at safe points.
+3. Safe mutable state boundaries: scripts never hold Rust `&mut T`; they use `HostRef`, `HostPath`, `PathProxy`, and `HostAccess` to read or write Rust-owned state immediately through adapters.
 4. Hot Reload First semantics: hot reload replaces function-level or module-level code objects. Existing call frames continue on old code, and new calls enter new code.
 5. Controlled reflection: scripts can inspect types, fields, methods, variants, traits, modules, and functions, and can perform controlled dynamic reads, writes, and calls. Runtime schema mutation is not allowed.
 6. Embeddability: Rust hosts can register types, native functions, capability profiles, execution budgets, state adapters, and hot reload policies.
@@ -107,7 +107,7 @@ Hot Reload First dynamic scripting language for host-owned business logic,
 always
 starting from the active checkpoint in docs/progress.md. Preserve the standing
 constraints in this roadmap: no script-language generics, no Rust &mut exposed
-to scripts, all host mutation through HostRef, HostPath, PathProxy, and PatchTx,
+to scripts, all host mutation through HostRef, HostPath, PathProxy, and HostAccess,
 reflection without runtime type-structure mutation or monkey patching, and no
 MVP JIT, script async/coroutines, moving GC, or full LSP. For each turn, choose
 the smallest verifiable task that advances the current milestone, validate it
@@ -178,7 +178,7 @@ Scope:
 
 ```text
 ExecutionBudget for instruction count, memory bytes, call depth, host mutation count
-budget charging in VM dispatch, native calls, reflection, and host patching
+budget charging in VM dispatch, native calls, reflection, and host access
 script heap with stable GcRef handles
 non-moving mark-sweep collector
 root stack and call frame roots
@@ -201,7 +201,7 @@ host refs are never traced as Rust-owned objects
 Checkpoint:
 
 ```text
-cargo test covers VM budget traps, PatchTx budget traps, managed heap roots,
+cargo test covers VM budget traps, HostAccess budget traps, managed heap roots,
 cycle collection, and host-ref exclusion from GC tracing
 docs/progress.md marks M7 complete or names the specific failing safety case
 ```
@@ -319,10 +319,10 @@ trait defaults, host/script impl checks, and stable schema hashes
 docs/progress.md marks M10 complete enough or names the missing metadata path
 ```
 
-### M11: Complete Host Bridge And Patch Transactions
+### M11: Complete Host Bridge And HostAccess
 
 Goal: natural script syntax can read, call, and mutate nested host state through
-controlled paths and transactions.
+controlled paths and call-scoped host access.
 
 Scope:
 
@@ -332,10 +332,10 @@ nested HostPath lowering for fields, indexes, keys, and variant fields
 GET_HOST_PATH, SET_HOST_PATH, RMW_HOST_PATH, CALL_HOST_METHOD lowering
 HostValue scalar and HostRef conversion for host field reads/writes
 explicit owned serialization for arrays, maps, records, enums, and nullables
-PatchTx write-through operations for Set, Add, Sub, Remove, Push, and method calls
-patch validation, budgets, source spans, diagnostics, and mutation counting
+HostAccess write-through operations for Set, Add, Sub, Remove, Push, and method calls
+adapter validation, budgets, source spans, diagnostics, and mutation counting
 host access policies for read/write/call permissions
-source-span propagation into patches and host errors
+source-span propagation into host errors
 ```
 
 Acceptance:
@@ -448,7 +448,7 @@ compile_file and compile_dir
 Runtime::call with CallOptions
 args!/host! convenience APIs
 NativeFunctionDesc and FunctionDesc
-NativeCallContext with engine access, state adapter, PatchTx, capability set, budget
+NativeCallContext with engine access, state adapter, HostAccess, capability set, budget
 native function and native method registration with stable IDs
 Rust signature conversion rules
 vela_macros crate
@@ -581,7 +581,7 @@ Acceptance:
 
 ```text
 all game_server_demo scripts run through Engine and Runtime APIs
-example domain mutations flow through PatchTx rather than direct Rust mutation
+example domain mutations flow through HostAccess rather than direct Rust mutation
 reflect debug script can inspect allowed fields but cannot mutate schema
 hot reload demo proves old frames and new calls observe correct code versions
 conformance suite guards every supported grammar feature
@@ -612,7 +612,7 @@ VM scalar dispatch benchmark
 managed heap allocation and materialization benchmark
 array/map/set/string stdlib benchmarks
 record, enum, Option, and Result benchmarks
-HostRef/HostPath/PatchTx benchmark
+HostRef/HostPath/HostAccess benchmark
 hot reload safe-point and ABI benchmark
 GC pacing benchmark
 concise baseline and measurement rules in docs/performance.md
@@ -667,7 +667,7 @@ optimized interpreter preserves all conformance and host-boundary behavior
 benchmarks show before/after changes for each accepted optimization
 non-JIT host-boundary benchmark group is within the documented Lua 5.x target band
 slow-path diagnostics remain source-spanned and debuggable
-no optimization bypasses ExecutionBudget, PatchTx, reflection policy, or GC roots
+no optimization bypasses ExecutionBudget, HostAccess, reflection policy, or GC roots
 ```
 
 Checkpoint:
@@ -697,7 +697,7 @@ move hot dispatch families into focused modules instead of growing the main VM l
 prepare method dispatch for receiver-shape/type + MethodId direct lookup
 prepare native and stdlib calls for ID-based lookup and borrowed Value views
 prepare script function calls for resolved targets without changing hot-reload rename semantics
-prepare HostPath and PatchTx hot paths for reusable path keys and direct adapter thunks
+prepare HostPath and HostAccess hot paths for reusable path keys and direct adapter thunks
 prepare callback and closure calls to reduce avoidable argument materialization
 keep record/enum heap values compatible with shape + slot fast paths
 define verified-bytecode invariants needed for unchecked register and operand access later
@@ -715,7 +715,7 @@ main execution loop delegates host access, script calls, stdlib/method dispatch,
 verified-bytecode invariants are documented and tested before unchecked register or cache fast paths are introduced
 profile data is owned by a versioned runtime artifact and can be invalidated by hot reload/schema changes
 future JIT requirements are represented as interpreter contracts, not as JIT code
-no preparatory change bypasses PatchTx, ExecutionBudget, GC roots, reflection policy, or hot-reload ABI checks
+no preparatory change bypasses HostAccess, ExecutionBudget, GC roots, reflection policy, or hot-reload ABI checks
 benchmarks identify which remaining costs belong to M20 cache work versus later JIT work
 ```
 
@@ -791,7 +791,7 @@ Acceptance:
 debugger can pause at source breakpoints and resume deterministically
 single-step behavior matches VM instruction/source-span mapping
 watch/evaluate respects reflection permissions and cannot expose Rust references
-debug inspection never mutates host state unless it explicitly uses PatchTx write-through
+debug inspection never mutates host state unless it explicitly uses HostAccess write-through
 hot reload preserves or reports breakpoint rebinding across compatible updates
 debug hooks can be disabled for normal embedded execution
 ```
@@ -818,7 +818,7 @@ guards for dynamic value tags, shapes, schemas, and method targets
 deoptimization or side exits back to the bytecode VM
 compiled frame root reporting for GC, debugging, and deoptimization
 ExecutionBudget checks in compiled code or mandatory side exits
-PatchTx, permissions, reflection, and host calls routed through existing helpers
+HostAccess, permissions, reflection, and host calls routed through existing helpers
 ProgramVersion ownership of compiled code and invalidation metadata
 JIT enable/disable runtime option
 ```
@@ -830,14 +830,14 @@ JIT is not required for correctness and can be disabled
 unsupported functions continue through the bytecode VM
 compiled code and VM code produce identical results on conformance fixtures
 hot reload drops or invalidates compiled artifacts at safe points
-budget, GC, debugger, and PatchTx invariants hold under compiled execution
+budget, GC, debugger, and HostAccess invariants hold under compiled execution
 ```
 
 Checkpoint:
 
 ```text
 cargo test runs VM-versus-JIT equivalence fixtures and invariant checks for
-budgeting, GC roots, host calls, PatchTx, permissions, reflection, and reload
+budgeting, GC roots, host calls, HostAccess, permissions, reflection, and reload
 invalidation
 docs/progress.md names unsupported JIT subsets or marks M22 complete enough
 ```
@@ -896,10 +896,10 @@ Control:
 The first complete interpreter excludes script generics, JIT, script async,
 and script macros.
 Rust host derive macros are allowed only to reduce embedding boilerplate.
-Every syntax feature must serve domain-neutral host scripting or the host patch model.
+Every syntax feature must serve domain-neutral host scripting or the host access model.
 ```
 
-### Unclear Host Patch Semantics
+### Unclear Host Access Semantics
 
 Risk: scripts and host state diverge in surprising ways.
 
@@ -908,8 +908,8 @@ Control:
 ```text
 Host handle mutation semantics must be explicit.
 Reads after writes must observe current Rust adapter values.
-PatchTx writes must be validatable, budgeted, source-spanned, and counted
-without retaining a growing journal by default.
+HostAccess writes must be adapter-validated, budgeted, source-spanned, and
+counted without retaining a growing journal or requiring end-of-call apply.
 ```
 
 ### Premature Hot Reload State Migration
@@ -978,7 +978,7 @@ Rust host test:
 
 ```rust
 #[test]
-fn invoice_payment_updates_account_through_patch_tx() {
+fn invoice_payment_updates_account_through_host_access() {
     let mut state = TestState::new();
     let account = state.insert_account(Account { balance: 90, status: "standard".into() });
     let invoice = state.insert_invoice(Invoice { amount: 20, kind: "renewal".into() });

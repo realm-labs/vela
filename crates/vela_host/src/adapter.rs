@@ -1,6 +1,6 @@
 use vela_common::HostMethodId;
 
-use crate::{error::HostResult, patch::Patch, path::HostPath, value::HostValue};
+use crate::{error::HostResult, path::HostPath, value::HostValue};
 
 pub trait ScriptStateAdapter {
     fn read_path(&self, path: &HostPath) -> HostResult<HostValue>;
@@ -15,6 +15,4 @@ pub trait ScriptStateAdapter {
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue>;
-
-    fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
 }

@@ -1,7 +1,7 @@
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::error::ReflectErrorKind;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
@@ -33,11 +33,11 @@ fn adapter_with_level(value: HostValue) -> MockStateAdapter {
 fn reflect_set_host_ref_creates_patch() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     set(
@@ -48,14 +48,14 @@ fn reflect_set_host_ref_creates_patch() {
     )
     .expect("reflect set");
 
-    assert_eq!(ctx.tx.mutation_count(), 1);
+    assert_eq!(ctx.access.mutation_count(), 1);
 }
 
 #[test]
 fn reflect_get_host_ref_reads_write_through_state() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     tx.set_path(
         &mut adapter,
         HostPath::new(player_ref()).field(FieldId::new(2)),
@@ -66,7 +66,7 @@ fn reflect_get_host_ref_reads_write_through_state() {
     let mut ctx = ReflectContext {
         registry: &registry,
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let value = get(&mut ctx, &ReflectValue::HostRef(player_ref()), "level").expect("reflect get");
@@ -78,11 +78,11 @@ fn reflect_get_host_ref_reads_write_through_state() {
 fn reflect_set_read_only_host_field_fails_without_patch() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = set(
@@ -101,7 +101,7 @@ fn reflect_set_read_only_host_field_fails_without_patch() {
             source_span: None,
         }
     );
-    assert!(ctx.tx.is_empty());
+    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -109,12 +109,12 @@ fn reflect_call_host_ref_writes_through_and_counts_mutation() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
     adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     {
         let mut ctx = ReflectContext {
             registry: &registry,
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
 
         let value = call(
@@ -126,7 +126,7 @@ fn reflect_call_host_ref_writes_through_and_counts_mutation() {
         .expect("reflect call");
 
         assert_eq!(value, ReflectValue::Host(HostValue::Null));
-        assert_eq!(ctx.tx.mutation_count(), 1);
+        assert_eq!(ctx.access.mutation_count(), 1);
     }
     assert_eq!(
         adapter.method_calls(),

@@ -33,10 +33,10 @@ fn main(player: Player) {
         HostPath::new(host_ref).field(FieldId::new(1)),
         HostValue::Int(10),
     );
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -134,7 +134,7 @@ pub fn grant() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -200,7 +200,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -277,7 +277,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     write_reward_module_with_helper(&reward_file, 6);
     runtime
@@ -348,7 +348,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(

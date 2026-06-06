@@ -24,7 +24,7 @@ This repository implements a Hot Reload First dynamic scripting language in Rust
 
 - Do not introduce script-language generics.
 - Do not expose real Rust `&mut T` references to scripts.
-- Host mutation must be represented through `HostRef`, `HostPath`, and `PatchTx`.
+- Host mutation must be represented through `HostRef`, `HostPath`, `PathProxy`, and `HostAccess`.
 - Reflection may query metadata and perform controlled value reads, writes, and calls, but it must not mutate type structure at runtime.
 - Do not build a monkey-patching system.
 - Do not implement JIT, async/coroutine hot reload, moving GC, or a full LSP in the MVP.
@@ -39,7 +39,7 @@ Correctness comes first, followed by testability, hot reload semantics, host bou
 Prefer a runnable vertical slice over a large incomplete subsystem. The most important early loop is:
 
 ```text
-script source -> bytecode -> VM -> HostRef/HostPath/PatchTx -> host apply
+script source -> bytecode -> VM -> HostRef/HostPath/HostAccess -> host write-through
 ```
 
 Keep implementation structure modular. Do not pile large unrelated logic into a
@@ -101,7 +101,7 @@ Examples:
 
 ```text
 docs: split project goal and architecture docs
-feat(host): add PatchTx overlay reads
+feat(host): add HostAccess write-through reads
 fix(vm): preserve old CodeObject for active frames
 test(reflect): cover read-only host field errors
 refactor(common): extract stable id newtypes
@@ -124,15 +124,15 @@ Validation: cargo test -p ...
 Example:
 
 ```text
-Task: Implement the minimal HostPath and PatchTx overlay model.
+Task: Implement the minimal HostPath and HostAccess write-through model.
 Context: This belongs to M3. Scripts must not directly mutate Rust host objects.
 Expected behavior:
-  - write_path(player.level, 10) records a Set patch.
-  - read_path(player.level) returns overlay value 10 in the same transaction.
-  - player.level += 1 records an Add patch.
+  - write_path(player.level, 10) immediately updates the adapter.
+  - read_path(player.level) returns the current adapter value.
+  - player.level += 1 performs a read-modify-write through HostAccess.
 Tests:
-  - vela_host::tests::write_then_read_overlay
-  - vela_host::tests::add_patch_records_rmw
+  - vela_host::tests::write_through_set_and_numeric_mutations_mutate_immediately
+  - vela_host::tests::repeated_alias_writes_read_current_host_state
 Do not change:
   - Do not change the VM instruction set.
   - Do not expose real &mut Player to the script layer.

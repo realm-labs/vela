@@ -22,14 +22,14 @@ fn main(player) {
     )
     .expect("compile reflection source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_with_host(
             &program,
@@ -65,7 +65,7 @@ fn main(player) {
     )
     .expect("compile denied reflection write source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
@@ -73,7 +73,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -100,7 +100,7 @@ fn main(player) {
     .expect("compile denied reflection call source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
@@ -108,7 +108,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -144,7 +144,7 @@ fn main(player) {
             ),
     );
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
@@ -157,7 +157,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -186,7 +186,7 @@ fn main(player) {
     )
     .expect("compile denied host-ref metadata source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
@@ -195,7 +195,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -220,7 +220,7 @@ fn main(player) {
     )
     .expect("compile denied host-ref trait metadata source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
@@ -229,7 +229,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -254,7 +254,7 @@ fn main(player) {
     )
     .expect("compile denied host-ref implements source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(reflection_registry()),
@@ -263,7 +263,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -290,7 +290,7 @@ fn main() {
     )
     .expect("compile script metadata source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(script_reflection_registry()),
@@ -299,7 +299,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -327,7 +327,7 @@ fn main() {
     )
     .expect("compile reflection permission metadata source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(TypeRegistry::new()),
@@ -336,7 +336,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -362,7 +362,7 @@ fn main() {
     )
     .expect("compile reflection unknown permission source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(TypeRegistry::new()),
@@ -370,7 +370,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -402,7 +402,7 @@ fn main() {
     )
     .expect("compile denied reflection permission metadata source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(TypeRegistry::new()),
@@ -410,7 +410,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -440,7 +440,7 @@ fn main() {
             .access(FunctionAccess::new().require_permission("game::admin")),
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
@@ -451,7 +451,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -495,12 +495,12 @@ fn main(player) {
         HostPath::new(host_ref).field(secret_field),
         HostValue::Int(99),
     );
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(registry));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -549,7 +549,7 @@ fn main(player) {
         HostPath::new(host_ref).field(title_field),
         HostValue::String("Knight".to_owned()),
     );
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
@@ -557,7 +557,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -611,7 +611,7 @@ fn main(player) {
         HostPath::new(host_ref).field(FieldId::new(1)),
         HostValue::Int(9),
     );
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(registry),
@@ -620,7 +620,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -674,7 +674,7 @@ fn main(player) {
             ),
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
@@ -686,7 +686,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -724,7 +724,7 @@ fn main(player) {
     )
     .expect("compile budgeted reflection source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(reflection_registry()),
@@ -732,7 +732,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -764,7 +764,7 @@ fn main(player) {
     )
     .expect("compile reflection source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut heap = ScriptHeap::new();
@@ -774,7 +774,7 @@ fn main(player) {
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_runtime_with_host_heap_and_budget(
             &program,

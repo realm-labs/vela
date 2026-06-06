@@ -384,10 +384,10 @@ fn main() {
         "source should compile with macro registered private metadata"
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -417,10 +417,10 @@ fn main(player) {
     );
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -458,10 +458,10 @@ fn main(player) {
     assert_eq!(registered.id, function_id("game::set_level"));
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -493,7 +493,7 @@ fn main(player, ok) {
     );
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut runtime = Runtime::new(engine, program);
 
     assert_eq!(
@@ -507,7 +507,7 @@ fn main(player, ok) {
         Ok(OwnedValue::Int(13)),
     );
 
-    let mut failed_tx = PatchTx::new();
+    let mut failed_tx = HostAccess::new();
     let error = runtime
         .call_raw(
             "main",
@@ -543,7 +543,7 @@ fn main(player) {
     );
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut runtime = Runtime::new(engine, program);
 
     let error = runtime
@@ -584,7 +584,7 @@ fn main(player) {
     );
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut runtime = Runtime::new(engine, program);
 
     let error = runtime
@@ -625,10 +625,10 @@ fn main(player) {
     );
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -666,10 +666,10 @@ fn main(player) {
     assert_eq!(registered.id, function_id("game::set_score"));
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -701,7 +701,7 @@ fn main(player, ok) {
     );
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut runtime = Runtime::new(engine, program);
 
     assert_eq!(
@@ -715,7 +715,7 @@ fn main(player, ok) {
         Ok(OwnedValue::Int(15)),
     );
 
-    let mut failed_tx = PatchTx::new();
+    let mut failed_tx = HostAccess::new();
     let error = runtime
         .call_raw(
             "main",

@@ -14,6 +14,7 @@ use vela_common::{
     VariantId,
 };
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_host::access::HostAccess;
 use vela_host::error::HostErrorKind;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};

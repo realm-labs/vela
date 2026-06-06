@@ -94,13 +94,13 @@ fn main() {
 }
 
 #[test]
-fn reads_host_field_through_patch_transaction() {
+fn reads_host_field_through_host_access() {
     let (program, host_ref) = host_read_program();
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let result = Vm::new().run_program_with_host(
@@ -138,12 +138,12 @@ fn set_host_field_writes_through_and_counts_mutation() {
     let mut program = Program::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -185,7 +185,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
     let mut program = Program::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
@@ -193,7 +193,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_runtime_with_host_heap_and_budget(
             &program,
@@ -239,13 +239,13 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
     let mut program = Program::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(100, usize::MAX, usize::MAX, 1);
 
     let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host_and_budget(
@@ -297,12 +297,12 @@ fn add_host_field_writes_through_and_counts_mutation() {
     let mut program = Program::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -326,10 +326,10 @@ fn host_field_read_rejects_stale_generation() {
     let fresh_ref = player_ref(3);
     let stale_ref = player_ref(2);
     let mut adapter = host_adapter(fresh_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = Vm::new()
@@ -370,10 +370,10 @@ fn host_field_read_error_keeps_instruction_source_span() {
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.deny_read(level_path(host_ref));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = Vm::new()

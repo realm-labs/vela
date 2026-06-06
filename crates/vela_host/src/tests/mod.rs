@@ -1,17 +1,17 @@
+mod access;
 mod permissions;
 mod proxy;
-mod tx;
 mod write_through;
 
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
 
 use crate::{
+    access::{HostAccess, HostObjectSnapshot},
     adapter::ScriptStateAdapter,
     error::{HostError, HostErrorKind},
     mock::MockStateAdapter,
     path::{HostPath, HostRef},
     proxy::PathProxy,
-    tx::{HostObjectSnapshot, PatchTx},
     value::HostValue,
 };
 

@@ -19,12 +19,12 @@ fn main(player) {
     .expect("compile host method source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Int(12));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -62,12 +62,12 @@ fn main(player) {
     .expect("compile host field method source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Int(12));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -117,12 +117,12 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(item_path.clone(), HostValue::Int(0));
     adapter.insert_method_return(method, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -164,12 +164,12 @@ fn call_host_method_writes_through_and_counts_mutation() {
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Int(12));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,
@@ -215,7 +215,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
@@ -223,7 +223,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_runtime_with_host_heap_and_budget(
             &program,
@@ -255,12 +255,12 @@ fn main(player) {
     .expect("compile host method return source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::String("accepted".into()));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new().run_program_with_host(
             &program,

@@ -180,13 +180,13 @@ fn managed_heap_host_execution_materializes_return_and_counts_mutation() {
     let mut program = Program::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -219,13 +219,13 @@ fn main(player) {
     )
     .expect("compile host map write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
     let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -272,13 +272,13 @@ fn main(player) {
     )
     .expect("compile host record write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
     let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -320,13 +320,13 @@ fn main(player) {
     )
     .expect("compile host enum write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
     let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(
@@ -369,13 +369,13 @@ fn main(player, target) {
     )
     .expect("compile host ref write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_with_host_managed_heap_and_budget(

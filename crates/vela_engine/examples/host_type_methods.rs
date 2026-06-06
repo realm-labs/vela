@@ -11,12 +11,11 @@ use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
-use vela_host::patch::{Patch, PatchOp};
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey};
 use vela_vm::HostExecution;
@@ -69,10 +68,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut adapter,
     )?;
 
-    let mut typed_tx = PatchTx::new();
+    let mut typed_access = HostAccess::new();
     let mut typed_host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut typed_tx,
+        access: &mut typed_access,
     };
     engine.call_native_method(
         PLAYER_TYPED_TRANSFER_METHOD,
@@ -98,7 +97,7 @@ fn main() -> Result<(), Box<dyn Error>> {
          reward_calls={reward_calls} script_mutations={} typed_call_mutations={}",
         output.value(),
         output.mutation_count(),
-        typed_tx.mutation_count()
+        typed_access.mutation_count()
     );
 
     Ok(())
@@ -209,7 +208,7 @@ fn typed_transfer_to_reward_sink(
     item_id: String,
     amount: i64,
 ) -> VmResult<()> {
-    host.tx.call_method(
+    host.access.call_method(
         host.adapter,
         target.into_path(),
         REWARD_GRANT_METHOD,
@@ -329,20 +328,13 @@ impl ScriptStateAdapter for ExampleAdapter {
             _ => Err(host_error(HostErrorKind::UnsupportedMethod { method })),
         }
     }
-
-    fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
-        match patch.op {
-            PatchOp::CallHostMethod { .. } => Ok(()),
-            _ => self.inner.validate_patch(patch),
-        }
-    }
 }
 
 fn expect_int_arg(args: &[HostValue], index: usize) -> HostResult<i64> {
     match args.get(index) {
         Some(HostValue::Int(value)) => Ok(*value),
-        _ => Err(host_error(HostErrorKind::UnsupportedPatch {
-            op: "int argument",
+        _ => Err(host_error(HostErrorKind::InvalidArgument {
+            expected: "int argument",
         })),
     }
 }
@@ -350,8 +342,8 @@ fn expect_int_arg(args: &[HostValue], index: usize) -> HostResult<i64> {
 fn expect_string_arg(args: &[HostValue], index: usize) -> HostResult<&str> {
     match args.get(index) {
         Some(HostValue::String(value)) => Ok(value),
-        _ => Err(host_error(HostErrorKind::UnsupportedPatch {
-            op: "string argument",
+        _ => Err(host_error(HostErrorKind::InvalidArgument {
+            expected: "string argument",
         })),
     }
 }
@@ -359,8 +351,8 @@ fn expect_string_arg(args: &[HostValue], index: usize) -> HostResult<&str> {
 fn expect_host_ref_arg(args: &[HostValue], index: usize) -> HostResult<HostRef> {
     match args.get(index) {
         Some(HostValue::HostRef(value)) => Ok(*value),
-        _ => Err(host_error(HostErrorKind::UnsupportedPatch {
-            op: "host ref argument",
+        _ => Err(host_error(HostErrorKind::InvalidArgument {
+            expected: "host ref argument",
         })),
     }
 }

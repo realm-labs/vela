@@ -20,12 +20,12 @@ fn main(player) {
     )
     .expect("compile reflection fields source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let result = vm.run_program_with_host(
@@ -96,13 +96,13 @@ fn main(player) {
     )
     .expect("compile field reflection source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     vm.register_standard_natives();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -145,10 +145,10 @@ fn main() {
         reflect::permissions::ReflectPolicy::read_only().with_function_permission("game::admin"),
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -179,12 +179,12 @@ fn main(player) {
     )
     .expect("compile reflected effect metadata source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -222,10 +222,10 @@ fn main() {
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -257,7 +257,7 @@ fn main(player) {
     )
     .expect("compile policy fields reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     let policy = reflect::permissions::ReflectPolicy::new(
         reflect::permissions::ReflectPermissionSet::new()
@@ -270,7 +270,7 @@ fn main(player) {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -370,12 +370,12 @@ fn main(player) {
     )
     .expect("compile member reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(member_reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -415,12 +415,12 @@ fn main() {
     )
     .expect("compile trait metadata reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -459,12 +459,12 @@ fn main() {
     )
     .expect("compile type metadata reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -497,12 +497,12 @@ fn main() {
             .source_span(Span::new(SourceId::new(7), 20, 42)),
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(registry));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(

@@ -218,7 +218,7 @@ fn script_context_function_generates_native_function_metadata() {
             .returns(TypeHint::Bool)
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
-            .docs("Sets a copied player level through PatchTx."),
+            .docs("Sets a copied player level through HostAccess."),
     );
 }
 
@@ -232,7 +232,7 @@ fn script_context_function_alias_preserves_native_function_id_across_renames() {
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
-            .docs("Sets a renamed copied player level through PatchTx."),
+            .docs("Sets a renamed copied player level through HostAccess."),
     );
 }
 
@@ -247,7 +247,7 @@ fn script_context_function_generates_host_result_signature_metadata() {
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
-            .docs("Returns a fallible copied player level through PatchTx."),
+            .docs("Returns a fallible copied player level through HostAccess."),
     );
 }
 

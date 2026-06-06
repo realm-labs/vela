@@ -151,7 +151,7 @@ Debug operations must use the same safety boundaries as scripts:
 
 ```text
 do not expose real Rust references
-do not bypass PatchTx or ScriptStateAdapter for host mutation
+do not bypass HostAccess or ScriptStateAdapter for host mutation
 do not mutate TypeRegistry or runtime type structure
 respect reflection permissions and host read/write/call policies
 charge or suspend execution budgets through explicit debugger policy
@@ -177,7 +177,7 @@ FieldId, MethodId, VariantId, FunctionId, TraitId, ShapeId, and TypeKey are stab
 bytecode offsets, source spans, and source maps remain available for diagnostics, profiling, and debugging
 ProgramVersion owns bytecode, registry snapshots, debug metadata, profile data, inline-cache state, and compiled code
 call frames expose registers, frame maps, and roots for GC, debugging, deoptimization, and hot reload lifetime tracking
-host mutation flows through HostRef, HostPath, PathProxy, PatchTx, and ScriptStateAdapter only
+host mutation flows through HostRef, HostPath, PathProxy, HostAccess, and ScriptStateAdapter only
 ```
 
 Optimization rules:
@@ -189,7 +189,7 @@ guard failure is a normal slow-path transition, not a correctness failure
 optimized code must charge or preserve ExecutionBudget behavior
 optimized code must report or preserve GC roots before allocation, calls, and safe points
 optimized code must preserve debugger-visible source locations, frame state, and safe suspension points
-optimized code must not bypass PatchTx, reflection policy, permissions, or host access checks
+optimized code must not bypass HostAccess, reflection policy, permissions, or host access checks
 hot reload invalidates version-owned caches and compiled code at safe points
 dynamic type hints and TypeFacts guide optimization but are not correctness guarantees
 ```
@@ -207,7 +207,7 @@ release target.
 ```text
 official microbenchmarks and domain-style host-boundary benchmarks
 release-mode benchmark parameters and checksum validation
-VM scalar dispatch, function-call, heap, stdlib, record, string, and PatchTx cases
+VM scalar dispatch, function-call, heap, stdlib, record, string, and HostAccess cases
 external reference comparison harness for Lua 5.x, LuaJIT, Rhai, and JavaScript
 profile capture and bottleneck notes in docs/performance.md
 ```
@@ -231,7 +231,7 @@ precompiled `.vbc` bytecode artifacts and bytecode cache
 ```
 
 This is the main path toward Lua-comparable performance without JIT. The work
-should be benchmark-driven and must not make host patching, hot reload,
+should be benchmark-driven and must not make host access, hot reload,
 reflection, or diagnostics less reliable.
 
 Precompiled `.vbc` bytecode artifacts improve startup, deployment validation, and
@@ -243,7 +243,7 @@ an already-loaded function, because that function already runs as bytecode.
 ```text
 resolved call operands for native, stdlib, script, method, and callback paths
 focused VM dispatch modules for host access, script calls, stdlib/method calls, and callback-heavy paths
-HostPath and PatchTx reusable path keys or direct adapter thunk boundaries
+HostPath and HostAccess reusable path keys or direct adapter thunk boundaries
 borrowed Value views at native and stdlib boundaries where semantics allow
 verified-bytecode invariants for future unchecked register and operand access
 version-owned profile metadata for hot bytecode offsets and later cache invalidation
@@ -295,7 +295,7 @@ tag, shape, schema, method, field, and version guards
 side exits or deoptimization back to the bytecode VM
 compiled frame root maps for GC, debugging, and deoptimization
 budget checks in compiled code or side exits to checked VM helpers
-host calls routed through existing NativeCallContext and PatchTx helpers
+host calls routed through existing NativeCallContext and HostAccess helpers
 runtime option to enable or disable JIT
 ```
 
@@ -361,7 +361,7 @@ VM instruction tests
 Value conversion tests
 GC root tests
 reflection registry tests
-PatchTx tests
+HostAccess tests
 ABI diff tests
 ```
 
@@ -369,8 +369,8 @@ ABI diff tests
 
 ```text
 script reads host field
-script writes host field through PatchTx
-reflect::set creates PatchTx
+script writes host field through HostAccess
+reflect::set creates HostAccess
 account.balance += 1 creates Add patch
 lambda parameter facts are inferred from array/map receiver facts
 host schema fields are available through TypeRegistry

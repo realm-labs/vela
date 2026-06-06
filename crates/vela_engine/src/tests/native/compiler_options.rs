@@ -277,7 +277,7 @@ fn main() {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
     assert_eq!(result, Ok(OwnedValue::Int(46)),);

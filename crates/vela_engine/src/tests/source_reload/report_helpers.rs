@@ -7,7 +7,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -79,7 +79,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -189,7 +189,7 @@ fn on_kill(player_id: int, monster_id: int) {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -282,7 +282,7 @@ fn on_kill(player_id: int, monster_id: int) {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(

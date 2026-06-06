@@ -1,8 +1,8 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{HostObjectId, SourceId};
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
@@ -153,10 +153,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -338,10 +338,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -354,7 +354,7 @@ fn main() {
 }
 
 #[test]
-fn engine_context_host_schema_lowers_patch_tx_workflows() {
+fn engine_context_host_schema_lowers_host_access_workflows() {
     let engine = Engine::builder()
         .with_context_host_schema()
         .build()
@@ -384,10 +384,10 @@ fn main(ctx) {
     );
     adapter.insert_method_return(CONTEXT_EMIT_METHOD_ID, HostValue::Null);
     adapter.insert_method_return(CONTEXT_LOG_METHOD_ID, HostValue::Null);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(

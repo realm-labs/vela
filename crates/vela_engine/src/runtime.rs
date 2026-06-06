@@ -4,12 +4,11 @@ use std::path::Path;
 
 use vela_bytecode::Program;
 use vela_common::{HostObjectId, SourceId};
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
-use vela_host::patch::{Patch, PatchOp};
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::report::HotReloadReport;
@@ -239,9 +238,12 @@ impl Runtime {
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
     ) -> VmResult<CallOutput> {
-        let mut tx = PatchTx::new();
-        let value = self.call_args_raw(entry, &mut args, options, adapter, &mut tx)?;
-        Ok(CallOutput { value, tx })
+        let mut access = HostAccess::new();
+        let value = self.call_args_raw(entry, &mut args, options, adapter, &mut access)?;
+        Ok(CallOutput {
+            value,
+            mutation_count: access.mutation_count(),
+        })
     }
 
     pub fn call_raw(
@@ -250,10 +252,10 @@ impl Runtime {
         args: &[OwnedValue],
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
-        let mut host = HostExecution { adapter, tx };
+        let mut host = HostExecution { adapter, access };
         let vm = if let Some(hot_reload) = &self.hot_reload {
             let current = hot_reload.current();
             self.engine
@@ -280,14 +282,14 @@ impl Runtime {
         args: &mut CallArgs<'_>,
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let resolved = self.resolve_call_args(entry, args)?;
         let mut adapter = CallArgsAdapter {
             args,
             fallback: adapter,
         };
-        self.call_raw(entry, &resolved, options, &mut adapter, tx)
+        self.call_raw(entry, &resolved, options, &mut adapter, access)
     }
 
     pub fn call_raw_at_event_end_safe_point(
@@ -296,9 +298,9 @@ impl Runtime {
         args: &[OwnedValue],
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
     ) -> VmResult<EventCallSafePointReport> {
-        let value = self.call_raw(entry, args, options, adapter, tx)?;
+        let value = self.call_raw(entry, args, options, adapter, access)?;
         let reload = self.check_optional_reload();
         Ok(EventCallSafePointReport { value, reload })
     }
@@ -309,9 +311,9 @@ impl Runtime {
         args: &mut CallArgs<'_>,
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
     ) -> VmResult<EventCallSafePointReport> {
-        let value = self.call_args_raw(entry, args, options, adapter, tx)?;
+        let value = self.call_args_raw(entry, args, options, adapter, access)?;
         let reload = self.check_optional_reload();
         Ok(EventCallSafePointReport { value, reload })
     }
@@ -354,13 +356,16 @@ impl Runtime {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CallOutput {
     value: OwnedValue,
-    tx: PatchTx,
+    mutation_count: usize,
 }
 
 impl CallOutput {
     #[must_use]
-    pub const fn new(value: OwnedValue, tx: PatchTx) -> Self {
-        Self { value, tx }
+    pub const fn new(value: OwnedValue, mutation_count: usize) -> Self {
+        Self {
+            value,
+            mutation_count,
+        }
     }
 
     #[must_use]
@@ -369,13 +374,8 @@ impl CallOutput {
     }
 
     #[must_use]
-    pub const fn tx(&self) -> &PatchTx {
-        &self.tx
-    }
-
-    #[must_use]
     pub const fn mutation_count(&self) -> usize {
-        self.tx.mutation_count()
+        self.mutation_count
     }
 
     #[must_use]
@@ -384,13 +384,8 @@ impl CallOutput {
     }
 
     #[must_use]
-    pub fn into_tx(self) -> PatchTx {
-        self.tx
-    }
-
-    #[must_use]
-    pub fn into_parts(self) -> (OwnedValue, PatchTx) {
-        (self.value, self.tx)
+    pub fn into_parts(self) -> (OwnedValue, usize) {
+        (self.value, self.mutation_count)
     }
 }
 
@@ -742,19 +737,6 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
             None => self.fallback.call_method(path, method, args),
         }
     }
-
-    fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
-        match self.direct_binding(&patch.path) {
-            Some(HostArgBinding::Shared(_)) => match patch.op {
-                PatchOp::CallHostMethod { .. } => {
-                    Err(Self::direct_access_error(&patch.path, "call"))
-                }
-                _ => Err(Self::direct_access_error(&patch.path, "write")),
-            },
-            Some(HostArgBinding::Mutable(_)) => Ok(()),
-            None => self.fallback.validate_patch(patch),
-        }
-    }
 }
 
 struct EmptyStateAdapter;
@@ -789,15 +771,6 @@ impl ScriptStateAdapter for EmptyStateAdapter {
     ) -> HostResult<HostValue> {
         Err(HostError {
             kind: HostErrorKind::UnsupportedMethod { method },
-            source_span: None,
-        })
-    }
-
-    fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath {
-                path: patch.path.clone(),
-            },
             source_span: None,
         })
     }

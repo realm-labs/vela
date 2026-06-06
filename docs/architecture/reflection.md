@@ -5,7 +5,7 @@ Reflection exists for:
 1. Host type exposure.
 2. Script type metadata queries.
 3. Dynamic field reads/writes and method calls.
-4. Automatic `HostPath` / `Patch` construction.
+4. Automatic `HostPath` construction for controlled host access.
 5. Hot reload ABI checks.
 6. Debuggers, GM panels, admin backends, editors, and LSP support.
 
@@ -471,7 +471,7 @@ reflect::permissions()
 reflect::has_permission(name)
 ```
 
-For `HostRef`, `reflect::set(account, "balance", 10)` creates a `Patch` instead of mutating Rust directly.
+For `HostRef`, `reflect::set(account, "balance", 10)` routes through `HostAccess` and writes the adapter immediately.
 For script records and enum payload records, `reflect::set(value, name, new_value)`
 returns an updated copied value. It does not mutate the caller's existing local
 binding unless the script assigns the returned value, and it rejects unknown

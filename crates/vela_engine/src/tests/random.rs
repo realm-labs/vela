@@ -1,7 +1,7 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::SourceId;
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
-use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPermissionSet;
 use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
@@ -171,10 +171,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -213,16 +213,16 @@ fn main() {
         .build()
         .expect("second engine should build");
     let mut first_adapter = MockStateAdapter::new();
-    let mut first_tx = PatchTx::new();
+    let mut first_tx = HostAccess::new();
     let mut first_host = HostExecution {
         adapter: &mut first_adapter,
-        tx: &mut first_tx,
+        access: &mut first_tx,
     };
     let mut second_adapter = MockStateAdapter::new();
-    let mut second_tx = PatchTx::new();
+    let mut second_tx = HostAccess::new();
     let mut second_host = HostExecution {
         adapter: &mut second_adapter,
-        tx: &mut second_tx,
+        access: &mut second_tx,
     };
 
     let first = first_engine

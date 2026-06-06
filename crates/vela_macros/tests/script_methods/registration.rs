@@ -36,10 +36,10 @@ fn script_methods_generate_callable_native_registration() {
     .expect("engine should build from macro callable methods");
     let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -82,10 +82,10 @@ fn script_methods_feed_stable_engine_registration_api() {
 
     let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -191,10 +191,10 @@ fn script_methods_generate_callable_result_native_registration() {
     .expect("engine should build from macro callable methods");
     let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -238,10 +238,10 @@ fn script_methods_generate_callable_option_native_registration() {
     .expect("engine should build from macro callable methods");
     let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -266,7 +266,7 @@ fn script_methods_generate_callable_option_native_registration() {
 }
 
 #[test]
-fn script_method_metadata_compiles_to_patch_tx_calls() {
+fn script_method_metadata_compiles_to_host_access_calls() {
     let engine = Engine::builder()
         .register_host_type::<Player>()
         .register_host_method_metadata::<Player>()
@@ -284,10 +284,10 @@ fn main(player: Player) {
     );
     let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(

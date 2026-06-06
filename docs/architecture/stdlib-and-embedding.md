@@ -184,7 +184,7 @@ Direct `CallArgs::with_host_ref("name", &value)` and
 `CallArgs::with_host_mut("name", &mut value)` are user-facing embedding
 shortcuts. The script still receives a call-scope `HostRef`, not a real Rust
 reference. Field reads and writes dispatch through the type's host object
-adapter and `PatchTx`; `&T` is read-only, while `&mut T` allows write-through
+adapter and `HostAccess`; `&T` is read-only, while `&mut T` allows write-through
 mutation during the call. Hosts that already manage object identity through a
 state adapter can pass an existing low-level handle with
 `CallArgs::with_host_handle("name", host_ref)` and call
@@ -192,8 +192,8 @@ state adapter can pass an existing low-level handle with
 
 `call` returns `CallOutput`, which dereferences to the returned
 `OwnedValue` for ordinary use. Hosts that need mutation diagnostics can inspect
-`output.mutation_count()` or `output.tx()`; most call sites do not need to
-construct or pass a `PatchTx` explicitly.
+`output.mutation_count()`; most call sites do not need to construct or pass a
+`HostAccess` explicitly.
 
 ### Hot Reload
 

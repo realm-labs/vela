@@ -3,9 +3,9 @@ use std::sync::Arc;
 use vela_bytecode::compiler::compile_program_source;
 use vela_bytecode::{CodeObject, Constant, Instruction, InstructionKind, Program, Register};
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, Span, TypeId};
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::access::FieldAccess;
 use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
@@ -81,10 +81,10 @@ fn host_permission_denied_fixture_renders_source_span() {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path.clone(), HostValue::Int(9));
     adapter.deny_read(level_path);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = Vm::new()
@@ -139,11 +139,11 @@ fn host_compound_write_denied_fixture_renders_source_span() {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path.clone(), HostValue::Int(9));
     adapter.deny_write(level_path.clone());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let error = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         Vm::new()
             .run_program_runtime_with_host(&program, "main", &[Value::HostRef(host_ref)], &mut host)
@@ -188,10 +188,10 @@ fn stale_host_ref_fixture_renders_source_span() {
 
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = Vm::new()
@@ -236,7 +236,7 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
 
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(registry),
@@ -244,7 +244,7 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm

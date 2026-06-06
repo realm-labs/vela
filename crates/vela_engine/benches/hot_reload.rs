@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
-use vela_host::tx::PatchTx;
 use vela_hot_reload::version::ProgramVersion;
 use vela_vm::owned_value::OwnedValue;
 
@@ -154,7 +154,7 @@ fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64,
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
     let report = runtime.apply_hot_update(update)?;
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let value = runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)?;
 
     Ok(report_checksum(

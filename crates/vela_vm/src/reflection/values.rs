@@ -70,7 +70,7 @@ pub(super) fn register(
         let mut ctx = reflect::value::ReflectContext {
             registry: &get_registry,
             adapter: host.adapter,
-            tx: &mut *host.tx,
+            access: &mut *host.access,
         };
         let value = reflect::value::get_with_policy(&mut ctx, &target, field, &get_policy)?;
         value_from_reflect(value)
@@ -92,7 +92,7 @@ pub(super) fn register(
         let mut ctx = reflect::value::ReflectContext {
             registry: &set_registry,
             adapter: host.adapter,
-            tx: &mut *host.tx,
+            access: &mut *host.access,
         };
         value_from_reflect(reflect::value::set_with_policy(
             &mut ctx,
@@ -142,7 +142,7 @@ pub(super) fn register(
         let mut ctx = reflect::value::ReflectContext {
             registry: &call_registry,
             adapter: host.adapter,
-            tx: &mut *host.tx,
+            access: &mut *host.access,
         };
         let value =
             reflect::value::call_with_policy(&mut ctx, &target, method, call_args, &call_policy)?;

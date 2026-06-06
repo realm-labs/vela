@@ -1,9 +1,9 @@
 use vela_bytecode::compiler::compile_program_source;
 use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_host::access::HostAccess;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::registry::TypeKey;
 use vela_vm::HostExecution;
@@ -45,10 +45,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -84,10 +84,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -133,10 +133,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -157,7 +157,7 @@ fn main(player) {
 }
 
 fn typed_host_set_level(host: &mut HostExecution<'_>, player: HostRef, level: i64) -> VmResult<()> {
-    host.tx.set_path(
+    host.access.set_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -215,10 +215,10 @@ fn main(player) {
     .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -264,10 +264,10 @@ fn main(player) {
     .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -314,10 +314,10 @@ fn main(player) {
     .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -339,7 +339,7 @@ fn typed_host_sum_level(
     c: i64,
 ) -> VmResult<i64> {
     let level = a + b + c;
-    host.tx.set_path(
+    host.access.set_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -357,7 +357,7 @@ fn typed_host_sum5_level(
     d: i64,
 ) -> VmResult<i64> {
     let level = a + b + c + d;
-    host.tx.set_path(
+    host.access.set_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -376,7 +376,7 @@ fn typed_host_sum6_level(
     e: i64,
 ) -> VmResult<i64> {
     let level = a + b + c + d + e;
-    host.tx.set_path(
+    host.access.set_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -414,10 +414,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -453,10 +453,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -505,10 +505,10 @@ fn main(player) {
     .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -588,10 +588,10 @@ fn main(player) {
     .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -637,10 +637,10 @@ fn main(player) {
     .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -687,10 +687,10 @@ fn main(player) {
     .expect("program should compile");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(

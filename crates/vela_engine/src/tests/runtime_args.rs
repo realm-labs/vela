@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use vela_bytecode::compiler::compile_program_source_with_options;
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostPath, HostRef, PathSegment};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::VmErrorKind;
@@ -128,7 +128,7 @@ fn main(player: Player, amount, bonus = 1) {
     let level = HostPath::new(player).field(super::FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut args = CallArgs::new()
         .with_value("amount", 2_i64)
         .with_host_handle("player", player);
@@ -163,7 +163,7 @@ fn main(left, right) {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut args = CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(7)]);
 
     let result = runtime
@@ -190,7 +190,7 @@ fn runtime_call_args_reject_duplicate_named_values() {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut args = CallArgs::new()
         .with_value("value", 1_i64)
         .with_value("value", 2_i64);
@@ -224,7 +224,7 @@ fn runtime_call_args_reject_unknown_named_values() {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut args = CallArgs::new().with_value("missing", 1_i64);
 
     let error = runtime
@@ -256,7 +256,7 @@ fn runtime_call_args_reject_mixed_modes() {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut args = CallArgs::new().with(1_i64).with_value("value", 2_i64);
 
     let error = runtime
@@ -438,7 +438,7 @@ fn main(player: Player) {
     let mut player = direct_player(9);
     let mut args = CallArgs::new().with_host_mut("player", &mut player);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let report = runtime
         .call_args_raw_at_event_end_safe_point(

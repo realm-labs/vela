@@ -1,8 +1,8 @@
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
-use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
 
@@ -18,7 +18,7 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
         .expect("runtime should expose active hot reload version")
         .id;
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -85,7 +85,7 @@ fn main() {
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -164,7 +164,7 @@ fn main() {
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),

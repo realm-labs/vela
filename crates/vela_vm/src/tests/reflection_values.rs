@@ -20,12 +20,12 @@ fn main() {
     )
     .expect("compile script record reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -56,12 +56,12 @@ fn main() {
     )
     .expect("compile script record reflect set source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -84,12 +84,12 @@ fn main() {
     )
     .expect("compile metadata reflect set source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -114,12 +114,12 @@ fn main() {
     )
     .expect("compile script record unknown field source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -158,7 +158,7 @@ fn main() {
             ),
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
@@ -166,7 +166,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -199,7 +199,7 @@ fn main(player) {
     )
     .expect("compile reflection fields source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut heap = ScriptHeap::new();
@@ -209,7 +209,7 @@ fn main(player) {
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_runtime_with_host_heap_and_budget(
             &program,
@@ -243,7 +243,7 @@ fn main() {
     )
     .expect("compile heap script record reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
     let mut budget = ExecutionBudget::unbounded();
@@ -251,7 +251,7 @@ fn main() {
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_with_host_managed_heap_and_budget(
             &program,
@@ -298,12 +298,12 @@ pub fn main() {
     registry.register_script_types(&graph);
     let program = compile_module_sources(&sources).expect("compile script trait module");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(registry));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -328,14 +328,14 @@ fn main(player) {
     .expect("compile reflection call source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Int(12));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
 
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_with_host(
             &program,

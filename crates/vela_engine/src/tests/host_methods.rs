@@ -1,10 +1,10 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_reflect::registry::{
     FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey, VariantDesc,
@@ -47,7 +47,7 @@ fn main(player: Player) {
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let result = runtime
         .call_raw(
@@ -90,10 +90,10 @@ fn main(player: Player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -138,10 +138,10 @@ fn main(player: Player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -193,10 +193,10 @@ fn main(player: Player) {
         .variant_field(count);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(quest_count.clone(), HostValue::Int(4));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -242,10 +242,10 @@ fn main(player: Player, monster: Monster) {
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let monster = HostRef::new(HostTypeId::new(2), HostObjectId::new(7), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -280,7 +280,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                 let [OwnedValue::Int(amount)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.call_method(
+                host.access.call_method(
                     host.adapter,
                     receiver.clone(),
                     method,
@@ -324,10 +324,10 @@ fn main(player: Player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -342,10 +342,10 @@ fn main(player: Player) {
     assert_eq!(tx.mutation_count(), 1);
 
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
     assert_eq!(
         engine.into_vm().run_program_with_host(
@@ -378,10 +378,10 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
         .expect("engine should build");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -412,10 +412,10 @@ fn typed_callable_native_method_conversion_errors_before_mutation_counting() {
         .expect("engine should build");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -453,10 +453,10 @@ fn typed_callable_native_method_maps_host_result_errors() {
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let expected_path = HostPath::new(player);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -493,7 +493,7 @@ fn callable_native_method_error_retains_written_mutation() {
                 let [OwnedValue::Int(amount)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.call_method(
+                host.access.call_method(
                     host.adapter,
                     receiver.clone(),
                     method,
@@ -513,10 +513,10 @@ fn callable_native_method_error_retains_written_mutation() {
         .expect("engine should build");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = engine
@@ -566,7 +566,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
             let [OwnedValue::Int(key), OwnedValue::Int(value)] = args else {
                 return Ok(OwnedValue::Null);
             };
-            host.tx.set_path(
+            host.access.set_path(
                 host.adapter,
                 receiver.clone().key(key.to_string()),
                 HostValue::Int(*value),
@@ -602,10 +602,10 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
     let host_ref = HostRef::new(HostTypeId::new(31), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_object(host_ref);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -651,10 +651,10 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
     let mut adapter = MockStateAdapter::new();
     adapter.insert_object(player);
     adapter.insert_object(inventory);
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -689,10 +689,10 @@ fn typed_host_argument_rejects_mismatched_host_type() {
         .expect("engine should build");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -717,7 +717,7 @@ fn typed_grant_exp(
     host: &mut HostExecution<'_>,
     amount: i64,
 ) -> VmResult<Option<i64>> {
-    host.tx.call_method(
+    host.access.call_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(8),
@@ -758,7 +758,7 @@ fn typed_transfer_to(
     target: TypedHostMut<InventoryArg>,
     amount: i64,
 ) -> VmResult<()> {
-    host.tx.set_path(
+    host.access.set_path(
         host.adapter,
         target.into_path().field(FieldId::new(77)),
         HostValue::Int(amount),
@@ -797,10 +797,10 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
         .expect("engine should build");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -842,10 +842,10 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
         .expect("engine should build");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -889,10 +889,10 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
         .expect("engine should build");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -922,7 +922,7 @@ fn typed_sum4(
     d: i64,
 ) -> VmResult<i64> {
     let total = a + b + c + d;
-    host.tx.call_method(
+    host.access.call_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(9),
@@ -942,7 +942,7 @@ fn typed_sum5(
     e: i64,
 ) -> VmResult<i64> {
     let total = a + b + c + d + e;
-    host.tx.call_method(
+    host.access.call_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(10),
@@ -964,7 +964,7 @@ fn typed_sum6(
     f: i64,
 ) -> VmResult<i64> {
     let total = a + b + c + d + e + f;
-    host.tx.call_method(
+    host.access.call_method(
         host.adapter,
         receiver.clone(),
         HostMethodId::new(11),
@@ -999,10 +999,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(

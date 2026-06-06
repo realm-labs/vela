@@ -681,7 +681,7 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::AddHostField { root, field, rhs } => {
-                    host_access::write_host_field_numeric_patch(
+                    host_access::write_host_field_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -692,11 +692,11 @@ impl Vm {
                         *root,
                         *field,
                         *rhs,
-                        host_access::HostNumericPatch::Add,
+                        host_access::HostNumericMutation::Add,
                     )?;
                 }
                 InstructionKind::SubHostField { root, field, rhs } => {
-                    host_access::write_host_field_numeric_patch(
+                    host_access::write_host_field_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -707,11 +707,11 @@ impl Vm {
                         *root,
                         *field,
                         *rhs,
-                        host_access::HostNumericPatch::Sub,
+                        host_access::HostNumericMutation::Sub,
                     )?;
                 }
                 InstructionKind::MulHostField { root, field, rhs } => {
-                    host_access::write_host_field_numeric_patch(
+                    host_access::write_host_field_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -722,11 +722,11 @@ impl Vm {
                         *root,
                         *field,
                         *rhs,
-                        host_access::HostNumericPatch::Mul,
+                        host_access::HostNumericMutation::Mul,
                     )?;
                 }
                 InstructionKind::DivHostField { root, field, rhs } => {
-                    host_access::write_host_field_numeric_patch(
+                    host_access::write_host_field_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -737,11 +737,11 @@ impl Vm {
                         *root,
                         *field,
                         *rhs,
-                        host_access::HostNumericPatch::Div,
+                        host_access::HostNumericMutation::Div,
                     )?;
                 }
                 InstructionKind::RemHostField { root, field, rhs } => {
-                    host_access::write_host_field_numeric_patch(
+                    host_access::write_host_field_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -752,7 +752,7 @@ impl Vm {
                         *root,
                         *field,
                         *rhs,
-                        host_access::HostNumericPatch::Rem,
+                        host_access::HostNumericMutation::Rem,
                     )?;
                 }
                 InstructionKind::AddHostPath {
@@ -761,7 +761,7 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_access::write_host_path_numeric_patch(
+                    host_access::write_host_path_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -772,7 +772,7 @@ impl Vm {
                         *root,
                         segments,
                         *rhs,
-                        host_access::HostNumericPatch::Add,
+                        host_access::HostNumericMutation::Add,
                         &mut symbols,
                     )?;
                 }
@@ -782,7 +782,7 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_access::write_host_path_numeric_patch(
+                    host_access::write_host_path_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -793,7 +793,7 @@ impl Vm {
                         *root,
                         segments,
                         *rhs,
-                        host_access::HostNumericPatch::Sub,
+                        host_access::HostNumericMutation::Sub,
                         &mut symbols,
                     )?;
                 }
@@ -803,7 +803,7 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_access::write_host_path_numeric_patch(
+                    host_access::write_host_path_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -814,7 +814,7 @@ impl Vm {
                         *root,
                         segments,
                         *rhs,
-                        host_access::HostNumericPatch::Mul,
+                        host_access::HostNumericMutation::Mul,
                         &mut symbols,
                     )?;
                 }
@@ -824,7 +824,7 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_access::write_host_path_numeric_patch(
+                    host_access::write_host_path_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -835,7 +835,7 @@ impl Vm {
                         *root,
                         segments,
                         *rhs,
-                        host_access::HostNumericPatch::Div,
+                        host_access::HostNumericMutation::Div,
                         &mut symbols,
                     )?;
                 }
@@ -845,7 +845,7 @@ impl Vm {
                     rhs,
                 } => {
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    host_access::write_host_path_numeric_patch(
+                    host_access::write_host_path_numeric_mutation(
                         host_access::HostAccessRuntime {
                             frame: &frame,
                             heap: heap.as_deref_mut(),
@@ -856,7 +856,7 @@ impl Vm {
                         *root,
                         segments,
                         *rhs,
-                        host_access::HostNumericPatch::Rem,
+                        host_access::HostNumericMutation::Rem,
                         &mut symbols,
                     )?;
                 }

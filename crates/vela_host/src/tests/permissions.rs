@@ -28,7 +28,7 @@ fn write_denied_path_fails_before_mutation_and_keeps_previous_writes() {
     adapter.insert_value(level.clone(), HostValue::Int(9));
     adapter.insert_value(rewards.clone(), HostValue::Int(1));
     adapter.deny_write(rewards.clone());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     tx.set_path(&mut adapter, level.clone(), HostValue::Int(10), None)
         .expect("set level");
@@ -54,7 +54,7 @@ fn denied_write_error_keeps_source_span() {
     let span = test_span();
     adapter.insert_value(path.clone(), HostValue::Int(9));
     adapter.deny_write(path.clone());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = tx
         .set_path(&mut adapter, path.clone(), HostValue::Int(10), Some(span))
@@ -78,7 +78,7 @@ fn call_denied_path_fails_before_method_call() {
     adapter.insert_value(path.clone(), HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::Null);
     adapter.deny_call(path.clone());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = tx
         .call_method(
@@ -106,7 +106,7 @@ fn adapter_rejects_stale_generation_on_read_and_write() {
     let fresh_path = level_path();
     adapter.insert_value(fresh_path, HostValue::Int(9));
     let stale_path = HostPath::new(player_ref(2)).field(FieldId::new(2));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let read_error = adapter
         .read_path(&stale_path)

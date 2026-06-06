@@ -23,7 +23,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -84,7 +84,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -143,7 +143,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -209,7 +209,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -263,7 +263,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -322,7 +322,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -390,7 +390,7 @@ fn main() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -443,7 +443,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -499,7 +499,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -566,7 +566,7 @@ fn main(player: Player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
 
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "main",
@@ -577,7 +577,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_host_method_patch(&tx, method, 7);
+    assert_host_method_access(&tx, method, 7);
 
     stage_source_update(
         &mut runtime,
@@ -588,7 +588,7 @@ fn main(player: Player) {
 }
 "#,
     );
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "main",
@@ -599,7 +599,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_host_method_patch(&tx, method, 7);
+    assert_host_method_access(&tx, method, 7);
 
     let report = runtime
         .check_reload()
@@ -608,7 +608,7 @@ fn main(player: Player) {
 
     assert!(report.accepted);
     assert!(report.errors.is_empty());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "main",
@@ -619,7 +619,7 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(2))
     );
-    assert_host_method_patch(&tx, method, 7);
+    assert_host_method_access(&tx, method, 7);
 }
 
 #[test]
@@ -652,7 +652,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -722,7 +722,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -790,7 +790,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -856,7 +856,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
@@ -903,7 +903,7 @@ fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -948,7 +948,7 @@ fn runtime_stages_source_file_top_level_effect_rejection_until_safe_point() {
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,

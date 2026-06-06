@@ -27,7 +27,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -119,7 +119,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -209,7 +209,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -306,7 +306,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -403,7 +403,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -493,7 +493,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -622,7 +622,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -853,7 +853,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
 
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "game::main::main",
@@ -864,7 +864,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_host_method_patch(&tx, method, 7);
+    assert_host_method_access(&tx, method, 7);
 
     write_host_method_reward_module(&reward_file, "award_exp", 2);
     runtime
@@ -872,7 +872,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file method stable-ID rename should be staged");
 
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "game::main::main",
@@ -883,7 +883,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_host_method_patch(&tx, method, 7);
+    assert_host_method_access(&tx, method, 7);
 
     let report = runtime
         .check_reload()
@@ -892,7 +892,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
 
     assert!(report.accepted);
     assert!(report.errors.is_empty());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "game::main::main",
@@ -903,5 +903,5 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
         ),
         Ok(OwnedValue::Int(2))
     );
-    assert_host_method_patch(&tx, method, 7);
+    assert_host_method_access(&tx, method, 7);
 }

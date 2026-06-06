@@ -31,10 +31,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -71,10 +71,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -112,10 +112,10 @@ fn main() {
     )
     .expect("program should compile");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(
@@ -133,7 +133,7 @@ fn main() {
 }
 
 #[test]
-fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
+fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_host_native_fn(
@@ -150,7 +150,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.set_path(
+                host.access.set_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -175,10 +175,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -211,7 +211,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.set_path(
+                host.access.set_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -240,10 +240,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert!(matches!(

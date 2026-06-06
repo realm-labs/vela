@@ -35,7 +35,7 @@ fn main(player: Player, amount: int) {
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let args = args![host(player), 12];
 
@@ -129,7 +129,7 @@ pub const BASE: int = 10;
     assert!(program.function("ignored.main").is_none());
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -190,7 +190,7 @@ fn prelude_imports_cover_source_and_reload_results() {
 
     accepts_update_result(Err(reload_error));
     accepts_safe_point_report(None);
-    accepts_call_output(CallOutput::new(OwnedValue::Null, PatchTx::new()));
+    accepts_call_output(CallOutput::new(OwnedValue::Null, 0));
     accepts_event_safe_point_report(EventCallSafePointReport {
         value: OwnedValue::Null,
         reload: None,

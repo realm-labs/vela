@@ -10,10 +10,10 @@ use vela_bytecode::compiler::{
 };
 use vela_bytecode::{CodeObject, Program};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId};
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::Vm;
@@ -170,13 +170,13 @@ enum CompiledWorkload {
     ScriptProgram {
         program: Box<Program>,
     },
-    HostPatchTx {
+    HostAccess {
         program: Box<Program>,
     },
     HostManagedHeapReadConversion {
         program: Box<Program>,
     },
-    HostManagedHeapPatchTx {
+    HostManagedHeapHostAccess {
         program: Box<Program>,
     },
     GameplayHost {
@@ -203,11 +203,11 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             code,
         } => run_gc_pacing(vm, code),
         CompiledWorkload::Function {
-            mode: ExecutionMode::HostPatchTx,
+            mode: ExecutionMode::HostAccess,
             ..
         }
         | CompiledWorkload::Function {
-            mode: ExecutionMode::HostManagedHeapPatchTx,
+            mode: ExecutionMode::HostManagedHeapHostAccess,
             ..
         }
         | CompiledWorkload::Function {
@@ -222,11 +222,11 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             mode: ExecutionMode::ScriptProgram,
             ..
         } => unreachable!("host workloads compile to programs"),
-        CompiledWorkload::HostPatchTx { program } => run_host_patch_tx(vm, program),
+        CompiledWorkload::HostAccess { program } => run_host_access(vm, program),
         CompiledWorkload::HostManagedHeapReadConversion { program } => {
             run_managed_heap_host_read_conversion(vm, program)
         }
-        CompiledWorkload::HostManagedHeapPatchTx { program } => {
+        CompiledWorkload::HostManagedHeapHostAccess { program } => {
             run_managed_heap_host_conversion(vm, program)
         }
         CompiledWorkload::GameplayHost { program } => run_gameplay_monster_kill(vm, program),
@@ -235,9 +235,9 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
 
 fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
     match workload.mode {
-        ExecutionMode::HostPatchTx
+        ExecutionMode::HostAccess
         | ExecutionMode::HostManagedHeapReadConversion
-        | ExecutionMode::HostManagedHeapPatchTx => compile_program_source_with_options(
+        | ExecutionMode::HostManagedHeapHostAccess => compile_program_source_with_options(
             SourceId::new(1),
             workload.source,
             &CompilerOptions::new()
@@ -248,12 +248,14 @@ fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
                 .with_host_field("rewards", REWARDS_FIELD),
         )
         .map(|program| match workload.mode {
-            ExecutionMode::HostPatchTx => CompiledWorkload::HostPatchTx {
+            ExecutionMode::HostAccess => CompiledWorkload::HostAccess {
                 program: Box::new(program),
             },
-            ExecutionMode::HostManagedHeapPatchTx => CompiledWorkload::HostManagedHeapPatchTx {
-                program: Box::new(program),
-            },
+            ExecutionMode::HostManagedHeapHostAccess => {
+                CompiledWorkload::HostManagedHeapHostAccess {
+                    program: Box::new(program),
+                }
+            }
             ExecutionMode::HostManagedHeapReadConversion => {
                 CompiledWorkload::HostManagedHeapReadConversion {
                     program: Box::new(program),
@@ -352,7 +354,7 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
     }
 }
 
-fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_host_access(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(HostPath::new(player).field(LEVEL_FIELD), HostValue::Int(10));
@@ -363,11 +365,11 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn E
             .field(GOLD_FIELD),
         HostValue::Int(5),
     );
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
     let value = vm.run_program_with_host_and_budget(
         program,
@@ -396,12 +398,12 @@ fn run_managed_heap_host_conversion(
     adapter.insert_value(level_path.clone(), HostValue::Int(0));
     adapter.insert_value(exp_path.clone(), HostValue::Int(0));
     adapter.insert_value(damage_path.clone(), HostValue::Int(0));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_with_host_and_budget(
             program,
@@ -435,12 +437,12 @@ fn run_managed_heap_host_read_conversion(
     adapter.insert_value(level_path.clone(), HostValue::Int(3));
     adapter.insert_value(exp_path.clone(), HostValue::Int(5));
     adapter.insert_value(damage_path.clone(), HostValue::Int(7));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_with_host_managed_heap_and_budget(
             program,
@@ -497,12 +499,12 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
     adapter.insert_method_return(EMIT_METHOD, HostValue::Null);
     adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
 
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
         let mut host = HostExecution {
             adapter: &mut adapter,
-            tx: &mut tx,
+            access: &mut tx,
         };
         vm.run_program_with_host_and_budget(
             program,
@@ -645,9 +647,9 @@ impl ExecutionMode {
             Self::Inline => "inline",
             Self::ScriptProgram => "script_program",
             Self::ManagedHeap => "managed_heap",
-            Self::HostPatchTx => "host_patch_tx",
+            Self::HostAccess => "host_access",
             Self::HostManagedHeapReadConversion => "host_managed_heap_read_conversion",
-            Self::HostManagedHeapPatchTx => "host_managed_heap_patch_tx",
+            Self::HostManagedHeapHostAccess => "host_managed_heap_access",
             Self::GameplayHost => "gameplay_host",
             Self::GcPacing => "gc_pacing",
         }

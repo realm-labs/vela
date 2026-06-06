@@ -5,7 +5,7 @@ fn write_through_set_and_numeric_mutations_mutate_immediately() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_value(path.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     tx.set_path(&mut adapter, path.clone(), HostValue::Int(10), None)
         .expect("set path");
@@ -29,7 +29,7 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
     adapter.insert_value(rewards.clone(), HostValue::Int(0));
     adapter.insert_value(method_path.clone(), HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::String("ok".into()));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let push_error = tx
         .push_path(
@@ -77,7 +77,7 @@ fn write_through_error_keeps_source_span() {
     let path = level_path();
     let span = test_span();
     adapter.insert_value(path.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = tx
         .push_path(
@@ -97,7 +97,7 @@ fn write_through_error_keeps_previous_successful_writes() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_value(path.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     tx.set_path(&mut adapter, path.clone(), HostValue::Int(10), None)
         .expect("set path");

@@ -11,7 +11,7 @@ decision history lives in
   supported.
 - Scripts never receive real Rust `&mut T` references.
 - Host mutation must go through `HostRef`, `HostPath`, `PathProxy`, and
-  `PatchTx`.
+  `HostAccess`.
 - Reflection can query metadata and perform controlled reads, writes, and
   calls, but cannot mutate runtime type structure or implement monkey patching.
 - The MVP does not include JIT, script async/coroutines, moving GC, or a full
@@ -136,18 +136,17 @@ boundaries.
 
 ### Host Boundary
 
-Host state is mutated through write-through `PatchTx` operations. Direct host
+Host state is mutated through call-scoped `HostAccess` operations. Direct host
 field, host path, and host method bytecode routes through `HostExecution`,
-`ScriptStateAdapter`, and `PatchTx`; the adapter is updated immediately and the
-transaction retains only a successful mutation count for budgets and lightweight
-diagnostics. The current `Patch` descriptor is still passed to adapters for
-permission, range, source-span, and conflict checks, but `PatchTx` does not
-retain a growing journal by default.
+`ScriptStateAdapter`, and `HostAccess`; the adapter is updated immediately and
+`HostAccess` retains only a successful mutation count for budgets and
+lightweight diagnostics. There is no patch descriptor, overlay, journal, or
+end-of-call apply step in the default host boundary.
 
 Embedding APIs may accept Rust `&T` and `&mut T` at a `CallArgs` invocation
 boundary, but these references are immediately represented inside the VM as
 call-scope `HostRef` handles. Field access still goes through a
-`ScriptHostObject`/adapter surface and `PatchTx`; `&T` is read-only and
+`ScriptHostObject`/adapter surface and `HostAccess`; `&T` is read-only and
 `&mut T` enables write-through mutation without exposing the real reference to
 script code.
 
@@ -167,18 +166,18 @@ schema. Host method parameters that refer to other host objects use typed path
 wrappers such as `TypedHostRef<T>` and `TypedHostMut<T>`, which store
 `HostPath` only and never expose Rust references to scripts.
 
-High-level embedding calls may construct `PatchTx` internally and return a
+High-level embedding calls construct `HostAccess` internally and return a
 `CallOutput` that dereferences to the script return `OwnedValue`. This keeps
 ordinary call sites value-focused while still exposing `mutation_count()` for
 hosts that need lightweight diagnostics.
 The shortest runtime method name, `Runtime::call`, is reserved for this common
 high-level `CallArgs -> CallOutput` path. Lower-level entrypoints that expose
-adapter or `PatchTx` internals use explicit names such as `call_with_adapter`,
+adapter or `HostAccess` internals use explicit names such as `call_with_adapter`,
 `call_raw`, and `call_args_raw`.
 
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy
-wraps HostPath and requires PatchTx, but complex Rust objects remain handles
+wraps HostPath and uses HostAccess, but complex Rust objects remain handles
 and paths; the high-frequency host field boundary accepts only scalar
 HostValue conversion. Owned complex script values cross through explicit
 serialization/owned-value paths.
@@ -201,7 +200,7 @@ authorized reflection tooling without becoming public API or reflective call
 targets, and hot-reload ABI checks compare those access bits explicitly.
 
 Reflective reads, writes, and calls resolve descriptor metadata to stable IDs
-and route host interaction through PatchTx. Private, effectful, host path, and
+and route host interaction through HostAccess. Private, effectful, host path, and
 field-level operations require explicit reflection permissions.
 
 ### Capability Profiles
@@ -236,7 +235,7 @@ default because script values can be copied and updated without touching host
 state. Copy-returning `reflect::set` for script values still enforces
 `reflect_writable` and field-level required permissions, while HostRef
 `reflect::set` additionally requires host field writability before recording a
-PatchTx write.
+HostAccess write.
 
 Global field reflection enumerates both type-level fields and enum variant
 payload fields. Variant payload field metadata uses `Type::Variant` as the
@@ -261,8 +260,8 @@ Compiled updates may be staged before a safe point. Staging never advances the
 active ProgramVersion; hosts must call the runtime reload check at event, tick,
 or explicit call-boundary safe points to consume the pending update and receive
 the accepted or rejected report. Host mutations write through immediately via
-`PatchTx` and `ScriptStateAdapter`, so reload checks do not commit, inspect, or
-rewrite patch journals; `PatchTx` does not retain one by default.
+`HostAccess` and `ScriptStateAdapter`, so reload checks do not commit, inspect, or
+rewrite patch journals; `HostAccess` does not retain one by default.
 
 Function, method, module, trait, schema, effect, access, parameter, return, and
 source-span metadata participate in ABI validation. Engine registries are the
@@ -322,9 +321,9 @@ compiler/runtime decision says so.
 
 Debugger support is a post-MVP runtime and Debug Adapter Protocol capability,
 not a script-language feature. Runtime debug hooks may expose source
-breakpoints, stepping, stack frames, watches, safe HostRef display, PatchTx
+breakpoints, stepping, stack frames, watches, safe HostRef display, HostAccess
 preview, and hot-reload breakpoint rebinding, but they must respect reflection,
-host access, PatchTx, and TypeRegistry boundaries.
+host access, HostAccess, and TypeRegistry boundaries.
 
 Bytecode code objects carry read-only frame maps for debugger and diagnostic
 inspection. These maps may name parameters, locals, pattern bindings, and
@@ -341,7 +340,7 @@ which values the collector preserves.
 Cranelift JIT is a mandatory post-MVP backend after interpreter optimization,
 inline caches, debugger contracts, and conformance are stable. JIT must remain
 disableable, must be semantically equivalent to VM execution, and must preserve
-ExecutionBudget, GC roots, PatchTx, reflection policy, hot reload invalidation,
+ExecutionBudget, GC roots, HostAccess, reflection policy, hot reload invalidation,
 and debugger-visible frame/source metadata.
 
 ## Validation Rules

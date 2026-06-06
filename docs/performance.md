@@ -6,7 +6,7 @@ benchmark notes were archived to
 
 ## Rules
 
-- Correctness, budgets, GC roots, PatchTx routing, reflection policy, hot
+- Correctness, budgets, GC roots, HostAccess routing, reflection policy, hot
   reload ownership, and source-spanned diagnostics take priority over speed.
 - Measure loaded repeated execution separately from parsing, HIR, compilation,
   bytecode loading, hot reload apply, and cold start.
@@ -36,7 +36,7 @@ array, map, set, string, Option, and Result stdlib methods
 callbacks and higher-order collection methods
 record and enum construction and field access
 managed heap allocation and materialization
-host field reads, writes, RMW patches, and method calls
+host field reads, writes, RMW mutations, and method calls
 reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
@@ -76,7 +76,7 @@ Representative default `baseline` means:
 | stdlib_collections | inline | 1042910 | 1217416 |
 | callback_collections | inline | 78264411 | 81619084 |
 | managed_heap_option_result_helpers | managed_heap | 233396131 | 235194542 |
-| host_patch_tx | host_patch_tx | 350410 | 396791 |
+| host_access | host_access | 350410 | 396791 |
 | managed_heap_host_read_conversion | host_managed_heap_read_conversion | 13977702 | 14445541 |
 | gameplay_monster_kill | gameplay_host | 943922 | 981417 |
 | gc_pacing | gc_pacing | 29055851 | 29898250 |

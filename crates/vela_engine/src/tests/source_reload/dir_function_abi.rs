@@ -13,7 +13,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -119,7 +119,7 @@ fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -383,7 +383,7 @@ pub fn grant() {
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -480,7 +480,7 @@ pub fn grant(player: Player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
 
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "game::main::main",
@@ -507,7 +507,7 @@ pub fn grant(player: Player) {
         .expect("runtime should be hot-reload enabled")
         .expect("dir method stable-ID rename should be staged");
 
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "game::main::main",
@@ -526,7 +526,7 @@ pub fn grant(player: Player) {
 
     assert!(report.accepted);
     assert!(report.errors.is_empty());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "game::main::main",

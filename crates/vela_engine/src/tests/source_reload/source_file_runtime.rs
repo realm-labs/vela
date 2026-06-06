@@ -11,7 +11,7 @@ fn runtime_compiles_hot_reload_update_from_active_version() {
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let first_update = runtime
         .compile_hot_reload_update(
@@ -78,7 +78,7 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
     assert!(report.accepted);
 
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(5))
@@ -100,7 +100,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
         .expect("initial hot reload file compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -148,7 +148,7 @@ fn runtime_stages_source_file_private_helper_addition_until_safe_point() {
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -188,7 +188,7 @@ fn runtime_stages_source_file_public_function_addition_until_safe_point() {
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "pub fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -249,7 +249,7 @@ fn main() {
 "#,
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,

@@ -1,12 +1,12 @@
 use super::*;
 
 #[test]
-fn path_proxy_routes_reads_and_writes_through_patch_tx() {
+fn path_proxy_routes_reads_and_writes_through_host_access() {
     let path = level_path();
     let proxy = PathProxy::new(path.clone());
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(path.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         proxy.read(&mut adapter, &tx, None).expect("read host path"),
@@ -33,7 +33,7 @@ fn path_proxy_records_rmw_remove_and_calls() {
     adapter.insert_value(level.clone(), HostValue::Int(9));
     adapter.insert_value(rewards.clone(), HostValue::Int(0));
     adapter.insert_method_return(method, HostValue::String("ok".into()));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     PathProxy::new(level.clone())
         .add(&mut adapter, &mut tx, HostValue::Int(2), None)

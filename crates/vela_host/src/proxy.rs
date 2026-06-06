@@ -1,7 +1,8 @@
 use vela_common::{FieldId, HostMethodId, Span};
 
 use crate::{
-    adapter::ScriptStateAdapter, error::HostResult, path::HostPath, tx::PatchTx, value::HostValue,
+    access::HostAccess, adapter::ScriptStateAdapter, error::HostResult, path::HostPath,
+    value::HostValue,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -46,99 +47,99 @@ impl PathProxy {
     pub fn read(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &PatchTx,
+        access: &HostAccess,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        tx.read_path_at(adapter, &self.path, source_span)
+        access.read_path_at(adapter, &self.path, source_span)
     }
 
     pub fn set(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.set_path(adapter, self.path.clone(), value, source_span)
+        access.set_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn add(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.add_path(adapter, self.path.clone(), value, source_span)
+        access.add_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn sub(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.sub_path(adapter, self.path.clone(), value, source_span)
+        access.sub_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn mul(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.mul_path(adapter, self.path.clone(), value, source_span)
+        access.mul_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn div(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.div_path(adapter, self.path.clone(), value, source_span)
+        access.div_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn rem(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.rem_path(adapter, self.path.clone(), value, source_span)
+        access.rem_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn push(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.push_path(adapter, self.path.clone(), value, source_span)
+        access.push_path(adapter, self.path.clone(), value, source_span)
     }
 
     pub fn remove(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        tx.remove_path(adapter, self.path.clone(), source_span)
+        access.remove_path(adapter, self.path.clone(), source_span)
     }
 
     pub fn call_method(
         &self,
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
-        tx: &mut PatchTx,
+        access: &mut HostAccess,
         method: HostMethodId,
         args: Vec<HostValue>,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        tx.call_method(adapter, self.path.clone(), method, args, source_span)
+        access.call_method(adapter, self.path.clone(), method, args, source_span)
     }
 }

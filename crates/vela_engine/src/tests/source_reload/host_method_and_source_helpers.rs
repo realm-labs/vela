@@ -4,8 +4,8 @@ fn type_with_reload_method(method: MethodDesc) -> TypeDesc {
         .method(method)
 }
 
-fn assert_host_method_patch(tx: &PatchTx, _method: HostMethodId, _amount: i64) {
-    assert_eq!(tx.mutation_count(), 1);
+fn assert_host_method_access(access: &HostAccess, _method: HostMethodId, _amount: i64) {
+    assert_eq!(access.mutation_count(), 1);
 }
 
 fn write_host_method_reward_modules(

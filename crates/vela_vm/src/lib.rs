@@ -15,7 +15,7 @@ pub mod heap;
 pub mod heap_execution;
 mod heap_values;
 mod host_access;
-mod host_patches;
+mod host_mutations;
 mod host_paths;
 mod host_values;
 mod indexing;
@@ -76,7 +76,6 @@ use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register};
 use vela_common::{FunctionId, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::tx::PatchTx;
 #[cfg(test)]
 use vela_reflect as reflect;
 use vela_reflect::registry::TypeRegistry;
@@ -125,7 +124,7 @@ pub struct Vm {
 
 pub struct HostExecution<'host> {
     pub adapter: &'host mut dyn ScriptStateAdapter,
-    pub tx: &'host mut PatchTx,
+    pub access: &'host mut vela_host::access::HostAccess,
 }
 
 impl Vm {

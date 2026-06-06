@@ -1,7 +1,7 @@
 use vela_common::{HostMethodId, Span};
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::path::HostPath;
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
@@ -48,14 +48,14 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         self.host.adapter
     }
 
-    pub fn tx(&mut self) -> &mut PatchTx {
-        self.host.tx
+    pub fn access(&mut self) -> &mut HostAccess {
+        self.host.access
     }
 
     pub fn read_path(&mut self, path: &HostPath, source_span: Option<Span>) -> VmResult<HostValue> {
         Ok(self
             .host
-            .tx
+            .access
             .read_path_at(self.host.adapter, path, source_span)?)
     }
 
@@ -75,7 +75,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
 
     pub fn reserve_host_mutation(&self) -> VmResult<()> {
         if let Some(budget) = self.budget.as_deref() {
-            budget.reserve_host_mutation(self.host.tx.mutation_count())?;
+            budget.reserve_host_mutation(self.host.access.mutation_count())?;
         }
         Ok(())
     }
@@ -88,7 +88,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .set_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
@@ -101,7 +101,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .add_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
@@ -114,7 +114,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .sub_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
@@ -127,7 +127,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .mul_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
@@ -140,7 +140,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .div_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
@@ -153,7 +153,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .rem_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
@@ -166,7 +166,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     ) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .push_path(self.host.adapter, path, value, source_span)?;
         Ok(())
     }
@@ -174,7 +174,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     pub fn remove_path(&mut self, path: HostPath, source_span: Option<Span>) -> VmResult<()> {
         self.reserve_host_mutation()?;
         self.host
-            .tx
+            .access
             .remove_path(self.host.adapter, path, source_span)?;
         Ok(())
     }
@@ -189,7 +189,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         self.reserve_host_mutation()?;
         Ok(self
             .host
-            .tx
+            .access
             .call_method(self.host.adapter, path, method, args, source_span)?)
     }
 

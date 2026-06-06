@@ -48,13 +48,13 @@ fn main() {
     )
     .expect("compile module reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
     vm.register_standard_natives();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -75,12 +75,12 @@ fn main() {
     )
     .expect("compile unknown module reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -114,12 +114,12 @@ fn main() {
     )
     .expect("compile unknown function reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -153,7 +153,7 @@ fn main() {
     )
     .expect("compile policy unknown function reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_module_reflection_registry()),
@@ -161,7 +161,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -217,7 +217,7 @@ fn main() {
         ),
     );
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
@@ -228,7 +228,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     let error = vm
@@ -275,7 +275,7 @@ fn main() {
     )
     .expect("compile policy exports reflection source");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_standard_natives();
     vm.register_reflection_natives_with_policy(
@@ -284,7 +284,7 @@ fn main() {
     );
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(

@@ -1,8 +1,8 @@
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_host::access::HostAccess;
 use vela_host::error::HostErrorKind;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 use vela_hot_reload::abi::{AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi};
 use vela_hot_reload::compile::{compile_initial_with_abi, compile_update_with_abi};

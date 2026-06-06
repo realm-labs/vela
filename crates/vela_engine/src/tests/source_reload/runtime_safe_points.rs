@@ -205,10 +205,10 @@ fn main(player: Player) {
     let version = runtime.apply_hot_update(update).expect("apply update");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -237,7 +237,7 @@ fn runtime_applies_engine_hot_reload_updates() {
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -274,7 +274,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_update(update)
@@ -318,7 +318,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_reload_update(SourceId::new(2), "fn main() { return 2; }")
@@ -357,7 +357,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         .expect("initial hot reload compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_reload_update(SourceId::new(2), "pub fn main() -> float { return 2.0; }")
@@ -406,7 +406,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_update(update)
@@ -458,7 +458,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
         .expect_err("return hint change should be rejected");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_update_result(Err(update))
@@ -518,7 +518,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
         .stage_hot_update_result(Err(update))
         .expect("stage rejected module export update");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -572,7 +572,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
         .stage_hot_update_result(Err(update))
         .expect("stage rejected removed function update");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -630,7 +630,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
         .stage_hot_update_result(Err(update))
         .expect("stage rejected removed method update");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -683,7 +683,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
         .stage_hot_update_result(Err(update))
         .expect("stage rejected removed module update");
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -724,7 +724,7 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_update(update)
@@ -791,7 +791,7 @@ fn main() {
         .expect("compatible update should compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_update(update)
@@ -842,7 +842,7 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
         .expect_err("return hint change should be rejected");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     runtime
         .stage_hot_update_result(Err(update))
@@ -919,7 +919,7 @@ fn main(player: Player) {
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level_path, HostValue::Int(10));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -942,7 +942,7 @@ fn main(player: Player) {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
 
-    let mut next_tx = PatchTx::new();
+    let mut next_tx = HostAccess::new();
     assert_eq!(
         runtime.call_raw(
             "main",
@@ -994,7 +994,7 @@ fn main(player: Player) {
         .stage_hot_update(update)
         .expect("stage pending update");
     adapter.deny_write(level_path.clone());
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = runtime
         .call_raw(

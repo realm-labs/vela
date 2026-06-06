@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
-use vela_host::tx::PatchTx;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
 
@@ -68,7 +68,7 @@ fn main() {
         .expect("compile script");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx,),
@@ -142,7 +142,7 @@ fn main() {
     let program = engine.compile_dir(&root).expect("compile modules");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(

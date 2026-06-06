@@ -18,7 +18,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
                 };
-                host.tx.set_path(
+                host.access.set_path(
                     host.adapter,
                     HostPath::new(*player).field(FieldId::new(1)),
                     HostValue::Int(*level),
@@ -41,10 +41,10 @@ fn main(player) {
     .expect("program should compile");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -116,10 +116,10 @@ fn main(player) {
     assert!(function.access.required_permissions().is_empty());
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,
-        tx: &mut tx,
+        access: &mut tx,
     };
 
     assert_eq!(
@@ -177,7 +177,7 @@ fn main(player) {
     let level = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
     adapter.insert_value(level.clone(), HostValue::Int(3));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -234,7 +234,7 @@ fn main(player) {
     let inventory = HostPath::new(host_ref).field(FieldId::new(3));
     let mut adapter = MockStateAdapter::new();
     adapter.insert_method_return(method, HostValue::String("accepted".to_owned()));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -298,7 +298,7 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = runtime
         .call_raw(
@@ -363,7 +363,7 @@ fn main(player) {
     let mut adapter = MockStateAdapter::new();
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
     adapter.insert_value(numeric.clone(), HostValue::Int(10));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = runtime
         .call_raw(
@@ -425,7 +425,7 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let error = runtime
         .call_raw(
@@ -495,7 +495,7 @@ fn main(player) {
     let scratch = HostPath::new(host_ref).field(FieldId::new(2));
     adapter.insert_value(numeric.clone(), HostValue::Int(10));
     adapter.insert_value(scratch.clone(), HostValue::Int(0));
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -566,7 +566,7 @@ fn main(player, mode) {
     let mut adapter = MockStateAdapter::new();
 
     for mode in 0..=7 {
-        let mut tx = PatchTx::new();
+        let mut tx = HostAccess::new();
         let error = runtime
             .call_raw(
                 "main",

@@ -13,7 +13,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -74,7 +74,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -135,7 +135,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -202,7 +202,7 @@ fn runtime_stages_changed_file_removed_schema_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -288,7 +288,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -355,7 +355,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -416,7 +416,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -483,7 +483,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -550,7 +550,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -617,7 +617,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -682,7 +682,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -749,7 +749,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -816,7 +816,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -883,7 +883,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -949,7 +949,7 @@ fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     std::fs::write(
         &reward_file,

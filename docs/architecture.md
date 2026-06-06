@@ -9,7 +9,7 @@ The core idea is:
 
 ```text
 Scripts describe host-boundary business logic with natural syntax.
-The VM represents mutations to the Rust world as PatchTx operations.
+The VM represents mutations to the Rust world as HostAccess operations.
 The runtime performs reliable function-level hot reload by replacing CodeObject mappings.
 ```
 
@@ -20,9 +20,9 @@ These projects are useful references, but this language should not copy them dir
 | Project | Useful Ideas | Do Not Copy |
 |---|---|---|
 | Luau | High-quality interpreter, bytecode optimization, inline caches, game-logic performance focus | Lua syntax and table/metatable object model |
-| Wren | Small embedded VM and restrained syntax | The Rust host patch model needs custom design |
+| Wren | Small embedded VM and restrained syntax | The Rust host access model needs custom design |
 | Rhai | Rust embedding experience and small-language strategy | Expression power and hot reload are not enough for this goal |
-| Rune | Rust-like dynamic language, VM, hot reload, Rust embedding | The host state PatchTx model is more specialized |
+| Rune | Rust-like dynamic language, VM, hot reload, Rust embedding | The host state HostAccess model is more specialized |
 | Starlark | Determinism, restraint, and tool friendliness | It is not a direct fit for high-performance mutable host-boundary logic |
 | Mun | Hot Reload First runtime ideas | Static typing and LLVM/AOT are different from this project |
 
@@ -54,7 +54,7 @@ CodeObject / ProgramVersion
    ↓
 VM Runtime / GC / Stack / CallFrame
    ↓
-Host Bridge / Reflection / PatchTx
+Host Bridge / Reflection / HostAccess
    ↓
 Rust World / ECS / Actor State / Database Adapter
 ```
@@ -81,7 +81,7 @@ vela/
     vela_bytecode/        # Instruction, CodeObject, compiler
     vela_vm/              # Runtime, VM, Value, GC, call frames
     vela_reflect/         # TypeRegistry, TypeDesc, reflection API
-    vela_host/            # HostRef, HostPath, PatchTx, StateAdapter
+    vela_host/            # HostRef, HostPath, HostAccess, StateAdapter
     vela_macros/          # #[derive(ScriptHost)] and related macros
     vela_std/             # Native standard library implementation
     vela_hot_reload/      # ProgramVersion, ABI diff, code swap
@@ -154,7 +154,7 @@ VM bytecode execution
         ↓
 HostRef / PathProxy
         ↓
-PatchTx validates and counts write-through host mutations
+HostAccess validates and counts write-through host mutations
         ↓
 Rust adapter state is updated immediately
         ↓

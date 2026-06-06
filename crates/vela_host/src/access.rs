@@ -5,7 +5,6 @@ use crate::{
     add_values, div_values,
     error::{HostError, HostErrorKind, HostResult},
     mul_values,
-    patch::{Patch, PatchOp},
     path::{HostPath, HostRef},
     rem_values, sub_values,
     value::HostValue,
@@ -19,11 +18,11 @@ pub struct HostObjectSnapshot {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct PatchTx {
+pub struct HostAccess {
     mutation_count: usize,
 }
 
-impl PatchTx {
+impl HostAccess {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -65,13 +64,11 @@ impl PatchTx {
         value: HostValue,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let patch = Patch {
-            path: path.clone(),
-            op: PatchOp::Set(value.clone()),
-            expected_base: None,
-            source_span,
-        };
-        self.validate_and_count_after(adapter, patch, |adapter| adapter.write_path(&path, value))
+        adapter
+            .write_path(&path, value)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        self.record_mutation();
+        Ok(())
     }
 
     pub fn add_path(
@@ -140,18 +137,8 @@ impl PatchTx {
         path: HostPath,
         source_span: Option<Span>,
     ) -> HostResult<()> {
-        let patch = Patch {
-            path,
-            op: PatchOp::Remove,
-            expected_base: None,
-            source_span,
-        };
-        let source_span = patch.source_span;
         adapter
-            .validate_patch(&patch)
-            .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        adapter
-            .remove_path(&patch.path)
+            .remove_path(&path)
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
         self.record_mutation();
         Ok(())
@@ -165,18 +152,6 @@ impl PatchTx {
         args: Vec<HostValue>,
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        let patch = Patch {
-            path: path.clone(),
-            op: PatchOp::CallHostMethod {
-                method,
-                args: args.clone(),
-            },
-            expected_base: None,
-            source_span,
-        };
-        adapter
-            .validate_patch(&patch)
-            .map_err(|error| error.with_source_span_if_absent(source_span))?;
         let result = adapter
             .call_method(&path, method, &args)
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
@@ -222,29 +197,9 @@ impl PatchTx {
                 .invalid_error(path.clone())
                 .with_source_span(source_span)
         })?;
-        let patch = Patch {
-            path: path.clone(),
-            op: write.patch_op(value),
-            expected_base: Some(current),
-            source_span,
-        };
-        self.validate_and_count_after(adapter, patch, |adapter| adapter.write_path(&path, next))
-    }
-
-    fn validate_and_count_after<Adapter>(
-        &mut self,
-        adapter: &mut Adapter,
-        patch: Patch,
-        write: impl FnOnce(&mut Adapter) -> HostResult<()>,
-    ) -> HostResult<()>
-    where
-        Adapter: ScriptStateAdapter + ?Sized,
-    {
-        let source_span = patch.source_span;
         adapter
-            .validate_patch(&patch)
+            .write_path(&path, next)
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        write(adapter).map_err(|error| error.with_source_span_if_absent(source_span))?;
         self.record_mutation();
         Ok(())
     }
@@ -265,14 +220,14 @@ enum CompoundWrite {
 }
 
 impl CompoundWrite {
-    fn patch_op(self, value: HostValue) -> PatchOp {
+    fn compute(self, current: &HostValue, value: &HostValue) -> Option<HostValue> {
         match self {
-            Self::Add => PatchOp::Add(value),
-            Self::Sub => PatchOp::Sub(value),
-            Self::Mul => PatchOp::Mul(value),
-            Self::Div => PatchOp::Div(value),
-            Self::Rem => PatchOp::Rem(value),
-            Self::Push => PatchOp::Push(value),
+            Self::Add => add_values(current, value),
+            Self::Sub => sub_values(current, value),
+            Self::Mul => mul_values(current, value),
+            Self::Div => div_values(current, value),
+            Self::Rem => rem_values(current, value),
+            Self::Push => None,
         }
     }
 
@@ -284,17 +239,6 @@ impl CompoundWrite {
             Self::Div => HostError::new(HostErrorKind::InvalidDiv { path }),
             Self::Rem => HostError::new(HostErrorKind::InvalidRem { path }),
             Self::Push => HostError::new(HostErrorKind::InvalidPush { path }),
-        }
-    }
-
-    fn compute(self, current: &HostValue, value: &HostValue) -> Option<HostValue> {
-        match self {
-            Self::Add => add_values(current, value),
-            Self::Sub => sub_values(current, value),
-            Self::Mul => mul_values(current, value),
-            Self::Div => div_values(current, value),
-            Self::Rem => rem_values(current, value),
-            Self::Push => None,
         }
     }
 }

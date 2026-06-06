@@ -11,7 +11,7 @@ fn removed_script_function_rejection_kind(
         .expect("initial hot reload dir compile");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -96,7 +96,7 @@ fn removed_native_descriptor_rejection_kind(
     let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -184,7 +184,7 @@ fn native_stable_id_churn_rejection_kind(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -266,7 +266,7 @@ fn dir_native_rejection_kind(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -357,7 +357,7 @@ fn removed_method_descriptor_rejection_kind(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -440,7 +440,7 @@ fn method_stable_id_churn_rejection_kind(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -519,7 +519,7 @@ fn dir_method_rejection_kind(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -602,7 +602,7 @@ fn changed_file_method_rejection_kind(
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(

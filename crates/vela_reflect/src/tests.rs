@@ -16,9 +16,9 @@ use crate::value::{
 use vela_common::{
     FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Span, TypeId, VariantId,
 };
+use vela_host::access::{HostAccess, HostObjectSnapshot};
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
-use vela_host::tx::{HostObjectSnapshot, PatchTx};
 use vela_host::value::HostValue;
 
 fn player_ref() -> HostRef {

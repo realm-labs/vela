@@ -3,11 +3,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
+    access::{HostAccess, HostObjectSnapshot},
     adapter::ScriptStateAdapter,
     error::{HostError, HostErrorKind, HostResult},
-    patch::{Patch, PatchOp},
     path::{HostPath, HostRef},
-    tx::{HostObjectSnapshot, PatchTx},
     value::HostValue,
 };
 
@@ -97,7 +96,7 @@ impl MockStateAdapter {
             object_id: path.root.object_id,
             generation,
         };
-        PatchTx::require_fresh_ref(path.root, &snapshot)
+        HostAccess::require_fresh_ref(path.root, &snapshot)
     }
 
     fn ensure_object(&mut self, host_ref: HostRef) {
@@ -120,22 +119,6 @@ impl MockStateAdapter {
             }))
         } else {
             Ok(())
-        }
-    }
-
-    fn validate_expected_base(&self, patch: &Patch) -> HostResult<()> {
-        let Some(expected) = &patch.expected_base else {
-            return Ok(());
-        };
-        let actual = self.values.get(&patch.path);
-        if actual == Some(expected) {
-            Ok(())
-        } else {
-            Err(HostError::new(HostErrorKind::PatchConflict {
-                path: patch.path.clone(),
-                expected: Box::new(expected.clone()),
-                actual: actual.cloned().map(Box::new),
-            }))
         }
     }
 }
@@ -187,23 +170,5 @@ impl ScriptStateAdapter for MockStateAdapter {
         self.method_calls
             .push((path.clone(), method, args.to_vec()));
         Ok(value)
-    }
-
-    fn validate_patch(&self, patch: &Patch) -> HostResult<()> {
-        let result = self
-            .validate_writable_path(&patch.path)
-            .and_then(|()| match &patch.op {
-                PatchOp::Set(_)
-                | PatchOp::Add(_)
-                | PatchOp::Sub(_)
-                | PatchOp::Mul(_)
-                | PatchOp::Div(_)
-                | PatchOp::Rem(_)
-                | PatchOp::Push(_)
-                | PatchOp::Remove => self.validate_access(&patch.path, "write"),
-                PatchOp::CallHostMethod { .. } => self.validate_access(&patch.path, "call"),
-            })
-            .and_then(|()| self.validate_expected_base(patch));
-        result.map_err(|error| error.with_source_span_if_absent(patch.source_span))
     }
 }

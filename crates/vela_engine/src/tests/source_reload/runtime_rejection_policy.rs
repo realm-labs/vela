@@ -25,7 +25,7 @@ fn main() {
     );
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = PatchTx::new();
+    let mut tx = HostAccess::new();
 
     let report = runtime
         .apply_hot_update_result_report(update)

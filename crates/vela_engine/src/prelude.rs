@@ -33,11 +33,11 @@ pub use vela_hir::module_graph::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleGraph,
     ModulePath, ModuleSource, ResolvedImport,
 };
+pub use vela_host::access::HostAccess;
 pub use vela_host::adapter::ScriptStateAdapter;
 pub use vela_host::object::ScriptHostObject;
 pub use vela_host::path::{HostPath, HostRef};
 pub use vela_host::proxy::PathProxy;
-pub use vela_host::tx::PatchTx;
 pub use vela_host::value::HostValue;
 pub use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 pub use vela_hot_reload::policy::HotReloadPolicy;

@@ -13,7 +13,7 @@ Correct direction:
 ```rust
 HostRef<Account>
 PathProxy<Account.balance>
-PatchTx
+HostAccess
 ```
 
 Script code looks natural:
@@ -60,35 +60,18 @@ pub enum PathSegment {
 }
 ```
 
-### PatchTx
+### HostAccess
 
 ```rust
-pub struct PatchTx {
+pub struct HostAccess {
     pub mutation_count: usize,
 }
-
-pub struct Patch {
-    pub path: HostPath,
-    pub op: PatchOp,
-    pub expected_base: Option<HostValue>,
-    pub source_span: Option<Span>,
-}
-
-pub enum PatchOp {
-    Set(HostValue),
-    Add(HostValue),
-    Sub(HostValue),
-    Mul(HostValue),
-    Div(HostValue),
-    Rem(HostValue),
-    Remove,
-    Push(HostValue),
-    CallHostMethod {
-        method: HostMethodId,
-        args: Vec<HostValue>,
-    },
-}
 ```
+
+`HostAccess` is a call-scoped access context. It is not a transaction, journal,
+or rollback container. It routes reads, writes, removals, compound scalar
+writes, and method calls to the adapter immediately and counts successful
+mutations for budgets and diagnostics.
 
 ### Read And Write Semantics
 
@@ -120,38 +103,27 @@ Write logic:
 
 ```text
 write_path(path, value):
-    validate access, host mutation budget, and mutation metadata
+    validate access and host mutation budget
     write adapter immediately
-    increment PatchTx mutation count
+    increment HostAccess mutation count
 ```
 
-If a later script operation traps, previous host writes are retained. `PatchTx`
-is the controlled mutation context for validation, source spans, and budget
-accounting; it is not a rollback transaction, audit log, or default
-end-of-call apply container.
+If a later script operation traps, previous host writes are retained.
 
 ### Read-Modify-Write
 
-`account.balance += 1` should prefer an explicit operation:
-
-```rust
-PatchOp::Add(HostValue::Int(1))
-```
-
-The VM reads the current adapter value, computes the scalar result, validates
-the mutation descriptor, writes the adapter, and increments the mutation count.
-This keeps range checks, permissions, budgets, and source-spanned diagnostics
-in one host mutation boundary without retaining a growing patch journal.
+`account.balance += 1` reads the current adapter value, computes the scalar
+result, writes the adapter, and increments the mutation count. This keeps
+permissions, budgets, and source-spanned diagnostics in one host access
+boundary without retaining a growing journal.
 
 Map-like host paths keep script string keys in `PathSegment::Key(String)` so
 directly injected Rust objects and generic adapters can resolve the key without
 depending on VM-internal symbol tables. Collection-shaped host mutations must
 be adapter-defined write-through operations. The default host boundary must not
 read a complex host collection, clone it into `HostValue`, modify the clone,
-and write it back. `PatchOp::Push` may be used as the current operation
-descriptor when an adapter supports that operation, but scalar-only
-`HostValue` conversion cannot synthesize collection mutation by copying arrays
-or maps.
+and write it back. Scalar-only `HostValue` conversion cannot synthesize
+collection mutation by copying arrays or maps.
 
 ### Host State Adapter
 
@@ -169,8 +141,6 @@ pub trait ScriptStateAdapter {
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue>;
-
-    fn validate_patch(&self, patch: &Patch) -> HostResult<()>;
 }
 ```
 
@@ -250,12 +220,12 @@ mutate aliases inside the same call; they still never receive real `&T` or
 `&mut T`.
 
 `with_host_ref` creates a read-only handle. `with_host_mut` creates a writable
-handle whose mutations write through immediately through `PatchTx`. Hosts that
+handle whose mutations write through immediately through `HostAccess`. Hosts that
 already store state behind their own adapter should pass existing handles with
 `with_host_handle` and use `runtime.call_with_adapter` with that adapter.
 The high-level direct call result dereferences to the returned `OwnedValue`;
-hosts can inspect `CallOutput::mutation_count()` or `output.tx()` when they
-need mutation-count diagnostics.
+hosts can inspect `CallOutput::mutation_count()` when they need
+mutation-count diagnostics.
 
 ## Rust Host Macros
 
@@ -294,7 +264,11 @@ impl Account {
         account: HostRef<Account>,
         amount: i64,
     ) -> HostResult<()> {
-        ctx.tx.push_add(account.field(FieldId(1)), HostValue::Int(amount))
+        ctx.add_path(
+            HostPath::new(account).field(FieldId(1)),
+            HostValue::Int(amount),
+            None,
+        )
     }
 }
 ```
@@ -402,14 +376,14 @@ pub type NativeFunction =
 pub struct NativeCallContext<'a> {
     pub engine: &'a Engine,
     pub host: &'a mut HostExecution<'a>,
-    pub tx: &'a mut PatchTx,
+    pub access: &'a mut HostAccess,
     pub capabilities: CapabilitySet,
     pub budget: &'a mut ExecutionBudget,
 }
 ```
 
 `NativeCallContext` is the only native entry point that may touch host services
-or `PatchTx`. A native function must not hand real Rust references back to the
+or `HostAccess`. A native function must not hand real Rust references back to the
 script. Returned host objects must be represented as `HostRef`, copied
 host-value data, or script-owned `OwnedValue`.
 
@@ -478,7 +452,7 @@ Rust bool/i64/f64/String          <-> Vela bool/int/float/string
 Option<T> in Rust API             <-> nullable argument or return value
 Vec<T> / HashMap<K, V> copies      <-> script array/map values
 HostRef<T>                         <-> host object reference
-&mut NativeCallContext             -> explicit host access and PatchTx access
+&mut NativeCallContext             -> explicit host service and HostAccess access
 HostResult<T>                      -> Vela call success or diagnostic error
 ```
 
@@ -496,9 +470,9 @@ runtime-owned service pointers
 If a native function needs to mutate host state, it should either:
 
 ```text
-record PatchTx operations through NativeCallContext
+record HostAccess operations through NativeCallContext
 call ScriptStateAdapter methods
-return a value that script code later writes through normal PatchTx paths
+return a value that script code later writes through normal HostAccess paths
 ```
 
 ### Method Registration
@@ -521,10 +495,12 @@ impl Ledger {
         code: String,
         amount: i64,
     ) -> HostResult<()> {
-        ctx.tx.push_method_call(ledger, HostMethodId(1), vec![
-            HostValue::String(code.into()),
-            HostValue::Int(amount),
-        ])?;
+        ctx.call_method(
+            HostPath::new(ledger),
+            HostMethodId(1),
+            vec![HostValue::String(code), HostValue::Int(amount)],
+            None,
+        )?;
         Ok(())
     }
 }
