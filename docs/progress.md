@@ -20,7 +20,8 @@ performance architecture prep before M20 inline caches:
 preserve all runtime, host, reflection, GC, and hot-reload semantics
 move hot dispatch operands from names to IDs, slots, or resolved targets
 split growing VM hot dispatch families behind focused boundaries
-prepare cache/JIT-facing fast paths while keeping generic fallback behavior
+prepare cache/JIT-facing invariants while keeping generic fallback behavior
+finish verified-bytecode, profile ownership, HostPath/PatchTx key, and callback/closure materialization prep before M20
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
@@ -46,7 +47,7 @@ Cranelift JIT.
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
-| M19.5 | Active | Performance architecture prep is the active focus: resolve hot call sites to IDs/slots/targets, split hot dispatch families out of the main VM loop, prepare method/native/stdlib dispatch for cache-ready lookup, prepare HostPath/PatchTx fast-path keys, reduce callback/closure materialization, and define verified-bytecode/profile invariants before M20 cache state. |
+| M19.5 | Active | Required M20 gate: resolve hot call sites to IDs/slots/targets, split hot dispatch families out of the main VM loop, prepare method/native/stdlib dispatch for cache-ready lookup, prepare HostPath/PatchTx fast-path keys, reduce callback/closure materialization, and define verified-bytecode/profile/JIT-facing interpreter invariants before M20 cache state. |
 | M20 | Not started | Inline caches and specialization start after M19.5, beginning with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -112,6 +113,10 @@ Cranelift JIT.
   replacement point. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion and future path-key reuse has a single insertion point.
+  Bytecode objects now expose verifier entrypoints that validate register,
+  constant, jump, frame-slot, call-argument, host-path dynamic segment, and
+  nested closure invariants before future unchecked register, operand, or cache
+  fast paths are introduced.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a
@@ -125,9 +130,10 @@ Cranelift JIT.
   operands where practical; keeping hot dispatch families behind focused VM
   boundaries; preparing native/stdlib calls for borrowed Value views;
   preparing HostPath/PatchTx reusable path keys or direct adapter thunks;
-  reducing callback/closure materialization; and defining verified-bytecode
-  plus version-owned profile invariants for later unchecked register access
-  and inline-cache state.
+  reducing callback/closure materialization; defining version-owned profile
+  invariants for hot bytecode offsets; and tightening JIT-facing interpreter
+  contracts for frame maps, GC roots, budgets, PatchTx slow paths, and hot
+  reload invalidation before any cache state is added.
 - M20: after M19.5, implement guarded inline caches and specialization for
   script record fields, host field/path reads and writes, method dispatch,
   stdlib value methods, and hot bytecode offsets. Cache misses, guard failures,
@@ -156,13 +162,12 @@ ownership, schema invalidation, and source-spanned diagnostics.
 
 ## Next Up
 
-- Continue M19.5 before M20: keep moving native, stdlib, script function,
-  method, callback, and host-boundary dispatch from ad hoc name/path handling
-  into ID/slot/target-ready focused modules.
-- Then prepare host field/path and PatchTx fast paths with reusable path keys
-  or direct adapter thunks that preserve overlay, budget, and conflict
-  semantics, and define verified-bytecode/profile invariants for future cache
-  state.
+- Continue M19.5 before M20: first finish ID/slot/target-ready focused modules
+  for native, stdlib, script function, method, callback, and host-boundary
+  dispatch; then prepare HostPath/PatchTx reusable keys or direct adapter
+  thunks; then reduce callback/closure materialization; then define
+  version-owned profile metadata and JIT-facing frame/GC/budget/PatchTx
+  invariants for future cache state.
 - Keep benchmark evidence ahead of M20 specialization work. M19.5 reports
   interpreter-only before/after rows; M20 reports interpreter-only versus
   cache-enabled rows.

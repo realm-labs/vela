@@ -682,7 +682,10 @@ enough for inline caches
 ### M19.5: Performance Architecture Prep
 
 Goal: remove avoidable dynamic lookup and boundary-conversion costs before
-building inline caches or JIT-facing specialization.
+building inline caches or JIT-facing specialization. This milestone is the
+required gate before M20; new performance work should land here first when it
+changes operand shape, dispatch boundaries, host-boundary keys, profiling
+ownership, or verifier/runtime invariants.
 
 Scope:
 
@@ -696,8 +699,9 @@ prepare script function calls for resolved targets without changing hot-reload r
 prepare HostPath and PatchTx hot paths for reusable path keys and direct adapter thunks
 prepare callback and closure calls to reduce avoidable argument materialization
 keep record/enum heap values compatible with shape + slot fast paths
-define verified-bytecode invariants needed for unchecked register access later
+define verified-bytecode invariants needed for unchecked register and operand access later
 define version-owned profile metadata for hot bytecode offsets before cache state exists
+define frame maps, GC-root visibility, budget checkpoints, and host-boundary slow-path contracts required by later JIT/deopt work
 document which host, reflection, GC, budget, and hot-reload checks remain mandatory slow-path boundaries
 ```
 
@@ -708,6 +712,8 @@ script, native, stdlib, method, and host-boundary hot paths have ID/slot/cache-r
 name strings remain available for diagnostics, reflection, and source reports, not hot dispatch
 main execution loop delegates host access, script calls, stdlib/method dispatch, and callback-heavy paths through focused boundaries
 verified-bytecode invariants are documented and tested before unchecked register or cache fast paths are introduced
+profile data is owned by a versioned runtime artifact and can be invalidated by hot reload/schema changes
+future JIT requirements are represented as interpreter contracts, not as JIT code
 no preparatory change bypasses PatchTx, ExecutionBudget, GC roots, reflection policy, or hot-reload ABI checks
 benchmarks identify which remaining costs belong to M20 cache work versus later JIT work
 ```
@@ -715,7 +721,7 @@ benchmarks identify which remaining costs belong to M20 cache work versus later 
 Checkpoint:
 
 ```text
-cargo test covers resolved-call, focused-dispatch, slot/path-key, and verified-bytecode fallback equivalence
+cargo test covers resolved-call, focused-dispatch, slot/path-key, profile ownership, and verified-bytecode fallback equivalence
 cargo bench records interpreter-only before/after rows for each accepted prep family and keeps IC-disabled baselines separate
 docs/progress.md marks M19.5 complete before M20 inline-cache work becomes the active focus
 ```

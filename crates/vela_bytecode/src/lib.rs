@@ -2,6 +2,7 @@
 
 pub mod compiler;
 pub mod script_methods;
+pub mod verification;
 
 use std::collections::BTreeMap;
 
@@ -26,6 +27,10 @@ impl Program {
 
     pub fn insert_function(&mut self, function: CodeObject) {
         self.functions.insert(function.name.clone(), function);
+    }
+
+    pub fn verify(&self) -> Result<(), verification::VerificationError> {
+        verification::verify_program(self)
     }
 
     pub fn insert_script_method(
@@ -142,6 +147,10 @@ impl CodeObject {
 
     pub fn push_instruction(&mut self, instruction: Instruction) {
         self.instructions.push(instruction);
+    }
+
+    pub fn verify(&self) -> Result<(), verification::VerificationError> {
+        verification::verify_code_object(self)
     }
 }
 

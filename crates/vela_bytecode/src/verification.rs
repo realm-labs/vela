@@ -1,0 +1,706 @@
+use std::fmt;
+
+use crate::{
+    CallArgument, CodeObject, ConstantId, HostPathSegment, Instruction, InstructionKind,
+    InstructionOffset, Program, Register,
+};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerificationError {
+    pub function: String,
+    pub instruction: Option<usize>,
+    pub kind: VerificationErrorKind,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum VerificationErrorKind {
+    RegisterOutOfBounds {
+        register: Register,
+        register_count: u16,
+    },
+    ConstantOutOfBounds {
+        constant: ConstantId,
+        constant_count: usize,
+    },
+    InstructionOutOfBounds {
+        target: InstructionOffset,
+        instruction_count: usize,
+    },
+    ArityFrameMismatch {
+        capture_count: u16,
+        parameter_count: usize,
+        register_count: u16,
+    },
+    ParameterDefaultsMismatch {
+        parameter_count: usize,
+        default_count: usize,
+    },
+}
+
+impl fmt::Display for VerificationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.instruction {
+            Some(instruction) => write!(
+                f,
+                "bytecode verification failed in `{}` at instruction {}: {:?}",
+                self.function, instruction, self.kind
+            ),
+            None => write!(
+                f,
+                "bytecode verification failed in `{}`: {:?}",
+                self.function, self.kind
+            ),
+        }
+    }
+}
+
+impl std::error::Error for VerificationError {}
+
+pub fn verify_program(program: &Program) -> Result<(), VerificationError> {
+    for function in program.functions.values() {
+        verify_code_object(function)?;
+    }
+    Ok(())
+}
+
+pub fn verify_code_object(code: &CodeObject) -> Result<(), VerificationError> {
+    verify_code_object_with_name(code, &code.name)
+}
+
+fn verify_code_object_with_name(
+    code: &CodeObject,
+    function: &str,
+) -> Result<(), VerificationError> {
+    let parameter_count = code.params.len();
+    let frame_count = usize::from(code.capture_count) + parameter_count;
+    if frame_count > usize::from(code.register_count) {
+        return Err(error(
+            function,
+            None,
+            VerificationErrorKind::ArityFrameMismatch {
+                capture_count: code.capture_count,
+                parameter_count,
+                register_count: code.register_count,
+            },
+        ));
+    }
+    if code.param_defaults.len() != parameter_count {
+        return Err(error(
+            function,
+            None,
+            VerificationErrorKind::ParameterDefaultsMismatch {
+                parameter_count,
+                default_count: code.param_defaults.len(),
+            },
+        ));
+    }
+
+    for slot in &code.frame.slots {
+        verify_register(function, None, code, slot.register)?;
+    }
+    for (index, instruction) in code.instructions.iter().enumerate() {
+        verify_instruction(function, code, index, instruction)?;
+    }
+    Ok(())
+}
+
+fn verify_instruction(
+    function: &str,
+    code: &CodeObject,
+    index: usize,
+    instruction: &Instruction,
+) -> Result<(), VerificationError> {
+    let instruction_index = Some(index);
+    match &instruction.kind {
+        InstructionKind::LoadConst { dst, constant } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_constant(function, instruction_index, code, *constant)
+        }
+        InstructionKind::Move { dst, src }
+        | InstructionKind::Not { dst, src }
+        | InstructionKind::Truthy { dst, src }
+        | InstructionKind::Negate { dst, src }
+        | InstructionKind::TryPropagate { dst, src } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *src)
+        }
+        InstructionKind::Add { dst, lhs, rhs }
+        | InstructionKind::Sub { dst, lhs, rhs }
+        | InstructionKind::Mul { dst, lhs, rhs }
+        | InstructionKind::Div { dst, lhs, rhs }
+        | InstructionKind::Rem { dst, lhs, rhs }
+        | InstructionKind::Equal { dst, lhs, rhs }
+        | InstructionKind::NotEqual { dst, lhs, rhs }
+        | InstructionKind::Less { dst, lhs, rhs }
+        | InstructionKind::LessEqual { dst, lhs, rhs }
+        | InstructionKind::Greater { dst, lhs, rhs }
+        | InstructionKind::GreaterEqual { dst, lhs, rhs } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *lhs)?;
+            verify_register(function, instruction_index, code, *rhs)
+        }
+        InstructionKind::JumpIfFalse { condition, target } => {
+            verify_register(function, instruction_index, code, *condition)?;
+            verify_jump(function, instruction_index, code, *target)
+        }
+        InstructionKind::JumpIfNotMissing { value, target } => {
+            verify_register(function, instruction_index, code, *value)?;
+            verify_jump(function, instruction_index, code, *target)
+        }
+        InstructionKind::Jump { target } => verify_jump(function, instruction_index, code, *target),
+        InstructionKind::CallNative { dst, args, .. } => {
+            if let Some(dst) = dst {
+                verify_register(function, instruction_index, code, *dst)?;
+            }
+            verify_registers(function, instruction_index, code, args)
+        }
+        InstructionKind::CallFunction { dst, args, .. } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_call_arguments(function, instruction_index, code, args)
+        }
+        InstructionKind::MakeClosure {
+            dst,
+            code: closure,
+            captures,
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_registers(function, instruction_index, code, captures)?;
+            verify_code_object_with_name(closure, &closure.name)
+        }
+        InstructionKind::CallClosure { dst, callee, args } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *callee)?;
+            verify_registers(function, instruction_index, code, args)
+        }
+        InstructionKind::CallMethod {
+            dst,
+            receiver,
+            args,
+            ..
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *receiver)?;
+            verify_call_arguments(function, instruction_index, code, args)
+        }
+        InstructionKind::CallMethodId {
+            dst,
+            receiver,
+            args,
+            ..
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *receiver)?;
+            verify_call_arguments(function, instruction_index, code, args)
+        }
+        InstructionKind::MakeArray { dst, elements } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_registers(function, instruction_index, code, elements)
+        }
+        InstructionKind::MakeMap { dst, entries } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_registers_from_pairs(function, instruction_index, code, entries)
+        }
+        InstructionKind::MakeRange {
+            dst, start, end, ..
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *start)?;
+            verify_register(function, instruction_index, code, *end)
+        }
+        InstructionKind::MakeRecord { dst, fields, .. }
+        | InstructionKind::MakeEnum { dst, fields, .. } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_registers_from_pairs(function, instruction_index, code, fields)
+        }
+        InstructionKind::GetRecordField { dst, record, .. }
+        | InstructionKind::GetRecordSlot { dst, record, .. }
+        | InstructionKind::GetEnumField {
+            dst, value: record, ..
+        }
+        | InstructionKind::GetEnumSlot {
+            dst, value: record, ..
+        }
+        | InstructionKind::GetIndex {
+            dst, base: record, ..
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *record)?;
+            if let InstructionKind::GetIndex { index, .. } = &instruction.kind {
+                verify_register(function, instruction_index, code, *index)?;
+            }
+            Ok(())
+        }
+        InstructionKind::SetRecordField { record, src, .. }
+        | InstructionKind::SetRecordSlot { record, src, .. } => {
+            verify_register(function, instruction_index, code, *record)?;
+            verify_register(function, instruction_index, code, *src)
+        }
+        InstructionKind::SetIndex { base, index, src } => {
+            verify_register(function, instruction_index, code, *base)?;
+            verify_register(function, instruction_index, code, *index)?;
+            verify_register(function, instruction_index, code, *src)
+        }
+        InstructionKind::IterInit { dst, iterable } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *iterable)
+        }
+        InstructionKind::IterNext {
+            iterator,
+            dst,
+            jump_if_done,
+        } => {
+            verify_register(function, instruction_index, code, *iterator)?;
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_jump(function, instruction_index, code, *jump_if_done)
+        }
+        InstructionKind::RangeNext {
+            cursor,
+            end,
+            done,
+            dst,
+            jump_if_done,
+            ..
+        } => {
+            verify_register(function, instruction_index, code, *cursor)?;
+            verify_register(function, instruction_index, code, *end)?;
+            verify_register(function, instruction_index, code, *done)?;
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_jump(function, instruction_index, code, *jump_if_done)
+        }
+        InstructionKind::EnumTagEqual { dst, value, .. } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *value)
+        }
+        InstructionKind::GetHostField { dst, root, .. } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *root)
+        }
+        InstructionKind::GetHostPath {
+            dst,
+            root,
+            segments,
+        } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_register(function, instruction_index, code, *root)?;
+            verify_host_path_segments(function, instruction_index, code, segments)
+        }
+        InstructionKind::SetHostField { root, src, .. }
+        | InstructionKind::AddHostField { root, rhs: src, .. }
+        | InstructionKind::SubHostField { root, rhs: src, .. }
+        | InstructionKind::MulHostField { root, rhs: src, .. }
+        | InstructionKind::DivHostField { root, rhs: src, .. }
+        | InstructionKind::RemHostField { root, rhs: src, .. } => {
+            verify_register(function, instruction_index, code, *root)?;
+            verify_register(function, instruction_index, code, *src)
+        }
+        InstructionKind::SetHostPath {
+            root,
+            segments,
+            src,
+        }
+        | InstructionKind::AddHostPath {
+            root,
+            segments,
+            rhs: src,
+        }
+        | InstructionKind::SubHostPath {
+            root,
+            segments,
+            rhs: src,
+        }
+        | InstructionKind::MulHostPath {
+            root,
+            segments,
+            rhs: src,
+        }
+        | InstructionKind::DivHostPath {
+            root,
+            segments,
+            rhs: src,
+        }
+        | InstructionKind::RemHostPath {
+            root,
+            segments,
+            rhs: src,
+        } => {
+            verify_register(function, instruction_index, code, *root)?;
+            verify_host_path_segments(function, instruction_index, code, segments)?;
+            verify_register(function, instruction_index, code, *src)
+        }
+        InstructionKind::PushHostPath {
+            root,
+            segments,
+            value,
+        } => {
+            verify_register(function, instruction_index, code, *root)?;
+            verify_host_path_segments(function, instruction_index, code, segments)?;
+            verify_register(function, instruction_index, code, *value)
+        }
+        InstructionKind::RemoveHostPath { root, segments } => {
+            verify_register(function, instruction_index, code, *root)?;
+            verify_host_path_segments(function, instruction_index, code, segments)
+        }
+        InstructionKind::CallHostMethod {
+            dst,
+            root,
+            segments,
+            args,
+            ..
+        } => {
+            if let Some(dst) = dst {
+                verify_register(function, instruction_index, code, *dst)?;
+            }
+            verify_register(function, instruction_index, code, *root)?;
+            verify_host_path_segments(function, instruction_index, code, segments)?;
+            verify_registers(function, instruction_index, code, args)
+        }
+        InstructionKind::Return { src } => verify_register(function, instruction_index, code, *src),
+    }
+}
+
+fn verify_registers(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    registers: &[Register],
+) -> Result<(), VerificationError> {
+    for register in registers {
+        verify_register(function, instruction, code, *register)?;
+    }
+    Ok(())
+}
+
+fn verify_registers_from_pairs(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    fields: &[(String, Register)],
+) -> Result<(), VerificationError> {
+    for (_, register) in fields {
+        verify_register(function, instruction, code, *register)?;
+    }
+    Ok(())
+}
+
+fn verify_call_arguments(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    args: &[CallArgument],
+) -> Result<(), VerificationError> {
+    for arg in args {
+        if let CallArgument::Register(register) = arg {
+            verify_register(function, instruction, code, *register)?;
+        }
+    }
+    Ok(())
+}
+
+fn verify_host_path_segments(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    segments: &[HostPathSegment],
+) -> Result<(), VerificationError> {
+    for segment in segments {
+        if let HostPathSegment::Value(register) = segment {
+            verify_register(function, instruction, code, *register)?;
+        }
+    }
+    Ok(())
+}
+
+fn verify_register(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    register: Register,
+) -> Result<(), VerificationError> {
+    if register.0 < code.register_count {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::RegisterOutOfBounds {
+                register,
+                register_count: code.register_count,
+            },
+        ))
+    }
+}
+
+fn verify_constant(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    constant: ConstantId,
+) -> Result<(), VerificationError> {
+    if constant.0 < code.constants.len() {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::ConstantOutOfBounds {
+                constant,
+                constant_count: code.constants.len(),
+            },
+        ))
+    }
+}
+
+fn verify_jump(
+    function: &str,
+    instruction: Option<usize>,
+    code: &CodeObject,
+    target: InstructionOffset,
+) -> Result<(), VerificationError> {
+    if target.0 <= code.instructions.len() {
+        Ok(())
+    } else {
+        Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::InstructionOutOfBounds {
+                target,
+                instruction_count: code.instructions.len(),
+            },
+        ))
+    }
+}
+
+fn error(
+    function: &str,
+    instruction: Option<usize>,
+    kind: VerificationErrorKind,
+) -> VerificationError {
+    VerificationError {
+        function: function.to_owned(),
+        instruction,
+        kind,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_common::FieldId;
+
+    use crate::{Constant, FrameSlotInfo, FrameSlotKind, Instruction};
+
+    use super::*;
+
+    #[test]
+    fn accepts_valid_code_object() {
+        let mut code = CodeObject::new("main", 2).with_params(vec!["value".to_owned()]);
+        let constant = code.push_constant(Constant::Int(42));
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(1),
+            constant,
+        }));
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(1),
+        }));
+
+        assert_eq!(verify_code_object(&code), Ok(()));
+    }
+
+    #[test]
+    fn program_verify_checks_all_functions() {
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(2),
+        }));
+        let mut program = Program::new();
+        program.insert_function(code);
+
+        assert_eq!(
+            program.verify(),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::RegisterOutOfBounds {
+                    register: Register(2),
+                    register_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_parameter_frame_mismatch() {
+        let code = CodeObject::new("main", 1)
+            .with_capture_count(1)
+            .with_params(vec!["value".to_owned()]);
+
+        assert_eq!(
+            code.verify(),
+            Err(error(
+                "main",
+                None,
+                VerificationErrorKind::ArityFrameMismatch {
+                    capture_count: 1,
+                    parameter_count: 1,
+                    register_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_parameter_default_mismatch() {
+        let code = CodeObject::new("main", 1)
+            .with_params(vec!["value".to_owned()])
+            .with_param_defaults(Vec::new());
+
+        assert_eq!(
+            code.verify(),
+            Err(error(
+                "main",
+                None,
+                VerificationErrorKind::ParameterDefaultsMismatch {
+                    parameter_count: 1,
+                    default_count: 0
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_out_of_bounds_registers() {
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::Move {
+            dst: Register(0),
+            src: Register(1),
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::RegisterOutOfBounds {
+                    register: Register(1),
+                    register_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_out_of_bounds_constants() {
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: ConstantId(4),
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::ConstantOutOfBounds {
+                    constant: ConstantId(4),
+                    constant_count: 0
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_out_of_bounds_jumps() {
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::Jump {
+            target: InstructionOffset(2),
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::InstructionOutOfBounds {
+                    target: InstructionOffset(2),
+                    instruction_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_host_path_dynamic_registers_outside_frame() {
+        let mut code = CodeObject::new("main", 2);
+        code.push_instruction(Instruction::new(InstructionKind::GetHostPath {
+            dst: Register(0),
+            root: Register(1),
+            segments: vec![
+                HostPathSegment::Field(FieldId::new(2)),
+                HostPathSegment::Value(Register(2)),
+            ],
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                Some(0),
+                VerificationErrorKind::RegisterOutOfBounds {
+                    register: Register(2),
+                    register_count: 2
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_nested_closure_invalid_registers() {
+        let mut closure = CodeObject::new("main::<lambda>", 1);
+        closure.push_instruction(Instruction::new(InstructionKind::Return {
+            src: Register(1),
+        }));
+
+        let mut code = CodeObject::new("main", 1);
+        code.push_instruction(Instruction::new(InstructionKind::MakeClosure {
+            dst: Register(0),
+            code: Box::new(closure),
+            captures: Vec::new(),
+        }));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main::<lambda>",
+                Some(0),
+                VerificationErrorKind::RegisterOutOfBounds {
+                    register: Register(1),
+                    register_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_frame_metadata_registers_outside_frame() {
+        let mut code = CodeObject::new("main", 1);
+        code.frame.push_slot(FrameSlotInfo::new(
+            "bad",
+            Register(3),
+            FrameSlotKind::Local,
+            None,
+            None,
+        ));
+
+        assert_eq!(
+            verify_code_object(&code),
+            Err(error(
+                "main",
+                None,
+                VerificationErrorKind::RegisterOutOfBounds {
+                    register: Register(3),
+                    register_count: 1
+                }
+            ))
+        );
+    }
+}

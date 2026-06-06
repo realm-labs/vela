@@ -247,12 +247,13 @@ HostPath and PatchTx reusable path keys or direct adapter thunk boundaries
 borrowed Value views at native and stdlib boundaries where semantics allow
 verified-bytecode invariants for future unchecked register and operand access
 version-owned profile metadata for hot bytecode offsets and later cache invalidation
+frame maps, GC-root visibility, budget checkpoints, and host-boundary slow-path contracts for later JIT/deopt work
 ```
 
-This phase must happen before inline-cache implementation. Its purpose is to
-remove architectural friction, not to add cache state. It keeps diagnostics,
-reflection names, and fallback paths intact while moving hot execution operands
-toward IDs, slots, or resolved targets.
+This phase must happen before inline-cache implementation and before any JIT
+work. Its purpose is to remove architectural friction, not to add cache state.
+It keeps diagnostics, reflection names, and fallback paths intact while moving
+hot execution operands toward IDs, slots, or resolved targets.
 
 ### Phase 3: Inline Cache And Specialization
 
