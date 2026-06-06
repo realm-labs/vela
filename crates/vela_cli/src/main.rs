@@ -1,8 +1,9 @@
 use std::env;
+use std::path::Path;
 
-mod demo;
 mod diagnostics;
-mod hot_reload_demo;
+
+use vela_engine::prelude::*;
 
 fn main() {
     if let Err(error) = run() {
@@ -14,23 +15,31 @@ fn main() {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     match args.as_slice() {
-        [flag, initial, updated] if flag == "--hot-reload" => {
-            hot_reload_demo::run(initial, updated)
-        }
-        [flag, path] if flag == "--allow-random" => demo::run_script_with_random(path),
-        [flag, path] if flag == "--stale-player" => demo::run_script_with_stale_player(path),
-        [flag, path] if flag == "--deny-player-level-read" => {
-            demo::run_script_with_denied_player_level_read(path)
-        }
-        [flag, path] if flag == "--deny-player-level-write" => {
-            demo::run_script_with_denied_player_level_write(path)
-        }
-        [flag, path] if flag == "--deny-ctx-emit-call" => {
-            demo::run_script_with_denied_context_emit_call(path)
-        }
-        [path] => demo::run_script(path),
-        _ => {
-            Err("usage: vela_cli <script-path> | vela_cli --allow-random <script-path> | vela_cli --stale-player <script-path> | vela_cli --deny-player-level-read <script-path> | vela_cli --deny-player-level-write <script-path> | vela_cli --deny-ctx-emit-call <script-path> | vela_cli --hot-reload <initial> <updated>".into())
-        }
+        [path] => run_script(Path::new(path)),
+        _ => Err("usage: vela_cli <script-path>".into()),
     }
+}
+
+fn run_script(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .capability(Capability::Time)
+        .capability(Capability::Random)
+        .with_time_clock(1_700_000_000, 42)
+        .with_controlled_random(7)
+        .build()
+        .map_err(|error| format!("{error:?}"))?;
+    let program = engine
+        .compile_file(path)
+        .map_err(|error| diagnostics::render_engine_source_error(path, &error))?;
+    let mut runtime = Runtime::new(engine, program);
+    let output = runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::new(10_000, 1024 * 1024, 64),
+        )
+        .map_err(|error| diagnostics::render_vm_error(path, &error))?;
+    println!("{:?}", output.value());
+    Ok(())
 }

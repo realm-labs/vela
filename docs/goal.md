@@ -573,13 +573,13 @@ tests/fixtures source programs
 parser, compiler, VM, host, reflect, hot reload integration tests
 negative tests for permissions, ABI mismatch, stale host refs, bad schemas
 parser fuzz target once grammar stabilizes
-demo CLI commands documented in docs/validation.md
+standalone example commands documented in docs/validation.md
 ```
 
 Acceptance:
 
 ```text
-all game_server_demo scripts run through Engine and Runtime APIs
+all game-server examples run through Engine and Runtime APIs
 example domain mutations flow through HostAccess rather than direct Rust mutation
 reflect debug script can inspect allowed fields but cannot mutate schema
 hot reload demo proves old frames and new calls observe correct code versions

@@ -86,9 +86,8 @@ vela/
     vela_std/             # Native standard library implementation
     vela_hot_reload/      # ProgramVersion, ABI diff, code swap
     vela_lsp/             # Future language server, not part of MVP
-    vela_cli/             # repl, compile, run, hot reload demo
-  examples/
-    game_server_demo/
+    vela_cli/             # final CLI binary for direct script execution
+  examples/               # standalone runnable embedding examples
   docs/
     architecture.md
     grammar.ebnf

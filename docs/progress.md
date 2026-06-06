@@ -80,7 +80,7 @@ Cranelift JIT.
   changed-file workflows, including accepted compatible additions/renames and
   rejected ABI/schema/effect/access/source changes without advancing the active
   version.
-- CLI demo scripts and conformance fixtures covering domain-neutral stdlib helpers,
+- Standalone `vela_examples` bins and conformance fixtures covering domain-neutral stdlib helpers,
   reflection, schema-safe mutation denial, capability gating, read-only host boundary
   rejection, host read/write/call capability denial, stale host ref generation
   rejection, host write/call denial diagnostics, reflection candidate

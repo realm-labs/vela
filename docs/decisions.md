@@ -333,6 +333,14 @@ and `.vela` source files in the same directory so users can inspect and run one
 capability without following a parameter-dispatched demo runner or a separate
 script tree.
 
+### CLI Role
+
+`vela_cli` is the final direct script execution binary, analogous to a language
+runtime command. It must stay domain-neutral and must not embed example host
+state such as Player, Monster, Context, or permission-denial fixtures. Host
+world demos belong in `vela_examples`; `vela_cli <script.vela>` compiles the
+file, runs `main()` with no host arguments, and prints the returned value.
+
 ### Debugger Support
 
 Debugger support is a post-MVP runtime and Debug Adapter Protocol capability,
