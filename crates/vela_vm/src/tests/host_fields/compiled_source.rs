@@ -553,3 +553,51 @@ fn main(ctx) {
         ]
     );
 }
+
+#[test]
+fn host_field_write_conversion_error_records_no_patch() {
+    let host_ref = player_ref(3);
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player) {
+    let callback = || 1;
+    player.level = callback;
+    return 0;
+}
+"#,
+        &CompilerOptions::new().with_host_field("level", level_field()),
+    )
+    .expect("compile host closure write source");
+    let mut adapter = host_adapter(host_ref, HostValue::Int(9));
+    let mut tx = PatchTx::new();
+    let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
+
+    let error = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+        Vm::new()
+            .run_program_with_host_managed_heap_and_budget(
+                &program,
+                "main",
+                &[OwnedValue::HostRef(host_ref)],
+                &mut host,
+                &mut budget,
+            )
+            .expect_err("closure values cannot be written to host state")
+    };
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "set_host_field"
+        }
+    );
+    assert!(tx.patches().is_empty());
+    assert_eq!(
+        adapter.read_path(&level_path(host_ref)),
+        Ok(HostValue::Int(9))
+    );
+}

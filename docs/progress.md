@@ -114,7 +114,9 @@ Cranelift JIT.
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion, and PatchTx overlay identity now uses a dedicated
   HostPathKey sidecar with inline storage for common short paths while patches
-  retain full HostPath values for apply and diagnostics.
+  retain full HostPath values for apply and diagnostics. Host-boundary
+  conversion failures are covered as PatchTx slow paths that leave patches
+  unrecorded.
   Source and module compilation now verifies bytecode before returning
   `CodeObject` or `Program` values, covering register, constant, jump,
   frame-slot, call-argument, host-path dynamic segment, and nested closure
