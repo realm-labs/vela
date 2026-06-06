@@ -34,6 +34,14 @@ impl HostPath {
     }
 
     #[must_use]
+    pub fn with_segment_capacity(root: HostRef, capacity: usize) -> Self {
+        Self {
+            root,
+            segments: Vec::with_capacity(capacity),
+        }
+    }
+
+    #[must_use]
     pub fn field(mut self, field: FieldId) -> Self {
         self.segments.push(PathSegment::Field(field));
         self
@@ -64,4 +72,25 @@ pub enum PathSegment {
     Index(u32),
     Key(Symbol),
     VariantField(FieldId),
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_common::{FieldId, HostObjectId, HostTypeId};
+
+    use super::*;
+
+    #[test]
+    fn path_with_segment_capacity_matches_regular_builder() {
+        let root = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3);
+
+        let regular = HostPath::new(root)
+            .field(FieldId::new(2))
+            .variant_field(FieldId::new(5));
+        let reserved = HostPath::with_segment_capacity(root, 2)
+            .field(FieldId::new(2))
+            .variant_field(FieldId::new(5));
+
+        assert_eq!(reserved, regular);
+    }
 }

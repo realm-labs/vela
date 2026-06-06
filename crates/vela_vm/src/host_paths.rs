@@ -1,5 +1,5 @@
 use vela_bytecode::HostPathSegment;
-use vela_common::SymbolInterner;
+use vela_common::{FieldId, SymbolInterner};
 use vela_host::path::{HostPath, HostRef};
 
 use crate::owned_value::OwnedValue;
@@ -12,7 +12,11 @@ pub(crate) fn host_path_from_segments(
     heap: Option<&HeapExecution<'_>>,
     symbols: &mut SymbolInterner,
 ) -> VmResult<HostPath> {
-    let mut path = HostPath::new(root);
+    if let Some(path) = static_host_path_from_segments(root, segments) {
+        return Ok(path);
+    }
+
+    let mut path = HostPath::with_segment_capacity(root, segments.len());
     for segment in segments {
         path = match segment {
             HostPathSegment::Field(field) => path.field(*field),
@@ -38,4 +42,74 @@ pub(crate) fn host_path_from_segments(
         };
     }
     Ok(path)
+}
+
+pub(crate) fn host_field_path(root: HostRef, field: FieldId) -> HostPath {
+    HostPath::with_segment_capacity(root, 1).field(field)
+}
+
+fn static_host_path_from_segments(root: HostRef, segments: &[HostPathSegment]) -> Option<HostPath> {
+    let mut path = HostPath::with_segment_capacity(root, segments.len());
+    for segment in segments {
+        path = match segment {
+            HostPathSegment::Field(field) => path.field(*field),
+            HostPathSegment::VariantField(field) => path.variant_field(*field),
+            HostPathSegment::Value(_) => return None,
+        };
+    }
+    Some(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_bytecode::{HostPathSegment, Register};
+    use vela_common::{FieldId, HostObjectId, HostTypeId};
+    use vela_host::path::{HostRef, PathSegment};
+
+    use super::*;
+
+    fn host_ref() -> HostRef {
+        HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
+    }
+
+    #[test]
+    fn static_host_path_segments_materialize_without_runtime_values() {
+        let path = static_host_path_from_segments(
+            host_ref(),
+            &[
+                HostPathSegment::Field(FieldId::new(2)),
+                HostPathSegment::VariantField(FieldId::new(5)),
+            ],
+        )
+        .expect("static host path");
+
+        assert_eq!(
+            path.segments,
+            vec![
+                PathSegment::Field(FieldId::new(2)),
+                PathSegment::VariantField(FieldId::new(5))
+            ]
+        );
+    }
+
+    #[test]
+    fn static_host_path_segments_reject_dynamic_values() {
+        assert_eq!(
+            static_host_path_from_segments(
+                host_ref(),
+                &[
+                    HostPathSegment::Field(FieldId::new(2)),
+                    HostPathSegment::Value(Register(3))
+                ],
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn host_field_path_materializes_single_field_path() {
+        let path = host_field_path(host_ref(), FieldId::new(9));
+
+        assert_eq!(path.segments, vec![PathSegment::Field(FieldId::new(9))]);
+    }
 }

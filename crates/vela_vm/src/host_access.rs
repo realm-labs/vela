@@ -6,7 +6,7 @@ use vela_host::value::HostValue;
 use crate::heap_values::host_to_value;
 use crate::host_patches;
 pub(crate) use crate::host_patches::HostNumericPatch;
-use crate::host_paths::host_path_from_segments;
+use crate::host_paths::{host_field_path, host_path_from_segments};
 use crate::host_values::{value_from_host, value_to_host};
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, VmError, VmErrorKind,
@@ -27,7 +27,7 @@ pub(crate) fn read_host_field(
     field: FieldId,
 ) -> VmResult<Value> {
     let root = expect_host_ref(runtime.frame.read(root)?, "get_host_field")?;
-    let path = HostPath::new(root).field(field);
+    let path = host_field_path(root, field);
     read_host_path_value(path, runtime)
 }
 
@@ -60,7 +60,7 @@ pub(crate) fn set_host_field(
         "set_host_field",
         runtime.heap.as_deref(),
     )?;
-    let path = HostPath::new(root).field(field);
+    let path = host_field_path(root, field);
     set_host_path_value(path, value, runtime)
 }
 

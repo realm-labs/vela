@@ -109,7 +109,9 @@ Cranelift JIT.
   focused VM call boundary. Host field/path reads, writes, compound and
   collection patches, and host method calls are routed through a focused VM
   host-access boundary, giving later path-key or direct-adapter work one
-  replacement point.
+  replacement point. HostPath construction now has an exact-capacity/static
+  segment materialization boundary so field-only paths can bypass dynamic
+  index/key conversion and future path-key reuse has a single insertion point.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a

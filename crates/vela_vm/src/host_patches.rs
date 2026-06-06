@@ -4,7 +4,7 @@ use vela_host::path::HostPath;
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
 
-use crate::host_paths::host_path_from_segments;
+use crate::host_paths::{host_field_path, host_path_from_segments};
 use crate::host_values::value_to_host;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, VmError, VmErrorKind, VmResult,
@@ -81,7 +81,7 @@ pub(crate) fn apply_host_field_numeric_patch(
         patch.field_operation(),
         runtime.heap,
     )?;
-    let path = HostPath::new(root).field(field);
+    let path = host_field_path(root, field);
     apply_host_numeric_patch(path, value, patch, runtime)
 }
 
