@@ -1,5 +1,5 @@
 use vela_bytecode::{HostPathSegment, Register};
-use vela_common::{FieldId, Span, SymbolInterner};
+use vela_common::{FieldId, HostMethodId, Span, SymbolInterner};
 use vela_host::path::HostPath;
 use vela_host::value::HostValue;
 
@@ -83,6 +83,54 @@ pub(crate) fn set_host_path(
         symbols,
     )?;
     set_host_path_value(path, value, runtime)
+}
+
+pub(crate) fn call_host_method(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    segments: &[HostPathSegment],
+    method: HostMethodId,
+    args: &[Register],
+    wants_return: bool,
+    symbols: &mut SymbolInterner,
+) -> VmResult<Option<Value>> {
+    let root = expect_host_ref(runtime.frame.read(root)?, "call_host_method")?;
+    let path = host_path_from_segments(
+        root,
+        segments,
+        runtime.frame,
+        runtime.heap.as_deref(),
+        symbols,
+    )?;
+    let values = args
+        .iter()
+        .map(|register| {
+            value_to_host(
+                runtime.frame.read(*register)?,
+                "call_host_method",
+                runtime.heap.as_deref(),
+            )
+        })
+        .collect::<VmResult<Vec<_>>>()?;
+    let host = runtime.host.ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host context",
+        })
+    })?;
+    if let Some(budget) = runtime.budget.as_deref() {
+        budget.reserve_patch(host.tx.patches().len())?;
+    }
+    let return_value = host
+        .adapter
+        .preview_method_return(&path, method, &values)
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    host.tx
+        .call_method(path, method, values, runtime.source_span)?;
+    if wants_return {
+        runtime_value_from_host(return_value, runtime.heap, runtime.budget).map(Some)
+    } else {
+        Ok(None)
+    }
 }
 
 fn read_host_path_value(path: HostPath, runtime: HostAccessRuntime<'_, '_, '_>) -> VmResult<Value> {

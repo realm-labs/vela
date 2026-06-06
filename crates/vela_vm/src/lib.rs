@@ -54,12 +54,12 @@ pub(crate) use frame::CallFrame;
 use heap::{GcRef, HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 use heap_values::{
-    allocate_heap_value, enum_variant_owner, finish_managed_heap_result, host_to_value,
-    owned_to_value, store_runtime_value, store_value_in_heap_if_needed, stored_runtime_value,
-    value_from_constant, value_to_owned, values_equal,
+    allocate_heap_value, enum_variant_owner, finish_managed_heap_result, owned_to_value,
+    store_runtime_value, store_value_in_heap_if_needed, stored_runtime_value, value_from_constant,
+    value_to_owned, values_equal,
 };
 use host_paths::host_path_from_segments;
-use host_values::{value_from_host, value_to_host};
+use host_values::value_to_host;
 use numeric_ops::{
     add_numeric, div_numeric, greater_equal_numeric, greater_numeric, less_equal_numeric,
     less_numeric, mul_numeric, negate_numeric, rem_numeric, sub_numeric,

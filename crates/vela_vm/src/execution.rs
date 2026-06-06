@@ -1059,45 +1059,23 @@ impl Vm {
                     method,
                     args,
                 } => {
-                    let root = expect_host_ref(frame.read(*root)?, "call_host_method")?;
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    let path = host_path_from_segments(
-                        root,
+                    let return_value = host_access::call_host_method(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
                         segments,
-                        &frame,
-                        heap.as_deref(),
+                        *method,
+                        args,
+                        dst.is_some(),
                         &mut symbols,
                     )?;
-                    let values = args
-                        .iter()
-                        .map(|register| {
-                            value_to_host(
-                                frame.read(*register)?,
-                                "call_host_method",
-                                heap.as_deref(),
-                            )
-                        })
-                        .collect::<VmResult<Vec<_>>>()?;
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host context",
-                        })
-                    })?;
-                    if let Some(budget) = budget.as_deref() {
-                        budget.reserve_patch(host.tx.patches().len())?;
-                    }
-                    let return_value = host
-                        .adapter
-                        .preview_method_return(&path, *method, &values)
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    host.tx
-                        .call_method(path, *method, values, instruction.span)?;
-                    if let Some(dst) = dst {
-                        let return_value = runtime_value_from_host(
-                            return_value,
-                            heap.as_deref_mut(),
-                            budget.as_deref_mut(),
-                        )?;
+                    if let (Some(dst), Some(return_value)) = (dst, return_value) {
                         frame.write(*dst, return_value)?;
                     }
                 }
@@ -1118,18 +1096,6 @@ fn caller_roots_for_heap(frame: &CallFrame, heap: Option<&HeapExecution<'_>>) ->
         frame.heap_roots()
     } else {
         Vec::new()
-    }
-}
-
-fn runtime_value_from_host(
-    value: vela_host::value::HostValue,
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    if let Some(heap) = heap {
-        host_to_value(value, heap, budget)
-    } else {
-        Ok(value_from_host(value))
     }
 }
 
