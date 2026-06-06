@@ -13,3 +13,7 @@ This example covers the host type method and argument model:
 - direct `&mut` Rust object injection through `CallArgs::with_host_mut`
 - `player.inventory.items["gold"].count` as a keyed host path without cloning a Rust collection
 - root and child host method calls through `receiver_path + HostMethodId`
+
+The main example file shows the intended embedding shape. The sibling support
+module contains the current low-level direct-object adapter glue that a derive
+or registration helper should generate for production code.
