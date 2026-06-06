@@ -63,6 +63,40 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 }
 ```
 
+### Module Identity
+
+Vela source files do not declare their own module names. There is no
+`module ...` item in the language.
+
+Single-file compilation is the lightweight script-entry mode:
+
+```text
+engine.compile_file("scripts/level_up.vela")
+entry function: main
+```
+
+The file name is not part of the module identity in this mode.
+
+Directory compilation is the module-graph mode used for imports, reflection,
+dependency impact, and hot reload:
+
+```text
+scripts/game/main.vela   -> game::main
+scripts/game/reward.vela -> game::reward
+scripts/config.vela      -> config
+```
+
+Imports use the same static path syntax:
+
+```rust
+use game::reward::grant
+```
+
+The final path segment is the declaration name; the preceding segments are the
+module path. Public declarations are imported from their owning module, and a
+directory-compiled entrypoint is called by its fully qualified function name,
+such as `game::main::main`.
+
 ### Dynamic Type Boundary
 
 The language is dynamically typed, with lightweight hints and metadata.

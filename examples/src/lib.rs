@@ -6,10 +6,13 @@ pub mod game_server;
 pub mod hot_reload_demo;
 
 pub fn example_file(example: &str, file: &str) -> PathBuf {
+    example_dir(example).join(file)
+}
+
+pub fn example_dir(example: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src/bin")
         .join(example)
-        .join(file)
 }
 
 pub fn expect_error<F>(run: F, expected: &str) -> Result<(), Box<dyn Error>>

@@ -1,0 +1,5 @@
+use game::reward::grant
+
+fn main() {
+    return grant(4) + game::config::BASE_REWARD;
+}

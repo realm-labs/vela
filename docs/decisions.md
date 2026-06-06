@@ -51,6 +51,14 @@ package extension rather than overloading `.vbc`.
 
 ### Module Imports And Exports
 
+Vela has no source-level `module` declaration. `compile_file(path)` is a
+single-script entry mode where the file name is not module identity and the
+ordinary entrypoint is `main`. `compile_dir(root)` is the module-graph mode:
+each `.vela` file under `root` gets a module path from its relative path, so
+`game/reward.vela` is `game::reward`. Imports and qualified calls use `::`;
+the final import segment is the declaration name and the preceding segments are
+the owning module path.
+
 Public APIs should be imported from the module that owns them. Crate roots
 should expose focused `pub mod` entries and avoid broad `pub use` facades unless
 the item is an intentional crate identity entrypoint.

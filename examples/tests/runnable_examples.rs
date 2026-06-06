@@ -62,6 +62,7 @@ fn game_server_examples_run() {
             env!("CARGO_BIN_EXE_host_type_methods"),
             "script_result=Int(10) final_count=10 score=7 reward_calls=3\n",
         ),
+        (env!("CARGO_BIN_EXE_modules"), "module_result=Int(16)\n"),
     ];
 
     for (bin, expected) in cases {

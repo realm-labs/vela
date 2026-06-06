@@ -159,6 +159,12 @@ let program = engine.compile_dir("scripts")?;
 let mut runtime = Runtime::new(engine, program);
 ```
 
+`compile_file(path)` is the single-script mode and ignores the source file name
+for module identity; the usual entrypoint is `main`. `compile_dir(root)` is the
+module-graph mode: every `.vela` file under `root` becomes a module whose path
+is derived from its relative file path, such as `game/reward.vela` becoming
+`game::reward`.
+
 ### Call
 
 ```rust
@@ -168,7 +174,7 @@ let args = CallArgs::new()
     .with_value("now", current_tick);
 
 let output = runtime.call(
-    "billing.on_invoice_paid",
+    "billing::events::on_invoice_paid",
     args,
     CallOptions::unbounded(),
 )?;
