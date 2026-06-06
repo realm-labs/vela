@@ -35,6 +35,9 @@ pub enum VerificationErrorKind {
         parameter_count: usize,
         default_count: usize,
     },
+    ScriptMethodFunctionMissing {
+        function: String,
+    },
 }
 
 impl fmt::Display for VerificationError {
@@ -59,6 +62,17 @@ impl std::error::Error for VerificationError {}
 pub fn verify_program(program: &Program) -> Result<(), VerificationError> {
     for function in program.functions.values() {
         verify_code_object(function)?;
+    }
+    for function in program.script_methods().function_names() {
+        if !program.functions.contains_key(function) {
+            return Err(error(
+                function,
+                None,
+                VerificationErrorKind::ScriptMethodFunctionMissing {
+                    function: function.to_owned(),
+                },
+            ));
+        }
     }
     Ok(())
 }
@@ -522,6 +536,23 @@ mod tests {
                 VerificationErrorKind::RegisterOutOfBounds {
                     register: Register(2),
                     register_count: 1
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn program_verify_rejects_missing_script_method_function() {
+        let mut program = Program::new();
+        program.insert_script_method("Player", "bonus", vela_common::MethodId::new(7), "missing");
+
+        assert_eq!(
+            program.verify(),
+            Err(error(
+                "missing",
+                None,
+                VerificationErrorKind::ScriptMethodFunctionMissing {
+                    function: "missing".to_owned()
                 }
             ))
         );

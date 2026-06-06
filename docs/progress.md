@@ -119,7 +119,9 @@ Cranelift JIT.
   `CodeObject` or `Program` values, covering register, constant, jump,
   frame-slot, call-argument, host-path dynamic segment, and nested closure
   invariants before future unchecked register, operand, or cache fast paths
-  are introduced.
+  are introduced. Program verification also rejects script method metadata
+  whose resolved target function is missing, keeping MethodId dispatch and
+  future method-cache metadata target-complete before M20.
   ProgramVersion now owns bytecode-offset profile layout metadata for each
   function and rebuilds that sidecar when hot reload creates a new version, so
   future counters, cache state, or JIT decisions can be version-scoped and
