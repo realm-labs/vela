@@ -7,7 +7,8 @@ use crate::heap::{GcRef, HeapValue};
 use crate::script_builtin_methods;
 use crate::string_method_dispatch;
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
+    ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmError, VmErrorKind,
+    VmResult,
 };
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
@@ -184,9 +185,9 @@ fn call_script_impl_method(
         function
     };
 
-    let mut values = Vec::with_capacity(args.len() + 1);
-    values.push(*receiver);
-    values.extend(args.iter().cloned());
+    let values = SmallStorage::try_from_prefix_and_slice_map(*receiver, args, 4, |arg| {
+        Ok::<_, VmError>(*arg)
+    })?;
     let protected_root_len = dispatch
         .heap
         .as_deref_mut()
@@ -194,7 +195,7 @@ fn call_script_impl_method(
     let result = dispatch.vm.execute_code_object(
         function,
         dispatch.program,
-        &values,
+        values.as_slice(),
         dispatch.host.as_deref_mut(),
         dispatch.heap.as_deref_mut(),
         dispatch.budget.as_deref_mut(),

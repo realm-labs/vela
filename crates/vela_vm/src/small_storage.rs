@@ -80,6 +80,69 @@ impl<T> SmallStorage<T> {
     }
 
     #[inline]
+    pub(crate) fn try_from_prefix_and_slice_map<U, E>(
+        prefix: T,
+        items: &[U],
+        inline_limit: usize,
+        mut map: impl FnMut(&U) -> Result<T, E>,
+    ) -> Result<Self, E> {
+        match items {
+            [] if inline_limit >= 1 => Ok(Self::One([prefix])),
+            [first] if inline_limit >= 2 => Ok(Self::Two([prefix, map(first)?])),
+            [first, second] if inline_limit >= 3 => {
+                Ok(Self::Three([prefix, map(first)?, map(second)?]))
+            }
+            [first, second, third] if inline_limit >= 4 => {
+                Ok(Self::Four([prefix, map(first)?, map(second)?, map(third)?]))
+            }
+            [first, second, third, fourth] if inline_limit >= 5 => Ok(Self::Five([
+                prefix,
+                map(first)?,
+                map(second)?,
+                map(third)?,
+                map(fourth)?,
+            ])),
+            [first, second, third, fourth, fifth] if inline_limit >= 6 => Ok(Self::Six([
+                prefix,
+                map(first)?,
+                map(second)?,
+                map(third)?,
+                map(fourth)?,
+                map(fifth)?,
+            ])),
+            [first, second, third, fourth, fifth, sixth] if inline_limit >= 7 => Ok(Self::Seven([
+                prefix,
+                map(first)?,
+                map(second)?,
+                map(third)?,
+                map(fourth)?,
+                map(fifth)?,
+                map(sixth)?,
+            ])),
+            [first, second, third, fourth, fifth, sixth, seventh] if inline_limit >= 8 => {
+                Ok(Self::Eight([
+                    prefix,
+                    map(first)?,
+                    map(second)?,
+                    map(third)?,
+                    map(fourth)?,
+                    map(fifth)?,
+                    map(sixth)?,
+                    map(seventh)?,
+                ]))
+            }
+            _ => {
+                let mut values = Vec::with_capacity(items.len() + 1);
+                values.push(prefix);
+                for item in items {
+                    values.push(map(item)?);
+                }
+                Ok(Self::Many(values))
+            }
+        }
+    }
+
+    #[inline]
     pub(crate) fn as_slice(&self) -> &[T] {
         match self {
             Self::Empty => &[],
@@ -143,5 +206,25 @@ mod tests {
         .expect("inline storage");
 
         assert_eq!(storage.as_slice(), &[1, 2, 3, 4, 5, 6, 7, 8]);
+    }
+
+    #[test]
+    fn stores_prefix_and_slice_inline_up_to_requested_limit() {
+        let storage =
+            SmallStorage::try_from_prefix_and_slice_map(1, &[2, 3], 3, |value| Ok::<_, ()>(*value))
+                .expect("inline storage");
+
+        assert_eq!(storage.as_slice(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn spills_prefix_and_slice_after_requested_limit() {
+        let storage = SmallStorage::try_from_prefix_and_slice_map(1, &[2, 3, 4], 3, |value| {
+            Ok::<_, ()>(*value)
+        })
+        .expect("vec storage");
+
+        assert_eq!(storage.as_slice(), &[1, 2, 3, 4]);
+        assert_eq!(storage.into_vec(), vec![1, 2, 3, 4]);
     }
 }
