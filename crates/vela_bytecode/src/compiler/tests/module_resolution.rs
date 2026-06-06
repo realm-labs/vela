@@ -120,6 +120,42 @@ pub enum Damage { Physical { amount: int } }
             if enum_name == "game::damage::Damage" && variant == "Physical"
     )));
 }
+
+#[test]
+fn compiler_lowers_imported_global_roots_to_qualified_host_globals() {
+    let program = compile_module_sources_with_options(
+        &[
+            ModuleSource::new(
+                SourceId::new(1),
+                ModulePath::from_qualified("game::main"),
+                r#"
+use game::state::state
+fn main() {
+    state.level += 2;
+    return state.level;
+}
+"#,
+            ),
+            ModuleSource::new(
+                SourceId::new(2),
+                ModulePath::from_qualified("game::state"),
+                r#"
+pub global state: Player;
+"#,
+            ),
+        ],
+        &CompilerOptions::new().with_host_field("level", FieldId::new(1)),
+    )
+    .expect("imported global root should compile");
+    let main = program
+        .function("game::main::main")
+        .expect("qualified main function");
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        InstructionKind::LoadHostGlobal { global, .. } if global == "game::state::state"
+    )));
+}
+
 #[test]
 fn compiler_uses_hir_type_symbols_for_imported_match_patterns() {
     let program = compile_module_sources(&[

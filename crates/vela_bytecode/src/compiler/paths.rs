@@ -31,6 +31,14 @@ impl Compiler<'_> {
         {
             return Ok(register);
         }
+        if let Some(BindingResolution::Declaration(declaration)) =
+            self.bindings.resolution_at_span(span)
+            && let Some(global) = self.facts.global_symbols.get(declaration).cloned()
+        {
+            let dst = self.alloc_register()?;
+            self.emit(InstructionKind::LoadHostGlobal { dst, global });
+            return Ok(dst);
+        }
         if let Some(value) = self.const_value_at_span(span) {
             return self.emit_constant(value);
         }
@@ -76,10 +84,10 @@ impl Compiler<'_> {
                 "path expression",
             )));
         }
-        if let Some(host_path) = host_field_path_parts(&self.facts.options, path)
+        if let Some(host_path) = host_field_path_parts(&self.facts.options, span, path)
             && host_path.requires_path_instruction()
         {
-            let root = self.compile_host_path_root(span, host_path.root)?;
+            let root = self.compile_host_path_root(host_path.root)?;
             let segments = self.compile_host_path_segments(host_path.segments)?;
             let dst = self.alloc_register()?;
             self.emit(InstructionKind::GetHostPath {

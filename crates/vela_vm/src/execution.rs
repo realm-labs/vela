@@ -612,6 +612,19 @@ impl Vm {
                     );
                     frame.write(*dst, Value::Bool(matches))?;
                 }
+                InstructionKind::LoadHostGlobal { dst, global } => {
+                    let value = host_access::load_host_global(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        global,
+                    )?;
+                    frame.write(*dst, value)?;
+                }
                 InstructionKind::GetHostField { dst, root, field } => {
                     let value = host_access::read_host_field(
                         host_access::HostAccessRuntime {

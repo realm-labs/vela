@@ -24,6 +24,7 @@ pub enum Visibility {
 pub enum ItemKind {
     Use(UseItem),
     Const(ConstItem),
+    Global(GlobalItem),
     Function(FunctionItem),
     Struct(StructItem),
     Enum(EnumItem),
@@ -42,6 +43,12 @@ pub struct ConstItem {
     pub name: String,
     pub type_hint: Option<TypeHint>,
     pub value: Expr,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GlobalItem {
+    pub name: String,
+    pub type_hint: TypeHint,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

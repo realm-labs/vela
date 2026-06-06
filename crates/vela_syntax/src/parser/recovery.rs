@@ -45,6 +45,7 @@ impl Parser {
         while !self.at_eof() {
             if self.check_keyword(Keyword::Pub)
                 || self.check_keyword(Keyword::Use)
+                || self.check_keyword(Keyword::Global)
                 || self.check_keyword(Keyword::Fn)
                 || self.check_keyword(Keyword::Struct)
                 || self.check_keyword(Keyword::Enum)

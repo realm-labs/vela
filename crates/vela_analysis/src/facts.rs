@@ -119,7 +119,7 @@ fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeF
                 });
             TypeFact::function(params, returns)
         }),
-        DeclarationKind::Impl => None,
+        DeclarationKind::Global | DeclarationKind::Impl => None,
         DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => None,
     }
 }

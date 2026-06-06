@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::Path;
+use std::rc::Rc;
 
 use vela_bytecode::Program;
 use vela_common::{HostObjectId, SourceId};
@@ -30,6 +32,7 @@ pub struct Runtime {
     engine: Engine,
     program: Program,
     hot_reload: Option<HotReloadRuntime>,
+    globals: Rc<RefCell<RuntimeGlobalStore>>,
 }
 
 impl Runtime {
@@ -39,6 +42,7 @@ impl Runtime {
             engine,
             program,
             hot_reload: None,
+            globals: Rc::new(RefCell::new(RuntimeGlobalStore::new())),
         }
     }
 
@@ -48,6 +52,7 @@ impl Runtime {
             engine,
             program: version.to_program(),
             hot_reload: Some(HotReloadRuntime::new(version)),
+            globals: Rc::new(RefCell::new(RuntimeGlobalStore::new())),
         }
     }
 
@@ -59,6 +64,18 @@ impl Runtime {
     #[must_use]
     pub fn program(&self) -> &Program {
         &self.program
+    }
+
+    pub fn insert_host_global<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
+    where
+        T: ScriptHostObject + 'static,
+    {
+        self.globals.borrow_mut().insert_host(name, value)
+    }
+
+    #[must_use]
+    pub fn host_global_ref(&self, name: &str) -> Option<HostRef> {
+        self.globals.borrow().host_ref(name)
     }
 
     #[must_use]
@@ -252,7 +269,14 @@ impl Runtime {
         access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
-        let mut host = HostExecution { adapter, access };
+        let mut adapter = GlobalStoreAdapter {
+            globals: Rc::clone(&self.globals),
+            fallback: adapter,
+        };
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access,
+        };
         let vm = if let Some(hot_reload) = &self.hot_reload {
             let current = hot_reload.current();
             self.engine
@@ -392,6 +416,136 @@ pub struct CallArgs<'a> {
 }
 
 const DIRECT_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
+const GLOBAL_HOST_OBJECT_ID_BASE: u64 = 1 << 62;
+
+pub struct RuntimeGlobalStore {
+    globals: BTreeMap<String, HostGlobalBinding>,
+    next_host_object_id: u64,
+}
+
+impl Default for RuntimeGlobalStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RuntimeGlobalStore {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            globals: BTreeMap::new(),
+            next_host_object_id: GLOBAL_HOST_OBJECT_ID_BASE,
+        }
+    }
+
+    pub fn insert_host<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
+    where
+        T: ScriptHostObject + 'static,
+    {
+        let name = name.into();
+        let host_ref = HostRef::new(
+            value.host_type_id(),
+            HostObjectId::new(self.next_host_object_id),
+            1,
+        );
+        self.next_host_object_id = self.next_host_object_id.saturating_add(1);
+        self.globals.insert(
+            name,
+            HostGlobalBinding {
+                host_ref,
+                object: Box::new(value),
+            },
+        );
+        host_ref
+    }
+
+    #[must_use]
+    pub fn host_ref(&self, name: &str) -> Option<HostRef> {
+        self.globals.get(name).map(|global| global.host_ref)
+    }
+
+    fn binding(&self, path: &HostPath) -> Option<&HostGlobalBinding> {
+        self.globals
+            .values()
+            .find(|global| global.host_ref == path.root)
+    }
+
+    fn binding_mut(&mut self, path: &HostPath) -> Option<&mut HostGlobalBinding> {
+        self.globals
+            .values_mut()
+            .find(|global| global.host_ref == path.root)
+    }
+}
+
+struct HostGlobalBinding {
+    host_ref: HostRef,
+    object: Box<dyn ScriptHostObject>,
+}
+
+struct GlobalStoreAdapter<'call> {
+    globals: Rc<RefCell<RuntimeGlobalStore>>,
+    fallback: &'call mut dyn ScriptStateAdapter,
+}
+
+impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
+    fn global_ref(&self, name: &str) -> HostResult<HostRef> {
+        self.globals
+            .borrow()
+            .host_ref(name)
+            .or_else(|| self.fallback.global_ref(name).ok())
+            .ok_or_else(|| HostError {
+                kind: HostErrorKind::MissingGlobal {
+                    name: name.to_owned(),
+                },
+                source_span: None,
+            })
+    }
+
+    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        {
+            let globals = self.globals.borrow();
+            if let Some(global) = globals.binding(path) {
+                return global.object.read_host_path(path);
+            }
+        }
+        self.fallback.read_path(path)
+    }
+
+    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        {
+            let mut globals = self.globals.borrow_mut();
+            if let Some(global) = globals.binding_mut(path) {
+                return global.object.write_host_path(path, value);
+            }
+        }
+        self.fallback.write_path(path, value)
+    }
+
+    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
+        {
+            let mut globals = self.globals.borrow_mut();
+            if let Some(global) = globals.binding_mut(path) {
+                return global.object.remove_host_path(path);
+            }
+        }
+        self.fallback.remove_path(path)
+    }
+
+    fn call_method(
+        &mut self,
+        path: &HostPath,
+        method: vela_common::HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        {
+            let mut globals = self.globals.borrow_mut();
+            if let Some(global) = globals.binding_mut(path) {
+                return global.object.call_host_method(path, method, args);
+            }
+        }
+        self.fallback.call_method(path, method, args)
+    }
+}
 
 impl Default for CallArgs<'_> {
     fn default() -> Self {

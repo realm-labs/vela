@@ -66,6 +66,8 @@ struct CompilerFacts {
     script_field_slots: ScriptFieldSlots,
     schema_defaults: ScriptSchemaDefaults,
     type_symbols: BTreeMap<HirDeclId, String>,
+    global_symbols: BTreeMap<HirDeclId, String>,
+    global_type_symbols: BTreeMap<HirDeclId, String>,
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
 }
@@ -98,6 +100,8 @@ pub fn compile_function_source_with_options(
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
@@ -109,6 +113,8 @@ pub fn compile_function_source_with_options(
         script_field_slots,
         schema_defaults,
         type_symbols,
+        global_symbols,
+        global_type_symbols,
         const_values,
         options: options.clone(),
     };
@@ -138,6 +144,8 @@ pub fn compile_program_source_with_options(
     let script_method_ids = script_method_ids(&script_impl_methods);
     let script_method_signatures = script_method_signatures(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
@@ -149,6 +157,8 @@ pub fn compile_program_source_with_options(
         script_field_slots,
         schema_defaults,
         type_symbols,
+        global_symbols,
+        global_type_symbols,
         const_values,
         options: options.clone(),
     };
@@ -191,6 +201,8 @@ pub fn compile_module_sources_with_options(
     let script_method_ids = script_method_ids(&script_impl_methods);
     let script_method_signatures = script_method_signatures(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
@@ -202,6 +214,8 @@ pub fn compile_module_sources_with_options(
         script_field_slots,
         schema_defaults,
         type_symbols,
+        global_symbols,
+        global_type_symbols,
         const_values,
         options: options.clone(),
     };
@@ -605,6 +619,15 @@ impl<'ast> Compiler<'ast> {
         self.facts.type_symbols.get(declaration).cloned()
     }
 
+    fn global_type_at_span(&self, span: Span) -> Option<String> {
+        let Some(BindingResolution::Declaration(declaration)) =
+            self.bindings.resolution_at_span(span)
+        else {
+            return None;
+        };
+        self.facts.global_type_symbols.get(declaration).cloned()
+    }
+
     fn host_method_receiver_type(&self, callee: &Expr) -> Option<String> {
         match &callee.kind {
             ExprKind::Field { base, .. } => self.script_type_for_expr(base),
@@ -612,7 +635,9 @@ impl<'ast> Compiler<'ast> {
                 let [receiver, _method] = path.as_slice() else {
                     return None;
                 };
-                self.script_types.name(receiver)
+                self.script_types
+                    .name(receiver)
+                    .or_else(|| self.global_type_at_span(callee.span))
             }
             _ => None,
         }
@@ -667,7 +692,11 @@ impl<'ast> Compiler<'ast> {
         expression_script_type(
             expr,
             |span| self.type_symbol_at_span(span),
-            |span| self.script_types.local_at_span(self.bindings, span),
+            |span| {
+                self.script_types
+                    .local_at_span(self.bindings, span)
+                    .or_else(|| self.global_type_at_span(span))
+            },
             |name| self.script_types.name(name),
         )
     }
@@ -684,7 +713,11 @@ impl<'ast> Compiler<'ast> {
         expression_script_fact(
             expr,
             |span| self.type_symbol_at_span(span),
-            |span| self.script_types.local_fact_at_span(self.bindings, span),
+            |span| {
+                self.script_types
+                    .local_fact_at_span(self.bindings, span)
+                    .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
+            },
             |name| self.script_types.name_fact(name),
         )
     }

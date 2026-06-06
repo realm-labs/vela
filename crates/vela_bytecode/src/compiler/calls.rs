@@ -36,7 +36,7 @@ impl Compiler<'_> {
             host_receiver_type.as_deref(),
             path_root_is_local,
         ) {
-            let root = self.compile_host_path_root(callee.span, call.receiver)?;
+            let root = self.compile_host_path_root(call.receiver)?;
             let segments = self.compile_host_path_segments(call.segments)?;
             let arg_registers = self.compile_host_method_call_args(call.method, args, expr.span)?;
             let dst = self.alloc_register()?;

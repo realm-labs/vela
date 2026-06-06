@@ -68,7 +68,7 @@ impl Compiler<'_> {
                     if let Some(path) = host_field_path(&self.facts.options, expr)
                         && path.requires_path_instruction()
                     {
-                        let root = self.compile_host_path_root(expr.span, path.root)?;
+                        let root = self.compile_host_path_root(path.root)?;
                         let segments = self.compile_host_path_segments(path.segments)?;
                         let dst = self.alloc_register()?;
                         self.emit_spanned(
@@ -107,7 +107,7 @@ impl Compiler<'_> {
                 if let Some(path) = host_field_path(&self.facts.options, expr)
                     && !path.segments.is_empty()
                 {
-                    let root = self.compile_host_path_root(expr.span, path.root)?;
+                    let root = self.compile_host_path_root(path.root)?;
                     let segments = self.compile_host_path_segments(path.segments)?;
                     let dst = self.alloc_register()?;
                     self.emit_spanned(

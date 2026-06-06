@@ -47,6 +47,7 @@ fn keyword_text(keyword: Keyword) -> &'static str {
         Keyword::Use => "use",
         Keyword::Pub => "pub",
         Keyword::Const => "const",
+        Keyword::Global => "global",
         Keyword::Let => "let",
         Keyword::Fn => "fn",
         Keyword::Struct => "struct",

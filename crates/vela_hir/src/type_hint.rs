@@ -1,6 +1,7 @@
 use vela_common::Span;
 use vela_syntax::ast::{
-    ConstItem, EnumItem, EnumVariantFields, ImplItem, Param, StructField, TraitItem, TypeHint,
+    ConstItem, EnumItem, EnumVariantFields, GlobalItem, ImplItem, Param, StructField, TraitItem,
+    TypeHint,
 };
 
 use crate::{attributes::HirAttribute, attributes::attrs_from_syntax, ids::HirNodeId};
@@ -64,6 +65,20 @@ impl ConstMetadata {
         Self {
             type_hint: item.type_hint.as_ref().map(HirTypeHint::from_syntax),
             value_span: item.value.span,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GlobalMetadata {
+    pub type_hint: HirTypeHint,
+}
+
+impl GlobalMetadata {
+    #[must_use]
+    pub fn from_syntax(item: &GlobalItem) -> Self {
+        Self {
+            type_hint: HirTypeHint::from_syntax(&item.type_hint),
         }
     }
 }

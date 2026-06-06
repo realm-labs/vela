@@ -98,6 +98,32 @@ impl SemanticSource {
             .collect()
     }
 
+    pub(super) fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        let Some(declarations) = self.graph.module(self.module) else {
+            return BTreeMap::new();
+        };
+        declarations
+            .names()
+            .filter_map(|name| {
+                let declaration = declarations.get(name)?;
+                let metadata = self.graph.declaration(declaration)?;
+                (metadata.kind == DeclarationKind::Global)
+                    .then(|| (declaration, format!("main::{}", metadata.name)))
+            })
+            .collect()
+    }
+
+    pub(super) fn global_type_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        self.global_symbols()
+            .keys()
+            .filter_map(|declaration| {
+                self.graph
+                    .global_metadata(*declaration)
+                    .map(|metadata| (*declaration, metadata.type_hint.display()))
+            })
+            .collect()
+    }
+
     pub(super) fn type_symbols(&self) -> BTreeMap<HirDeclId, String> {
         let Some(declarations) = self.graph.module(self.module) else {
             return BTreeMap::new();
@@ -253,6 +279,36 @@ impl SemanticModules {
                 self.graph
                     .function_signature(*declaration)
                     .map(|signature| (*declaration, signature.params.clone()))
+            })
+            .collect()
+    }
+
+    pub(super) fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        self.modules
+            .iter()
+            .filter_map(|module| {
+                let path = self.graph.module_path(*module)?.join();
+                let declarations = self.graph.module(*module)?;
+                Some((path, declarations))
+            })
+            .flat_map(|(path, declarations)| {
+                declarations.names().filter_map(move |name| {
+                    let declaration = declarations.get(name)?;
+                    let metadata = self.graph.declaration(declaration)?;
+                    (metadata.kind == DeclarationKind::Global)
+                        .then(|| (declaration, format!("{path}::{}", metadata.name)))
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn global_type_symbols(&self) -> BTreeMap<HirDeclId, String> {
+        self.global_symbols()
+            .keys()
+            .filter_map(|declaration| {
+                self.graph
+                    .global_metadata(*declaration)
+                    .map(|metadata| (*declaration, metadata.type_hint.display()))
             })
             .collect()
     }

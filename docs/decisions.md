@@ -191,6 +191,17 @@ high-level `CallArgs -> CallOutput` path. Lower-level entrypoints that expose
 adapter or `HostAccess` internals use explicit names such as `call_with_adapter`,
 `call_raw`, and `call_args_raw`.
 
+Mutable cross-call script globals are host-managed declarations, not module
+`let` or `static` initializers. Scripts declare globals as ordinary module
+items, for example `pub global state: ServerState`; the declaration contributes
+ABI/name/type metadata and Rust inserts a runtime instance under the fully
+qualified name such as `game::state::state`. Rust-defined globals currently
+load as persistent host-object roots and then use normal `HostRef`,
+`HostPath`, `ScriptStateAdapter`, and write-through `HostAccess` semantics.
+Vela-defined script-value globals should use the same declaration surface with
+a separate persistent `ScriptValueGlobal` backend instead of adding a special
+`global.vela` file or top-level mutable initialization.
+
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy
 wraps HostPath and uses HostAccess, but complex Rust objects remain handles

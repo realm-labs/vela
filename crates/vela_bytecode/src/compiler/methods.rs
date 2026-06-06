@@ -38,7 +38,7 @@ pub(super) fn host_method_call<'ast>(
             }
             let method_name = path.last()?;
             let method = options.host_method(receiver_type, method_name)?;
-            let path = host_method_path_receiver(options, &path[..path.len() - 1])?;
+            let path = host_method_path_receiver(options, callee, &path[..path.len() - 1])?;
             Some(HostMethodCall {
                 receiver: path.root,
                 segments: path.segments,
@@ -61,15 +61,19 @@ fn host_method_receiver_path<'ast>(
 
 fn host_method_path_receiver<'ast>(
     options: &CompilerOptions,
+    callee: &'ast Expr,
     path: &'ast [String],
 ) -> Option<HostPath<'ast>> {
     let root = path.first()?;
     if path.len() == 1 {
         Some(HostPath {
-            root: HostPathRoot::LocalPath(root),
+            root: HostPathRoot::LocalPath {
+                name: root,
+                span: callee.span,
+            },
             segments: Vec::new(),
         })
     } else {
-        host_field_path_parts(options, path)
+        host_field_path_parts(options, callee.span, path)
     }
 }

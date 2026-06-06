@@ -9,6 +9,8 @@ use game::player::Player;
 
 pub const START_LEVEL: int = 1 + 2;
 
+pub global state: GameState;
+
 #[event("monster.kill")]
 pub fn on_kill(ctx, player, monster) {
     player.exp += monster.exp
@@ -41,7 +43,7 @@ impl Damageable for Player {
     );
 
     assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    assert_eq!(parsed.items.len(), 7);
+    assert_eq!(parsed.items.len(), 8);
     let ItemKind::Use(import) = &parsed.items[0].kind else {
         panic!("expected use item");
     };
@@ -58,20 +60,27 @@ impl Damageable for Player {
         ["int"]
     );
 
-    let ItemKind::Function(function) = &parsed.items[2].kind else {
-        panic!("expected function item");
+    let ItemKind::Global(global) = &parsed.items[2].kind else {
+        panic!("expected global item");
     };
     assert_eq!(parsed.items[2].visibility, Visibility::Public);
+    assert_eq!(global.name, "state");
+    assert_eq!(global.type_hint.path, ["GameState"]);
+
+    let ItemKind::Function(function) = &parsed.items[3].kind else {
+        panic!("expected function item");
+    };
+    assert_eq!(parsed.items[3].visibility, Visibility::Public);
     assert_eq!(function.name, "on_kill");
     assert_eq!(param_names(&function.params), ["ctx", "player", "monster"]);
     assert_eq!(function.body.statements.len(), 1);
-    assert_eq!(parsed.items[2].attrs[0].path, ["event"]);
+    assert_eq!(parsed.items[3].attrs[0].path, ["event"]);
     assert_eq!(
-        parsed.items[2].attrs[0].value.as_deref(),
+        parsed.items[3].attrs[0].value.as_deref(),
         Some("monster.kill")
     );
 
-    let ItemKind::Struct(record) = &parsed.items[3].kind else {
+    let ItemKind::Struct(record) = &parsed.items[4].kind else {
         panic!("expected struct item");
     };
     assert_eq!(struct_field_names(&record.fields), ["item_id", "count"]);
@@ -81,7 +90,7 @@ impl Damageable for Player {
         Some("Reward item")
     );
 
-    let ItemKind::Enum(enumeration) = &parsed.items[4].kind else {
+    let ItemKind::Enum(enumeration) = &parsed.items[5].kind else {
         panic!("expected enum item");
     };
     assert_eq!(enumeration.variants[0].attrs[0].path, ["empty"]);
@@ -90,7 +99,7 @@ impl Damageable for Player {
         ["None", "Active"]
     );
 
-    let ItemKind::Trait(trait_item) = &parsed.items[5].kind else {
+    let ItemKind::Trait(trait_item) = &parsed.items[6].kind else {
         panic!("expected trait item");
     };
     assert_eq!(trait_method_names(&trait_item.methods), ["damage", "alive"]);
@@ -104,7 +113,7 @@ impl Damageable for Player {
     assert!(trait_item.methods[1].has_default);
     assert!(trait_item.methods[1].default_body.is_some());
 
-    let ItemKind::Impl(impl_item) = &parsed.items[6].kind else {
+    let ItemKind::Impl(impl_item) = &parsed.items[7].kind else {
         panic!("expected impl item");
     };
     assert_eq!(impl_item.trait_path, ["Damageable"]);

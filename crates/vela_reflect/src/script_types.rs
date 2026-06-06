@@ -121,7 +121,10 @@ impl TypeRegistry {
                     apply_trait_attrs(&mut desc, graph.declaration_attrs(declaration.id));
                     self.register_trait(desc);
                 }
-                DeclarationKind::Const | DeclarationKind::Function | DeclarationKind::Impl => {}
+                DeclarationKind::Const
+                | DeclarationKind::Global
+                | DeclarationKind::Function
+                | DeclarationKind::Impl => {}
             }
         }
 

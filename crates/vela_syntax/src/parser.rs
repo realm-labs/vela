@@ -2,10 +2,10 @@ use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::ast::{
     Argument, AssignOp, Attribute, BinaryOp, Block, ConstItem, ElseBranch, EnumVariant,
-    EnumVariantFields, Expr, ExprKind, FunctionItem, IfExpr, ImplItem, ImplMethod, Item, ItemKind,
-    Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField, RecordPatternField,
-    SourceFile, Stmt, StmtKind, StructField, StructItem, TraitItem, TraitMethod, TypeHint, UnaryOp,
-    UseItem, Visibility,
+    EnumVariantFields, Expr, ExprKind, FunctionItem, GlobalItem, IfExpr, ImplItem, ImplMethod,
+    Item, ItemKind, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField,
+    RecordPatternField, SourceFile, Stmt, StmtKind, StructField, StructItem, TraitItem,
+    TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
 };
 use crate::attribute::normalize_attribute_value;
 use crate::lexer::lex;

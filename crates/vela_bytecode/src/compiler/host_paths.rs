@@ -17,7 +17,7 @@ pub(super) struct HostPath<'ast> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum HostPathRoot<'ast> {
     Expr(&'ast Expr),
-    LocalPath(&'ast str),
+    LocalPath { name: &'ast str, span: Span },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,7 +44,7 @@ pub(super) fn host_field_path<'ast>(
             path.segments.push(field);
             Some(path)
         }
-        ExprKind::Path(path) => host_field_path_parts(options, path),
+        ExprKind::Path(path) => host_field_path_parts(options, expr.span, path),
         ExprKind::Index { base, index } => {
             let mut path = host_path_index_receiver(options, base)?;
             path.segments.push(HostPathPart::Value(index));
@@ -70,9 +70,12 @@ fn host_path_receiver<'ast>(
             path.segments.push(HostPathPart::Value(index));
             Some(path)
         }
-        ExprKind::Path(path) => host_field_path_parts(options, path).or_else(|| {
+        ExprKind::Path(path) => host_field_path_parts(options, receiver.span, path).or_else(|| {
             path.first().map(|root| HostPath {
-                root: HostPathRoot::LocalPath(root),
+                root: HostPathRoot::LocalPath {
+                    name: root,
+                    span: receiver.span,
+                },
                 segments: Vec::new(),
             })
         }),
@@ -99,13 +102,14 @@ fn host_path_index_receiver<'ast>(
             path.segments.push(HostPathPart::Value(index));
             Some(path)
         }
-        ExprKind::Path(path) => host_field_path_parts(options, path),
+        ExprKind::Path(path) => host_field_path_parts(options, receiver.span, path),
         _ => None,
     }
 }
 
 pub(super) fn host_field_path_parts<'ast>(
     options: &CompilerOptions,
+    span: Span,
     path: &'ast [String],
 ) -> Option<HostPath<'ast>> {
     if path.len() < 2 {
@@ -117,7 +121,7 @@ pub(super) fn host_field_path_parts<'ast>(
         .map(|segment| host_path_field_part(options, segment))
         .collect::<Option<Vec<_>>>()?;
     Some(HostPath {
-        root: HostPathRoot::LocalPath(root),
+        root: HostPathRoot::LocalPath { name: root, span },
         segments,
     })
 }
@@ -147,7 +151,7 @@ impl Compiler<'_> {
                 host_field_path(&self.facts.options, base)
             }
             ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "push") => {
-                host_field_path_parts(&self.facts.options, &parts[..parts.len() - 1])
+                host_field_path_parts(&self.facts.options, callee.span, &parts[..parts.len() - 1])
             }
             _ => None,
         };
@@ -163,7 +167,7 @@ impl Compiler<'_> {
                 "host path push arity",
             )));
         };
-        let root = self.compile_host_path_root(callee.span, path.root)?;
+        let root = self.compile_host_path_root(path.root)?;
         let segments = self.compile_host_path_segments(path.segments)?;
         let value = self.compile_expr(&arg.value)?;
         self.emit(InstructionKind::PushHostPath {
@@ -186,7 +190,7 @@ impl Compiler<'_> {
                 host_field_path(&self.facts.options, base)
             }
             ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "remove") => {
-                host_field_path_parts(&self.facts.options, &parts[..parts.len() - 1])
+                host_field_path_parts(&self.facts.options, callee.span, &parts[..parts.len() - 1])
             }
             _ => None,
         };
@@ -202,7 +206,7 @@ impl Compiler<'_> {
                 "host path remove arity",
             )));
         }
-        let root = self.compile_host_path_root(callee.span, path.root)?;
+        let root = self.compile_host_path_root(path.root)?;
         let segments = self.compile_host_path_segments(path.segments)?;
         self.emit(InstructionKind::RemoveHostPath { root, segments });
         let dst = self.alloc_register()?;
@@ -212,12 +216,11 @@ impl Compiler<'_> {
 
     pub(super) fn compile_host_path_root<'expr>(
         &mut self,
-        span: Span,
         root: HostPathRoot<'expr>,
     ) -> CompileResult<Register> {
         match root {
             HostPathRoot::Expr(expr) => self.compile_expr(expr),
-            HostPathRoot::LocalPath(name) => self.local_register_at_span(span, name),
+            HostPathRoot::LocalPath { name, span } => self.local_register_at_span(span, name),
         }
     }
 

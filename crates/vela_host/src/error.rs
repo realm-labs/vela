@@ -58,6 +58,9 @@ pub enum HostErrorKind {
     MissingPath {
         path: HostPath,
     },
+    MissingGlobal {
+        name: String,
+    },
     PermissionDenied {
         path: HostPath,
         action: &'static str,

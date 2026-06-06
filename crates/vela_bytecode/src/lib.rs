@@ -490,6 +490,10 @@ pub enum InstructionKind {
         enum_name: String,
         variant: String,
     },
+    LoadHostGlobal {
+        dst: Register,
+        global: String,
+    },
     GetHostField {
         dst: Register,
         root: Register,

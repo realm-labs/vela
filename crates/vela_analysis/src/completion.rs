@@ -141,7 +141,7 @@ fn module_completion_labels(graph: &ModuleGraph) -> BTreeSet<String> {
 
 fn completion_kind_for_declaration(kind: DeclarationKind) -> Option<CompletionKind> {
     match kind {
-        DeclarationKind::Const => Some(CompletionKind::Const),
+        DeclarationKind::Const | DeclarationKind::Global => Some(CompletionKind::Const),
         DeclarationKind::Function => Some(CompletionKind::Function),
         DeclarationKind::Struct | DeclarationKind::Enum => Some(CompletionKind::Type),
         DeclarationKind::Trait => Some(CompletionKind::Trait),

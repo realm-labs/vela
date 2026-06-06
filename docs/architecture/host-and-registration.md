@@ -150,6 +150,30 @@ network-replicated state
 test mock state
 ```
 
+### Runtime Globals
+
+Global state is declared as a module item and bound by the embedding host:
+
+```vela
+pub global state: ServerState
+```
+
+The declaration is ABI metadata. It does not allocate state, run an
+initializer, or create top-level side effects. Rust inserts a matching runtime
+global by its fully qualified declaration name, such as
+`game::state::state`, before script calls that access it.
+
+Rust-defined globals are represented as persistent host objects in the
+runtime's global store. Loading a global produces a `HostRef` root, and script
+field reads, writes, method calls, and keyed paths then use the same
+`HostPath` and write-through `HostAccess` path as call-boundary host handles.
+Missing runtime instances are runtime host errors.
+
+Vela-defined globals use the same declaration surface, but their storage is a
+future `ScriptValueGlobal` backend: host-owned persistent data shaped by Vela
+schema metadata and exposed through the same global root API. They should not
+reintroduce module-level `let` or mutable static initialization.
+
 Direct call-boundary objects implement the same method shape through
 `ScriptHostObject::call_host_method(&HostPath, HostMethodId, &[HostValue])`.
 Passing the receiver path is required for child methods such as

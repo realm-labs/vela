@@ -16,6 +16,8 @@ impl Parser {
             self.parse_use_item().map(ItemKind::Use)
         } else if self.eat_keyword(Keyword::Const).is_some() {
             self.parse_const_item().map(ItemKind::Const)
+        } else if self.eat_keyword(Keyword::Global).is_some() {
+            self.parse_global_item().map(ItemKind::Global)
         } else if self.eat_keyword(Keyword::Fn).is_some() {
             self.parse_function_item().map(ItemKind::Function)
         } else if self.eat_keyword(Keyword::Struct).is_some() {
@@ -115,6 +117,28 @@ impl Parser {
             type_hint,
             value,
         })
+    }
+
+    pub(super) fn parse_global_item(&mut self) -> Option<GlobalItem> {
+        let name = self.expect_ident("expected global name")?;
+        let type_hint = match self.parse_type_annotation() {
+            Some(type_hint) => type_hint,
+            None => {
+                self.error_here("expected global type annotation");
+                TypeHint {
+                    path: Vec::new(),
+                    span: self.previous_span(),
+                }
+            }
+        };
+        if self.eat_symbol(Symbol::Equal).is_some() {
+            self.error_here(
+                "global declarations are bound by the host and cannot initialize values",
+            );
+            let _ = self.parse_expression();
+        }
+        self.eat_symbol(Symbol::Semicolon);
+        Some(GlobalItem { name, type_hint })
     }
 
     pub(super) fn parse_function_item(&mut self) -> Option<FunctionItem> {

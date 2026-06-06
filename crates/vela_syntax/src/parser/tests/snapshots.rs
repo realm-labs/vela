@@ -99,6 +99,15 @@ fn snapshot_file(file: &SourceFile) -> String {
                 )
                 .expect("write syntax snapshot");
             }
+            ItemKind::Global(global) => {
+                writeln!(
+                    out,
+                    "global {}: {}",
+                    global.name,
+                    global.type_hint.path.join("::")
+                )
+                .expect("write syntax snapshot");
+            }
             ItemKind::Function(function) => {
                 let visibility = if item.visibility == Visibility::Public {
                     "pub "

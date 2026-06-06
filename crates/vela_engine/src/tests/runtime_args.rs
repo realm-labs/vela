@@ -148,6 +148,68 @@ fn main(player: Player, amount, bonus = 1) {
 }
 
 #[test]
+fn runtime_host_global_decl_reads_and_writes_persistent_host_object() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+global state: Player;
+
+fn main() {
+    state.level += 2;
+    return state.level;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let global = runtime.insert_host_global("main::state", direct_player(9));
+
+    let result = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("runtime call should run");
+
+    assert_eq!(runtime.host_global_ref("main::state"), Some(global));
+    assert_eq!(result.into_value(), OwnedValue::Int(11));
+}
+
+#[test]
+fn runtime_host_global_decl_requires_host_inserted_instance() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+global state: Player;
+
+fn main() {
+    return state.level;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let error = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect_err("missing global should fail");
+
+    assert_eq!(
+        error.kind,
+        VmErrorKind::Host(HostErrorKind::MissingGlobal {
+            name: "main::state".to_owned()
+        })
+    );
+}
+
+#[test]
 fn runtime_call_args_accept_positional_values() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = compile_program_source_with_options(

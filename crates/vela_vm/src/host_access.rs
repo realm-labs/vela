@@ -21,6 +21,22 @@ pub(crate) struct HostAccessRuntime<'a, 'host, 'heap> {
     pub(crate) source_span: Option<Span>,
 }
 
+pub(crate) fn load_host_global(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    name: &str,
+) -> VmResult<Value> {
+    let host = runtime.host.ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host context",
+        })
+    })?;
+    let root = host
+        .adapter
+        .global_ref(name)
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    Ok(Value::HostRef(root))
+}
+
 pub(crate) fn read_host_field(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,

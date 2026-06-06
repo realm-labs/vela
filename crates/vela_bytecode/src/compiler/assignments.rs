@@ -402,7 +402,7 @@ impl Compiler<'_> {
         value: &Expr,
     ) -> CompileResult<Register> {
         let HostPath { root, segments } = self.compile_host_assignment_target(target)?;
-        let root = self.compile_host_path_root(target.span, root)?;
+        let root = self.compile_host_path_root(root)?;
         let field = match segments.as_slice() {
             [HostPathPart::Field(field)] => Some(*field),
             _ => None,

@@ -20,8 +20,8 @@ use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_funct
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
-    ConstMetadata, EnumShape, FunctionSignature, HirTypeHint, ImplMetadata, ParamHint,
-    StructFieldHint, StructShape, TraitShape,
+    ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, HirTypeHint, ImplMetadata,
+    ParamHint, StructFieldHint, StructShape, TraitShape,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -41,6 +41,7 @@ pub struct ModuleGraph {
     declarations: BTreeMap<HirDeclId, Declaration>,
     declaration_attrs: BTreeMap<HirDeclId, Vec<HirAttribute>>,
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
+    global_metadata: BTreeMap<HirDeclId, GlobalMetadata>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
@@ -141,6 +142,19 @@ impl ModuleGraph {
                         .insert(declaration, attrs_from_syntax(&item.attrs));
                     self.diagnostics
                         .extend(validate_const_initializer(const_item));
+                }
+                ItemKind::Global(global_item) => {
+                    let declaration = self.insert_declaration(
+                        &mut hir_module,
+                        global_item.name.clone(),
+                        DeclarationKind::Global,
+                        item.visibility.clone(),
+                        item.span,
+                    );
+                    self.global_metadata
+                        .insert(declaration, GlobalMetadata::from_syntax(global_item));
+                    self.declaration_attrs
+                        .insert(declaration, attrs_from_syntax(&item.attrs));
                 }
                 ItemKind::Function(function) => {
                     let declaration = self.insert_declaration(
@@ -341,6 +355,11 @@ impl ModuleGraph {
     #[must_use]
     pub fn const_metadata(&self, declaration: HirDeclId) -> Option<&ConstMetadata> {
         self.const_metadata.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn global_metadata(&self, declaration: HirDeclId) -> Option<&GlobalMetadata> {
+        self.global_metadata.get(&declaration)
     }
 
     #[must_use]

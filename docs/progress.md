@@ -71,6 +71,7 @@ Cranelift JIT.
 - Engine registration for host types, native functions, context helpers,
   standard natives, capability profiles, reflection permissions, compiler options, dynamic
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
+  module-level `global` declarations backed by persistent Rust-defined host objects,
   direct host object method dispatch with receiver paths, unified concrete host
   type specs, host index capability metadata, typed host path arguments,
   string-key host path segments, hot-reload policies, derive-generated host
@@ -165,6 +166,9 @@ Cranelift JIT.
     reason to defer the remaining conversions to M20/JIT work;
   - HostPath/HostAccess reusable path keys or direct adapter-thunk boundaries are
     implemented enough for M20 host field/path caches;
+  - Vela-defined script-value globals still need a persistent `ScriptValueGlobal`
+    backend and Rust construction/mutation API; current runtime globals cover
+    Rust-defined host-object roots through `HostRef` and `HostAccess`;
   - root host receiver index lowering such as `scores[1]` needs HIR/TypeFacts
     receiver-type plumbing before compile-time index capability diagnostics can
     be complete; field-derived host paths such as `player.scores[1]` continue

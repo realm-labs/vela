@@ -62,6 +62,7 @@ pub struct Declaration {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DeclarationKind {
     Const,
+    Global,
     Function,
     Struct,
     Enum,
