@@ -103,14 +103,13 @@ pub const BASE: int = 10;
         .expect("write ignored non-source file");
 
     let engine = Engine::builder()
-        .grant_permission("reward.read")
         .register_native_fn(
             NativeFunctionDesc::new("game::grant_bonus", NativeFunctionId::new(44))
                 .param("base", TypeHint::Int)
                 .param("amount", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::pure())
-                .access(FunctionAccess::public().require_permission("reward.read")),
+                .access(FunctionAccess::public()),
             #[allow(clippy::result_large_err)]
             |args| {
                 let [OwnedValue::Int(base), OwnedValue::Int(amount)] = args else {
@@ -131,10 +130,7 @@ pub const BASE: int = 10;
     assert_eq!(function.params[1].name, "amount");
     assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
     assert_eq!(function.return_type.as_deref(), Some("int"));
-    assert_eq!(
-        function.access.required_permissions(),
-        &["reward.read".to_owned()]
-    );
+    assert!(function.access.required_permissions().is_empty());
 
     let program = engine
         .compile_dir(root.path())

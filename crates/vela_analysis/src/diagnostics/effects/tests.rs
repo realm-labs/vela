@@ -51,11 +51,8 @@ fn allowed_effects_do_not_report_diagnostics() {
     );
     let scope = ExprFactScope::new().with_path(["player"], TypeFact::host("Player"));
     let facts = effect_registry_facts();
-    let allowed = RegistryEffectFact {
-        reads_host: true,
-        writes_host: true,
-        emits_events: true,
-    };
+    let mut allowed = RegistryEffectFact::host_write();
+    allowed.emits_events = true;
 
     assert!(effect_diagnostics(&exprs[0], &scope, &facts, &allowed).is_empty());
     assert!(effect_diagnostics(&exprs[1], &scope, &facts, &allowed).is_empty());

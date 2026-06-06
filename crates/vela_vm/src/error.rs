@@ -114,7 +114,7 @@ pub enum VmErrorKind {
     },
     PermissionDenied {
         native: String,
-        permission: String,
+        capability: String,
     },
     UnknownFunction {
         name: String,
@@ -192,8 +192,8 @@ impl VmErrorKind {
             }
             Self::DivisionByZero => "division by zero".to_owned(),
             Self::UnknownNative { name } => format!("unknown native function `{name}`"),
-            Self::PermissionDenied { native, permission } => {
-                format!("native `{native}` requires permission `{permission}`")
+            Self::PermissionDenied { native, capability } => {
+                format!("native `{native}` requires capability `{capability}`")
             }
             Self::UnknownFunction { name } => format!("unknown function `{name}`"),
             Self::UnknownMethod { method } => format!("unknown method `{method}`"),

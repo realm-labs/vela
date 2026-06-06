@@ -121,19 +121,12 @@ fn access_tokens(function: &FunctionMeta) -> TokenStream {
     };
     let reflect_visible = function.reflect_visible;
     let reflect_callable = function.reflect_callable;
-    let permissions = function.permissions.iter().map(|permission| {
-        quote! {
-            access = access.require_permission(#permission);
-        }
-    });
 
     quote! {
         {
-            let mut access = #base
+            #base
                 .reflect_visible(#reflect_visible)
-                .reflect_callable(#reflect_callable);
-            #(#permissions)*
-            access
+                .reflect_callable(#reflect_callable)
         }
     }
 }

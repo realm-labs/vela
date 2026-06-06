@@ -10,7 +10,7 @@ fn script_macros_feed_engine_builder_registration() {
             .expect("method descriptor");
     let engine = Engine::builder()
         .register_host_type::<Player>()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_native_method_fn(desc, |_, _, _| Ok(OwnedValue::Null))
         .build()
         .expect("engine should build from macro metadata");
@@ -21,10 +21,7 @@ fn script_macros_feed_engine_builder_registration() {
     assert_eq!(player.methods.len(), 1);
     assert_eq!(player.methods[0].name, "grant_exp");
     assert!(player.methods[0].effects.writes_host);
-    assert_eq!(
-        player.methods[0].access.required_permissions(),
-        &["player.write".to_owned()],
-    );
+    assert!(player.methods[0].access.required_permissions().is_empty());
 }
 
 #[test]
@@ -32,7 +29,8 @@ fn script_methods_generate_callable_native_registration() {
     let engine = Player::vela_register_native_method_fns(
         Engine::builder()
             .register_host_type::<Player>()
-            .grant_permission("player.write"),
+            .capability(Capability::HostRead)
+            .capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro callable methods");
@@ -66,7 +64,7 @@ fn script_methods_feed_stable_engine_registration_api() {
     let generated_methods = Player::vela_native_method_descs();
     let engine = Engine::builder()
         .register_script_host::<Player>()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .build()
         .expect("engine should build from macro host methods");
     let registry = engine.registry();
@@ -163,15 +161,6 @@ fn assert_registered_method_matches_native_desc(
         registered.access.reflect_callable,
         generated.access.reflect_callable
     );
-    assert_eq!(
-        registered.access.required_permissions(),
-        generated
-            .access
-            .required_permissions
-            .iter()
-            .map(str::to_owned)
-            .collect::<Vec<_>>()
-    );
     assert_eq!(registered.docs, generated.docs);
     assert_eq!(registered.attrs, generated.attrs);
     assert_eq!(registered.source_span, generated.source_span);
@@ -210,7 +199,8 @@ fn script_methods_generate_callable_result_native_registration() {
     let engine = Player::vela_register_native_method_fns(
         Engine::builder()
             .register_host_type::<Player>()
-            .grant_permission("player.write"),
+            .capability(Capability::HostRead)
+            .capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro callable methods");
@@ -256,7 +246,8 @@ fn script_methods_generate_callable_option_native_registration() {
     let engine = Player::vela_register_native_method_fns(
         Engine::builder()
             .register_host_type::<Player>()
-            .grant_permission("player.write"),
+            .capability(Capability::HostRead)
+            .capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro callable methods");

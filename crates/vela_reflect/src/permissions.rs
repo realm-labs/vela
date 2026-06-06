@@ -409,7 +409,10 @@ fn missing_method_effect_permission(
     method: &MethodDesc,
     permissions: &ReflectPermissionSet,
 ) -> Option<ReflectPermission> {
-    if method.effects.reads_host && !permissions.contains(ReflectPermission::CallHostReadMethods) {
+    if method.effects.reads_host
+        && !method.effects.writes_host
+        && !permissions.contains(ReflectPermission::CallHostReadMethods)
+    {
         return Some(ReflectPermission::CallHostReadMethods);
     }
     if method.effects.writes_host && !permissions.contains(ReflectPermission::CallHostWriteMethods)
@@ -426,7 +429,9 @@ fn missing_function_effect_permission(
     function: &FunctionDesc,
     permissions: &ReflectPermissionSet,
 ) -> Option<ReflectPermission> {
-    if function.effects.reads_host && !permissions.contains(ReflectPermission::CallHostReadMethods)
+    if function.effects.reads_host
+        && !function.effects.writes_host
+        && !permissions.contains(ReflectPermission::CallHostReadMethods)
     {
         return Some(ReflectPermission::CallHostReadMethods);
     }

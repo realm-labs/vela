@@ -7,7 +7,7 @@ use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::context::NativeCallContext;
-use crate::permission::PermissionSet;
+use crate::permission::Capability;
 
 pub type NativeFunctionId = FunctionId;
 
@@ -97,6 +97,11 @@ pub struct EffectSet {
     pub reads_host: bool,
     pub writes_host: bool,
     pub emits_events: bool,
+    pub reads_time: bool,
+    pub uses_random: bool,
+    pub reads_reflection: bool,
+    pub writes_reflection: bool,
+    pub calls_reflection: bool,
 }
 
 impl EffectSet {
@@ -106,6 +111,11 @@ impl EffectSet {
             reads_host: false,
             writes_host: false,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -115,6 +125,11 @@ impl EffectSet {
             reads_host: true,
             writes_host: false,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -124,6 +139,11 @@ impl EffectSet {
             reads_host: true,
             writes_host: true,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -133,7 +153,55 @@ impl EffectSet {
             reads_host: false,
             writes_host: false,
             emits_events: true,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
+    }
+
+    #[must_use]
+    pub const fn time() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: false,
+            reads_time: true,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn random() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: false,
+            reads_time: false,
+            uses_random: true,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
+        }
+    }
+
+    pub fn required_capabilities(&self) -> impl Iterator<Item = Capability> {
+        [
+            (self.reads_host && !self.writes_host, Capability::HostRead),
+            (self.writes_host, Capability::HostWrite),
+            (self.emits_events, Capability::EventEmit),
+            (self.reads_time, Capability::Time),
+            (self.uses_random, Capability::Random),
+            (self.reads_reflection, Capability::ReflectionRead),
+            (self.writes_reflection, Capability::ReflectionWrite),
+            (self.calls_reflection, Capability::ReflectionCall),
+        ]
+        .into_iter()
+        .filter_map(|(required, capability)| required.then_some(capability))
     }
 }
 
@@ -142,7 +210,6 @@ pub struct FunctionAccess {
     pub public: bool,
     pub reflect_visible: bool,
     pub reflect_callable: bool,
-    pub required_permissions: PermissionSet,
 }
 
 impl FunctionAccess {
@@ -157,7 +224,6 @@ impl FunctionAccess {
             public: false,
             reflect_visible: false,
             reflect_callable: false,
-            required_permissions: PermissionSet::new(),
         }
     }
 
@@ -172,12 +238,6 @@ impl FunctionAccess {
         self.reflect_visible = reflect_visible;
         self
     }
-
-    #[must_use]
-    pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
-        self.required_permissions.insert(permission);
-        self
-    }
 }
 
 impl Default for FunctionAccess {
@@ -186,7 +246,6 @@ impl Default for FunctionAccess {
             public: true,
             reflect_visible: true,
             reflect_callable: false,
-            required_permissions: PermissionSet::new(),
         }
     }
 }

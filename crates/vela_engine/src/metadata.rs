@@ -142,16 +142,18 @@ fn reflect_effects(effects: &crate::native::EffectSet) -> MethodEffectSet {
         reads_host: effects.reads_host,
         writes_host: effects.writes_host,
         emits_events: effects.emits_events,
+        reads_time: effects.reads_time,
+        uses_random: effects.uses_random,
+        reads_reflection: effects.reads_reflection,
+        writes_reflection: effects.writes_reflection,
+        calls_reflection: effects.calls_reflection,
     }
 }
 
 fn reflect_access(access: &crate::native::FunctionAccess) -> MethodAccess {
-    access.required_permissions.iter().fold(
-        MethodAccess::new()
-            .public(access.public)
-            .reflect_callable(access.reflect_callable),
-        |access, permission| access.require_permission(permission),
-    )
+    MethodAccess::new()
+        .public(access.public)
+        .reflect_callable(access.reflect_callable)
 }
 
 fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffectSet {
@@ -159,17 +161,19 @@ fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffec
         reads_host: effects.reads_host,
         writes_host: effects.writes_host,
         emits_events: effects.emits_events,
+        reads_time: effects.reads_time,
+        uses_random: effects.uses_random,
+        reads_reflection: effects.reads_reflection,
+        writes_reflection: effects.writes_reflection,
+        calls_reflection: effects.calls_reflection,
     }
 }
 
 fn reflect_function_access(access: &crate::native::FunctionAccess) -> ReflectFunctionAccess {
-    access.required_permissions.iter().fold(
-        ReflectFunctionAccess::new()
-            .public(access.public)
-            .reflect_visible(access.reflect_visible)
-            .reflect_callable(access.reflect_callable),
-        |access, permission| access.require_permission(permission),
-    )
+    ReflectFunctionAccess::new()
+        .public(access.public)
+        .reflect_visible(access.reflect_visible)
+        .reflect_callable(access.reflect_callable)
 }
 
 fn type_hint_display(hint: &TypeHint) -> String {

@@ -29,6 +29,11 @@ decision history lives in
 - Runtime call budget presets should stay domain-neutral. Hosts should choose
   per-script or per-call budgets explicitly with `CallOptions::new(...)`;
   `CallOptions` intentionally has no default preset.
+- Runtime authorization uses coarse capability profiles, not arbitrary
+  business permission strings. Native and standard-library execution checks
+  compare effect bits against the engine `CapabilitySet`; business-domain
+  isolation is primarily controlled by what host surface the embedding
+  registers.
 
 ## Active Architecture Decisions
 
@@ -139,7 +144,7 @@ runtime trait-structure mutation.
 Reflection metadata is copied, permission-aware, and read-only with respect to
 type structure. TypeRegistry descriptors are the source for reflected types,
 fields, methods, traits, variants, modules, functions, source spans, docs,
-attributes, effects, access, and required permissions.
+attributes, effects, access, and reflection-tool permissions.
 
 Function descriptors keep public export status separate from reflection
 visibility and reflective callability. Private functions may be visible to
@@ -149,6 +154,23 @@ targets, and hot-reload ABI checks compare those access bits explicitly.
 Reflective reads, writes, and calls resolve descriptor metadata to stable IDs
 and route host interaction through PatchTx. Private, effectful, host path, and
 field-level operations require explicit reflection permissions.
+
+### Capability Profiles
+
+The engine runtime exposes a domain-neutral `CapabilitySet` and named
+`ExecutionProfile` constructors. Capability bits include host read/write,
+event emission, deterministic time, controlled random, and controlled
+reflection effects. Native and context calls declare `EffectSet`; pure calls
+take the fast path, while effectful calls require the corresponding capability
+bit before execution.
+
+Fine-grained business permission strings are not part of the runtime native
+call hot path. Hosts that need strict isolation should register only the native,
+context, schema, and reflection surface that a script may use, then choose a
+coarse execution profile for the allowed effect classes. Reflection's own
+`ReflectPermissionSet` remains a tooling/policy model for metadata visibility
+and controlled reflection operations; it must not be used as host business
+authorization for native execution.
 
 ### Macro Stable IDs
 

@@ -49,11 +49,7 @@ fn engine_registers_native_function_reflection_metadata() {
                 .param("rhs", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_read())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("game::add"),
-                )
+                .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Adds two integers.")
                 .attr("domain", "gameplay")
                 .attr("stable", "true")
@@ -86,20 +82,14 @@ fn engine_registers_native_function_reflection_metadata() {
     assert!(!function.effects.writes_host);
     assert!(function.access.reflect_visible);
     assert!(function.access.reflect_callable);
-    assert_eq!(
-        function.access.required_permissions(),
-        &["game::add".to_owned()]
-    );
+    assert!(function.access.required_permissions().is_empty());
     assert_eq!(function.docs.as_deref(), Some("Adds two integers."));
     assert_eq!(function.attrs.get("domain"), Some("gameplay"));
     assert_eq!(function.attrs.get("stable"), Some("true"));
     assert_eq!(function.source_span, Some(source_span));
 
     let function_abi = FunctionAbi::from_function(function);
-    assert_eq!(
-        function_abi.access,
-        AccessAbi::function(true, true, true, vec!["game::add".to_owned()])
-    );
+    assert_eq!(function_abi.access, AccessAbi::function(true, true, true));
     assert_eq!(function_abi.source_span, Some(source_span));
 }
 
@@ -177,10 +167,7 @@ fn engine_native_private_functions_can_remain_reflect_visible() {
     assert!(!function.access.reflect_callable);
 
     let function_abi = FunctionAbi::from_function(function);
-    assert_eq!(
-        function_abi.access,
-        AccessAbi::function(false, true, false, Vec::new())
-    );
+    assert_eq!(function_abi.access, AccessAbi::function(false, true, false));
 
     let program = compile_program_source(
         SourceId::new(1),

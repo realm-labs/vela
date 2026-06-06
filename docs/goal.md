@@ -22,7 +22,7 @@ The language should provide:
 3. Safe mutable state boundaries: scripts never hold Rust `&mut T`; they produce `HostPath` operations inside `PatchTx`, and the host applies them at safe points.
 4. Hot Reload First semantics: hot reload replaces function-level or module-level code objects. Existing call frames continue on old code, and new calls enter new code.
 5. Controlled reflection: scripts can inspect types, fields, methods, variants, traits, modules, and functions, and can perform controlled dynamic reads, writes, and calls. Runtime schema mutation is not allowed.
-6. Embeddability: Rust hosts can register types, native functions, permissions, execution budgets, state adapters, and hot reload policies.
+6. Embeddability: Rust hosts can register types, native functions, capability profiles, execution budgets, state adapters, and hot reload policies.
 7. Practical performance: the MVP should keep the bytecode VM, stable IDs,
    field slots, native standard library functions, and GC boundaries ready for
    optimization. After the MVP, the non-JIT interpreter should target
@@ -68,7 +68,7 @@ Engineering principles:
 4. Build the interpreter before considering JIT.
 5. Every schema item needs a stable ID: fields, methods, variants, traits, and functions.
 6. Hot reload compatibility is bounded by ABI checks.
-7. Host permissions must be configurable: execution budget, memory budget, reflection permissions, and host write permissions.
+7. Host effects must be configurable: execution budget, memory budget, reflection permissions, and runtime capabilities such as host read/write, event emit, time, and random.
 8. Implementations must stay modular: split logic by crate and module responsibility instead of piling unrelated code into one large file.
 9. The pre-release implementation should not carry backward-compatibility
    shims for old internal APIs, transitional script behavior, or temporary
@@ -447,7 +447,7 @@ compile_file and compile_dir
 Runtime::call with CallOptions
 args!/host! convenience APIs
 NativeFunctionDesc and FunctionDesc
-NativeCallContext with runtime, state adapter, PatchTx, permissions, budget
+NativeCallContext with engine access, state adapter, PatchTx, capability set, budget
 native function and native method registration with stable IDs
 Rust signature conversion rules
 vela_macros crate
@@ -462,7 +462,7 @@ Acceptance:
 sample Rust host registers domain objects, state containers, and config types
 derive macro output matches explicit hand-written TypeRegistry metadata
 duplicate stable IDs are rejected at registration or compile time
-native calls consume budgets and enforce permissions
+native calls consume budgets and enforce declared effect capabilities
 scripts never receive real Rust references from native APIs
 ```
 

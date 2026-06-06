@@ -120,7 +120,7 @@ math::floor
 math::ceil
 math::round
 math::abs
-math::random  # only with permission
+math::random  # only with the random capability
 ```
 
 Time should come from host context, not direct system time:

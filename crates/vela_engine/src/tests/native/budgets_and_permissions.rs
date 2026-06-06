@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn host_native_patch_budget_rolls_back_overflow_patch() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_host_native_fn(
             NativeFunctionDesc::new("game::unchecked_set_level", NativeFunctionId::new(28))
                 .param(
@@ -13,7 +13,7 @@ fn host_native_patch_budget_rolls_back_overflow_patch() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             |args, host| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
@@ -66,7 +66,7 @@ fn main(player) {
 #[test]
 fn host_native_error_rolls_back_recorded_patches() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_host_native_fn(
             NativeFunctionDesc::new("game::failing_set_level", NativeFunctionId::new(29))
                 .param(
@@ -76,7 +76,7 @@ fn host_native_error_rolls_back_recorded_patches() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             |args, host| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
@@ -134,7 +134,7 @@ fn main(player) {
 #[test]
 fn host_native_error_rolls_back_patches_without_call_options() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_host_native_fn(
             NativeFunctionDesc::new("game::direct_failing_set_level", NativeFunctionId::new(30))
                 .param(
@@ -144,7 +144,7 @@ fn host_native_error_rolls_back_patches_without_call_options() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             |args, host| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
@@ -251,12 +251,12 @@ fn main() {
 }
 
 #[test]
-fn engine_denies_native_calls_missing_required_permission() {
+fn engine_allows_pure_native_calls_without_capabilities() {
     let engine = Engine::builder()
         .register_native_fn(
             NativeFunctionDesc::new("game::secret", NativeFunctionId::new(3))
                 .returns(TypeHint::Int)
-                .access(FunctionAccess::public().require_permission("game::secret")),
+                .access(FunctionAccess::public()),
             |_| Ok(OwnedValue::Int(99)),
         )
         .build()
@@ -271,13 +271,10 @@ fn main() {
     )
     .expect("program should compile");
 
-    assert!(matches!(
+    assert_eq!(
         engine.into_vm().run_program(&program, "main", &[]),
-        Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "game::secret".to_owned(),
-            permission: "game::secret".to_owned(),
-        }
-    ));
+        Ok(OwnedValue::Int(99))
+    );
 }
 
 #[test]
@@ -292,7 +289,7 @@ fn engine_denies_host_native_before_recording_patches() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             |args, host| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
@@ -331,7 +328,7 @@ fn main(player) {
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "game::set_level".to_owned(),
-            permission: "player.write".to_owned(),
+            capability: Capability::HostWrite.as_str().to_owned(),
         }
     ));
     assert!(tx.patches().is_empty());

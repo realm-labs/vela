@@ -8,7 +8,7 @@ pub use crate::method::NativeMethodDesc;
 pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
-pub use crate::permission::PermissionSet;
+pub use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 pub use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };

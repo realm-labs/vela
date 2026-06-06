@@ -385,18 +385,22 @@ fn render_module_export_abi(export: &crate::module_abi::ModuleExportAbi) -> Stri
 
 fn render_effect_abi(effect: &EffectAbi) -> String {
     format!(
-        "reads_host={} writes_host={} emits_events={}",
-        effect.reads_host, effect.writes_host, effect.emits_events
+        "reads_host={} writes_host={} emits_events={} reads_time={} uses_random={} reads_reflection={} writes_reflection={} calls_reflection={}",
+        effect.reads_host,
+        effect.writes_host,
+        effect.emits_events,
+        effect.reads_time,
+        effect.uses_random,
+        effect.reads_reflection,
+        effect.writes_reflection,
+        effect.calls_reflection
     )
 }
 
 fn render_access_abi(access: &AccessAbi) -> String {
     format!(
-        "public={} reflective={} callable={} permissions=[{}]",
-        access.public,
-        access.reflective,
-        access.callable,
-        access.required_permissions.join(", ")
+        "public={} reflective={} callable={}",
+        access.public, access.reflective, access.callable
     )
 }
 

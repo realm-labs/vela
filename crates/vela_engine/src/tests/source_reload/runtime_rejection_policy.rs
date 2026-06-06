@@ -3,6 +3,7 @@ use super::*;
 #[test]
 fn runtime_preserves_program_when_engine_hot_reload_update_is_rejected() {
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .hot_reload_policy(HotReloadPolicy::locked_down())
         .build()
         .expect("engine should build");
@@ -39,7 +40,10 @@ fn main() {
 
 #[test]
 fn runtime_rejects_hot_update_when_not_created_from_version() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -56,7 +60,10 @@ fn runtime_rejects_hot_update_when_not_created_from_version() {
 
 #[test]
 fn runtime_rejects_compile_update_when_not_created_from_version() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -71,6 +78,7 @@ fn runtime_rejects_compile_update_when_not_created_from_version() {
 #[test]
 fn engine_applies_configured_hot_reload_policy() {
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .hot_reload_policy(HotReloadPolicy::locked_down())
         .build()
         .expect("engine should build");

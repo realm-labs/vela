@@ -27,13 +27,12 @@ fn main() {
         && params[1].type == "int"
         && access.reflect_visible
         && access.reflect_callable
-        && access.required_permissions.len() == 1
-        && access.required_permissions[0] == "std.random"
-        && required.len() == 1
-        && required[0] == "std.random"
+        && access.required_permissions.len() == 0
+        && required.len() == 0
         && !effects.reads_host
         && !effects.writes_host
         && !effects.emits_events
+        && effects.uses_random
         && first >= 1
         && first <= 6
         && second >= 10

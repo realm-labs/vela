@@ -5,12 +5,12 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     let old_abi = HotReloadAbi::empty().function(FunctionAbi::new(
         "game::reward::grant",
         EffectAbi::host_read(),
-        AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
+        AccessAbi::new(true, true),
     ));
     let changed_effects = HotReloadAbi::empty().function(FunctionAbi::new(
         "game::reward::grant",
         EffectAbi::host_write(),
-        AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
+        AccessAbi::new(true, true),
     ));
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi.clone())
@@ -36,7 +36,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     let changed_access = HotReloadAbi::empty().function(FunctionAbi::new(
         "game::reward::grant",
         EffectAbi::host_read(),
-        AccessAbi::new(true, true, vec!["reward.write".to_owned()]),
+        AccessAbi::new(false, true),
     ));
     let error = compile_update_with_abi(
         &initial,
@@ -49,8 +49,8 @@ fn function_effect_and_access_abi_changes_are_rejected() {
         error.kind,
         HotReloadErrorKind::ChangedFunctionAccess {
             function: "game::reward::grant".to_owned(),
-            old: AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
-            new: AccessAbi::new(true, true, vec!["reward.write".to_owned()]),
+            old: AccessAbi::new(true, true),
+            new: AccessAbi::new(false, true),
             source_span: None,
         }
     );
@@ -58,7 +58,7 @@ fn function_effect_and_access_abi_changes_are_rejected() {
     let changed_callability = HotReloadAbi::empty().function(FunctionAbi::new(
         "game::reward::grant",
         EffectAbi::host_read(),
-        AccessAbi::function(true, true, false, vec!["reward.read".to_owned()]),
+        AccessAbi::function(true, true, false),
     ));
     let error = compile_update_with_abi(
         &initial,
@@ -71,8 +71,8 @@ fn function_effect_and_access_abi_changes_are_rejected() {
         error.kind,
         HotReloadErrorKind::ChangedFunctionAccess {
             function: "game::reward::grant".to_owned(),
-            old: AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
-            new: AccessAbi::function(true, true, false, vec!["reward.read".to_owned()]),
+            old: AccessAbi::new(true, true),
+            new: AccessAbi::function(true, true, false),
             source_span: None,
         }
     );
@@ -336,7 +336,7 @@ fn removed_function_abi_is_rejected() {
         FunctionAbi::new(
             "game::reward::grant",
             EffectAbi::host_read(),
-            AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
+            AccessAbi::new(true, true),
         )
         .source_span(span),
     );

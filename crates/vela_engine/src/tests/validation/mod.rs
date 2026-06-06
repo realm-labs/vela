@@ -11,7 +11,7 @@ use vela_vm::owned_value::OwnedValue;
 use crate::engine::Engine;
 use crate::error::EngineErrorKind;
 use crate::method::NativeMethodDesc;
-use crate::native::{FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::native::{NativeFunctionDesc, NativeFunctionId, TypeHint};
 use crate::standard::{INT_TYPE_ID, MATH_CLAMP_FUNCTION_ID};
 
 use super::{player_type, trait_desc_with_id};

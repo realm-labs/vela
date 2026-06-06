@@ -2,7 +2,10 @@ use super::*;
 
 #[test]
 fn runtime_compiles_hot_reload_update_from_active_version() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -46,7 +49,10 @@ fn main() {
 
 #[test]
 fn runtime_compiles_hot_reload_update_file_from_active_version() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -85,7 +91,10 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
     std::fs::create_dir_all(&root).expect("create temp source dir");
     let path = root.join("main.vela");
     std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_file(&path)
         .expect("initial hot reload file compile");
@@ -133,7 +142,10 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
 
 #[test]
 fn runtime_stages_source_file_private_helper_addition_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -170,7 +182,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_public_function_addition_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "pub fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -217,7 +232,10 @@ pub fn main() {
 
 #[test]
 fn runtime_stages_source_file_removed_function_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"

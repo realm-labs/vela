@@ -5,6 +5,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_native_effect");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -16,6 +17,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_write()),
@@ -95,12 +97,10 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_native_access");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
-            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22)).access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("reward.read"),
-            ),
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -109,12 +109,10 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
-            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22)).access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("reward.write"),
-            ),
+            NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+                .access(FunctionAccess::public().reflect_callable(false)),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -169,10 +167,8 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
         panic!("expected changed native function access");
     };
     assert_eq!(function, "game::native::grant_bonus");
-    assert_eq!(old.required_permissions, vec!["reward.read"]);
-    assert_eq!(new.required_permissions, vec!["reward.write"]);
     assert!(old.callable);
-    assert!(new.callable);
+    assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call(
@@ -191,6 +187,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_native_parameter");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Int),
@@ -202,6 +199,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Float),
@@ -286,6 +284,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
     let root = unique_test_dir("runtime_stage_changed_file_native_path_proxy_parameter");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .param("path", TypeHint::PathProxy),
@@ -297,6 +296,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .param("path", TypeHint::Int),
@@ -381,6 +381,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_native_return");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int),
@@ -392,6 +393,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Float),
@@ -469,6 +471,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
     let root = unique_test_dir("runtime_stage_changed_file_native_path_proxy_return");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .returns(TypeHint::PathProxy),
@@ -480,6 +483,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
                 .returns(TypeHint::Int),
@@ -594,6 +598,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     write_native_reward_module(&reward_file, "grant_bonus", "");
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
@@ -606,6 +611,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
@@ -697,16 +703,10 @@ fn runtime_stages_changed_file_method_effect_rejection_until_safe_point() {
 fn runtime_stages_changed_file_method_access_rejection_until_safe_point() {
     let kind = changed_file_method_rejection_kind(
         "runtime_stage_changed_file_method_access",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
-            MethodAccess::new()
-                .reflect_callable(true)
-                .require_permission("player.read"),
-        ),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
-            MethodAccess::new()
-                .reflect_callable(false)
-                .require_permission("player.read"),
-        ),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            .access(MethodAccess::new().reflect_callable(true)),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            .access(MethodAccess::new().reflect_callable(false)),
         "reload.method.access_changed",
     );
 
@@ -722,8 +722,6 @@ fn runtime_stages_changed_file_method_access_rejection_until_safe_point() {
     };
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
-    assert_eq!(old.required_permissions, vec!["player.read"]);
-    assert_eq!(new.required_permissions, vec!["player.read"]);
     assert!(old.callable);
     assert!(!new.callable);
     assert!(source_span.is_none());
@@ -833,6 +831,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     let method = HostMethodId::new(9);
     let reward_file = write_host_method_reward_modules(&root, "grant_exp", 1);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             method,
             "grant_exp",
@@ -843,6 +842,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             method,
             "award_exp",

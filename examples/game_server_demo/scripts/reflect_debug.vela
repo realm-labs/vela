@@ -91,9 +91,11 @@ fn main(ctx, player) {
     let option_some_access = reflect::access(option_some);
     let ctx_now_access = reflect::access(ctx_now);
     let ctx_now_permissions = reflect::required_permissions(ctx_now);
+    let ctx_now_effects = reflect::effects(ctx_now);
     let ctx_elapsed_access = reflect::access(ctx_elapsed);
     let ctx_elapsed_params = reflect::params(ctx_elapsed);
     let ctx_elapsed_permissions = reflect::required_permissions(ctx_elapsed);
+    let ctx_elapsed_effects = reflect::effects(ctx_elapsed);
     let reflected_now = reflect::call(ctx_now);
     let reflected_elapsed = reflect::call(ctx_elapsed, 1699999990);
     let main_source_span = reflect::source_span(main_function);
@@ -304,7 +306,7 @@ fn main(ctx, player) {
         && reflect::has_module("result")
         && reflect::has_module("set")
         && !reflect::has_module("game::missing")
-        && !reflect::has_function("math::random")
+        && reflect::has_function("math::random")
         && reflect::name(reward_module) == "game::reward"
         && reflect::kind(reward_module) == "module"
         && reflect::origin(reward_module) == "host"
@@ -317,7 +319,7 @@ fn main(ctx, player) {
         && reflect::kind(ctx_module) == "module"
         && reflect::docs(ctx_module) == "Deterministic context helpers."
         && reflect::attr(ctx_module, "stdlib") == "context"
-        && reflect::attr(ctx_module, "domain") == "gameplay"
+        && reflect::attr(ctx_module, "domain") == "context"
         && reflect::name(math_module) == "math"
         && reflect::kind(math_module) == "module"
         && reflect::docs(math_module) == "Deterministic math standard-library helpers."
@@ -397,7 +399,7 @@ fn main(ctx, player) {
         && ctx_exports.contains("ctx::now")
         && ctx_exports.contains("ctx::tick")
         && ctx_exports.contains("ctx::elapsed_since")
-        && math_exports.len() == 14
+        && math_exports.len() == 15
         && math_exports.contains("math::max")
         && math_exports.contains("math::sqrt")
         && math_exports.contains("math::distance3d")
@@ -440,10 +442,12 @@ fn main(ctx, player) {
         && reflect::returns(ctx_now) == "int"
         && reflect::returns(ctx_tick) == "int"
         && reflect::returns(ctx_elapsed) == "int"
-        && ctx_now_access.required_permissions[0] == "ctx.time"
-        && ctx_now_permissions[0] == "ctx.time"
-        && ctx_elapsed_access.required_permissions[0] == "ctx.time"
-        && ctx_elapsed_permissions[0] == "ctx.time"
+        && ctx_now_access.required_permissions.len() == 0
+        && ctx_now_permissions.len() == 0
+        && ctx_now_effects.reads_time
+        && ctx_elapsed_access.required_permissions.len() == 0
+        && ctx_elapsed_permissions.len() == 0
+        && ctx_elapsed_effects.reads_time
         && reflected_now == 1700000000
         && reflected_elapsed == 10
         && ctx_elapsed_params.len() == 1
@@ -453,13 +457,13 @@ fn main(ctx, player) {
         && ctx_fields.len() == 3
         && reflect::docs(context_type) == "Standard host context object for deterministic time, events, and logging."
         && reflect::attr(context_type, "stdlib") == "context"
-        && reflect::attr(context_type, "domain") == "gameplay"
+        && reflect::attr(context_type, "domain") == "context"
         && reflect::docs(ctx_fields[0]) == "Current deterministic context timestamp."
         && reflect::attr(ctx_fields[0], "stdlib") == "context"
-        && reflect::attr(ctx_fields[0], "domain") == "gameplay"
+        && reflect::attr(ctx_fields[0], "domain") == "context"
         && reflect::docs(ctx_fields[1]) == "Current deterministic context tick."
         && reflect::attr(ctx_fields[1], "stdlib") == "context"
-        && reflect::attr(ctx_fields[1], "domain") == "gameplay"
+        && reflect::attr(ctx_fields[1], "domain") == "context"
         && ctx_fields[2].name == "config"
         && reflect::has_method(ctx, "emit")
         && reflect::has_method(ctx, "log")
@@ -468,9 +472,9 @@ fn main(ctx, player) {
         && ctx_emit.owner == "Context"
         && ctx_log.owner == "Context"
         && reflect::attr(ctx_emit, "stdlib") == "context"
-        && reflect::attr(ctx_emit, "domain") == "gameplay"
+        && reflect::attr(ctx_emit, "domain") == "context"
         && reflect::attr(ctx_log, "stdlib") == "context"
-        && reflect::attr(ctx_log, "domain") == "gameplay"
+        && reflect::attr(ctx_log, "domain") == "context"
         && ctx_emit.effects.emits_events
         && ctx_log.effects.emits_events
         && method_effects.writes_host
@@ -485,7 +489,7 @@ fn main(ctx, player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted
-        && functions.len() == 35
+        && functions.len() == 36
         && functions.any(|function| reflect::id(function) == reflect::id(reward_function))
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")

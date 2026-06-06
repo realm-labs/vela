@@ -4,7 +4,10 @@ use super::*;
 fn engine_compile_hot_reload_changed_file_reloads_module_root() {
     let root = unique_test_dir("hot_reload_changed_file");
     let reward_file = write_reward_modules(&root, "return grant() + 1;", 4);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -36,7 +39,10 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
     let root = unique_test_dir("hot_reload_changed_file_normalized_root");
     let reward_file = write_reward_modules(&root, "return grant();", 4);
     let root_with_current_segment = root.join(".");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -64,7 +70,10 @@ fn engine_compile_hot_reload_changed_file_rejects_non_source_path() {
     let reward_file = write_reward_modules(&root, "return grant();", 4);
     let changed = root.join("ignored.txt");
     std::fs::write(&changed, "ignored").expect("write ignored file");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -87,7 +96,10 @@ fn engine_compile_hot_reload_changed_file_rejects_parent_dir_escape() {
     let root = unique_test_dir("hot_reload_changed_file_parent_escape");
     let reward_file = write_reward_modules(&root, "return grant();", 4);
     let changed = root.join("..").join("outside.vela");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -109,7 +121,10 @@ fn engine_compile_hot_reload_changed_file_rejects_parent_dir_escape() {
 fn engine_compile_hot_reload_file_reports_source_errors() {
     let root = unique_test_dir("missing_hot_reload_file");
     let path = root.join("missing.vela");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
 
     let error = engine
         .compile_hot_reload_initial_file(&path)
@@ -125,7 +140,10 @@ fn engine_compile_hot_reload_file_reports_source_errors() {
 fn engine_compile_file_reports_io_errors() {
     let root = unique_test_dir("missing_file");
     let path = root.join("missing.vela");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
 
     let error = engine
         .compile_file(&path)
@@ -139,6 +157,7 @@ fn engine_exposes_registry_hot_reload_abi() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let method = HostMethodId::new(9);
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key.clone())
                 .schema_hash(SchemaHash::new(0xfeed))
@@ -146,11 +165,7 @@ fn engine_exposes_registry_hot_reload_abi() {
                 .method(
                     MethodDesc::new(method, "grant_exp")
                         .effects(MethodEffectSet::host_write())
-                        .access(
-                            MethodAccess::new()
-                                .reflect_callable(true)
-                                .require_permission("player.write"),
-                        ),
+                        .access(MethodAccess::new().reflect_callable(true)),
                 ),
         )
         .register_native_fn(
@@ -158,11 +173,7 @@ fn engine_exposes_registry_hot_reload_abi() {
                 .param("player", TypeHint::Host(player_key))
                 .returns(TypeHint::Null)
                 .effects(EffectSet::event_emit())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("reward.grant"),
-                ),
+                .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -221,7 +232,10 @@ fn main(player: Player) {
 
 #[test]
 fn runtime_applies_engine_hot_reload_updates() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -255,7 +269,10 @@ fn runtime_applies_engine_hot_reload_updates() {
 
 #[test]
 fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -299,7 +316,10 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
 
 #[test]
 fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -335,7 +355,10 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
 
 #[test]
 fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
         .expect("initial hot reload compile");
@@ -378,7 +401,10 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
 
 #[test]
 fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -423,7 +449,10 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
 
 #[test]
 fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
         .expect("initial hot reload compile");
@@ -476,7 +505,10 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     let initial_abi = HotReloadAbi::empty().module(
         ModuleAbi::new("host::reward").export(ModuleExportAbi::function("grant_reward", 11)),
     );
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
             .expect("initial hot reload compile");
@@ -526,9 +558,12 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     let initial_abi = HotReloadAbi::empty().function(FunctionAbi::new(
         "host::reward::grant",
         EffectAbi::host_read(),
-        AccessAbi::new(true, true, vec!["reward.read".to_owned()]),
+        AccessAbi::new(true, true),
     ));
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
             .expect("initial hot reload compile");
@@ -581,9 +616,12 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
         "Player",
         "grant_exp",
         EffectAbi::host_write(),
-        AccessAbi::new(true, true, vec!["player.write".to_owned()]),
+        AccessAbi::new(true, true),
     ));
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
             .expect("initial hot reload compile");
@@ -633,7 +671,10 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
 #[test]
 fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     let initial_abi = HotReloadAbi::empty().module(ModuleAbi::new("host::reward"));
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", initial_abi)
             .expect("initial hot reload compile");
@@ -678,7 +719,10 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
 
 #[test]
 fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
@@ -713,7 +757,10 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
 
 #[test]
 fn runtime_event_end_safe_point_keeps_nested_calls_on_old_version_until_return() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(
             SourceId::new(1),
@@ -774,7 +821,10 @@ fn main() {
 
 #[test]
 fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial(SourceId::new(1), "pub fn main() -> int { return 1; }")
         .expect("initial hot reload compile");
@@ -826,6 +876,7 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
 #[test]
 fn runtime_checks_reload_around_patch_apply_safe_point() {
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
@@ -900,6 +951,7 @@ fn main(player: Player) {
 #[test]
 fn runtime_safe_point_error_keeps_before_apply_reload_report() {
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");

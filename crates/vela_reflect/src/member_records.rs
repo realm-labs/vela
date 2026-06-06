@@ -90,6 +90,26 @@ fn method_effects_record(method: &MethodDesc) -> HostValue {
                 "emits_events".to_owned(),
                 HostValue::Bool(method.effects.emits_events),
             ),
+            (
+                "reads_time".to_owned(),
+                HostValue::Bool(method.effects.reads_time),
+            ),
+            (
+                "uses_random".to_owned(),
+                HostValue::Bool(method.effects.uses_random),
+            ),
+            (
+                "reads_reflection".to_owned(),
+                HostValue::Bool(method.effects.reads_reflection),
+            ),
+            (
+                "writes_reflection".to_owned(),
+                HostValue::Bool(method.effects.writes_reflection),
+            ),
+            (
+                "calls_reflection".to_owned(),
+                HostValue::Bool(method.effects.calls_reflection),
+            ),
         ]),
     }
 }

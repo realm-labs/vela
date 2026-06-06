@@ -9,17 +9,13 @@ use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
-use crate::clock::{
-    CONTEXT_TIME_PERMISSION, CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID,
-    CTX_TICK_FUNCTION_ID,
-};
+use crate::clock::{CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID};
 use crate::context_schema::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID, CONTEXT_TYPE_ID, context_host_type_desc,
 };
 use crate::engine::Engine;
-use crate::permission::PermissionSet;
-use crate::random::CONTROLLED_RANDOM_PERMISSION;
+use crate::permission::Capability;
 use vela_reflect::permissions::ReflectPermissionSet;
 
 #[test]
@@ -42,7 +38,7 @@ fn main() {
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "ctx::now".to_owned(),
-            permission: CONTEXT_TIME_PERMISSION.to_owned(),
+            capability: Capability::Time.as_str().to_owned(),
         }
     ));
 }
@@ -67,19 +63,15 @@ fn main() {
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "ctx::elapsed_since".to_owned(),
-            permission: CONTEXT_TIME_PERMISSION.to_owned(),
+            capability: Capability::Time.as_str().to_owned(),
         }
     ));
 }
 
 #[test]
-fn explicit_permissions_allow_context_time_but_not_random() {
-    let permissions = PermissionSet::new().with(CONTEXT_TIME_PERMISSION);
-    assert!(permissions.contains(CONTEXT_TIME_PERMISSION));
-    assert!(!permissions.contains(CONTROLLED_RANDOM_PERMISSION));
-
+fn explicit_capabilities_allow_context_time_but_not_random() {
     let engine = Engine::builder()
-        .permissions(permissions)
+        .capability(Capability::Time)
         .with_context_clock(1_700_000_000, 42)
         .with_controlled_random(7)
         .build()
@@ -114,7 +106,7 @@ fn main() {
         engine.into_vm().run_program(&random_program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
-            permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
+            capability: Capability::Random.as_str().to_owned(),
         }
     ));
 }
@@ -122,7 +114,7 @@ fn main() {
 #[test]
 fn engine_context_clock_returns_configured_values() {
     let engine = Engine::builder()
-        .grant_permission(CONTEXT_TIME_PERMISSION)
+        .capability(Capability::Time)
         .with_context_clock(1_700_000_000, 42)
         .build()
         .expect("engine should build");
@@ -145,7 +137,7 @@ fn main() {
 #[test]
 fn engine_reflect_call_invokes_permissioned_context_clock_functions() {
     let engine = Engine::builder()
-        .grant_permission(CONTEXT_TIME_PERMISSION)
+        .capability(Capability::Time)
         .with_context_clock(1_700_000_000, 42)
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
@@ -227,19 +219,15 @@ fn engine_context_clock_registers_metadata() {
     assert!(now.params.is_empty());
     assert_eq!(now.return_type.as_deref(), Some("int"));
     assert!(now.access.reflect_visible);
-    assert_eq!(
-        now.access.required_permissions(),
-        &[CONTEXT_TIME_PERMISSION.to_owned()]
-    );
+    assert!(now.effects.reads_time);
+    assert!(now.access.required_permissions().is_empty());
     assert_eq!(tick.id, CTX_TICK_FUNCTION_ID);
     assert_eq!(tick.module.as_deref(), Some("ctx"));
     assert!(tick.params.is_empty());
     assert_eq!(tick.return_type.as_deref(), Some("int"));
     assert!(tick.access.reflect_visible);
-    assert_eq!(
-        tick.access.required_permissions(),
-        &[CONTEXT_TIME_PERMISSION.to_owned()]
-    );
+    assert!(tick.effects.reads_time);
+    assert!(tick.access.required_permissions().is_empty());
     assert_eq!(elapsed.id, CTX_ELAPSED_SINCE_FUNCTION_ID);
     assert_eq!(elapsed.module.as_deref(), Some("ctx"));
     assert_eq!(elapsed.params.len(), 1);
@@ -247,10 +235,8 @@ fn engine_context_clock_registers_metadata() {
     assert_eq!(elapsed.params[0].type_hint.as_deref(), Some("int"));
     assert_eq!(elapsed.return_type.as_deref(), Some("int"));
     assert!(elapsed.access.reflect_visible);
-    assert_eq!(
-        elapsed.access.required_permissions(),
-        &[CONTEXT_TIME_PERMISSION.to_owned()]
-    );
+    assert!(elapsed.effects.reads_time);
+    assert!(elapsed.access.required_permissions().is_empty());
 }
 
 #[test]

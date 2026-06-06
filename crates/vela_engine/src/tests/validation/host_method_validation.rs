@@ -404,26 +404,6 @@ fn engine_rejects_generic_host_method_param_type_hints() {
 }
 
 #[test]
-fn engine_rejects_empty_native_method_required_permissions() {
-    let player_key = TypeKey::new(TypeId::new(1), "Player");
-    let result = Engine::builder()
-        .register_type(player_type(player_key.id, HostTypeId::new(1)))
-        .register_host_method_desc(
-            NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp")
-                .access(FunctionAccess::public().require_permission("")),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
-            descriptor: "host method Player.grant_exp".to_owned(),
-            name: "".to_owned(),
-        }
-    ));
-}
-
-#[test]
 fn engine_rejects_empty_native_method_attribute_names() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let result = Engine::builder()

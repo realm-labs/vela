@@ -250,12 +250,16 @@ impl FunctionAbi {
                 function.effects.reads_host,
                 function.effects.writes_host,
                 function.effects.emits_events,
+                function.effects.reads_time,
+                function.effects.uses_random,
+                function.effects.reads_reflection,
+                function.effects.writes_reflection,
+                function.effects.calls_reflection,
             ),
             AccessAbi::function(
                 function.access.public,
                 function.access.reflect_visible,
                 function.access.reflect_callable,
-                function.access.required_permissions().to_vec(),
             ),
         )
         .id(function.id.get())
@@ -514,12 +518,13 @@ impl MethodAbi {
                 method.effects.reads_host,
                 method.effects.writes_host,
                 method.effects.emits_events,
+                method.effects.reads_time,
+                method.effects.uses_random,
+                method.effects.reads_reflection,
+                method.effects.writes_reflection,
+                method.effects.calls_reflection,
             ),
-            AccessAbi::new(
-                method.access.public,
-                method.access.reflect_callable,
-                method.access.required_permissions().to_vec(),
-            ),
+            AccessAbi::new(method.access.public, method.access.reflect_callable),
         )
         .id(method.id.get())
         .origin(method.origin);
@@ -789,35 +794,64 @@ pub struct EffectAbi {
     pub reads_host: bool,
     pub writes_host: bool,
     pub emits_events: bool,
+    pub reads_time: bool,
+    pub uses_random: bool,
+    pub reads_reflection: bool,
+    pub writes_reflection: bool,
+    pub calls_reflection: bool,
 }
 
 impl EffectAbi {
     #[must_use]
     pub const fn pure() -> Self {
-        Self::new(false, false, false)
+        Self::new(false, false, false, false, false, false, false, false)
     }
 
     #[must_use]
     pub const fn host_read() -> Self {
-        Self::new(true, false, false)
+        Self::new(true, false, false, false, false, false, false, false)
     }
 
     #[must_use]
     pub const fn host_write() -> Self {
-        Self::new(true, true, false)
+        Self::new(true, true, false, false, false, false, false, false)
     }
 
     #[must_use]
     pub const fn event_emit() -> Self {
-        Self::new(false, false, true)
+        Self::new(false, false, true, false, false, false, false, false)
     }
 
     #[must_use]
-    pub const fn new(reads_host: bool, writes_host: bool, emits_events: bool) -> Self {
+    pub const fn time() -> Self {
+        Self::new(false, false, false, true, false, false, false, false)
+    }
+
+    #[must_use]
+    pub const fn random() -> Self {
+        Self::new(false, false, false, false, true, false, false, false)
+    }
+
+    #[must_use]
+    pub const fn new(
+        reads_host: bool,
+        writes_host: bool,
+        emits_events: bool,
+        reads_time: bool,
+        uses_random: bool,
+        reads_reflection: bool,
+        writes_reflection: bool,
+        calls_reflection: bool,
+    ) -> Self {
         Self {
             reads_host,
             writes_host,
             emits_events,
+            reads_time,
+            uses_random,
+            reads_reflection,
+            writes_reflection,
+            calls_reflection,
         }
     }
 }
@@ -827,41 +861,29 @@ pub struct AccessAbi {
     pub public: bool,
     pub reflective: bool,
     pub callable: bool,
-    pub required_permissions: Vec<String>,
 }
 
 impl AccessAbi {
     #[must_use]
     pub fn public() -> Self {
-        Self::new(true, true, Vec::new())
+        Self::new(true, true)
     }
 
     #[must_use]
-    pub fn new(public: bool, reflective: bool, mut required_permissions: Vec<String>) -> Self {
-        required_permissions.sort();
-        required_permissions.dedup();
+    pub const fn new(public: bool, reflective: bool) -> Self {
         Self {
             public,
             reflective,
             callable: reflective,
-            required_permissions,
         }
     }
 
     #[must_use]
-    pub fn function(
-        public: bool,
-        reflect_visible: bool,
-        reflect_callable: bool,
-        mut required_permissions: Vec<String>,
-    ) -> Self {
-        required_permissions.sort();
-        required_permissions.dedup();
+    pub const fn function(public: bool, reflect_visible: bool, reflect_callable: bool) -> Self {
         Self {
             public,
             reflective: reflect_visible,
             callable: reflect_callable,
-            required_permissions,
         }
     }
 }

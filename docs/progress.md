@@ -37,8 +37,8 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
 | M10 | Complete enough | Stable script metadata, shapes, slots, traits, and dispatch foundations exist. |
 | M11 | Complete enough | HostRef, HostPath, PathProxy, PatchTx overlays, and rollback-safe host boundaries exist. |
 | M12 | Complete enough | Reflection metadata, permission-aware queries, candidate spans, and schema-safe mutation denial are covered. |
-| M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random permissions, lambda facts, and domain-neutral helper coverage are validated. |
-| M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, permissions, signature conversion, and macro parity are covered. |
+| M13 | Complete enough | Collections, strings, Option/Result propagation, math, context, random capability gating, lambda facts, and domain-neutral helper coverage are validated. |
+| M14 | Complete enough | EngineBuilder registration, source compilation, Runtime::call, descriptors, stable-ID rejection, capability profiles, signature conversion, and macro parity are covered. |
 | M15 | Complete enough | Safe-point staging, old-frame lifetime, new-call entry, source workflows, ABI/schema rejection, compatible additions, and repair reports are covered. |
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
@@ -56,25 +56,25 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
 - `.vela` source parsing, HIR lowering, bytecode compilation, VM execution,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.
 - Host mutation through `HostRef`, `HostPath`, `PathProxy`, `PatchTx`, overlays,
-  permissions, and safe-point apply.
+  capability-gated effects, and safe-point apply.
 - Reflection for types, fields, methods, variants, traits, modules, functions,
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
   strings, Option/Result helpers and propagation, math, context time/event/log
-  helpers, controlled random permissions, lambda TypeFacts, and
+  helpers, controlled random capability gating, lambda TypeFacts, and
   domain-neutral helpers.
 - Engine registration for host types, native functions, context helpers,
-  standard natives, reflection permissions, compiler options, hot-reload
+  standard natives, capability profiles, reflection permissions, compiler options, hot-reload
   policies, derive-generated host bindings, and reflection schemas.
 - Macro-generated host and native bindings with stable IDs, rename aliases,
-  permission-aware registration, and budget-aware context helper coverage.
+  effect-aware registration, and budget-aware context helper coverage.
 - Hot reload staging and safe-point reports for source-file, directory, and
   changed-file workflows, including accepted compatible additions/renames and
   rejected ABI/schema/effect/access/source changes without advancing the active
   version.
 - CLI demo scripts and conformance fixtures covering domain-neutral stdlib helpers,
-  reflection, schema-safe mutation denial, permissions, read-only host boundary
-  rejection, host read/write/call permission denial, stale host ref generation
+  reflection, schema-safe mutation denial, capability gating, read-only host boundary
+  rejection, host read/write/call capability denial, stale host ref generation
   rejection, host patch conflict reporting, reflection candidate diagnostics,
   bad schema diagnostics, generic type hint rejection, and tick-boundary hot
   reload.

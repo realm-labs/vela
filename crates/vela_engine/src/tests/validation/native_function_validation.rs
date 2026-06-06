@@ -41,19 +41,6 @@ fn engine_rejects_duplicate_native_function_ids() {
 }
 
 #[test]
-fn engine_rejects_empty_granted_permissions() {
-    let result = Engine::builder().grant_permission("").build();
-
-    assert!(matches!(
-        result.map(|_| ()),
-        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
-            descriptor: "engine granted permission".to_owned(),
-            name: "".to_owned(),
-        }
-    ));
-}
-
-#[test]
 fn engine_rejects_empty_module_attribute_names() {
     let result = Engine::builder()
         .register_module(ModuleDesc::new("game::reward").attr("", "bad"))
@@ -204,25 +191,6 @@ fn engine_rejects_duplicate_native_function_param_names() {
         Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionParamName {
             function: "game::grant_reward".to_owned(),
             name: "amount".to_owned(),
-        }
-    ));
-}
-
-#[test]
-fn engine_rejects_empty_native_function_required_permissions() {
-    let result = Engine::builder()
-        .register_native_fn(
-            NativeFunctionDesc::new("game::grant_reward", NativeFunctionId::new(38))
-                .access(FunctionAccess::public().require_permission("")),
-            |_| Ok(OwnedValue::Null),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
-            descriptor: "native function game::grant_reward".to_owned(),
-            name: "".to_owned(),
         }
     ));
 }

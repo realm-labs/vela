@@ -8,7 +8,6 @@ use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 
-pub const CONTROLLED_RANDOM_PERMISSION: &str = "std.random";
 pub const MATH_RANDOM_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0001);
 
 pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
@@ -18,12 +17,8 @@ pub(crate) fn controlled_math_random(seed: u64) -> NativeFunctionEntry {
             .param("min", TypeHint::Int)
             .param("max", TypeHint::Int)
             .returns(TypeHint::Int)
-            .effects(EffectSet::pure())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission(CONTROLLED_RANDOM_PERMISSION),
-            )
+            .effects(EffectSet::random())
+            .access(FunctionAccess::public().reflect_callable(true))
             .attr("stdlib", "math")
             .docs("Returns a deterministic seeded integer in the inclusive range."),
         move |args| math_random(args, &rng),

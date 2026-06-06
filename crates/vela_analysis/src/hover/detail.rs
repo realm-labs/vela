@@ -26,14 +26,14 @@ pub(super) fn type_detail(kind: TypeKind) -> String {
 pub(super) fn field_detail(desc: &FieldDesc) -> String {
     let permissions = permission_detail(desc.access.required_permissions());
     format!(
-        "writable: {}; reflect_readable: {}; reflect_writable: {}; permissions: {permissions}",
+        "writable: {}; reflect_readable: {}; reflect_writable: {}; reflection permissions: {permissions}",
         desc.writable, desc.access.reflect_readable, desc.access.reflect_writable
     )
 }
 
 pub(super) fn method_detail(desc: &MethodDesc) -> String {
     format!(
-        "{}; access: {}; permissions: {}",
+        "{}; access: {}; reflection permissions: {}",
         method_effect_detail(&desc.effects),
         if desc.access.public {
             "public"
@@ -46,7 +46,7 @@ pub(super) fn method_detail(desc: &MethodDesc) -> String {
 
 pub(super) fn function_detail(desc: &FunctionDesc) -> String {
     format!(
-        "origin: {}; {}; access: {}; permissions: {}",
+        "origin: {}; {}; access: {}; capabilities: {}",
         origin_detail(desc.origin),
         function_effect_detail(&desc.effects),
         if desc.access.public {
@@ -54,7 +54,7 @@ pub(super) fn function_detail(desc: &FunctionDesc) -> String {
         } else {
             "private"
         },
-        permission_detail(desc.access.required_permissions())
+        function_capability_detail(&desc.effects)
     )
 }
 
@@ -79,6 +79,11 @@ fn function_effect_detail(effects: &FunctionEffectSet) -> String {
         effects.reads_host,
         effects.writes_host,
         effects.emits_events,
+        effects.reads_time,
+        effects.uses_random,
+        effects.reads_reflection,
+        effects.writes_reflection,
+        effects.calls_reflection,
     )
 }
 
@@ -87,10 +92,24 @@ fn method_effect_detail(effects: &MethodEffectSet) -> String {
         effects.reads_host,
         effects.writes_host,
         effects.emits_events,
+        effects.reads_time,
+        effects.uses_random,
+        effects.reads_reflection,
+        effects.writes_reflection,
+        effects.calls_reflection,
     )
 }
 
-fn effect_detail(reads_host: bool, writes_host: bool, emits_events: bool) -> String {
+fn effect_detail(
+    reads_host: bool,
+    writes_host: bool,
+    emits_events: bool,
+    reads_time: bool,
+    uses_random: bool,
+    reads_reflection: bool,
+    writes_reflection: bool,
+    calls_reflection: bool,
+) -> String {
     let mut effects = Vec::new();
     if reads_host {
         effects.push("reads_host");
@@ -101,10 +120,58 @@ fn effect_detail(reads_host: bool, writes_host: bool, emits_events: bool) -> Str
     if emits_events {
         effects.push("emits_events");
     }
+    if reads_time {
+        effects.push("reads_time");
+    }
+    if uses_random {
+        effects.push("uses_random");
+    }
+    if reads_reflection {
+        effects.push("reads_reflection");
+    }
+    if writes_reflection {
+        effects.push("writes_reflection");
+    }
+    if calls_reflection {
+        effects.push("calls_reflection");
+    }
     if effects.is_empty() {
         "effects: pure".to_owned()
     } else {
         format!("effects: {}", effects.join(", "))
+    }
+}
+
+fn function_capability_detail(effects: &FunctionEffectSet) -> String {
+    let mut capabilities = Vec::new();
+    if effects.reads_host {
+        capabilities.push("host_read");
+    }
+    if effects.writes_host {
+        capabilities.push("host_write");
+    }
+    if effects.emits_events {
+        capabilities.push("event_emit");
+    }
+    if effects.reads_time {
+        capabilities.push("time");
+    }
+    if effects.uses_random {
+        capabilities.push("random");
+    }
+    if effects.reads_reflection {
+        capabilities.push("reflection_read");
+    }
+    if effects.writes_reflection {
+        capabilities.push("reflection_write");
+    }
+    if effects.calls_reflection {
+        capabilities.push("reflection_call");
+    }
+    if capabilities.is_empty() {
+        "none".to_owned()
+    } else {
+        capabilities.join(", ")
     }
 }
 

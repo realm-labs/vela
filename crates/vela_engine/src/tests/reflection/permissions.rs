@@ -39,22 +39,23 @@ fn main(player) {
 }
 
 #[test]
-fn engine_reflect_call_denies_unapproved_native_methods() {
+fn engine_reflect_call_denies_native_methods_without_effect_permission() {
     let method = HostMethodId::new(6);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .effects(EffectSet::host_write())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("player.grant_exp"),
-                ),
+                .access(FunctionAccess::public().reflect_callable(true)),
             |_, _, _| Ok(OwnedValue::Null),
         )
-        .reflection_permissions(ReflectPermissionSet::all())
+        .reflection_permissions(
+            ReflectPermissionSet::new()
+                .with(ReflectPermission::ReadTypeInfo)
+                .with(ReflectPermission::CallMethods),
+        )
         .build()
         .expect("engine should build");
     let program = compile_program_source(
@@ -79,9 +80,9 @@ fn main(player) {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[OwnedValue::HostRef(host_ref)], &mut host),
-        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::MethodPermissionDenied {
+        Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::MethodEffectPermissionDenied {
             method: "grant_exp".to_owned(),
-            permission: "player.grant_exp".to_owned(),
+            permission: ReflectPermission::CallHostWriteMethods,
             source_span: None,
         })
     ));
@@ -93,16 +94,12 @@ fn engine_reflect_call_records_approved_native_methods() {
     let method = HostMethodId::new(6);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.grant_exp")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .effects(EffectSet::host_write())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("player.grant_exp"),
-                ),
+                .access(FunctionAccess::public().reflect_callable(true)),
             |_, _, _| Ok(OwnedValue::Null),
         )
         .reflection_permissions(ReflectPermissionSet::all())

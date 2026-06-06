@@ -9,7 +9,6 @@ use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry, TypeHint,
 };
-use crate::permission::PermissionSet;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ModuleValidationOptions {
@@ -104,10 +103,6 @@ pub(crate) fn validate_types(types: &[TypeDesc], include_standard_types: bool) -
     }
 
     Ok(())
-}
-
-pub(crate) fn validate_granted_permissions(permissions: &PermissionSet) -> EngineResult<()> {
-    validate_permission_names("engine granted permission", permissions.iter())
 }
 
 fn validate_type_desc(
@@ -518,10 +513,6 @@ fn validate_native_function_desc(
         &desc.returns,
         &format!("native function {} return", desc.name),
         type_hints,
-    )?;
-    validate_permission_names(
-        &format!("native function {}", desc.name),
-        desc.access.required_permissions.iter(),
     )?;
     validate_native_function_params(desc, type_hints)
 }

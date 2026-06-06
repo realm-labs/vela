@@ -216,7 +216,7 @@ fn module_abi_manifest_can_be_built_from_type_registry() {
         .function(FunctionAbi::new(
             "grant_reward",
             EffectAbi::pure(),
-            AccessAbi::function(true, true, false, Vec::new()),
+            AccessAbi::function(true, true, false),
         ))
         .module(
             ModuleAbi::new("game::reward").export(ModuleExportAbi::function("grant_reward", 77)),
@@ -237,7 +237,7 @@ fn removed_method_abi_is_rejected() {
             "Player",
             "grant_exp",
             EffectAbi::host_write(),
-            AccessAbi::new(true, true, vec!["player.write".to_owned()]),
+            AccessAbi::new(true, true),
         )
         .source_span(span),
     );

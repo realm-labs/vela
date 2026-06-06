@@ -257,6 +257,11 @@ fn module_function_queries_return_records_and_candidates() {
                 ("reads_host".to_owned(), HostValue::Bool(true)),
                 ("writes_host".to_owned(), HostValue::Bool(true)),
                 ("emits_events".to_owned(), HostValue::Bool(false)),
+                ("reads_time".to_owned(), HostValue::Bool(false)),
+                ("uses_random".to_owned(), HostValue::Bool(false)),
+                ("reads_reflection".to_owned(), HostValue::Bool(false)),
+                ("writes_reflection".to_owned(), HostValue::Bool(false)),
+                ("calls_reflection".to_owned(), HostValue::Bool(false)),
             ]),
         })
     );
@@ -500,11 +505,7 @@ fn function_call_policy_requires_reflect_callable_metadata() {
     );
     registry.register_function(
         FunctionDesc::new(FunctionId::new(3), "game::write_host")
-            .effects(FunctionEffectSet {
-                reads_host: false,
-                writes_host: true,
-                emits_events: false,
-            })
+            .effects(FunctionEffectSet::host_write())
             .access(FunctionAccess::new().reflect_callable(true)),
     );
     let policy = ReflectPolicy::all();

@@ -149,28 +149,19 @@ fn main(player: Player) {
 }
 
 #[test]
-fn engine_granted_permissions_unlock_reflection_metadata_lists() {
+fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
     let engine = Engine::builder()
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
-                .field(
-                    FieldDesc::new(FieldId::new(1), "secret_level")
-                        .access(FieldAccess::new().require_permission("player.inspect")),
-                ),
+                .field(FieldDesc::new(FieldId::new(1), "secret_level")),
         )
         .register_native_fn(
             NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
                 .returns(TypeHint::Int)
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("game::inspect"),
-                ),
+                .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Int(5)),
         )
-        .grant_permission("player.inspect")
-        .grant_permission("game::inspect")
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
         .build()
         .expect("engine should build");
@@ -222,11 +213,7 @@ fn engine_missing_permissions_hide_reflection_metadata_lists() {
         .register_native_fn(
             NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
                 .returns(TypeHint::Int)
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("game::inspect"),
-                ),
+                .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Int(5)),
         )
         .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
@@ -252,7 +239,7 @@ fn main() {
         engine
             .into_vm()
             .run_program_with_host(&program, "main", &[], &mut host),
-        Ok(OwnedValue::Int(0))
+        Ok(OwnedValue::Int(1))
     );
     assert!(tx.patches().is_empty());
 }

@@ -68,6 +68,11 @@ pub struct FunctionEffectSet {
     pub reads_host: bool,
     pub writes_host: bool,
     pub emits_events: bool,
+    pub reads_time: bool,
+    pub uses_random: bool,
+    pub reads_reflection: bool,
+    pub writes_reflection: bool,
+    pub calls_reflection: bool,
 }
 
 impl FunctionEffectSet {
@@ -77,6 +82,11 @@ impl FunctionEffectSet {
             reads_host: false,
             writes_host: false,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -86,6 +96,11 @@ impl FunctionEffectSet {
             reads_host: true,
             writes_host: false,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -95,6 +110,11 @@ impl FunctionEffectSet {
             reads_host: true,
             writes_host: true,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -104,6 +124,11 @@ impl FunctionEffectSet {
             reads_host: false,
             writes_host: false,
             emits_events: true,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 }
@@ -170,6 +195,11 @@ pub struct MethodEffectSet {
     pub reads_host: bool,
     pub writes_host: bool,
     pub emits_events: bool,
+    pub reads_time: bool,
+    pub uses_random: bool,
+    pub reads_reflection: bool,
+    pub writes_reflection: bool,
+    pub calls_reflection: bool,
 }
 
 impl MethodEffectSet {
@@ -179,6 +209,11 @@ impl MethodEffectSet {
             reads_host: false,
             writes_host: false,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -188,6 +223,11 @@ impl MethodEffectSet {
             reads_host: true,
             writes_host: false,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -197,6 +237,11 @@ impl MethodEffectSet {
             reads_host: true,
             writes_host: true,
             emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 
@@ -206,6 +251,11 @@ impl MethodEffectSet {
             reads_host: false,
             writes_host: false,
             emits_events: true,
+            reads_time: false,
+            uses_random: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
         }
     }
 }

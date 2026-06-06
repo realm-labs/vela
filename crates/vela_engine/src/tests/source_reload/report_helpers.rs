@@ -1,7 +1,7 @@
 fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloadWorkflow) {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -73,7 +73,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
 fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionReloadWorkflow) {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -183,7 +183,7 @@ fn on_kill(player_id: int, monster_id: int) {
 "#,
     )
     .expect("write event module");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -276,7 +276,7 @@ fn on_kill(player_id: int, monster_id: int) {
 "#,
     )
     .expect("write event module");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -376,7 +376,6 @@ fn assert_changed_function_access_rejection(report: &HotReloadReport, expected_f
     assert_eq!(function, expected_function);
     assert!(old.public);
     assert!(!new.public);
-    assert_eq!(old.required_permissions, new.required_permissions);
     assert!(source_span.is_some());
 }
 
@@ -509,4 +508,3 @@ fn assert_method_return_repair_hint(report: &HotReloadReport) {
         Some("preserve the previous method return type hint or restart with an explicit migration")
     );
 }
-

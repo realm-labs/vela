@@ -109,6 +109,26 @@ fn function_effects_record(desc: &FunctionDesc) -> HostValue {
                 "emits_events".to_owned(),
                 HostValue::Bool(desc.effects.emits_events),
             ),
+            (
+                "reads_time".to_owned(),
+                HostValue::Bool(desc.effects.reads_time),
+            ),
+            (
+                "uses_random".to_owned(),
+                HostValue::Bool(desc.effects.uses_random),
+            ),
+            (
+                "reads_reflection".to_owned(),
+                HostValue::Bool(desc.effects.reads_reflection),
+            ),
+            (
+                "writes_reflection".to_owned(),
+                HostValue::Bool(desc.effects.writes_reflection),
+            ),
+            (
+                "calls_reflection".to_owned(),
+                HostValue::Bool(desc.effects.calls_reflection),
+            ),
         ]),
     }
 }

@@ -8,7 +8,8 @@ use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
-use crate::random::{CONTROLLED_RANDOM_PERMISSION, MATH_RANDOM_FUNCTION_ID};
+use crate::permission::Capability;
+use crate::random::MATH_RANDOM_FUNCTION_ID;
 
 #[test]
 fn engine_controlled_random_requires_permission() {
@@ -30,7 +31,7 @@ fn main() {
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
             native: "math::random".to_owned(),
-            permission: CONTROLLED_RANDOM_PERMISSION.to_owned(),
+            capability: Capability::Random.as_str().to_owned(),
         }
     ));
 }
@@ -49,12 +50,12 @@ fn main() {
 "#;
     let program = compile_program_source(SourceId::new(1), source).expect("program should compile");
     let first_engine = Engine::builder()
-        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .capability(Capability::Random)
         .with_controlled_random(42)
         .build()
         .expect("first engine should build");
     let second_engine = Engine::builder()
-        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .capability(Capability::Random)
         .with_controlled_random(42)
         .build()
         .expect("second engine should build");
@@ -97,10 +98,8 @@ fn engine_controlled_random_registers_metadata() {
     assert_eq!(function.params[1].type_hint.as_deref(), Some("int"));
     assert_eq!(function.return_type.as_deref(), Some("int"));
     assert_eq!(function.attrs.get("stdlib"), Some("math"));
-    assert_eq!(
-        function.access.required_permissions(),
-        &[CONTROLLED_RANDOM_PERMISSION.to_owned()]
-    );
+    assert!(function.access.required_permissions().is_empty());
+    assert!(function.effects.uses_random);
     assert!(function.access.reflect_callable);
 }
 
@@ -109,7 +108,7 @@ fn engine_controlled_random_extends_standard_math_metadata() {
     let engine = Engine::builder()
         .with_standard_natives()
         .with_controlled_random(1)
-        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .capability(Capability::Random)
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
@@ -140,15 +139,13 @@ fn engine_controlled_random_extends_standard_math_metadata() {
         random.docs.as_deref(),
         Some("Returns a deterministic seeded integer in the inclusive range.")
     );
-    assert_eq!(
-        random.access.required_permissions(),
-        &[CONTROLLED_RANDOM_PERMISSION.to_owned()]
-    );
+    assert!(random.access.required_permissions().is_empty());
     assert!(random.access.reflect_visible);
     assert!(random.access.reflect_callable);
     assert!(!random.effects.reads_host);
     assert!(!random.effects.writes_host);
     assert!(!random.effects.emits_events);
+    assert!(random.effects.uses_random);
 
     let program = compile_program_source(
         SourceId::new(2),
@@ -164,11 +161,11 @@ fn main() {
         && math_exports.contains("math::random")
         && reflect::docs(max) == "Returns the larger numeric value."
         && reflect::docs(random) == "Returns a deterministic seeded integer in the inclusive range."
-        && required.len() == 1
-        && required[0] == "std.random"
+        && required.len() == 0
         && !effects.reads_host
         && !effects.writes_host
-        && !effects.emits_events;
+        && !effects.emits_events
+        && effects.uses_random;
 }
 "#,
     )
@@ -204,13 +201,13 @@ fn main() {
 "#;
     let program = compile_program_source(SourceId::new(1), source).expect("program should compile");
     let first_engine = Engine::builder()
-        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .capability(Capability::Random)
         .reflection_permissions(ReflectPermissionSet::all())
         .with_controlled_random(42)
         .build()
         .expect("first engine should build");
     let second_engine = Engine::builder()
-        .grant_permission(CONTROLLED_RANDOM_PERMISSION)
+        .capability(Capability::Random)
         .reflection_permissions(ReflectPermissionSet::all())
         .with_controlled_random(42)
         .build()

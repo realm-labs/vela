@@ -6,13 +6,13 @@ fn method_effect_and_access_abi_changes_are_rejected() {
         "Player",
         "grant_exp",
         EffectAbi::host_write(),
-        AccessAbi::new(true, true, vec!["player.write".to_owned()]),
+        AccessAbi::new(true, true),
     ));
     let changed_effects = HotReloadAbi::empty().method(MethodAbi::new(
         "Player",
         "grant_exp",
         EffectAbi::host_read(),
-        AccessAbi::new(true, true, vec!["player.write".to_owned()]),
+        AccessAbi::new(true, true),
     ));
     let initial =
         compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi.clone())
@@ -40,7 +40,7 @@ fn method_effect_and_access_abi_changes_are_rejected() {
         "Player",
         "grant_exp",
         EffectAbi::host_write(),
-        AccessAbi::new(true, false, vec!["player.write".to_owned()]),
+        AccessAbi::new(true, false),
     ));
     let error = compile_update_with_abi(
         &initial,
@@ -54,8 +54,8 @@ fn method_effect_and_access_abi_changes_are_rejected() {
         HotReloadErrorKind::ChangedMethodAccess {
             type_name: "Player".to_owned(),
             method: "grant_exp".to_owned(),
-            old: AccessAbi::new(true, true, vec!["player.write".to_owned()]),
-            new: AccessAbi::new(true, false, vec!["player.write".to_owned()]),
+            old: AccessAbi::new(true, true),
+            new: AccessAbi::new(true, false),
             source_span: None,
         }
     );

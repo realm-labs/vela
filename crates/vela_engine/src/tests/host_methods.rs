@@ -14,6 +14,7 @@ use vela_vm::owned_value::OwnedValue;
 use crate::engine::Engine;
 use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, FunctionAccess, TypeHint};
+use crate::permission::Capability;
 use crate::runtime::{CallOptions, Runtime};
 
 use super::player_type;
@@ -302,14 +303,14 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     let method = HostMethodId::new(6);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.grant_exp")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .param("amount", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.grant_exp"))
+                .access(FunctionAccess::public())
                 .docs("Grant player experience.")
                 .attr("domain", "gameplay")
                 .attr("effect", "reward"),
@@ -408,14 +409,14 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
     let method = HostMethodId::new(8);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.grant_exp")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64,), _>(
             NativeMethodDesc::new(owner, method, "typed_grant_exp")
                 .param("amount", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+                .access(FunctionAccess::public()),
             typed_grant_exp,
         )
         .build()
@@ -452,11 +453,11 @@ fn typed_callable_native_method_conversion_errors_before_patch() {
     let method = HostMethodId::new(8);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.grant_exp")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64,), _>(
             NativeMethodDesc::new(owner, method, "typed_grant_exp")
-                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+                .access(FunctionAccess::public()),
             typed_grant_exp,
         )
         .build()
@@ -489,14 +490,14 @@ fn typed_callable_native_method_maps_host_result_errors() {
     let method = HostMethodId::new(13);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.grant_exp")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(bool,), _>(
             NativeMethodDesc::new(owner, method, "typed_require_grant")
                 .param("allowed", TypeHint::Bool)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.grant_exp")),
+                .access(FunctionAccess::public()),
             typed_require_grant,
         )
         .build()
@@ -532,14 +533,14 @@ fn callable_native_method_errors_roll_back_recorded_patches() {
     let method = HostMethodId::new(12);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.fail")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "failing_method")
                 .param("amount", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.fail")),
+                .access(FunctionAccess::public()),
             move |receiver, args, host| {
                 let [OwnedValue::Int(amount)] = args else {
                     return Ok(OwnedValue::Null);
@@ -624,7 +625,7 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
     let method = HostMethodId::new(9);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.sum")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum4")
@@ -634,7 +635,7 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
                 .param("d", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.sum")),
+                .access(FunctionAccess::public()),
             typed_sum4,
         )
         .build()
@@ -675,7 +676,7 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
     let method = HostMethodId::new(10);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.sum5")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum5")
@@ -686,7 +687,7 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
                 .param("e", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.sum5")),
+                .access(FunctionAccess::public()),
             typed_sum5,
         )
         .build()
@@ -728,7 +729,7 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
     let method = HostMethodId::new(11);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .grant_permission("player.sum6")
+        .capability(Capability::HostWrite)
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum6")
@@ -740,7 +741,7 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
                 .param("f", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.sum6")),
+                .access(FunctionAccess::public()),
             typed_sum6,
         )
         .build()

@@ -154,26 +154,6 @@ mod tests {
     }
 
     #[test]
-    fn rejects_empty_function_permissions() {
-        let error = expand_result(
-            quote! { name = "game::grant", permission = "" },
-            quote! {
-                fn grant(amount: i64) -> i64 {
-                    amount
-                }
-            },
-            FunctionMode::Pure,
-        )
-        .expect_err("empty function permission should fail macro expansion");
-
-        assert!(
-            error
-                .to_string()
-                .contains("script_function permission cannot be empty")
-        );
-    }
-
-    #[test]
     fn rejects_duplicate_function_attrs() {
         let error = expand_result(
             quote! { name = "game::grant", attr = "domain=gameplay", attr = "domain=combat" },

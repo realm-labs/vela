@@ -5,7 +5,7 @@ fn removed_script_function_rejection_kind(
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     write_reward_module_with_helper(&reward_file, 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -82,7 +82,7 @@ fn removed_native_descriptor_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
+    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -93,7 +93,7 @@ fn removed_native_descriptor_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().build().expect("new engine should build");
+    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -163,7 +163,7 @@ fn native_stable_id_churn_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
+    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -174,7 +174,7 @@ fn native_stable_id_churn_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
+    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(23))
                 .effects(EffectSet::host_read()),
@@ -253,14 +253,14 @@ fn dir_native_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
+    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_native_fn(old_desc, |_| Ok(OwnedValue::Null))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
+    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_native_fn(new_desc, |_| Ok(OwnedValue::Null))
         .build()
         .expect("new engine should build");
@@ -339,7 +339,7 @@ fn removed_method_descriptor_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
+    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
@@ -349,7 +349,7 @@ fn removed_method_descriptor_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
+    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).host_type(HostTypeId::new(1)),
         )
@@ -421,7 +421,7 @@ fn method_stable_id_churn_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
+    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
@@ -431,7 +431,7 @@ fn method_stable_id_churn_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
+    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(10),
             "grant_exp",
@@ -506,14 +506,14 @@ fn dir_method_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
+    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(old_method))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
+    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(new_method))
         .build()
         .expect("new engine should build");
@@ -589,14 +589,14 @@ fn changed_file_method_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
+    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(old_method))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
+    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(new_method))
         .build()
         .expect("new engine should build");

@@ -4,7 +4,10 @@ use super::*;
 fn runtime_compiles_hot_reload_changed_file_from_active_version() {
     let root = unique_test_dir("runtime_hot_reload_changed_file");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -50,7 +53,10 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
 fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
     let root = unique_test_dir("runtime_stage_hot_reload_changed_file");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -140,6 +146,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .hot_reload_policy(HotReloadPolicy::locked_down())
         .build()
         .expect("engine should build");
@@ -194,7 +201,10 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
 fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_return_abi");
     let reward_file = write_typed_reward_modules(&root, "return grant();", "int", "2");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -267,7 +277,10 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
 fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_changed_file_required_parameter");
     let reward_file = write_typed_reward_modules(&root, "return 2;", "int", "2");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -338,7 +351,10 @@ fn runtime_stages_changed_file_script_function_access_rejection_until_safe_point
     let root = unique_test_dir("runtime_stage_changed_file_script_access");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let main_file = root.join("game").join("main.vela");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");

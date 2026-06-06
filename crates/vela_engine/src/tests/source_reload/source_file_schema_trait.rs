@@ -2,7 +2,10 @@ use super::*;
 
 #[test]
 fn runtime_stages_source_file_defaulted_schema_addition_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -51,7 +54,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_stable_id_schema_renames_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -117,7 +123,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_required_schema_field_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -169,7 +178,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_removed_schema_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -228,7 +240,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_schema_field_type_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -281,7 +296,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_defaulted_enum_variant_field_addition_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -334,7 +352,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_required_enum_variant_field_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -390,7 +411,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_enum_variant_field_type_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -447,7 +471,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_removed_trait_impl_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -508,7 +535,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_added_trait_impl_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -566,7 +596,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_removed_trait_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -613,7 +646,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_trait_method_return_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -664,7 +700,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_required_trait_method_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -716,7 +755,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_defaulted_trait_method_addition_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -766,7 +808,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_event_parameter_reorder_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -829,7 +874,10 @@ fn on_kill(monster_id: int, player_id: int) {
 
 #[test]
 fn runtime_stages_source_file_event_target_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -897,7 +945,10 @@ fn on_kill(player_id: int, monster_id: int) {
 
 #[test]
 fn runtime_stages_source_file_return_abi_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -956,7 +1007,10 @@ fn main() -> float {
 
 #[test]
 fn runtime_stages_source_file_required_parameter_addition_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"
@@ -1020,7 +1074,10 @@ fn main(player_id: int, amount: int) {
 
 #[test]
 fn runtime_stages_source_file_script_function_access_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
         r#"

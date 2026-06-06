@@ -3,6 +3,7 @@ use super::*;
 #[test]
 fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -12,6 +13,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_write()),
@@ -62,24 +64,20 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
-            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22)).access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("reward.read"),
-            ),
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
+                .access(FunctionAccess::public().reflect_callable(true)),
             |_| Ok(OwnedValue::Null),
         )
         .build()
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
-            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22)).access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("reward.write"),
-            ),
+            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
+                .access(FunctionAccess::public().reflect_callable(false)),
             |_| Ok(OwnedValue::Null),
         )
         .build()
@@ -113,10 +111,8 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         panic!("expected changed native function access");
     };
     assert_eq!(function, "game::reward::grant");
-    assert_eq!(old.required_permissions, vec!["reward.read"]);
-    assert_eq!(new.required_permissions, vec!["reward.write"]);
     assert!(old.callable);
-    assert!(new.callable);
+    assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -127,6 +123,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Int),
@@ -136,6 +133,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("amount", TypeHint::Float),
@@ -191,6 +189,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .returns(TypeHint::Int),
@@ -200,6 +199,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .returns(TypeHint::Float),
@@ -248,6 +248,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -256,7 +257,10 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
         .build()
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
-    let new_engine = Engine::builder().build().expect("new engine should build");
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -298,6 +302,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
 #[test]
 fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -307,6 +312,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(23))
                 .effects(EffectSet::host_read()),
@@ -355,6 +361,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
 #[test]
 fn runtime_stages_source_file_native_stable_id_rename_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
@@ -372,6 +379,7 @@ fn main() {
 "#,
     );
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
@@ -419,6 +427,7 @@ fn main() {
 fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
@@ -428,6 +437,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(TypeDesc::new(player_key).host_type(HostTypeId::new(1)))
         .build()
         .expect("new engine should build");
@@ -471,6 +481,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point() {
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
@@ -479,6 +490,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(10),
             "grant_exp",
@@ -526,6 +538,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
 fn runtime_stages_source_file_method_stable_id_rename_until_safe_point() {
     let method = HostMethodId::new(9);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             method,
             "grant_exp",
@@ -542,6 +555,7 @@ fn main(player: Player) {
 "#,
     );
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             method,
             "award_exp",
@@ -612,6 +626,7 @@ fn main(player: Player) {
 fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
@@ -624,6 +639,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
@@ -680,30 +696,26 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
 fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
                 .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
-                        MethodAccess::new()
-                            .reflect_callable(true)
-                            .require_permission("player.read"),
-                    ),
+                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                        .access(MethodAccess::new().reflect_callable(true)),
                 ),
         )
         .build()
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
                 .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
-                        MethodAccess::new()
-                            .reflect_callable(false)
-                            .require_permission("player.read"),
-                    ),
+                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                        .access(MethodAccess::new().reflect_callable(false)),
                 ),
         )
         .build()
@@ -739,8 +751,6 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     };
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
-    assert_eq!(old.required_permissions, vec!["player.read"]);
-    assert_eq!(new.required_permissions, vec!["player.read"]);
     assert!(old.callable);
     assert!(!new.callable);
     assert!(source_span.is_none());
@@ -754,6 +764,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
 fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
@@ -766,6 +777,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
@@ -824,6 +836,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
 fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
@@ -833,6 +846,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
@@ -883,6 +897,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
 #[test]
 fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .hot_reload_policy(HotReloadPolicy::locked_down())
         .build()
         .expect("engine should build");
@@ -927,7 +942,10 @@ fn main() {
 
 #[test]
 fn runtime_stages_source_file_top_level_effect_rejection_until_safe_point() {
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -974,7 +992,10 @@ fn runtime_returns_hot_reload_file_source_errors_immediately() {
     std::fs::create_dir_all(&root).expect("create temp source dir");
     let path = root.join("main.vela");
     std::fs::write(&path, "fn main() { return 1; }").expect("write initial source");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_file(&path)
         .expect("initial hot reload file compile");

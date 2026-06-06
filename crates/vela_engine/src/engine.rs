@@ -17,10 +17,10 @@ use crate::builder::EngineBuilder;
 use crate::compiler_options::compiler_options_from_registry;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    ContextHostNativeFunctionEntry, FunctionAccess, HostNativeFunctionEntry, NativeFunctionDesc,
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry,
 };
-use crate::permission::PermissionSet;
+use crate::permission::CapabilitySet;
 
 #[derive(Clone)]
 pub struct Engine {
@@ -30,7 +30,7 @@ pub struct Engine {
     context_host_native_functions: BTreeMap<FunctionId, ContextHostNativeFunctionEntry>,
     native_methods: BTreeMap<HostMethodId, NativeMethodEntry>,
     native_function_names: BTreeMap<String, FunctionId>,
-    permissions: PermissionSet,
+    capabilities: CapabilitySet,
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
@@ -42,7 +42,7 @@ pub(crate) struct EngineParts {
     pub(crate) host_native_functions: Vec<HostNativeFunctionEntry>,
     pub(crate) context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
     pub(crate) native_methods: Vec<NativeMethodEntry>,
-    pub(crate) permissions: PermissionSet,
+    pub(crate) capabilities: CapabilitySet,
     pub(crate) reflection_policy: Option<ReflectPolicy>,
     pub(crate) hot_reload_policy: HotReloadPolicy,
     pub(crate) standard_natives: bool,
@@ -95,7 +95,7 @@ impl Engine {
             context_host_native_functions,
             native_methods,
             native_function_names,
-            permissions: parts.permissions,
+            capabilities: parts.capabilities,
             reflection_policy: parts.reflection_policy,
             hot_reload_policy: parts.hot_reload_policy,
             standard_natives: parts.standard_natives,
@@ -130,8 +130,8 @@ impl Engine {
     }
 
     #[must_use]
-    pub fn permissions(&self) -> &PermissionSet {
-        &self.permissions
+    pub const fn capabilities(&self) -> CapabilitySet {
+        self.capabilities
     }
 
     #[must_use]
@@ -200,7 +200,7 @@ impl Engine {
             source_span: None,
             call_stack: Default::default(),
         })?;
-        check_permissions(&entry.desc.name, &entry.desc.access, &self.permissions)?;
+        check_capabilities(&entry.desc.name, &entry.desc.effects, self.capabilities)?;
         let tx_checkpoint = host.tx.clone();
         match (entry.function)(receiver, args, host) {
             Ok(value) => Ok(value),
@@ -227,11 +227,7 @@ impl Engine {
         self.install_host_native_functions(vm);
         self.install_context_host_native_functions(vm);
         if let Some(policy) = &self.reflection_policy {
-            let policy = policy
-                .clone()
-                .with_field_permissions(self.permissions.iter())
-                .with_method_permissions(self.permissions.iter());
-            let policy = policy.with_function_permissions(self.permissions.iter());
+            let policy = policy.clone();
             vm.register_reflection_natives_with_policy(registry, policy.clone());
         } else {
             vm.register_type_registry(registry);
@@ -251,11 +247,11 @@ impl Engine {
     fn install_native_functions(&self, vm: &mut Vm) {
         for entry in self.native_functions.values() {
             let name = entry.desc.name.clone();
-            let access = entry.desc.access.clone();
-            let permissions = self.permissions.clone();
+            let effects = entry.desc.effects.clone();
+            let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             vm.register_native(name.clone(), move |args| {
-                check_permissions(&name, &access, &permissions)?;
+                check_capabilities(&name, &effects, capabilities)?;
                 function(args)
             });
         }
@@ -264,11 +260,11 @@ impl Engine {
     fn install_host_native_functions(&self, vm: &mut Vm) {
         for entry in self.host_native_functions.values() {
             let name = entry.desc.name.clone();
-            let access = entry.desc.access.clone();
-            let permissions = self.permissions.clone();
+            let effects = entry.desc.effects.clone();
+            let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             vm.register_host_native(name.clone(), move |args, host| {
-                check_permissions(&name, &access, &permissions)?;
+                check_capabilities(&name, &effects, capabilities)?;
                 function(args, host)
             });
         }
@@ -277,12 +273,12 @@ impl Engine {
     fn install_context_host_native_functions(&self, vm: &mut Vm) {
         for entry in self.context_host_native_functions.values() {
             let name = entry.desc.name.clone();
-            let access = entry.desc.access.clone();
-            let permissions = self.permissions.clone();
+            let effects = entry.desc.effects.clone();
+            let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             let engine = self.clone();
             vm.register_budgeted_host_native(name.clone(), move |args, host, budget| {
-                check_permissions(&name, &access, &permissions)?;
+                check_capabilities(&name, &effects, capabilities)?;
                 let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
                 function(args, &mut context)
             });
@@ -297,30 +293,30 @@ impl Engine {
             let id = FunctionId::new(id);
             if let Some(entry) = self.native_functions.get(&id) {
                 let alias = alias.to_owned();
-                let access = entry.desc.access.clone();
-                let permissions = self.permissions.clone();
+                let effects = entry.desc.effects.clone();
+                let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
                 vm.register_native(alias.clone(), move |args| {
-                    check_permissions(&alias, &access, &permissions)?;
+                    check_capabilities(&alias, &effects, capabilities)?;
                     function(args)
                 });
             } else if let Some(entry) = self.host_native_functions.get(&id) {
                 let alias = alias.to_owned();
-                let access = entry.desc.access.clone();
-                let permissions = self.permissions.clone();
+                let effects = entry.desc.effects.clone();
+                let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
                 vm.register_host_native(alias.clone(), move |args, host| {
-                    check_permissions(&alias, &access, &permissions)?;
+                    check_capabilities(&alias, &effects, capabilities)?;
                     function(args, host)
                 });
             } else if let Some(entry) = self.context_host_native_functions.get(&id) {
                 let alias = alias.to_owned();
-                let access = entry.desc.access.clone();
-                let permissions = self.permissions.clone();
+                let effects = entry.desc.effects.clone();
+                let capabilities = self.capabilities;
                 let function = Arc::clone(&entry.function);
                 let engine = self.clone();
                 vm.register_budgeted_host_native(alias.clone(), move |args, host, budget| {
-                    check_permissions(&alias, &access, &permissions)?;
+                    check_capabilities(&alias, &effects, capabilities)?;
                     let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
                     function(args, &mut context)
                 });
@@ -360,16 +356,19 @@ impl Engine {
     }
 }
 
-fn check_permissions(
+fn check_capabilities(
     native: &str,
-    access: &FunctionAccess,
-    permissions: &PermissionSet,
+    effects: &crate::native::EffectSet,
+    capabilities: CapabilitySet,
 ) -> VmResult<()> {
-    if let Some(permission) = permissions.missing_required(&access.required_permissions) {
+    if let Some(capability) = effects
+        .required_capabilities()
+        .find(|capability| !capabilities.contains(*capability))
+    {
         return Err(VmError {
             kind: VmErrorKind::PermissionDenied {
                 native: native.to_owned(),
-                permission: permission.to_owned(),
+                capability: capability.as_str().to_owned(),
             },
             source_span: None,
             call_stack: Default::default(),

@@ -586,7 +586,7 @@ mod tests {
         );
         assert!(diagnostics[0].labels.iter().any(|label| {
             label.message.contains(
-                "candidate `Player.grant_exp` is public and reflect-callable with effects reads_host, writes_host",
+                "candidate `Player.grant_exp` is public and reflect-callable with effects writes_host",
             )
         }));
         assert!(

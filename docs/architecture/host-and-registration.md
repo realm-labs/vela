@@ -241,8 +241,9 @@ host type method      account.ledger.add(code, amount)
 ```
 
 All three shapes must become registry entries with stable IDs, signatures,
-effects, permissions, docs, and conversion rules. Scripts call them normally,
-but the VM dispatches them through a native function table.
+effects, access metadata, docs, and conversion rules. Scripts call them
+normally, but the VM dispatches them through a native function table and checks
+declared effects against the engine capability profile.
 
 ### Native Function Descriptor
 
@@ -266,7 +267,6 @@ pub struct FunctionAccess {
     pub public: bool,
     pub reflect_visible: bool,
     pub reflect_callable: bool,
-    pub required_permissions: PermissionSet,
 }
 ```
 
@@ -304,10 +304,10 @@ pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
 
 pub struct NativeCallContext<'a> {
-    pub runtime: &'a mut Runtime,
-    pub state: &'a mut dyn ScriptStateAdapter,
+    pub engine: &'a Engine,
+    pub host: &'a mut HostExecution<'a>,
     pub tx: &'a mut PatchTx,
-    pub permissions: &'a PermissionSet,
+    pub capabilities: CapabilitySet,
     pub budget: &'a mut ExecutionBudget,
 }
 ```
@@ -453,7 +453,7 @@ function module/name/stable_id must be unique
 function overloading is unsupported; duplicate script-visible names are invalid
 registered signatures must be deterministic and serializable into TypeRegistry
 effects must be declared up front
-permission checks happen before native call dispatch
+capability checks happen before effectful native call dispatch
 native calls consume execution budget
 native functions cannot store Value or HostRef beyond the call unless explicitly allowed
 native functions cannot mutate TypeRegistry at runtime

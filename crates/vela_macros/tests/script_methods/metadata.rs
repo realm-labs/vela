@@ -12,11 +12,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("amount", TypeHint::Int)
             .returns(TypeHint::Null)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .attr("domain", "player")
             .docs("Grants copied experience through the host patch path."),
     );
@@ -26,11 +22,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("amount", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Grants copied score through a callable native method."),
     );
     assert_eq!(
@@ -52,11 +44,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("e", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sums five copied method values through a callable native method."),
     );
     assert_eq!(
@@ -70,11 +58,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("f", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sums six copied method values through a callable native method."),
     );
     assert_eq!(

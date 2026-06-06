@@ -7,7 +7,6 @@ use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 
-pub const CONTEXT_TIME_PERMISSION: &str = "ctx.time";
 pub const CTX_NOW_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0002);
 pub const CTX_TICK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0003);
 pub const CTX_ELAPSED_SINCE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0004);
@@ -24,24 +23,16 @@ pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEnt
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("ctx::now", CTX_NOW_FUNCTION_ID)
                 .returns(TypeHint::Int)
-                .effects(EffectSet::pure())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission(CONTEXT_TIME_PERMISSION),
-                )
+                .effects(EffectSet::time())
+                .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Returns the configured deterministic context timestamp."),
             move |args| context_value("ctx::now", now, args),
         ),
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("ctx::tick", CTX_TICK_FUNCTION_ID)
                 .returns(TypeHint::Int)
-                .effects(EffectSet::pure())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission(CONTEXT_TIME_PERMISSION),
-                )
+                .effects(EffectSet::time())
+                .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Returns the configured deterministic context tick."),
             move |args| context_value("ctx::tick", tick, args),
         ),
@@ -49,12 +40,8 @@ pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEnt
             NativeFunctionDesc::new("ctx::elapsed_since", CTX_ELAPSED_SINCE_FUNCTION_ID)
                 .param("start", TypeHint::Int)
                 .returns(TypeHint::Int)
-                .effects(EffectSet::pure())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission(CONTEXT_TIME_PERMISSION),
-                )
+                .effects(EffectSet::time())
+                .access(FunctionAccess::public().reflect_callable(true))
                 .docs("Returns deterministic context time elapsed since start."),
             move |args| elapsed_since(now, args),
         ),

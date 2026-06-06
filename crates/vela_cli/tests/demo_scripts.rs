@@ -145,9 +145,9 @@ fn random_permission_demo_reports_permission_denial() {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
     assert!(stderr.contains(
-        "error[vm::permission_denied]: native `math::random` requires permission `std.random`"
+        "error[vm::permission_denied]: native `math::random` requires capability `random`"
     ));
-    assert!(stderr.contains("native `math::random` requires permission `std.random`"));
+    assert!(stderr.contains("native `math::random` requires capability `random`"));
     assert!(stderr.contains("random_permission_denied.vela:2:12"));
     assert!(stderr.contains("return math::random(1, 6);"));
 }

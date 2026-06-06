@@ -135,7 +135,7 @@ fn main() {
 #[test]
 fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_host_native_fn(
             NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(93))
                 .param(
@@ -145,11 +145,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_patch_tx() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("player.write"),
-                ),
+                .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
@@ -204,7 +200,7 @@ fn main(player) {
 #[test]
 fn engine_reflect_call_denies_effectful_native_functions_without_effect_permission() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_host_native_fn(
             NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(94))
                 .param(
@@ -213,16 +209,8 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                 )
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
-                .effects(EffectSet {
-                    reads_host: false,
-                    writes_host: true,
-                    emits_events: false,
-                })
-                .access(
-                    FunctionAccess::public()
-                        .reflect_callable(true)
-                        .require_permission("player.write"),
-                ),
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);

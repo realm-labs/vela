@@ -14,7 +14,7 @@ use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry,
 };
-use crate::permission::PermissionSet;
+use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 use crate::typed::{
     TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
@@ -31,7 +31,7 @@ pub struct EngineBuilder {
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
     host_method_metadata: Vec<NativeMethodDesc>,
     native_methods: Vec<NativeMethodEntry>,
-    permissions: PermissionSet,
+    capabilities: CapabilitySet,
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
@@ -94,14 +94,20 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn grant_permission(mut self, permission: impl Into<String>) -> Self {
-        self.permissions.insert(permission);
+    pub const fn capability(mut self, capability: Capability) -> Self {
+        self.capabilities = self.capabilities.with(capability);
         self
     }
 
     #[must_use]
-    pub fn permissions(mut self, permissions: PermissionSet) -> Self {
-        self.permissions = permissions;
+    pub const fn capabilities(mut self, capabilities: CapabilitySet) -> Self {
+        self.capabilities = capabilities;
+        self
+    }
+
+    #[must_use]
+    pub const fn execution_profile(mut self, profile: ExecutionProfile) -> Self {
+        self.capabilities = profile.capabilities();
         self
     }
 
@@ -300,7 +306,6 @@ impl EngineBuilder {
             &types,
             self.standard_natives,
         )?;
-        validation::validate_granted_permissions(&self.permissions)?;
 
         let mut registry = TypeRegistry::new();
         for desc in types {
@@ -325,7 +330,7 @@ impl EngineBuilder {
             host_native_functions: self.host_native_functions,
             context_host_native_functions: self.context_host_native_functions,
             native_methods: self.native_methods,
-            permissions: self.permissions,
+            capabilities: self.capabilities,
             reflection_policy: self.reflection_policy,
             hot_reload_policy: self.hot_reload_policy,
             standard_natives: self.standard_natives,

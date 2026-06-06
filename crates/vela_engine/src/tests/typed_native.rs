@@ -598,7 +598,7 @@ fn typed_native_functions_propagate_vm_result_errors() {
                     Err(VmError {
                         kind: VmErrorKind::PermissionDenied {
                             native: "game::require_admin".to_owned(),
-                            permission: "admin".to_owned(),
+                            capability: "admin".to_owned(),
                         },
                         source_span: None,
                         call_stack: Default::default(),
@@ -625,7 +625,7 @@ fn main(allowed) {
             .map_err(|error| error.kind),
         Err(VmErrorKind::PermissionDenied {
             native: "game::require_admin".to_owned(),
-            permission: "admin".to_owned(),
+            capability: "admin".to_owned(),
         }),
     );
 }

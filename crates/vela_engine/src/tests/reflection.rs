@@ -17,6 +17,7 @@ use vela_vm::error::VmErrorKind;
 use crate::engine::Engine;
 use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::permission::Capability;
 use crate::schema::{ScriptHostMethodMetadata, ScriptReflectSchema};
 
 use super::player_type;

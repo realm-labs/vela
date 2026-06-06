@@ -4,7 +4,10 @@ use super::*;
 fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_required_parameter");
     let reward_file = write_typed_reward_modules(&root, "return 2;", "int", "2");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -107,7 +110,10 @@ fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_script_function_access");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let main_file = root.join("game").join("main.vela");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -225,16 +231,10 @@ fn runtime_stages_dir_native_effect_rejection_until_safe_point() {
 fn runtime_stages_dir_native_access_rejection_until_safe_point() {
     let kind = dir_native_rejection_kind(
         "runtime_stage_dir_native_access",
-        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22)).access(
-            FunctionAccess::public()
-                .reflect_callable(true)
-                .require_permission("reward.read"),
-        ),
-        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22)).access(
-            FunctionAccess::public()
-                .reflect_callable(true)
-                .require_permission("reward.write"),
-        ),
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .access(FunctionAccess::public().reflect_callable(true)),
+        NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
+            .access(FunctionAccess::public().reflect_callable(false)),
         "reload.function.access_changed",
     );
 
@@ -248,10 +248,8 @@ fn runtime_stages_dir_native_access_rejection_until_safe_point() {
         panic!("expected changed native function access");
     };
     assert_eq!(function, "game::native::grant_bonus");
-    assert_eq!(old.required_permissions, vec!["reward.read"]);
-    assert_eq!(new.required_permissions, vec!["reward.write"]);
     assert!(old.callable);
-    assert!(new.callable);
+    assert!(!new.callable);
     assert!(source_span.is_none());
 }
 
@@ -361,6 +359,7 @@ pub fn grant() {
     )
     .expect("write old native reward module");
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
@@ -373,6 +372,7 @@ pub fn grant() {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus_v2", NativeFunctionId::new(22))
                 .returns(TypeHint::Int)
@@ -458,6 +458,7 @@ pub fn grant(player: Player) {
     .expect("write old method reward module");
     let method = HostMethodId::new(9);
     let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),
@@ -468,6 +469,7 @@ pub fn grant(player: Player) {
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "award_exp")),
@@ -590,16 +592,10 @@ fn runtime_stages_dir_method_effect_rejection_until_safe_point() {
 fn runtime_stages_dir_method_access_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_access",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
-            MethodAccess::new()
-                .reflect_callable(true)
-                .require_permission("player.read"),
-        ),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").access(
-            MethodAccess::new()
-                .reflect_callable(false)
-                .require_permission("player.read"),
-        ),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            .access(MethodAccess::new().reflect_callable(true)),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            .access(MethodAccess::new().reflect_callable(false)),
         "reload.method.access_changed",
     );
 
@@ -615,8 +611,6 @@ fn runtime_stages_dir_method_access_rejection_until_safe_point() {
     };
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
-    assert_eq!(old.required_permissions, vec!["player.read"]);
-    assert_eq!(new.required_permissions, vec!["player.read"]);
     assert!(old.callable);
     assert!(!new.callable);
     assert!(source_span.is_none());

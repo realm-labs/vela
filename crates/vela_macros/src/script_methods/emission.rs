@@ -143,18 +143,10 @@ fn hint_tokens(hint: HintKind) -> TokenStream {
 
 fn access_tokens(method: &MethodMeta) -> TokenStream {
     let reflect_callable = method.reflect_callable;
-    let permissions = method.permissions.iter().map(|permission| {
-        quote! {
-            access = access.require_permission(#permission);
-        }
-    });
 
     quote! {
         {
-            let mut access =
-                ::vela_engine::native::FunctionAccess::public().reflect_callable(#reflect_callable);
-            #(#permissions)*
-            access
+            ::vela_engine::native::FunctionAccess::public().reflect_callable(#reflect_callable)
         }
     }
 }

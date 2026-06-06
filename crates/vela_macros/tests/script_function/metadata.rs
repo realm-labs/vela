@@ -9,11 +9,7 @@ fn script_function_generates_native_function_metadata() {
             .param("multiplier", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::pure())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("bonus.read"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .attr("domain", "gameplay")
             .attr("stable", "true")
             .docs("Grants a copied bonus amount."),
@@ -221,11 +217,7 @@ fn script_context_function_generates_native_function_metadata() {
             .param("level", TypeHint::Int)
             .returns(TypeHint::Bool)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sets a copied player level through PatchTx."),
     );
 }
@@ -239,11 +231,7 @@ fn script_context_function_alias_preserves_native_function_id_across_renames() {
             .param("level", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sets a renamed copied player level through PatchTx."),
     );
 }
@@ -258,11 +246,7 @@ fn script_context_function_generates_host_result_signature_metadata() {
             .param("ok", TypeHint::Bool)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Returns a fallible copied player level through PatchTx."),
     );
 }
@@ -276,11 +260,7 @@ fn script_host_function_generates_native_function_metadata() {
             .param("score", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sets a copied player score through host execution."),
     );
 }
@@ -294,11 +274,7 @@ fn script_host_function_alias_preserves_native_function_id_across_renames() {
             .param("score", TypeHint::Int)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sets a renamed copied player score through host execution."),
     );
 }
@@ -313,11 +289,7 @@ fn script_host_function_generates_host_result_signature_metadata() {
             .param("ok", TypeHint::Bool)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(
-                FunctionAccess::public()
-                    .reflect_callable(true)
-                    .require_permission("player.write"),
-            )
+            .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Returns a fallible copied player score through host execution."),
     );
 }

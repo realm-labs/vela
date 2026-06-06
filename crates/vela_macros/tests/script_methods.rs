@@ -4,6 +4,7 @@ use vela_common::{HostMethodId, HostObjectId, SourceId, stable_id};
 use vela_engine::engine::Engine;
 use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
+use vela_engine::permission::Capability;
 use vela_host::mock::MockStateAdapter;
 use vela_host::patch::PatchOp;
 use vela_host::path::HostPath;
@@ -41,12 +42,7 @@ struct Player {
 #[script_methods]
 impl Player {
     /// Grants copied experience through the host patch path.
-    #[script_method(
-        effect = "write_host",
-        permission = "player.write",
-        reflect = true,
-        attr = "domain=player"
-    )]
+    #[script_method(effect = "write_host", reflect = true, attr = "domain=player")]
     pub fn grant_exp(
         _ctx: &mut vela_engine::context::NativeCallContext<'_, '_>,
         _player: HostRef,
@@ -55,7 +51,7 @@ impl Player {
     }
 
     /// Grants copied score through a callable native method.
-    #[script_method(effect = "write_host", permission = "player.write", reflect = true)]
+    #[script_method(effect = "write_host", reflect = true)]
     pub fn grant_score(
         receiver: &HostPath,
         host: &mut HostExecution<'_>,
@@ -80,7 +76,7 @@ impl Player {
     }
 
     /// Sums five copied method values through a callable native method.
-    #[script_method(effect = "write_host", permission = "player.write", reflect = true)]
+    #[script_method(effect = "write_host", reflect = true)]
     pub fn sum_score(
         receiver: &HostPath,
         host: &mut HostExecution<'_>,
@@ -101,7 +97,7 @@ impl Player {
 
     /// Sums six copied method values through a callable native method.
     #[allow(clippy::too_many_arguments)]
-    #[script_method(effect = "write_host", permission = "player.write", reflect = true)]
+    #[script_method(effect = "write_host", reflect = true)]
     pub fn sum6_score(
         receiver: &HostPath,
         host: &mut HostExecution<'_>,

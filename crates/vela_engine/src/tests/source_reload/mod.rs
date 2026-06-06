@@ -21,6 +21,7 @@ use vela_vm::owned_value::OwnedValue;
 use crate::engine::Engine;
 use crate::error::EngineErrorKind;
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::permission::ExecutionProfile;
 use crate::reload::EngineHotReloadSourceErrorKind;
 use crate::runtime::{CallOptions, Runtime};
 use crate::source::EngineSourceErrorKind;

@@ -1,10 +1,8 @@
-use vela_engine::clock::CONTEXT_TIME_PERMISSION;
 use vela_engine::context_schema::context_host_type_desc;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
-use vela_engine::permission::PermissionSet;
-use vela_engine::random::CONTROLLED_RANDOM_PERMISSION;
+use vela_engine::permission::Capability;
 use vela_macros::{ScriptHost, ScriptReflect, script_methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
@@ -16,13 +14,12 @@ use crate::demo::DemoEngineOptions;
 
 pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineResult<Engine> {
     let registry = demo_support_type_registry(ids);
-    let mut permissions = PermissionSet::new().with(CONTEXT_TIME_PERMISSION);
-    if options.allow_random {
-        permissions.insert(CONTROLLED_RANDOM_PERMISSION);
-    }
     let mut builder = Engine::builder()
         .with_standard_natives()
-        .permissions(permissions)
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .capability(Capability::EventEmit)
+        .capability(Capability::Time)
         .with_context_clock(1_700_000_000, 42)
         .with_controlled_random(7)
         .reflection_policy(ReflectPolicy::all())
@@ -37,6 +34,9 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
                 .docs("Demo reward helper module.")
                 .attr("domain", "gameplay"),
         );
+    if options.allow_random {
+        builder = builder.capability(Capability::Random);
+    }
     for desc in registry.types() {
         builder = builder.register_type(desc.clone());
     }

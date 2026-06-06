@@ -3,10 +3,9 @@ use vela_vm::owned_value::OwnedValue;
 
 #[test]
 fn script_function_registers_typed_native_with_engine() {
-    let engine =
-        vela_register_native_function_grant_bonus(Engine::builder().grant_permission("bonus.read"))
-            .build()
-            .expect("engine should build from macro native function");
+    let engine = vela_register_native_function_grant_bonus(Engine::builder())
+        .build()
+        .expect("engine should build from macro native function");
     let program = compile_source!(
         engine,
         r#"
@@ -403,7 +402,7 @@ fn main() {
 #[test]
 fn script_context_function_registers_typed_native_with_engine() {
     let engine = vela_register_context_native_function_set_level(
-        Engine::builder().grant_permission("player.write"),
+        Engine::builder().capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro context native function");
@@ -439,7 +438,7 @@ fn main(player) {
 #[test]
 fn script_context_function_alias_registers_renamed_native_with_stable_id() {
     let engine = vela_register_context_native_function_set_level_v2(
-        Engine::builder().grant_permission("player.write"),
+        Engine::builder().capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro renamed context native function");
@@ -481,7 +480,7 @@ fn main(player) {
 #[test]
 fn script_context_function_registers_typed_host_result_native_with_engine() {
     let engine = vela_register_context_native_function_checked_level(
-        Engine::builder().grant_permission("player.write"),
+        Engine::builder().capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro context host-result native function");
@@ -532,7 +531,7 @@ fn main(player, ok) {
 }
 
 #[test]
-fn script_context_function_enforces_engine_permissions_before_patching() {
+fn script_context_function_enforces_engine_capabilities_before_patching() {
     let engine = vela_register_context_native_function_set_level(Engine::builder())
         .build()
         .expect("engine should build from macro context native function");
@@ -558,13 +557,13 @@ fn main(player) {
             &mut adapter,
             &mut tx,
         )
-        .expect_err("missing macro-native permission should fail");
+        .expect_err("missing macro-native capability should fail");
 
     assert_eq!(
         error.kind,
         VmErrorKind::PermissionDenied {
             native: "game::set_level".to_owned(),
-            permission: "player.write".to_owned(),
+            capability: Capability::HostWrite.as_str().to_owned(),
         },
     );
     assert!(tx.patches().is_empty());
@@ -573,7 +572,7 @@ fn main(player) {
 #[test]
 fn script_context_function_charges_runtime_instruction_budget_before_patching() {
     let engine = vela_register_context_native_function_set_level(
-        Engine::builder().grant_permission("player.write"),
+        Engine::builder().capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro context native function");
@@ -614,7 +613,7 @@ fn main(player) {
 #[test]
 fn script_host_function_registers_typed_native_with_engine() {
     let engine = vela_register_host_native_function_set_score(
-        Engine::builder().grant_permission("player.write"),
+        Engine::builder().capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro host native function");
@@ -650,7 +649,7 @@ fn main(player) {
 #[test]
 fn script_host_function_alias_registers_renamed_native_with_stable_id() {
     let engine = vela_register_host_native_function_set_score_v2(
-        Engine::builder().grant_permission("player.write"),
+        Engine::builder().capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro renamed host native function");
@@ -692,7 +691,7 @@ fn main(player) {
 #[test]
 fn script_host_function_registers_typed_host_result_native_with_engine() {
     let engine = vela_register_host_native_function_checked_score(
-        Engine::builder().grant_permission("player.write"),
+        Engine::builder().capability(Capability::HostWrite),
     )
     .build()
     .expect("engine should build from macro host-result native function");

@@ -4,7 +4,10 @@ use super::*;
 fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_defaulted_schema_addition");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Absent);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -62,7 +65,10 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
 fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_stable_id_schema_renames");
     let reward_file = write_stable_schema_rename_modules(&root, 2, false);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -120,7 +126,10 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
 fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_required_schema_field_rejection");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Absent);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -184,7 +193,10 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
 fn runtime_stages_dir_removed_schema_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_removed_schema_rejection");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Required);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -267,7 +279,10 @@ pub fn grant() {
 fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_schema_field_type_rejection");
     let reward_file = write_schema_reward_modules(&root, 2, StructCountField::Required);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -331,7 +346,10 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
 fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_defaulted_enum_variant_field_addition");
     let reward_file = write_enum_reward_modules(&root, 2, EnumVariantCountField::Absent);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -389,7 +407,10 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
 fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_required_enum_variant_field_rejection");
     let reward_file = write_enum_reward_modules(&root, 2, EnumVariantCountField::Absent);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -453,7 +474,10 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
 fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_enum_variant_field_type_rejection");
     let reward_file = write_enum_reward_modules(&root, 2, EnumVariantCountField::Required);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -517,7 +541,10 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
 fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_removed_trait_impl_rejection");
     let reward_file = write_trait_impl_modules(&root, 2, true);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -581,7 +608,10 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
 fn runtime_stages_dir_added_trait_impl_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_added_trait_impl");
     let reward_file = write_trait_impl_modules(&root, 2, false);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -643,7 +673,10 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
 fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_removed_trait_rejection");
     let reward_file = write_trait_abi_modules(&root, 2, "int");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -707,7 +740,10 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
 fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_trait_method_return_rejection");
     let reward_file = write_trait_abi_modules(&root, 2, "int");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -771,7 +807,10 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
 fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_required_trait_method_rejection");
     let reward_file = write_trait_abi_modules(&root, 2, "int");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -835,7 +874,10 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
 fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_defaulted_trait_method_addition");
     let reward_file = write_trait_abi_modules(&root, 2, "int");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -898,7 +940,10 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
 fn runtime_stages_dir_compile_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -963,7 +1008,10 @@ pub fn grant() {
 fn runtime_returns_hot_reload_dir_source_errors_immediately() {
     let root = unique_test_dir("runtime_stage_dir_source_error");
     let _reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");

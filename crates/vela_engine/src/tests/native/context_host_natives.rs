@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn engine_installs_registered_host_native_functions_into_vm() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_host_native_fn(
             NativeFunctionDesc::new("game::set_level", NativeFunctionId::new(2))
                 .param(
@@ -13,7 +13,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             |args, host| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Null);
@@ -66,7 +66,7 @@ fn main(player) {
 #[test]
 fn engine_installs_context_host_native_functions_into_vm() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::context_set_level", NativeFunctionId::new(23))
                 .param(
@@ -76,12 +76,12 @@ fn engine_installs_context_host_native_functions_into_vm() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Bool)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             |args, ctx| {
                 let [OwnedValue::HostRef(player), OwnedValue::Int(level)] = args else {
                     return Ok(OwnedValue::Bool(false));
                 };
-                assert!(ctx.has_permission("player.write"));
+                assert!(ctx.has_capability(Capability::HostWrite));
                 assert!(
                     ctx.engine()
                         .native_function_by_name("game::context_set_level")
@@ -117,10 +117,7 @@ fn main(player) {
         .expect("context host native metadata");
     assert_eq!(function.id, NativeFunctionId::new(23));
     assert!(function.effects.writes_host);
-    assert_eq!(
-        function.access.required_permissions(),
-        &["player.write".to_owned()]
-    );
+    assert!(function.access.required_permissions().is_empty());
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -149,6 +146,7 @@ fn main(player) {
 #[test]
 fn context_host_native_read_path_observes_patch_overlay() {
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::read_after_context_write", NativeFunctionId::new(33))
                 .param(
@@ -210,6 +208,7 @@ fn main(player) {
 fn context_host_native_previews_method_return_without_applying_patch() {
     let method = HostMethodId::new(79);
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::preview_inventory_add", NativeFunctionId::new(34))
                 .param(
@@ -275,6 +274,7 @@ fn main(player) {
 #[test]
 fn context_host_native_can_charge_execution_budget_before_patching() {
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::expensive_set_level", NativeFunctionId::new(24))
                 .param(
@@ -337,6 +337,7 @@ fn main(player) {
 #[test]
 fn context_host_native_can_charge_memory_budget_before_patching() {
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::memory_checked_set_level", NativeFunctionId::new(25))
                 .param(
@@ -399,6 +400,7 @@ fn main(player) {
 #[test]
 fn context_host_native_set_path_reserves_patch_budget_before_patching() {
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::patch_checked_set_level", NativeFunctionId::new(26))
                 .param(
@@ -461,6 +463,7 @@ fn main(player) {
 fn context_host_native_patch_helpers_record_expected_patches() {
     let method = HostMethodId::new(77);
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::record_patch_helpers", NativeFunctionId::new(31))
                 .param(
@@ -554,6 +557,7 @@ fn main(player) {
 fn context_host_native_patch_helpers_reserve_patch_budget_before_patching() {
     let method = HostMethodId::new(78);
     let engine = Engine::builder()
+        .capability(Capability::HostWrite)
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::patch_checked_helper", NativeFunctionId::new(32))
                 .param(

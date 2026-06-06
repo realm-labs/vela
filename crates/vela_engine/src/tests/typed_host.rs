@@ -14,11 +14,12 @@ use vela_vm::owned_value::OwnedValue;
 use crate::context::NativeCallContext;
 use crate::engine::Engine;
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::permission::Capability;
 
 #[test]
 fn engine_registers_typed_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_host_native_fn::<(HostRef, i64), _>(
             NativeFunctionDesc::new("game::typed_host_set_level", NativeFunctionId::new(106))
                 .param(
@@ -28,7 +29,7 @@ fn engine_registers_typed_host_native_functions() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Null)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_host_set_level,
         )
         .build()
@@ -70,10 +71,10 @@ fn main(player) {
 #[test]
 fn typed_host_native_conversion_errors_before_patch() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_host_native_fn::<(HostRef, i64), _>(
             NativeFunctionDesc::new("game::typed_host_set_level", NativeFunctionId::new(107))
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_host_set_level,
         )
         .build()
@@ -112,7 +113,7 @@ fn main() {
 #[test]
 fn typed_host_native_maps_host_result_errors() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_host_native_fn::<(HostRef, bool), _>(
             NativeFunctionDesc::new("game::typed_host_require_write", NativeFunctionId::new(247))
                 .param(
@@ -122,7 +123,7 @@ fn typed_host_native_maps_host_result_errors() {
                 .param("allowed", TypeHint::Bool)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_host_require_write,
         )
         .build()
@@ -191,7 +192,7 @@ fn typed_host_require_write(
 #[test]
 fn engine_registers_four_arg_typed_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_host_native_fn::<(HostRef, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::typed_host_sum_level", NativeFunctionId::new(222))
                 .param(
@@ -203,7 +204,7 @@ fn engine_registers_four_arg_typed_host_native_functions() {
                 .param("c", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_host_sum_level,
         )
         .build()
@@ -244,7 +245,7 @@ fn main(player) {
 #[test]
 fn engine_registers_five_arg_typed_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_host_native_fn::<(HostRef, i64, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::typed_host_sum5_level", NativeFunctionId::new(230))
                 .param(
@@ -257,7 +258,7 @@ fn engine_registers_five_arg_typed_host_native_functions() {
                 .param("d", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_host_sum5_level,
         )
         .build()
@@ -298,7 +299,7 @@ fn main(player) {
 #[test]
 fn engine_registers_six_arg_typed_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_host_native_fn::<(HostRef, i64, i64, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::typed_host_sum6_level", NativeFunctionId::new(238))
                 .param(
@@ -312,7 +313,7 @@ fn engine_registers_six_arg_typed_host_native_functions() {
                 .param("e", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_host_sum6_level,
         )
         .build()
@@ -404,7 +405,7 @@ fn typed_host_sum6_level(
 #[test]
 fn engine_registers_typed_context_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_context_host_native_fn::<(HostRef, i64), _>(
             NativeFunctionDesc::new("game::typed_set_level", NativeFunctionId::new(104))
                 .param(
@@ -414,7 +415,7 @@ fn engine_registers_typed_context_host_native_functions() {
                 .param("level", TypeHint::Int)
                 .returns(TypeHint::Bool)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_set_level,
         )
         .build()
@@ -455,10 +456,10 @@ fn main(player) {
 #[test]
 fn typed_context_host_native_conversion_errors_before_patch() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_context_host_native_fn::<(HostRef, i64), _>(
             NativeFunctionDesc::new("game::typed_set_level", NativeFunctionId::new(105))
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_set_level,
         )
         .build()
@@ -497,7 +498,7 @@ fn main() {
 #[test]
 fn typed_context_host_native_maps_host_result_errors() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_context_host_native_fn::<(HostRef, bool), _>(
             NativeFunctionDesc::new(
                 "game::typed_context_require_write",
@@ -510,7 +511,7 @@ fn typed_context_host_native_maps_host_result_errors() {
             .param("allowed", TypeHint::Bool)
             .returns(TypeHint::Int)
             .effects(EffectSet::host_write())
-            .access(FunctionAccess::public().require_permission("player.write")),
+            .access(FunctionAccess::public()),
             typed_context_require_write,
         )
         .build()
@@ -551,7 +552,7 @@ fn typed_set_level(
     level: i64,
 ) -> VmResult<bool> {
     ctx.charge_instructions(10)?;
-    let has_permission = ctx.has_permission("player.write");
+    let has_permission = ctx.has_capability(Capability::HostWrite);
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Int(level),
@@ -565,7 +566,7 @@ fn typed_context_require_write(
     player: HostRef,
     allowed: bool,
 ) -> HostResult<i64> {
-    if allowed && ctx.has_permission("player.write") {
+    if allowed && ctx.has_capability(Capability::HostWrite) {
         Ok(21)
     } else {
         Err(HostError {
@@ -581,7 +582,7 @@ fn typed_context_require_write(
 #[test]
 fn engine_registers_four_arg_typed_context_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_context_host_native_fn::<(HostRef, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::typed_context_sum_level", NativeFunctionId::new(223))
                 .param(
@@ -593,7 +594,7 @@ fn engine_registers_four_arg_typed_context_host_native_functions() {
                 .param("c", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_context_sum_level,
         )
         .build()
@@ -634,7 +635,7 @@ fn main(player) {
 #[test]
 fn engine_registers_five_arg_typed_context_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_context_host_native_fn::<(HostRef, i64, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::typed_context_sum5_level", NativeFunctionId::new(231))
                 .param(
@@ -647,7 +648,7 @@ fn engine_registers_five_arg_typed_context_host_native_functions() {
                 .param("d", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_context_sum5_level,
         )
         .build()
@@ -688,7 +689,7 @@ fn main(player) {
 #[test]
 fn engine_registers_six_arg_typed_context_host_native_functions() {
     let engine = Engine::builder()
-        .grant_permission("player.write")
+        .capability(Capability::HostWrite)
         .register_typed_context_host_native_fn::<(HostRef, i64, i64, i64, i64, i64), _>(
             NativeFunctionDesc::new("game::typed_context_sum6_level", NativeFunctionId::new(239))
                 .param(
@@ -702,7 +703,7 @@ fn engine_registers_six_arg_typed_context_host_native_functions() {
                 .param("e", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public().require_permission("player.write")),
+                .access(FunctionAccess::public()),
             typed_context_sum6_level,
         )
         .build()

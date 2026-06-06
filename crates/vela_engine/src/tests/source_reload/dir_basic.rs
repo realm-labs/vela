@@ -18,6 +18,7 @@ fn main(player: Player) {
     .expect("write source file");
     let method = HostMethodId::new(77);
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),
@@ -91,7 +92,10 @@ pub const BONUS: int = 6;
     .expect("write config module");
     std::fs::write(root.join("ignored.txt"), "fn main() { return 99; }")
         .expect("write ignored file");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
 
     let program = engine.compile_dir(&root).expect("compile dir");
 
@@ -129,7 +133,10 @@ pub fn grant() {
 "#,
     )
     .expect("write reward module");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -192,7 +199,10 @@ pub fn grant() {
 fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     let root = unique_test_dir("runtime_stage_hot_reload_dir");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -266,6 +276,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .hot_reload_policy(HotReloadPolicy::locked_down())
         .build()
         .expect("engine should build");
@@ -336,7 +347,10 @@ fn runtime_stages_dir_public_function_addition_until_safe_point() {
 fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     let root = unique_test_dir("runtime_stage_dir_return_abi");
     let reward_file = write_typed_reward_modules(&root, "return grant();", "int", "2");
-    let engine = Engine::builder().build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");

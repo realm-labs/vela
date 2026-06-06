@@ -3,8 +3,7 @@ use quote::format_ident;
 use syn::{FnArg, ItemFn, LitBool, LitStr, PatType, Result, ReturnType, Type, parse::Parser};
 
 use crate::attrs::{
-    error, parse_key_value_attr, parse_permission, parse_qualified_name,
-    reject_duplicate_attr_keys, spanned_error,
+    error, parse_key_value_attr, parse_qualified_name, reject_duplicate_attr_keys, spanned_error,
 };
 use crate::signature::{
     is_mut_reference_to_type, param_name, reject_script_reference_param,
@@ -19,7 +18,6 @@ pub(super) struct FunctionMeta {
     pub(super) effect: FunctionEffect,
     pub(super) docs: Option<String>,
     pub(super) attrs: Vec<(String, String)>,
-    pub(super) permissions: Vec<String>,
     pub(super) public: bool,
     pub(super) reflect_visible: bool,
     pub(super) reflect_callable: bool,
@@ -71,7 +69,6 @@ pub(super) struct ScriptFunctionAttrs {
     effect: Option<FunctionEffect>,
     pub(super) docs: Option<String>,
     attrs: Vec<(String, String)>,
-    permissions: Vec<String>,
     public: Option<bool>,
     reflect_visible: Option<bool>,
     reflect_callable: bool,
@@ -140,10 +137,6 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
                 value.parse::<LitStr>()?,
                 "script_function",
             )?),
-            "permission" => parsed.permissions.push(parse_permission(
-                value.parse::<LitStr>()?,
-                "script_function",
-            )?),
             "public" => {
                 parsed.public = Some(value.parse::<LitBool>()?.value);
             }
@@ -158,8 +151,6 @@ pub(super) fn parse_script_function_attrs(attr: TokenStream) -> Result<ScriptFun
         Ok(())
     });
     parser.parse2(attr)?;
-    parsed.permissions.sort();
-    parsed.permissions.dedup();
     reject_duplicate_attr_keys(&parsed.attrs, "script_function")?;
     Ok(parsed)
 }
@@ -263,7 +254,6 @@ pub(super) fn function_meta(
         effect: attrs.effect.unwrap_or(FunctionEffect::Pure),
         docs,
         attrs: attrs.attrs,
-        permissions: attrs.permissions,
         public,
         reflect_visible,
         reflect_callable: attrs.reflect_callable,

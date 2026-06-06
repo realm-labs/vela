@@ -8,6 +8,7 @@ use vela_engine::engine::Engine;
 use vela_engine::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
+use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
@@ -40,7 +41,6 @@ mod registration;
     name = "game::grant_bonus",
     effect = "pure",
     reflect = true,
-    permission = "bonus.read",
     attr = "domain=gameplay",
     attr = "stable=true"
 )]
@@ -60,12 +60,7 @@ fn grant_bonus_v2(amount: i64) -> i64 {
 }
 
 /// Sets a copied player level through PatchTx.
-#[script_context_function(
-    name = "game::set_level",
-    effect = "write_host",
-    reflect = true,
-    permission = "player.write"
-)]
+#[script_context_function(name = "game::set_level", effect = "write_host", reflect = true)]
 fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<bool> {
     ctx.charge_instructions(3)?;
     ctx.set_path(
@@ -73,7 +68,7 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
         HostValue::Int(level),
         None,
     )?;
-    Ok(ctx.has_permission("player.write"))
+    Ok(ctx.has_capability(Capability::HostWrite))
 }
 
 /// Sets a renamed copied player level through PatchTx.
@@ -81,8 +76,7 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
     name = "game::set_level_v2",
     alias = "game::set_level",
     effect = "write_host",
-    reflect = true,
-    permission = "player.write"
+    reflect = true
 )]
 fn set_level_v2(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<i64> {
     ctx.set_path(
@@ -94,12 +88,7 @@ fn set_level_v2(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64
 }
 
 /// Returns a fallible copied player level through PatchTx.
-#[script_context_function(
-    name = "game::checked_level",
-    effect = "write_host",
-    reflect = true,
-    permission = "player.write"
-)]
+#[script_context_function(name = "game::checked_level", effect = "write_host", reflect = true)]
 fn checked_level(
     ctx: &mut NativeCallContext<'_, '_>,
     player: HostRef,
@@ -118,12 +107,7 @@ fn checked_level(
 }
 
 /// Sets a copied player score through host execution.
-#[script_host_function(
-    name = "game::set_score",
-    effect = "write_host",
-    reflect = true,
-    permission = "player.write"
-)]
+#[script_host_function(name = "game::set_score", effect = "write_host", reflect = true)]
 fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
     host.tx.set_path(
         HostPath::new(player).field(FieldId::new(2)),
@@ -138,8 +122,7 @@ fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmRes
     name = "game::set_score_v2",
     alias = "game::set_score",
     effect = "write_host",
-    reflect = true,
-    permission = "player.write"
+    reflect = true
 )]
 fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
     host.tx.set_path(
@@ -151,12 +134,7 @@ fn set_score_v2(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> Vm
 }
 
 /// Returns a fallible copied player score through host execution.
-#[script_host_function(
-    name = "game::checked_score",
-    effect = "write_host",
-    reflect = true,
-    permission = "player.write"
-)]
+#[script_host_function(name = "game::checked_score", effect = "write_host", reflect = true)]
 fn checked_score(
     host: &mut HostExecution<'_>,
     player: HostRef,

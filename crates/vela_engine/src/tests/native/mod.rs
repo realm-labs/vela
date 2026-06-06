@@ -17,6 +17,7 @@ use vela_vm::owned_value::OwnedValue;
 use crate::args::ScriptArgsExt;
 use crate::engine::Engine;
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
+use crate::permission::Capability;
 use crate::runtime::{CallOptions, Runtime};
 
 mod budgets_and_permissions;

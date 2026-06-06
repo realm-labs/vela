@@ -8,7 +8,7 @@ use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
 
 use crate::engine::Engine;
-use crate::permission::PermissionSet;
+use crate::permission::{Capability, CapabilitySet};
 
 pub struct NativeCallContext<'ctx, 'host> {
     engine: &'ctx Engine,
@@ -35,13 +35,13 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     }
 
     #[must_use]
-    pub fn permissions(&self) -> &PermissionSet {
-        self.engine.permissions()
+    pub fn capabilities(&self) -> CapabilitySet {
+        self.engine.capabilities()
     }
 
     #[must_use]
-    pub fn has_permission(&self, permission: &str) -> bool {
-        self.permissions().contains(permission)
+    pub fn has_capability(&self, capability: Capability) -> bool {
+        self.capabilities().contains(capability)
     }
 
     pub fn adapter(&mut self) -> &mut dyn ScriptStateAdapter {

@@ -416,7 +416,7 @@ fn rejected_report_targets_schema_and_method_errors() {
                 type_name: "Player".to_owned(),
                 method: "grant_exp".to_owned(),
                 old: AccessAbi::public(),
-                new: AccessAbi::new(true, false, Vec::new()),
+                new: AccessAbi::new(true, false),
                 source_span: None,
             },
         },
@@ -427,7 +427,7 @@ fn rejected_report_targets_schema_and_method_errors() {
         method.errors[0].detail,
         Some(HotReloadDiagnosticDetail::MethodAccessAbi {
             old: AccessAbi::public(),
-            new: AccessAbi::new(true, false, Vec::new()),
+            new: AccessAbi::new(true, false),
         })
     );
 }
@@ -497,7 +497,7 @@ fn rejected_report_render_lines_include_detail_and_hint() {
                 type_name: "Player".to_owned(),
                 method: "grant_exp".to_owned(),
                 old: AccessAbi::public(),
-                new: AccessAbi::new(true, false, vec!["admin.reload".to_owned()]),
+                new: AccessAbi::new(true, false),
                 source_span: None,
             },
         },
@@ -524,7 +524,7 @@ fn rejected_report_render_lines_include_detail_and_hint() {
                 HotReloadReportLineKind::Detail,
                 Some(0),
                 None,
-                "method access: old=(public=true reflective=true callable=true permissions=[]) new=(public=true reflective=false callable=false permissions=[admin.reload])",
+                "method access: old=(public=true reflective=true callable=true) new=(public=true reflective=false callable=false)",
             ),
             HotReloadReportLine::new(
                 HotReloadReportLineKind::RepairHint,
