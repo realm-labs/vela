@@ -1,34 +1,14 @@
-use std::collections::BTreeMap;
-
 use vela_host::value::HostValue;
 
 use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
 use crate::value::ReflectValue;
 
 pub(crate) fn name(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    let Some(name) = field(target, "name") else {
-        return Ok(None);
-    };
-    match name {
-        MetadataField::Host(HostValue::String(_))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::String(_))) => {
-            Ok(Some(host_value(name)?))
-        }
-        _ => Err(invalid_target()),
-    }
+    scalar_field(target, "name", is_string)
 }
 
 pub(crate) fn id(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    let Some(id) = field(target, "id") else {
-        return Ok(None);
-    };
-    match id {
-        MetadataField::Host(HostValue::Int(_))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Int(_))) => {
-            Ok(Some(host_value(id)?))
-        }
-        _ => Err(invalid_target()),
-    }
+    scalar_field(target, "id", is_int)
 }
 
 pub(crate) fn kind(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
@@ -36,13 +16,7 @@ pub(crate) fn kind(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
         return Ok(None);
     };
     if let Some(kind) = field(target, "kind") {
-        return match kind {
-            MetadataField::Host(HostValue::String(_))
-            | MetadataField::Reflect(ReflectValue::Host(HostValue::String(_))) => {
-                Ok(Some(host_value(kind)?))
-            }
-            _ => Err(invalid_target()),
-        };
+        return scalar(kind, is_string).map(Some);
     }
     descriptor_kind(type_name)
         .map(|kind| HostValue::String(kind.to_owned()))
@@ -51,135 +25,112 @@ pub(crate) fn kind(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
 }
 
 pub(crate) fn owner(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    let Some(owner) = field(target, "owner") else {
-        return Ok(None);
-    };
-    match owner {
-        MetadataField::Host(HostValue::String(_))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::String(_))) => {
-            Ok(Some(host_value(owner)?))
-        }
-        _ => Err(invalid_target()),
-    }
+    scalar_field(target, "owner", is_string)
 }
 
 pub(crate) fn origin(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    let Some(origin) = field(target, "origin") else {
-        return Ok(None);
-    };
-    match origin {
-        MetadataField::Host(HostValue::Null | HostValue::String(_))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null | HostValue::String(_))) => {
-            Ok(Some(host_value(origin)?))
-        }
-        _ => Err(invalid_target()),
-    }
+    scalar_field(target, "origin", is_null_or_string)
 }
 
-pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
     let Some(attrs) = field(target, "attrs") else {
         return Ok(None);
     };
-    attrs_to_host_map(attrs).map(Some)
+    attrs_record(attrs).map(Some)
 }
 
 pub(crate) fn attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<HostValue>> {
-    let Some(HostValue::Map(attrs)) = attrs(target)? else {
+    let Some(ReflectValue::Record(attrs)) = attrs(target)? else {
         return Ok(None);
     };
-    Ok(Some(attrs.get(name).cloned().unwrap_or(HostValue::Null)))
+    let Some(value) = attrs.get(name) else {
+        return Ok(Some(HostValue::Null));
+    };
+    scalar(value, is_string).map(Some)
 }
 
 pub(crate) fn has_attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<bool>> {
-    let Some(HostValue::Map(attrs)) = attrs(target)? else {
+    let Some(ReflectValue::Record(attrs)) = attrs(target)? else {
         return Ok(None);
     };
     Ok(Some(attrs.contains_key(name)))
 }
 
 pub(crate) fn docs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    let Some(docs) = field(target, "docs") else {
-        return Ok(None);
-    };
-    match docs {
-        MetadataField::Host(HostValue::Null | HostValue::String(_))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null | HostValue::String(_))) => {
-            Ok(Some(host_value(docs)?))
-        }
-        _ => Err(invalid_target()),
-    }
+    scalar_field(target, "docs", is_null_or_string)
 }
 
-pub(crate) fn source_span(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn source_span(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
     let Some(source_span) = field(target, "source_span") else {
         return Ok(None);
     };
     source_span_value(source_span).map(Some)
 }
 
-pub(crate) fn access(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn access(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
     if let Some(access) = field(target, "access") {
         return access_record(access).map(Some);
     }
     if is_access_record(target) {
-        return access_record(MetadataField::Reflect(target)).map(Some);
+        return access_record(target).map(Some);
     }
     Ok(None)
 }
 
-pub(crate) fn required_permissions(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn required_permissions(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
     if let Some(access) = field(target, "access") {
         return required_permissions_from_access(access).map(Some);
     }
     if is_access_record(target) {
-        return required_permissions_from_access(MetadataField::Reflect(target)).map(Some);
+        return required_permissions_from_access(target).map(Some);
     }
     Ok(None)
 }
 
-pub(crate) fn effects(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn effects(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
     if let Some(effects) = field(target, "effects") {
         return effect_set(effects).map(Some);
     }
     if record_type_name(target) == Some("ReflectEffectSet") {
-        return effect_set(MetadataField::Reflect(target)).map(Some);
+        return effect_set(target).map(Some);
     }
     Ok(None)
 }
 
-pub(crate) fn params(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn params(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
     if let Some(params) = field(target, "params") {
         return param_array(params).map(Some);
     }
-    if let ReflectValue::Host(HostValue::Array(_)) = target {
-        return param_array(MetadataField::Reflect(target)).map(Some);
+    if let ReflectValue::Array(_) = target {
+        return param_array(target).map(Some);
     }
     Ok(None)
 }
 
 pub(crate) fn returns(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     if let Some(returns) = field(target, "returns").or_else(|| field(target, "return")) {
-        return return_type(returns).map(Some);
+        return scalar(returns, is_null_or_string).map(Some);
     }
     Ok(None)
 }
 
-enum MetadataField<'a> {
-    Host(&'a HostValue),
-    Reflect(&'a ReflectValue),
+fn scalar_field(
+    target: &ReflectValue,
+    name: &str,
+    accepts: fn(&HostValue) -> bool,
+) -> ReflectResult<Option<HostValue>> {
+    let Some(value) = field(target, name) else {
+        return Ok(None);
+    };
+    scalar(value, accepts).map(Some)
 }
 
-fn field<'a>(target: &'a ReflectValue, name: &str) -> Option<MetadataField<'a>> {
+fn field<'a>(target: &'a ReflectValue, name: &str) -> Option<&'a ReflectValue> {
     match target {
-        ReflectValue::Host(HostValue::Record { type_name, fields })
-            if is_reflect_metadata_record(type_name) =>
-        {
-            fields.get(name).map(MetadataField::Host)
-        }
         ReflectValue::ScriptRecord { type_name, fields }
             if is_reflect_metadata_record(type_name) =>
         {
-            fields.get(name).map(MetadataField::Reflect)
+            fields.get(name)
         }
         _ => None,
     }
@@ -187,10 +138,7 @@ fn field<'a>(target: &'a ReflectValue, name: &str) -> Option<MetadataField<'a>> 
 
 fn record_type_name(target: &ReflectValue) -> Option<&str> {
     match target {
-        ReflectValue::Host(HostValue::Record { type_name, .. })
-        | ReflectValue::ScriptRecord { type_name, .. }
-            if is_reflect_metadata_record(type_name) =>
-        {
+        ReflectValue::ScriptRecord { type_name, .. } if is_reflect_metadata_record(type_name) => {
             Some(type_name)
         }
         _ => None,
@@ -227,122 +175,63 @@ fn is_access_record(target: &ReflectValue) -> bool {
     )
 }
 
-fn attrs_to_host_map(value: MetadataField<'_>) -> ReflectResult<HostValue> {
-    match value {
-        MetadataField::Host(HostValue::Map(attrs)) => Ok(HostValue::Map(attrs.clone())),
-        MetadataField::Reflect(ReflectValue::Host(HostValue::Map(attrs))) => {
-            Ok(HostValue::Map(attrs.clone()))
-        }
-        MetadataField::Reflect(ReflectValue::Record(attrs)) => attrs
-            .iter()
-            .map(|(key, value)| {
-                let ReflectValue::Host(HostValue::String(value)) = value else {
-                    return Err(invalid_target());
-                };
-                Ok((key.clone(), HostValue::String(value.clone())))
-            })
-            .collect::<ReflectResult<BTreeMap<_, _>>>()
-            .map(HostValue::Map),
-        _ => Err(invalid_target()),
-    }
-}
-
-fn required_permissions_from_access(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+fn required_permissions_from_access(value: &ReflectValue) -> ReflectResult<ReflectValue> {
     let Some(required_permissions) = record_field(value, "required_permissions") else {
         return Err(invalid_target());
     };
     string_array(required_permissions)
 }
 
-fn record_field<'a>(value: MetadataField<'a>, name: &str) -> Option<MetadataField<'a>> {
+fn record_field<'a>(value: &'a ReflectValue, name: &str) -> Option<&'a ReflectValue> {
     match value {
-        MetadataField::Host(HostValue::Record { fields, .. }) => {
-            fields.get(name).map(MetadataField::Host)
-        }
-        MetadataField::Reflect(ReflectValue::Host(HostValue::Record { fields, .. })) => {
-            fields.get(name).map(MetadataField::Host)
-        }
-        MetadataField::Reflect(ReflectValue::ScriptRecord { fields, .. }) => {
-            fields.get(name).map(MetadataField::Reflect)
-        }
+        ReflectValue::ScriptRecord { fields, .. } => fields.get(name),
         _ => None,
     }
 }
 
-fn string_array(value: MetadataField<'_>) -> ReflectResult<HostValue> {
-    match value {
-        MetadataField::Host(HostValue::Array(values))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Array(values))) => values
-            .iter()
-            .map(|value| match value {
-                HostValue::String(value) => Ok(HostValue::String(value.clone())),
-                _ => Err(invalid_target()),
-            })
-            .collect::<ReflectResult<Vec<_>>>()
-            .map(HostValue::Array),
-        _ => Err(invalid_target()),
+fn attrs_record(value: &ReflectValue) -> ReflectResult<ReflectValue> {
+    let ReflectValue::Record(attrs) = value else {
+        return Err(invalid_target());
+    };
+    for value in attrs.values() {
+        scalar(value, is_string)?;
     }
+    Ok(value.clone())
 }
 
-fn effect_set(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+fn string_array(value: &ReflectValue) -> ReflectResult<ReflectValue> {
+    let ReflectValue::Array(values) = value else {
+        return Err(invalid_target());
+    };
+    for value in values {
+        scalar(value, is_string)?;
+    }
+    Ok(value.clone())
+}
+
+fn effect_set(value: &ReflectValue) -> ReflectResult<ReflectValue> {
     match value {
-        MetadataField::Host(HostValue::Record { type_name, fields })
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Record { type_name, fields }))
-            if type_name == "ReflectEffectSet" =>
-        {
-            Ok(HostValue::Record {
-                type_name: type_name.clone(),
-                fields: fields.clone(),
-            })
-        }
-        MetadataField::Reflect(ReflectValue::ScriptRecord { type_name, fields })
-            if type_name == "ReflectEffectSet" =>
-        {
-            fields
-                .iter()
-                .map(|(key, value)| {
-                    let ReflectValue::Host(HostValue::Bool(value)) = value else {
-                        return Err(invalid_target());
-                    };
-                    Ok((key.clone(), HostValue::Bool(*value)))
-                })
-                .collect::<ReflectResult<BTreeMap<_, _>>>()
-                .map(|fields| HostValue::Record {
-                    type_name: type_name.clone(),
-                    fields,
-                })
+        ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectEffectSet" => {
+            for value in fields.values() {
+                scalar(value, is_bool)?;
+            }
+            Ok(value.clone())
         }
         _ => Err(invalid_target()),
     }
 }
 
-fn access_record(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+fn access_record(value: &ReflectValue) -> ReflectResult<ReflectValue> {
     match value {
-        MetadataField::Host(HostValue::Record { type_name, fields })
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Record { type_name, fields }))
-            if is_access_type(type_name) =>
-        {
-            Ok(HostValue::Record {
-                type_name: type_name.clone(),
-                fields: fields.clone(),
-            })
-        }
-        MetadataField::Reflect(ReflectValue::ScriptRecord { type_name, fields })
-            if is_access_type(type_name) =>
-        {
-            fields
-                .iter()
-                .map(|(key, value)| {
-                    let ReflectValue::Host(value) = value else {
-                        return Err(invalid_target());
-                    };
-                    Ok((key.clone(), value.clone()))
-                })
-                .collect::<ReflectResult<BTreeMap<_, _>>>()
-                .map(|fields| HostValue::Record {
-                    type_name: type_name.clone(),
-                    fields,
-                })
+        ReflectValue::ScriptRecord { type_name, fields } if is_access_type(type_name) => {
+            for (key, value) in fields {
+                if key == "required_permissions" {
+                    string_array(value)?;
+                } else {
+                    scalar(value, is_bool)?;
+                }
+            }
+            Ok(value.clone())
         }
         _ => Err(invalid_target()),
     }
@@ -355,82 +244,61 @@ fn is_access_type(type_name: &str) -> bool {
     )
 }
 
-fn param_array(value: MetadataField<'_>) -> ReflectResult<HostValue> {
-    match value {
-        MetadataField::Host(HostValue::Array(values))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Array(values))) => values
-            .iter()
-            .map(param_record)
-            .collect::<ReflectResult<Vec<_>>>()
-            .map(HostValue::Array),
-        _ => Err(invalid_target()),
-    }
-}
-
-fn param_record(value: &HostValue) -> ReflectResult<HostValue> {
-    let HostValue::Record { type_name, fields } = value else {
+fn param_array(value: &ReflectValue) -> ReflectResult<ReflectValue> {
+    let ReflectValue::Array(values) = value else {
         return Err(invalid_target());
     };
-    if type_name != "ReflectParam" {
-        return Err(invalid_target());
+    for value in values {
+        param_record(value)?;
     }
-    Ok(HostValue::Record {
-        type_name: type_name.clone(),
-        fields: fields.clone(),
-    })
+    Ok(value.clone())
 }
 
-fn return_type(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+fn param_record(value: &ReflectValue) -> ReflectResult<()> {
     match value {
-        MetadataField::Host(HostValue::Null | HostValue::String(_))
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null | HostValue::String(_))) => {
-            host_value(value)
-        }
+        ReflectValue::ScriptRecord { type_name, .. } if type_name == "ReflectParam" => Ok(()),
         _ => Err(invalid_target()),
     }
 }
 
-fn source_span_value(value: MetadataField<'_>) -> ReflectResult<HostValue> {
+fn source_span_value(value: &ReflectValue) -> ReflectResult<ReflectValue> {
     match value {
-        MetadataField::Host(HostValue::Null)
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Null)) => Ok(HostValue::Null),
-        MetadataField::Host(HostValue::Record { type_name, fields })
-        | MetadataField::Reflect(ReflectValue::Host(HostValue::Record { type_name, fields }))
-            if type_name == "ReflectSourceSpan" =>
-        {
-            Ok(HostValue::Record {
-                type_name: type_name.clone(),
-                fields: fields.clone(),
-            })
-        }
-        MetadataField::Reflect(ReflectValue::ScriptRecord { type_name, fields })
-            if type_name == "ReflectSourceSpan" =>
-        {
-            fields
-                .iter()
-                .map(|(key, value)| {
-                    let ReflectValue::Host(value) = value else {
-                        return Err(invalid_target());
-                    };
-                    Ok((key.clone(), value.clone()))
-                })
-                .collect::<ReflectResult<BTreeMap<_, _>>>()
-                .map(|fields| HostValue::Record {
-                    type_name: type_name.clone(),
-                    fields,
-                })
-        }
-        _ => Err(invalid_target()),
-    }
-}
-
-fn host_value(value: MetadataField<'_>) -> ReflectResult<HostValue> {
-    match value {
-        MetadataField::Host(value) | MetadataField::Reflect(ReflectValue::Host(value)) => {
+        ReflectValue::Host(HostValue::Null) => Ok(value.clone()),
+        ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectSourceSpan" => {
+            for value in fields.values() {
+                scalar(value, is_int)?;
+            }
             Ok(value.clone())
         }
         _ => Err(invalid_target()),
     }
+}
+
+fn scalar(value: &ReflectValue, accepts: fn(&HostValue) -> bool) -> ReflectResult<HostValue> {
+    let ReflectValue::Host(value) = value else {
+        return Err(invalid_target());
+    };
+    if accepts(value) {
+        Ok(value.clone())
+    } else {
+        Err(invalid_target())
+    }
+}
+
+fn is_null_or_string(value: &HostValue) -> bool {
+    matches!(value, HostValue::Null | HostValue::String(_))
+}
+
+fn is_string(value: &HostValue) -> bool {
+    matches!(value, HostValue::String(_))
+}
+
+fn is_int(value: &HostValue) -> bool {
+    matches!(value, HostValue::Int(_))
+}
+
+fn is_bool(value: &HostValue) -> bool {
+    matches!(value, HostValue::Bool(_))
 }
 
 fn invalid_target() -> ReflectError {

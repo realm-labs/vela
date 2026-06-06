@@ -19,10 +19,10 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         attrs(&registry, &target).expect("attrs"),
-        ReflectValue::Host(HostValue::Map(BTreeMap::from([(
+        ReflectValue::Record(BTreeMap::from([(
             "domain".to_owned(),
-            HostValue::String("gameplay".to_owned())
-        )])))
+            ReflectValue::Host(HostValue::String("gameplay".to_owned()))
+        )]))
     );
     assert!(has_field(&registry, &target, "level").expect("has field"));
 
@@ -30,37 +30,57 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     let player_type = crate::types::type_by_name(&registry, "Player").expect("type info");
     let field_from_type = field(&registry, &player_type, "level").expect("type field");
     assert!(has_field(&registry, &player_type, "level").expect("type has field"));
-    let ReflectValue::Host(HostValue::Record { fields, .. }) = &field_metadata else {
+    let ReflectValue::ScriptRecord { fields, .. } = &field_metadata else {
         panic!("field metadata should be a record");
     };
     assert_eq!(field_metadata, field_from_type);
-    assert_eq!(fields.get("writable"), Some(&HostValue::Bool(true)));
+    assert_eq!(
+        fields.get("writable"),
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
+    );
     assert_eq!(
         fields.get("type"),
-        Some(&HostValue::String("int".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
     );
     assert_eq!(
         fields.get("access"),
-        Some(&HostValue::Record {
+        Some(&ReflectValue::ScriptRecord {
             type_name: "ReflectFieldAccess".to_owned(),
             fields: BTreeMap::from([
-                ("readable".to_owned(), HostValue::Bool(true)),
-                ("writable".to_owned(), HostValue::Bool(true)),
-                ("reflect_readable".to_owned(), HostValue::Bool(true)),
-                ("reflect_writable".to_owned(), HostValue::Bool(true)),
-                ("required_permissions".to_owned(), HostValue::Array(vec![])),
+                (
+                    "readable".to_owned(),
+                    ReflectValue::Host(HostValue::Bool(true))
+                ),
+                (
+                    "writable".to_owned(),
+                    ReflectValue::Host(HostValue::Bool(true))
+                ),
+                (
+                    "reflect_readable".to_owned(),
+                    ReflectValue::Host(HostValue::Bool(true))
+                ),
+                (
+                    "reflect_writable".to_owned(),
+                    ReflectValue::Host(HostValue::Bool(true))
+                ),
+                (
+                    "required_permissions".to_owned(),
+                    ReflectValue::Array(vec![])
+                ),
             ]),
         })
     );
     assert_eq!(
         fields.get("docs"),
-        Some(&HostValue::String("Current level.".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "Current level.".to_owned()
+        )))
     );
     assert_eq!(
         fields.get("attrs"),
-        Some(&HostValue::Map(BTreeMap::from([(
+        Some(&ReflectValue::Record(BTreeMap::from([(
             "unit".to_owned(),
-            HostValue::String("level".to_owned())
+            ReflectValue::Host(HostValue::String("level".to_owned()))
         )])))
     );
     assert_eq!(
@@ -69,7 +89,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         source_span(&registry, &field_metadata).expect("field source span"),
-        ReflectValue::Host(span_value(Some(Span::new(SourceId::new(8), 50, 55))))
+        span_value(Some(Span::new(SourceId::new(8), 50, 55)))
     );
     assert_eq!(
         docs(&registry, &field_metadata).expect("field docs"),
@@ -85,7 +105,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         fields.get("origin"),
-        Some(&HostValue::String("host".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("host".to_owned())))
     );
     assert_eq!(
         origin(&registry, &field_metadata).expect("field origin metadata"),
@@ -93,10 +113,10 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         attrs(&registry, &field_metadata).expect("field attrs"),
-        ReflectValue::Host(HostValue::Map(BTreeMap::from([(
+        ReflectValue::Record(BTreeMap::from([(
             "unit".to_owned(),
-            HostValue::String("level".to_owned())
-        )])))
+            ReflectValue::Host(HostValue::String("level".to_owned()))
+        )]))
     );
     assert_eq!(
         attr(&registry, &field_metadata, "unit").expect("field attr"),
@@ -108,11 +128,11 @@ fn name_kind_and_field_queries_return_copied_metadata() {
         ReflectValue::Host(HostValue::Null)
     );
     assert!(!has_attr(&registry, &field_metadata, "missing").expect("missing field attr"));
-    let ReflectValue::Host(HostValue::Array(all_fields)) = all_fields(&registry) else {
+    let ReflectValue::Array(all_fields) = all_fields(&registry) else {
         panic!("field list should be an array");
     };
     assert_eq!(all_fields.len(), 3);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: field_list_item,
         ..
     } = &all_fields[1]
@@ -121,13 +141,13 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     };
     assert_eq!(
         field_list_item.get("owner"),
-        Some(&HostValue::String("Player".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("Player".to_owned())))
     );
     assert_eq!(
         field_list_item.get("name"),
-        Some(&HostValue::String("level".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("level".to_owned())))
     );
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: variant_field_list_item,
         ..
     } = &all_fields[2]
@@ -136,11 +156,13 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     };
     assert_eq!(
         variant_field_list_item.get("owner"),
-        Some(&HostValue::String("QuestProgress::Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress::Active".to_owned()
+        )))
     );
     assert_eq!(
         variant_field_list_item.get("name"),
-        Some(&HostValue::String("count".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("count".to_owned())))
     );
 
     let error = field(&registry, &target, "levle").expect_err("unknown field");
@@ -169,36 +191,35 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         has_method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
             .expect("has method")
     );
-    let ReflectValue::Host(HostValue::Array(method_records)) =
+    let ReflectValue::Array(method_records) =
         methods(&registry, &ReflectValue::HostRef(player_ref())).expect("methods")
     else {
         panic!("methods should be an array");
     };
     let player_type = crate::types::type_by_name(&registry, "Player").expect("type info");
-    let ReflectValue::Host(HostValue::Array(type_methods)) =
-        methods(&registry, &player_type).expect("type methods")
+    let ReflectValue::Array(type_methods) = methods(&registry, &player_type).expect("type methods")
     else {
         panic!("type methods should be an array");
     };
     assert_eq!(method_records.len(), 1);
     assert_eq!(type_methods, method_records);
     assert!(has_method(&registry, &player_type, "grant_exp").expect("type has method"));
-    let HostValue::Record { fields, .. } = &method_records[0] else {
+    let ReflectValue::ScriptRecord { fields, .. } = &method_records[0] else {
         panic!("method metadata should be a record");
     };
     assert_eq!(
         fields.get("return"),
-        Some(&HostValue::String("bool".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("bool".to_owned())))
     );
     assert_eq!(
         fields.get("returns"),
-        Some(&HostValue::String("bool".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("bool".to_owned())))
     );
-    let Some(HostValue::Array(raw_params)) = fields.get("params") else {
+    let Some(ReflectValue::Array(raw_params)) = fields.get("params") else {
         panic!("method params should be an array");
     };
     assert_eq!(raw_params.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: param_fields,
         ..
     } = &raw_params[0]
@@ -207,13 +228,13 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(
         param_fields.get("name"),
-        Some(&HostValue::String("amount".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("amount".to_owned())))
     );
     assert_eq!(
         param_fields.get("type"),
-        Some(&HostValue::String("int".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
     );
-    let Some(HostValue::Record {
+    let Some(ReflectValue::ScriptRecord {
         fields: effect_fields,
         ..
     }) = fields.get("effects")
@@ -222,9 +243,9 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(
         effect_fields.get("writes_host"),
-        Some(&HostValue::Bool(true))
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
-    let Some(HostValue::Record {
+    let Some(ReflectValue::ScriptRecord {
         fields: access_fields,
         ..
     }) = fields.get("access")
@@ -233,23 +254,23 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(
         access_fields.get("reflect_callable"),
-        Some(&HostValue::Bool(true))
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     assert_eq!(
         access_fields.get("required_permissions"),
-        Some(&HostValue::Array(vec![HostValue::String(
-            "player.grant_exp".to_owned()
+        Some(&ReflectValue::Array(vec![ReflectValue::Host(
+            HostValue::String("player.grant_exp".to_owned())
         )]))
     );
     assert_eq!(
         fields.get("source_span"),
         Some(&span_value(Some(Span::new(SourceId::new(8), 60, 80))))
     );
-    let ReflectValue::Host(HostValue::Array(all_methods)) = all_methods(&registry) else {
+    let ReflectValue::Array(all_methods) = all_methods(&registry) else {
         panic!("method list should be an array");
     };
     assert_eq!(all_methods.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: method_list_item,
         ..
     } = &all_methods[0]
@@ -258,11 +279,13 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(
         method_list_item.get("owner"),
-        Some(&HostValue::String("Player".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("Player".to_owned())))
     );
     assert_eq!(
         method_list_item.get("name"),
-        Some(&HostValue::String("grant_exp".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "grant_exp".to_owned()
+        )))
     );
     let single_method_value = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
         .expect("method metadata");
@@ -270,20 +293,22 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         method(&registry, &player_type, "grant_exp").expect("type method"),
         single_method_value
     );
-    let ReflectValue::Host(HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: single_method,
         ..
-    }) = &single_method_value
+    } = &single_method_value
     else {
         panic!("single method metadata should be a record");
     };
     assert_eq!(
         single_method.get("name"),
-        Some(&HostValue::String("grant_exp".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "grant_exp".to_owned()
+        )))
     );
     assert_eq!(
         single_method.get("origin"),
-        Some(&HostValue::String("host".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("host".to_owned())))
     );
     assert_eq!(
         origin(&registry, &single_method_value).expect("method origin metadata"),
@@ -295,44 +320,44 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     );
     assert_eq!(
         single_method.get("attrs"),
-        Some(&HostValue::Map(BTreeMap::from([(
+        Some(&ReflectValue::Record(BTreeMap::from([(
             "effect".to_owned(),
-            HostValue::String("write".to_owned())
+            ReflectValue::Host(HostValue::String("write".to_owned()))
         )])))
     );
-    let ReflectValue::Host(HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: helper_effects,
         ..
-    }) = effects(&registry, &single_method_value).expect("method effects metadata")
+    } = effects(&registry, &single_method_value).expect("method effects metadata")
     else {
         panic!("method effects metadata should be a record");
     };
     assert_eq!(
         helper_effects.get("reads_host"),
-        Some(&HostValue::Bool(true))
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     assert_eq!(
         helper_effects.get("writes_host"),
-        Some(&HostValue::Bool(true))
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     let nested_effects = single_method
         .get("effects")
         .expect("method effects record")
         .clone();
     assert_eq!(
-        effects(&registry, &ReflectValue::Host(nested_effects)).expect("nested effects metadata"),
-        ReflectValue::Host(HostValue::Record {
+        effects(&registry, &nested_effects).expect("nested effects metadata"),
+        ReflectValue::ScriptRecord {
             type_name: "ReflectEffectSet".to_owned(),
             fields: helper_effects,
-        })
+        }
     );
-    let ReflectValue::Host(HostValue::Array(helper_params)) =
+    let ReflectValue::Array(helper_params) =
         params(&registry, &single_method_value).expect("method params metadata")
     else {
         panic!("method params metadata should be an array");
     };
     assert_eq!(helper_params.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: param_fields,
         ..
     } = &helper_params[0]
@@ -341,51 +366,41 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(
         param_fields.get("name"),
-        Some(&HostValue::String("amount".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("amount".to_owned())))
     );
     assert_eq!(
         params(
             &registry,
-            &ReflectValue::Host(
-                single_method
-                    .get("params")
-                    .expect("method params record")
-                    .clone()
-            )
+            single_method.get("params").expect("method params record")
         )
         .expect("nested params metadata"),
-        ReflectValue::Host(HostValue::Array(helper_params))
+        ReflectValue::Array(helper_params)
     );
     assert_eq!(
         returns(&registry, &single_method_value).expect("method returns metadata"),
         ReflectValue::Host(HostValue::String("bool".to_owned()))
     );
-    let ReflectValue::Host(HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: helper_access,
         ..
-    }) = access(&registry, &single_method_value).expect("method access metadata")
+    } = access(&registry, &single_method_value).expect("method access metadata")
     else {
         panic!("method access metadata should be a record");
     };
     assert_eq!(
         helper_access.get("reflect_callable"),
-        Some(&HostValue::Bool(true))
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     assert_eq!(
         access(
             &registry,
-            &ReflectValue::Host(
-                single_method
-                    .get("access")
-                    .expect("method access record")
-                    .clone()
-            )
+            single_method.get("access").expect("method access record")
         )
         .expect("nested access metadata"),
-        ReflectValue::Host(HostValue::Record {
+        ReflectValue::ScriptRecord {
             type_name: "ReflectMethodAccess".to_owned(),
             fields: helper_access,
-        })
+        }
     );
     let unknown = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_xp")
         .expect_err("unknown method");
@@ -402,14 +417,14 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         }
     );
 
-    let ReflectValue::Host(HostValue::Array(trait_records)) =
+    let ReflectValue::Array(trait_records) =
         traits(&registry, &ReflectValue::HostRef(player_ref())).expect("traits")
     else {
         panic!("traits should be an array");
     };
     assert_eq!(
         traits(&registry, &player_type).expect("type traits"),
-        ReflectValue::Host(HostValue::Array(trait_records.clone()))
+        ReflectValue::Array(trait_records.clone())
     );
     assert_eq!(trait_records.len(), 1);
     assert!(has_trait(&registry, "Damageable"));
@@ -425,15 +440,14 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         ReflectValue::Host(HostValue::String("Active".to_owned()))
     );
     assert!(variant_is(&registry, &target, "Active").expect("variant is"));
-    let ReflectValue::Host(HostValue::Array(variant_records)) =
-        variants(&registry, &target).expect("variants")
+    let ReflectValue::Array(variant_records) = variants(&registry, &target).expect("variants")
     else {
         panic!("variants should be an array");
     };
     let quest_type = crate::types::type_by_name(&registry, "QuestProgress").expect("type info");
     assert_eq!(
         variants(&registry, &quest_type).expect("type variants"),
-        ReflectValue::Host(HostValue::Array(variant_records.clone()))
+        ReflectValue::Array(variant_records.clone())
     );
     assert_eq!(variant_records.len(), 2);
     assert!(has_variant(&registry, &target, "Active").expect("has active"));
@@ -441,7 +455,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     assert!(!has_variant(&registry, &target, "Paused").expect("has paused"));
     assert!(has_field(&registry, &target, "count").expect("has active field"));
     assert!(!has_field(&registry, &target, "missing").expect("missing active field"));
-    let ReflectValue::Host(HostValue::Array(active_fields)) =
+    let ReflectValue::Array(active_fields) =
         fields_with_policy(&registry, &target, &ReflectPolicy::read_only())
             .expect("active variant fields")
     else {
@@ -449,13 +463,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(active_fields.len(), 1);
     let active_field = field(&registry, &target, "count").expect("active variant field");
-    assert_eq!(
-        active_fields[0],
-        match active_field {
-            ReflectValue::Host(value) => value,
-            _ => panic!("active variant field should be host metadata"),
-        }
-    );
+    assert_eq!(active_fields[0], active_field);
     let error = field(&registry, &target, "cout").expect_err("unknown active variant field");
     assert_eq!(
         error.kind,
@@ -466,7 +474,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
             related: vec![crate::candidates::ReflectCandidate::new("count", None)],
         }
     );
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: variant_fields,
         ..
     } = &variant_records[0]
@@ -482,20 +490,20 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         variant_info(&registry, &quest_type, "Active").expect("type variant info"),
         single_variant_value
     );
-    let ReflectValue::Host(HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: single_variant,
         ..
-    }) = &single_variant_value
+    } = &single_variant_value
     else {
         panic!("single variant metadata should be a record");
     };
     assert_eq!(
         single_variant.get("name"),
-        Some(&HostValue::String("Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("Active".to_owned())))
     );
     assert_eq!(
         single_variant.get("origin"),
-        Some(&HostValue::String("host".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("host".to_owned())))
     );
     assert_eq!(
         origin(&registry, &single_variant_value).expect("variant origin metadata"),
@@ -505,11 +513,11 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         single_variant.get("source_span"),
         Some(&span_value(Some(Span::new(SourceId::new(8), 90, 100))))
     );
-    let ReflectValue::Host(HostValue::Array(all_variants)) = all_variants(&registry) else {
+    let ReflectValue::Array(all_variants) = all_variants(&registry) else {
         panic!("variant list should be an array");
     };
     assert_eq!(all_variants.len(), 2);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: variant_list_item,
         ..
     } = &all_variants[0]
@@ -518,10 +526,12 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(
         variant_list_item.get("owner"),
-        Some(&HostValue::String("QuestProgress".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress".to_owned()
+        )))
     );
     assert_eq!(
         variant_list_item.get("name"),
-        Some(&HostValue::String("Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("Active".to_owned())))
     );
 }

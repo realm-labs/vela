@@ -1,5 +1,3 @@
-use vela_host::value::HostValue;
-
 use crate::{
     candidates::{candidate_names, ranked_candidates},
     error::{ReflectError, ReflectErrorKind, ReflectResult},
@@ -20,13 +18,10 @@ pub fn field(
     if let Some(variant) = active_variant_desc(desc, target)? {
         let owner = variant_owner_name(desc, variant);
         let field = find_variant_field(desc, variant, name)?;
-        return Ok(ReflectValue::Host(field_record_with_owner(&owner, field)));
+        return Ok(field_record_with_owner(&owner, field));
     }
     let field = find_field(desc, name)?;
-    Ok(ReflectValue::Host(field_record_with_owner(
-        &desc.key.name,
-        field,
-    )))
+    Ok(field_record_with_owner(&desc.key.name, field))
 }
 
 pub fn field_with_policy(
@@ -40,14 +35,11 @@ pub fn field_with_policy(
         let owner = variant_owner_name(desc, variant);
         let field = find_variant_field_with_policy(desc, variant, name, policy)?;
         policy.require_field_read_access(&owner, field)?;
-        return Ok(ReflectValue::Host(field_record_with_owner(&owner, field)));
+        return Ok(field_record_with_owner(&owner, field));
     }
     let field = find_field_with_policy(desc, name, policy)?;
     policy.require_field_read_access(&desc.key.name, field)?;
-    Ok(ReflectValue::Host(field_record_with_owner(
-        &desc.key.name,
-        field,
-    )))
+    Ok(field_record_with_owner(&desc.key.name, field))
 }
 
 pub fn fields_with_policy(
@@ -58,16 +50,16 @@ pub fn fields_with_policy(
     let desc = target_type(registry, target)?;
     if let Some(variant) = active_variant_desc(desc, target)? {
         let owner = variant_owner_name(desc, variant);
-        return Ok(ReflectValue::Host(HostValue::Array(
+        return Ok(ReflectValue::Array(
             variant
                 .fields
                 .iter()
                 .filter(|field| policy.require_field_read_access(&owner, field).is_ok())
                 .map(|field| field_record_with_owner(&owner, field))
                 .collect(),
-        )));
+        ));
     }
-    Ok(ReflectValue::Host(HostValue::Array(
+    Ok(ReflectValue::Array(
         desc.fields
             .iter()
             .filter(|field| {
@@ -77,22 +69,20 @@ pub fn fields_with_policy(
             })
             .map(|field| field_record_with_owner(&desc.key.name, field))
             .collect(),
-    )))
-}
-
-pub fn all_fields(registry: &TypeRegistry) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry.types().flat_map(field_records_for_type).collect(),
     ))
 }
 
+pub fn all_fields(registry: &TypeRegistry) -> ReflectValue {
+    ReflectValue::Array(registry.types().flat_map(field_records_for_type).collect())
+}
+
 pub fn all_fields_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
+    ReflectValue::Array(
         registry
             .types()
             .flat_map(|desc| field_records_for_type_with_policy(desc, policy))
             .collect(),
-    ))
+    )
 }
 
 pub fn has_field(
@@ -143,7 +133,7 @@ fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDes
         })
 }
 
-fn field_records_for_type(desc: &TypeDesc) -> Vec<HostValue> {
+fn field_records_for_type(desc: &TypeDesc) -> Vec<ReflectValue> {
     let mut fields = desc
         .fields
         .iter()
@@ -159,7 +149,10 @@ fn field_records_for_type(desc: &TypeDesc) -> Vec<HostValue> {
     fields
 }
 
-fn field_records_for_type_with_policy(desc: &TypeDesc, policy: &ReflectPolicy) -> Vec<HostValue> {
+fn field_records_for_type_with_policy(
+    desc: &TypeDesc,
+    policy: &ReflectPolicy,
+) -> Vec<ReflectValue> {
     let mut fields = desc
         .fields
         .iter()
@@ -207,9 +200,6 @@ fn active_variant_desc<'a>(
 ) -> ReflectResult<Option<&'a VariantDesc>> {
     match target {
         ReflectValue::ScriptEnum { variant, .. } => find_variant(desc, variant).map(Some),
-        ReflectValue::Host(HostValue::Enum { variant, .. }) => {
-            find_variant(desc, variant).map(Some)
-        }
         _ => Ok(None),
     }
 }

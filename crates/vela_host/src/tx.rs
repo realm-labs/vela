@@ -7,7 +7,7 @@ use crate::{
     mul_values,
     patch::{Patch, PatchOp},
     path::{HostPath, HostRef},
-    push_value, rem_values, sub_values,
+    rem_values, sub_values,
     value::HostValue,
 };
 
@@ -290,7 +290,7 @@ impl CompoundWrite {
             Self::Mul => mul_values(current, value),
             Self::Div => div_values(current, value),
             Self::Rem => rem_values(current, value),
-            Self::Push => push_value(current, value.clone()),
+            Self::Push => None,
         }
     }
 }

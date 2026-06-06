@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use vela_host::value::HostValue;
-
 use crate::{
     candidates::{candidate_names, ranked_candidates},
     error::{ReflectError, ReflectErrorKind, ReflectResult},
@@ -14,9 +12,9 @@ use super::target_type;
 
 pub fn traits(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
+    Ok(ReflectValue::Array(
         desc.traits.iter().map(trait_record).collect(),
-    )))
+    ))
 }
 
 pub fn all_traits(registry: &TypeRegistry) -> ReflectValue {
@@ -30,9 +28,7 @@ pub fn all_traits(registry: &TypeRegistry) -> ReflectValue {
     {
         traits.entry(desc.name.clone()).or_insert(desc);
     }
-    ReflectValue::Host(HostValue::Array(
-        traits.into_values().map(trait_record).collect(),
-    ))
+    ReflectValue::Array(traits.into_values().map(trait_record).collect())
 }
 
 pub fn trait_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
@@ -50,7 +46,7 @@ pub fn trait_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<Refle
             related,
         })
     })?;
-    Ok(ReflectValue::Host(trait_record(desc)))
+    Ok(trait_record(desc))
 }
 
 pub fn has_trait(registry: &TypeRegistry, name: &str) -> bool {

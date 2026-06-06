@@ -54,11 +54,11 @@ fn trait_query_returns_metadata_and_unknown_trait_candidates() {
         30,
     )));
 
-    let ReflectValue::Host(HostValue::Array(traits)) = all_traits(&registry) else {
+    let ReflectValue::Array(traits) = all_traits(&registry) else {
         panic!("trait list should be an array");
     };
     assert_eq!(traits.len(), 2);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: first_trait,
         ..
     } = &traits[0]
@@ -67,26 +67,30 @@ fn trait_query_returns_metadata_and_unknown_trait_candidates() {
     };
     assert_eq!(
         first_trait.get("name"),
-        Some(&HostValue::String("Damageable".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "Damageable".to_owned()
+        )))
     );
-    let first_trait_value = ReflectValue::Host(traits[0].clone());
+    let first_trait_value = traits[0].clone();
     assert_eq!(
         origin(&registry, &first_trait_value).expect("trait origin metadata"),
         ReflectValue::Host(HostValue::String("host".to_owned()))
     );
 
-    let ReflectValue::Host(HostValue::Record { fields, .. }) =
+    let ReflectValue::ScriptRecord { fields, .. } =
         trait_by_name(&registry, "Damageable").expect("trait metadata")
     else {
         panic!("trait metadata should be a record");
     };
     assert_eq!(
         fields.get("name"),
-        Some(&HostValue::String("Damageable".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "Damageable".to_owned()
+        )))
     );
     assert_eq!(
         fields.get("origin"),
-        Some(&HostValue::String("host".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("host".to_owned())))
     );
     assert_eq!(
         fields.get("source_span"),
@@ -94,22 +98,24 @@ fn trait_query_returns_metadata_and_unknown_trait_candidates() {
     );
     assert!(matches!(
         fields.get("methods"),
-        Some(HostValue::Array(methods)) if methods.len() == 1
+        Some(ReflectValue::Array(methods)) if methods.len() == 1
     ));
-    let Some(HostValue::Array(methods)) = fields.get("methods") else {
+    let Some(ReflectValue::Array(methods)) = fields.get("methods") else {
         panic!("trait methods should be an array");
     };
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: method_fields,
         ..
     } = &methods[0]
     else {
         panic!("trait method should be a record");
     };
-    let trait_method_value = ReflectValue::Host(methods[0].clone());
+    let trait_method_value = methods[0].clone();
     assert_eq!(
         method_fields.get("owner"),
-        Some(&HostValue::String("Damageable".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "Damageable".to_owned()
+        )))
     );
     assert_eq!(
         owner(&registry, &trait_method_value).expect("trait method owner metadata"),
@@ -121,13 +127,13 @@ fn trait_query_returns_metadata_and_unknown_trait_candidates() {
     );
     assert_eq!(
         method_fields.get("return"),
-        Some(&HostValue::String("int".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
     );
     assert_eq!(
         method_fields.get("returns"),
-        Some(&HostValue::String("int".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("int".to_owned())))
     );
-    let Some(HostValue::Array(params)) = method_fields.get("params") else {
+    let Some(ReflectValue::Array(params)) = method_fields.get("params") else {
         panic!("trait method params should be an array");
     };
     assert_eq!(params.len(), 1);

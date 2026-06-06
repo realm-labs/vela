@@ -220,7 +220,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_pushes_host_path_through_patch_tx() {
+fn compiled_source_rejects_host_path_push_without_collection_adapter() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let rewards = FieldId::new(9);
@@ -239,10 +239,7 @@ fn main(player) {
     )
     .expect("compile host path push source");
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
-        reward_path.clone(),
-        HostValue::Array(vec![HostValue::String("xp".into())]),
-    );
+    adapter.insert_value(reward_path.clone(), HostValue::Int(0));
     let mut tx = PatchTx::new();
 
     let error = {
@@ -257,28 +254,17 @@ fn main(player) {
                 &[OwnedValue::HostRef(host_ref)],
                 &mut host,
             )
-            .expect_err("reading host array length should reject complex host conversion")
+            .expect_err("host push should reject scalar-only host values")
     };
 
     assert_eq!(
         error.kind,
-        VmErrorKind::TypeMismatch {
-            operation: "host complex value conversion"
-        }
+        VmErrorKind::Host(HostErrorKind::InvalidPush {
+            path: reward_path.clone()
+        })
     );
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].path, reward_path.clone());
-    assert_eq!(
-        tx.patches()[0].op,
-        PatchOp::Push(HostValue::String("gold".into()))
-    );
-    assert_eq!(
-        adapter.read_path(&reward_path),
-        Ok(HostValue::Array(vec![
-            HostValue::String("xp".into()),
-            HostValue::String("gold".into())
-        ]))
-    );
+    assert!(tx.patches().is_empty());
+    assert_eq!(adapter.read_path(&reward_path), Ok(HostValue::Int(0)));
 }
 
 #[test]

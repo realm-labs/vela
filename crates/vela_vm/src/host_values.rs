@@ -10,11 +10,7 @@ pub(crate) fn value_from_host(value: HostValue) -> Value {
         HostValue::Int(value) => Value::Int(value),
         HostValue::Float(value) => Value::Float(value),
         HostValue::HostRef(value) => Value::HostRef(value),
-        HostValue::String(_)
-        | HostValue::Array(_)
-        | HostValue::Map(_)
-        | HostValue::Record { .. }
-        | HostValue::Enum { .. } => Value::Missing,
+        HostValue::String(_) => Value::Missing,
     }
 }
 

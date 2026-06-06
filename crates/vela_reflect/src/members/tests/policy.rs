@@ -25,47 +25,45 @@ fn methods_with_policy_hide_inaccessible_methods() {
     );
     let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(5), HostObjectId::new(1), 1));
 
-    let ReflectValue::Host(HostValue::Array(raw_methods)) =
-        methods(&registry, &target).expect("raw methods")
-    else {
+    let ReflectValue::Array(raw_methods) = methods(&registry, &target).expect("raw methods") else {
         panic!("methods should be an array");
     };
     assert_eq!(raw_methods.len(), 4);
     assert!(has_method(&registry, &target, "private").expect("raw has private"));
 
-    let ReflectValue::Host(HostValue::Array(policy_methods)) =
+    let ReflectValue::Array(policy_methods) =
         methods_with_policy(&registry, &target, &ReflectPolicy::read_only())
             .expect("policy methods")
     else {
         panic!("methods should be an array");
     };
-    let ReflectValue::Host(HostValue::Array(policy_all_methods)) =
+    let ReflectValue::Array(policy_all_methods) =
         all_methods_with_policy(&registry, &ReflectPolicy::read_only())
     else {
         panic!("all methods should be an array");
     };
     assert_eq!(policy_methods.len(), 1);
     assert_eq!(policy_all_methods.len(), 1);
-    let HostValue::Record { fields, .. } = &policy_methods[0] else {
+    let ReflectValue::ScriptRecord { fields, .. } = &policy_methods[0] else {
         panic!("method metadata should be a record");
     };
     assert_eq!(
         fields.get("name"),
-        Some(&HostValue::String("visible".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("visible".to_owned())))
     );
-    let ReflectValue::Host(HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: method_fields,
         ..
-    }) = method_with_policy(&registry, &target, "visible", &ReflectPolicy::read_only())
+    } = method_with_policy(&registry, &target, "visible", &ReflectPolicy::read_only())
         .expect("visible method")
     else {
         panic!("method metadata should be a record");
     };
     assert_eq!(
         method_fields.get("name"),
-        Some(&HostValue::String("visible".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("visible".to_owned())))
     );
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: all_method_fields,
         ..
     } = &policy_all_methods[0]
@@ -74,11 +72,11 @@ fn methods_with_policy_hide_inaccessible_methods() {
     };
     assert_eq!(
         all_method_fields.get("owner"),
-        Some(&HostValue::String("Player".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("Player".to_owned())))
     );
     assert_eq!(
         all_method_fields.get("name"),
-        Some(&HostValue::String("visible".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("visible".to_owned())))
     );
     assert!(
         has_method_with_policy(&registry, &target, "visible", &ReflectPolicy::read_only())
@@ -99,7 +97,7 @@ fn methods_with_policy_hide_inaccessible_methods() {
             .with(crate::permissions::ReflectPermission::AccessPrivate),
     )
     .with_method_permission("player.admin");
-    let ReflectValue::Host(HostValue::Array(admin_methods)) =
+    let ReflectValue::Array(admin_methods) =
         methods_with_policy(&registry, &target, &admin_policy).expect("admin methods")
     else {
         panic!("methods should be an array");
@@ -109,16 +107,16 @@ fn methods_with_policy_hide_inaccessible_methods() {
         has_method_with_policy(&registry, &target, "private", &admin_policy).expect("has private")
     );
     assert!(has_method_with_policy(&registry, &target, "admin", &admin_policy).expect("has admin"));
-    let ReflectValue::Host(HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: admin_fields,
         ..
-    }) = method_with_policy(&registry, &target, "admin", &admin_policy).expect("admin method")
+    } = method_with_policy(&registry, &target, "admin", &admin_policy).expect("admin method")
     else {
         panic!("admin method metadata should be a record");
     };
     assert_eq!(
         admin_fields.get("name"),
-        Some(&HostValue::String("admin".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("admin".to_owned())))
     );
 }
 
@@ -185,14 +183,14 @@ fn fields_with_policy_hide_non_reflect_readable_fields() {
     let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
 
     assert!(has_field(&registry, &target, "secret").expect("raw has field"));
-    let ReflectValue::Host(HostValue::Array(fields)) =
+    let ReflectValue::Array(fields) =
         fields_with_policy(&registry, &target, &ReflectPolicy::read_only())
             .expect("field metadata")
     else {
         panic!("fields should be an array");
     };
     assert_eq!(fields.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: field_fields,
         ..
     } = &fields[0]
@@ -201,19 +199,19 @@ fn fields_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         field_fields.get("owner"),
-        Some(&HostValue::String("Player".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("Player".to_owned())))
     );
     assert_eq!(
         field_fields.get("name"),
-        Some(&HostValue::String("level".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("level".to_owned())))
     );
-    let ReflectValue::Host(HostValue::Array(all_fields)) =
+    let ReflectValue::Array(all_fields) =
         all_fields_with_policy(&registry, &ReflectPolicy::read_only())
     else {
         panic!("all fields should be an array");
     };
     assert_eq!(all_fields.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: field_list_item,
         ..
     } = &all_fields[0]
@@ -222,11 +220,11 @@ fn fields_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         field_list_item.get("owner"),
-        Some(&HostValue::String("Player".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("Player".to_owned())))
     );
     assert_eq!(
         field_list_item.get("name"),
-        Some(&HostValue::String("level".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("level".to_owned())))
     );
     assert!(
         has_field_with_policy(&registry, &target, "level", &ReflectPolicy::read_only())
@@ -248,14 +246,14 @@ fn fields_with_policy_hide_non_reflect_readable_fields() {
         }
     );
 
-    let ReflectValue::Host(HostValue::Record { fields, .. }) =
+    let ReflectValue::ScriptRecord { fields, .. } =
         field(&registry, &target, "secret").expect("raw field metadata")
     else {
         panic!("field metadata should be a record");
     };
     assert_eq!(
         fields.get("name"),
-        Some(&HostValue::String("secret".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("secret".to_owned())))
     );
 }
 
@@ -318,14 +316,14 @@ fn fields_with_policy_require_field_permissions() {
     );
     let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
 
-    let ReflectValue::Host(HostValue::Array(fields)) =
+    let ReflectValue::Array(fields) =
         fields_with_policy(&registry, &target, &ReflectPolicy::read_only())
             .expect("field metadata")
     else {
         panic!("fields should be an array");
     };
     assert_eq!(fields.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: field_fields,
         ..
     } = &fields[0]
@@ -334,7 +332,7 @@ fn fields_with_policy_require_field_permissions() {
     };
     assert_eq!(
         field_fields.get("name"),
-        Some(&HostValue::String("level".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("level".to_owned())))
     );
     assert!(
         !has_field_with_policy(&registry, &target, "title", &ReflectPolicy::read_only())
@@ -361,22 +359,22 @@ fn fields_with_policy_require_field_permissions() {
     );
 
     let policy = ReflectPolicy::read_only().with_field_permission("player.title.inspect");
-    let ReflectValue::Host(HostValue::Record { fields, .. }) =
+    let ReflectValue::ScriptRecord { fields, .. } =
         field_with_policy(&registry, &target, "title", &policy).expect("allowed field")
     else {
         panic!("field metadata should be a record");
     };
     assert_eq!(
         fields.get("name"),
-        Some(&HostValue::String("title".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("title".to_owned())))
     );
-    let Some(HostValue::Record { fields: access, .. }) = fields.get("access") else {
+    let Some(ReflectValue::ScriptRecord { fields: access, .. }) = fields.get("access") else {
         panic!("field access should be a record");
     };
     assert_eq!(
         access.get("required_permissions"),
-        Some(&HostValue::Array(vec![HostValue::String(
-            "player.title.inspect".to_owned()
+        Some(&ReflectValue::Array(vec![ReflectValue::Host(
+            HostValue::String("player.title.inspect".to_owned())
         )]))
     );
 }
@@ -449,22 +447,21 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
         fields: BTreeMap::new(),
     };
 
-    let ReflectValue::Host(HostValue::Array(raw_variants)) =
-        variants(&registry, &target).expect("raw variants")
+    let ReflectValue::Array(raw_variants) = variants(&registry, &target).expect("raw variants")
     else {
         panic!("variants should be an array");
     };
-    let HostValue::Record { fields, .. } = &raw_variants[0] else {
+    let ReflectValue::ScriptRecord { fields, .. } = &raw_variants[0] else {
         panic!("variant metadata should be a record");
     };
     assert!(matches!(
         fields.get("fields"),
-        Some(HostValue::Array(raw_fields)) if raw_fields.len() == 2
+        Some(ReflectValue::Array(raw_fields)) if raw_fields.len() == 2
     ));
-    let Some(HostValue::Array(raw_fields)) = fields.get("fields") else {
+    let Some(ReflectValue::Array(raw_fields)) = fields.get("fields") else {
         panic!("raw variant fields should be an array");
     };
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: raw_field_fields,
         ..
     } = &raw_fields[0]
@@ -473,52 +470,56 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         raw_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress::Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress::Active".to_owned()
+        )))
     );
 
-    let ReflectValue::Host(HostValue::Array(policy_variants)) =
+    let ReflectValue::Array(policy_variants) =
         variants_with_policy(&registry, &target, &ReflectPolicy::read_only())
             .expect("policy variants")
     else {
         panic!("variants should be an array");
     };
-    let ReflectValue::Host(HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: policy_variant,
         ..
-    }) = variant_info_with_policy(&registry, &target, "Active", &ReflectPolicy::read_only())
+    } = variant_info_with_policy(&registry, &target, "Active", &ReflectPolicy::read_only())
         .expect("policy variant info")
     else {
         panic!("variant info should be a record");
     };
-    let ReflectValue::Host(HostValue::Array(policy_all_variants)) =
+    let ReflectValue::Array(policy_all_variants) =
         all_variants_with_policy(&registry, &ReflectPolicy::read_only())
     else {
         panic!("all variants should be an array");
     };
-    let ReflectValue::Host(HostValue::Array(policy_all_fields)) =
+    let ReflectValue::Array(policy_all_fields) =
         all_fields_with_policy(&registry, &ReflectPolicy::read_only())
     else {
         panic!("all fields should be an array");
     };
-    let HostValue::Record { fields, .. } = &policy_variants[0] else {
+    let ReflectValue::ScriptRecord { fields, .. } = &policy_variants[0] else {
         panic!("variant metadata should be a record");
     };
-    let Some(HostValue::Array(policy_fields)) = fields.get("fields") else {
+    let Some(ReflectValue::Array(policy_fields)) = fields.get("fields") else {
         panic!("variant fields should be an array");
     };
     assert_eq!(policy_fields.len(), 1);
-    let HostValue::Record { fields, .. } = &policy_fields[0] else {
+    let ReflectValue::ScriptRecord { fields, .. } = &policy_fields[0] else {
         panic!("field metadata should be a record");
     };
     assert_eq!(
         fields.get("name"),
-        Some(&HostValue::String("count".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("count".to_owned())))
     );
     assert_eq!(
         fields.get("owner"),
-        Some(&HostValue::String("QuestProgress::Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress::Active".to_owned()
+        )))
     );
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: all_variant_fields,
         ..
     } = &policy_all_variants[0]
@@ -527,13 +528,15 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         all_variant_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress".to_owned()
+        )))
     );
-    let Some(HostValue::Array(all_policy_fields)) = all_variant_fields.get("fields") else {
+    let Some(ReflectValue::Array(all_policy_fields)) = all_variant_fields.get("fields") else {
         panic!("variant fields should be an array");
     };
     assert_eq!(all_policy_fields.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: all_policy_field_fields,
         ..
     } = &all_policy_fields[0]
@@ -542,10 +545,12 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         all_policy_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress::Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress::Active".to_owned()
+        )))
     );
     assert_eq!(policy_all_fields.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: all_field_fields,
         ..
     } = &policy_all_fields[0]
@@ -554,17 +559,19 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         all_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress::Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress::Active".to_owned()
+        )))
     );
     assert_eq!(
         all_field_fields.get("name"),
-        Some(&HostValue::String("count".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String("count".to_owned())))
     );
-    let Some(HostValue::Array(policy_variant_fields)) = policy_variant.get("fields") else {
+    let Some(ReflectValue::Array(policy_variant_fields)) = policy_variant.get("fields") else {
         panic!("variant info fields should be an array");
     };
     assert_eq!(policy_variant_fields.len(), 1);
-    let HostValue::Record {
+    let ReflectValue::ScriptRecord {
         fields: policy_variant_field_fields,
         ..
     } = &policy_variant_fields[0]
@@ -573,7 +580,9 @@ fn variants_with_policy_hide_non_reflect_readable_fields() {
     };
     assert_eq!(
         policy_variant_field_fields.get("owner"),
-        Some(&HostValue::String("QuestProgress::Active".to_owned()))
+        Some(&ReflectValue::Host(HostValue::String(
+            "QuestProgress::Active".to_owned()
+        )))
     );
     assert!(
         has_field_with_policy(&registry, &target, "count", &ReflectPolicy::read_only())

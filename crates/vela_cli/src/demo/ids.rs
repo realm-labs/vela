@@ -36,7 +36,6 @@ pub(crate) struct DemoIds {
     pub(crate) count_field: FieldId,
     pub(crate) config_field: FieldId,
     pub(crate) exp_to_next_level_field: FieldId,
-    pub(crate) kill_rewards_field: FieldId,
     pub(crate) emit_method: HostMethodId,
     pub(crate) add_reward_method: HostMethodId,
     pub(crate) log_method: HostMethodId,
@@ -70,7 +69,6 @@ impl DemoIds {
             count_field: ItemStack::vela_field_id_count(),
             config_field: host_field("Context", "config"),
             exp_to_next_level_field: Config::vela_field_id_exp_to_next_level(),
-            kill_rewards_field: Config::vela_field_id_kill_rewards(),
             emit_method: CONTEXT_EMIT_METHOD_ID,
             add_reward_method: HostMethodId::new(stable_id(
                 "host_method",

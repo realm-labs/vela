@@ -24,33 +24,32 @@ fn write_through_set_and_numeric_patches_mutate_immediately() {
 }
 
 #[test]
-fn write_through_push_remove_and_method_call_are_immediate() {
+fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
     let mut adapter = MockStateAdapter::new();
     let rewards = rewards_path();
     let method_path = level_path();
     let method = HostMethodId::new(4);
-    adapter.insert_value(
-        rewards.clone(),
-        HostValue::Array(vec![HostValue::String("xp".into())]),
-    );
+    adapter.insert_value(rewards.clone(), HostValue::Int(0));
     adapter.insert_value(method_path.clone(), HostValue::Int(9));
     adapter.insert_method_return(method, HostValue::String("ok".into()));
     let mut tx = PatchTx::new();
 
-    tx.push_path(
-        &mut adapter,
-        rewards.clone(),
-        HostValue::String("gold".into()),
-        None,
-    )
-    .expect("push path");
+    let push_error = tx
+        .push_path(
+            &mut adapter,
+            rewards.clone(),
+            HostValue::String("gold".into()),
+            None,
+        )
+        .expect_err("push path should reject scalar-only host values");
     assert_eq!(
-        adapter.read_path(&rewards),
-        Ok(HostValue::Array(vec![
-            HostValue::String("xp".into()),
-            HostValue::String("gold".into())
-        ]))
+        push_error.kind,
+        HostErrorKind::InvalidPush {
+            path: rewards.clone()
+        }
     );
+    assert!(tx.patches().is_empty());
+    assert_eq!(adapter.read_path(&rewards), Ok(HostValue::Int(0)));
 
     let result = tx
         .call_method(
@@ -76,6 +75,27 @@ fn write_through_push_remove_and_method_call_are_immediate() {
 }
 
 #[test]
+fn write_through_error_keeps_source_span() {
+    let mut adapter = MockStateAdapter::new();
+    let path = level_path();
+    let span = test_span();
+    adapter.insert_value(path.clone(), HostValue::Int(9));
+    let mut tx = PatchTx::new();
+
+    let error = tx
+        .push_path(
+            &mut adapter,
+            path.clone(),
+            HostValue::String("gold".into()),
+            Some(span),
+        )
+        .expect_err("push should fail against scalar host value");
+
+    assert_eq!(error.source_span, Some(span));
+    assert_eq!(error.kind, HostErrorKind::InvalidPush { path });
+}
+
+#[test]
 fn write_through_error_keeps_previous_successful_writes() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
@@ -91,25 +111,4 @@ fn write_through_error_keeps_previous_successful_writes() {
     assert_eq!(error.kind, HostErrorKind::InvalidDiv { path: path.clone() });
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(10)));
     assert_eq!(tx.patches().len(), 1);
-}
-
-#[test]
-fn write_through_error_keeps_source_span() {
-    let mut adapter = MockStateAdapter::new();
-    let path = level_path();
-    let span = test_span();
-    adapter.insert_value(path.clone(), HostValue::Int(9));
-    let mut tx = PatchTx::new();
-
-    let error = tx
-        .push_path(
-            &mut adapter,
-            path.clone(),
-            HostValue::String("gold".into()),
-            Some(span),
-        )
-        .expect_err("push should fail against non-array host value");
-
-    assert_eq!(error.source_span, Some(span));
-    assert_eq!(error.kind, HostErrorKind::InvalidPush { path });
 }

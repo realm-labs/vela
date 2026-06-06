@@ -25,6 +25,7 @@ pub enum ReflectValue {
     HostRef(HostRef),
     Closure,
     Range,
+    Array(Vec<ReflectValue>),
     Record(BTreeMap<String, ReflectValue>),
     Set(Vec<ReflectValue>),
     ScriptRecord {
@@ -36,6 +37,18 @@ pub enum ReflectValue {
         variant: String,
         fields: BTreeMap<String, ReflectValue>,
     },
+}
+
+impl PartialEq<HostValue> for ReflectValue {
+    fn eq(&self, other: &HostValue) -> bool {
+        matches!(self, Self::Host(value) if value == other)
+    }
+}
+
+impl PartialEq<ReflectValue> for HostValue {
+    fn eq(&self, other: &ReflectValue) -> bool {
+        other == self
+    }
 }
 
 pub struct ReflectContext<'a> {
@@ -52,6 +65,7 @@ pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&
         ReflectValue::ScriptRecord { type_name, .. } => registry.type_by_name(type_name),
         ReflectValue::ScriptEnum { enum_name, .. } => registry.type_by_name(enum_name),
         ReflectValue::Host(value) => type_of_host_value(registry, value),
+        ReflectValue::Array(_) => registry.type_by_name("array"),
         // Generic records are the reflect-layer representation for script maps.
         ReflectValue::Record(_) => registry.type_by_name("map"),
         ReflectValue::Set(_) => registry.type_by_name("set"),
@@ -65,10 +79,6 @@ fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Opti
         HostValue::Int(_) => registry.type_by_name("int"),
         HostValue::Float(_) => registry.type_by_name("float"),
         HostValue::String(_) => registry.type_by_name("string"),
-        HostValue::Array(_) => registry.type_by_name("array"),
-        HostValue::Map(_) => registry.type_by_name("map"),
-        HostValue::Record { type_name, .. } => registry.type_by_name(type_name),
-        HostValue::Enum { enum_name, .. } => registry.type_by_name(enum_name),
         HostValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
     }
 }
@@ -186,6 +196,7 @@ fn get_impl(
         ReflectValue::Host(_) | ReflectValue::Closure | ReflectValue::Range => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
+        ReflectValue::Array(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
         ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
@@ -330,6 +341,7 @@ fn set_impl(
         ReflectValue::Host(_) | ReflectValue::Closure | ReflectValue::Range => {
             Err(ReflectError::new(ReflectErrorKind::InvalidTarget))
         }
+        ReflectValue::Array(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
         ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }
 }
@@ -440,6 +452,7 @@ pub fn implements(
         ReflectValue::Host(_)
         | ReflectValue::Closure
         | ReflectValue::Range
+        | ReflectValue::Array(_)
         | ReflectValue::Record(_)
         | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
     }

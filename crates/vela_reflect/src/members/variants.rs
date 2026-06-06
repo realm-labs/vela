@@ -13,12 +13,12 @@ use super::target_type;
 
 pub fn variants(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
+    Ok(ReflectValue::Array(
         desc.variants
             .iter()
             .map(|variant| variant_record_with_owner(&desc.key.name, variant))
             .collect(),
-    )))
+    ))
 }
 
 pub fn variants_with_policy(
@@ -27,7 +27,7 @@ pub fn variants_with_policy(
     policy: &ReflectPolicy,
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
-    Ok(ReflectValue::Host(HostValue::Array(
+    Ok(ReflectValue::Array(
         desc.variants
             .iter()
             .map(|variant| {
@@ -42,7 +42,7 @@ pub fn variants_with_policy(
                 )
             })
             .collect(),
-    )))
+    ))
 }
 
 pub fn variant_info(
@@ -52,10 +52,7 @@ pub fn variant_info(
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     let variant = find_variant(desc, name)?;
-    Ok(ReflectValue::Host(variant_record_with_owner(
-        &desc.key.name,
-        variant,
-    )))
+    Ok(variant_record_with_owner(&desc.key.name, variant))
 }
 
 pub fn variant_info_with_policy(
@@ -66,7 +63,7 @@ pub fn variant_info_with_policy(
 ) -> ReflectResult<ReflectValue> {
     let desc = target_type(registry, target)?;
     let variant = find_variant(desc, name)?;
-    Ok(ReflectValue::Host(variant_record_with_owner_and_fields(
+    Ok(variant_record_with_owner_and_fields(
         &desc.key.name,
         variant,
         variant.fields.iter().filter(|field| {
@@ -74,7 +71,7 @@ pub fn variant_info_with_policy(
                 .require_field_read_access(&desc.key.name, field)
                 .is_ok()
         }),
-    )))
+    ))
 }
 
 pub fn has_variant(
@@ -87,7 +84,7 @@ pub fn has_variant(
 }
 
 pub fn all_variants(registry: &TypeRegistry) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
+    ReflectValue::Array(
         registry
             .types()
             .flat_map(|desc| {
@@ -96,11 +93,11 @@ pub fn all_variants(registry: &TypeRegistry) -> ReflectValue {
                     .map(|variant| variant_record_with_owner(&desc.key.name, variant))
             })
             .collect(),
-    ))
+    )
 }
 
 pub fn all_variants_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
+    ReflectValue::Array(
         registry
             .types()
             .flat_map(|desc| {
@@ -117,7 +114,7 @@ pub fn all_variants_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy)
                 })
             })
             .collect(),
-    ))
+    )
 }
 
 pub fn variant(target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -168,11 +165,11 @@ pub(super) fn find_variant<'a>(
 fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
     match target {
         ReflectValue::ScriptEnum { variant, .. } => Ok(variant),
-        ReflectValue::Host(HostValue::Enum { variant, .. }) => Ok(variant),
         ReflectValue::Host(_)
         | ReflectValue::HostRef(_)
         | ReflectValue::Closure
         | ReflectValue::Range
+        | ReflectValue::Array(_)
         | ReflectValue::Record(_)
         | ReflectValue::Set(_)
         | ReflectValue::ScriptRecord { .. } => {

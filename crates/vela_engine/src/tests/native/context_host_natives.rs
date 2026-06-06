@@ -245,7 +245,6 @@ fn main(player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let inventory = HostPath::new(host_ref).field(FieldId::new(3));
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(inventory.clone(), HostValue::Array(vec![]));
     adapter.insert_method_return(method, HostValue::String("accepted".to_owned()));
     let mut tx = PatchTx::new();
 
@@ -383,9 +382,7 @@ fn main(player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
-    let array = HostPath::new(host_ref).field(FieldId::new(2));
     adapter.insert_value(numeric.clone(), HostValue::Int(10));
-    adapter.insert_value(array.clone(), HostValue::Array(vec![]));
     let mut tx = PatchTx::new();
 
     let error = runtime
@@ -487,15 +484,14 @@ fn context_host_native_patch_helpers_record_expected_patches() {
             move |args, ctx| {
                 let player = args.required::<HostRef>(0)?;
                 let numeric = HostPath::new(player).field(FieldId::new(1));
-                let array = HostPath::new(player).field(FieldId::new(2));
+                let scratch = HostPath::new(player).field(FieldId::new(2));
                 let inventory = HostPath::new(player).field(FieldId::new(3));
                 ctx.add_path(numeric.clone(), HostValue::Int(2), None)?;
                 ctx.sub_path(numeric.clone(), HostValue::Int(3), None)?;
                 ctx.mul_path(numeric.clone(), HostValue::Int(4), None)?;
                 ctx.div_path(numeric.clone(), HostValue::Int(2), None)?;
                 ctx.rem_path(numeric.clone(), HostValue::Int(5), None)?;
-                ctx.push_path(array.clone(), HostValue::String("gold".to_owned()), None)?;
-                ctx.remove_path(array, None)?;
+                ctx.remove_path(scratch, None)?;
                 ctx.call_method(inventory, method, vec![HostValue::Int(4)], None)?;
                 Ok(OwnedValue::Null)
             },
@@ -516,9 +512,9 @@ fn main(player) {
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let numeric = HostPath::new(host_ref).field(FieldId::new(1));
-    let array = HostPath::new(host_ref).field(FieldId::new(2));
+    let scratch = HostPath::new(host_ref).field(FieldId::new(2));
     adapter.insert_value(numeric.clone(), HostValue::Int(10));
-    adapter.insert_value(array.clone(), HostValue::Array(vec![]));
+    adapter.insert_value(scratch.clone(), HostValue::Int(0));
     let mut tx = PatchTx::new();
 
     assert_eq!(
@@ -533,7 +529,7 @@ fn main(player) {
     );
 
     let inventory = HostPath::new(host_ref).field(FieldId::new(3));
-    assert_eq!(tx.patches().len(), 8);
+    assert_eq!(tx.patches().len(), 7);
     assert_eq!(tx.patches()[0].path, numeric);
     assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(2)));
     assert_eq!(tx.patches()[1].path, numeric);
@@ -544,16 +540,11 @@ fn main(player) {
     assert_eq!(tx.patches()[3].op, PatchOp::Div(HostValue::Int(2)));
     assert_eq!(tx.patches()[4].path, numeric);
     assert_eq!(tx.patches()[4].op, PatchOp::Rem(HostValue::Int(5)));
-    assert_eq!(tx.patches()[5].path, array);
+    assert_eq!(tx.patches()[5].path, scratch);
+    assert_eq!(tx.patches()[5].op, PatchOp::Remove);
+    assert_eq!(tx.patches()[6].path, inventory);
     assert_eq!(
-        tx.patches()[5].op,
-        PatchOp::Push(HostValue::String("gold".to_owned()))
-    );
-    assert_eq!(tx.patches()[6].path, array);
-    assert_eq!(tx.patches()[6].op, PatchOp::Remove);
-    assert_eq!(tx.patches()[7].path, inventory);
-    assert_eq!(
-        tx.patches()[7].op,
+        tx.patches()[6].op,
         PatchOp::CallHostMethod {
             method,
             args: vec![HostValue::Int(4)]

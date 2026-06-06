@@ -109,6 +109,12 @@ pub enum TypeKind {
 }
 ```
 
+Reflection metadata values may contain arrays, maps, typed records, and typed
+enums, but those shapes are represented by the reflection value model
+(`ReflectValue::Array`, `ReflectValue::Record`, `ReflectValue::ScriptRecord`,
+and `ReflectValue::ScriptEnum`). They are not `HostValue` payloads. `HostValue`
+is reserved for scalar host-boundary values and host handles.
+
 Tooling metadata:
 
 ```rust

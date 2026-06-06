@@ -1,6 +1,5 @@
 #![allow(clippy::result_large_err)]
 
-use std::collections::BTreeMap;
 use std::error::Error;
 use std::hint::black_box;
 use std::num::NonZeroU32;
@@ -365,13 +364,6 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn E
             .field(GOLD_FIELD),
         HostValue::Int(5),
     );
-    let rewards_path = HostPath::new(player)
-        .field(INVENTORY_FIELD)
-        .field(REWARDS_FIELD);
-    adapter.insert_value(
-        rewards_path.clone(),
-        HostValue::Array(vec![HostValue::String("xp".to_owned())]),
-    );
     let mut tx = PatchTx::new();
     let mut budget = ExecutionBudget::unbounded();
     let mut host = HostExecution {
@@ -387,9 +379,7 @@ fn run_host_patch_tx(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn E
     )?;
     let patch_count = tx.patches().len();
     Ok(OwnedValue::Int(
-        value_checksum(&value) as i64
-            + patch_count as i64
-            + host_array_len(&adapter, rewards_path)?,
+        value_checksum(&value) as i64 + patch_count as i64,
     ))
 }
 
@@ -404,9 +394,9 @@ fn run_managed_heap_host_conversion(
         .field(INVENTORY_FIELD)
         .field(GOLD_FIELD);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(level_path.clone(), HostValue::Null);
-    adapter.insert_value(exp_path.clone(), HostValue::Null);
-    adapter.insert_value(damage_path.clone(), HostValue::Null);
+    adapter.insert_value(level_path.clone(), HostValue::Int(0));
+    adapter.insert_value(exp_path.clone(), HostValue::Int(0));
+    adapter.insert_value(damage_path.clone(), HostValue::Int(0));
     let mut tx = PatchTx::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
@@ -426,9 +416,9 @@ fn run_managed_heap_host_conversion(
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + patch_count as i64
-            + host_map_len(&adapter, level_path)?
-            + host_record_len(&adapter, exp_path)?
-            + host_enum_field_len(&adapter, damage_path)?,
+            + host_int(&adapter, level_path)?
+            + host_int(&adapter, exp_path)?
+            + host_int(&adapter, damage_path)?,
     ))
 }
 
@@ -443,39 +433,9 @@ fn run_managed_heap_host_read_conversion(
         .field(INVENTORY_FIELD)
         .field(GOLD_FIELD);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_value(
-        level_path.clone(),
-        HostValue::Map(BTreeMap::from([
-            ("class".to_owned(), HostValue::String("mage".to_owned())),
-            ("score".to_owned(), HostValue::Int(3)),
-            (
-                "tags".to_owned(),
-                HostValue::Array(vec![
-                    HostValue::String("quest".to_owned()),
-                    HostValue::String("raid".to_owned()),
-                    HostValue::String("daily".to_owned()),
-                ]),
-            ),
-        ])),
-    );
-    adapter.insert_value(
-        exp_path.clone(),
-        HostValue::Record {
-            type_name: "Reward".to_owned(),
-            fields: BTreeMap::from([
-                ("item_id".to_owned(), HostValue::String("gold".to_owned())),
-                ("count".to_owned(), HostValue::Int(5)),
-            ]),
-        },
-    );
-    adapter.insert_value(
-        damage_path.clone(),
-        HostValue::Enum {
-            enum_name: "Damage".to_owned(),
-            variant: "Physical".to_owned(),
-            fields: BTreeMap::from([("amount".to_owned(), HostValue::Int(7))]),
-        },
-    );
+    adapter.insert_value(level_path.clone(), HostValue::Int(3));
+    adapter.insert_value(exp_path.clone(), HostValue::Int(5));
+    adapter.insert_value(damage_path.clone(), HostValue::Int(7));
     let mut tx = PatchTx::new();
     let mut budget = ExecutionBudget::unbounded();
     let value = {
@@ -494,9 +454,9 @@ fn run_managed_heap_host_read_conversion(
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + tx.patches().len() as i64
-            + host_map_len(&adapter, level_path)?
-            + host_record_len(&adapter, exp_path)?
-            + host_enum_field_len(&adapter, damage_path)?,
+            + host_int(&adapter, level_path)?
+            + host_int(&adapter, exp_path)?
+            + host_int(&adapter, damage_path)?,
     ))
 }
 
@@ -532,16 +492,6 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
             .field(CONFIG_FIELD)
             .field(EXP_TO_NEXT_LEVEL_FIELD),
         HostValue::Int(100),
-    );
-    adapter.insert_value(
-        HostPath::new(ctx)
-            .field(CONFIG_FIELD)
-            .field(KILL_REWARDS_FIELD),
-        HostValue::Array(vec![HostValue::Map(BTreeMap::from([
-            ("monster_id".to_owned(), HostValue::Int(11)),
-            ("item_id".to_owned(), HostValue::String("gold".to_owned())),
-            ("count".to_owned(), HostValue::Int(3)),
-        ]))]),
     );
     adapter.insert_value(HostPath::new(monster).field(EXP_FIELD), HostValue::Int(20));
     adapter.insert_value(HostPath::new(monster).field(ID_FIELD), HostValue::Int(11));
@@ -596,34 +546,6 @@ fn host_bool(adapter: &MockStateAdapter, path: HostPath) -> Result<bool, Box<dyn
     match adapter.read_path(&path)? {
         HostValue::Bool(value) => Ok(value),
         value => Err(format!("expected bool host value, got {value:?}").into()),
-    }
-}
-
-fn host_array_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
-    match adapter.read_path(&path)? {
-        HostValue::Array(values) => Ok(values.len() as i64),
-        value => Err(format!("expected array host value, got {value:?}").into()),
-    }
-}
-
-fn host_map_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
-    match adapter.read_path(&path)? {
-        HostValue::Map(values) => Ok(values.len() as i64),
-        value => Err(format!("expected map host value, got {value:?}").into()),
-    }
-}
-
-fn host_record_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
-    match adapter.read_path(&path)? {
-        HostValue::Record { fields, .. } => Ok(fields.len() as i64),
-        value => Err(format!("expected record host value, got {value:?}").into()),
-    }
-}
-
-fn host_enum_field_len(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {
-    match adapter.read_path(&path)? {
-        HostValue::Enum { fields, .. } => Ok(fields.len() as i64),
-        value => Err(format!("expected enum host value, got {value:?}").into()),
     }
 }
 

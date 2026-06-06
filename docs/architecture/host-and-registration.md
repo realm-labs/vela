@@ -141,6 +141,13 @@ The VM reads the current adapter value, computes the scalar result, validates
 the patch, writes the adapter, and records the patch. This keeps range checks,
 permissions, budgets, diagnostics, and logging in one host mutation boundary.
 
+Collection-shaped host mutations must be adapter-defined write-through
+operations. The default host boundary must not read a complex host collection,
+clone it into `HostValue`, modify the clone, and write it back. `PatchOp::Push`
+may journal a scalar pushed value when an adapter supports that operation, but
+scalar-only `HostValue` conversion cannot synthesize collection mutation by
+copying arrays or maps.
+
 ### Host State Adapter
 
 ```rust

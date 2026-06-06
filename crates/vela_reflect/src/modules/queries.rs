@@ -9,10 +9,7 @@ use crate::{
 };
 
 use super::descriptors::ModuleDesc;
-use super::records::{
-    function_record, function_record_host, module_record, module_record_host,
-    module_record_host_with_exports, module_record_with_exports,
-};
+use super::records::{function_record, module_record, module_record_with_exports};
 
 pub fn module(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.module_by_name(name).ok_or_else(|| {
@@ -39,9 +36,7 @@ pub fn has_module_with_policy(
 }
 
 pub fn modules(registry: &TypeRegistry) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry.modules().map(module_record_host).collect(),
-    ))
+    ReflectValue::Array(registry.modules().map(module_record).collect())
 }
 
 pub fn module_with_policy(
@@ -64,17 +59,14 @@ pub fn module_with_policy(
 }
 
 pub fn modules_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
+    ReflectValue::Array(
         registry
             .modules()
             .map(|module| {
-                module_record_host_with_exports(
-                    module,
-                    visible_export_names(registry, module, policy),
-                )
+                module_record_with_exports(module, visible_export_names(registry, module, policy))
             })
             .collect(),
-    ))
+    )
 }
 
 pub fn exports(registry: &TypeRegistry, module_name: &str) -> ReflectResult<ReflectValue> {
@@ -86,12 +78,12 @@ pub fn exports(registry: &TypeRegistry, module_name: &str) -> ReflectResult<Refl
             related,
         })
     })?;
-    Ok(ReflectValue::Host(HostValue::Array(
+    Ok(ReflectValue::Array(
         desc.exports
             .iter()
-            .map(|export| HostValue::String(export.name.clone()))
+            .map(|export| ReflectValue::Host(HostValue::String(export.name.clone())))
             .collect(),
-    )))
+    ))
 }
 
 pub fn exports_for_target(
@@ -114,12 +106,12 @@ pub fn exports_with_policy(
             related,
         })
     })?;
-    Ok(ReflectValue::Host(HostValue::Array(
+    Ok(ReflectValue::Array(
         visible_export_names(registry, desc, policy)
             .into_iter()
-            .map(HostValue::String)
+            .map(|name| ReflectValue::Host(HostValue::String(name)))
             .collect(),
-    )))
+    ))
 }
 
 pub fn exports_for_target_with_policy(
@@ -157,9 +149,7 @@ pub fn has_function_with_policy(
 }
 
 pub fn functions(registry: &TypeRegistry) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
-        registry.functions().map(function_record_host).collect(),
-    ))
+    ReflectValue::Array(registry.functions().map(function_record).collect())
 }
 
 pub fn function_with_policy(
@@ -180,13 +170,13 @@ pub fn function_with_policy(
 }
 
 pub fn functions_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
-    ReflectValue::Host(HostValue::Array(
+    ReflectValue::Array(
         registry
             .functions()
             .filter(|function| policy.require_function_access(function).is_ok())
-            .map(function_record_host)
+            .map(function_record)
             .collect(),
-    ))
+    )
 }
 
 pub fn callable_function_name_with_policy(
@@ -283,14 +273,6 @@ fn visible_export_names(
 
 fn function_target_name(target: &ReflectValue) -> ReflectResult<Option<&str>> {
     match target {
-        ReflectValue::Host(HostValue::Record { type_name, fields })
-            if type_name == "ReflectFunction" =>
-        {
-            match fields.get("name") {
-                Some(HostValue::String(name)) => Ok(Some(name.as_str())),
-                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-            }
-        }
         ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectFunction" => {
             match fields.get("name") {
                 Some(ReflectValue::Host(HostValue::String(name))) => Ok(Some(name.as_str())),
@@ -304,14 +286,6 @@ fn function_target_name(target: &ReflectValue) -> ReflectResult<Option<&str>> {
 fn module_target_name(target: &ReflectValue) -> ReflectResult<&str> {
     match target {
         ReflectValue::Host(HostValue::String(name)) => Ok(name),
-        ReflectValue::Host(HostValue::Record { type_name, fields })
-            if type_name == "ReflectModule" =>
-        {
-            match fields.get("name") {
-                Some(HostValue::String(name)) => Ok(name),
-                _ => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
-            }
-        }
         ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectModule" => {
             match fields.get("name") {
                 Some(ReflectValue::Host(HostValue::String(name))) => Ok(name),

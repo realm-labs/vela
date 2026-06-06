@@ -95,10 +95,8 @@ pub fn origin(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<
 
 pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
-        Ok(desc) => Ok(ReflectValue::Host(attrs_value(&desc.attrs))),
-        Err(error) => metadata_records::attrs(target)?
-            .map(ReflectValue::Host)
-            .ok_or(error),
+        Ok(desc) => Ok(attrs_value(&desc.attrs)),
+        Err(error) => metadata_records::attrs(target)?.ok_or(error),
     }
 }
 
@@ -128,7 +126,7 @@ pub fn has_attr(registry: &TypeRegistry, target: &ReflectValue, name: &str) -> R
 
 pub fn docs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
-        Ok(desc) => Ok(ReflectValue::Host(docs_value(desc.docs.as_deref()))),
+        Ok(desc) => Ok(docs_value(desc.docs.as_deref())),
         Err(error) => metadata_records::docs(target)?
             .map(ReflectValue::Host)
             .ok_or(error),
@@ -137,16 +135,13 @@ pub fn docs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
 
 pub fn source_span(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
-        Ok(desc) => Ok(ReflectValue::Host(span_value(desc.source_span))),
-        Err(error) => metadata_records::source_span(target)?
-            .map(ReflectValue::Host)
-            .ok_or(error),
+        Ok(desc) => Ok(span_value(desc.source_span)),
+        Err(error) => metadata_records::source_span(target)?.ok_or(error),
     }
 }
 
 pub fn access(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     metadata_records::access(target)?
-        .map(ReflectValue::Host)
         .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 
@@ -155,22 +150,18 @@ pub fn required_permissions(
     target: &ReflectValue,
 ) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
-        Ok(_) => Ok(ReflectValue::Host(HostValue::Array(Vec::new()))),
-        Err(error) => metadata_records::required_permissions(target)?
-            .map(ReflectValue::Host)
-            .ok_or(error),
+        Ok(_) => Ok(ReflectValue::Array(Vec::new())),
+        Err(error) => metadata_records::required_permissions(target)?.ok_or(error),
     }
 }
 
 pub fn effects(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     metadata_records::effects(target)?
-        .map(ReflectValue::Host)
         .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 
 pub fn params(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     metadata_records::params(target)?
-        .map(ReflectValue::Host)
         .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 
@@ -197,6 +188,7 @@ pub(super) fn target_type<'a>(
         ReflectValue::Host(_)
         | ReflectValue::Closure
         | ReflectValue::Range
+        | ReflectValue::Array(_)
         | ReflectValue::Record(_)
         | ReflectValue::Set(_) => Err(ReflectError::new(ReflectErrorKind::InvalidTarget)),
         ReflectValue::ScriptRecord { .. } | ReflectValue::ScriptEnum { .. } => {

@@ -10,7 +10,7 @@ pub mod proxy;
 pub mod tx;
 pub mod value;
 
-pub(crate) use value::{add_values, div_values, mul_values, push_value, rem_values, sub_values};
+pub(crate) use value::{add_values, div_values, mul_values, rem_values, sub_values};
 
 #[cfg(test)]
 mod tests;

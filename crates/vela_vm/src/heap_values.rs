@@ -359,10 +359,6 @@ pub(crate) fn host_to_value(
         HostValue::Int(value) => Ok(Value::Int(value)),
         HostValue::Float(value) => Ok(Value::Float(value)),
         HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
-        HostValue::Array(_)
-        | HostValue::Map(_)
-        | HostValue::Record { .. }
-        | HostValue::Enum { .. } => Err(type_error("host complex value conversion")),
         HostValue::HostRef(value) => Ok(Value::HostRef(value)),
     }
 }
