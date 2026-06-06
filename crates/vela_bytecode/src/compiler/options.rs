@@ -11,7 +11,7 @@ pub struct CompilerOptions {
     pub(super) host_methods_by_type: HashMap<(String, String), HostMethodId>,
     pub(super) host_method_params: HashMap<HostMethodId, Vec<HostMethodParam>>,
     pub(super) value_method_params: HashMap<String, Vec<ValueMethodParam>>,
-    pub(super) value_method_params_by_type: HashMap<(String, String), Vec<ValueMethodParam>>,
+    pub(super) value_methods_by_type: HashMap<(String, String), ValueMethodInfo>,
     pub(super) host_types: HashSet<String>,
     pub(super) native_module_roots: HashSet<String>,
     pub(super) native_functions: HashMap<String, NativeFunctionInfo>,
@@ -33,6 +33,12 @@ pub(super) struct HostFieldInfo {
 pub(super) struct ValueMethodParam {
     pub(super) name: String,
     pub(super) has_default: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct ValueMethodInfo {
+    pub(super) id: Option<HostMethodId>,
+    pub(super) params: Vec<ValueMethodParam>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -139,15 +145,34 @@ impl CompilerOptions {
         I: IntoIterator<Item = (S, bool)>,
         S: Into<String>,
     {
-        self.value_method_params_by_type.insert(
+        self.value_methods_by_type.insert(
             (type_name.into(), method.into()),
-            params
-                .into_iter()
-                .map(|(name, has_default)| ValueMethodParam {
-                    name: name.into(),
-                    has_default,
-                })
-                .collect(),
+            ValueMethodInfo {
+                id: None,
+                params: value_method_params(params),
+            },
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn with_value_method_for_type<I, S>(
+        mut self,
+        type_name: impl Into<String>,
+        method: impl Into<String>,
+        id: HostMethodId,
+        params: I,
+    ) -> Self
+    where
+        I: IntoIterator<Item = (S, bool)>,
+        S: Into<String>,
+    {
+        self.value_methods_by_type.insert(
+            (type_name.into(), method.into()),
+            ValueMethodInfo {
+                id: Some(id),
+                params: value_method_params(params),
+            },
         );
         self
     }
@@ -296,9 +321,19 @@ impl CompilerOptions {
         type_name: &str,
         method: &str,
     ) -> Option<&[ValueMethodParam]> {
-        self.value_method_params_by_type
+        self.value_methods_by_type
             .get(&(type_name.to_owned(), method.to_owned()))
-            .map(Vec::as_slice)
+            .map(|method| method.params.as_slice())
+    }
+
+    pub(super) fn value_method_id_for_type(
+        &self,
+        type_name: &str,
+        method: &str,
+    ) -> Option<HostMethodId> {
+        self.value_methods_by_type
+            .get(&(type_name.to_owned(), method.to_owned()))
+            .and_then(|method| method.id)
     }
 
     pub(super) fn native_function_params(&self, name: &str) -> Option<&[NativeFunctionParam]> {
@@ -322,5 +357,19 @@ where
     params
         .into_iter()
         .map(|name| NativeFunctionParam { name: name.into() })
+        .collect()
+}
+
+fn value_method_params<I, S>(params: I) -> Vec<ValueMethodParam>
+where
+    I: IntoIterator<Item = (S, bool)>,
+    S: Into<String>,
+{
+    params
+        .into_iter()
+        .map(|(name, has_default)| ValueMethodParam {
+            name: name.into(),
+            has_default,
+        })
         .collect()
 }

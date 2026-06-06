@@ -11,6 +11,7 @@ pub use vela_common::standard_ids::{
     RESULT_ERR_FUNCTION_ID, RESULT_FLATTEN_FUNCTION_ID, RESULT_IS_ERR_FUNCTION_ID,
     RESULT_IS_OK_FUNCTION_ID, RESULT_OK_FUNCTION_ID, RESULT_TO_ERROR_OPTION_FUNCTION_ID,
     RESULT_TO_OPTION_FUNCTION_ID, RESULT_UNWRAP_OR_FUNCTION_ID, SET_FROM_ARRAY_FUNCTION_ID,
+    STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID,
 };
 
 pub const NULL_TYPE_ID: TypeId = TypeId::new(0xff00_0500);
@@ -35,8 +36,6 @@ pub(crate) const OPTION_SOME_FIELD_ID: FieldId = FieldId::new(0xff00_0606);
 pub(crate) const RESULT_OK_FIELD_ID: FieldId = FieldId::new(0xff00_0607);
 pub(crate) const RESULT_ERR_FIELD_ID: FieldId = FieldId::new(0xff00_0608);
 
-pub(crate) const STRING_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0700);
-pub(crate) const STRING_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0701);
 pub(crate) const STRING_CONTAINS_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0702);
 pub(crate) const STRING_FIND_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0703);
 pub(crate) const STRING_STARTS_WITH_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0704);

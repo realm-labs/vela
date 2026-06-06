@@ -40,9 +40,10 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
             .iter()
             .filter(|method| method.attrs.get("stdlib").is_some())
         {
-            options = options.with_value_method_params_for_type(
+            options = options.with_value_method_for_type(
                 desc.key.name.clone(),
                 method.name.clone(),
+                method.id,
                 method_params(method),
             );
         }

@@ -170,6 +170,28 @@ fn call_native_uses_standard_native_id_before_name_fallback() {
 }
 
 #[test]
+fn call_method_uses_standard_value_method_id_before_name_fallback() {
+    let mut code = CodeObject::new("standard_value_method_id", 2);
+    let value = code.push_constant(Constant::String("gold".into()));
+    code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+        dst: Register(0),
+        constant: value,
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::CallMethod {
+        dst: Register(1),
+        receiver: Register(0),
+        method: "missing_len".into(),
+        value_method_id: Some(vela_common::standard_ids::STRING_LEN_METHOD_ID),
+        args: Vec::new(),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(4)));
+}
+
+#[test]
 fn instruction_budget_stops_dispatch_before_next_instruction() {
     let mut code = CodeObject::new("budgeted", 2);
     let one = code.push_constant(Constant::Int(1));

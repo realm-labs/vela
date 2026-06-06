@@ -1,5 +1,5 @@
 use super::*;
-use vela_common::MethodId;
+use vela_common::{HostMethodId, MethodId};
 
 impl Vm {
     pub(super) fn execute_body(
@@ -397,6 +397,7 @@ impl Vm {
                     dst,
                     receiver,
                     method,
+                    value_method_id,
                     args,
                 } => {
                     if args.is_empty() {
@@ -411,6 +412,7 @@ impl Vm {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
+                                value_method_id: *value_method_id,
                                 values: &[],
                             },
                         )?;
@@ -427,6 +429,7 @@ impl Vm {
                                 dst: *dst,
                                 receiver: *receiver,
                                 method,
+                                value_method_id: *value_method_id,
                                 values: values.as_slice(),
                             },
                         )?;
@@ -1147,6 +1150,7 @@ struct MethodCall<'a> {
     dst: Register,
     receiver: Register,
     method: &'a str,
+    value_method_id: Option<HostMethodId>,
     values: &'a [Value],
 }
 
@@ -1162,6 +1166,7 @@ fn dispatch_call_method(
     if let Some(result) = call_readonly_method_without_callbacks(
         frame.read(call.receiver)?,
         call.method,
+        call.value_method_id,
         call.values,
         heap.as_deref(),
     ) {
@@ -1175,6 +1180,7 @@ fn dispatch_call_method(
     if let Some(result) = call_non_mutating_method(
         frame.read(call.receiver)?,
         call.method,
+        call.value_method_id,
         call.values,
         ScriptMethodDispatch {
             vm,
@@ -1194,6 +1200,7 @@ fn dispatch_call_method(
         let result = call_method(
             &mut receiver_value,
             call.method,
+            call.value_method_id,
             call.values,
             ScriptMethodDispatch {
                 vm,

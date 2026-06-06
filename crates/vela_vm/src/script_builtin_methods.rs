@@ -3,6 +3,8 @@ use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, array_methods,
     map_methods, option_result_methods, set_methods,
 };
+use vela_common::HostMethodId;
+use vela_common::standard_ids::{STRING_IS_EMPTY_METHOD_ID, STRING_LEN_METHOD_ID};
 
 pub(crate) fn call(
     receiver: &mut Value,
@@ -68,6 +70,26 @@ pub(crate) fn call(
     Some(result)
 }
 
+pub(crate) fn call_by_id(
+    receiver: &mut Value,
+    method_id: HostMethodId,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    if !crate::string_methods::is_string(receiver, heap.as_deref()) {
+        return None;
+    }
+    let result = if method_id == STRING_LEN_METHOD_ID {
+        expect_no_args("len", args).and_then(|()| len(receiver, heap.as_deref()).map(Value::Int))
+    } else if method_id == STRING_IS_EMPTY_METHOD_ID {
+        expect_no_args("is_empty", args)
+            .and_then(|()| is_empty(receiver, heap.as_deref()).map(Value::Bool))
+    } else {
+        return None;
+    };
+    Some(result)
+}
+
 pub(crate) fn call_readonly(
     receiver: &Value,
     method: &str,
@@ -91,6 +113,25 @@ pub(crate) fn call_readonly(
         "is_superset" => set_methods::is_superset(receiver, args, heap).map(Value::Bool),
         "is_disjoint" => set_methods::is_disjoint(receiver, args, heap).map(Value::Bool),
         _ => return None,
+    };
+    Some(result)
+}
+
+pub(crate) fn call_readonly_by_id(
+    receiver: &Value,
+    method_id: HostMethodId,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<VmResult<Value>> {
+    if !crate::string_methods::is_string(receiver, heap) {
+        return None;
+    }
+    let result = if method_id == STRING_LEN_METHOD_ID {
+        expect_no_args("len", args).and_then(|()| len(receiver, heap).map(Value::Int))
+    } else if method_id == STRING_IS_EMPTY_METHOD_ID {
+        expect_no_args("is_empty", args).and_then(|()| is_empty(receiver, heap).map(Value::Bool))
+    } else {
+        return None;
     };
     Some(result)
 }

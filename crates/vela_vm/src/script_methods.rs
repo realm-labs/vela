@@ -1,5 +1,5 @@
 use vela_bytecode::Program;
-use vela_common::MethodId;
+use vela_common::{HostMethodId, MethodId};
 use vela_reflect::registry::TypeRegistry;
 
 use crate::callback_method_dispatch::{self, CallbackMethodDispatch};
@@ -22,9 +22,15 @@ pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
 pub(crate) fn call_method(
     receiver: &mut Value,
     method: &str,
+    value_method_id: Option<HostMethodId>,
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
+    if let Some(result) = value_method_id.and_then(|method_id| {
+        script_builtin_methods::call_by_id(receiver, method_id, args, &mut dispatch.heap)
+    }) {
+        return result;
+    }
     if let Some(result) = string_method_dispatch::call(
         method,
         receiver,
@@ -88,9 +94,15 @@ pub(crate) fn call_method_id(
 pub(crate) fn call_readonly_method_without_callbacks(
     receiver: &Value,
     method: &str,
+    value_method_id: Option<HostMethodId>,
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<VmResult<Value>> {
+    if let Some(result) = value_method_id.and_then(|method_id| {
+        script_builtin_methods::call_readonly_by_id(receiver, method_id, args, heap)
+    }) {
+        return Some(result);
+    }
     if let Some(result) = string_method_dispatch::call_readonly(method, receiver, args, heap) {
         return Some(result);
     }
@@ -101,9 +113,20 @@ pub(crate) fn call_readonly_method_without_callbacks(
 pub(crate) fn call_non_mutating_method(
     receiver: &Value,
     method: &str,
+    value_method_id: Option<HostMethodId>,
     args: &[Value],
     mut dispatch: ScriptMethodDispatch<'_, '_, '_>,
 ) -> Option<VmResult<Value>> {
+    if let Some(result) = value_method_id.and_then(|method_id| {
+        script_builtin_methods::call_readonly_by_id(
+            receiver,
+            method_id,
+            args,
+            dispatch.heap.as_deref(),
+        )
+    }) {
+        return Some(result);
+    }
     if let Some(result) = string_method_dispatch::call(
         method,
         receiver,

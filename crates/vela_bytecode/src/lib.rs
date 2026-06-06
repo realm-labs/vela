@@ -376,6 +376,7 @@ pub enum InstructionKind {
         dst: Register,
         receiver: Register,
         method: String,
+        value_method_id: Option<HostMethodId>,
         args: Vec<CallArgument>,
     },
     CallMethodId {

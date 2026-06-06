@@ -1,4 +1,4 @@
-use crate::FunctionId;
+use crate::{FunctionId, HostMethodId};
 
 pub const MATH_MAX_FUNCTION_ID: FunctionId = FunctionId::new(0xff00_0100);
 pub const MATH_MIN_FUNCTION_ID: FunctionId = FunctionId::new(0xff00_0101);
@@ -33,3 +33,6 @@ pub const RESULT_TO_ERROR_OPTION_FUNCTION_ID: FunctionId = FunctionId::new(0xff0
 pub const RESULT_FLATTEN_FUNCTION_ID: FunctionId = FunctionId::new(0xff00_0307);
 
 pub const SET_FROM_ARRAY_FUNCTION_ID: FunctionId = FunctionId::new(0xff00_0400);
+
+pub const STRING_LEN_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0700);
+pub const STRING_IS_EMPTY_METHOD_ID: HostMethodId = HostMethodId::new(0xff00_0701);

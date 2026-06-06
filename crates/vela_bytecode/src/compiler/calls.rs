@@ -151,6 +151,9 @@ impl Compiler<'_> {
             args,
             expr.span,
         )?;
+        let value_method_id = value_receiver_type
+            .as_deref()
+            .and_then(|type_name| self.facts.options.value_method_id_for_type(type_name, name));
         let receiver = self.compile_expr(base)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
@@ -170,6 +173,7 @@ impl Compiler<'_> {
                     dst,
                     receiver,
                     method: name.to_owned(),
+                    value_method_id,
                     args: arg_registers,
                 },
                 expr.span,
@@ -198,6 +202,11 @@ impl Compiler<'_> {
             args,
             expr.span,
         )?;
+        let value_method_id = value_receiver_type.as_deref().and_then(|type_name| {
+            self.facts
+                .options
+                .value_method_id_for_type(type_name, method)
+        });
         let receiver = self.compile_path_expr(callee.span, receiver_path)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
@@ -217,6 +226,7 @@ impl Compiler<'_> {
                     dst,
                     receiver,
                     method: method.to_owned(),
+                    value_method_id,
                     args: arg_registers,
                 },
                 expr.span,
