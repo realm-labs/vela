@@ -190,7 +190,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -250,7 +250,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -322,7 +322,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(50, usize::MAX, usize::MAX, usize::MAX),
@@ -389,7 +389,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(u64::MAX, 64, usize::MAX, usize::MAX),
@@ -451,7 +451,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),
@@ -522,7 +522,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -618,7 +618,7 @@ fn main(player, mode) {
     for mode in 0..=7 {
         let mut tx = PatchTx::new();
         let error = runtime
-            .call(
+            .call_raw(
                 "main",
                 &[OwnedValue::HostRef(host_ref), OwnedValue::Int(mode)],
                 CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),

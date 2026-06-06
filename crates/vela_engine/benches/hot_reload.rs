@@ -155,7 +155,7 @@ fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64,
     let report = runtime.apply_hot_update(update)?;
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
-    let value = runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)?;
+    let value = runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)?;
 
     Ok(report_checksum(
         report.accepted,

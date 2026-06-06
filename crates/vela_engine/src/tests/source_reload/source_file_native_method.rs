@@ -27,7 +27,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -56,7 +56,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     assert!(new.writes_host);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -88,7 +88,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -115,7 +115,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -147,7 +147,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -181,7 +181,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     assert_eq!(new[0].type_hint.as_deref(), Some("float"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -213,7 +213,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -240,7 +240,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("float"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -267,7 +267,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -294,7 +294,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     assert_eq!(function, "game::reward::grant");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -326,7 +326,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -353,7 +353,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
     assert_eq!(function, "game::reward::grant");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -393,7 +393,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(5))
     );
 
@@ -406,7 +406,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(5))
     );
 
@@ -418,7 +418,7 @@ fn main() {
     assert!(report.accepted);
     assert!(report.errors.is_empty());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(6))
     );
 }
@@ -447,7 +447,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -473,7 +473,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     assert_eq!(method, "grant_exp");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -503,7 +503,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -529,7 +529,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     assert_eq!(method, "grant_exp");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -568,7 +568,7 @@ fn main(player: Player) {
 
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -590,7 +590,7 @@ fn main(player: Player) {
     );
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -610,7 +610,7 @@ fn main(player: Player) {
     assert!(report.errors.is_empty());
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -656,7 +656,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -687,7 +687,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     assert!(new.writes_host);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -726,7 +726,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -755,7 +755,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -794,7 +794,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -827,7 +827,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     assert_eq!(new[0].type_hint.as_deref(), Some("float"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -860,7 +860,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -889,7 +889,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("null"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -918,7 +918,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -935,7 +935,7 @@ fn main() {
             if function == "helper"
     ));
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -961,7 +961,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -981,7 +981,7 @@ fn main() {
     );
     assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }

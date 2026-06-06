@@ -21,7 +21,7 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -38,7 +38,7 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
         initial_version
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -48,7 +48,7 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
 
     assert!(report.accepted);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -88,7 +88,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -120,7 +120,7 @@ fn main() {
         .expect("compatible update should compile");
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -130,7 +130,7 @@ fn main() {
 
     assert!(report.accepted);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -167,7 +167,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(12))
     );
 
@@ -198,7 +198,7 @@ fn main() {
         .expect("compatible update should compile");
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(12))
     );
 
@@ -208,7 +208,7 @@ fn main() {
 
     assert!(report.accepted);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(17))
     );
 }

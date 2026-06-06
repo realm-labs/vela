@@ -16,7 +16,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -32,7 +32,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file defaulted schema addition should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -50,7 +50,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -77,7 +77,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -93,7 +93,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file stable-id schema rename should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -111,7 +111,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -138,7 +138,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -154,7 +154,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file schema field rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -178,7 +178,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
     );
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -205,7 +205,7 @@ fn runtime_stages_changed_file_removed_schema_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -229,7 +229,7 @@ pub fn grant() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file removed schema rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -264,7 +264,7 @@ pub fn grant() {
     assert_ne!(*old_hash, 0);
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -291,7 +291,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -307,7 +307,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file schema field type rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -331,7 +331,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
     );
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -358,7 +358,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -374,7 +374,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file defaulted enum variant field addition should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -392,7 +392,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["game::reward::grant"]);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -419,7 +419,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -435,7 +435,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file enum variant field rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -459,7 +459,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
     );
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -486,7 +486,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -502,7 +502,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file enum variant field type rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -526,7 +526,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
     );
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -553,7 +553,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -569,7 +569,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file removed trait impl rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -593,7 +593,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
     );
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -620,7 +620,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -636,7 +636,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file added trait impl update should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -658,7 +658,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
             .contains(&"game::reward::grant".to_owned())
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -685,7 +685,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -701,7 +701,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file removed trait rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -725,7 +725,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
     );
     assert_removed_trait_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -752,7 +752,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -768,7 +768,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file trait method return rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -792,7 +792,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
     );
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -819,7 +819,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -835,7 +835,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file required trait method rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -859,7 +859,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
     );
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -886,7 +886,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -902,7 +902,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file defaulted trait method addition should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -925,7 +925,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
             .contains(&"game::reward::grant".to_owned())
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -967,7 +967,7 @@ pub fn grant() {
         .expect("runtime should be hot-reload enabled")
         .expect("compile rejection should be staged as a hot reload report");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -993,7 +993,7 @@ pub fn grant() {
     );
     assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),

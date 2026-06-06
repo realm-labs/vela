@@ -46,7 +46,7 @@ fn main(player: Player) {
     let mut tx = PatchTx::new();
 
     let result = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),

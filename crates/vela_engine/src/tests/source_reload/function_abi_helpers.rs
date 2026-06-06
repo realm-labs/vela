@@ -14,7 +14,7 @@ fn removed_script_function_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -36,7 +36,7 @@ fn removed_script_function_rejection_kind(
             .expect("changed-file removed function rejection should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -59,7 +59,7 @@ fn removed_script_function_rejection_kind(
         Some("game::reward::helper")
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -99,7 +99,7 @@ fn removed_native_descriptor_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -121,7 +121,7 @@ fn removed_native_descriptor_rejection_kind(
             .expect("changed-file removed native descriptor ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -145,7 +145,7 @@ fn removed_native_descriptor_rejection_kind(
     );
     assert_removed_function_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -187,7 +187,7 @@ fn native_stable_id_churn_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -209,7 +209,7 @@ fn native_stable_id_churn_rejection_kind(
             .expect("changed-file native stable-ID churn ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -233,7 +233,7 @@ fn native_stable_id_churn_rejection_kind(
     );
     assert_removed_function_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -269,7 +269,7 @@ fn dir_native_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -285,7 +285,7 @@ fn dir_native_rejection_kind(
         .expect("runtime should be hot-reload enabled")
         .expect("dir native descriptor ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -316,7 +316,7 @@ fn dir_native_rejection_kind(
         assert_function_return_repair_hint(&report);
     }
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -360,7 +360,7 @@ fn removed_method_descriptor_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -382,7 +382,7 @@ fn removed_method_descriptor_rejection_kind(
             .expect("changed-file removed method descriptor ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -403,7 +403,7 @@ fn removed_method_descriptor_rejection_kind(
     assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
     assert_removed_method_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -443,7 +443,7 @@ fn method_stable_id_churn_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -465,7 +465,7 @@ fn method_stable_id_churn_rejection_kind(
             .expect("changed-file method stable-ID churn ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -486,7 +486,7 @@ fn method_stable_id_churn_rejection_kind(
     assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
     assert_removed_method_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -522,7 +522,7 @@ fn dir_method_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -538,7 +538,7 @@ fn dir_method_rejection_kind(
         .expect("runtime should be hot-reload enabled")
         .expect("dir method ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -569,7 +569,7 @@ fn dir_method_rejection_kind(
         assert_method_return_repair_hint(&report);
     }
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -605,7 +605,7 @@ fn changed_file_method_rejection_kind(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -621,7 +621,7 @@ fn changed_file_method_rejection_kind(
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file method ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -652,7 +652,7 @@ fn changed_file_method_rejection_kind(
         assert_method_return_repair_hint(&report);
     }
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),

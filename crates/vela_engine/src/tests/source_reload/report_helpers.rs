@@ -10,7 +10,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -32,7 +32,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             .expect("changed-file helper addition should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -59,7 +59,7 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
             .contains(&"game::reward::helper".to_owned())
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -82,7 +82,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -104,7 +104,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             .expect("changed-file public function addition should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -115,7 +115,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
     );
     assert!(
         runtime
-            .call(
+            .call_raw(
                 "game::reward::helper",
                 &[],
                 CallOptions::unbounded(),
@@ -142,7 +142,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
             .contains(&"game::reward::helper".to_owned())
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -152,7 +152,7 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
         Ok(OwnedValue::Int(6))
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::reward::helper",
             &[],
             CallOptions::unbounded(),
@@ -192,7 +192,7 @@ fn on_kill(player_id: int, monster_id: int) {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::events::on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -223,7 +223,7 @@ fn on_kill(monster_id: int, player_id: int) {
             .expect("changed-file event ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::events::on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -250,7 +250,7 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(old, &vec!["player_id".to_owned(), "monster_id".to_owned()]);
     assert_eq!(new, &vec!["monster_id".to_owned(), "player_id".to_owned()]);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::events::on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -285,7 +285,7 @@ fn on_kill(player_id: int, monster_id: int) {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::events::on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -316,7 +316,7 @@ fn on_kill(player_id: int, monster_id: int) {
             .expect("changed-file event target rejection should be staged"),
     };
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::events::on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -348,7 +348,7 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(new.as_deref(), Some("quest.complete"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::events::on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),

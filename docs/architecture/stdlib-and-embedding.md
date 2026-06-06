@@ -167,7 +167,7 @@ let args = CallArgs::new()
     .with_host_ref("invoice", &invoice)
     .with_value("now", current_tick);
 
-let output = runtime.call_direct(
+let output = runtime.call(
     "billing.on_invoice_paid",
     args,
     CallOptions::unbounded(),
@@ -187,10 +187,10 @@ reference. Field reads and writes dispatch through the type's host object
 adapter and `PatchTx`; `&T` is read-only, while `&mut T` allows write-through
 mutation during the call. Hosts that already manage object identity through a
 state adapter can pass an existing low-level handle with
-`CallArgs::with_host_handle("name", host_ref)` and call `runtime.call_args`
-with that adapter.
+`CallArgs::with_host_handle("name", host_ref)` and call
+`runtime.call_with_adapter` with that adapter.
 
-`call_direct` returns `CallOutput`, which dereferences to the returned
+`call` returns `CallOutput`, which dereferences to the returned
 `OwnedValue` for ordinary use. Hosts that need audit or diagnostics can inspect
 `output.patches()` or `output.tx()`; most call sites do not need to construct
 or pass a `PatchTx` explicitly.

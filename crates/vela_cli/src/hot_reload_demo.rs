@@ -65,7 +65,7 @@ fn run_current_main(runtime: &mut Runtime) -> Result<OwnedValue, Box<dyn Error>>
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     runtime
-        .call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .map_err(|error| format!("{error:?}").into())
 }
 

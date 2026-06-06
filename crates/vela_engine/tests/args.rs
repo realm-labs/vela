@@ -319,7 +319,7 @@ fn main(player: Player, amount: int) {
     let args = vela_engine::args![vela_engine::host!(1, 42, 1), 12];
 
     let result = runtime
-        .call(
+        .call_raw(
             "main",
             &args,
             CallOptions::unbounded(),

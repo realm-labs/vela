@@ -30,7 +30,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -46,7 +46,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file native effect ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -81,7 +81,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
     assert!(new.writes_host);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -122,7 +122,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -138,7 +138,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file native access ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -171,7 +171,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
     assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -212,7 +212,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -228,7 +228,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file native parameter ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -268,7 +268,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
     assert_eq!(new[0].type_hint.as_deref(), Some("float"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -309,7 +309,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -325,7 +325,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file native path proxy ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -365,7 +365,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
     assert_eq!(new[0].type_hint.as_deref(), Some("int"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -406,7 +406,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -422,7 +422,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file native return ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -455,7 +455,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("float"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -496,7 +496,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -512,7 +512,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
         .expect("runtime should be hot-reload enabled")
         .expect("changed-file native path proxy return ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -545,7 +545,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
     assert_eq!(new.as_deref(), Some("int"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -625,7 +625,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -642,7 +642,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
         .expect("changed-file native stable-ID rename should be staged");
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -660,7 +660,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
     assert!(report.accepted);
     assert!(report.errors.is_empty());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -855,7 +855,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
 
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -874,7 +874,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
 
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -894,7 +894,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     assert!(report.errors.is_empty());
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),

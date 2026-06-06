@@ -247,7 +247,7 @@ fn runtime_applies_engine_hot_reload_updates() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -262,7 +262,7 @@ fn runtime_applies_engine_hot_reload_updates() {
         report.to_version.expect("accepted version id")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -292,7 +292,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
             .expect("hot reload runtime should report pending update")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -309,7 +309,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -336,7 +336,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
             .expect("hot reload runtime should report pending update")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -348,7 +348,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -370,7 +370,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         .stage_hot_reload_update(SourceId::new(2), "pub fn main() -> float { return 2.0; }")
         .expect("stage rejected source text update");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -394,7 +394,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
     assert_eq!(new.as_deref(), Some("float"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -419,7 +419,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
         .stage_hot_update(update)
         .expect("stage pending update");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -436,7 +436,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
     assert_eq!(
@@ -495,7 +495,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
             .expect("pending rejection should be consumed")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -528,7 +528,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -548,7 +548,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     assert_eq!(old, &vec![ModuleExportAbi::function("grant_reward", 11)]);
     assert_eq!(new, &Vec::<ModuleExportAbi>::new());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -582,7 +582,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -605,7 +605,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     };
     assert_eq!(function, "host::reward::grant");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -640,7 +640,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -663,7 +663,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -693,7 +693,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -712,7 +712,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     };
     assert_eq!(module, "host::reward");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -737,7 +737,13 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
         .stage_hot_update(update)
         .expect("stage pending update");
     let report = runtime
-        .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .call_raw_at_event_end_safe_point(
+            "main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        )
         .expect("event call should run");
 
     assert_eq!(report.value, OwnedValue::Int(1));
@@ -750,7 +756,7 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -798,7 +804,13 @@ fn main() {
         .stage_hot_update(update)
         .expect("stage pending update");
     let report = runtime
-        .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .call_raw_at_event_end_safe_point(
+            "main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        )
         .expect("event call should run on the old version");
 
     assert_eq!(report.value, OwnedValue::Int(1));
@@ -814,7 +826,7 @@ fn main() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -843,7 +855,13 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
         .stage_hot_update_result(Err(update))
         .expect("stage rejected update");
     let report = runtime
-        .call_at_event_end_safe_point("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .call_raw_at_event_end_safe_point(
+            "main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        )
         .expect("event call should run before reporting reload rejection");
 
     assert_eq!(report.value, OwnedValue::Int(1));
@@ -868,7 +886,7 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
             .expect("pending rejection should be consumed")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -911,7 +929,7 @@ fn main(player: Player) {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -933,7 +951,7 @@ fn main(player: Player) {
 
     let mut next_tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -986,7 +1004,7 @@ fn main(player: Player) {
     let mut tx = PatchTx::new();
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),

@@ -80,7 +80,7 @@ fn main(player: Player, amount, bonus = 1) {
         .with_host_handle("player", player);
 
     let result = runtime
-        .call_args(
+        .call_args_raw(
             "main",
             &mut args,
             CallOptions::unbounded(),
@@ -114,7 +114,7 @@ fn main(left, right) {
     let mut args = CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(7)]);
 
     let result = runtime
-        .call_args(
+        .call_args_raw(
             "main",
             &mut args,
             CallOptions::unbounded(),
@@ -143,7 +143,7 @@ fn runtime_call_args_reject_duplicate_named_values() {
         .with_value("value", 2_i64);
 
     let error = runtime
-        .call_args(
+        .call_args_raw(
             "main",
             &mut args,
             CallOptions::unbounded(),
@@ -175,7 +175,7 @@ fn runtime_call_args_reject_unknown_named_values() {
     let mut args = CallArgs::new().with_value("missing", 1_i64);
 
     let error = runtime
-        .call_args(
+        .call_args_raw(
             "main",
             &mut args,
             CallOptions::unbounded(),
@@ -207,7 +207,7 @@ fn runtime_call_args_reject_mixed_modes() {
     let mut args = CallArgs::new().with(1_i64).with_value("value", 2_i64);
 
     let error = runtime
-        .call_args(
+        .call_args_raw(
             "main",
             &mut args,
             CallOptions::unbounded(),
@@ -243,24 +243,24 @@ fn main(player: Player, amount) {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = DirectPlayer { level: 9 };
-    let mut args = CallArgs::new()
-        .with_host_mut("player", &mut player)
-        .with_value("amount", 4_i64);
-    let mut tx = PatchTx::new();
-
-    let result = runtime
-        .call_args_direct("main", &mut args, CallOptions::unbounded(), &mut tx)
+    let output = runtime
+        .call(
+            "main",
+            CallArgs::new()
+                .with_host_mut("player", &mut player)
+                .with_value("amount", 4_i64),
+            CallOptions::unbounded(),
+        )
         .expect("runtime direct host args should run");
 
-    assert_eq!(result, OwnedValue::Int(13));
-    drop(args);
+    assert_eq!(&*output, &OwnedValue::Int(13));
     assert_eq!(player.level, 13);
-    assert_eq!(tx.patches().len(), 1);
-    assert_eq!(tx.patches()[0].op, PatchOp::Add(HostValue::Int(4)));
+    assert_eq!(output.patches().len(), 1);
+    assert_eq!(output.patches()[0].op, PatchOp::Add(HostValue::Int(4)));
 }
 
 #[test]
-fn runtime_call_direct_returns_value_like_output_and_patches() {
+fn runtime_call_returns_value_like_output_and_patches() {
     let engine = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
@@ -280,7 +280,7 @@ fn main(player: Player, amount) {
     let mut player = DirectPlayer { level: 9 };
 
     let output = runtime
-        .call_direct(
+        .call(
             "main",
             CallArgs::new()
                 .with_host_mut("player", &mut player)
@@ -319,7 +319,7 @@ fn main(player: Player) {
     let mut tx = PatchTx::new();
 
     let report = runtime
-        .call_args_at_event_end_safe_point(
+        .call_args_raw_at_event_end_safe_point(
             "main",
             &mut args,
             CallOptions::unbounded(),
@@ -354,11 +354,13 @@ fn main(player: Player) {
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let player = DirectPlayer { level: 9 };
-    let mut args = CallArgs::new().with_host_ref("player", &player);
-    let mut tx = PatchTx::new();
 
     let error = runtime
-        .call_args_direct("main", &mut args, CallOptions::unbounded(), &mut tx)
+        .call(
+            "main",
+            CallArgs::new().with_host_ref("player", &player),
+            CallOptions::unbounded(),
+        )
         .expect_err("read-only direct host args should reject writes");
 
     assert!(matches!(
@@ -369,5 +371,4 @@ fn main(player: Player) {
         })
     ));
     assert_eq!(player.level, 9);
-    assert!(tx.patches().is_empty());
 }

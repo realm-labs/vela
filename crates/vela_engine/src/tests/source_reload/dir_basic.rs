@@ -145,7 +145,7 @@ pub fn grant() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -184,7 +184,7 @@ pub fn grant() {
         vec!["game::main".to_owned(), "game::reward".to_owned()]
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -211,7 +211,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -232,7 +232,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             .expect("dir update should be pending")
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -260,7 +260,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             .expect("safe point should consume dir update")
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -293,7 +293,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("hot reload rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -316,7 +316,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
             if function == "game::reward::helper"
     ));
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -359,7 +359,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -375,7 +375,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("dir return ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -412,7 +412,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("float"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),

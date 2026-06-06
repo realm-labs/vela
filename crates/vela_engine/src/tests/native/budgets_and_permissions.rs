@@ -45,7 +45,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::new(u64::MAX, usize::MAX, usize::MAX, 0),
@@ -118,7 +118,7 @@ fn main(player) {
     let mut tx = PatchTx::new();
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -235,7 +235,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[],
             CallOptions::new(4, usize::MAX, usize::MAX, usize::MAX),

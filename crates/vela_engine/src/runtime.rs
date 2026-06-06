@@ -225,6 +225,28 @@ impl Runtime {
     pub fn call(
         &mut self,
         entry: &str,
+        args: CallArgs<'_>,
+        options: CallOptions,
+    ) -> VmResult<CallOutput> {
+        let mut adapter = EmptyStateAdapter;
+        self.call_with_adapter(entry, args, options, &mut adapter)
+    }
+
+    pub fn call_with_adapter(
+        &mut self,
+        entry: &str,
+        mut args: CallArgs<'_>,
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+    ) -> VmResult<CallOutput> {
+        let mut tx = PatchTx::new();
+        let value = self.call_args_raw(entry, &mut args, options, adapter, &mut tx)?;
+        Ok(CallOutput { value, tx })
+    }
+
+    pub fn call_raw(
+        &mut self,
+        entry: &str,
         args: &[OwnedValue],
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
@@ -252,19 +274,7 @@ impl Runtime {
         }
     }
 
-    pub fn call_output(
-        &mut self,
-        entry: &str,
-        args: &[OwnedValue],
-        options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
-    ) -> VmResult<CallOutput> {
-        let mut tx = PatchTx::new();
-        let value = self.call(entry, args, options, adapter, &mut tx)?;
-        Ok(CallOutput { value, tx })
-    }
-
-    pub fn call_args(
+    pub fn call_args_raw(
         &mut self,
         entry: &str,
         args: &mut CallArgs<'_>,
@@ -277,43 +287,10 @@ impl Runtime {
             args,
             fallback: adapter,
         };
-        self.call(entry, &resolved, options, &mut adapter, tx)
+        self.call_raw(entry, &resolved, options, &mut adapter, tx)
     }
 
-    pub fn call_args_output(
-        &mut self,
-        entry: &str,
-        mut args: CallArgs<'_>,
-        options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
-    ) -> VmResult<CallOutput> {
-        let mut tx = PatchTx::new();
-        let value = self.call_args(entry, &mut args, options, adapter, &mut tx)?;
-        Ok(CallOutput { value, tx })
-    }
-
-    pub fn call_args_direct(
-        &mut self,
-        entry: &str,
-        args: &mut CallArgs<'_>,
-        options: CallOptions,
-        tx: &mut PatchTx,
-    ) -> VmResult<OwnedValue> {
-        let mut adapter = EmptyStateAdapter;
-        self.call_args(entry, args, options, &mut adapter, tx)
-    }
-
-    pub fn call_direct(
-        &mut self,
-        entry: &str,
-        args: CallArgs<'_>,
-        options: CallOptions,
-    ) -> VmResult<CallOutput> {
-        let mut adapter = EmptyStateAdapter;
-        self.call_args_output(entry, args, options, &mut adapter)
-    }
-
-    pub fn call_at_event_end_safe_point(
+    pub fn call_raw_at_event_end_safe_point(
         &mut self,
         entry: &str,
         args: &[OwnedValue],
@@ -321,12 +298,12 @@ impl Runtime {
         adapter: &mut dyn ScriptStateAdapter,
         tx: &mut PatchTx,
     ) -> VmResult<EventCallSafePointReport> {
-        let value = self.call(entry, args, options, adapter, tx)?;
+        let value = self.call_raw(entry, args, options, adapter, tx)?;
         let reload = self.check_optional_reload();
         Ok(EventCallSafePointReport { value, reload })
     }
 
-    pub fn call_args_at_event_end_safe_point(
+    pub fn call_args_raw_at_event_end_safe_point(
         &mut self,
         entry: &str,
         args: &mut CallArgs<'_>,
@@ -334,7 +311,7 @@ impl Runtime {
         adapter: &mut dyn ScriptStateAdapter,
         tx: &mut PatchTx,
     ) -> VmResult<EventCallSafePointReport> {
-        let value = self.call_args(entry, args, options, adapter, tx)?;
+        let value = self.call_args_raw(entry, args, options, adapter, tx)?;
         let reload = self.check_optional_reload();
         Ok(EventCallSafePointReport { value, reload })
     }

@@ -279,6 +279,6 @@ fn main() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
 
-    let result = runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
+    let result = runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
     assert_eq!(result, Ok(OwnedValue::Int(46)),);
 }

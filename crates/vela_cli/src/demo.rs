@@ -97,7 +97,7 @@ fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Bo
 
     let mut runtime = Runtime::new(engine, program);
     let output = runtime
-        .call_args_output(
+        .call_with_adapter(
             "main",
             args,
             CallOptions::new(10_000, 1024 * 1024, 64, 1024),

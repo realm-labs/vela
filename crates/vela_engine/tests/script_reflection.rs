@@ -71,7 +71,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx,),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx,),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -145,7 +145,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),

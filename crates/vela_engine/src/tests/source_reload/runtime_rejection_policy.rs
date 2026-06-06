@@ -33,7 +33,7 @@ fn main() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }

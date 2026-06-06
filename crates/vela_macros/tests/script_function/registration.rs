@@ -499,7 +499,7 @@ fn main(player, ok) {
     let mut runtime = Runtime::new(engine, program);
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(player), OwnedValue::Bool(true)],
             CallOptions::unbounded(),
@@ -512,7 +512,7 @@ fn main(player, ok) {
 
     let mut failed_tx = PatchTx::new();
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
             CallOptions::unbounded(),
@@ -550,7 +550,7 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(player)],
             CallOptions::unbounded(),
@@ -591,7 +591,7 @@ fn main(player) {
     let mut runtime = Runtime::new(engine, program);
 
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(player)],
             CallOptions::new(2, usize::MAX, usize::MAX, usize::MAX),
@@ -710,7 +710,7 @@ fn main(player, ok) {
     let mut runtime = Runtime::new(engine, program);
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::HostRef(player), OwnedValue::Bool(true)],
             CallOptions::unbounded(),
@@ -723,7 +723,7 @@ fn main(player, ok) {
 
     let mut failed_tx = PatchTx::new();
     let error = runtime
-        .call(
+        .call_raw(
             "main",
             &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
             CallOptions::unbounded(),

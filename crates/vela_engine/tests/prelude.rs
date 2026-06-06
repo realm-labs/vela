@@ -41,7 +41,7 @@ fn main(player: Player, amount: int) {
     let args = args![host(player), 12];
 
     let result = runtime
-        .call(
+        .call_raw(
             "main",
             &args,
             CallOptions::unbounded(),
@@ -141,7 +141,7 @@ pub const BASE: int = 10;
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &args![5],
             CallOptions::unbounded(),

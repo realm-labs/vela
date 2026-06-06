@@ -16,7 +16,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -32,7 +32,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
         .expect("runtime should be hot-reload enabled")
         .expect("dir required parameter rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -62,7 +62,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
     assert_eq!(function, "game::reward::grant");
     assert_eq!(added, &vec!["amount".to_owned()]);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -122,7 +122,7 @@ fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -155,7 +155,7 @@ fn grant() {
         .expect("runtime should be hot-reload enabled")
         .expect("dir script function access ABI rejection should be staged");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -175,7 +175,7 @@ fn grant() {
     assert_eq!(report.errors[0].code, "reload.function.access_changed");
     assert_changed_function_access_rejection(&report, "game::reward::grant");
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -386,7 +386,7 @@ pub fn grant() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -418,7 +418,7 @@ pub fn grant() {
     assert!(report.accepted);
     assert!(report.errors.is_empty());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[],
             CallOptions::unbounded(),
@@ -482,7 +482,7 @@ pub fn grant(player: Player) {
 
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -516,7 +516,7 @@ pub fn grant(player: Player) {
 
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),
@@ -542,7 +542,7 @@ pub fn grant(player: Player) {
     assert!(report.errors.is_empty());
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "game::main::main",
             &[OwnedValue::HostRef(host_ref)],
             CallOptions::unbounded(),

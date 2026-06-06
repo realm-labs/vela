@@ -33,7 +33,7 @@ fn main() {
         .expect("runtime should apply first update");
     assert!(first_report.accepted);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 
@@ -80,7 +80,7 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(5))
     );
 }
@@ -103,7 +103,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -118,7 +118,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
             .expect("file update should be pending")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -135,7 +135,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
             .expect("safe point should consume file update")
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(5))
     );
 }
@@ -163,7 +163,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -175,7 +175,7 @@ fn main() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["helper", "main"]);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(7))
     );
 }
@@ -203,7 +203,7 @@ pub fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -215,11 +215,11 @@ pub fn main() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["helper", "main"]);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(7))
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "helper",
             &[],
             CallOptions::unbounded(),
@@ -260,7 +260,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(7))
     );
 
@@ -278,7 +278,7 @@ fn main() {
     };
     assert_eq!(function, "helper");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(7))
     );
 }

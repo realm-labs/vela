@@ -35,7 +35,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -47,7 +47,7 @@ fn main() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -104,7 +104,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -116,7 +116,7 @@ fn main() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -156,7 +156,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -171,7 +171,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -207,7 +207,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -233,7 +233,7 @@ fn main() {
     assert_ne!(*old_hash, 0);
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -274,7 +274,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -289,7 +289,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("Reward"));
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -333,7 +333,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -345,7 +345,7 @@ fn main() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main"]);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -389,7 +389,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -404,7 +404,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("QuestProgress"));
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -449,7 +449,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -464,7 +464,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("QuestProgress"));
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -513,7 +513,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -528,7 +528,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("Player"));
     assert_changed_schema_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -577,7 +577,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -589,7 +589,7 @@ fn main() {
     assert!(report.accepted);
     assert!(report.changed_functions.contains(&"main".to_owned()));
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -624,7 +624,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -639,7 +639,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("Damageable"));
     assert_removed_trait_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -678,7 +678,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -693,7 +693,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("Damageable"));
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -733,7 +733,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -748,7 +748,7 @@ fn main() {
     assert_eq!(report.errors[0].target.as_deref(), Some("Damageable"));
     assert_changed_trait_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -788,7 +788,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -801,7 +801,7 @@ fn main() {
     assert_eq!(report.errors, Vec::new());
     assert!(report.changed_functions.contains(&"main".to_owned()));
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
@@ -834,7 +834,7 @@ fn on_kill(monster_id: int, player_id: int) {
 "#,
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -861,7 +861,7 @@ fn on_kill(monster_id: int, player_id: int) {
     assert_eq!(old, &vec!["player_id".to_owned(), "monster_id".to_owned()]);
     assert_eq!(new, &vec!["monster_id".to_owned(), "player_id".to_owned()]);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -900,7 +900,7 @@ fn on_kill(player_id: int, monster_id: int) {
 "#,
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -932,7 +932,7 @@ fn on_kill(player_id: int, monster_id: int) {
     assert_eq!(new.as_deref(), Some("quest.complete"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "on_kill",
             &[OwnedValue::Int(7), OwnedValue::Int(11)],
             CallOptions::unbounded(),
@@ -969,7 +969,7 @@ fn main() -> float {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 
@@ -1000,7 +1000,7 @@ fn main() -> float {
     assert_eq!(new.as_deref(), Some("float"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(1))
     );
 }
@@ -1031,7 +1031,7 @@ fn main(player_id: int, amount: int) {
 "#,
     );
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::Int(7)],
             CallOptions::unbounded(),
@@ -1061,7 +1061,7 @@ fn main(player_id: int, amount: int) {
     assert_eq!(function, "main");
     assert_eq!(added, &vec!["amount".to_owned()]);
     assert_eq!(
-        runtime.call(
+        runtime.call_raw(
             "main",
             &[OwnedValue::Int(7)],
             CallOptions::unbounded(),
@@ -1094,7 +1094,7 @@ fn main() {
     let mut tx = PatchTx::new();
 
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 
@@ -1111,7 +1111,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 
@@ -1125,7 +1125,7 @@ fn main() {
     assert_eq!(report.errors[0].code, "reload.function.access_changed");
     assert_changed_function_access_rejection(&report, "grant");
     assert_eq!(
-        runtime.call("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Int(2))
     );
 }
