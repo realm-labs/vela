@@ -154,7 +154,7 @@ VM bytecode execution
         ↓
 HostRef / PathProxy
         ↓
-HostAccess validates and counts write-through host mutations
+HostAccess validates and routes write-through host mutations
         ↓
 Rust adapter state is updated immediately
         ↓
