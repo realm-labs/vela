@@ -1007,50 +1007,35 @@ impl Vm {
                     segments,
                     value,
                 } => {
-                    let root = expect_host_ref(frame.read(*root)?, "push_host_path")?;
-                    let value =
-                        value_to_host(frame.read(*value)?, "push_host_path", heap.as_deref())?;
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    let path = host_path_from_segments(
-                        root,
+                    host_access::push_host_path(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
                         segments,
-                        &frame,
-                        heap.as_deref(),
+                        *value,
                         &mut symbols,
                     )?;
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host context",
-                        })
-                    })?;
-                    let base_value = host
-                        .tx
-                        .read_path_at(host.adapter, &path, instruction.span)?;
-                    if let Some(budget) = budget.as_deref() {
-                        budget.reserve_patch(host.tx.patches().len())?;
-                    }
-                    host.tx
-                        .push_path(path, value, base_value, instruction.span)?;
                 }
                 InstructionKind::RemoveHostPath { root, segments } => {
-                    let root = expect_host_ref(frame.read(*root)?, "remove_host_path")?;
                     let mut symbols = self.host_path_symbols.borrow_mut();
-                    let path = host_path_from_segments(
-                        root,
+                    host_access::remove_host_path(
+                        host_access::HostAccessRuntime {
+                            frame: &frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            source_span: instruction.span,
+                        },
+                        *root,
                         segments,
-                        &frame,
-                        heap.as_deref(),
                         &mut symbols,
                     )?;
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "host context",
-                        })
-                    })?;
-                    if let Some(budget) = budget.as_deref() {
-                        budget.reserve_patch(host.tx.patches().len())?;
-                    }
-                    host.tx.remove_path(path, instruction.span)?;
                 }
                 InstructionKind::CallHostMethod {
                     dst,

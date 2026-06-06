@@ -85,6 +85,68 @@ pub(crate) fn set_host_path(
     set_host_path_value(path, value, runtime)
 }
 
+pub(crate) fn push_host_path(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    segments: &[HostPathSegment],
+    value: Register,
+    symbols: &mut SymbolInterner,
+) -> VmResult<()> {
+    let root = expect_host_ref(runtime.frame.read(root)?, "push_host_path")?;
+    let value = value_to_host(
+        runtime.frame.read(value)?,
+        "push_host_path",
+        runtime.heap.as_deref(),
+    )?;
+    let path = host_path_from_segments(
+        root,
+        segments,
+        runtime.frame,
+        runtime.heap.as_deref(),
+        symbols,
+    )?;
+    let host = runtime.host.ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host context",
+        })
+    })?;
+    let base_value = host
+        .tx
+        .read_path_at(host.adapter, &path, runtime.source_span)?;
+    if let Some(budget) = runtime.budget.as_deref() {
+        budget.reserve_patch(host.tx.patches().len())?;
+    }
+    host.tx
+        .push_path(path, value, base_value, runtime.source_span)?;
+    Ok(())
+}
+
+pub(crate) fn remove_host_path(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: Register,
+    segments: &[HostPathSegment],
+    symbols: &mut SymbolInterner,
+) -> VmResult<()> {
+    let root = expect_host_ref(runtime.frame.read(root)?, "remove_host_path")?;
+    let path = host_path_from_segments(
+        root,
+        segments,
+        runtime.frame,
+        runtime.heap.as_deref(),
+        symbols,
+    )?;
+    let host = runtime.host.ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host context",
+        })
+    })?;
+    if let Some(budget) = runtime.budget.as_deref() {
+        budget.reserve_patch(host.tx.patches().len())?;
+    }
+    host.tx.remove_path(path, runtime.source_span)?;
+    Ok(())
+}
+
 pub(crate) fn call_host_method(
     runtime: HostAccessRuntime<'_, '_, '_>,
     root: Register,

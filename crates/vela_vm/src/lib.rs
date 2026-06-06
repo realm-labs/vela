@@ -58,8 +58,6 @@ use heap_values::{
     store_runtime_value, store_value_in_heap_if_needed, stored_runtime_value, value_from_constant,
     value_to_owned, values_equal,
 };
-use host_paths::host_path_from_segments;
-use host_values::value_to_host;
 use numeric_ops::{
     add_numeric, div_numeric, greater_equal_numeric, greater_numeric, less_equal_numeric,
     less_numeric, mul_numeric, negate_numeric, rem_numeric, sub_numeric,
