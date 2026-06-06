@@ -162,16 +162,26 @@ let mut runtime = Runtime::new(engine, program);
 ### Call
 
 ```rust
+let args = CallArgs::new()
+    .with_host_ref("account", account_ref)
+    .with_host_ref("invoice", invoice_ref)
+    .with_value("now", current_tick);
 let mut tx = PatchTx::new();
 
-runtime.call(
+runtime.call_args(
     "billing.on_invoice_paid",
-    &args![host(account), host(invoice)],
+    &args,
     CallOptions::unbounded(),
     &mut state_adapter,
     &mut tx,
 )?;
 ```
+
+`Runtime::call` still accepts positional `OwnedValue` slices for static call
+sites. Dynamic dispatch should prefer `CallArgs`: named entries are matched
+against the target function's parameter names and reordered before execution,
+while ordinary script values and host references can be mixed in the same
+argument list.
 
 ### Hot Reload
 

@@ -99,7 +99,7 @@ fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Bo
     let mut tx = PatchTx::new();
     let mut runtime = Runtime::new(engine, program);
     let result = runtime
-        .call(
+        .call_args(
             "main",
             &args,
             CallOptions::new(10_000, 1024 * 1024, 64, 1024),

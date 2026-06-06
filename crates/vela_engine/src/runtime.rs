@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use vela_bytecode::Program;
@@ -10,7 +11,7 @@ use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
-use vela_vm::error::VmResult;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
@@ -245,6 +246,18 @@ impl Runtime {
         }
     }
 
+    pub fn call_args(
+        &mut self,
+        entry: &str,
+        args: &CallArgs,
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+        tx: &mut PatchTx,
+    ) -> VmResult<OwnedValue> {
+        let resolved = self.resolve_call_args(entry, args)?;
+        self.call(entry, &resolved, options, adapter, tx)
+    }
+
     pub fn call_at_event_end_safe_point(
         &mut self,
         entry: &str,
@@ -256,6 +269,29 @@ impl Runtime {
         let value = self.call(entry, args, options, adapter, tx)?;
         let reload = self.check_optional_reload();
         Ok(EventCallSafePointReport { value, reload })
+    }
+
+    pub fn call_args_at_event_end_safe_point(
+        &mut self,
+        entry: &str,
+        args: &CallArgs,
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+        tx: &mut PatchTx,
+    ) -> VmResult<EventCallSafePointReport> {
+        let resolved = self.resolve_call_args(entry, args)?;
+        self.call_at_event_end_safe_point(entry, &resolved, options, adapter, tx)
+    }
+
+    fn resolve_call_args(&self, entry: &str, args: &CallArgs) -> VmResult<Vec<OwnedValue>> {
+        let code = self.program.function(entry).ok_or_else(|| VmError {
+            kind: VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            },
+            source_span: None,
+            call_stack: Default::default(),
+        })?;
+        args.resolve(entry, &code.params, &code.param_defaults)
     }
 
     fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
@@ -279,6 +315,190 @@ impl Runtime {
             *program = version.to_program();
         }
         Some(report)
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CallArgs {
+    entries: Vec<CallArg>,
+}
+
+impl CallArgs {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn from_positional(args: impl IntoIterator<Item = OwnedValue>) -> Self {
+        Self {
+            entries: args.into_iter().map(CallArg::Positional).collect(),
+        }
+    }
+
+    pub fn push(&mut self, value: impl Into<OwnedValue>) -> &mut Self {
+        self.entries.push(CallArg::Positional(value.into()));
+        self
+    }
+
+    pub fn push_value(
+        &mut self,
+        name: impl Into<String>,
+        value: impl Into<OwnedValue>,
+    ) -> &mut Self {
+        self.entries.push(CallArg::Named {
+            name: name.into(),
+            value: value.into(),
+        });
+        self
+    }
+
+    pub fn push_host_ref(
+        &mut self,
+        name: impl Into<String>,
+        host_ref: vela_host::path::HostRef,
+    ) -> &mut Self {
+        self.push_value(name, OwnedValue::HostRef(host_ref))
+    }
+
+    #[must_use]
+    pub fn with(mut self, value: impl Into<OwnedValue>) -> Self {
+        self.push(value);
+        self
+    }
+
+    #[must_use]
+    pub fn with_value(mut self, name: impl Into<String>, value: impl Into<OwnedValue>) -> Self {
+        self.push_value(name, value);
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_ref(
+        mut self,
+        name: impl Into<String>,
+        host_ref: vela_host::path::HostRef,
+    ) -> Self {
+        self.push_host_ref(name, host_ref);
+        self
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    fn resolve(
+        &self,
+        entry: &str,
+        params: &[String],
+        param_defaults: &[bool],
+    ) -> VmResult<Vec<OwnedValue>> {
+        match self.mode()? {
+            CallArgsMode::Empty | CallArgsMode::Positional => {
+                Ok(self.entries.iter().map(CallArg::value).cloned().collect())
+            }
+            CallArgsMode::Named => self.resolve_named(entry, params, param_defaults),
+        }
+    }
+
+    fn mode(&self) -> VmResult<CallArgsMode> {
+        let mut has_positional = false;
+        let mut has_named = false;
+        for entry in &self.entries {
+            match entry {
+                CallArg::Positional(_) => has_positional = true,
+                CallArg::Named { .. } => has_named = true,
+            }
+        }
+        match (has_positional, has_named) {
+            (false, false) => Ok(CallArgsMode::Empty),
+            (true, false) => Ok(CallArgsMode::Positional),
+            (false, true) => Ok(CallArgsMode::Named),
+            (true, true) => Err(call_args_type_error(
+                "mixed positional and named call arguments",
+            )),
+        }
+    }
+
+    fn resolve_named(
+        &self,
+        entry: &str,
+        params: &[String],
+        param_defaults: &[bool],
+    ) -> VmResult<Vec<OwnedValue>> {
+        let mut values = BTreeMap::new();
+        for arg in &self.entries {
+            let CallArg::Named { name, value } = arg else {
+                continue;
+            };
+            if !params.iter().any(|param| param == name) {
+                return Err(call_args_type_error("unknown named call argument"));
+            }
+            if values.insert(name.clone(), value.clone()).is_some() {
+                return Err(call_args_type_error("duplicate named call argument"));
+            }
+        }
+
+        let mut resolved = Vec::with_capacity(params.len());
+        for (index, param) in params.iter().enumerate() {
+            if let Some(value) = values.remove(param) {
+                resolved.push(value);
+            } else if param_defaults.get(index).copied().unwrap_or(false) {
+                resolved.push(OwnedValue::Missing);
+            } else {
+                return Err(VmError {
+                    kind: VmErrorKind::ArityMismatch {
+                        name: entry.to_owned(),
+                        expected: params.len(),
+                        actual: self.entries.len(),
+                    },
+                    source_span: None,
+                    call_stack: Default::default(),
+                });
+            }
+        }
+        Ok(resolved)
+    }
+}
+
+impl From<Vec<OwnedValue>> for CallArgs {
+    fn from(value: Vec<OwnedValue>) -> Self {
+        Self::from_positional(value)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum CallArg {
+    Positional(OwnedValue),
+    Named { name: String, value: OwnedValue },
+}
+
+impl CallArg {
+    fn value(&self) -> &OwnedValue {
+        match self {
+            Self::Positional(value) | Self::Named { value, .. } => value,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CallArgsMode {
+    Empty,
+    Positional,
+    Named,
+}
+
+fn call_args_type_error(operation: &'static str) -> VmError {
+    VmError {
+        kind: VmErrorKind::TypeMismatch { operation },
+        source_span: None,
+        call_stack: Default::default(),
     }
 }
 

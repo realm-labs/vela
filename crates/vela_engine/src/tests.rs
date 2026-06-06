@@ -6,6 +6,7 @@ mod host_methods;
 mod native;
 mod random;
 mod reflection;
+mod runtime_args;
 mod source_reload;
 mod typed_host;
 mod typed_native;

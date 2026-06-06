@@ -3,6 +3,7 @@ use std::error::Error;
 
 use vela_bytecode::CodeObject;
 use vela_common::{HostObjectId, SymbolInterner};
+use vela_engine::runtime::CallArgs;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
@@ -157,16 +158,23 @@ impl DemoHostState {
         }
     }
 
-    pub(crate) fn main_args(&self, main: &CodeObject) -> Result<Vec<OwnedValue>, Box<dyn Error>> {
-        main.params
-            .iter()
-            .map(|param| match param.as_str() {
-                "player" => Ok(OwnedValue::HostRef(self.player_arg)),
-                "ctx" => Ok(OwnedValue::HostRef(self.ctx)),
-                "monster" => Ok(OwnedValue::HostRef(self.monster)),
-                _ => Err(format!("unsupported demo main parameter `{param}`").into()),
-            })
-            .collect()
+    pub(crate) fn main_args(&self, main: &CodeObject) -> Result<CallArgs, Box<dyn Error>> {
+        let mut args = CallArgs::new();
+        for param in &main.params {
+            match param.as_str() {
+                "player" => {
+                    args.push_host_ref("player", self.player_arg);
+                }
+                "ctx" => {
+                    args.push_host_ref("ctx", self.ctx);
+                }
+                "monster" => {
+                    args.push_host_ref("monster", self.monster);
+                }
+                _ => return Err(format!("unsupported demo main parameter `{param}`").into()),
+            }
+        }
+        Ok(args)
     }
 
     pub(crate) fn print_result(

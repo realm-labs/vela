@@ -89,6 +89,42 @@ impl From<&Constant> for OwnedValue {
     }
 }
 
+impl From<bool> for OwnedValue {
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl From<i64> for OwnedValue {
+    fn from(value: i64) -> Self {
+        Self::Int(value)
+    }
+}
+
+impl From<f64> for OwnedValue {
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl From<String> for OwnedValue {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<&str> for OwnedValue {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
+    }
+}
+
+impl From<HostRef> for OwnedValue {
+    fn from(value: HostRef) -> Self {
+        Self::HostRef(value)
+    }
+}
+
 pub fn owned_to_value_detached(value: OwnedValue) -> Value {
     match value {
         OwnedValue::Missing => Value::Missing,
