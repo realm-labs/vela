@@ -20,7 +20,7 @@ pub enum ReflectPermission {
 }
 
 impl ReflectPermission {
-    pub const ALL: &'static [Self] = &[
+    pub const ALL: [Self; 9] = [
         Self::ReadTypeInfo,
         Self::ReadValueFields,
         Self::WriteValueFields,
@@ -50,57 +50,64 @@ impl ReflectPermission {
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL
-            .iter()
-            .copied()
+            .into_iter()
             .find(|permission| permission.as_str() == name)
+    }
+
+    const fn bit(self) -> u16 {
+        1 << (self as u8)
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ReflectPermissionSet {
-    permissions: BTreeSet<ReflectPermission>,
+    bits: u16,
 }
 
 impl ReflectPermissionSet {
     #[must_use]
-    pub fn new() -> Self {
-        Self {
-            permissions: BTreeSet::new(),
+    pub const fn new() -> Self {
+        Self { bits: 0 }
+    }
+
+    #[must_use]
+    pub const fn all() -> Self {
+        let mut bits = 0;
+        let mut index = 0;
+        while index < ReflectPermission::ALL.len() {
+            bits |= ReflectPermission::ALL[index].bit();
+            index += 1;
         }
+        Self { bits }
     }
 
     #[must_use]
-    pub fn all() -> Self {
-        ReflectPermission::ALL
-            .iter()
-            .copied()
-            .fold(Self::new(), Self::with)
-    }
-
-    #[must_use]
-    pub fn read_only() -> Self {
+    pub const fn read_only() -> Self {
         Self::new()
             .with(ReflectPermission::ReadTypeInfo)
             .with(ReflectPermission::ReadValueFields)
     }
 
     #[must_use]
-    pub fn with(mut self, permission: ReflectPermission) -> Self {
-        self.insert(permission);
+    pub const fn with(mut self, permission: ReflectPermission) -> Self {
+        self.bits |= permission.bit();
         self
     }
 
     pub fn insert(&mut self, permission: ReflectPermission) {
-        self.permissions.insert(permission);
+        self.bits |= permission.bit();
     }
 
     #[must_use]
-    pub fn contains(&self, permission: ReflectPermission) -> bool {
-        self.permissions.contains(&permission)
+    pub const fn contains(&self, permission: ReflectPermission) -> bool {
+        self.bits & permission.bit() != 0
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = ReflectPermission> + '_ {
-        self.permissions.iter().copied()
+    pub fn iter(&self) -> impl Iterator<Item = ReflectPermission> {
+        let bits = self.bits;
+        ReflectPermission::ALL
+            .into_iter()
+            .filter(move |permission| bits & permission.bit() != 0)
     }
 
     pub fn require(&self, permission: ReflectPermission) -> ReflectResult<()> {
