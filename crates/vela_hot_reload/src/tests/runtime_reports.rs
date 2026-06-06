@@ -166,6 +166,17 @@ fn main() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(runtime.current().id, old.id);
+    assert!(runtime.current().function_profile("helper").is_none());
+    assert_eq!(
+        runtime
+            .current()
+            .function_profile("main")
+            .expect("current main profile")
+            .instruction_count(),
+        old.function_profile("main")
+            .expect("old main profile")
+            .instruction_count()
+    );
     assert!(!runtime.has_pending_update());
     assert_eq!(report.errors[0].code, "reload.function.new_denied");
     assert_eq!(
