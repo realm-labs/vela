@@ -22,6 +22,11 @@ decision history lives in
 - Ordinary active source files should stay under 1200 lines unless a clear
   exception is documented. Over-threshold implementation and test files should
   be reviewed and split by responsibility when no exception exists.
+- `crates/vela_vm/src/execution.rs` may exceed the ordinary 1200-line threshold
+  when it remains opcode dispatch glue. New semantic work should still move
+  into focused VM modules, and the dispatch loop should only decode operands,
+  charge budgets, preserve source spans, update control flow, and call those
+  boundaries.
 - Standard library and builtin APIs must remain domain-neutral. Game-specific,
   commerce-specific, or other business-domain capabilities belong in Engine
   host registration, native functions, schemas, or examples, not in builtin
