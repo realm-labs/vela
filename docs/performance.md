@@ -2605,6 +2605,36 @@ normalization path. `managed_heap_array_lookup` was also observed because it
 uses the same helper for `first`, `last`, and `index_of`, but repeated quick
 runs were too noisy to claim a focused lookup win from this checkpoint.
 
+### 2026-06-06 M19 Rejected Map Callback Arity Cache Candidate
+
+This measurement checkpoint tested caching the callback closure parameter count
+once per map higher-order method invocation instead of calling
+`expect_closure(...).code.params.len()` for every map entry. The candidate kept
+empty-map behavior unchanged by resolving the arity lazily on the first actual
+callback invocation, preserved callback argument construction, root protection,
+managed heap behavior, and checksums, then was reverted after measurement.
+
+Validation:
+
+```bash
+cargo test -p vela_vm map_methods
+cargo fmt --all -- --check
+cargo clippy -p vela_vm --all-targets -- -D warnings
+cargo bench -p vela_vm --bench baseline managed_heap_map_callbacks -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Candidate run 3 mean ns | Checksum |
+|---|---:|---:|---:|---:|---:|
+| managed_heap_map_callbacks | 5152208 | 5298250 | 5051417 | 5253750 | 2601892725534891372 |
+
+The candidate was not accepted because repeated quick runs did not preserve a
+focused improvement signal. The extra cache plumbing also made the map
+higher-order call path more complex, so future callback work should look for a
+broader invocation-path improvement or stronger default-run evidence before
+reintroducing this shape.
+
 ## Targets
 
 The post-MVP non-JIT target is:
