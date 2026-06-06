@@ -95,11 +95,10 @@ fn compiled_source_host_indexed_method_call_counts_path_mutation() {
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
     let method = HostMethodId::new(10);
-    let item_key = Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"));
     let item_path = HostPath::new(host_ref)
         .field(inventory)
         .field(items)
-        .key(item_key);
+        .key("gold");
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"

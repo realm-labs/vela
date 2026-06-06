@@ -1,4 +1,4 @@
-use vela_common::{FieldId, HostMethodId, Span, Symbol};
+use vela_common::{FieldId, HostMethodId, Span};
 
 use crate::{
     adapter::ScriptStateAdapter, error::HostResult, path::HostPath, tx::PatchTx, value::HostValue,
@@ -38,7 +38,7 @@ impl PathProxy {
     }
 
     #[must_use]
-    pub fn key(mut self, key: Symbol) -> Self {
+    pub fn key(mut self, key: impl Into<String>) -> Self {
         self.path = self.path.key(key);
         self
     }

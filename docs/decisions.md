@@ -151,6 +151,13 @@ call-scope `HostRef` handles. Field access still goes through a
 `&mut T` enables write-through mutation without exposing the real reference to
 script code.
 
+Host path map keys store the script string key, not an opaque VM symbol. This
+lets directly injected Rust objects and generic adapters resolve
+`player.inventory["gold"]` without reaching back into VM symbol interners.
+Host object method dispatch receives the full receiver `HostPath`, so root
+methods, child collection methods, and trait-object field methods share the
+same registration and permission model.
+
 High-level embedding calls may construct `PatchTx` internally and return a
 `CallOutput` that dereferences to the script return `OwnedValue`. This keeps
 ordinary call sites value-focused while still exposing `mutation_count()` for

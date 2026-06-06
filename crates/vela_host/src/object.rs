@@ -31,12 +31,17 @@ pub trait ScriptHostObject {
 
     fn call_host_method(
         &mut self,
+        path: &HostPath,
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
         let _ = args;
         Err(HostError {
-            kind: HostErrorKind::UnsupportedMethod { method },
+            kind: if path.segments.is_empty() {
+                HostErrorKind::UnsupportedMethod { method }
+            } else {
+                HostErrorKind::MissingPath { path: path.clone() }
+            },
             source_span: None,
         })
     }

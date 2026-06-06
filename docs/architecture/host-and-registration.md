@@ -55,7 +55,7 @@ pub struct HostPath {
 pub enum PathSegment {
     Field(FieldId),
     Index(u32),
-    Key(Symbol),
+    Key(String),
     VariantField(FieldId),
 }
 ```
@@ -143,12 +143,15 @@ the mutation descriptor, writes the adapter, and increments the mutation count.
 This keeps range checks, permissions, budgets, and source-spanned diagnostics
 in one host mutation boundary without retaining a growing patch journal.
 
-Collection-shaped host mutations must be adapter-defined write-through
-operations. The default host boundary must not read a complex host collection,
-clone it into `HostValue`, modify the clone, and write it back. `PatchOp::Push`
-may be used as the current operation descriptor when an adapter supports that
-operation, but scalar-only `HostValue` conversion cannot synthesize collection
-mutation by copying arrays or maps.
+Map-like host paths keep script string keys in `PathSegment::Key(String)` so
+directly injected Rust objects and generic adapters can resolve the key without
+depending on VM-internal symbol tables. Collection-shaped host mutations must
+be adapter-defined write-through operations. The default host boundary must not
+read a complex host collection, clone it into `HostValue`, modify the clone,
+and write it back. `PatchOp::Push` may be used as the current operation
+descriptor when an adapter supports that operation, but scalar-only
+`HostValue` conversion cannot synthesize collection mutation by copying arrays
+or maps.
 
 ### Host State Adapter
 
@@ -181,6 +184,12 @@ database entities
 network-replicated state
 test mock state
 ```
+
+Direct call-boundary objects implement the same method shape through
+`ScriptHostObject::call_host_method(&HostPath, HostMethodId, &[HostValue])`.
+Passing the receiver path is required for child methods such as
+`player.inventory.add("gold", 10)` and trait-object fields whose callable
+surface lives behind a host path.
 
 ### Direct Call Arguments
 

@@ -738,7 +738,7 @@ impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
     ) -> HostResult<HostValue> {
         match self.direct_binding_mut(path) {
             Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(path, "call")),
-            Some(HostArgBinding::Mutable(object)) => object.call_host_method(method, args),
+            Some(HostArgBinding::Mutable(object)) => object.call_host_method(path, method, args),
             None => self.fallback.call_method(path, method, args),
         }
     }

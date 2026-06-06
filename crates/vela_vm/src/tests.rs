@@ -2,7 +2,6 @@ use super::*;
 use crate::budget::ExecutionBudgetKind;
 use crate::heap::{GcBudget, HeapValue, ScriptHeap};
 use std::collections::BTreeMap;
-use std::num::NonZeroU32;
 use std::sync::Arc;
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
@@ -11,8 +10,8 @@ use vela_bytecode::compiler::{
 };
 use vela_bytecode::{Constant, ConstantId, HostPathSegment, Instruction, InstructionOffset};
 use vela_common::{
-    FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, Symbol,
-    TypeId, VariantId,
+    FieldId, FunctionId, HostMethodId, HostObjectId, HostTypeId, MethodId, SourceId, TypeId,
+    VariantId,
 };
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use vela_host::error::HostErrorKind;

@@ -10,7 +10,7 @@ pub(crate) fn host_path_from_segments(
     segments: &[HostPathSegment],
     frame: &CallFrame,
     heap: Option<&HeapExecution<'_>>,
-    symbols: &mut SymbolInterner,
+    _symbols: &mut SymbolInterner,
 ) -> VmResult<HostPath> {
     if let Some(path) = static_host_path_from_segments(root, segments) {
         return Ok(path);
@@ -31,7 +31,7 @@ pub(crate) fn host_path_from_segments(
                         })?;
                         path.index(index)
                     }
-                    OwnedValue::String(key) => path.key(symbols.intern(&key)),
+                    OwnedValue::String(key) => path.key(key),
                     _ => {
                         return Err(VmError::new(VmErrorKind::TypeMismatch {
                             operation: "host path index",

@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use vela_bytecode::CodeObject;
-use vela_common::{HostObjectId, SymbolInterner};
+use vela_common::HostObjectId;
 use vela_engine::runtime::CallArgs;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
@@ -77,12 +77,10 @@ impl DemoHostState {
             .variant_field(ids.quest_count_field);
         let quest_goal_path = HostPath::new(player).field(ids.quest_goal_field);
         let quest_done_path = quest_progress_path.variant_field(ids.quest_done_field);
-        let mut symbols = SymbolInterner::new();
-        let gold_key = symbols.intern("gold");
         let inventory_gold_count_path = HostPath::new(player)
             .field(ids.inventory_field)
             .field(ids.items_field)
-            .key(gold_key)
+            .key("gold")
             .field(ids.count_field);
         let now_path = HostPath::new(ctx).field(ids.now_field);
         let tick_path = HostPath::new(ctx).field(ids.tick_field);

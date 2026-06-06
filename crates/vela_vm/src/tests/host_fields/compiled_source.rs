@@ -263,11 +263,10 @@ fn compiled_source_removes_host_path_through_patch_tx() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
-    let item_key = Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"));
     let item_path = HostPath::new(host_ref)
         .field(inventory)
         .field(items)
-        .key(item_key);
+        .key("gold");
     let program = compile_program_source_with_options(
         SourceId::new(1),
         r#"
@@ -316,11 +315,10 @@ fn compiled_source_mutates_indexed_host_field_through_patch_tx() {
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
     let count = FieldId::new(10);
-    let item_key = Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"));
     let item_count = HostPath::new(host_ref)
         .field(inventory)
         .field(items)
-        .key(item_key)
+        .key("gold")
         .field(count);
     let program = compile_program_source_with_options(
         SourceId::new(1),

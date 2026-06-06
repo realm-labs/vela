@@ -1,4 +1,4 @@
-use vela_common::{FieldId, HostObjectId, HostTypeId, Symbol};
+use vela_common::{FieldId, HostObjectId, HostTypeId};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostRef {
@@ -54,8 +54,8 @@ impl HostPath {
     }
 
     #[must_use]
-    pub fn key(mut self, key: Symbol) -> Self {
-        self.segments.push(PathSegment::Key(key));
+    pub fn key(mut self, key: impl Into<String>) -> Self {
+        self.segments.push(PathSegment::Key(key.into()));
         self
     }
 
@@ -75,7 +75,7 @@ impl HostPath {
 pub enum PathSegment {
     Field(FieldId),
     Index(u32),
-    Key(Symbol),
+    Key(String),
     VariantField(FieldId),
 }
 
@@ -109,7 +109,7 @@ impl HostPathKey {
             key = match segment {
                 PathSegment::Field(field) => key.field(*field),
                 PathSegment::Index(index) => key.index(*index),
-                PathSegment::Key(symbol) => key.key(*symbol),
+                PathSegment::Key(symbol) => key.key(symbol.clone()),
                 PathSegment::VariantField(field) => key.variant_field(*field),
             };
         }
@@ -129,8 +129,8 @@ impl HostPathKey {
     }
 
     #[must_use]
-    pub fn key(mut self, key: Symbol) -> Self {
-        self.segments.push(PathKeySegment::Key(key));
+    pub fn key(mut self, key: impl Into<String>) -> Self {
+        self.segments.push(PathKeySegment::Key(key.into()));
         self
     }
 
@@ -156,7 +156,7 @@ impl From<&HostPath> for HostPathKey {
 pub enum PathKeySegment {
     Field(FieldId),
     Index(u32),
-    Key(Symbol),
+    Key(String),
     VariantField(FieldId),
 }
 
@@ -238,9 +238,7 @@ impl PartialOrd for PathKeySegments {
 
 #[cfg(test)]
 mod tests {
-    use std::num::NonZeroU32;
-
-    use vela_common::{FieldId, HostObjectId, HostTypeId, Symbol};
+    use vela_common::{FieldId, HostObjectId, HostTypeId};
 
     use super::*;
 
@@ -264,7 +262,7 @@ mod tests {
         let path = HostPath::new(root)
             .field(FieldId::new(2))
             .index(4)
-            .key(Symbol::new(NonZeroU32::new(9).expect("non-zero symbol")))
+            .key("gold")
             .variant_field(FieldId::new(5));
 
         let key = path.path_key();
@@ -274,7 +272,7 @@ mod tests {
             HostPathKey::new(root)
                 .field(FieldId::new(2))
                 .index(4)
-                .key(Symbol::new(NonZeroU32::new(9).expect("non-zero symbol")))
+                .key("gold")
                 .variant_field(FieldId::new(5))
         );
     }

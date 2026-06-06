@@ -2,7 +2,6 @@
 
 use std::error::Error;
 use std::hint::black_box;
-use std::num::NonZeroU32;
 use std::time::{Duration, Instant};
 
 use vela_bytecode::compiler::options::CompilerOptions;
@@ -10,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_function_source, compile_program_source, compile_program_source_with_options,
 };
 use vela_bytecode::{CodeObject, Program};
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, Symbol};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
@@ -467,7 +466,7 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
     let inventory_gold_count_path = HostPath::new(player)
         .field(INVENTORY_FIELD)
         .field(ITEMS_FIELD)
-        .key(gold_symbol())
+        .key("gold")
         .field(ITEM_COUNT_FIELD);
     let quest_count_path = HostPath::new(player)
         .field(QUEST_PROGRESS_FIELD)
@@ -529,10 +528,6 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
             + host_int(&adapter, quest_count_path)?
             + i64::from(host_bool(&adapter, quest_done_path)?),
     ))
-}
-
-fn gold_symbol() -> Symbol {
-    Symbol::new(NonZeroU32::new(1).expect("non-zero symbol"))
 }
 
 fn host_int(adapter: &MockStateAdapter, path: HostPath) -> Result<i64, Box<dyn Error>> {

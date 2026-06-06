@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use vela_bytecode::compiler::compile_program_source_with_options;
-use vela_common::{FieldId, HostObjectId, HostTypeId, SourceId, TypeId};
+use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
@@ -7,6 +9,7 @@ use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostPath, HostRef, PathSegment};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
+use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
@@ -18,6 +21,23 @@ use super::player_type;
 #[derive(Debug, Eq, PartialEq)]
 struct DirectPlayer {
     level: i64,
+    inventory: BTreeMap<String, i64>,
+}
+
+fn direct_player(level: i64) -> DirectPlayer {
+    DirectPlayer {
+        level,
+        inventory: BTreeMap::new(),
+    }
+}
+
+fn direct_player_type() -> TypeDesc {
+    TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+        .host_type(HostTypeId::new(1))
+        .field(FieldDesc::new(FieldId::new(1), "level").writable(true))
+        .field(FieldDesc::new(FieldId::new(2), "inventory").writable(true))
+        .method(MethodDesc::new(HostMethodId::new(10), "grant_exp"))
+        .method(MethodDesc::new(HostMethodId::new(11), "add"))
 }
 
 impl ScriptHostObject for DirectPlayer {
@@ -29,6 +49,9 @@ impl ScriptHostObject for DirectPlayer {
         match path.segments.as_slice() {
             [PathSegment::Field(field)] if *field == FieldId::new(1) => {
                 Ok(HostValue::Int(self.level))
+            }
+            [PathSegment::Field(field), PathSegment::Key(key)] if *field == FieldId::new(2) => {
+                Ok(HostValue::Int(*self.inventory.get(key).unwrap_or(&0)))
             }
             _ => Err(HostError {
                 kind: HostErrorKind::MissingPath { path: path.clone() },
@@ -43,8 +66,40 @@ impl ScriptHostObject for DirectPlayer {
                 self.level = level;
                 Ok(())
             }
+            ([PathSegment::Field(field), PathSegment::Key(key)], HostValue::Int(count))
+                if *field == FieldId::new(2) =>
+            {
+                self.inventory.insert(key.clone(), count);
+                Ok(())
+            }
             _ => Err(HostError {
                 kind: HostErrorKind::MissingPath { path: path.clone() },
+                source_span: None,
+            }),
+        }
+    }
+
+    fn call_host_method(
+        &mut self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        match (path.segments.as_slice(), method, args) {
+            ([], method, [HostValue::Int(amount)]) if method == HostMethodId::new(10) => {
+                self.level += amount;
+                Ok(HostValue::Int(self.level))
+            }
+            (
+                [PathSegment::Field(field)],
+                method,
+                [HostValue::String(key), HostValue::Int(amount)],
+            ) if *field == FieldId::new(2) && method == HostMethodId::new(11) => {
+                *self.inventory.entry(key.clone()).or_insert(0) += amount;
+                Ok(HostValue::Null)
+            }
+            _ => Err(HostError {
+                kind: HostErrorKind::UnsupportedMethod { method },
                 source_span: None,
             }),
         }
@@ -240,7 +295,7 @@ fn main(player: Player, amount) {
     )
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
-    let mut player = DirectPlayer { level: 9 };
+    let mut player = direct_player(9);
     let output = runtime
         .call(
             "main",
@@ -254,6 +309,77 @@ fn main(player: Player, amount) {
     assert_eq!(&*output, &OwnedValue::Int(13));
     assert_eq!(player.level, 13);
     assert_eq!(output.mutation_count(), 1);
+}
+
+#[test]
+fn runtime_call_args_host_mut_writes_string_key_map_path_to_rust_object() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player, amount) {
+    player.inventory["gold"] += amount;
+    return player.inventory["gold"];
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let mut player = direct_player(9);
+    player.inventory.insert("gold".to_owned(), 3);
+
+    let output = runtime
+        .call(
+            "main",
+            CallArgs::new()
+                .with_host_mut("player", &mut player)
+                .with_value("amount", 4_i64),
+            CallOptions::unbounded(),
+        )
+        .expect("runtime direct map path should run");
+
+    assert_eq!(&*output, &OwnedValue::Int(7));
+    assert_eq!(player.inventory.get("gold"), Some(&7));
+    assert_eq!(output.mutation_count(), 1);
+}
+
+#[test]
+fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    let level = player.grant_exp(2);
+    player.inventory.add("gold", 5);
+    return level + player.inventory["gold"];
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let mut player = direct_player(9);
+
+    let output = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("player", &mut player),
+            CallOptions::unbounded(),
+        )
+        .expect("runtime direct host methods should run");
+
+    assert_eq!(&*output, &OwnedValue::Int(16));
+    assert_eq!(player.level, 11);
+    assert_eq!(player.inventory.get("gold"), Some(&5));
+    assert_eq!(output.mutation_count(), 2);
 }
 
 #[test]
@@ -274,7 +400,7 @@ fn main(player: Player, amount) {
     )
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
-    let mut player = DirectPlayer { level: 9 };
+    let mut player = direct_player(9);
 
     let output = runtime
         .call(
@@ -309,7 +435,7 @@ fn main(player: Player) {
     )
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
-    let mut player = DirectPlayer { level: 9 };
+    let mut player = direct_player(9);
     let mut args = CallArgs::new().with_host_mut("player", &mut player);
     let mut adapter = MockStateAdapter::new();
     let mut tx = PatchTx::new();
@@ -349,7 +475,7 @@ fn main(player: Player) {
     )
     .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
-    let player = DirectPlayer { level: 9 };
+    let player = direct_player(9);
 
     let error = runtime
         .call(
