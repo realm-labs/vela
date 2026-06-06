@@ -2295,6 +2295,38 @@ optimization should measure narrower alternatives such as compact single-field
 keys, overlay-specific short transaction storage, or specialized host-field
 opcodes instead of broadening every `HostPath` value.
 
+### 2026-06-06 M19 Rejected Linear PatchOverlay Candidate
+
+This measurement checkpoint tested replacing the transaction overlay storage
+from `BTreeMap<HostPath, OverlayEntry>` to a linear
+`Vec<(HostPath, OverlayEntry)>`. The candidate targeted short host transactions
+by avoiding tree-node allocation and sorted-key maintenance while preserving
+read-after-write behavior, tombstones for removed paths, expected-base tracking,
+source spans, and all `PatchTx` public semantics.
+
+Validation:
+
+```bash
+cargo test -p vela_host
+cargo test -p vela_vm host_fields
+cargo test -p vela_engine typed_host
+cargo bench -p vela_vm --bench baseline host_patch_tx -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| host_patch_tx | 29542 | 33145 | 31042 | 8875875486420011969 |
+| gameplay_monster_kill | 77771 | 76895 | 76771 | 11641737387043360531 |
+
+The candidate was not accepted because the focused `host_patch_tx` benchmark
+regressed across repeated quick runs. The gameplay-host row was slightly faster,
+but not enough to justify replacing the current overlay structure without a
+clear host-focused win. Future overlay work should use a more targeted hybrid
+or compact-key design instead of replacing all overlay lookups with a linear
+scan.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for
