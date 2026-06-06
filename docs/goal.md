@@ -679,6 +679,41 @@ docs/progress.md names remaining measured bottlenecks or marks M19 complete
 enough for inline caches
 ```
 
+### M19.5: Performance Architecture Prep
+
+Goal: remove avoidable dynamic lookup and boundary-conversion costs before
+building inline caches or JIT-facing specialization.
+
+Scope:
+
+```text
+lower hot call sites from names to stable IDs, slots, or resolved call targets
+split bytecode diagnostics metadata from hot operands where practical
+prepare method dispatch for receiver-shape/type + MethodId direct lookup
+prepare native and stdlib calls for ID-based lookup and borrowed Value views
+prepare HostPath and PatchTx hot paths for reusable path keys and direct adapter thunks
+keep record/enum heap values compatible with shape + slot fast paths
+define verified-bytecode invariants needed for unchecked register access later
+document which host, reflection, GC, budget, and hot-reload checks remain mandatory slow-path boundaries
+```
+
+Acceptance:
+
+```text
+script, native, stdlib, method, and host-boundary hot paths have ID/slot/cache-ready representations
+name strings remain available for diagnostics, reflection, and source reports, not hot dispatch
+no preparatory change bypasses PatchTx, ExecutionBudget, GC roots, reflection policy, or hot-reload ABI checks
+benchmarks identify which remaining costs belong to M20 cache work versus later JIT work
+```
+
+Checkpoint:
+
+```text
+cargo test covers resolved-call and slot/path fast-path equivalence with generic fallback
+cargo bench records interpreter-only before/after rows for each accepted prep family
+docs/progress.md marks M19.5 complete before M20 inline-cache work becomes the active focus
+```
+
 ### M20: Inline Cache And Specialization
 
 Goal: specialize common dynamic operations while preserving VM semantics and

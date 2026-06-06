@@ -92,23 +92,25 @@ External quick comparison per-iteration means:
 
 ## Current Conclusions
 
-M19 is complete enough for M20. The interpreter/heap phase delivered measured
+M19 is complete enough for M19.5. The interpreter/heap phase delivered measured
 improvements in GC pacing, direct heap aggregate construction, argument
 materialization/storage, borrowed receiver views, collection/string/Option/
 Result helpers, scalar equality/constant loads, peephole lowering, range-loop
 lowering, small record/enum fields, and short array construction.
 
 The Lua 5.x target is not met across all microbenchmarks. Remaining gaps are
-now cache-shaped:
+cache-shaped, but M20 should wait until the hot operands are cache-ready:
 
-- script record field slot reads and writes
-- host field/path reads, writes, and RMW operations
-- method and stdlib dispatch
-- callback invocation and hot closure calls
-- hot bytecode offset profiling and specialization
-- cache invalidation across hot reload and schema ABI changes
+- script record field slot reads and writes need shape/slot-ready operands
+- host field/path reads, writes, and RMW operations need reusable path keys
+- method and stdlib dispatch need ID or resolved-target lookup
+- native/stdlib calls need lower materialization through borrowed Value views
+- callback invocation and hot closure calls need lower root/materialization cost
+- hot bytecode offset profiling needs versioned ownership before specialization
+- cache invalidation must stay tied to hot reload and schema ABI changes
 
-M20 reports must separate interpreter-only and cache-enabled results.
+M19.5 reports interpreter-only before/after rows for each prep family. M20
+reports must separate interpreter-only and cache-enabled results.
 
 ## Targets
 
@@ -124,6 +126,7 @@ Reference tiers:
 | Tier | Purpose |
 |---|---|
 | Vela interpreter | Correctness-preserving baseline before caches. |
+| Vela prep-enabled | M19.5 ID/slot/target/path-key prep before caches. |
 | Vela cache-enabled | M20 inline-cache and specialization target. |
 | Lua 5.x | Primary non-JIT comparison target. |
 | LuaJIT / Node.js | Upper-reference points for future JIT decisions. |

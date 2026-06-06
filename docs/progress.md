@@ -13,18 +13,19 @@ to be archived.
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT
-interpreter/heap optimization checkpoint. Current work is centered on M20
-inline caches and specialization:
+interpreter/heap optimization checkpoint. Current work is centered on M19.5
+performance architecture prep before M20 inline caches:
 
 ```text
 preserve all runtime, host, reflection, GC, and hot-reload semantics
-specialize only operations with measured hot paths
-keep guarded slow-path fallback for cache misses and invalidation
+move hot dispatch operands from names to IDs, slots, or resolved targets
+prepare cache/JIT-facing fast paths while keeping generic fallback behavior
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable host-boundary workloads
-through M20 cache work before debugger/DAP work and Cranelift JIT.
+through M19.5 architecture prep and M20 cache work before debugger/DAP work and
+Cranelift JIT.
 
 ## Milestone Snapshot
 
@@ -44,7 +45,8 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
 | M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
-| M20 | Partial | Inline caches and specialization are now the active focus, starting with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
+| M19.5 | Active | Performance architecture prep is the active focus: resolve hot call sites to IDs/slots/targets, prepare method/native/stdlib dispatch for cache-ready lookup, prepare HostPath/PatchTx fast-path keys, and define verified-bytecode invariants before M20 cache state. |
+| M20 | Not started | Inline caches and specialization start after M19.5, beginning with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -89,18 +91,26 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
   string fast paths, Option/Result helpers, scalar equality and constant loads,
   peephole/range-loop lowering, small record/enum field construction, and short
   array construction.
-- The remaining Lua 5.x deltas are concentrated in cache-shaped paths: script
-  record field slots, host field/path reads and writes, method and stdlib
-  dispatch, callback invocation, hot closure calls, hot bytecode offsets, and
-  cache invalidation across hot reload or schema ABI changes.
+- The remaining Lua 5.x deltas are concentrated in cache-shaped paths, but
+  M20 should not start until their operands are cache-ready: script record
+  fields need shape/slot representations, host field/path reads and writes
+  need reusable path keys, method and stdlib dispatch need ID/target lookup,
+  callback and closure calls need lower materialization overhead, and hot
+  bytecode offsets need versioned ownership for invalidation.
 
 ### Remaining Gaps
 
-- M20: implement guarded inline caches and specialization for script record
-  fields, host field/path reads and writes, method dispatch, stdlib value
-  methods, and hot bytecode offsets. Cache misses, guard failures, hot reload,
-  and schema ABI changes must fall back or invalidate without changing
-  semantics.
+- M19.5: prepare hot paths for M20 by replacing avoidable name dispatch with
+  IDs, slots, or resolved call targets; splitting diagnostic strings from hot
+  operands where practical; preparing native/stdlib calls for borrowed Value
+  views; preparing HostPath/PatchTx reusable path keys or direct adapter
+  thunks; and defining verified-bytecode invariants for later unchecked
+  register access.
+- M20: after M19.5, implement guarded inline caches and specialization for
+  script record fields, host field/path reads and writes, method dispatch,
+  stdlib value methods, and hot bytecode offsets. Cache misses, guard failures,
+  hot reload, and schema ABI changes must fall back or invalidate without
+  changing semantics.
 - Lua 5.x comparable performance remains a measured target for cache-enabled
   non-JIT host-boundary workloads; scalar, array, string, function-call, and
   callback deltas should be tracked separately from host-boundary benchmarks.
@@ -116,19 +126,23 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For current M20 work, run focused correctness tests for touched runtime/cache
-areas plus interpreter-only versus cache-enabled benchmark rows. Specialized
-paths must preserve ExecutionBudget, PatchTx, reflection policy, GC roots, hot
-reload ownership, schema invalidation, and source-spanned diagnostics.
+For current M19.5 work, run focused correctness tests for touched bytecode,
+runtime dispatch, host-boundary, and stdlib/native call paths plus
+interpreter-only before/after benchmark rows. Preparatory fast paths must
+preserve ExecutionBudget, PatchTx, reflection policy, GC roots, hot reload
+ownership, schema invalidation, and source-spanned diagnostics.
 
 ## Next Up
 
-- Start M20 with the smallest guarded cache family that can be tested end to
-  end. Script record field slot reads/writes are the narrowest first target;
-  host field/path and method dispatch caches should follow once versioned cache
-  ownership and invalidation are proven.
-- Keep benchmark evidence ahead of M20 specialization work, reporting
-  interpreter-only versus cache-enabled rows.
+- Start M19.5 with resolved call operands: native/stdlib/function/method hot
+  calls should move from string lookup toward stable IDs, slots, or loaded call
+  targets while keeping names for diagnostics and reflection.
+- Then prepare host field/path and PatchTx fast paths with reusable path keys
+  or direct adapter thunks that preserve overlay, budget, and conflict
+  semantics.
+- Keep benchmark evidence ahead of M20 specialization work. M19.5 reports
+  interpreter-only before/after rows; M20 reports interpreter-only versus
+  cache-enabled rows.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
 

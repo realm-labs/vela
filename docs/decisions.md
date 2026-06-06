@@ -113,6 +113,12 @@ truthiness coercion. Execution budgets are charged against the emitted bytecode
 instructions, and optimized opcodes must preserve the same host, reflection,
 GC-root, hot-reload, and diagnostic boundaries as their expanded VM sequence.
 
+Before inline caches or JIT work, hot dispatch operands should move from
+script-visible strings to stable IDs, slots, reusable path keys, or resolved
+call targets. Names remain available for diagnostics, reflection, and source
+reports, but they should not be the primary runtime key for hot native,
+stdlib, script function, method, record-field, or host-path dispatch.
+
 Managed heap entrypoints materialize return values at API boundaries. Native
 calls materialize heap-backed values as needed so existing host/native APIs do
 not own script GC state.
