@@ -51,6 +51,10 @@ pub fn on_invoice_paid(ctx, account, invoice) {
         account.ledger.add(adjustment.code, adjustment.amount)
     }
 
+    for index, adjustment in adjustments {
+        ctx.log("adjustment.index", index)
+    }
+
     match account.workflow {
         WorkflowState::Active { workflow_id, count } => {
             account.workflow = WorkflowState::Active {

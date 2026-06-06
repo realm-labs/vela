@@ -57,7 +57,8 @@ Cranelift JIT.
 
 ### Available Now
 
-- `.vela` source parsing, HIR lowering, bytecode compilation, VM execution,
+- `.vela` source parsing, HIR lowering, bytecode compilation, VM execution
+  with ordinary and indexed `for-in`,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.
 - Host mutation through `HostRef`, `HostPath`, `PathProxy`, write-through
   `HostAccess`, and capability-gated effects.

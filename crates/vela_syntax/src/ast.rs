@@ -163,6 +163,7 @@ pub enum StmtKind {
     Break,
     Continue,
     For {
+        index_pattern: Option<Pattern>,
         pattern: Pattern,
         iterable: Expr,
         body: Block,

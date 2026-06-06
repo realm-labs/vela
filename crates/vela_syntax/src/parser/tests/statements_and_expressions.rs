@@ -91,6 +91,42 @@ fn main(rewards) {
 }
 
 #[test]
+fn parses_indexed_for_in_patterns() {
+    let parsed = parse_source(
+        source_id(),
+        r#"
+fn main(rewards) {
+    for index, Reward::Grant { amount } in rewards {
+        total += index + amount;
+    }
+}
+"#,
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Function(function) = &parsed.items[0].kind else {
+        panic!("expected function item");
+    };
+    let StmtKind::For {
+        index_pattern,
+        pattern,
+        ..
+    } = &function.body.statements[0].kind
+    else {
+        panic!("expected for statement");
+    };
+    assert_eq!(
+        index_pattern.as_ref(),
+        Some(&Pattern::Binding("index".to_owned()))
+    );
+    let Pattern::RecordVariant { path, fields } = pattern else {
+        panic!("expected record variant pattern");
+    };
+    assert_eq!(path, &["Reward", "Grant"]);
+    assert_eq!(fields.len(), 1);
+}
+
+#[test]
 fn parses_statement_attributes() {
     let parsed = parse_source(
         source_id(),

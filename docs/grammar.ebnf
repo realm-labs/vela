@@ -169,7 +169,8 @@ return_stmt     = "return", [ ws, expr ], stmt_term ;
 break_stmt      = "break", stmt_term ;
 continue_stmt   = "continue", stmt_term ;
 
-for_stmt        = "for", ws, pattern, ws, "in", ws, expr, ws, block ;
+for_stmt        = "for", ws, for_binding, ws, "in", ws, expr, ws, block ;
+for_binding     = pattern | pattern, ws, ",", ws, pattern ;
 if_stmt         = if_expr ;
 match_stmt      = match_expr ;
 

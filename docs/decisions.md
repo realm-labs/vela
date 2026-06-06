@@ -333,6 +333,14 @@ narrowing, Option/Result predicate narrowing, and pattern diagnostics are
 analysis/tooling data. They should not change VM semantics unless a separate
 compiler/runtime decision says so.
 
+### Indexed For-In
+
+`for index, value in iterable` is syntax-level sugar over the existing `for-in`
+lowering, not an eager `enumerate()` collection method or a Rust-style iterator
+adapter. The exposed index is the source iteration position. If the value
+pattern skips an item, later matching iterations keep their original source
+indexes instead of being renumbered by body execution count.
+
 ### Example Layout
 
 Runnable examples live in the `vela_examples` workspace package as standalone

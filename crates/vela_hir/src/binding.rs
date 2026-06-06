@@ -297,12 +297,16 @@ impl<'a> BindingLowerer<'a> {
             }
             StmtKind::Break | StmtKind::Continue => {}
             StmtKind::For {
+                index_pattern,
                 pattern,
                 iterable,
                 body,
             } => {
                 self.bind_expr(iterable, PathUsage::Value);
                 self.push_scope();
+                if let Some(index_pattern) = index_pattern {
+                    self.bind_pattern(index_pattern, statement.span, LocalBindingKind::For);
+                }
                 self.bind_pattern(pattern, statement.span, LocalBindingKind::For);
                 self.bind_block_without_new_scope(body);
                 self.pop_scope();

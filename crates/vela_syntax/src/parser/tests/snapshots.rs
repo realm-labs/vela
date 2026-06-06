@@ -181,17 +181,22 @@ fn snapshot_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
         StmtKind::Break => writeln!(out, "{pad}break").expect("write syntax snapshot"),
         StmtKind::Continue => writeln!(out, "{pad}continue").expect("write syntax snapshot"),
         StmtKind::For {
+            index_pattern,
             pattern,
             iterable,
             body,
         } => {
-            writeln!(
-                out,
-                "{pad}for {} in {}",
-                pattern_snapshot_name(pattern),
-                expr_kind_name(iterable)
-            )
-            .expect("write syntax snapshot");
+            let pattern = if let Some(index_pattern) = index_pattern {
+                format!(
+                    "{}, {}",
+                    pattern_snapshot_name(index_pattern),
+                    pattern_snapshot_name(pattern)
+                )
+            } else {
+                pattern_snapshot_name(pattern)
+            };
+            writeln!(out, "{pad}for {} in {}", pattern, expr_kind_name(iterable))
+                .expect("write syntax snapshot");
             snapshot_block(out, body, indent + 1);
         }
         StmtKind::Expr(expr) => snapshot_expr_stmt(out, expr, indent),

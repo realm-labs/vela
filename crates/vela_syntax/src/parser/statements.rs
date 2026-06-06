@@ -76,7 +76,12 @@ impl Parser {
     }
 
     pub(super) fn parse_for_statement(&mut self) -> StmtKind {
-        let pattern = self.parse_pattern();
+        let first_pattern = self.parse_pattern();
+        let (index_pattern, pattern) = if self.eat_symbol(Symbol::Comma).is_some() {
+            (Some(first_pattern), self.parse_pattern())
+        } else {
+            (None, first_pattern)
+        };
         if self.eat_keyword(Keyword::In).is_none() {
             self.error_here("expected `in`");
         }
@@ -86,6 +91,7 @@ impl Parser {
             span: self.current().span,
         });
         StmtKind::For {
+            index_pattern,
             pattern,
             iterable,
             body,

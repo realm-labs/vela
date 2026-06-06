@@ -58,6 +58,58 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_indexed_for_in_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for index, value in [2, 3, 5] {
+        total += index * 10 + value;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("compile indexed for-in source");
+
+    assert_eq!(Vm::new().run(&code), Ok(OwnedValue::Int(40)));
+}
+
+#[test]
+fn indexed_for_in_preserves_source_index_for_pattern_skips() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum Reward {
+    Grant { amount },
+    Skip { amount },
+}
+
+fn main() {
+    let total = 0;
+    let rewards = [
+        Reward::Grant { amount: 2 },
+        Reward::Skip { amount: 100 },
+        Reward::Grant { amount: 5 },
+    ];
+    for index, Reward::Grant { amount } in rewards {
+        total += index + amount;
+    }
+    return total;
+}
+"#,
+    )
+    .expect("compile indexed for-in pattern source");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(9))
+    );
+}
+
+#[test]
 fn runs_compiled_statement_attributes_as_metadata() {
     let code = compile_function_source(
         SourceId::new(1),

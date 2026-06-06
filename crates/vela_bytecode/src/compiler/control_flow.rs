@@ -154,10 +154,11 @@ impl Compiler<'_> {
             }
             StmtKind::Block(block) => self.compile_statements(&block.statements),
             StmtKind::For {
+                index_pattern,
                 pattern,
                 iterable,
                 body,
-            } => self.compile_for(stmt.span, pattern, iterable, body),
+            } => self.compile_for(stmt.span, index_pattern.as_ref(), pattern, iterable, body),
             StmtKind::Break => self.compile_break(),
             StmtKind::Continue => self.compile_continue(),
         }
@@ -187,6 +188,7 @@ impl Compiler<'_> {
     fn compile_for(
         &mut self,
         stmt_span: Span,
+        index_pattern: Option<&Pattern>,
         pattern: &Pattern,
         iterable: &Expr,
         body: &Block,
@@ -226,6 +228,18 @@ impl Compiler<'_> {
         };
 
         let item_register = self.alloc_register()?;
+        let loop_index = if index_pattern.is_some() {
+            let counter = self.alloc_register()?;
+            self.emit_constant_to(counter, Constant::Int(0));
+            Some((counter, self.emit_constant(Constant::Int(1))?))
+        } else {
+            None
+        };
+        let index_register = if index_pattern.is_some() {
+            Some(self.alloc_register()?)
+        } else {
+            None
+        };
         let previous_locals = self.locals.clone();
         let previous_hir_locals = self.hir_locals.clone();
         let previous_script_types = self.script_types.clone();
@@ -241,7 +255,29 @@ impl Compiler<'_> {
                 inclusive,
             } => self.emit_range_next(cursor, end, done, inclusive, item_register),
         };
-        let mismatch_jumps = self.compile_match_pattern(item_register, pattern)?;
+        if let (Some((counter, one)), Some(index_register)) = (loop_index, index_register) {
+            self.emit(InstructionKind::Move {
+                dst: index_register,
+                src: counter,
+            });
+            self.emit(InstructionKind::Add {
+                dst: counter,
+                lhs: counter,
+                rhs: one,
+            });
+        }
+        let mut mismatch_jumps = Vec::new();
+        if let (Some(index_pattern), Some(index_register)) = (index_pattern, index_register) {
+            mismatch_jumps.extend(self.compile_match_pattern(index_register, index_pattern)?);
+            self.bind_pattern_locals(
+                index_register,
+                index_pattern,
+                stmt_span,
+                None,
+                LocalBindingKind::For,
+            )?;
+        }
+        mismatch_jumps.extend(self.compile_match_pattern(item_register, pattern)?);
         self.bind_pattern_locals(
             item_register,
             pattern,
