@@ -12,6 +12,7 @@ mod frame;
 pub mod heap;
 pub mod heap_execution;
 mod heap_values;
+mod host_access;
 mod host_patches;
 mod host_paths;
 mod host_values;
@@ -80,7 +81,6 @@ use vela_bytecode::{
 };
 use vela_common::{FunctionId, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::path::HostPath;
 use vela_host::tx::PatchTx;
 #[cfg(test)]
 use vela_reflect as reflect;
