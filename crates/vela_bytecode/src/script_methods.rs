@@ -25,6 +25,12 @@ impl ScriptMethodTable {
             type_name: type_name.into(),
             method: method.into(),
         };
+        if let Some(existing) = self.methods.get(&key) {
+            self.methods_by_id.remove(&ScriptMethodIdKey {
+                type_name: key.type_name.clone(),
+                id: existing.id,
+            });
+        }
         self.methods_by_id.insert(
             ScriptMethodIdKey {
                 type_name: key.type_name.clone(),
@@ -79,4 +85,28 @@ struct ScriptMethodKey {
 struct ScriptMethodIdKey {
     type_name: String,
     id: MethodId,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reinserting_named_method_removes_old_id_index() {
+        let mut table = ScriptMethodTable::new();
+        let old_id = MethodId::new(1);
+        let new_id = MethodId::new(2);
+
+        table.insert("Account", "apply", old_id, "Account::apply_old");
+        table.insert("Account", "apply", new_id, "Account::apply_new");
+
+        assert!(table.get_by_id("Account", old_id).is_none());
+        assert_eq!(
+            table.get_by_id("Account", new_id),
+            Some(&ScriptMethod {
+                id: new_id,
+                function: "Account::apply_new".to_owned()
+            })
+        );
+    }
 }
