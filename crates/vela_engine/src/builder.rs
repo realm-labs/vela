@@ -9,6 +9,7 @@ use vela_vm::owned_value::OwnedValue;
 use crate::context::NativeCallContext;
 use crate::engine::{Engine, EngineParts};
 use crate::error::EngineResult;
+use crate::host_type::HostTypeSpec;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
@@ -60,6 +61,15 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_host_type<T: ScriptHostSchema>(self) -> Self {
         self.register_type(T::script_host_type_desc())
+    }
+
+    #[must_use]
+    pub fn register_host_type_spec(mut self, spec: impl Into<HostTypeSpec>) -> Self {
+        let (type_desc, method_metadata, native_methods) = spec.into().into_parts();
+        self.types.push(type_desc);
+        self.host_method_metadata.extend(method_metadata);
+        self.native_methods.extend(native_methods);
+        self
     }
 
     #[must_use]

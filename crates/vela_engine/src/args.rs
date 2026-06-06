@@ -1,8 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
+use std::marker::PhantomData;
+use std::ops::Deref;
 
 use vela_common::{HostObjectId, HostTypeId};
-use vela_host::path::HostRef;
+use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
@@ -19,6 +21,101 @@ pub trait FromScriptArg: Sized {
     const TYPE_NAME: &'static str;
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self>;
+}
+
+pub trait HostArgType {
+    const TYPE_NAME: &'static str;
+    const HOST_TYPE_ID: Option<HostTypeId>;
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct TypedHostRef<T: HostArgType> {
+    path: HostPath,
+    _marker: PhantomData<fn() -> T>,
+}
+
+impl<T: HostArgType> TypedHostRef<T> {
+    #[must_use]
+    pub fn new(path: HostPath) -> Self {
+        Self {
+            path,
+            _marker: PhantomData,
+        }
+    }
+
+    #[must_use]
+    pub fn path(&self) -> &HostPath {
+        &self.path
+    }
+
+    #[must_use]
+    pub fn into_path(self) -> HostPath {
+        self.path
+    }
+
+    #[must_use]
+    pub fn root(&self) -> HostRef {
+        self.path.root
+    }
+}
+
+impl<T: HostArgType> Clone for TypedHostRef<T> {
+    fn clone(&self) -> Self {
+        Self::new(self.path.clone())
+    }
+}
+
+impl<T: HostArgType> Deref for TypedHostRef<T> {
+    type Target = HostPath;
+
+    fn deref(&self) -> &Self::Target {
+        &self.path
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct TypedHostMut<T: HostArgType> {
+    path: HostPath,
+    _marker: PhantomData<fn() -> T>,
+}
+
+impl<T: HostArgType> TypedHostMut<T> {
+    #[must_use]
+    pub fn new(path: HostPath) -> Self {
+        Self {
+            path,
+            _marker: PhantomData,
+        }
+    }
+
+    #[must_use]
+    pub fn path(&self) -> &HostPath {
+        &self.path
+    }
+
+    #[must_use]
+    pub fn into_path(self) -> HostPath {
+        self.path
+    }
+
+    #[must_use]
+    pub fn root(&self) -> HostRef {
+        self.path.root
+    }
+}
+
+impl<T: HostArgType> Clone for TypedHostMut<T> {
+    fn clone(&self) -> Self {
+        Self::new(self.path.clone())
+    }
+}
+
+impl<T: HostArgType> Deref for TypedHostMut<T> {
+    type Target = HostPath;
+
+    fn deref(&self) -> &Self::Target {
+        &self.path
+    }
 }
 
 pub trait ScriptArgsExt {
@@ -125,6 +222,26 @@ impl FromScriptArg for PathProxy {
             OwnedValue::PathProxy(proxy) => Ok(proxy.clone()),
             _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
+    }
+}
+
+impl<T: HostArgType> FromScriptArg for TypedHostRef<T> {
+    const TYPE_NAME: &'static str = "typed host ref";
+
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        let path = host_path_arg(value, Self::TYPE_NAME)?;
+        require_host_arg_type::<T>(&path, "typed host ref type")?;
+        Ok(Self::new(path))
+    }
+}
+
+impl<T: HostArgType> FromScriptArg for TypedHostMut<T> {
+    const TYPE_NAME: &'static str = "typed host mut";
+
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        let path = host_path_arg(value, Self::TYPE_NAME)?;
+        require_host_arg_type::<T>(&path, "typed host mut type")?;
+        Ok(Self::new(path))
     }
 }
 
@@ -528,6 +645,21 @@ fn type_mismatch(operation: &'static str) -> VmError {
         kind: VmErrorKind::TypeMismatch { operation },
         source_span: None,
         call_stack: Default::default(),
+    }
+}
+
+fn host_path_arg(value: &OwnedValue, operation: &'static str) -> VmResult<HostPath> {
+    match value {
+        OwnedValue::HostRef(host_ref) => Ok(HostPath::new(*host_ref)),
+        OwnedValue::PathProxy(proxy) => Ok(proxy.path().clone()),
+        _ => Err(type_mismatch(operation)),
+    }
+}
+
+fn require_host_arg_type<T: HostArgType>(path: &HostPath, operation: &'static str) -> VmResult<()> {
+    match T::HOST_TYPE_ID {
+        Some(expected) if path.root.type_id != expected => Err(type_mismatch(operation)),
+        _ => Ok(()),
     }
 }
 

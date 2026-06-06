@@ -70,8 +70,10 @@ Cranelift JIT.
 - Engine registration for host types, native functions, context helpers,
   standard natives, capability profiles, reflection permissions, compiler options, dynamic
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
-  direct host object method dispatch with receiver paths, string-key host map
-  paths, hot-reload policies, derive-generated host bindings, and reflection schemas.
+  direct host object method dispatch with receiver paths, unified concrete host
+  type specs, host index capability metadata, typed host path arguments,
+  string-key host path segments, hot-reload policies, derive-generated host
+  bindings, and reflection schemas.
 - Macro-generated host and native bindings with stable IDs, rename aliases,
   effect-aware registration, and budget-aware context helper coverage.
 - Hot reload staging and safe-point reports for source-file, directory, and
@@ -160,6 +162,10 @@ Cranelift JIT.
     reason to defer the remaining conversions to M20/JIT work;
   - HostPath/PatchTx reusable path keys or direct adapter-thunk boundaries are
     implemented enough for M20 host field/path caches;
+  - root host receiver index lowering such as `scores[1]` needs HIR/TypeFacts
+    receiver-type plumbing before compile-time index capability diagnostics can
+    be complete; field-derived host paths such as `player.scores[1]` continue
+    to lower through HostPath;
   - callback and closure materialization uses inline/small storage on common
     arities, with remaining allocation costs measured;
   - verified-bytecode and runtime tests cover the invariants needed by later

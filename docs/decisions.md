@@ -158,6 +158,15 @@ Host object method dispatch receives the full receiver `HostPath`, so root
 methods, child collection methods, and trait-object field methods share the
 same registration and permission model.
 
+Host collection and trait-object surfaces use the same concrete host type
+registration model as structs. Rust-side helpers may generate concrete specs
+for `HashMap<K,V>`, `HashSet<T>`, `Vec<T>`, or trait-object fields, but scripts
+do not see generics and the builder does not expose separate collection-specific
+registration APIs. Optional index support is type metadata on the concrete host
+schema. Host method parameters that refer to other host objects use typed path
+wrappers such as `TypedHostRef<T>` and `TypedHostMut<T>`, which store
+`HostPath` only and never expose Rust references to scripts.
+
 High-level embedding calls may construct `PatchTx` internally and return a
 `CallOutput` that dereferences to the script return `OwnedValue`. This keeps
 ordinary call sites value-focused while still exposing `mutation_count()` for

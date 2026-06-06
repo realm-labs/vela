@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use vela_bytecode::compiler::options::CompilerOptions;
+use vela_bytecode::compiler::options::{CompilerOptions, HostIndexCapabilityInfo};
 use vela_reflect::registry::MethodDesc;
 use vela_reflect::registry::TypeRegistry;
 
@@ -21,6 +21,19 @@ pub(crate) fn compiler_options_from_registry(registry: &TypeRegistry) -> Compile
     }
     for desc in registry.types() {
         options = options.with_host_type(desc.key.name.clone());
+        if let Some(index) = &desc.index_capability {
+            options = options.with_host_index_capability(
+                desc.key.name.clone(),
+                HostIndexCapabilityInfo {
+                    readable: index.readable,
+                    writable: index.writable,
+                    addable: index.addable,
+                    removable: index.removable,
+                    key_type: index.key_type.clone(),
+                    value_type: index.value_type.clone(),
+                },
+            );
+        }
         for field in &desc.fields {
             options = options.with_host_field(field.name.clone(), field.id);
             options = options.with_host_field_for_type(

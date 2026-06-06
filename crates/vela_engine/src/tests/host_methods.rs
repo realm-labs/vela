@@ -1,16 +1,21 @@
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_options};
 use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, SourceId, TypeId, VariantId};
+use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::tx::PatchTx;
 use vela_host::value::HostValue;
-use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, VariantDesc};
+use vela_reflect::registry::{
+    FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey, VariantDesc,
+};
 use vela_vm::HostExecution;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
+use crate::args::{HostArgType, TypedHostMut, TypedHostRef};
 use crate::engine::Engine;
+use crate::host_type::HostTypeSpec;
 use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, FunctionAccess, TypeHint};
 use crate::permission::Capability;
@@ -533,6 +538,180 @@ fn callable_native_method_error_retains_written_mutation() {
     assert_eq!(adapter.method_calls().len(), 1);
 }
 
+#[test]
+fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata() {
+    let method = HostMethodId::new(31);
+    let owner = TypeKey::new(TypeId::new(31), "IntIntMap");
+    let spec = HostTypeSpec::new(
+        TypeDesc::new(owner.clone())
+            .host_type(HostTypeId::new(31))
+            .index_capability(
+                HostIndexCapability::new()
+                    .readable(true)
+                    .writable(true)
+                    .addable(true)
+                    .removable(true)
+                    .key_type("int")
+                    .value_type("int"),
+            ),
+    )
+    .native_method_fn(
+        NativeMethodDesc::new(owner, method, "set")
+            .param("key", TypeHint::Int)
+            .param("value", TypeHint::Int)
+            .returns(TypeHint::Null)
+            .effects(EffectSet::host_write())
+            .access(FunctionAccess::public()),
+        move |receiver, args, host| {
+            let [OwnedValue::Int(key), OwnedValue::Int(value)] = args else {
+                return Ok(OwnedValue::Null);
+            };
+            host.tx.set_path(
+                host.adapter,
+                receiver.clone().key(key.to_string()),
+                HostValue::Int(*value),
+                None,
+            )?;
+            Ok(OwnedValue::Null)
+        },
+    );
+    let engine = Engine::builder()
+        .capability(Capability::HostWrite)
+        .register_host_type_spec(spec)
+        .build()
+        .expect("engine should build");
+    let registry = engine.registry();
+    let reflected = registry
+        .type_by_name("IntIntMap")
+        .expect("registered host type");
+    let index = reflected.index_capability.as_ref().expect("index metadata");
+    assert!(index.readable);
+    assert!(index.writable);
+    assert!(index.addable);
+    assert!(index.removable);
+    assert_eq!(index.key_type.as_deref(), Some("int"));
+    assert_eq!(index.value_type.as_deref(), Some("int"));
+    assert!(reflected.methods.iter().any(|method| method.name == "set"));
+    assert!(
+        engine
+            .compiler_options()
+            .host_index_capability("IntIntMap")
+            .is_some()
+    );
+
+    let host_ref = HostRef::new(HostTypeId::new(31), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_object(host_ref);
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            method,
+            &HostPath::new(host_ref),
+            &[OwnedValue::Int(7), OwnedValue::Int(99)],
+            &mut host,
+        ),
+        Ok(OwnedValue::Null)
+    );
+    assert_eq!(tx.mutation_count(), 1);
+    assert_eq!(
+        adapter.read_path(&HostPath::new(host_ref).key("7")),
+        Ok(HostValue::Int(99))
+    );
+}
+
+#[test]
+fn typed_callable_native_method_accepts_typed_host_path_arguments() {
+    let method = HostMethodId::new(32);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .capability(Capability::HostWrite)
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory")).host_type(HostTypeId::new(2)),
+        )
+        .register_typed_native_method_fn::<(TypedHostMut<InventoryArg>, i64), _>(
+            NativeMethodDesc::new(owner, method, "transfer_to")
+                .param("target", TypeHint::PathProxy)
+                .param("amount", TypeHint::Int)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+            typed_transfer_to,
+        )
+        .build()
+        .expect("engine should build");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let inventory = HostRef::new(HostTypeId::new(2), HostObjectId::new(7), 1);
+    let amount_path = HostPath::new(inventory).field(FieldId::new(77));
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_object(player);
+    adapter.insert_object(inventory);
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert_eq!(
+        engine.call_native_method(
+            method,
+            &HostPath::new(player),
+            &[OwnedValue::HostRef(inventory), OwnedValue::Int(20)],
+            &mut host,
+        ),
+        Ok(OwnedValue::Null)
+    );
+    assert_eq!(tx.mutation_count(), 1);
+    assert_eq!(adapter.read_path(&amount_path), Ok(HostValue::Int(20)));
+}
+
+#[test]
+fn typed_host_argument_rejects_mismatched_host_type() {
+    let method = HostMethodId::new(33);
+    let owner = TypeKey::new(TypeId::new(1), "Player");
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_typed_native_method_fn::<(TypedHostRef<InventoryArg>,), _>(
+            NativeMethodDesc::new(owner, method, "inspect_inventory")
+                .param("target", TypeHint::PathProxy)
+                .returns(TypeHint::Null)
+                .effects(EffectSet::host_read())
+                .access(FunctionAccess::public()),
+            typed_inspect_inventory,
+        )
+        .build()
+        .expect("engine should build");
+    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = PatchTx::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        tx: &mut tx,
+    };
+
+    assert!(matches!(
+        engine.call_native_method(
+            method,
+            &HostPath::new(player),
+            &[OwnedValue::HostRef(player)],
+            &mut host,
+        ),
+        Err(VmError {
+            kind: VmErrorKind::TypeMismatch {
+                operation: "typed host ref type"
+            },
+            ..
+        })
+    ));
+    assert!(tx.is_empty());
+}
+
 fn typed_grant_exp(
     receiver: &HostPath,
     host: &mut HostExecution<'_>,
@@ -564,6 +743,36 @@ fn typed_require_grant(
             source_span: None,
         })
     }
+}
+
+struct InventoryArg;
+
+impl HostArgType for InventoryArg {
+    const TYPE_NAME: &'static str = "Inventory";
+    const HOST_TYPE_ID: Option<HostTypeId> = Some(HostTypeId::new(2));
+}
+
+fn typed_transfer_to(
+    _receiver: &HostPath,
+    host: &mut HostExecution<'_>,
+    target: TypedHostMut<InventoryArg>,
+    amount: i64,
+) -> VmResult<()> {
+    host.tx.set_path(
+        host.adapter,
+        target.into_path().field(FieldId::new(77)),
+        HostValue::Int(amount),
+        None,
+    )?;
+    Ok(())
+}
+
+fn typed_inspect_inventory(
+    _receiver: &HostPath,
+    _host: &mut HostExecution<'_>,
+    _target: TypedHostRef<InventoryArg>,
+) -> VmResult<()> {
+    Ok(())
 }
 
 #[test]

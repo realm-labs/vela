@@ -191,6 +191,44 @@ Passing the receiver path is required for child methods such as
 `player.inventory.add("gold", 10)` and trait-object fields whose callable
 surface lives behind a host path.
 
+### Host Type Methods And Indexing
+
+Host registration uses one concrete-type model. A host type schema contains its
+script-visible type name, stable IDs, fields, methods, optional index
+capability metadata, and adapter/native method thunks. `HashMap<i32, i32>`,
+`HashMap<i32, Item>`, `Vec<Item>`, `HashSet<String>`, and trait-object fields
+are registered as concrete named host types; scripts do not see Rust generics
+and method lookup is always receiver type plus method name.
+
+Rust-side helper functions or macros may generate repeated concrete specs for
+generic Rust containers, but the generated result is still a normal host type
+spec. There is no separate `host_map`, `host_set`, or `host_vec` script model.
+
+Host method calls use a single runtime shape:
+
+```text
+receiver_path: HostPath
+method_id: HostMethodId
+args: scalar HostValue values or typed script-owned arguments
+```
+
+The VM does not special-case whether the receiver is a struct, map, set, vec,
+or trait-object field. The adapter or direct host object resolves the receiver
+path and executes the registered method thunk.
+
+Indexing is a capability of the receiver type, not a map-only API. `obj[key]`
+is represented as a keyed host path segment or by an adapter-defined index
+operation when the type schema declares index support. Missing support should
+be diagnosed as unsupported index access once the compiler has enough receiver
+type facts; dynamic fallback remains a runtime adapter error.
+
+Rust native methods that need another host object parameter should use typed
+path wrappers such as `TypedHostRef<T>` or `TypedHostMut<T>`. These wrappers
+store only `HostPath` and optional type metadata; they do not contain Rust
+references. Except for receiver syntax sugar generated inside future typed
+registration helpers, script-visible Rust parameters should not use bare
+`&T` or `&mut T`.
+
 ### Direct Call Arguments
 
 Embedding hosts may bind ordinary Rust values directly at the call boundary:

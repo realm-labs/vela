@@ -63,6 +63,66 @@ pub enum TypeKind {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct HostIndexCapability {
+    pub readable: bool,
+    pub writable: bool,
+    pub addable: bool,
+    pub removable: bool,
+    pub key_type: Option<String>,
+    pub value_type: Option<String>,
+}
+
+impl HostIndexCapability {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            readable: false,
+            writable: false,
+            addable: false,
+            removable: false,
+            key_type: None,
+            value_type: None,
+        }
+    }
+
+    #[must_use]
+    pub const fn readable(mut self, readable: bool) -> Self {
+        self.readable = readable;
+        self
+    }
+
+    #[must_use]
+    pub const fn writable(mut self, writable: bool) -> Self {
+        self.writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub const fn addable(mut self, addable: bool) -> Self {
+        self.addable = addable;
+        self
+    }
+
+    #[must_use]
+    pub const fn removable(mut self, removable: bool) -> Self {
+        self.removable = removable;
+        self
+    }
+
+    #[must_use]
+    pub fn key_type(mut self, key_type: impl Into<String>) -> Self {
+        self.key_type = Some(key_type.into());
+        self
+    }
+
+    #[must_use]
+    pub fn value_type(mut self, value_type: impl Into<String>) -> Self {
+        self.value_type = Some(value_type.into());
+        self
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AttrMap {
     attrs: BTreeMap<String, String>,
 }
@@ -110,6 +170,7 @@ pub struct TypeDesc {
     pub methods: Vec<MethodDesc>,
     pub traits: Vec<TraitDesc>,
     pub variants: Vec<VariantDesc>,
+    pub index_capability: Option<HostIndexCapability>,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -128,6 +189,7 @@ impl TypeDesc {
             methods: Vec::new(),
             traits: Vec::new(),
             variants: Vec::new(),
+            index_capability: None,
             origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
@@ -180,6 +242,12 @@ impl TypeDesc {
     #[must_use]
     pub fn variant(mut self, variant: VariantDesc) -> Self {
         self.variants.push(variant);
+        self
+    }
+
+    #[must_use]
+    pub fn index_capability(mut self, capability: HostIndexCapability) -> Self {
+        self.index_capability = Some(capability);
         self
     }
 

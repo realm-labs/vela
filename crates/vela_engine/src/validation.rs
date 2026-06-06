@@ -140,6 +140,7 @@ fn validate_type_desc(
     validate_type_fields(desc)?;
     validate_type_variants(desc)?;
     validate_type_traits(desc)?;
+    validate_type_index_capability(desc)?;
 
     for method in &desc.methods {
         validate_schema_member_name(&desc.key.name, "host method", &method.name)?;
@@ -173,6 +174,20 @@ fn validate_type_desc(
     }
 
     Ok(())
+}
+
+fn validate_type_index_capability(desc: &TypeDesc) -> EngineResult<()> {
+    let Some(index) = &desc.index_capability else {
+        return Ok(());
+    };
+    validate_raw_type_hint(
+        &format!("index key type {}", desc.key.name),
+        index.key_type.as_deref(),
+    )?;
+    validate_raw_type_hint(
+        &format!("index value type {}", desc.key.name),
+        index.value_type.as_deref(),
+    )
 }
 
 fn validate_type_fields(desc: &TypeDesc) -> EngineResult<()> {

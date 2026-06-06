@@ -1,9 +1,13 @@
 //! Common imports for embedding Vela in a Rust host.
 
-pub use crate::args::{FromScriptArg, IntoHostArg, IntoScriptArg, ScriptArgsExt, host};
+pub use crate::args::{
+    FromScriptArg, HostArgType, IntoHostArg, IntoScriptArg, ScriptArgsExt, TypedHostMut,
+    TypedHostRef, host,
+};
 pub use crate::builder::EngineBuilder;
 pub use crate::context::NativeCallContext;
 pub use crate::engine::Engine;
+pub use crate::host_type::HostTypeSpec;
 pub use crate::method::NativeMethodDesc;
 pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
@@ -44,7 +48,7 @@ pub use vela_hot_reload::symbol::ProgramVersionId;
 pub use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 pub use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 pub use vela_reflect::registry::{
-    FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
-    TypeKey, TypeKind, VariantDesc,
+    FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc,
+    TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
 };
 pub use vela_vm::owned_value::OwnedValue;

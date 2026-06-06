@@ -13,6 +13,7 @@ pub struct CompilerOptions {
     pub(super) value_method_params: HashMap<String, Vec<ValueMethodParam>>,
     pub(super) value_methods_by_type: HashMap<(String, String), ValueMethodInfo>,
     pub(super) host_types: HashSet<String>,
+    pub(super) host_index_capabilities: HashMap<String, HostIndexCapabilityInfo>,
     pub(super) native_module_roots: HashSet<String>,
     pub(super) native_functions: HashMap<String, NativeFunctionInfo>,
 }
@@ -50,6 +51,16 @@ pub(super) struct NativeFunctionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct NativeFunctionParam {
     pub(super) name: String,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct HostIndexCapabilityInfo {
+    pub readable: bool,
+    pub writable: bool,
+    pub addable: bool,
+    pub removable: bool,
+    pub key_type: Option<String>,
+    pub value_type: Option<String>,
 }
 
 impl CompilerOptions {
@@ -215,6 +226,18 @@ impl CompilerOptions {
     }
 
     #[must_use]
+    pub fn with_host_index_capability(
+        mut self,
+        type_name: impl Into<String>,
+        capability: HostIndexCapabilityInfo,
+    ) -> Self {
+        let type_name = type_name.into();
+        self.host_types.insert(type_name.clone());
+        self.host_index_capabilities.insert(type_name, capability);
+        self
+    }
+
+    #[must_use]
     pub fn with_native_module_root(mut self, root: impl Into<String>) -> Self {
         self.native_module_roots.insert(root.into());
         self
@@ -334,6 +357,11 @@ impl CompilerOptions {
         self.value_methods_by_type
             .get(&(type_name.to_owned(), method.to_owned()))
             .and_then(|method| method.id)
+    }
+
+    #[must_use]
+    pub fn host_index_capability(&self, type_name: &str) -> Option<&HostIndexCapabilityInfo> {
+        self.host_index_capabilities.get(type_name)
     }
 
     pub(super) fn native_function_params(&self, name: &str) -> Option<&[NativeFunctionParam]> {

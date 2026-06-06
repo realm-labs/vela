@@ -10,6 +10,7 @@ pub mod context;
 pub mod context_schema;
 pub mod engine;
 pub mod error;
+pub mod host_type;
 mod metadata;
 pub mod method;
 pub mod native;
