@@ -1,26 +1,12 @@
 #![allow(clippy::result_large_err)]
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::path::PathBuf;
 
-use vela_common::{FieldId, HostMethodId, HostObjectId, HostTypeId, TypeId};
-use vela_engine::args::{HostArgType, TypedHostMut};
-use vela_engine::engine::Engine;
-use vela_engine::host_type::HostTypeSpec;
-use vela_engine::method::NativeMethodDesc;
-use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
-use vela_engine::permission::Capability;
-use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
+use vela_engine::prelude::*;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::value::HostValue;
-use vela_reflect::registry::{FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey};
-use vela_vm::HostExecution;
-use vela_vm::error::VmResult;
-use vela_vm::owned_value::OwnedValue;
+use vela_host::path::PathSegment;
 
 const PLAYER_TYPE: HostTypeId = HostTypeId::new(1);
 const INVENTORY_TYPE: HostTypeId = HostTypeId::new(2);
@@ -39,63 +25,34 @@ const MAP_SET_METHOD: HostMethodId = HostMethodId::new(101);
 const MAP_ADD_TO_METHOD: HostMethodId = HostMethodId::new(102);
 const MAP_CONTAINS_METHOD: HostMethodId = HostMethodId::new(103);
 const TAG_CONTAINS_METHOD: HostMethodId = HostMethodId::new(200);
-const PLAYER_TRANSFER_TO_METHOD: HostMethodId = HostMethodId::new(300);
-const PLAYER_TYPED_TRANSFER_METHOD: HostMethodId = HostMethodId::new(301);
 const REWARD_GRANT_METHOD: HostMethodId = HostMethodId::new(400);
-
-const PLAYER_OBJECT: HostObjectId = HostObjectId::new(10);
-const SCORES_OBJECT: HostObjectId = HostObjectId::new(20);
-const TAGS_OBJECT: HostObjectId = HostObjectId::new(30);
-const REWARDS_OBJECT: HostObjectId = HostObjectId::new(40);
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = host_engine()?;
-    let script = script_path();
-    let program = engine.compile_file(&script)?;
-    let mut runtime = Runtime::new(engine.clone(), program);
-    let mut adapter = ExampleAdapter::new();
-    let args = CallArgs::from_positional([
-        OwnedValue::HostRef(host_ref(PLAYER_TYPE, PLAYER_OBJECT)),
-        OwnedValue::HostRef(host_ref(INT_INT_MAP_TYPE, SCORES_OBJECT)),
-        OwnedValue::HostRef(host_ref(TAG_SET_TYPE, TAGS_OBJECT)),
-        OwnedValue::HostRef(host_ref(REWARD_SINK_TYPE, REWARDS_OBJECT)),
-    ]);
+    let program = engine.compile_file(script_path())?;
+    let mut runtime = Runtime::new(engine, program);
 
-    let output = runtime.call_with_adapter(
+    let mut player = Player::new();
+    let mut scores = IntIntMap::default();
+    let mut tags = TagSet::from(["vip"]);
+    let mut rewards = RewardSink::default();
+
+    let output = runtime.call(
         "main",
-        args,
+        CallArgs::new()
+            .with_host_mut("player", &mut player)
+            .with_host_mut("scores", &mut scores)
+            .with_host_mut("tags", &mut tags)
+            .with_host_mut("rewards", &mut rewards),
         CallOptions::new(10_000, 1024 * 1024, 64),
-        &mut adapter,
     )?;
-
-    let mut typed_access = HostAccess::new();
-    let mut typed_host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut typed_access,
-    };
-    engine.call_native_method(
-        PLAYER_TYPED_TRANSFER_METHOD,
-        &HostPath::new(host_ref(PLAYER_TYPE, PLAYER_OBJECT)),
-        &[
-            OwnedValue::HostRef(host_ref(REWARD_SINK_TYPE, REWARDS_OBJECT)),
-            OwnedValue::String("gem".to_owned()),
-            OwnedValue::Int(4),
-        ],
-        &mut typed_host,
-    )?;
-
-    let final_count = adapter.read_path(&gold_count_path())?;
-    let final_score = adapter.read_path(&score_path(1001))?;
-    let reward_calls = adapter
-        .method_calls()
-        .iter()
-        .filter(|(_, method, _)| *method == REWARD_GRANT_METHOD)
-        .count();
 
     println!(
-        "script_result={:?} final_count={final_count:?} score={final_score:?} \
-         reward_calls={reward_calls}",
-        output.value()
+        "script_result={:?} final_count={} score={} reward_calls={}",
+        output.value(),
+        player.gold_count(),
+        scores.get(1001).unwrap_or_default(),
+        rewards.grants.len() + player.reward_sink.grants.len()
     );
 
     Ok(())
@@ -114,24 +71,256 @@ fn host_engine() -> Result<Engine, Box<dyn Error>> {
         .build()?)
 }
 
+#[derive(Debug)]
+struct Player {
+    inventory: Inventory,
+    reward_sink: RewardSink,
+}
+
+impl Player {
+    fn new() -> Self {
+        let mut inventory = Inventory::default();
+        inventory
+            .items
+            .insert("gold".to_owned(), ItemStack { count: 3 });
+        Self {
+            inventory,
+            reward_sink: RewardSink::default(),
+        }
+    }
+
+    fn gold_count(&self) -> i64 {
+        self.inventory
+            .items
+            .get("gold")
+            .map(|stack| stack.count)
+            .unwrap_or_default()
+    }
+}
+
+#[derive(Debug, Default)]
+struct Inventory {
+    items: BTreeMap<String, ItemStack>,
+}
+
+#[derive(Debug, Default)]
+struct ItemStack {
+    count: i64,
+}
+
+#[derive(Debug, Default)]
+struct IntIntMap {
+    values: BTreeMap<i64, i64>,
+}
+
+impl IntIntMap {
+    fn get(&self, key: i64) -> Option<i64> {
+        self.values.get(&key).copied()
+    }
+}
+
+#[derive(Debug, Default)]
+struct TagSet {
+    values: BTreeSet<String>,
+}
+
+impl<const N: usize> From<[&str; N]> for TagSet {
+    fn from(values: [&str; N]) -> Self {
+        Self {
+            values: values.into_iter().map(str::to_owned).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct RewardSink {
+    grants: Vec<(String, i64)>,
+}
+
+impl RewardSink {
+    fn grant(&mut self, item_id: String, amount: i64) {
+        self.grants.push((item_id, amount));
+    }
+}
+
+impl ScriptHostObject for Player {
+    fn host_type_id(&self) -> HostTypeId {
+        PLAYER_TYPE
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        match path.segments.as_slice() {
+            [
+                PathSegment::Field(PLAYER_INVENTORY_FIELD),
+                PathSegment::Field(INVENTORY_ITEMS_FIELD),
+                PathSegment::Key(item_id),
+                PathSegment::Field(ITEM_STACK_COUNT_FIELD),
+            ] => self
+                .inventory
+                .items
+                .get(item_id)
+                .map(|stack| HostValue::Int(stack.count))
+                .ok_or_else(|| missing_path(path)),
+            _ => Err(missing_path(path)),
+        }
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        match path.segments.as_slice() {
+            [
+                PathSegment::Field(PLAYER_INVENTORY_FIELD),
+                PathSegment::Field(INVENTORY_ITEMS_FIELD),
+                PathSegment::Key(item_id),
+                PathSegment::Field(ITEM_STACK_COUNT_FIELD),
+            ] => {
+                let count = expect_int_value(value)?;
+                self.inventory
+                    .items
+                    .entry(item_id.clone())
+                    .or_default()
+                    .count = count;
+                Ok(())
+            }
+            _ => Err(missing_path(path)),
+        }
+    }
+
+    fn call_host_method(
+        &mut self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        match (path.segments.as_slice(), method) {
+            ([PathSegment::Field(PLAYER_REWARD_SINK_FIELD)], REWARD_GRANT_METHOD) => {
+                self.reward_sink.grant(
+                    expect_string_arg(args, 0)?.to_owned(),
+                    expect_int_arg(args, 1)?,
+                );
+                Ok(HostValue::Null)
+            }
+            _ => Err(unsupported_method(method)),
+        }
+    }
+}
+
+impl ScriptHostObject for IntIntMap {
+    fn host_type_id(&self) -> HostTypeId {
+        INT_INT_MAP_TYPE
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        match path.segments.as_slice() {
+            [PathSegment::Key(key)] => self
+                .get(parse_i64_key(key)?)
+                .map(HostValue::Int)
+                .ok_or_else(|| missing_path(path)),
+            _ => Err(missing_path(path)),
+        }
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        match path.segments.as_slice() {
+            [PathSegment::Key(key)] => {
+                self.values
+                    .insert(parse_i64_key(key)?, expect_int_value(value)?);
+                Ok(())
+            }
+            _ => Err(missing_path(path)),
+        }
+    }
+
+    fn call_host_method(
+        &mut self,
+        _path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        match method {
+            MAP_GET_METHOD => self
+                .get(expect_int_arg(args, 0)?)
+                .map(HostValue::Int)
+                .ok_or_else(|| invalid_arg("existing map key")),
+            MAP_SET_METHOD => {
+                self.values
+                    .insert(expect_int_arg(args, 0)?, expect_int_arg(args, 1)?);
+                Ok(HostValue::Null)
+            }
+            MAP_ADD_TO_METHOD => {
+                let key = expect_int_arg(args, 0)?;
+                let amount = expect_int_arg(args, 1)?;
+                *self.values.entry(key).or_default() += amount;
+                Ok(HostValue::Null)
+            }
+            MAP_CONTAINS_METHOD => Ok(HostValue::Bool(
+                self.values.contains_key(&expect_int_arg(args, 0)?),
+            )),
+            _ => Err(unsupported_method(method)),
+        }
+    }
+}
+
+impl ScriptHostObject for TagSet {
+    fn host_type_id(&self) -> HostTypeId {
+        TAG_SET_TYPE
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        match path.segments.as_slice() {
+            [PathSegment::Key(value)] => Ok(HostValue::Bool(self.values.contains(value))),
+            _ => Err(missing_path(path)),
+        }
+    }
+
+    fn call_host_method(
+        &mut self,
+        _path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        match method {
+            TAG_CONTAINS_METHOD => Ok(HostValue::Bool(
+                self.values.contains(expect_string_arg(args, 0)?),
+            )),
+            _ => Err(unsupported_method(method)),
+        }
+    }
+}
+
+impl ScriptHostObject for RewardSink {
+    fn host_type_id(&self) -> HostTypeId {
+        REWARD_SINK_TYPE
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        Err(missing_path(path))
+    }
+
+    fn call_host_method(
+        &mut self,
+        _path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        match method {
+            REWARD_GRANT_METHOD => {
+                self.grant(
+                    expect_string_arg(args, 0)?.to_owned(),
+                    expect_int_arg(args, 1)?,
+                );
+                Ok(HostValue::Null)
+            }
+            _ => Err(unsupported_method(method)),
+        }
+    }
+}
+
 fn player_spec() -> HostTypeSpec {
-    let owner = TypeKey::new(TypeId::new(1), "Player");
     HostTypeSpec::new(
-        TypeDesc::new(owner.clone())
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .host_type(PLAYER_TYPE)
             .field(FieldDesc::new(PLAYER_INVENTORY_FIELD, "inventory").type_hint("Inventory"))
-            .field(FieldDesc::new(PLAYER_REWARD_SINK_FIELD, "reward_sink").type_hint("RewardSink"))
-            .method(MethodDesc::new(PLAYER_TRANSFER_TO_METHOD, "transfer_to")),
-    )
-    .typed_native_method_fn::<(TypedHostMut<RewardSinkArg>, String, i64), _>(
-        NativeMethodDesc::new(owner, PLAYER_TYPED_TRANSFER_METHOD, "typed_transfer_to")
-            .param("target", TypeHint::PathProxy)
-            .param("item_id", TypeHint::String)
-            .param("amount", TypeHint::Int)
-            .returns(TypeHint::Null)
-            .effects(EffectSet::host_write())
-            .access(FunctionAccess::public()),
-        typed_transfer_to_reward_sink,
+            .field(FieldDesc::new(PLAYER_REWARD_SINK_FIELD, "reward_sink").type_hint("RewardSink")),
     )
 }
 
@@ -156,9 +345,8 @@ fn item_stack_spec() -> HostTypeSpec {
 }
 
 fn int_int_map_spec() -> HostTypeSpec {
-    let owner = TypeKey::new(TypeId::new(4), "IntIntMap");
     HostTypeSpec::new(
-        TypeDesc::new(owner)
+        TypeDesc::new(TypeKey::new(TypeId::new(4), "IntIntMap"))
             .host_type(INT_INT_MAP_TYPE)
             .index_capability(
                 HostIndexCapability::new()
@@ -192,196 +380,53 @@ fn reward_sink_spec() -> HostTypeSpec {
     )
 }
 
-struct RewardSinkArg;
-
-impl HostArgType for RewardSinkArg {
-    const TYPE_NAME: &'static str = "RewardSink";
-    const HOST_TYPE_ID: Option<HostTypeId> = Some(REWARD_SINK_TYPE);
-}
-
-fn typed_transfer_to_reward_sink(
-    _receiver: &HostPath,
-    host: &mut HostExecution<'_>,
-    target: TypedHostMut<RewardSinkArg>,
-    item_id: String,
-    amount: i64,
-) -> VmResult<()> {
-    host.access.call_method(
-        host.adapter,
-        target.into_path(),
-        REWARD_GRANT_METHOD,
-        vec![HostValue::String(item_id), HostValue::Int(amount)],
-        None,
-    )?;
-    Ok(())
-}
-
-struct ExampleAdapter {
-    inner: MockStateAdapter,
-    method_calls: Vec<(HostPath, HostMethodId, Vec<HostValue>)>,
-}
-
-impl ExampleAdapter {
-    fn new() -> Self {
-        let mut inner = MockStateAdapter::new();
-        inner.insert_value(gold_count_path(), HostValue::Int(3));
-        inner.insert_value(tag_path("vip"), HostValue::Bool(true));
-        inner.insert_object(host_ref(INT_INT_MAP_TYPE, SCORES_OBJECT));
-        inner.insert_object(host_ref(REWARD_SINK_TYPE, REWARDS_OBJECT));
-        Self {
-            inner,
-            method_calls: Vec::new(),
-        }
-    }
-
-    fn method_calls(&self) -> &[(HostPath, HostMethodId, Vec<HostValue>)] {
-        &self.method_calls
-    }
-
-    fn read_int(&self, path: &HostPath) -> HostResult<i64> {
-        match self.inner.read_path(path)? {
-            HostValue::Int(value) => Ok(value),
-            _ => Err(host_error(HostErrorKind::MissingPath {
-                path: path.clone(),
-            })),
-        }
-    }
-
-    fn read_bool(&self, path: &HostPath) -> HostResult<bool> {
-        match self.inner.read_path(path)? {
-            HostValue::Bool(value) => Ok(value),
-            _ => Err(host_error(HostErrorKind::MissingPath {
-                path: path.clone(),
-            })),
-        }
-    }
-}
-
-impl ScriptStateAdapter for ExampleAdapter {
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
-        self.inner.read_path(path)
-    }
-
-    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
-        self.inner.write_path(path, value)
-    }
-
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        self.inner.remove_path(path)
-    }
-
-    fn call_method(
-        &mut self,
-        path: &HostPath,
-        method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
-        self.method_calls
-            .push((path.clone(), method, args.to_vec()));
-        match method {
-            MAP_GET_METHOD => {
-                let key = expect_int_arg(args, 0)?;
-                self.inner.read_path(&path.clone().key(key.to_string()))
-            }
-            MAP_SET_METHOD => {
-                let key = expect_int_arg(args, 0)?;
-                let value = expect_int_arg(args, 1)?;
-                self.inner
-                    .write_path(&path.clone().key(key.to_string()), HostValue::Int(value))?;
-                Ok(HostValue::Null)
-            }
-            MAP_ADD_TO_METHOD => {
-                let key = expect_int_arg(args, 0)?;
-                let amount = expect_int_arg(args, 1)?;
-                let item_path = path.clone().key(key.to_string());
-                let current = self.read_int(&item_path)?;
-                self.inner
-                    .write_path(&item_path, HostValue::Int(current + amount))?;
-                Ok(HostValue::Null)
-            }
-            MAP_CONTAINS_METHOD => {
-                let key = expect_int_arg(args, 0)?;
-                Ok(HostValue::Bool(
-                    self.inner
-                        .read_path(&path.clone().key(key.to_string()))
-                        .is_ok(),
-                ))
-            }
-            TAG_CONTAINS_METHOD => {
-                let tag = expect_string_arg(args, 0)?;
-                self.read_bool(&path.clone().key(tag)).map(HostValue::Bool)
-            }
-            PLAYER_TRANSFER_TO_METHOD => {
-                let target = expect_host_ref_arg(args, 0)?;
-                let item_id = expect_string_arg(args, 1)?.to_owned();
-                let amount = expect_int_arg(args, 2)?;
-                self.method_calls.push((
-                    HostPath::new(target),
-                    REWARD_GRANT_METHOD,
-                    vec![HostValue::String(item_id), HostValue::Int(amount)],
-                ));
-                Ok(HostValue::Null)
-            }
-            REWARD_GRANT_METHOD => Ok(HostValue::Null),
-            _ => Err(host_error(HostErrorKind::UnsupportedMethod { method })),
-        }
+fn expect_int_value(value: HostValue) -> HostResult<i64> {
+    match value {
+        HostValue::Int(value) => Ok(value),
+        _ => Err(invalid_arg("int value")),
     }
 }
 
 fn expect_int_arg(args: &[HostValue], index: usize) -> HostResult<i64> {
     match args.get(index) {
         Some(HostValue::Int(value)) => Ok(*value),
-        _ => Err(host_error(HostErrorKind::InvalidArgument {
-            expected: "int argument",
-        })),
+        _ => Err(invalid_arg("int argument")),
     }
 }
 
 fn expect_string_arg(args: &[HostValue], index: usize) -> HostResult<&str> {
     match args.get(index) {
         Some(HostValue::String(value)) => Ok(value),
-        _ => Err(host_error(HostErrorKind::InvalidArgument {
-            expected: "string argument",
-        })),
+        _ => Err(invalid_arg("string argument")),
     }
 }
 
-fn expect_host_ref_arg(args: &[HostValue], index: usize) -> HostResult<HostRef> {
-    match args.get(index) {
-        Some(HostValue::HostRef(value)) => Ok(*value),
-        _ => Err(host_error(HostErrorKind::InvalidArgument {
-            expected: "host ref argument",
-        })),
+fn parse_i64_key(key: &str) -> HostResult<i64> {
+    key.parse()
+        .map_err(|_| invalid_arg("integer string host key"))
+}
+
+fn invalid_arg(expected: &'static str) -> HostError {
+    HostError {
+        kind: HostErrorKind::InvalidArgument { expected },
+        source_span: None,
     }
 }
 
-fn gold_count_path() -> HostPath {
-    HostPath::new(host_ref(PLAYER_TYPE, PLAYER_OBJECT))
-        .field(PLAYER_INVENTORY_FIELD)
-        .field(INVENTORY_ITEMS_FIELD)
-        .key("gold")
-        .field(ITEM_STACK_COUNT_FIELD)
+fn missing_path(path: &HostPath) -> HostError {
+    HostError {
+        kind: HostErrorKind::MissingPath { path: path.clone() },
+        source_span: None,
+    }
 }
 
-fn score_path(key: i64) -> HostPath {
-    HostPath::new(host_ref(INT_INT_MAP_TYPE, SCORES_OBJECT)).key(key.to_string())
-}
-
-fn tag_path(tag: &str) -> HostPath {
-    HostPath::new(host_ref(TAG_SET_TYPE, TAGS_OBJECT)).key(tag)
-}
-
-fn host_ref(type_id: HostTypeId, object_id: HostObjectId) -> HostRef {
-    HostRef::new(type_id, object_id, 1)
+fn unsupported_method(method: HostMethodId) -> HostError {
+    HostError {
+        kind: HostErrorKind::UnsupportedMethod { method },
+        source_span: None,
+    }
 }
 
 fn script_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/host_type_methods/handle.vela")
-}
-
-fn host_error(kind: HostErrorKind) -> HostError {
-    HostError {
-        kind,
-        source_span: None,
-    }
 }

@@ -5,7 +5,7 @@ fn main(player: Player, scores: IntIntMap, tags: TagSet, rewards: RewardSink) {
     if scores.contains(1001) && tags.contains("vip") {
         let amount = scores.get(1001);
         player.inventory.items["gold"].count += amount;
-        player.transfer_to(rewards, "gold", amount);
+        rewards.grant("gold", amount);
         rewards.grant("badge", 1);
         player.reward_sink.grant("quest", 1);
     }
