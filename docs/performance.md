@@ -2635,6 +2635,56 @@ higher-order call path more complex, so future callback work should look for a
 broader invocation-path improvement or stronger default-run evidence before
 reintroducing this shape.
 
+### 2026-06-06 M19 Small Script Field Construction Checkpoint
+
+This checkpoint adds a two-field `ScriptFields` construction fast path and uses
+the existing zero-, one-, and two-field constructors when managed-heap
+record/enum instructions materialize fields from registers. `MapEntry`
+construction now uses the same two-field path. The fast path preserves the
+existing sorted field-slot order, stable shape IDs, and duplicate-field
+semantics from `ScriptFields::from_pairs`; records or enums with more than two
+fields keep the general `BTreeMap` path.
+
+This checkpoint also adds `managed_heap_map_find_entries`, a guardrail workload
+for heap-mode `map.find()` returning `Option.Some(MapEntry { key, value })`.
+The new row was not used as the accepted win because quick before/after was
+flat to slightly slower, but it now gives the `MapEntry` return path direct
+coverage.
+
+Validation:
+
+```bash
+cargo test -p vela_vm script_object -- --nocapture
+cargo test -p vela_vm map_find -- --nocapture
+cargo test -p vela_vm records_enums -- --nocapture
+cargo fmt --all -- --check
+cargo bench -p vela_vm --bench baseline managed_heap_map_find_entries -- --quick
+cargo bench -p vela_vm --bench baseline managed_heap_materialization
+```
+
+Quick before/after:
+
+| Benchmark | Before mean ns | After mean ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_materialization | 37916 | 35687 | 11773534860610571856 | 11773534860610571856 |
+| managed_heap_map_find_entries | 7951021 | 7991020 | 12259662736874489581 | 12259662736874489581 |
+
+Default before/after for the accepted target:
+
+| Benchmark | Before mean ns | After mean ns | Before median ns | After median ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|---:|---:|
+| managed_heap_materialization | 767982 | 450642 | 576750 | 444125 | 1965056817950502848 | 1965056817950502848 |
+
+Checkpoint notes:
+
+```text
+The accepted path removes temporary BTreeMap field construction for the common
+zero-, one-, and two-field managed-heap record/enum cases while preserving field
+ordering, shape IDs, heap storage, budget charging, and source-spanned error
+behavior. The MapEntry guardrail checksum stayed stable, but the quick timing
+did not show a standalone map.find win.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

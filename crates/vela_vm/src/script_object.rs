@@ -43,6 +43,39 @@ impl<T> ScriptFields<T> {
     }
 
     #[must_use]
+    pub fn two(
+        owner: &str,
+        first_name: impl Into<String>,
+        first_value: T,
+        second_name: impl Into<String>,
+        second_value: T,
+    ) -> Self {
+        let first_name = first_name.into();
+        let second_name = second_name.into();
+        if first_name == second_name {
+            return Self::single(owner, second_name, second_value);
+        }
+        let (first_slot, second_slot) = if first_name < second_name {
+            (
+                FieldSlot::new(first_name, first_value),
+                FieldSlot::new(second_name, second_value),
+            )
+        } else {
+            (
+                FieldSlot::new(second_name, second_value),
+                FieldSlot::new(first_name, first_value),
+            )
+        };
+        Self {
+            shape_id: shape_id(
+                owner,
+                [first_slot.name.as_str(), second_slot.name.as_str()].into_iter(),
+            ),
+            slots: vec![first_slot, second_slot],
+        }
+    }
+
+    #[must_use]
     pub fn from_pairs(owner: &str, fields: impl IntoIterator<Item = (String, T)>) -> Self {
         let fields = fields.into_iter().collect::<BTreeMap<_, _>>();
         let shape_id = shape_id(owner, fields.keys().map(String::as_str));
@@ -213,5 +246,33 @@ mod tests {
 
         assert_eq!(from_pairs.shape_id(), empty.shape_id());
         assert_eq!(from_pairs, empty);
+    }
+
+    #[test]
+    fn two_field_constructor_matches_pair_shape_and_order() {
+        let from_pairs =
+            ScriptFields::from_pairs("MapEntry", [("value".to_owned(), 8), ("key".to_owned(), 2)]);
+        let two = ScriptFields::two("MapEntry", "value", 8, "key", 2);
+
+        assert_eq!(from_pairs.shape_id(), two.shape_id());
+        assert_eq!(from_pairs, two);
+        assert_eq!(
+            two.iter().map(|(name, _)| name).collect::<Vec<_>>(),
+            ["key", "value"]
+        );
+    }
+
+    #[test]
+    fn two_field_constructor_matches_duplicate_pair_semantics() {
+        let from_pairs = ScriptFields::from_pairs(
+            "Duplicate",
+            [("value".to_owned(), 1), ("value".to_owned(), 2)],
+        );
+        let two = ScriptFields::two("Duplicate", "value", 1, "value", 2);
+
+        assert_eq!(from_pairs.shape_id(), two.shape_id());
+        assert_eq!(from_pairs, two);
+        assert_eq!(two.len(), 1);
+        assert_eq!(two.get("value"), Some(&2));
     }
 }

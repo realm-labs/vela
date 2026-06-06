@@ -238,6 +238,30 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_map_find_entries",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..72 {
+        let rewards = {
+            "r01": 1, "r02": 2, "r03": 3, "r04": 4,
+            "r05": 5, "r06": 6, "r07": 7, "r08": 8,
+            "r09": 9, "r10": 10, "r11": 11, "r12": 12,
+        };
+        let found = rewards.find(|key, value| key == "r08" && value == 8 + tick - tick);
+        let missing = rewards.find(|key, value| key == "missing" && value > 0);
+        let entry = option::unwrap_or(found, MapEntry { key: "", value: 0 });
+        if entry.key != "r08" || entry.value != 8 || !option::is_none(missing) {
+            return 0;
+        }
+        total += entry.key.len() + entry.value;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_array_group_by",
         mode: ExecutionMode::ManagedHeap,
         source: r#"

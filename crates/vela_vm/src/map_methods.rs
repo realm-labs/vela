@@ -79,10 +79,7 @@ pub(super) fn map_entry(
     allocate_heap_value(
         HeapValue::Record {
             type_name: "MapEntry".to_owned(),
-            fields: ScriptFields::from_pairs(
-                "MapEntry",
-                [("key".to_owned(), key), ("value".to_owned(), value)],
-            ),
+            fields: ScriptFields::two("MapEntry", "key", key, "value", value),
         },
         heap_ref,
         budget.as_deref_mut(),

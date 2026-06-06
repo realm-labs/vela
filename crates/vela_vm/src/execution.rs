@@ -1378,14 +1378,34 @@ fn runtime_fields_from_registers(
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<ScriptFields<Value>> {
-    fields
-        .iter()
-        .map(|(name, register)| {
-            Ok((
-                name.clone(),
-                store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
+    match fields {
+        [] => Ok(ScriptFields::empty(owner)),
+        [(name, register)] => {
+            let value = store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?;
+            Ok(ScriptFields::single(owner, name.clone(), value))
+        }
+        [(first_name, first_register), (second_name, second_register)] => {
+            let first_value =
+                store_runtime_value(frame.read(*first_register)?, heap, budget.as_deref_mut())?;
+            let second_value =
+                store_runtime_value(frame.read(*second_register)?, heap, budget.as_deref_mut())?;
+            Ok(ScriptFields::two(
+                owner,
+                first_name.clone(),
+                first_value,
+                second_name.clone(),
+                second_value,
             ))
-        })
-        .collect::<VmResult<Vec<_>>>()
-        .map(|fields| ScriptFields::from_pairs(owner, fields))
+        }
+        _ => fields
+            .iter()
+            .map(|(name, register)| {
+                Ok((
+                    name.clone(),
+                    store_runtime_value(frame.read(*register)?, heap, budget.as_deref_mut())?,
+                ))
+            })
+            .collect::<VmResult<Vec<_>>>()
+            .map(|fields| ScriptFields::from_pairs(owner, fields)),
+    }
 }
