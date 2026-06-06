@@ -42,7 +42,7 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, small and wider script/native/method argument storage, read-only method root guards, owned return aggregate storage, borrowed runtime view receiver classification, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema, map lookup key borrowing and merge receiver fast path, string-length ASCII fast paths, and set lookup/combination/higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded script-call/range-iteration/map/map-lookup/map-merge/set/set-lookup/set-combination/array/array-lookup/array-distinct/array-group-by/host-conversion/managed-heap-host-conversion/managed-heap-callback/Option-Result/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, negated equality peephole lowering, range-loop bytecode lowering, Option/Result helper tag fast paths, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
+| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, small and wider script/native/method argument storage, read-only method root guards, owned return aggregate storage, borrowed runtime view receiver classification, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema, map lookup key borrowing and merge receiver fast path, string-length ASCII fast paths, and set lookup/combination/higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded script-call/range-iteration/map/map-lookup/map-merge/map-extend/set/set-lookup/set-combination/array/array-lookup/array-extend/array-distinct/array-group-by/host-conversion/managed-heap-host-conversion/managed-heap-callback/Option-Result/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar equality fast paths, truthy bytecode lowering, negated equality peephole lowering, range-loop bytecode lowering, Option/Result helper tag fast paths, and call-entry default allocation removal exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
 | M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
@@ -224,6 +224,11 @@ before debugger/DAP work and Cranelift JIT.
   [performance.md](performance.md): `managed_heap_map_merge` now measures
   repeated heap-mode `map.merge()` calls, and merge iterates borrowed heap map
   slots instead of cloning receiver maps into temporary entry vectors first.
+- An M19 managed-heap extend coverage checkpoint is recorded in
+  [performance.md](performance.md): `managed_heap_array_extend` and
+  `managed_heap_map_extend` now measure repeated heap-mode mutating collection
+  extension; direct temporary-vector cleanup candidates were measured but not
+  accepted because quick runs were flat to slower.
 - An M19 read-only method receiver checkpoint is recorded in
   [performance.md](performance.md): non-mutating string, callback, and stdlib
   method dispatch now tries a borrowed receiver fast path before falling back to

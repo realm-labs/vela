@@ -384,6 +384,37 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_array_extend",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = ["daily", "quest"];
+        tags.extend(["raid", "event", "boss"]);
+        tags.extend(["bonus"]);
+
+        let scores = [1, 2, 3];
+        scores.extend([5, 8, 13]);
+        scores.extend([]);
+
+        if tags.len() != 6
+            || tags[0] != "daily"
+            || tags[5] != "bonus"
+            || tags.join("|") != "daily|quest|raid|event|boss|bonus"
+            || scores.len() != 6
+            || scores[5] != 13
+            || scores.sum() != 32
+        {
+            return 0;
+        }
+        total += tags.len() + scores.sum() + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_map_lookup",
         mode: ExecutionMode::ManagedHeap,
         source: r#"
@@ -446,6 +477,39 @@ fn main() {
             return 0;
         }
         total += merged.len() + merged["raid"] + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "managed_heap_map_extend",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let scores = {
+            "daily": 3,
+            "raid": 8,
+        };
+        let patch = {
+            "raid": 21,
+            "boss": 13,
+            "event": 5,
+        };
+        scores.extend(patch);
+        scores.extend({"bonus": 34});
+
+        if scores.len() != 5
+            || scores["daily"] != 3
+            || scores["raid"] != 21
+            || scores["event"] != 5
+            || scores["bonus"] != 34
+        {
+            return 0;
+        }
+        total += scores.len() + scores["raid"] + tick - tick;
     }
     return total;
 }

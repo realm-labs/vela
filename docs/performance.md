@@ -2410,6 +2410,42 @@ Checksums stayed stable. The improvement is scoped to map merge; map callback
 methods keep their existing callback-root behavior and map introspection still
 materializes returned keys, values, and entries by design.
 
+### 2026-06-06 M19 Managed Heap Extend Coverage Checkpoint
+
+This checkpoint adds `managed_heap_array_extend` and `managed_heap_map_extend`
+as focused benchmark coverage for heap-mode mutating collection extension.
+Two direct materialization cleanup candidates were measured in the same
+session and were not accepted:
+
+- `array.extend()` snapshotting heap array slots once and extending from that
+  snapshot, instead of materializing the argument array and then building a
+  second slot vector.
+- `map.extend()` snapshotting borrowed heap map entries once and extending the
+  receiver map directly, instead of building a materialized entry vector and a
+  second stored slot vector.
+
+Validation:
+
+```bash
+cargo test -p vela_vm array_extend
+cargo test -p vela_vm map_extend
+cargo bench -p vela_vm --bench baseline managed_heap_array_extend -- --quick
+cargo bench -p vela_vm --bench baseline managed_heap_map_extend -- --quick
+```
+
+Quick before/candidate reruns:
+
+| Benchmark | Before mean ns | Candidate run 1 mean ns | Candidate run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_extend | 4040312 | 4036104 | 4076187 | 607409880317008167 |
+| managed_heap_map_extend | 2102396 | 2112083 | n/a | 7019030315085917678 |
+
+The candidates were not accepted because repeated quick runs were flat to
+slower. The benchmark coverage remains useful as a guardrail for later
+mutating collection work; future extend optimization should target a broader
+storage or mutation strategy rather than removing this small temporary layer
+alone.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for
