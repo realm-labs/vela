@@ -142,15 +142,29 @@ Cranelift JIT.
 
 ### Remaining Gaps
 
-- M19.5: prepare hot paths for M20 by replacing avoidable name dispatch with
-  IDs, slots, or resolved call targets; splitting diagnostic strings from hot
-  operands where practical; keeping hot dispatch families behind focused VM
-  boundaries; preparing native/stdlib calls for borrowed Value views;
-  preparing HostPath/PatchTx reusable path keys or direct adapter thunks;
-  reducing callback/closure materialization; defining version-owned profile
-  invariants for hot bytecode offsets; and tightening JIT-facing interpreter
-  contracts for frame maps, GC roots, budgets, PatchTx slow paths, and hot
-  reload invalidation before any cache state is added.
+- M19.5 exit checklist before M20:
+  - hot script, native, stdlib, method, and host-boundary dispatch operands
+    use IDs, slots, resolved targets, path keys, or an explicit remaining
+    fallback reason;
+  - diagnostic names are split from hot operands where practical and remain
+    available for reflection, source reports, and errors;
+  - VM execution delegates host access, script calls, stdlib/method dispatch,
+    callback/closure calls, aggregate/object construction, and iteration
+    through focused boundaries instead of growing `execution.rs`;
+  - native and stdlib hot paths have borrowed `Value` view coverage or a named
+    reason to defer the remaining conversions to M20/JIT work;
+  - HostPath/PatchTx reusable path keys or direct adapter-thunk boundaries are
+    implemented enough for M20 host field/path caches;
+  - callback and closure materialization uses inline/small storage on common
+    arities, with remaining allocation costs measured;
+  - verified-bytecode and runtime tests cover the invariants needed by later
+    unchecked register, operand, and cache fast paths;
+  - ProgramVersion-owned profile metadata covers hot bytecode offsets and has
+    hot-reload/schema invalidation tests;
+  - frame-map, GC-root, budget-checkpoint, PatchTx slow-path, and hot-reload
+    invalidation contracts are documented or tested as interpreter contracts;
+  - interpreter-only benchmark rows identify which remaining costs belong to
+    M20 cache work versus later JIT work.
 - M20: after M19.5, implement guarded inline caches and specialization for
   script record fields, host field/path reads and writes, method dispatch,
   stdlib value methods, and hot bytecode offsets. Cache misses, guard failures,
