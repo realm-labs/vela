@@ -914,6 +914,74 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_record_sextets",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+struct Reward {
+    item_id,
+    count,
+    bonus,
+    rarity,
+    quality,
+    weight,
+}
+
+enum ResultState {
+    Scored { item_id, count, bonus, rarity, quality, weight }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        let gold = Reward {
+            item_id: "gold",
+            count: tick + 1,
+            bonus: tick % 7,
+            rarity: 3,
+            quality: tick % 11,
+            weight: 2,
+        };
+        let gold_state = ResultState::Scored {
+            item_id: gold.item_id,
+            count: gold.count,
+            bonus: gold.bonus,
+            rarity: gold.rarity,
+            quality: gold.quality,
+            weight: gold.weight,
+        };
+        match gold_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality, weight } => {
+                total += item_id.len() + count + bonus + rarity + quality + weight;
+            }
+        }
+
+        let xp = Reward {
+            item_id: "xp",
+            count: tick + 2,
+            bonus: tick % 5,
+            rarity: 1,
+            quality: tick % 13,
+            weight: 1,
+        };
+        let xp_state = ResultState::Scored {
+            item_id: xp.item_id,
+            count: xp.count,
+            bonus: xp.bonus,
+            rarity: xp.rarity,
+            quality: xp.quality,
+            weight: xp.weight,
+        };
+        match xp_state {
+            ResultState::Scored { item_id, count, bonus, rarity, quality, weight } => {
+                total += item_id.len() + count + bonus + rarity + quality + weight;
+            }
+        }
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "gc_pacing",
         mode: ExecutionMode::GcPacing,
         source: r#"

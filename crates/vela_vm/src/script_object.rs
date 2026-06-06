@@ -190,6 +190,51 @@ impl<T> ScriptFields<T> {
     }
 
     #[must_use]
+    pub fn six(owner: &str, fields: [(String, T); 6]) -> Self {
+        let [
+            (first_name, first_value),
+            (second_name, second_value),
+            (third_name, third_value),
+            (fourth_name, fourth_value),
+            (fifth_name, fifth_value),
+            (sixth_name, sixth_value),
+        ] = fields;
+        if has_duplicate_names([
+            first_name.as_str(),
+            second_name.as_str(),
+            third_name.as_str(),
+            fourth_name.as_str(),
+            fifth_name.as_str(),
+            sixth_name.as_str(),
+        ]) {
+            return Self::from_pairs(
+                owner,
+                [
+                    (first_name, first_value),
+                    (second_name, second_value),
+                    (third_name, third_value),
+                    (fourth_name, fourth_value),
+                    (fifth_name, fifth_value),
+                    (sixth_name, sixth_value),
+                ],
+            );
+        }
+        let mut slots = vec![
+            FieldSlot::new(first_name, first_value),
+            FieldSlot::new(second_name, second_value),
+            FieldSlot::new(third_name, third_value),
+            FieldSlot::new(fourth_name, fourth_value),
+            FieldSlot::new(fifth_name, fifth_value),
+            FieldSlot::new(sixth_name, sixth_value),
+        ];
+        slots.sort_by(|left, right| left.name.cmp(&right.name));
+        Self {
+            shape_id: shape_id(owner, slots.iter().map(|slot| slot.name.as_str())),
+            slots,
+        }
+    }
+
+    #[must_use]
     pub fn from_pairs(owner: &str, fields: impl IntoIterator<Item = (String, T)>) -> Self {
         let fields = fields.into_iter().collect::<BTreeMap<_, _>>();
         let shape_id = shape_id(owner, fields.keys().map(String::as_str));
@@ -553,5 +598,69 @@ mod tests {
         assert_eq!(from_pairs, five);
         assert_eq!(five.len(), 4);
         assert_eq!(five.get("value"), Some(&3));
+    }
+
+    #[test]
+    fn six_field_constructor_matches_pair_shape_and_order() {
+        let from_pairs = ScriptFields::from_pairs(
+            "Reward",
+            [
+                ("weight".to_owned(), 6),
+                ("quality".to_owned(), 5),
+                ("rarity".to_owned(), 4),
+                ("item_id".to_owned(), 1),
+                ("bonus".to_owned(), 3),
+                ("count".to_owned(), 2),
+            ],
+        );
+        let six = ScriptFields::six(
+            "Reward",
+            [
+                ("weight".to_owned(), 6),
+                ("quality".to_owned(), 5),
+                ("rarity".to_owned(), 4),
+                ("item_id".to_owned(), 1),
+                ("bonus".to_owned(), 3),
+                ("count".to_owned(), 2),
+            ],
+        );
+
+        assert_eq!(from_pairs.shape_id(), six.shape_id());
+        assert_eq!(from_pairs, six);
+        assert_eq!(
+            six.iter().map(|(name, _)| name).collect::<Vec<_>>(),
+            ["bonus", "count", "item_id", "quality", "rarity", "weight"]
+        );
+    }
+
+    #[test]
+    fn six_field_constructor_matches_duplicate_pair_semantics() {
+        let from_pairs = ScriptFields::from_pairs(
+            "Duplicate",
+            [
+                ("left".to_owned(), 1),
+                ("value".to_owned(), 2),
+                ("right".to_owned(), 4),
+                ("extra".to_owned(), 5),
+                ("tail".to_owned(), 6),
+                ("value".to_owned(), 3),
+            ],
+        );
+        let six = ScriptFields::six(
+            "Duplicate",
+            [
+                ("left".to_owned(), 1),
+                ("value".to_owned(), 2),
+                ("right".to_owned(), 4),
+                ("extra".to_owned(), 5),
+                ("tail".to_owned(), 6),
+                ("value".to_owned(), 3),
+            ],
+        );
+
+        assert_eq!(from_pairs.shape_id(), six.shape_id());
+        assert_eq!(from_pairs, six);
+        assert_eq!(six.len(), 5);
+        assert_eq!(six.get("value"), Some(&3));
     }
 }
