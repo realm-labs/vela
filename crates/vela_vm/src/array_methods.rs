@@ -89,10 +89,23 @@ pub(super) fn option_value(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    let fields = payload
-        .map(|payload| vec![("0".to_owned(), payload)])
-        .unwrap_or_default();
-    make_enum_value("Option", variant, fields, heap, budget, "Option")
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error("Option");
+    };
+    let fields = match (variant, payload) {
+        ("Some", Some(payload)) => ScriptFields::single("Option.Some", "0", payload),
+        ("None", None) => ScriptFields::empty("Option.None"),
+        _ => return type_error("Option"),
+    };
+    allocate_heap_value(
+        HeapValue::Enum {
+            enum_name: "Option".to_owned(),
+            variant: variant.to_owned(),
+            fields,
+        },
+        heap,
+        budget.as_deref_mut(),
+    )
 }
 
 pub(crate) fn make_string_value(
@@ -129,28 +142,6 @@ pub(crate) fn make_map_value(
         return type_error(operation);
     };
     allocate_heap_value(HeapValue::Map(values), heap, budget.as_deref_mut())
-}
-
-pub(crate) fn make_enum_value(
-    enum_name: &str,
-    variant: &str,
-    fields: Vec<(String, Value)>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    operation: &'static str,
-) -> VmResult<Value> {
-    let Some(heap) = heap.as_deref_mut() else {
-        return type_error(operation);
-    };
-    allocate_heap_value(
-        HeapValue::Enum {
-            enum_name: enum_name.to_owned(),
-            variant: variant.to_owned(),
-            fields: ScriptFields::from_pairs(&format!("{enum_name}.{variant}"), fields),
-        },
-        heap,
-        budget.as_deref_mut(),
-    )
 }
 
 pub(super) fn index_out_of_bounds(index: usize, len: usize) -> VmError {

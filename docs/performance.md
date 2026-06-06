@@ -2574,6 +2574,37 @@ normalizes fixed one-field and empty shapes through the general pair-sorting
 path. Earlier quick reruns without static owner strings were flat to slower, so
 the accepted path keeps the optimization scoped to known Option/Result variants.
 
+### 2026-06-06 M19 Stdlib Option Fixed Field Construction Checkpoint
+
+This checkpoint applies the same fixed empty and single-field `ScriptFields`
+construction to the internal stdlib Option helper used by array endpoint,
+lookup, mutation, higher-order, and extrema methods. The helper keeps the
+existing `Option.Some` and `Option.None` shape-owner strings, enum names,
+variant names, payload field name, GC tracing, and managed-heap allocation
+semantics, but avoids building a temporary payload vector and general
+pair-sorted field set for each returned Option.
+
+Validation:
+
+```bash
+cargo test -p vela_vm array_methods
+cargo fmt --all -- --check
+cargo clippy -p vela_vm --all-targets -- -D warnings
+cargo bench -p vela_vm --bench baseline managed_heap_array_extrema -- --quick
+```
+
+Quick before/final means:
+
+| Benchmark | Before mean ns | Final run 1 mean ns | Final run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_array_extrema | 1920604 | 1575187 | 1535020 | 10805241693778746893 |
+
+Checksums stayed stable. The focused win is in managed-heap array min/max
+calls, where each call returns an Option and now skips the general field
+normalization path. `managed_heap_array_lookup` was also observed because it
+uses the same helper for `first`, `last`, and `index_of`, but repeated quick
+runs were too noisy to claim a focused lookup win from this checkpoint.
+
 ## Targets
 
 The post-MVP non-JIT target is:
