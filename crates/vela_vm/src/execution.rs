@@ -486,9 +486,13 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::GetRecordField { dst, record, field } => {
-                    let value =
-                        get_record_field_value(frame.read(*record)?, field, heap.as_deref())?;
-                    frame.write(*dst, value)?;
+                    field_access::dispatch_get_record_field(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *record,
+                        field,
+                    )?;
                 }
                 InstructionKind::GetRecordSlot {
                     dst,
@@ -496,20 +500,24 @@ impl Vm {
                     field,
                     slot,
                 } => {
-                    let value =
-                        get_record_slot_value(frame.read(*record)?, field, *slot, heap.as_deref())?;
-                    frame.write(*dst, value)?;
+                    field_access::dispatch_get_record_slot(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *record,
+                        field,
+                        *slot,
+                    )?;
                 }
                 InstructionKind::SetRecordField { record, field, src } => {
-                    let mut record_value = *frame.read(*record)?;
-                    record_fields::set_record_field_value(
-                        &mut record_value,
-                        field,
-                        frame.read(*src)?,
+                    field_access::dispatch_set_record_field(
+                        &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
+                        *record,
+                        field,
+                        *src,
                     )?;
-                    frame.write(*record, record_value)?;
                 }
                 InstructionKind::SetRecordSlot {
                     record,
@@ -517,20 +525,24 @@ impl Vm {
                     slot,
                     src,
                 } => {
-                    let mut record_value = *frame.read(*record)?;
-                    record_fields::set_record_slot_value(
-                        &mut record_value,
-                        field,
-                        *slot,
-                        frame.read(*src)?,
+                    field_access::dispatch_set_record_slot(
+                        &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
+                        *record,
+                        field,
+                        *slot,
+                        *src,
                     )?;
-                    frame.write(*record, record_value)?;
                 }
                 InstructionKind::GetEnumField { dst, value, field } => {
-                    let value = get_enum_field_value(frame.read(*value)?, field, heap.as_deref())?;
-                    frame.write(*dst, value)?;
+                    field_access::dispatch_get_enum_field(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *value,
+                        field,
+                    )?;
                 }
                 InstructionKind::GetEnumSlot {
                     dst,
@@ -538,9 +550,14 @@ impl Vm {
                     field,
                     slot,
                 } => {
-                    let value =
-                        get_enum_slot_value(frame.read(*value)?, field, *slot, heap.as_deref())?;
-                    frame.write(*dst, value)?;
+                    field_access::dispatch_get_enum_slot(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        *dst,
+                        *value,
+                        field,
+                        *slot,
+                    )?;
                 }
                 InstructionKind::GetIndex { dst, base, index } => {
                     let value = indexing::get_index(
@@ -657,8 +674,12 @@ impl Vm {
                     enum_name,
                     variant,
                 } => {
-                    let matches =
-                        enum_tag_equal(frame.read(*value)?, enum_name, variant, heap.as_deref());
+                    let matches = field_access::enum_tag_equal(
+                        frame.read(*value)?,
+                        enum_name,
+                        variant,
+                        heap.as_deref(),
+                    );
                     frame.write(*dst, Value::Bool(matches))?;
                 }
                 InstructionKind::GetHostField { dst, root, field } => {

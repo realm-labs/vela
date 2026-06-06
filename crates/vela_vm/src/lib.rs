@@ -51,10 +51,6 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
-use field_access::{
-    enum_tag_equal, get_enum_field_value, get_enum_slot_value, get_record_field_value,
-    get_record_slot_value,
-};
 pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;

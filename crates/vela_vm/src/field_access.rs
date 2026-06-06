@@ -1,5 +1,84 @@
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value};
+use crate::{
+    CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
+    record_fields, stored_runtime_value,
+};
+use vela_bytecode::Register;
+
+pub(crate) fn dispatch_get_record_field(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    dst: Register,
+    record: Register,
+    field: &str,
+) -> VmResult<()> {
+    let value = get_record_field_value(frame.read(record)?, field, heap.as_deref())?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_get_record_slot(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    dst: Register,
+    record: Register,
+    field: &str,
+    slot: usize,
+) -> VmResult<()> {
+    let value = get_record_slot_value(frame.read(record)?, field, slot, heap.as_deref())?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_set_record_field(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    record: Register,
+    field: &str,
+    src: Register,
+) -> VmResult<()> {
+    let mut record_value = *frame.read(record)?;
+    let src = *frame.read(src)?;
+    record_fields::set_record_field_value(&mut record_value, field, &src, heap, budget)?;
+    frame.write(record, record_value)
+}
+
+pub(crate) fn dispatch_set_record_slot(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+    record: Register,
+    field: &str,
+    slot: usize,
+    src: Register,
+) -> VmResult<()> {
+    let mut record_value = *frame.read(record)?;
+    let src = *frame.read(src)?;
+    record_fields::set_record_slot_value(&mut record_value, field, slot, &src, heap, budget)?;
+    frame.write(record, record_value)
+}
+
+pub(crate) fn dispatch_get_enum_field(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    dst: Register,
+    value: Register,
+    field: &str,
+) -> VmResult<()> {
+    let value = get_enum_field_value(frame.read(value)?, field, heap.as_deref())?;
+    frame.write(dst, value)
+}
+
+pub(crate) fn dispatch_get_enum_slot(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    dst: Register,
+    value: Register,
+    field: &str,
+    slot: usize,
+) -> VmResult<()> {
+    let value = get_enum_slot_value(frame.read(value)?, field, slot, heap.as_deref())?;
+    frame.write(dst, value)
+}
 
 pub(crate) fn get_record_field_value(
     value: &Value,
