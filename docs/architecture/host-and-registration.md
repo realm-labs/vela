@@ -178,12 +178,12 @@ test mock state
 Embedding hosts may bind ordinary Rust values directly at the call boundary:
 
 ```rust
-let mut args = CallArgs::new()
+let args = CallArgs::new()
     .with_host_ref("config", &config)
     .with_host_mut("player", &mut player)
     .with_value("amount", 10);
 
-runtime.call_args_direct("handle", &mut args, options, &mut tx)?;
+let output = runtime.call_direct("handle", args, options)?;
 ```
 
 This is an embedding API convenience, not a different script value model.
@@ -197,6 +197,9 @@ mutate aliases inside the same call; they still never receive real `&T` or
 handle whose mutations write through immediately through `PatchTx`. Hosts that
 already store state behind their own adapter should pass existing handles with
 `with_host_handle` and use `runtime.call_args` with that adapter.
+The high-level direct call result dereferences to the returned `OwnedValue`;
+hosts can inspect the retained transaction journal only when they need patch
+audit data.
 
 ## Rust Host Macros
 

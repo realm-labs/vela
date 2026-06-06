@@ -178,6 +178,7 @@ fn prelude_imports_cover_source_and_reload_results() {
 
     fn accepts_update_result(_result: EngineHotReloadSourceResult<HotUpdate>) {}
     fn accepts_safe_point_report(_report: Option<HotReloadReport>) {}
+    fn accepts_call_output(_output: CallOutput) {}
     fn accepts_event_safe_point_report(_report: EventCallSafePointReport) {}
     fn accepts_hot_reload_result(_result: HotReloadResult<ProgramVersion>) {}
     fn accepts_report_diagnostics(_diagnostics: Vec<HotReloadDiagnostic>) {}
@@ -198,6 +199,7 @@ fn prelude_imports_cover_source_and_reload_results() {
 
     accepts_update_result(Err(reload_error));
     accepts_safe_point_report(None);
+    accepts_call_output(CallOutput::new(OwnedValue::Null, PatchTx::new()));
     accepts_event_safe_point_report(EventCallSafePointReport {
         value: OwnedValue::Null,
         reload: None,

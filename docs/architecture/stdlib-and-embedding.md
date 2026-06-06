@@ -162,17 +162,15 @@ let mut runtime = Runtime::new(engine, program);
 ### Call
 
 ```rust
-let mut args = CallArgs::new()
+let args = CallArgs::new()
     .with_host_mut("account", &mut account)
     .with_host_ref("invoice", &invoice)
     .with_value("now", current_tick);
-let mut tx = PatchTx::new();
 
-runtime.call_args_direct(
+let output = runtime.call_direct(
     "billing.on_invoice_paid",
-    &mut args,
+    args,
     CallOptions::unbounded(),
-    &mut tx,
 )?;
 ```
 
@@ -191,6 +189,11 @@ mutation during the call. Hosts that already manage object identity through a
 state adapter can pass an existing low-level handle with
 `CallArgs::with_host_handle("name", host_ref)` and call `runtime.call_args`
 with that adapter.
+
+`call_direct` returns `CallOutput`, which dereferences to the returned
+`OwnedValue` for ordinary use. Hosts that need audit or diagnostics can inspect
+`output.patches()` or `output.tx()`; most call sites do not need to construct
+or pass a `PatchTx` explicitly.
 
 ### Hot Reload
 

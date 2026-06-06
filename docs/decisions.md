@@ -149,6 +149,11 @@ call-scope `HostRef` handles. Field access still goes through a
 `&mut T` enables write-through mutation without exposing the real reference to
 script code.
 
+High-level embedding calls may construct `PatchTx` internally and return a
+`CallOutput` that dereferences to the script return `OwnedValue`. This keeps
+ordinary call sites value-focused while still retaining the patch journal for
+hosts that need audit, diagnostics, or debugging data.
+
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy
 wraps HostPath and requires PatchTx, but complex Rust objects remain handles

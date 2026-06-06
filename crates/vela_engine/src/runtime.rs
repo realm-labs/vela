@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ops::Deref;
 use std::path::Path;
 
 use vela_bytecode::Program;
@@ -251,6 +252,18 @@ impl Runtime {
         }
     }
 
+    pub fn call_output(
+        &mut self,
+        entry: &str,
+        args: &[OwnedValue],
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+    ) -> VmResult<CallOutput> {
+        let mut tx = PatchTx::new();
+        let value = self.call(entry, args, options, adapter, &mut tx)?;
+        Ok(CallOutput { value, tx })
+    }
+
     pub fn call_args(
         &mut self,
         entry: &str,
@@ -267,6 +280,18 @@ impl Runtime {
         self.call(entry, &resolved, options, &mut adapter, tx)
     }
 
+    pub fn call_args_output(
+        &mut self,
+        entry: &str,
+        mut args: CallArgs<'_>,
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+    ) -> VmResult<CallOutput> {
+        let mut tx = PatchTx::new();
+        let value = self.call_args(entry, &mut args, options, adapter, &mut tx)?;
+        Ok(CallOutput { value, tx })
+    }
+
     pub fn call_args_direct(
         &mut self,
         entry: &str,
@@ -276,6 +301,16 @@ impl Runtime {
     ) -> VmResult<OwnedValue> {
         let mut adapter = EmptyStateAdapter;
         self.call_args(entry, args, options, &mut adapter, tx)
+    }
+
+    pub fn call_direct(
+        &mut self,
+        entry: &str,
+        args: CallArgs<'_>,
+        options: CallOptions,
+    ) -> VmResult<CallOutput> {
+        let mut adapter = EmptyStateAdapter;
+        self.call_args_output(entry, args, options, &mut adapter)
     }
 
     pub fn call_at_event_end_safe_point(
@@ -336,6 +371,63 @@ impl Runtime {
             *program = version.to_program();
         }
         Some(report)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CallOutput {
+    value: OwnedValue,
+    tx: PatchTx,
+}
+
+impl CallOutput {
+    #[must_use]
+    pub const fn new(value: OwnedValue, tx: PatchTx) -> Self {
+        Self { value, tx }
+    }
+
+    #[must_use]
+    pub const fn value(&self) -> &OwnedValue {
+        &self.value
+    }
+
+    #[must_use]
+    pub const fn tx(&self) -> &PatchTx {
+        &self.tx
+    }
+
+    #[must_use]
+    pub fn patches(&self) -> &[Patch] {
+        self.tx.patches()
+    }
+
+    #[must_use]
+    pub fn into_value(self) -> OwnedValue {
+        self.value
+    }
+
+    #[must_use]
+    pub fn into_tx(self) -> PatchTx {
+        self.tx
+    }
+
+    #[must_use]
+    pub fn into_parts(self) -> (OwnedValue, PatchTx) {
+        (self.value, self.tx)
+    }
+}
+
+impl Deref for CallOutput {
+    type Target = OwnedValue;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl AsRef<OwnedValue> for CallOutput {
+    fn as_ref(&self) -> &OwnedValue {
+        &self.value
     }
 }
 

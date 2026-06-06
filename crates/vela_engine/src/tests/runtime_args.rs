@@ -260,6 +260,42 @@ fn main(player: Player, amount) {
 }
 
 #[test]
+fn runtime_call_direct_returns_value_like_output_and_patches() {
+    let engine = Engine::builder()
+        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .build()
+        .expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+fn main(player: Player, amount) {
+    player.level += amount;
+    return player.level;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+    let mut player = DirectPlayer { level: 9 };
+
+    let output = runtime
+        .call_direct(
+            "main",
+            CallArgs::new()
+                .with_host_mut("player", &mut player)
+                .with_value("amount", 4_i64),
+            CallOptions::unbounded(),
+        )
+        .expect("runtime direct call should run");
+
+    assert_eq!(&*output, &OwnedValue::Int(13));
+    assert_eq!(player.level, 13);
+    assert_eq!(output.patches().len(), 1);
+    assert_eq!(output.patches()[0].op, PatchOp::Add(HostValue::Int(4)));
+}
+
+#[test]
 fn runtime_call_args_safe_point_preserves_direct_host_bindings() {
     let engine = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))

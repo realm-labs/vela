@@ -4,7 +4,6 @@ use std::path::Path;
 use vela_engine::engine::Engine;
 use vela_engine::error::EngineResult;
 use vela_engine::runtime::{CallOptions, Runtime};
-use vela_host::tx::PatchTx;
 
 use self::ids::DemoIds;
 use self::registry::demo_engine;
@@ -94,21 +93,19 @@ fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Bo
     let mut host_options = options.host;
     host_options.has_monster = main.params.iter().any(|param| param == "monster");
     let mut host_state = DemoHostState::new(ids, host_options);
-    let mut args = host_state.main_args(main)?;
+    let args = host_state.main_args(main)?;
 
-    let mut tx = PatchTx::new();
     let mut runtime = Runtime::new(engine, program);
-    let result = runtime
-        .call_args(
+    let output = runtime
+        .call_args_output(
             "main",
-            &mut args,
+            args,
             CallOptions::new(10_000, 1024 * 1024, 64, 1024),
             &mut host_state.adapter,
-            &mut tx,
         )
         .map_err(|error| crate::diagnostics::render_vm_error(path, &error))?;
-    let patch_count = tx.patches().len();
-    host_state.print_result(result, patch_count)
+    let patch_count = output.patches().len();
+    host_state.print_result(output.into_value(), patch_count)
 }
 
 pub(crate) fn hot_reload_engine() -> EngineResult<Engine> {

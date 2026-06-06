@@ -12,7 +12,7 @@ pub use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 pub use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
-pub use crate::runtime::{CallArgs, CallOptions, EventCallSafePointReport, Runtime};
+pub use crate::runtime::{CallArgs, CallOptions, CallOutput, EventCallSafePointReport, Runtime};
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::{args, host};
