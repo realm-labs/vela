@@ -10,20 +10,21 @@ to be archived.
 
 ## Current Focus
 
-M0-M18 are complete enough as a runnable prototype, embedding surface,
-production hot-reload workflow, diagnostics/tooling foundation, and runnable
-game-server/conformance proof with measured performance baselines. Current work
-is centered on M19 non-JIT interpreter and heap optimization:
+M0-M19 are complete enough as a runnable prototype, embedding surface,
+production hot-reload workflow, diagnostics/tooling foundation, runnable
+game-server/conformance proof, measured performance baselines, and non-JIT
+interpreter/heap optimization checkpoint. Current work is centered on M20
+inline caches and specialization:
 
 ```text
 preserve all runtime, host, reflection, GC, and hot-reload semantics
-optimize only against recorded benchmark bottlenecks
-separate before/after benchmark evidence for each accepted change
+specialize only operations with measured hot paths
+keep guarded slow-path fallback for cache misses and invalidation
 ```
 
 Post-MVP performance remains a separate track: measure first, then optimize the
 non-JIT bytecode interpreter toward Lua 5.x comparable gameplay workloads
-before debugger/DAP work and Cranelift JIT.
+through M20 cache work before debugger/DAP work and Cranelift JIT.
 
 ## Milestone Snapshot
 
@@ -42,8 +43,8 @@ before debugger/DAP work and Cranelift JIT.
 | M16 | Complete enough | Parser, semantic, runtime/call-stack, host, reflection, hot reload, TypeFact, flow-narrowing, and completion snapshot fixtures exist. |
 | M17 | Complete enough | Game-server demos, negative workflows, conformance fixtures, and parser fuzz harness exist. |
 | M18 | Complete enough | Quick and full/default baseline captures exist with environment metadata and checksums. |
-| M19 | Partial | Safe-point and mark-stack GC pacing optimizations, direct heap aggregate construction, native/method argument materialization cleanup, small and wider script/native/method argument storage, read-only method root guards, owned return aggregate storage, borrowed runtime view receiver classification, array lookup/sort/slice/reverse/join/read-only/higher-order/sum/extrema, map lookup key borrowing and merge receiver fast path, string-length ASCII fast paths, and set lookup/combination/higher-order receiver fast paths, callback root/protected-value guards and heap root-buffer reuse, stack-local/no-heap map callback entries, heap map callback protection reuse, expanded script-call/range-iteration/map/map-lookup/map-merge/map-extend/map-find-entry/record-triplet/record-quad/record-quint/record-sextet/set/set-lookup/set-combination/array/array-lookup/array-extend/array-distinct/array-group-by/host-conversion/managed-heap-host-conversion/managed-heap-host-read-conversion/managed-heap-callback/Option-Result/scalar-dispatch benchmarks, numeric dispatch fast paths, scalar and heap-string equality fast paths, scalar/string constant load fast paths, short-array construction fast paths, truthy bytecode lowering, negated equality peephole lowering, range-loop bytecode lowering, Option/Result helper tag and fixed-field construction fast paths, stdlib Option fixed-field construction, call-entry default allocation removal, and small script-field construction fast paths through six fields exist; remaining heap materialization pressure and scalar dispatch optimizations remain candidates. |
-| M20 | Not started | Inline caches and specialization follow M19 interpreter and heap work. |
+| M19 | Complete enough | Non-JIT interpreter and heap optimization has a recorded exit checkpoint. Accepted work includes GC pacing, direct heap aggregate construction, argument materialization/storage cleanup, borrowed receiver/runtime views, stdlib collection/string/Option/Result fast paths, scalar/equality/constant/peephole/range-loop lowering, small script-field and short-array construction, and expanded benchmark coverage. Remaining Lua 5.x deltas are measured and belong to M20 cache/specialization families rather than more unguarded M19 micro-optimization. |
+| M20 | Partial | Inline caches and specialization are now the active focus, starting with script record field, host field/path, method dispatch, stdlib method, and hot bytecode offset profiling guards. |
 | M21 | Not started | Debugger runtime hooks and DAP integration follow stable runtime/tooling contracts. |
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
@@ -374,16 +375,23 @@ before debugger/DAP work and Cranelift JIT.
   `native_call_wide_args` now measure three- and four-argument calls, and
   temporary call argument storage now uses hand-written stack-array enum
   variants through four values before falling back to `Vec<Value>`.
+- An M19 exit checkpoint is recorded in [performance.md](performance.md):
+  default VM baselines and quick external comparison results show that the
+  accepted interpreter/heap optimizations preserve checksums and leave the
+  clearest remaining Lua 5.x deltas in collection iteration, string/method
+  dispatch, function calls, callback invocation, and host/cache-sensitive
+  gameplay paths. These are now M20 inline-cache and specialization targets.
 
 ### Remaining Gaps
 
-- M19: continue optimizing the non-JIT interpreter and managed heap path only
-  with before/after benchmark evidence, focusing next on remaining stdlib heap
-  receiver materialization, measured host conversion deltas, callback
-  invocation overhead, scalar dispatch optimizations, and gameplay-host
-  benchmark deltas.
-- M20+: keep inline-cache and specialization work behind M19 benchmarked
-  interpreter/heap improvements.
+- M20: implement guarded inline caches and specialization for script record
+  fields, host field/path reads and writes, method dispatch, stdlib value
+  methods, and hot bytecode offsets. Cache misses, guard failures, hot reload,
+  and schema ABI changes must fall back or invalidate without changing
+  semantics.
+- Lua 5.x comparable performance remains a measured target for cache-enabled
+  non-JIT gameplay workloads; scalar, array, string, function-call, and
+  callback deltas should be tracked separately from host-boundary benchmarks.
 
 ### Validation
 
@@ -396,19 +404,19 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-For current M19 work, run focused correctness tests for touched runtime areas
-plus the relevant benchmark before and after each optimization. Optimized paths
-must preserve ExecutionBudget, PatchTx, reflection policy, GC roots, hot reload
-ownership, and source-spanned diagnostics.
+For current M20 work, run focused correctness tests for touched runtime/cache
+areas plus interpreter-only versus cache-enabled benchmark rows. Specialized
+paths must preserve ExecutionBudget, PatchTx, reflection policy, GC roots, hot
+reload ownership, schema invalidation, and source-spanned diagnostics.
 
 ## Next Up
 
-- Choose the next narrow measured M19 optimization target from the updated
-  checkpoint notes, with remaining stdlib heap receiver materialization, host
-  conversion deltas, callback invocation overhead, and scalar dispatch
-  currently the clearest candidates; include the gameplay-host benchmark when
-  relevant.
-- Keep benchmark evidence ahead of M19/M20 optimization work.
+- Start M20 with the smallest guarded cache family that can be tested end to
+  end. Script record field slot reads/writes are the narrowest first target;
+  host field/path and method dispatch caches should follow once versioned cache
+  ownership and invalidation are proven.
+- Keep benchmark evidence ahead of M20 specialization work, reporting
+  interpreter-only versus cache-enabled rows.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, PatchTx, hot-reload, and conformance contracts.
 

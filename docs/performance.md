@@ -3018,6 +3018,77 @@ PatchTx-heavy host writes so future host boundary work can be measured more
 directly.
 ```
 
+### 2026-06-06 M19 Exit Checkpoint
+
+This checkpoint closes the unguarded M19 interpreter/heap optimization phase as
+complete enough for M20 inline caches and specialization. M19 accepted
+measured optimizations across GC pacing, direct heap aggregate construction,
+argument storage/materialization, borrowed receiver/runtime views, stdlib
+collection and string fast paths, Option/Result helpers, scalar/equality
+dispatch, peephole lowering, range-loop lowering, small `ScriptFields`
+construction, and short array construction. Several late micro-candidates were
+measured and rejected when repeated quick runs were flat or slower, which
+indicates the remaining major deltas now need guarded specialization rather
+than more generic dispatch branches.
+
+Environment:
+
+```text
+commit=10f03bf
+rustc=1.96.0 (ac68faa20 2026-05-25)
+cargo=1.96.0 (30a34c682 2026-05-25)
+target=macos/aarch64
+profile=release
+```
+
+Commands:
+
+```bash
+cargo bench -p vela_vm --bench baseline
+cargo bench -p vela_vm --bench baseline -- --quick
+cargo bench -p vela_vm --bench external_compare -- --quick
+```
+
+Default baseline exit sample:
+
+| Benchmark | Mode | Mean ns | P95 ns | Checksum |
+|---|---|---:|---:|---:|
+| scalar_branch_loop | inline | 3490422 | 3898208 | 14794452088437409837 |
+| range_iteration | inline | 7953589 | 8951208 | 17777181710453359332 |
+| scalar_dispatch_mix | inline | 7359768 | 8184292 | 18355421299335186739 |
+| script_call_small_args | script_program | 9726273 | 9833666 | 8911229402023173645 |
+| script_call_wide_args | script_program | 14794982 | 15029125 | 9013669435675877301 |
+| stdlib_collections | inline | 1042910 | 1217416 | 8455524478326472193 |
+| callback_collections | inline | 78264411 | 81619084 | 4123773336162002392 |
+| managed_heap_callback_collections | managed_heap | 77839226 | 79956209 | 4123773336162002392 |
+| managed_heap_option_result_helpers | managed_heap | 233396131 | 235194542 | 12067288036449541464 |
+| host_patch_tx | host_patch_tx | 350410 | 396791 | 1944703388338173655 |
+| managed_heap_host_conversion | host_managed_heap_patch_tx | 9401708 | 9579625 | 13416037972419907939 |
+| managed_heap_host_read_conversion | host_managed_heap_read_conversion | 13977702 | 14445541 | 11069682342898990559 |
+| gameplay_monster_kill | gameplay_host | 943922 | 981417 | 5386942582173291744 |
+| gc_pacing | gc_pacing | 29055851 | 29898250 | 10486785261191682509 |
+
+External comparison quick per-iteration means:
+
+| Runtime | scalar_branch_loop | function_calls | array_scan | string_methods |
+|---|---:|---:|---:|---:|
+| vela | 34439 | 97006 | 264744 | 183821 |
+| lua5 | 11977 | 18387 | 84890 | 116015 |
+| luajit | 8059 | 9394 | 13160 | 16549 |
+| node | 77891 | 80074 | 83395 | 87523 |
+
+Checkpoint notes:
+
+```text
+The exit checkpoint does not claim the Lua 5.x target is fully met across all
+microbenchmarks. It marks M19 complete enough for inline caches because the
+remaining gaps are now concentrated in cache-shaped work: script record field
+slots, host field/path reads and writes, method and stdlib dispatch, callback
+invocation, and hot bytecode offsets. M20 reports must separate
+interpreter-only and cache-enabled rows and keep generic slow-path checksums
+stable.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
