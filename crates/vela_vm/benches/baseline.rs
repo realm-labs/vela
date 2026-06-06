@@ -378,10 +378,7 @@ fn run_host_access(vm: &Vm, program: &Program) -> Result<OwnedValue, Box<dyn Err
         &mut host,
         &mut budget,
     )?;
-    let mutation_count = tx.mutation_count();
-    Ok(OwnedValue::Int(
-        value_checksum(&value) as i64 + mutation_count as i64,
-    ))
+    Ok(OwnedValue::Int(value_checksum(&value) as i64))
 }
 
 fn run_managed_heap_host_conversion(
@@ -413,10 +410,8 @@ fn run_managed_heap_host_conversion(
             &mut budget,
         )?
     };
-    let mutation_count = tx.mutation_count();
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
-            + mutation_count as i64
             + host_int(&adapter, level_path)?
             + host_int(&adapter, exp_path)?
             + host_int(&adapter, damage_path)?,
@@ -454,7 +449,6 @@ fn run_managed_heap_host_read_conversion(
     };
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
-            + tx.mutation_count() as i64
             + host_int(&adapter, level_path)?
             + host_int(&adapter, exp_path)?
             + host_int(&adapter, damage_path)?,
@@ -518,11 +512,8 @@ fn run_gameplay_monster_kill(vm: &Vm, program: &Program) -> Result<OwnedValue, B
             &mut budget,
         )?
     };
-    let mutation_count = tx.mutation_count();
-
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
-            + mutation_count as i64
             + adapter.method_calls().len() as i64
             + host_int(&adapter, HostPath::new(player).field(LEVEL_FIELD))?
             + host_int(&adapter, HostPath::new(player).field(EXP_FIELD))?

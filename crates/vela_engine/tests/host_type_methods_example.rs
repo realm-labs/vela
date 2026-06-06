@@ -29,6 +29,6 @@ fn host_type_methods_example_runs() {
     assert_eq!(
         String::from_utf8(output.stdout).expect("example stdout should be utf8"),
         "script_result=Int(10) final_count=Int(10) score=Int(7) \
-         reward_calls=4 script_mutations=9 typed_call_mutations=1\n"
+         reward_calls=4\n"
     );
 }

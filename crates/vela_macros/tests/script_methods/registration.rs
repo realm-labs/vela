@@ -223,7 +223,6 @@ fn script_methods_generate_callable_result_native_registration() {
             fields: [("0".to_owned(), OwnedValue::String("blocked".to_owned()))].into(),
         }),
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -262,7 +261,6 @@ fn script_methods_generate_callable_option_native_registration() {
         ),
         Ok(OwnedValue::Int(5)),
     );
-    assert!(tx.is_empty());
 }
 
 #[test]

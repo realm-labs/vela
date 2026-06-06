@@ -626,7 +626,7 @@ mod tests {
     #[test]
     fn memory_budget_rejects_allocations_before_heap_mutation() {
         let mut heap = ScriptHeap::new();
-        let mut budget = ExecutionBudget::new(u64::MAX, 8, usize::MAX, usize::MAX);
+        let mut budget = ExecutionBudget::new(u64::MAX, 8, usize::MAX);
 
         let error = heap
             .allocate_with_budget(HeapValue::String("this is too large".into()), &mut budget)
@@ -646,7 +646,7 @@ mod tests {
     #[test]
     fn full_gc_releases_memory_budget_for_swept_objects() {
         let mut heap = ScriptHeap::new();
-        let mut budget = ExecutionBudget::new(u64::MAX, 1024, usize::MAX, usize::MAX);
+        let mut budget = ExecutionBudget::new(u64::MAX, 1024, usize::MAX);
         let root = heap
             .allocate_with_budget(HeapValue::String("live".into()), &mut budget)
             .expect("root allocation");
@@ -730,7 +730,7 @@ mod tests {
     #[test]
     fn step_gc_releases_execution_memory_budget_for_swept_objects() {
         let mut heap = ScriptHeap::new();
-        let mut budget = ExecutionBudget::new(u64::MAX, 1024, usize::MAX, usize::MAX);
+        let mut budget = ExecutionBudget::new(u64::MAX, 1024, usize::MAX);
         let root = heap
             .allocate_with_budget(HeapValue::String("live".into()), &mut budget)
             .expect("root allocation");

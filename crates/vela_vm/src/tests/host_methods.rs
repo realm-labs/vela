@@ -3,7 +3,7 @@ use crate::owned_value::OwnedValue;
 use crate::value::Value as RuntimeValue;
 
 #[test]
-fn compiled_source_host_method_call_counts_mutations() {
+fn compiled_source_host_method_call_writes_through() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(5);
     let program = compile_program_source_with_options(
@@ -35,7 +35,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]
@@ -43,7 +42,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_host_field_method_call_counts_path_mutation() {
+fn compiled_source_host_field_method_call_uses_host_path() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let method = HostMethodId::new(9);
@@ -78,7 +77,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -90,7 +88,7 @@ fn main(player) {
 }
 
 #[test]
-fn compiled_source_host_indexed_method_call_counts_path_mutation() {
+fn compiled_source_host_indexed_method_call_uses_host_path() {
     let host_ref = player_ref(3);
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
@@ -133,7 +131,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(item_path, method, vec![HostValue::Int(20)])]
@@ -141,7 +138,7 @@ fn main(player) {
 }
 
 #[test]
-fn call_host_method_writes_through_and_counts_mutation() {
+fn call_host_method_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(8);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
@@ -180,7 +177,6 @@ fn call_host_method_writes_through_and_counts_mutation() {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(12)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(
@@ -218,7 +214,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
     let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
@@ -236,7 +232,6 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
     };
 
     assert_eq!(result, Ok(RuntimeValue::Null));
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -271,5 +266,4 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::String("accepted".into())));
-    assert_eq!(tx.mutation_count(), 1);
 }

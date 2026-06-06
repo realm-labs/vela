@@ -49,7 +49,7 @@ fn heap_execution_allocates_array_and_string_literals() {
     .expect("compile array literal source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = Vm::new()
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
@@ -122,7 +122,7 @@ fn main() {
     .expect("compile record source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = Vm::new()
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
@@ -429,7 +429,7 @@ fn main() {
     .expect("compile enum match source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = Vm::new()
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)

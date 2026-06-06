@@ -6,8 +6,7 @@ use vela_host::value::HostValue;
 use crate::host_paths::{host_field_path, host_path_from_segments};
 use crate::host_values::value_to_host;
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, VmError, VmErrorKind, VmResult,
-    expect_host_ref,
+    CallFrame, HeapExecution, HostExecution, VmError, VmErrorKind, VmResult, expect_host_ref,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -22,7 +21,6 @@ pub(crate) enum HostNumericMutation {
 pub(crate) struct HostMutationRuntime<'a, 'host, 'heap> {
     pub(crate) frame: &'a CallFrame,
     pub(crate) heap: Option<&'a HeapExecution<'heap>>,
-    pub(crate) budget: Option<&'a ExecutionBudget>,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) source_span: Option<Span>,
 }
@@ -112,8 +110,5 @@ fn write_host_numeric_mutation(
             operation: "host context",
         })
     })?;
-    if let Some(budget) = runtime.budget {
-        budget.reserve_host_mutation(host.access.mutation_count())?;
-    }
     patch.write_through(host, path, value, runtime.source_span)
 }

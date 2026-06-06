@@ -258,7 +258,7 @@ fn heap_execution_materializes_native_args_and_stores_result() {
     .expect("compile native call source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = vm
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
@@ -479,7 +479,7 @@ fn err_case() {
 "#,
     )
     .expect("compile result propagation");
-    let mut budget = ExecutionBudget::new(10_000, 4096, 64, 16);
+    let mut budget = ExecutionBudget::new(10_000, 4096, 64);
 
     assert_eq!(
         Vm::new().run_program_with_managed_heap_and_budget(&program, "ok_case", &[], &mut budget),
@@ -490,7 +490,7 @@ fn err_case() {
         })
     );
 
-    let mut budget = ExecutionBudget::new(10_000, 4096, 64, 16);
+    let mut budget = ExecutionBudget::new(10_000, 4096, 64);
     assert_eq!(
         Vm::new().run_program_with_managed_heap_and_budget(&program, "err_case", &[], &mut budget),
         Ok(OwnedValue::Enum {
@@ -519,7 +519,7 @@ fn main() {
 "#,
     )
     .expect("compile heap parameter defaults");
-    let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
+    let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
 
     assert_eq!(
         Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),

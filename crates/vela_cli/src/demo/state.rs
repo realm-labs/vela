@@ -170,17 +170,13 @@ impl DemoHostState {
         Ok(args)
     }
 
-    pub(crate) fn print_result(
-        &self,
-        result: OwnedValue,
-        mutation_count: usize,
-    ) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn print_result(&self, result: OwnedValue) -> Result<(), Box<dyn Error>> {
         let level = self.read(&self.level_path)?;
         let now = self.read(&self.now_path)?;
         let tick = self.read(&self.tick_path)?;
 
         if self.adapter.method_calls().is_empty() {
-            println!("result={result:?} level={level:?} mutations={mutation_count}");
+            println!("result={result:?} level={level:?}");
         } else if self.has_monster {
             let exp = self.read(&self.exp_path)?;
             let quest_count = self.read(&self.quest_count_path)?;
@@ -191,8 +187,7 @@ impl DemoHostState {
             println!(
                 "result={result:?} level={level:?} exp={exp:?} quest_count={quest_count:?} \
                  quest_done={quest_done:?} inventory_gold={inventory_gold:?} \
-                 reward_calls={rewards} emits={emits} \
-                 mutations={mutation_count}",
+                 reward_calls={rewards} emits={emits}",
             );
         } else {
             let emits = self.method_call_count(self.ids.emit_method);
@@ -200,12 +195,12 @@ impl DemoHostState {
             if logs == 0 {
                 println!(
                     "result={result:?} level={level:?} ctx_now={now:?} ctx_tick={tick:?} \
-                     emits={emits} mutations={mutation_count}",
+                     emits={emits}",
                 );
             } else {
                 println!(
                     "result={result:?} level={level:?} ctx_now={now:?} ctx_tick={tick:?} \
-                     emits={emits} logs={logs} mutations={mutation_count}",
+                     emits={emits} logs={logs}",
                 );
             }
         }

@@ -338,7 +338,6 @@ reflect_write = disabled by default or tightly controlled
 instruction budget
 memory budget
 max call depth
-max host mutation count
 max reflection lookup count
 max host method call count
 ```

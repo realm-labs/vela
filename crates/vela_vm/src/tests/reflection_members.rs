@@ -133,7 +133,6 @@ fn main() {
             source_span: None,
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -174,7 +173,6 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -221,7 +219,6 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -304,7 +301,6 @@ fn main(player) {
             related: vec![ReflectCandidate::new("grant_exp", None)],
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -340,7 +336,6 @@ fn main() {
             ],
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -376,7 +371,6 @@ fn main() {
             ],
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -408,7 +402,6 @@ fn main(player) {
             related: vec![ReflectCandidate::new("Damageable", None)],
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -440,5 +433,4 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(100))
     );
-    assert!(tx.is_empty());
 }

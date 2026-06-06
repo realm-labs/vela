@@ -63,15 +63,12 @@ pub enum PathSegment {
 ### HostAccess
 
 ```rust
-pub struct HostAccess {
-    pub mutation_count: usize,
-}
+pub struct HostAccess;
 ```
 
 `HostAccess` is a call-scoped access context. It is not a transaction, journal,
 or rollback container. It routes reads, writes, removals, compound scalar
-writes, and method calls to the adapter immediately and counts successful
-mutations for budgets and diagnostics.
+writes, and method calls to the adapter immediately.
 
 ### Read And Write Semantics
 
@@ -103,9 +100,8 @@ Write logic:
 
 ```text
 write_path(path, value):
-    validate access and host mutation budget
+    validate access
     write adapter immediately
-    increment HostAccess mutation count
 ```
 
 If a later script operation traps, previous host writes are retained.
@@ -113,9 +109,8 @@ If a later script operation traps, previous host writes are retained.
 ### Read-Modify-Write
 
 `account.balance += 1` reads the current adapter value, computes the scalar
-result, writes the adapter, and increments the mutation count. This keeps
-permissions, budgets, and source-spanned diagnostics in one host access
-boundary without retaining a growing journal.
+result, and writes the adapter. This keeps permissions and source-spanned
+diagnostics in one host access boundary without retaining a growing journal.
 
 Map-like host paths keep script string keys in `PathSegment::Key(String)` so
 directly injected Rust objects and generic adapters can resolve the key without
@@ -224,8 +219,8 @@ handle whose mutations write through immediately through `HostAccess`. Hosts tha
 already store state behind their own adapter should pass existing handles with
 `with_host_handle` and use `runtime.call_with_adapter` with that adapter.
 The high-level direct call result dereferences to the returned `OwnedValue`;
-hosts can inspect `CallOutput::mutation_count()` when they need
-mutation-count diagnostics.
+hosts that need diagnostics should derive them from their own adapter or
+domain-level instrumentation.
 
 ## Rust Host Macros
 

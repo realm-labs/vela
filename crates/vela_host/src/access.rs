@@ -18,24 +18,12 @@ pub struct HostObjectSnapshot {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct HostAccess {
-    mutation_count: usize,
-}
+pub struct HostAccess;
 
 impl HostAccess {
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub const fn mutation_count(&self) -> usize {
-        self.mutation_count
-    }
-
-    #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.mutation_count == 0
+        Self
     }
 
     pub fn read_path(
@@ -66,9 +54,7 @@ impl HostAccess {
     ) -> HostResult<()> {
         adapter
             .write_path(&path, value)
-            .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        self.record_mutation();
-        Ok(())
+            .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
     pub fn add_path(
@@ -139,9 +125,7 @@ impl HostAccess {
     ) -> HostResult<()> {
         adapter
             .remove_path(&path)
-            .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        self.record_mutation();
-        Ok(())
+            .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
     pub fn call_method(
@@ -155,7 +139,6 @@ impl HostAccess {
         let result = adapter
             .call_method(&path, method, &args)
             .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        self.record_mutation();
         Ok(result)
     }
 
@@ -199,13 +182,7 @@ impl HostAccess {
         })?;
         adapter
             .write_path(&path, next)
-            .map_err(|error| error.with_source_span_if_absent(source_span))?;
-        self.record_mutation();
-        Ok(())
-    }
-
-    fn record_mutation(&mut self) {
-        self.mutation_count += 1;
+            .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 }
 

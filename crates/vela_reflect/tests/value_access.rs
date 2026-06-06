@@ -47,8 +47,6 @@ fn reflect_set_host_ref_creates_patch() {
         ReflectValue::Host(HostValue::Int(10)),
     )
     .expect("reflect set");
-
-    assert_eq!(ctx.access.mutation_count(), 1);
 }
 
 #[test]
@@ -101,11 +99,10 @@ fn reflect_set_read_only_host_field_fails_without_patch() {
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
-fn reflect_call_host_ref_writes_through_and_counts_mutation() {
+fn reflect_call_host_ref_writes_through_and_updates_adapter() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Int(9));
     adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
@@ -126,7 +123,6 @@ fn reflect_call_host_ref_writes_through_and_counts_mutation() {
         .expect("reflect call");
 
         assert_eq!(value, ReflectValue::Host(HostValue::Null));
-        assert_eq!(ctx.access.mutation_count(), 1);
     }
     assert_eq!(
         adapter.method_calls(),

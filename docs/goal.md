@@ -177,8 +177,8 @@ without moving references or owning host state.
 Scope:
 
 ```text
-ExecutionBudget for instruction count, memory bytes, call depth, host mutation count
-budget charging in VM dispatch, native calls, reflection, and host access
+ExecutionBudget for instruction count, memory bytes, and call depth
+budget charging in VM dispatch, native calls, and reflection
 script heap with stable GcRef handles
 non-moving mark-sweep collector
 root stack and call frame roots
@@ -192,7 +192,6 @@ Acceptance:
 ```text
 recursive scripts stop at max_call_depth
 infinite loops stop at instruction budget once loops exist
-host mutation floods stop at max_host_mutations
 live script objects survive GC
 cyclic script objects are reclaimed
 host refs are never traced as Rust-owned objects
@@ -201,7 +200,7 @@ host refs are never traced as Rust-owned objects
 Checkpoint:
 
 ```text
-cargo test covers VM budget traps, HostAccess budget traps, managed heap roots,
+cargo test covers VM budget traps, HostAccess write-through, managed heap roots,
 cycle collection, and host-ref exclusion from GC tracing
 docs/progress.md marks M7 complete or names the specific failing safety case
 ```
@@ -333,7 +332,7 @@ GET_HOST_PATH, SET_HOST_PATH, RMW_HOST_PATH, CALL_HOST_METHOD lowering
 HostValue scalar and HostRef conversion for host field reads/writes
 explicit owned serialization for arrays, maps, records, enums, and nullables
 HostAccess write-through operations for Set, Add, Sub, Remove, Push, and method calls
-adapter validation, budgets, source spans, diagnostics, and mutation counting
+adapter validation, source spans, and diagnostics
 host access policies for read/write/call permissions
 source-span propagation into host errors
 ```
@@ -995,7 +994,7 @@ fn invoice_payment_updates_account_through_host_access() {
 
     assert_eq!(state.account(account).balance, 110);
     assert_eq!(state.account(account).status, "preferred");
-    assert!(output.mutation_count() > 0);
+    assert_eq!(*output, OwnedValue::Int(110));
 }
 ```
 

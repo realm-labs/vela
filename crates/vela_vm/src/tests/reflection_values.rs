@@ -68,7 +68,6 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(1))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -96,7 +95,6 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Err(error) if error.kind == VmErrorKind::Reflect(ReflectErrorKind::InvalidTarget)
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -131,7 +129,6 @@ fn main() {
             related: vec![ReflectCandidate::new("level", None)],
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -178,7 +175,6 @@ fn main() {
             source_span: None,
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -204,7 +200,7 @@ fn main(player) {
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 8192, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 8192, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
@@ -313,7 +309,7 @@ pub fn main() {
 }
 
 #[test]
-fn compiled_source_reflect_call_counts_host_method_mutation() {
+fn compiled_source_reflect_call_calls_host_method() {
     let host_ref = player_ref(3);
     let method = HostMethodId::new(5);
     let program = compile_program_source(
@@ -346,7 +342,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(20)])]

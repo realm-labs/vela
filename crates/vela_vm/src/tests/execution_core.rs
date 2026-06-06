@@ -206,7 +206,7 @@ fn instruction_budget_stops_dispatch_before_next_instruction() {
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(1),
     }));
-    let mut budget = ExecutionBudget::new(2, usize::MAX, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(2, usize::MAX, usize::MAX);
 
     let error = Vm::new()
         .run_with_budget(&code, &mut budget)
@@ -238,7 +238,7 @@ fn main() {
 "#,
     )
     .expect("compile recursive source");
-    let mut budget = ExecutionBudget::new(100, usize::MAX, 2, usize::MAX);
+    let mut budget = ExecutionBudget::new(100, usize::MAX, 2);
 
     let error = Vm::new()
         .run_program_with_budget(&program, "main", &[], &mut budget)

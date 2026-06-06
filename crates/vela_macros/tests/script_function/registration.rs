@@ -396,7 +396,6 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true)),
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -524,7 +523,6 @@ fn main(player, ok) {
             path: HostPath::new(player).field(FieldId::new(1)),
         }),
     );
-    assert!(failed_tx.is_empty());
 }
 
 #[test]
@@ -563,7 +561,6 @@ fn main(player) {
             capability: Capability::HostWrite.as_str().to_owned(),
         },
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -591,7 +588,7 @@ fn main(player) {
         .call_raw(
             "main",
             &[OwnedValue::HostRef(player)],
-            CallOptions::new(2, usize::MAX, usize::MAX, usize::MAX),
+            CallOptions::new(2, usize::MAX, usize::MAX),
             &mut adapter,
             &mut tx,
         )
@@ -604,7 +601,6 @@ fn main(player) {
             limit: 2,
         },
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -732,5 +728,4 @@ fn main(player, ok) {
             path: HostPath::new(player).field(FieldId::new(2)),
         }),
     );
-    assert!(failed_tx.is_empty());
 }

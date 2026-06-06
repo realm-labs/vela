@@ -17,7 +17,6 @@ fn write_through_set_and_numeric_mutations_mutate_immediately() {
         .expect("sub path");
 
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(7)));
-    assert_eq!(tx.mutation_count(), 3);
 }
 
 #[test]
@@ -45,7 +44,6 @@ fn write_through_rejects_push_and_keeps_method_call_remove_immediate() {
             path: rewards.clone()
         }
     );
-    assert!(tx.is_empty());
     assert_eq!(adapter.read_path(&rewards), Ok(HostValue::Int(0)));
 
     let result = tx
@@ -107,5 +105,4 @@ fn write_through_error_keeps_previous_successful_writes() {
 
     assert_eq!(error.kind, HostErrorKind::InvalidDiv { path: path.clone() });
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(10)));
-    assert_eq!(tx.mutation_count(), 1);
 }

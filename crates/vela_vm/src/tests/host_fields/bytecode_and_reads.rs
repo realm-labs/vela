@@ -11,7 +11,7 @@ fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
     .expect("compile string source");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 8, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 8, usize::MAX);
 
     let error = Vm::new()
         .run_with_heap_and_budget(&code, &mut heap_execution, &mut budget)
@@ -114,7 +114,7 @@ fn reads_host_field_through_host_access() {
 }
 
 #[test]
-fn set_host_field_writes_through_and_counts_mutation() {
+fn set_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
@@ -158,7 +158,6 @@ fn set_host_field_writes_through_and_counts_mutation() {
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
@@ -188,7 +187,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
     let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
@@ -206,11 +205,10 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
     };
 
     assert!(matches!(result, Ok(RuntimeValue::HeapRef(_))));
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
-fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
+fn repeated_host_writes_write_through_without_mutation_budget() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let ten = code.push_constant(Constant::Int(10));
@@ -240,9 +238,9 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(100, usize::MAX, usize::MAX, 1);
+    let mut budget = ExecutionBudget::new(100, usize::MAX, usize::MAX);
 
-    let error = {
+    let value = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
@@ -255,25 +253,18 @@ fn patch_budget_stops_host_writes_before_recording_overflow_patch() {
                 &mut host,
                 &mut budget,
             )
-            .expect_err("second patch exceeds budget")
+            .expect("host writes should not have a host-write count budget")
     };
 
-    assert_eq!(
-        error.kind,
-        VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::HostMutations,
-            limit: 1,
-        }
-    );
-    assert_eq!(tx.mutation_count(), 1);
+    assert_eq!(value, OwnedValue::Int(11));
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
-        Ok(HostValue::Int(10))
+        Ok(HostValue::Int(11))
     );
 }
 
 #[test]
-fn add_host_field_writes_through_and_counts_mutation() {
+fn add_host_field_writes_through_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 3).with_params(vec!["player".into()]);
     let one = code.push_constant(Constant::Int(1));
@@ -313,7 +304,6 @@ fn add_host_field_writes_through_and_counts_mutation() {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(10)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))

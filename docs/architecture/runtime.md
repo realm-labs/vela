@@ -138,7 +138,6 @@ pub struct ExecutionBudget {
     pub instruction_limit: u64,
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
-    pub max_host_mutations: usize,
 }
 ```
 

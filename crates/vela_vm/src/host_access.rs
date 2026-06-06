@@ -98,7 +98,6 @@ pub(crate) fn write_host_field_numeric_mutation(
         host_mutations::HostMutationRuntime {
             frame: runtime.frame,
             heap: runtime.heap.as_deref(),
-            budget: runtime.budget.as_deref(),
             host: runtime.host,
             source_span: runtime.source_span,
         },
@@ -121,7 +120,6 @@ pub(crate) fn write_host_path_numeric_mutation(
         host_mutations::HostMutationRuntime {
             frame: runtime.frame,
             heap: runtime.heap.as_deref(),
-            budget: runtime.budget.as_deref(),
             host: runtime.host,
             source_span: runtime.source_span,
         },
@@ -158,9 +156,6 @@ pub(crate) fn push_host_path(
             operation: "host context",
         })
     })?;
-    if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.access.mutation_count())?;
-    }
     host.access
         .push_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())
@@ -185,9 +180,6 @@ pub(crate) fn remove_host_path(
             operation: "host context",
         })
     })?;
-    if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.access.mutation_count())?;
-    }
     host.access
         .remove_path(host.adapter, path, runtime.source_span)?;
     Ok(())
@@ -225,9 +217,6 @@ pub(crate) fn call_host_method(
             operation: "host context",
         })
     })?;
-    if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.access.mutation_count())?;
-    }
     let return_value =
         host.access
             .call_method(host.adapter, path, method, values, runtime.source_span)?;
@@ -260,9 +249,6 @@ fn set_host_path_value(
             operation: "host context",
         })
     })?;
-    if let Some(budget) = runtime.budget.as_deref() {
-        budget.reserve_host_mutation(host.access.mutation_count())?;
-    }
     host.access
         .set_path(host.adapter, path, value, runtime.source_span)?;
     Ok(())

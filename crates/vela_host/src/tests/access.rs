@@ -27,7 +27,6 @@ fn compound_write_validates_against_current_adapter_value() {
         .expect("add path");
 
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(10)));
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -43,7 +42,6 @@ fn repeated_alias_writes_read_current_host_state() {
         .expect("second alias add");
 
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(4)));
-    assert_eq!(tx.mutation_count(), 2);
 }
 
 #[test]
@@ -57,7 +55,6 @@ fn variant_field_paths_write_through() {
         .expect("variant field add");
 
     assert_eq!(adapter.read_path(&path), Ok(HostValue::Int(3)));
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -96,7 +93,7 @@ fn stale_generation_reports_error() {
 }
 
 #[test]
-fn mutation_count_tracks_successful_writes_without_retained_journal() {
+fn write_through_keeps_no_retained_journal() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();
     adapter.insert_value(path.clone(), HostValue::Int(9));
@@ -104,6 +101,4 @@ fn mutation_count_tracks_successful_writes_without_retained_journal() {
 
     tx.set_path(&mut adapter, path, HostValue::Int(10), None)
         .expect("set path");
-
-    assert_eq!(tx.mutation_count(), 1);
 }

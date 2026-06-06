@@ -139,9 +139,9 @@ boundaries.
 Host state is mutated through call-scoped `HostAccess` operations. Direct host
 field, host path, and host method bytecode routes through `HostExecution`,
 `ScriptStateAdapter`, and `HostAccess`; the adapter is updated immediately and
-`HostAccess` retains only a successful mutation count for budgets and
-lightweight diagnostics. There is no patch descriptor, overlay, journal, or
-end-of-call apply step in the default host boundary.
+`HostAccess` does not retain a journal or mutation counter. There is no patch
+descriptor, overlay, journal, host-write count budget, or end-of-call apply step in
+the default host boundary.
 
 Embedding APIs may accept Rust `&T` and `&mut T` at a `CallArgs` invocation
 boundary, but these references are immediately represented inside the VM as
@@ -167,9 +167,9 @@ wrappers such as `TypedHostRef<T>` and `TypedHostMut<T>`, which store
 `HostPath` only and never expose Rust references to scripts.
 
 High-level embedding calls construct `HostAccess` internally and return a
-`CallOutput` that dereferences to the script return `OwnedValue`. This keeps
-ordinary call sites value-focused while still exposing `mutation_count()` for
-hosts that need lightweight diagnostics.
+`CallOutput` that dereferences to the script return `OwnedValue`. Host mutation
+counting is not part of the default host boundary; hosts that need diagnostics
+should instrument their adapter or domain operations directly.
 The shortest runtime method name, `Runtime::call`, is reserved for this common
 high-level `CallArgs -> CallOutput` path. Lower-level entrypoints that expose
 adapter or `HostAccess` internals use explicit names such as `call_with_adapter`,

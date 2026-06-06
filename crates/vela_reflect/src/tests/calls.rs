@@ -20,11 +20,10 @@ fn reflect_call_rejects_non_host_args() {
     .expect_err("invalid arg");
 
     assert_eq!(error.kind, ReflectErrorKind::InvalidValue);
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
-fn reflect_call_with_policy_denies_unapproved_methods_before_mutation_counting() {
+fn reflect_call_with_policy_denies_unapproved_methods_before_host_access() {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
@@ -62,7 +61,6 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_mutation_counting()
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 
     let error = call_with_policy(
         &mut ctx,
@@ -80,7 +78,6 @@ fn reflect_call_with_policy_denies_unapproved_methods_before_mutation_counting()
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -117,7 +114,6 @@ fn reflect_call_with_policy_requires_call_methods_permission() {
             permission: ReflectPermission::CallMethods
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -163,7 +159,6 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 
     let allowed_permissions = (*policy.permissions()).with(ReflectPermission::CallHostWriteMethods);
     let policy = policy.with_permissions(allowed_permissions);
@@ -177,7 +172,6 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
     .expect("effect permission should allow method call");
 
     assert_eq!(value, ReflectValue::Host(HostValue::Null));
-    assert_eq!(ctx.access.mutation_count(), 1);
 }
 
 #[test]
@@ -224,7 +218,6 @@ fn reflect_call_with_policy_denies_private_methods_without_permission() {
             permission: ReflectPermission::AccessPrivate
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -267,7 +260,6 @@ fn reflect_call_with_policy_allows_private_methods_with_permission() {
     .expect("private method call");
 
     assert_eq!(value, ReflectValue::Host(HostValue::Null));
-    assert_eq!(ctx.access.mutation_count(), 1);
 }
 
 #[test]
@@ -323,7 +315,6 @@ fn reflect_call_with_policy_filters_unknown_method_candidates() {
             related: vec![ReflectCandidate::new("grant_exp", None)],
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]

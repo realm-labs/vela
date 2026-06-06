@@ -24,7 +24,7 @@ use crate::runtime::{CallOptions, Runtime};
 use super::player_type;
 
 #[test]
-fn runtime_call_writes_through_host_method_and_counts_mutation() {
+fn runtime_call_writes_through_host_method_and_updates_adapter() {
     let method = HostMethodId::new(23);
     let engine = Engine::builder()
         .register_type(
@@ -60,7 +60,6 @@ fn main(player: Player) {
         .expect("runtime call should run");
 
     assert_eq!(result, OwnedValue::String("done".to_owned()));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.method_calls(),
         &[(HostPath::new(host_ref), method, vec![HostValue::Int(12)])]
@@ -105,7 +104,6 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -153,7 +151,6 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -208,7 +205,6 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(5))
     );
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -257,7 +253,6 @@ fn main(player: Player, monster: Monster) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.mutation_count(), 2);
 }
 
 #[test]
@@ -339,7 +334,6 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Null)
     );
-    assert_eq!(tx.mutation_count(), 1);
 
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -356,7 +350,6 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -393,11 +386,10 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
         ),
         Ok(OwnedValue::Int(15))
     );
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
-fn typed_callable_native_method_conversion_errors_before_mutation_counting() {
+fn typed_callable_native_method_conversion_errors_before_host_access() {
     let method = HostMethodId::new(8);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
@@ -430,7 +422,6 @@ fn typed_callable_native_method_conversion_errors_before_mutation_counting() {
             ..
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -473,7 +464,6 @@ fn typed_callable_native_method_maps_host_result_errors() {
             action: "call",
         })),
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -534,7 +524,6 @@ fn callable_native_method_error_retains_written_mutation() {
             operation: "failing native method",
         }
     );
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.method_calls().len(), 1);
 }
 
@@ -617,7 +606,6 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
         ),
         Ok(OwnedValue::Null)
     );
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&HostPath::new(host_ref).key("7")),
         Ok(HostValue::Int(99))
@@ -666,7 +654,6 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
         ),
         Ok(OwnedValue::Null)
     );
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&amount_path), Ok(HostValue::Int(20)));
 }
 
@@ -709,7 +696,6 @@ fn typed_host_argument_rejects_mismatched_host_type() {
             ..
         })
     ));
-    assert!(tx.is_empty());
 }
 
 fn typed_grant_exp(
@@ -1014,5 +1000,4 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(12))
     );
-    assert!(tx.is_empty());
 }

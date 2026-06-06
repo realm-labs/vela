@@ -220,7 +220,6 @@ fn main(player: Player) {
         ),
         Ok(OwnedValue::Int(2))
     );
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]

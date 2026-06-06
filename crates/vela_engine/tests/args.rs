@@ -327,5 +327,4 @@ fn main(player: Player, amount: int) {
         .expect("runtime call should run");
 
     assert_eq!(result, OwnedValue::Int(12));
-    assert_eq!(tx.mutation_count(), 1);
 }

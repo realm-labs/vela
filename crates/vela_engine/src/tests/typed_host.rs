@@ -101,7 +101,6 @@ fn main() {
             ..
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -470,7 +469,6 @@ fn main() {
             ..
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -521,7 +519,6 @@ fn main(player) {
             action: "write",
         })),
     );
-    assert!(tx.is_empty());
 }
 
 fn typed_set_level(

@@ -28,7 +28,7 @@ fn main() {
     });
     let mut heap_execution =
         HeapExecution::new(&mut heap).with_safe_point_gc_budget(GcBudget::unlimited());
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = Vm::new()
         .run_program_runtime_with_heap_and_budget(
@@ -72,7 +72,7 @@ fn main() {
 "#,
     )
     .expect("compile record return source");
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
     let mut fields = BTreeMap::new();
     fields.insert("count".into(), OwnedValue::Int(2));
     fields.insert("item_id".into(), OwnedValue::String("gold".into()));
@@ -115,7 +115,7 @@ fn map_case() {
 "#,
     )
     .expect("compile path proxy aggregate source");
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     assert_eq!(
         vm.run_program_with_managed_heap_and_budget(&program, "array_case", &[], &mut budget),
@@ -145,7 +145,7 @@ fn managed_heap_execution_releases_budget_after_errors() {
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(0),
     }));
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let error = Vm::new()
         .run_with_managed_heap_and_budget(&code, &mut budget)
@@ -161,7 +161,7 @@ fn managed_heap_execution_releases_budget_after_errors() {
 }
 
 #[test]
-fn managed_heap_host_execution_materializes_return_and_counts_mutation() {
+fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
     let host_ref = player_ref(3);
     let mut code = CodeObject::new("main", 2).with_params(vec!["player".into()]);
     let gold = code.push_constant(Constant::String("gold".into()));
@@ -181,7 +181,7 @@ fn managed_heap_host_execution_materializes_return_and_counts_mutation() {
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
@@ -200,7 +200,6 @@ fn managed_heap_host_execution_materializes_return_and_counts_mutation() {
     };
 
     assert_eq!(result, OwnedValue::String("gold".into()));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
 
@@ -220,7 +219,7 @@ fn main(player) {
     .expect("compile host map write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let error = {
         let mut host = HostExecution {
@@ -244,7 +243,6 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -273,7 +271,7 @@ fn main(player) {
     .expect("compile host record write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let error = {
         let mut host = HostExecution {
@@ -297,7 +295,6 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -321,7 +318,7 @@ fn main(player) {
     .expect("compile host enum write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let error = {
         let mut host = HostExecution {
@@ -345,7 +342,6 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Null)
@@ -370,7 +366,7 @@ fn main(player, target) {
     .expect("compile host ref write source");
     let mut adapter = host_adapter(host_ref, HostValue::Null);
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
@@ -392,7 +388,6 @@ fn main(player, target) {
     };
 
     assert_eq!(result, OwnedValue::HostRef(target_ref));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::HostRef(target_ref))

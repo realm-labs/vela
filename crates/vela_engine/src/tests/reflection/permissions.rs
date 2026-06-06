@@ -35,7 +35,6 @@ fn main(player) {
             limit: 1
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -86,7 +85,6 @@ fn main(player) {
             source_span: None,
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -143,5 +141,4 @@ fn main(player) {
         ),
         Ok(OwnedValue::Int(1))
     );
-    assert_eq!(tx.mutation_count(), 1);
 }

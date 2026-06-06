@@ -36,7 +36,6 @@ fn main(player) {
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
     );
-    assert_eq!(tx.mutation_count(), 2);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(11))
@@ -120,7 +119,6 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(11)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(11)));
 }
 
@@ -162,7 +160,6 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(7)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(7)));
 }
 
@@ -206,7 +203,6 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
-    assert_eq!(tx.mutation_count(), 3);
     assert_eq!(adapter.read_path(&stats_level), Ok(HostValue::Int(1)));
 }
 
@@ -254,7 +250,6 @@ fn main(player) {
             path: reward_path.clone()
         })
     );
-    assert!(tx.is_empty());
     assert_eq!(adapter.read_path(&reward_path), Ok(HostValue::Int(0)));
 }
 
@@ -299,7 +294,6 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1)));
-    assert_eq!(tx.mutation_count(), 1);
     assert!(matches!(
         adapter.read_path(&item_path),
         Err(error)
@@ -354,7 +348,6 @@ fn main(player) {
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&item_count), Ok(HostValue::Int(5)));
 }
 
@@ -410,12 +403,11 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
 
     assert_eq!(result, Ok(OwnedValue::Int(5)));
     assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(adapter.read_path(&quest_count), Ok(HostValue::Int(5)));
 }
 
 #[test]
-fn compiled_source_context_time_and_emit_counts_mutations() {
+fn compiled_source_context_time_and_emit_writes_through() {
     let ctx_ref = HostRef::new(HostTypeId::new(9), HostObjectId::new(11), 1);
     let now_field = FieldId::new(6);
     let tick_field = FieldId::new(7);
@@ -447,7 +439,7 @@ fn main(ctx) {
     adapter.insert_method_return(emit_method, HostValue::Null);
     adapter.insert_method_return(log_method, HostValue::Null);
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
+    let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64);
 
     let result = {
         let mut host = HostExecution {
@@ -464,7 +456,6 @@ fn main(ctx) {
     };
 
     assert_eq!(result, Ok(OwnedValue::Int(1042)));
-    assert_eq!(tx.mutation_count(), 2);
     assert_eq!(
         adapter.method_calls(),
         &[
@@ -490,7 +481,7 @@ fn main(ctx) {
 }
 
 #[test]
-fn host_field_write_conversion_error_counts_no_mutation() {
+fn host_field_write_conversion_error_leaves_no_write() {
     let host_ref = player_ref(3);
     let program = compile_program_source_with_options(
         SourceId::new(1),
@@ -506,7 +497,7 @@ fn main(player) {
     .expect("compile host closure write source");
     let mut adapter = host_adapter(host_ref, HostValue::Int(9));
     let mut tx = HostAccess::new();
-    let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64, 1024);
+    let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64);
 
     let error = {
         let mut host = HostExecution {
@@ -530,7 +521,6 @@ fn main(player) {
             operation: "set_host_field"
         }
     );
-    assert!(tx.is_empty());
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(9))

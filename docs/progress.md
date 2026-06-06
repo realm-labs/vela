@@ -60,7 +60,7 @@ Cranelift JIT.
 - `.vela` source parsing, HIR lowering, bytecode compilation, VM execution,
   managed heap entrypoints, execution budgets, and non-moving GC foundations.
 - Host mutation through `HostRef`, `HostPath`, `PathProxy`, write-through
-  `HostAccess`, capability-gated effects, and mutation-count budgeting.
+  `HostAccess`, and capability-gated effects.
 - Reflection for types, fields, methods, variants, traits, modules, functions,
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
@@ -109,7 +109,7 @@ Cranelift JIT.
   stable `FunctionId` metadata while preserving names for diagnostics and
   fallback, and Engine-installed plus standard native functions register ID
   lookup targets. Native call dispatch is routed through a focused VM call
-    boundary, preserving ID-first lookup, name fallback, HostAccess budget
+    boundary, preserving ID-first lookup, name fallback, HostAccess routing
   checks, and source-spanned errors. Standard value method calls can also carry
   optional `HostMethodId` metadata, with `len`/`is_empty` using an ID fast path
   before name fallback, and script/value method dispatch is routed through a
@@ -119,9 +119,9 @@ Cranelift JIT.
   replacement point. HostPath construction now has an exact-capacity/static
   segment materialization boundary so field-only paths can bypass dynamic
   index/key conversion, and HostPath/HostAccess identity now uses a dedicated
-  HostPathKey sidecar with inline storage for common short paths while HostAccess
-  keeps only successful mutation counts. Host-boundary conversion failures are
-  covered as HostAccess slow paths that leave mutation counts unchanged.
+  HostPathKey sidecar with inline storage for common short paths. Host-boundary
+  conversion failures are covered as HostAccess slow paths that leave adapter
+  state unchanged.
   Source and module compilation now verifies bytecode before returning
   `CodeObject` or `Program` values, covering register, constant, jump,
   frame-slot, call-argument, host-path dynamic segment, and nested closure

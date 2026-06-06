@@ -5,7 +5,6 @@ pub enum ExecutionBudgetKind {
     Instructions,
     MemoryBytes,
     CallDepth,
-    HostMutations,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -13,7 +12,6 @@ pub struct ExecutionBudget {
     pub instruction_limit: u64,
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
-    pub max_host_mutations: usize,
     instructions_executed: u64,
     memory_bytes_allocated: usize,
     current_call_depth: usize,
@@ -21,17 +19,11 @@ pub struct ExecutionBudget {
 
 impl ExecutionBudget {
     #[must_use]
-    pub fn new(
-        instruction_limit: u64,
-        memory_limit_bytes: usize,
-        max_call_depth: usize,
-        max_host_mutations: usize,
-    ) -> Self {
+    pub fn new(instruction_limit: u64, memory_limit_bytes: usize, max_call_depth: usize) -> Self {
         Self {
             instruction_limit,
             memory_limit_bytes,
             max_call_depth,
-            max_host_mutations,
             instructions_executed: 0,
             memory_bytes_allocated: 0,
             current_call_depth: 0,
@@ -40,7 +32,7 @@ impl ExecutionBudget {
 
     #[must_use]
     pub fn unbounded() -> Self {
-        Self::new(u64::MAX, usize::MAX, usize::MAX, usize::MAX)
+        Self::new(u64::MAX, usize::MAX, usize::MAX)
     }
 
     #[must_use]
@@ -108,20 +100,5 @@ impl ExecutionBudget {
 
     pub(crate) fn exit_call(&mut self) {
         self.current_call_depth = self.current_call_depth.saturating_sub(1);
-    }
-
-    pub fn check_host_mutation_count(&self, mutation_count: usize) -> VmResult<()> {
-        if mutation_count > self.max_host_mutations {
-            Err(VmError::new(VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::HostMutations,
-                limit: u64::try_from(self.max_host_mutations).unwrap_or(u64::MAX),
-            }))
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn reserve_host_mutation(&self, current_mutation_count: usize) -> VmResult<()> {
-        self.check_host_mutation_count(current_mutation_count.saturating_add(1))
     }
 }

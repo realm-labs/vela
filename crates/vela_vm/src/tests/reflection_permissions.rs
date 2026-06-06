@@ -44,7 +44,6 @@ fn main(player) {
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
     );
-    assert_eq!(tx.mutation_count(), 1);
     assert_eq!(
         adapter.read_path(&level_path(host_ref)),
         Ok(HostValue::Int(10))
@@ -52,7 +51,7 @@ fn main(player) {
 }
 
 #[test]
-fn reflection_permissions_deny_writes_before_mutation_counting() {
+fn reflection_permissions_deny_writes_before_host_access() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
         SourceId::new(1),
@@ -82,11 +81,10 @@ fn main(player) {
             permission: reflect::permissions::ReflectPermission::WriteValueFields
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
-fn reflection_permissions_deny_calls_before_mutation_counting() {
+fn reflection_permissions_deny_calls_before_host_access() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
         SourceId::new(1),
@@ -117,11 +115,10 @@ fn main(player) {
             permission: reflect::permissions::ReflectPermission::CallMethods
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
-fn reflection_permissions_deny_host_write_effect_calls_before_mutation_counting() {
+fn reflection_permissions_deny_host_write_effect_calls_before_host_access() {
     let host_ref = player_ref(3);
     let program = compile_program_source(
         SourceId::new(1),
@@ -170,7 +167,6 @@ fn main(player) {
             }
         )
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -204,7 +200,6 @@ fn main(player) {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -238,7 +233,6 @@ fn main(player) {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -272,7 +266,6 @@ fn main(player) {
             permission: reflect::permissions::ReflectPermission::InspectHostPath
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -306,7 +299,6 @@ fn main() {
         vm.run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::String("Player".into()))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -347,7 +339,6 @@ fn main() {
             OwnedValue::String("reflect::inspect_host_path".to_owned()),
         ]))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -387,7 +378,6 @@ fn main() {
             ]
         })
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -419,7 +409,6 @@ fn main() {
             permission: reflect::permissions::ReflectPermission::ReadTypeInfo
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -465,7 +454,6 @@ fn main() {
             source_span: None,
         })
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -519,11 +507,10 @@ fn main(player) {
             source_span: None,
         })
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
-fn reflection_field_permissions_deny_host_field_reads_before_mutation_counting() {
+fn reflection_field_permissions_deny_host_field_reads_before_host_access() {
     let host_ref = player_ref(3);
     let title_field = FieldId::new(78);
     let program = compile_program_source(
@@ -577,7 +564,6 @@ fn main(player) {
             source_span: None,
         })
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -640,7 +626,6 @@ fn main(player) {
             related: vec![ReflectCandidate::new("level", None)],
         })
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -706,7 +691,6 @@ fn main(player) {
             related: vec![ReflectCandidate::new("visible", None)],
         })
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -741,7 +725,6 @@ fn main(player) {
             limit: 1
         })
     ));
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -769,7 +752,7 @@ fn main(player) {
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
     let result = {
         let mut host = HostExecution {
@@ -787,5 +770,4 @@ fn main(player) {
     };
 
     assert_eq!(result, Ok(RuntimeValue::Int(10)));
-    assert_eq!(tx.mutation_count(), 1);
 }

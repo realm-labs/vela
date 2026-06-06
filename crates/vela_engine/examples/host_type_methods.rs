@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let output = runtime.call_with_adapter(
         "main",
         args,
-        CallOptions::new(10_000, 1024 * 1024, 64, 1024),
+        CallOptions::new(10_000, 1024 * 1024, 64),
         &mut adapter,
     )?;
 
@@ -94,10 +94,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!(
         "script_result={:?} final_count={final_count:?} score={final_score:?} \
-         reward_calls={reward_calls} script_mutations={} typed_call_mutations={}",
-        output.value(),
-        output.mutation_count(),
-        typed_access.mutation_count()
+         reward_calls={reward_calls}",
+        output.value()
     );
 
     Ok(())

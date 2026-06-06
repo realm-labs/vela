@@ -145,7 +145,6 @@ fn main(player: Player, amount, bonus = 1) {
 
     assert_eq!(result, OwnedValue::Int(12));
     assert_eq!(adapter.read_path(&level), Ok(HostValue::Int(11)));
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]
@@ -308,7 +307,6 @@ fn main(player: Player, amount) {
 
     assert_eq!(&*output, &OwnedValue::Int(13));
     assert_eq!(player.level, 13);
-    assert_eq!(output.mutation_count(), 1);
 }
 
 #[test]
@@ -344,7 +342,6 @@ fn main(player: Player, amount) {
 
     assert_eq!(&*output, &OwnedValue::Int(7));
     assert_eq!(player.inventory.get("gold"), Some(&7));
-    assert_eq!(output.mutation_count(), 1);
 }
 
 #[test]
@@ -379,11 +376,10 @@ fn main(player: Player) {
     assert_eq!(&*output, &OwnedValue::Int(16));
     assert_eq!(player.level, 11);
     assert_eq!(player.inventory.get("gold"), Some(&5));
-    assert_eq!(output.mutation_count(), 2);
 }
 
 #[test]
-fn runtime_call_returns_value_like_output_and_mutation_count() {
+fn runtime_call_returns_value_like_output() {
     let engine = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
@@ -414,7 +410,6 @@ fn main(player: Player, amount) {
 
     assert_eq!(&*output, &OwnedValue::Int(13));
     assert_eq!(player.level, 13);
-    assert_eq!(output.mutation_count(), 1);
 }
 
 #[test]
@@ -454,7 +449,6 @@ fn main(player: Player) {
     assert_eq!(report.reload, None);
     drop(args);
     assert_eq!(player.level, 10);
-    assert_eq!(tx.mutation_count(), 1);
 }
 
 #[test]

@@ -165,7 +165,6 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Int(1_700_000_010))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -350,7 +349,6 @@ fn main() {
             .run_program_with_host(&program, "main", &[], &mut host),
         Ok(OwnedValue::Bool(true))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -399,7 +397,6 @@ fn main(ctx) {
         ),
         Ok(OwnedValue::Int(1_700_000_042))
     );
-    assert_eq!(tx.mutation_count(), 2);
     assert_eq!(
         adapter.method_calls(),
         &[

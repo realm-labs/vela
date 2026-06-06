@@ -94,7 +94,6 @@ fn reflect_set_script_record_returns_updated_copy() {
         get(&mut ctx, &record, "level").expect("original record remains readable"),
         ReflectValue::Host(HostValue::Int(7))
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -124,7 +123,6 @@ fn reflect_set_metadata_record_is_not_a_schema_mutation_path() {
     .expect_err("reflection metadata records are not writable");
 
     assert_eq!(error.kind, ReflectErrorKind::InvalidTarget);
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -167,7 +165,6 @@ fn reflect_set_script_record_rejects_unknown_fields() {
             related: vec![ReflectCandidate::new("level", Some(field_span))],
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -240,7 +237,6 @@ fn reflect_set_denies_non_reflect_writable_host_fields() {
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -300,7 +296,6 @@ fn reflect_get_and_set_with_policy_require_field_permission() {
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 
     let policy = ReflectPolicy::all().with_field_permission("player.level.reflect");
     assert_eq!(
@@ -324,7 +319,6 @@ fn reflect_get_and_set_with_policy_require_field_permission() {
         .expect("field write permission"),
         ReflectValue::Host(HostValue::Null)
     );
-    assert_eq!(ctx.access.mutation_count(), 1);
 }
 
 #[test]
@@ -419,7 +413,6 @@ fn reflect_set_with_policy_filters_unknown_host_field_candidates() {
             related: vec![ReflectCandidate::new("level", None)],
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -480,7 +473,6 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 
     let policy = ReflectPolicy::all().with_field_permission("player.level.reflect");
     assert_eq!(
@@ -501,7 +493,6 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
             fields: BTreeMap::from([("level".to_owned(), ReflectValue::Host(HostValue::Int(10)),)]),
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -544,7 +535,6 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_fields() {
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -644,7 +634,6 @@ fn reflect_set_with_policy_filters_unknown_script_field_candidates() {
             related: vec![ReflectCandidate::new("level", None)],
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]
@@ -741,7 +730,6 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
             source_span: None,
         }
     );
-    assert!(ctx.access.is_empty());
 }
 
 #[test]

@@ -141,7 +141,6 @@ pub const BASE: int = 10;
         ),
         Ok(OwnedValue::Int(15))
     );
-    assert!(tx.is_empty());
 }
 
 #[test]
@@ -190,7 +189,7 @@ fn prelude_imports_cover_source_and_reload_results() {
 
     accepts_update_result(Err(reload_error));
     accepts_safe_point_report(None);
-    accepts_call_output(CallOutput::new(OwnedValue::Null, 0));
+    accepts_call_output(CallOutput::new(OwnedValue::Null));
     accepts_event_safe_point_report(EventCallSafePointReport {
         value: OwnedValue::Null,
         reload: None,

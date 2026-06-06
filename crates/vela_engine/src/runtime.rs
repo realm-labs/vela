@@ -240,10 +240,7 @@ impl Runtime {
     ) -> VmResult<CallOutput> {
         let mut access = HostAccess::new();
         let value = self.call_args_raw(entry, &mut args, options, adapter, &mut access)?;
-        Ok(CallOutput {
-            value,
-            mutation_count: access.mutation_count(),
-        })
+        Ok(CallOutput { value })
     }
 
     pub fn call_raw(
@@ -356,16 +353,12 @@ impl Runtime {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CallOutput {
     value: OwnedValue,
-    mutation_count: usize,
 }
 
 impl CallOutput {
     #[must_use]
-    pub const fn new(value: OwnedValue, mutation_count: usize) -> Self {
-        Self {
-            value,
-            mutation_count,
-        }
+    pub const fn new(value: OwnedValue) -> Self {
+        Self { value }
     }
 
     #[must_use]
@@ -374,18 +367,8 @@ impl CallOutput {
     }
 
     #[must_use]
-    pub const fn mutation_count(&self) -> usize {
-        self.mutation_count
-    }
-
-    #[must_use]
     pub fn into_value(self) -> OwnedValue {
         self.value
-    }
-
-    #[must_use]
-    pub fn into_parts(self) -> (OwnedValue, usize) {
-        (self.value, self.mutation_count)
     }
 }
 
@@ -802,30 +785,23 @@ pub struct CallOptions {
     pub instruction_budget: u64,
     pub memory_budget: usize,
     pub call_depth: usize,
-    pub patch_budget: usize,
     pub managed_heap: bool,
 }
 
 impl CallOptions {
     #[must_use]
-    pub const fn new(
-        instruction_budget: u64,
-        memory_budget: usize,
-        call_depth: usize,
-        patch_budget: usize,
-    ) -> Self {
+    pub const fn new(instruction_budget: u64, memory_budget: usize, call_depth: usize) -> Self {
         Self {
             instruction_budget,
             memory_budget,
             call_depth,
-            patch_budget,
             managed_heap: true,
         }
     }
 
     #[must_use]
     pub const fn unbounded() -> Self {
-        Self::new(u64::MAX, usize::MAX, usize::MAX, usize::MAX)
+        Self::new(u64::MAX, usize::MAX, usize::MAX)
     }
 
     #[must_use]
@@ -835,11 +811,6 @@ impl CallOptions {
     }
 
     fn budget(&self) -> ExecutionBudget {
-        ExecutionBudget::new(
-            self.instruction_budget,
-            self.memory_budget,
-            self.call_depth,
-            self.patch_budget,
-        )
+        ExecutionBudget::new(self.instruction_budget, self.memory_budget, self.call_depth)
     }
 }

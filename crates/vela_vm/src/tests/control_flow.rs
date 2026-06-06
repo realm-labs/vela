@@ -418,7 +418,7 @@ fn main() {
 "#,
     )
     .expect("compile nested record variant field patterns");
-    let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
+    let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
 
     assert_eq!(
         Vm::new().run_program_with_managed_heap_and_budget(&program, "main", &[], &mut budget),
@@ -473,7 +473,7 @@ fn main() {
     )
     .expect("compile guarded record pattern");
 
-    let mut budget = ExecutionBudget::new(10_000, 32_000, 32, 32);
+    let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
     assert_eq!(
         Vm::new().run_with_managed_heap_and_budget(&code, &mut budget),
         Ok(OwnedValue::Int(8))
