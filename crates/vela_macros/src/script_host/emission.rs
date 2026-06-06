@@ -69,16 +69,13 @@ pub(super) fn field_helper_tokens(field: &FieldMeta) -> TokenStream {
 pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> TokenStream {
     let read_arms = fields
         .iter()
-        .filter(|field| field.direct && field.readable)
+        .filter(|field| field.readable)
         .map(field_read_arm_tokens);
     let write_arms = fields
         .iter()
-        .filter(|field| field.direct && (field.readable || field.writable))
+        .filter(|field| field.readable || field.writable)
         .map(field_write_arm_tokens);
-    let call_arms = fields
-        .iter()
-        .filter(|field| field.callable)
-        .map(field_call_arm_tokens);
+    let call_arms = fields.iter().map(field_call_arm_tokens);
 
     quote! {
         impl ::vela_host::object::ScriptHostFieldAccess for #ident {

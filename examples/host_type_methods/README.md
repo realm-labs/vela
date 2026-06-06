@@ -15,5 +15,6 @@ This example covers the host type method and argument model:
 - root and child host method calls through `receiver_path + HostMethodId`
 
 The Rust side uses `#[derive(ScriptHost)]` for field/path bindings and
-`#[script_methods]` for `&self` / `&mut self` host methods. The example does
+`#[script_methods]` for `&self` / `&mut self` host methods. Script-visible
+fields participate in direct host path access by default, so the example does
 not hand-write `ScriptHostObject` or `PathSegment` dispatch.

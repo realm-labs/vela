@@ -133,6 +133,9 @@ pub(crate) struct Inventory {
     items: std::collections::BTreeMap<String, ItemStack>,
 }
 
+#[script_methods]
+impl Inventory {}
+
 #[allow(dead_code)]
 #[derive(ScriptHost)]
 #[script(path = "game::inventory::ItemStack")]
@@ -155,3 +158,80 @@ enum HostQuestProgress {
 
 #[allow(dead_code)]
 struct KillRewardConfig;
+
+impl vela_host::object::ScriptHostFieldAccess for HostQuestProgress {
+    fn script_host_type_id(&self) -> vela_common::HostTypeId {
+        vela_common::HostTypeId::new(0)
+    }
+
+    fn read_host_path_from(
+        &self,
+        path: &vela_host::path::HostPath,
+        _offset: usize,
+    ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
+        Err(vela_host::error::HostError {
+            kind: vela_host::error::HostErrorKind::MissingPath { path: path.clone() },
+            source_span: None,
+        })
+    }
+
+    fn write_host_path_from(
+        &mut self,
+        path: &vela_host::path::HostPath,
+        _offset: usize,
+        _value: vela_host::value::HostValue,
+    ) -> vela_host::error::HostResult<()> {
+        Err(vela_host::error::HostError {
+            kind: vela_host::error::HostErrorKind::PermissionDenied {
+                path: path.clone(),
+                action: "write",
+            },
+            source_span: None,
+        })
+    }
+}
+
+impl vela_host::object::ScriptHostObject for HostQuestProgress {
+    fn host_type_id(&self) -> vela_common::HostTypeId {
+        vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(
+        &self,
+        path: &vela_host::path::HostPath,
+    ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
+        vela_host::object::ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+}
+
+impl vela_host::object::ScriptHostFieldAccess for KillRewardConfig {
+    fn script_host_type_id(&self) -> vela_common::HostTypeId {
+        vela_common::HostTypeId::new(0)
+    }
+
+    fn read_host_path_from(
+        &self,
+        path: &vela_host::path::HostPath,
+        _offset: usize,
+    ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
+        Err(vela_host::error::HostError {
+            kind: vela_host::error::HostErrorKind::MissingPath { path: path.clone() },
+            source_span: None,
+        })
+    }
+
+    fn write_host_path_from(
+        &mut self,
+        path: &vela_host::path::HostPath,
+        _offset: usize,
+        _value: vela_host::value::HostValue,
+    ) -> vela_host::error::HostResult<()> {
+        Err(vela_host::error::HostError {
+            kind: vela_host::error::HostErrorKind::PermissionDenied {
+                path: path.clone(),
+                action: "write",
+            },
+            source_span: None,
+        })
+    }
+}

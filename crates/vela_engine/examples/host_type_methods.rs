@@ -50,9 +50,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 #[derive(Debug, ScriptHost)]
 #[script(path = "examples::host_type_methods::Player")]
 struct Player {
-    #[script(get, direct, hint = "Inventory")]
+    #[script(get, hint = "Inventory")]
     inventory: Inventory,
-    #[script(get, direct, call, hint = "RewardSink")]
+    #[script(get, hint = "RewardSink")]
     reward_sink: RewardSink,
 }
 
@@ -87,14 +87,17 @@ impl Player {}
 #[derive(Debug, Default, ScriptHost)]
 #[script(path = "examples::host_type_methods::Inventory")]
 struct Inventory {
-    #[script(get, direct, hint = "IntItemMap")]
+    #[script(get, hint = "IntItemMap")]
     items: BTreeMap<String, ItemStack>,
 }
+
+#[script_methods]
+impl Inventory {}
 
 #[derive(Debug, Default, ScriptHost)]
 #[script(path = "examples::host_type_methods::ItemStack")]
 struct ItemStack {
-    #[script(get, set, direct, hint = "int")]
+    #[script(get, set, hint = "int")]
     count: i64,
 }
 

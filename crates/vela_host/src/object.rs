@@ -138,6 +138,20 @@ macro_rules! impl_signed_int_host_value {
                     }
                 }
             }
+
+            impl ScriptHostObject for $ty {
+                fn host_type_id(&self) -> HostTypeId {
+                    ScriptHostFieldAccess::script_host_type_id(self)
+                }
+
+                fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+                    ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+                }
+
+                fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+                    ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+                }
+            }
         )*
     };
 }
@@ -185,6 +199,20 @@ macro_rules! impl_unsigned_int_host_value {
                     } else {
                         Err(missing_path(path))
                     }
+                }
+            }
+
+            impl ScriptHostObject for $ty {
+                fn host_type_id(&self) -> HostTypeId {
+                    ScriptHostFieldAccess::script_host_type_id(self)
+                }
+
+                fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+                    ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+                }
+
+                fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+                    ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
                 }
             }
         )*
@@ -237,6 +265,20 @@ impl ScriptHostFieldAccess for bool {
     }
 }
 
+impl ScriptHostObject for bool {
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+    }
+}
+
 impl HostValueInto for String {
     fn into_host_value(self) -> HostResult<HostValue> {
         Ok(HostValue::String(self))
@@ -286,6 +328,20 @@ impl ScriptHostFieldAccess for String {
     }
 }
 
+impl ScriptHostObject for String {
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+    }
+}
+
 impl HostValueInto for () {
     fn into_host_value(self) -> HostResult<HostValue> {
         Ok(HostValue::Null)
@@ -319,7 +375,7 @@ impl ScriptHostKey for i64 {
 impl<K, V> ScriptHostFieldAccess for BTreeMap<K, V>
 where
     K: ScriptHostKey,
-    V: Default + ScriptHostFieldAccess,
+    V: ScriptHostFieldAccess,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -345,8 +401,8 @@ where
             return Err(missing_path(path));
         };
         let key = K::parse_host_key(key)?;
-        self.entry(key)
-            .or_default()
+        self.get_mut(&key)
+            .ok_or_else(|| missing_path(path))?
             .write_host_path_from(path, offset + 1, value)
     }
 
@@ -367,10 +423,37 @@ where
     }
 }
 
+impl<K, V> ScriptHostObject for BTreeMap<K, V>
+where
+    K: ScriptHostKey,
+    V: ScriptHostFieldAccess,
+{
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+    }
+
+    fn call_host_method(
+        &mut self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::call_host_method_from(self, path, 0, method, args)
+    }
+}
+
 impl<K, V> ScriptHostFieldAccess for HashMap<K, V>
 where
     K: ScriptHostKey + Hash,
-    V: Default + ScriptHostFieldAccess,
+    V: ScriptHostFieldAccess,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -396,8 +479,8 @@ where
             return Err(missing_path(path));
         };
         let key = K::parse_host_key(key)?;
-        self.entry(key)
-            .or_default()
+        self.get_mut(&key)
+            .ok_or_else(|| missing_path(path))?
             .write_host_path_from(path, offset + 1, value)
     }
 
@@ -415,6 +498,109 @@ where
         self.get_mut(&key)
             .ok_or_else(|| missing_path(path))?
             .call_host_method_from(path, offset + 1, method, args)
+    }
+}
+
+impl<K, V> ScriptHostObject for HashMap<K, V>
+where
+    K: ScriptHostKey + Hash,
+    V: ScriptHostFieldAccess,
+{
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+    }
+
+    fn call_host_method(
+        &mut self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::call_host_method_from(self, path, 0, method, args)
+    }
+}
+
+impl<T> ScriptHostFieldAccess for Vec<T>
+where
+    T: ScriptHostFieldAccess,
+{
+    fn script_host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(0)
+    }
+
+    fn read_host_path_from(&self, path: &HostPath, offset: usize) -> HostResult<HostValue> {
+        let Some(crate::path::PathSegment::Index(index)) = path.segments.get(offset) else {
+            return Err(missing_path(path));
+        };
+        let index = usize::try_from(*index).map_err(|_| invalid_arg("array index"))?;
+        self.get(index)
+            .ok_or_else(|| missing_path(path))?
+            .read_host_path_from(path, offset + 1)
+    }
+
+    fn write_host_path_from(
+        &mut self,
+        path: &HostPath,
+        offset: usize,
+        value: HostValue,
+    ) -> HostResult<()> {
+        let Some(crate::path::PathSegment::Index(index)) = path.segments.get(offset) else {
+            return Err(missing_path(path));
+        };
+        let index = usize::try_from(*index).map_err(|_| invalid_arg("array index"))?;
+        self.get_mut(index)
+            .ok_or_else(|| missing_path(path))?
+            .write_host_path_from(path, offset + 1, value)
+    }
+
+    fn call_host_method_from(
+        &mut self,
+        path: &HostPath,
+        offset: usize,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        let Some(crate::path::PathSegment::Index(index)) = path.segments.get(offset) else {
+            return Err(missing_path(path));
+        };
+        let index = usize::try_from(*index).map_err(|_| invalid_arg("array index"))?;
+        self.get_mut(index)
+            .ok_or_else(|| missing_path(path))?
+            .call_host_method_from(path, offset + 1, method, args)
+    }
+}
+
+impl<T> ScriptHostObject for Vec<T>
+where
+    T: ScriptHostFieldAccess,
+{
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+    }
+
+    fn call_host_method(
+        &mut self,
+        path: &HostPath,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::call_host_method_from(self, path, 0, method, args)
     }
 }
 
@@ -454,6 +640,23 @@ where
     }
 }
 
+impl<K> ScriptHostObject for BTreeSet<K>
+where
+    K: ScriptHostKey,
+{
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
+    }
+}
+
 impl<K> ScriptHostFieldAccess for HashSet<K>
 where
     K: ScriptHostKey + Hash,
@@ -487,6 +690,23 @@ where
             },
             source_span: None,
         })
+    }
+}
+
+impl<K> ScriptHostObject for HashSet<K>
+where
+    K: ScriptHostKey + Hash,
+{
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_host_path(&self, path: &HostPath) -> HostResult<HostValue> {
+        ScriptHostFieldAccess::read_host_path_from(self, path, 0)
+    }
+
+    fn write_host_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
+        ScriptHostFieldAccess::write_host_path_from(self, path, 0, value)
     }
 }
 
