@@ -748,6 +748,51 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_record_triplets",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+struct Reward {
+    item_id,
+    count,
+    bonus,
+}
+
+enum ResultState {
+    Scored { item_id, count, bonus }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let gold = Reward { item_id: "gold", count: tick + 1, bonus: tick % 7 };
+        let gold_state = ResultState::Scored {
+            item_id: gold.item_id,
+            count: gold.count,
+            bonus: gold.bonus,
+        };
+        match gold_state {
+            ResultState::Scored { item_id, count, bonus } => {
+                total += item_id.len() + count + bonus;
+            }
+        }
+
+        let xp = Reward { item_id: "xp", count: tick + 2, bonus: tick % 5 };
+        let xp_state = ResultState::Scored {
+            item_id: xp.item_id,
+            count: xp.count,
+            bonus: xp.bonus,
+        };
+        match xp_state {
+            ResultState::Scored { item_id, count, bonus } => {
+                total += item_id.len() + count + bonus;
+            }
+        }
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "gc_pacing",
         mode: ExecutionMode::GcPacing,
         source: r#"

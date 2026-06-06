@@ -2685,6 +2685,39 @@ behavior. The MapEntry guardrail checksum stayed stable, but the quick timing
 did not show a standalone map.find win.
 ```
 
+### 2026-06-06 M19 Three-Field Script Field Construction Checkpoint
+
+This checkpoint adds `managed_heap_record_triplets`, a focused heap-mode
+benchmark for three-field record and enum construction, field reads, and match
+binding. It then extends the small `ScriptFields` construction fast path to
+unique three-field shapes. Duplicate three-field input falls back to the
+general `from_pairs` path so the existing last-write-wins duplicate semantics
+remain unchanged.
+
+Validation:
+
+```bash
+cargo test -p vela_vm script_object -- --nocapture
+cargo test -p vela_vm records_enums -- --nocapture
+cargo fmt --all -- --check
+cargo bench -p vela_vm --bench baseline managed_heap_record_triplets -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_record_triplets | 1845583 | 1439166 | 1646958 | 10632212264203147092 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. The accepted path removes general BTreeMap field
+normalization for common unique three-field record and enum materialization,
+while preserving sorted field slots, shape IDs, heap storage, budget charging,
+source-spanned errors, and duplicate-field fallback behavior.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:
