@@ -49,13 +49,21 @@ pub(super) fn set_values(
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
+    set_slots(receiver, heap, operation).map(<[Value]>::to_vec)
+}
+
+pub(super) fn set_slots<'a>(
+    receiver: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<&'a [Value]> {
     match receiver {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Set(values)) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error(operation);
             };
-            Ok(values.clone())
+            Ok(values)
         }
         _ => type_error(operation),
     }

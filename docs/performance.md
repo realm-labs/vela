@@ -2359,6 +2359,33 @@ for this workload. Future host overlay optimization should measure a more
 direct specialized host-field opcode or adapter-side batch path rather than an
 internal overlay key split alone.
 
+### 2026-06-06 M19 Managed Heap Set Combination Checkpoint
+
+This checkpoint adds `managed_heap_set_combination`, a focused benchmark for
+heap-mode set `union`, `intersection`, `difference`, `symmetric_difference`,
+`is_subset`, `is_superset`, and `is_disjoint`. The accepted runtime change
+introduces borrowed set slot access and updates set combination and predicate
+methods to iterate heap set slots directly instead of first cloning receiver
+sets through `Vec<Value>`.
+
+Validation:
+
+```bash
+cargo test -p vela_vm set_methods
+cargo test -p vela_vm managed_heap_execution_runs_set_combination_methods
+cargo bench -p vela_vm --bench baseline managed_heap_set_combination -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| managed_heap_set_combination | 8604520 | 8147146 | 8197479 | 18281993306330727507 |
+
+Checksums stayed stable. The improvement is scoped to set combination and
+predicate methods; set higher-order callback methods keep their existing
+callback-root behavior.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for

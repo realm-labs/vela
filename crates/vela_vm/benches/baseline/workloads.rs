@@ -326,6 +326,40 @@ fn main() {
 "#,
     },
     Workload {
+        name: "managed_heap_set_combination",
+        mode: ExecutionMode::ManagedHeap,
+        source: r#"
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let base = set::from_array(["daily", "quest", "raid", "event", "boss"]);
+        let active = set::from_array(["quest", "event", "bonus"]);
+        let required = set::from_array(["daily", "quest"]);
+        let excluded = set::from_array(["missing", "locked"]);
+
+        let unioned = base.union(active);
+        let shared = base.intersection(active);
+        let only_base = base.difference(active);
+        let changed = base.symmetric_difference(active);
+
+        if !required.is_subset(base)
+            || !base.is_superset(required)
+            || !base.is_disjoint(excluded)
+            || unioned.len() != 6
+            || shared.len() != 2
+            || only_base.len() != 3
+            || changed.len() != 4
+        {
+            return 0;
+        }
+
+        total += unioned.len() + shared.len() + only_base.len() + changed.len() + tick - tick;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
         name: "managed_heap_array_lookup",
         mode: ExecutionMode::ManagedHeap,
         source: r#"
