@@ -2718,6 +2718,48 @@ while preserving sorted field slots, shape IDs, heap storage, budget charging,
 source-spanned errors, and duplicate-field fallback behavior.
 ```
 
+### 2026-06-06 M19 Four-Field Script Field Construction Checkpoint
+
+This checkpoint adds `managed_heap_record_quads`, a focused heap-mode benchmark
+for four-field record and enum construction, field reads, and match binding.
+It extends the small `ScriptFields` construction fast path to unique
+four-field shapes. Duplicate four-field input falls back to the general
+`from_pairs` path, preserving the existing duplicate-field behavior.
+
+Validation:
+
+```bash
+cargo test -p vela_vm script_object -- --nocapture
+cargo test -p vela_vm records_enums -- --nocapture
+cargo fmt --all -- --check
+cargo clippy -p vela_vm --all-targets -- -D warnings
+cargo bench -p vela_vm --bench baseline managed_heap_record_quads -- --quick
+cargo bench -p vela_vm --bench baseline managed_heap_record_quads
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | After run 3 mean ns | Checksum |
+|---|---:|---:|---:|---:|---:|
+| managed_heap_record_quads | 1807291 | 1400521 | 1357062 | 1868563 | 6063837183910228692 |
+
+Default before/after for the accepted target:
+
+| Benchmark | Before mean ns | After mean ns | Before median ns | After median ns | Before checksum | After checksum |
+|---|---:|---:|---:|---:|---:|---:|
+| managed_heap_record_quads | 22689541 | 17990904 | 22635959 | 17741417 | 16715058329310035343 | 16715058329310035343 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. Quick reruns were noisy, so the accepted evidence is
+the default before/after comparison from the same session. The accepted path
+removes general BTreeMap field normalization for common unique four-field
+record and enum materialization, while preserving sorted field slots, shape
+IDs, heap storage, budget charging, source-spanned errors, and duplicate-field
+fallback behavior.
+```
+
 ## Targets
 
 The post-MVP non-JIT target is:

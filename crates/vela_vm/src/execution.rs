@@ -1418,6 +1418,30 @@ fn runtime_fields_from_registers(
                 third_value,
             ))
         }
+        [
+            (first_name, first_register),
+            (second_name, second_register),
+            (third_name, third_register),
+            (fourth_name, fourth_register),
+        ] => {
+            let first_value =
+                store_runtime_value(frame.read(*first_register)?, heap, budget.as_deref_mut())?;
+            let second_value =
+                store_runtime_value(frame.read(*second_register)?, heap, budget.as_deref_mut())?;
+            let third_value =
+                store_runtime_value(frame.read(*third_register)?, heap, budget.as_deref_mut())?;
+            let fourth_value =
+                store_runtime_value(frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
+            Ok(ScriptFields::four(
+                owner,
+                [
+                    (first_name.clone(), first_value),
+                    (second_name.clone(), second_value),
+                    (third_name.clone(), third_value),
+                    (fourth_name.clone(), fourth_value),
+                ],
+            ))
+        }
         _ => fields
             .iter()
             .map(|(name, register)| {

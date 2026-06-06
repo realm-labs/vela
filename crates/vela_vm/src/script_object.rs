@@ -111,6 +111,44 @@ impl<T> ScriptFields<T> {
     }
 
     #[must_use]
+    pub fn four(owner: &str, fields: [(String, T); 4]) -> Self {
+        let [
+            (first_name, first_value),
+            (second_name, second_value),
+            (third_name, third_value),
+            (fourth_name, fourth_value),
+        ] = fields;
+        if first_name == second_name
+            || first_name == third_name
+            || first_name == fourth_name
+            || second_name == third_name
+            || second_name == fourth_name
+            || third_name == fourth_name
+        {
+            return Self::from_pairs(
+                owner,
+                [
+                    (first_name, first_value),
+                    (second_name, second_value),
+                    (third_name, third_value),
+                    (fourth_name, fourth_value),
+                ],
+            );
+        }
+        let mut slots = vec![
+            FieldSlot::new(first_name, first_value),
+            FieldSlot::new(second_name, second_value),
+            FieldSlot::new(third_name, third_value),
+            FieldSlot::new(fourth_name, fourth_value),
+        ];
+        slots.sort_by(|left, right| left.name.cmp(&right.name));
+        Self {
+            shape_id: shape_id(owner, slots.iter().map(|slot| slot.name.as_str())),
+            slots,
+        }
+    }
+
+    #[must_use]
     pub fn from_pairs(owner: &str, fields: impl IntoIterator<Item = (String, T)>) -> Self {
         let fields = fields.into_iter().collect::<BTreeMap<_, _>>();
         let shape_id = shape_id(owner, fields.keys().map(String::as_str));
@@ -347,5 +385,61 @@ mod tests {
         assert_eq!(from_pairs, three);
         assert_eq!(three.len(), 2);
         assert_eq!(three.get("value"), Some(&3));
+    }
+
+    #[test]
+    fn four_field_constructor_matches_pair_shape_and_order() {
+        let from_pairs = ScriptFields::from_pairs(
+            "Reward",
+            [
+                ("rarity".to_owned(), 4),
+                ("item_id".to_owned(), 1),
+                ("bonus".to_owned(), 3),
+                ("count".to_owned(), 2),
+            ],
+        );
+        let four = ScriptFields::four(
+            "Reward",
+            [
+                ("rarity".to_owned(), 4),
+                ("item_id".to_owned(), 1),
+                ("bonus".to_owned(), 3),
+                ("count".to_owned(), 2),
+            ],
+        );
+
+        assert_eq!(from_pairs.shape_id(), four.shape_id());
+        assert_eq!(from_pairs, four);
+        assert_eq!(
+            four.iter().map(|(name, _)| name).collect::<Vec<_>>(),
+            ["bonus", "count", "item_id", "rarity"]
+        );
+    }
+
+    #[test]
+    fn four_field_constructor_matches_duplicate_pair_semantics() {
+        let from_pairs = ScriptFields::from_pairs(
+            "Duplicate",
+            [
+                ("left".to_owned(), 1),
+                ("value".to_owned(), 2),
+                ("right".to_owned(), 4),
+                ("value".to_owned(), 3),
+            ],
+        );
+        let four = ScriptFields::four(
+            "Duplicate",
+            [
+                ("left".to_owned(), 1),
+                ("value".to_owned(), 2),
+                ("right".to_owned(), 4),
+                ("value".to_owned(), 3),
+            ],
+        );
+
+        assert_eq!(from_pairs.shape_id(), four.shape_id());
+        assert_eq!(from_pairs, four);
+        assert_eq!(four.len(), 3);
+        assert_eq!(four.get("value"), Some(&3));
     }
 }
