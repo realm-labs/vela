@@ -173,6 +173,31 @@ network-replicated state
 test mock state
 ```
 
+### Direct Call Arguments
+
+Embedding hosts may bind ordinary Rust values directly at the call boundary:
+
+```rust
+let mut args = CallArgs::new()
+    .with_host_ref("config", &config)
+    .with_host_mut("player", &mut player)
+    .with_value("amount", 10);
+
+runtime.call_args_direct("handle", &mut args, options, &mut tx)?;
+```
+
+This is an embedding API convenience, not a different script value model.
+`config` and `player` become call-scope `HostRef` handles inside the VM.
+The Rust type implements the host object adapter surface that reads and writes
+`HostPath` scalar fields. Scripts can copy handles, pass them to closures, and
+mutate aliases inside the same call; they still never receive real `&T` or
+`&mut T`.
+
+`with_host_ref` creates a read-only handle. `with_host_mut` creates a writable
+handle whose mutations write through immediately through `PatchTx`. Hosts that
+already store state behind their own adapter should pass existing handles with
+`with_host_handle` and use `runtime.call_args` with that adapter.
+
 ## Rust Host Macros
 
 ### Type Exposure

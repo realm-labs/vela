@@ -162,17 +162,16 @@ let mut runtime = Runtime::new(engine, program);
 ### Call
 
 ```rust
-let args = CallArgs::new()
-    .with_host_ref("account", account_ref)
-    .with_host_ref("invoice", invoice_ref)
+let mut args = CallArgs::new()
+    .with_host_mut("account", &mut account)
+    .with_host_ref("invoice", &invoice)
     .with_value("now", current_tick);
 let mut tx = PatchTx::new();
 
-runtime.call_args(
+runtime.call_args_direct(
     "billing.on_invoice_paid",
-    &args,
+    &mut args,
     CallOptions::unbounded(),
-    &mut state_adapter,
     &mut tx,
 )?;
 ```
@@ -180,8 +179,18 @@ runtime.call_args(
 `Runtime::call` still accepts positional `OwnedValue` slices for static call
 sites. Dynamic dispatch should prefer `CallArgs`: named entries are matched
 against the target function's parameter names and reordered before execution,
-while ordinary script values and host references can be mixed in the same
-argument list.
+while ordinary script values and host handles can be mixed in the same argument
+list.
+
+Direct `CallArgs::with_host_ref("name", &value)` and
+`CallArgs::with_host_mut("name", &mut value)` are user-facing embedding
+shortcuts. The script still receives a call-scope `HostRef`, not a real Rust
+reference. Field reads and writes dispatch through the type's host object
+adapter and `PatchTx`; `&T` is read-only, while `&mut T` allows write-through
+mutation during the call. Hosts that already manage object identity through a
+state adapter can pass an existing low-level handle with
+`CallArgs::with_host_handle("name", host_ref)` and call `runtime.call_args`
+with that adapter.
 
 ### Hot Reload
 

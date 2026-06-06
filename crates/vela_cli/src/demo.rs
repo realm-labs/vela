@@ -94,14 +94,14 @@ fn run_script_with_options(path: &str, options: DemoRunOptions) -> Result<(), Bo
     let mut host_options = options.host;
     host_options.has_monster = main.params.iter().any(|param| param == "monster");
     let mut host_state = DemoHostState::new(ids, host_options);
-    let args = host_state.main_args(main)?;
+    let mut args = host_state.main_args(main)?;
 
     let mut tx = PatchTx::new();
     let mut runtime = Runtime::new(engine, program);
     let result = runtime
         .call_args(
             "main",
-            &args,
+            &mut args,
             CallOptions::new(10_000, 1024 * 1024, 64, 1024),
             &mut host_state.adapter,
             &mut tx,

@@ -142,6 +142,13 @@ field, host path, and host method bytecode routes through `HostExecution`,
 patch is retained as a journal entry for budgets, diagnostics, auditing, and
 debugging.
 
+Embedding APIs may accept Rust `&T` and `&mut T` at a `Runtime::call_args`
+boundary, but these references are immediately represented inside the VM as
+call-scope `HostRef` handles. Field access still goes through a
+`ScriptHostObject`/adapter surface and `PatchTx`; `&T` is read-only and
+`&mut T` enables write-through mutation without exposing the real reference to
+script code.
+
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy
 wraps HostPath and requires PatchTx, but complex Rust objects remain handles

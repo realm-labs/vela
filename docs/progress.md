@@ -69,8 +69,8 @@ Cranelift JIT.
   domain-neutral helpers.
 - Engine registration for host types, native functions, context helpers,
   standard natives, capability profiles, reflection permissions, compiler options, dynamic
-  `CallArgs`, hot-reload policies, derive-generated host bindings, and
-  reflection schemas.
+  `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
+  hot-reload policies, derive-generated host bindings, and reflection schemas.
 - Macro-generated host and native bindings with stable IDs, rename aliases,
   effect-aware registration, and budget-aware context helper coverage.
 - Hot reload staging and safe-point reports for source-file, directory, and

@@ -158,18 +158,18 @@ impl DemoHostState {
         }
     }
 
-    pub(crate) fn main_args(&self, main: &CodeObject) -> Result<CallArgs, Box<dyn Error>> {
+    pub(crate) fn main_args(&self, main: &CodeObject) -> Result<CallArgs<'static>, Box<dyn Error>> {
         let mut args = CallArgs::new();
         for param in &main.params {
             match param.as_str() {
                 "player" => {
-                    args.push_host_ref("player", self.player_arg);
+                    args.push_host_handle("player", self.player_arg);
                 }
                 "ctx" => {
-                    args.push_host_ref("ctx", self.ctx);
+                    args.push_host_handle("ctx", self.ctx);
                 }
                 "monster" => {
-                    args.push_host_ref("monster", self.monster);
+                    args.push_host_handle("monster", self.monster);
                 }
                 _ => return Err(format!("unsupported demo main parameter `{param}`").into()),
             }

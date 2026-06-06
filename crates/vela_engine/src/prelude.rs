@@ -30,6 +30,7 @@ pub use vela_hir::module_graph::{
     ModulePath, ModuleSource, ResolvedImport,
 };
 pub use vela_host::adapter::ScriptStateAdapter;
+pub use vela_host::object::ScriptHostObject;
 pub use vela_host::path::{HostPath, HostRef};
 pub use vela_host::proxy::PathProxy;
 pub use vela_host::tx::PatchTx;

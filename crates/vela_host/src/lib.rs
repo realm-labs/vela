@@ -3,6 +3,7 @@
 pub mod adapter;
 pub mod error;
 pub mod mock;
+pub mod object;
 pub mod patch;
 pub mod path;
 pub mod proxy;
