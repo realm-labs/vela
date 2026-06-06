@@ -104,11 +104,19 @@ impl Vm {
                         source_span: instruction.span,
                         call_stack: Default::default(),
                     })?;
-                    let value = value_from_constant(
-                        constant_value,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    )?;
+                    let value = match constant_value {
+                        Constant::Null => Value::Null,
+                        Constant::Bool(value) => Value::Bool(*value),
+                        Constant::Int(value) => Value::Int(*value),
+                        Constant::Float(value) => Value::Float(*value),
+                        Constant::String(_) | Constant::Array(_) | Constant::Map(_) => {
+                            value_from_constant(
+                                constant_value,
+                                heap.as_deref_mut(),
+                                budget.as_deref_mut(),
+                            )?
+                        }
+                    };
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Move { dst, src } => {

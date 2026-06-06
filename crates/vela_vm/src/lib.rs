@@ -74,7 +74,7 @@ use script_methods::{
 use script_object::ScriptFields;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{
-    CallArgument, CodeObject, InstructionKind, InstructionOffset, Program, Register,
+    CallArgument, CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register,
 };
 use vela_common::{Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;

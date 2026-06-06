@@ -2446,6 +2446,35 @@ mutating collection work; future extend optimization should target a broader
 storage or mutation strategy rather than removing this small temporary layer
 alone.
 
+### 2026-06-06 M19 Scalar Constant Load Checkpoint
+
+This checkpoint keeps scalar constant loads on the VM dispatch hot path from
+calling the general heap-aware constant conversion helper. `LoadConst` now
+handles `null`, bool, int, and float constants directly and falls back to the
+existing `value_from_constant` path for string, array, and map constants so heap
+allocation behavior is unchanged.
+
+A separate `JumpIfFalse` bool fast-path candidate was measured in the same
+session and was not accepted because repeated quick runs did not preserve the
+initial scalar improvement.
+
+Validation:
+
+```bash
+cargo test -p vela_vm execution_core
+cargo bench -p vela_vm --bench baseline scalar_dispatch_mix -- --quick
+```
+
+Quick before/after reruns:
+
+| Benchmark | Before mean ns | After run 1 mean ns | After run 2 mean ns | Checksum |
+|---|---:|---:|---:|---:|
+| scalar_dispatch_mix | 781624 | 763916 | 775499 | 15308784822820424249 |
+| scalar_branch_loop | 271250 | 260624 | 286354 | 5382776514408301204 |
+
+Checksums stayed stable. The accepted improvement is scoped to scalar constant
+loading; heap constants keep the existing allocation and budget behavior.
+
 ### 2026-06-04 M19 Runtime View Refactor Candidate
 
 This candidate introduced a crate-internal borrowed runtime view layer for
