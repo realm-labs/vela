@@ -78,16 +78,16 @@ fn engine_rejects_module_names_that_shadow_standard_modules() {
 }
 
 #[test]
-fn engine_rejects_module_names_that_shadow_context_clock_modules() {
+fn engine_rejects_module_names_that_shadow_time_clock_modules() {
     let result = Engine::builder()
-        .with_context_clock(1, 2)
-        .register_module(ModuleDesc::new("ctx"))
+        .with_time_clock(1, 2)
+        .register_module(ModuleDesc::new("time"))
         .build();
 
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateModuleName {
-            name: "ctx".to_owned()
+            name: "time".to_owned()
         }
     ));
 }

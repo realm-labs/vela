@@ -9,7 +9,7 @@ use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
-use crate::clock::{CTX_ELAPSED_SINCE_FUNCTION_ID, CTX_NOW_FUNCTION_ID, CTX_TICK_FUNCTION_ID};
+use crate::clock::{TIME_ELAPSED_SINCE_FUNCTION_ID, TIME_NOW_FUNCTION_ID, TIME_TICK_FUNCTION_ID};
 use crate::context_schema::{
     CONTEXT_EMIT_METHOD_ID, CONTEXT_HOST_TYPE_ID, CONTEXT_LOG_METHOD_ID, CONTEXT_NOW_FIELD_ID,
     CONTEXT_TICK_FIELD_ID, CONTEXT_TYPE_ID, context_host_type_desc,
@@ -19,16 +19,16 @@ use crate::permission::Capability;
 use vela_reflect::permissions::ReflectPermissionSet;
 
 #[test]
-fn engine_context_clock_requires_permission() {
+fn engine_time_clock_requires_time_capability() {
     let engine = Engine::builder()
-        .with_context_clock(1_700_000_000, 42)
+        .with_time_clock(1_700_000_000, 42)
         .build()
         .expect("engine should build");
     let program = compile_program_source(
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx::now();
+    return time::now();
 }
 "#,
     )
@@ -37,23 +37,23 @@ fn main() {
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "ctx::now".to_owned(),
+            native: "time::now".to_owned(),
             capability: Capability::Time.as_str().to_owned(),
         }
     ));
 }
 
 #[test]
-fn engine_context_elapsed_since_requires_permission() {
+fn engine_time_elapsed_since_requires_time_capability() {
     let engine = Engine::builder()
-        .with_context_clock(1_700_000_000, 42)
+        .with_time_clock(1_700_000_000, 42)
         .build()
         .expect("engine should build");
     let program = compile_program_source(
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx::elapsed_since(1699999990);
+    return time::elapsed_since(1699999990);
 }
 "#,
     )
@@ -62,17 +62,17 @@ fn main() {
     assert!(matches!(
         engine.into_vm().run_program(&program, "main", &[]),
         Err(error) if error.kind == VmErrorKind::PermissionDenied {
-            native: "ctx::elapsed_since".to_owned(),
+            native: "time::elapsed_since".to_owned(),
             capability: Capability::Time.as_str().to_owned(),
         }
     ));
 }
 
 #[test]
-fn explicit_capabilities_allow_context_time_but_not_random() {
+fn explicit_capabilities_allow_time_but_not_random() {
     let engine = Engine::builder()
         .capability(Capability::Time)
-        .with_context_clock(1_700_000_000, 42)
+        .with_time_clock(1_700_000_000, 42)
         .with_controlled_random(7)
         .build()
         .expect("engine should build");
@@ -80,7 +80,7 @@ fn explicit_capabilities_allow_context_time_but_not_random() {
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx::now() + ctx::tick();
+    return time::now() + time::tick();
 }
 "#,
     )
@@ -112,17 +112,17 @@ fn main() {
 }
 
 #[test]
-fn engine_context_clock_returns_configured_values() {
+fn engine_time_clock_returns_configured_values() {
     let engine = Engine::builder()
         .capability(Capability::Time)
-        .with_context_clock(1_700_000_000, 42)
+        .with_time_clock(1_700_000_000, 42)
         .build()
         .expect("engine should build");
     let program = compile_program_source(
         SourceId::new(1),
         r#"
 fn main() {
-    return ctx::elapsed_since(1699999990) + ctx::tick();
+    return time::elapsed_since(1699999990) + time::tick();
 }
 "#,
     )
@@ -135,10 +135,10 @@ fn main() {
 }
 
 #[test]
-fn engine_reflect_call_invokes_permissioned_context_clock_functions() {
+fn engine_reflect_call_invokes_capability_gated_time_clock_functions() {
     let engine = Engine::builder()
         .capability(Capability::Time)
-        .with_context_clock(1_700_000_000, 42)
+        .with_time_clock(1_700_000_000, 42)
         .reflection_permissions(ReflectPermissionSet::all())
         .build()
         .expect("engine should build");
@@ -146,8 +146,8 @@ fn engine_reflect_call_invokes_permissioned_context_clock_functions() {
         SourceId::new(1),
         r#"
 fn main() {
-    let now = reflect::function("ctx::now");
-    let elapsed = reflect::function("ctx::elapsed_since");
+    let now = reflect::function("time::now");
+    let elapsed = reflect::function("time::elapsed_since");
     return reflect::call(now) + reflect::call(elapsed, 1699999990);
 }
 "#,
@@ -170,66 +170,65 @@ fn main() {
 }
 
 #[test]
-fn engine_context_clock_registers_metadata() {
+fn engine_time_clock_registers_metadata() {
     let engine = Engine::builder()
-        .with_context_clock(1, 2)
+        .with_time_clock(1, 2)
         .build()
         .expect("engine should build");
 
     let registry = engine.registry();
-    let module = registry.module_by_name("ctx").expect("ctx module metadata");
-    assert_eq!(
-        module.docs.as_deref(),
-        Some("Deterministic context helpers.")
-    );
-    assert_eq!(module.attrs.get("stdlib"), Some("context"));
-    assert_eq!(module.attrs.get("domain"), Some("context"));
+    let module = registry
+        .module_by_name("time")
+        .expect("time module metadata");
+    assert_eq!(module.docs.as_deref(), Some("Deterministic time helpers."));
+    assert_eq!(module.attrs.get("stdlib"), Some("time"));
+    assert_eq!(module.attrs.get("domain"), Some("time"));
     assert_eq!(module.exports.len(), 3);
     assert!(
         module
             .exports
             .iter()
-            .any(|export| export.name == "ctx::now")
+            .any(|export| export.name == "time::now")
     );
     assert!(
         module
             .exports
             .iter()
-            .any(|export| export.name == "ctx::tick")
+            .any(|export| export.name == "time::tick")
     );
     assert!(
         module
             .exports
             .iter()
-            .any(|export| export.name == "ctx::elapsed_since")
+            .any(|export| export.name == "time::elapsed_since")
     );
 
     let now = registry
-        .function_by_name("ctx::now")
-        .expect("ctx.now metadata");
+        .function_by_name("time::now")
+        .expect("time.now metadata");
     let tick = registry
-        .function_by_name("ctx::tick")
-        .expect("ctx.tick metadata");
+        .function_by_name("time::tick")
+        .expect("time.tick metadata");
     let elapsed = registry
-        .function_by_name("ctx::elapsed_since")
-        .expect("ctx.elapsed_since metadata");
+        .function_by_name("time::elapsed_since")
+        .expect("time.elapsed_since metadata");
 
-    assert_eq!(now.id, CTX_NOW_FUNCTION_ID);
-    assert_eq!(now.module.as_deref(), Some("ctx"));
+    assert_eq!(now.id, TIME_NOW_FUNCTION_ID);
+    assert_eq!(now.module.as_deref(), Some("time"));
     assert!(now.params.is_empty());
     assert_eq!(now.return_type.as_deref(), Some("int"));
     assert!(now.access.reflect_visible);
     assert!(now.effects.reads_time);
     assert!(now.access.required_permissions().is_empty());
-    assert_eq!(tick.id, CTX_TICK_FUNCTION_ID);
-    assert_eq!(tick.module.as_deref(), Some("ctx"));
+    assert_eq!(tick.id, TIME_TICK_FUNCTION_ID);
+    assert_eq!(tick.module.as_deref(), Some("time"));
     assert!(tick.params.is_empty());
     assert_eq!(tick.return_type.as_deref(), Some("int"));
     assert!(tick.access.reflect_visible);
     assert!(tick.effects.reads_time);
     assert!(tick.access.required_permissions().is_empty());
-    assert_eq!(elapsed.id, CTX_ELAPSED_SINCE_FUNCTION_ID);
-    assert_eq!(elapsed.module.as_deref(), Some("ctx"));
+    assert_eq!(elapsed.id, TIME_ELAPSED_SINCE_FUNCTION_ID);
+    assert_eq!(elapsed.module.as_deref(), Some("time"));
     assert_eq!(elapsed.params.len(), 1);
     assert_eq!(elapsed.params[0].name, "start");
     assert_eq!(elapsed.params[0].type_hint.as_deref(), Some("int"));

@@ -60,16 +60,16 @@ fn main(ctx, player) {
     let method_access = reflect::access(method);
     let reflected_types = reflect::types();
     let reward_module = reflect::module("game::reward");
-    let ctx_module = reflect::module("ctx");
+    let time_module = reflect::module("time");
     let math_module = reflect::module("math");
     let option_module = reflect::module("option");
     let result_module = reflect::module("result");
     let set_module = reflect::module("set");
     let reward_function = reflect::function("game::reward::grant");
     let main_function = reflect::function("main");
-    let ctx_now = reflect::function("ctx::now");
-    let ctx_tick = reflect::function("ctx::tick");
-    let ctx_elapsed = reflect::function("ctx::elapsed_since");
+    let time_now = reflect::function("time::now");
+    let time_tick = reflect::function("time::tick");
+    let time_elapsed = reflect::function("time::elapsed_since");
     let math_max = reflect::function("math::max");
     let math_sqrt = reflect::function("math::sqrt");
     let option_some = reflect::function("option::some");
@@ -89,15 +89,15 @@ fn main(ctx, player) {
     let reflected_max = reflect::call(math_max, 4, 9);
     let option_some_effects = reflect::effects(option_some);
     let option_some_access = reflect::access(option_some);
-    let ctx_now_access = reflect::access(ctx_now);
-    let ctx_now_permissions = reflect::required_permissions(ctx_now);
-    let ctx_now_effects = reflect::effects(ctx_now);
-    let ctx_elapsed_access = reflect::access(ctx_elapsed);
-    let ctx_elapsed_params = reflect::params(ctx_elapsed);
-    let ctx_elapsed_permissions = reflect::required_permissions(ctx_elapsed);
-    let ctx_elapsed_effects = reflect::effects(ctx_elapsed);
-    let reflected_now = reflect::call(ctx_now);
-    let reflected_elapsed = reflect::call(ctx_elapsed, 1699999990);
+    let time_now_access = reflect::access(time_now);
+    let time_now_permissions = reflect::required_permissions(time_now);
+    let time_now_effects = reflect::effects(time_now);
+    let time_elapsed_access = reflect::access(time_elapsed);
+    let time_elapsed_params = reflect::params(time_elapsed);
+    let time_elapsed_permissions = reflect::required_permissions(time_elapsed);
+    let time_elapsed_effects = reflect::effects(time_elapsed);
+    let reflected_now = reflect::call(time_now);
+    let reflected_elapsed = reflect::call(time_elapsed, 1699999990);
     let main_source_span = reflect::source_span(main_function);
     let ctx_methods = reflect::methods(ctx);
     let ctx_fields = reflect::fields(context_type);
@@ -112,7 +112,7 @@ fn main(ctx, player) {
     let modules = reflect::modules();
     let functions = reflect::functions();
     let exports = reflect::exports(reward_module);
-    let ctx_exports = reflect::exports(ctx_module);
+    let time_exports = reflect::exports(time_module);
     let math_exports = reflect::exports(math_module);
     let option_exports = reflect::exports(option_module);
     let result_exports = reflect::exports(result_module);
@@ -300,7 +300,7 @@ fn main(ctx, player) {
         && reflect::has_permission("reflect::write_value_fields")
         && reflect::has_permission("reflect::call_event_methods")
         && reflect::has_module("game::reward")
-        && reflect::has_module("ctx")
+        && reflect::has_module("time")
         && reflect::has_module("math")
         && reflect::has_module("option")
         && reflect::has_module("result")
@@ -315,11 +315,11 @@ fn main(ctx, player) {
         && reflect::has_attr(reward_module, "domain")
         && !reflect::has_attr(reward_module, "missing")
         && reward_attrs["domain"] == "gameplay"
-        && reflect::name(ctx_module) == "ctx"
-        && reflect::kind(ctx_module) == "module"
-        && reflect::docs(ctx_module) == "Deterministic context helpers."
-        && reflect::attr(ctx_module, "stdlib") == "context"
-        && reflect::attr(ctx_module, "domain") == "context"
+        && reflect::name(time_module) == "time"
+        && reflect::kind(time_module) == "module"
+        && reflect::docs(time_module) == "Deterministic time helpers."
+        && reflect::attr(time_module, "stdlib") == "time"
+        && reflect::attr(time_module, "domain") == "time"
         && reflect::name(math_module) == "math"
         && reflect::kind(math_module) == "module"
         && reflect::docs(math_module) == "Deterministic math standard-library helpers."
@@ -339,9 +339,9 @@ fn main(ctx, player) {
         && modules.len() == 6
         && reflect::has_function("game::reward::grant")
         && reflect::has_function("main")
-        && reflect::has_function("ctx::now")
-        && reflect::has_function("ctx::tick")
-        && reflect::has_function("ctx::elapsed_since")
+        && reflect::has_function("time::now")
+        && reflect::has_function("time::tick")
+        && reflect::has_function("time::elapsed_since")
         && reflect::has_function("math::max")
         && reflect::has_function("math::sqrt")
         && reflect::has_function("option::some")
@@ -395,10 +395,10 @@ fn main(ctx, player) {
         && exports.len() == 1
         && exports[0] == "game::reward::grant"
         && reflect::exports("game::reward")[0] == exports[0]
-        && ctx_exports.len() == 3
-        && ctx_exports.contains("ctx::now")
-        && ctx_exports.contains("ctx::tick")
-        && ctx_exports.contains("ctx::elapsed_since")
+        && time_exports.len() == 3
+        && time_exports.contains("time::now")
+        && time_exports.contains("time::tick")
+        && time_exports.contains("time::elapsed_since")
         && math_exports.len() == 15
         && math_exports.contains("math::max")
         && math_exports.contains("math::sqrt")
@@ -436,23 +436,23 @@ fn main(ctx, player) {
         && set_from_array_params.len() == 1
         && set_from_array_params[0].name == "values"
         && set_from_array_params[0].type == "array"
-        && reflect::name(ctx_now) == "ctx::now"
-        && reflect::name(ctx_tick) == "ctx::tick"
-        && reflect::name(ctx_elapsed) == "ctx::elapsed_since"
-        && reflect::returns(ctx_now) == "int"
-        && reflect::returns(ctx_tick) == "int"
-        && reflect::returns(ctx_elapsed) == "int"
-        && ctx_now_access.required_permissions.len() == 0
-        && ctx_now_permissions.len() == 0
-        && ctx_now_effects.reads_time
-        && ctx_elapsed_access.required_permissions.len() == 0
-        && ctx_elapsed_permissions.len() == 0
-        && ctx_elapsed_effects.reads_time
+        && reflect::name(time_now) == "time::now"
+        && reflect::name(time_tick) == "time::tick"
+        && reflect::name(time_elapsed) == "time::elapsed_since"
+        && reflect::returns(time_now) == "int"
+        && reflect::returns(time_tick) == "int"
+        && reflect::returns(time_elapsed) == "int"
+        && time_now_access.required_permissions.len() == 0
+        && time_now_permissions.len() == 0
+        && time_now_effects.reads_time
+        && time_elapsed_access.required_permissions.len() == 0
+        && time_elapsed_permissions.len() == 0
+        && time_elapsed_effects.reads_time
         && reflected_now == 1700000000
         && reflected_elapsed == 10
-        && ctx_elapsed_params.len() == 1
-        && ctx_elapsed_params[0].name == "start"
-        && ctx_elapsed_params[0].type == "int"
+        && time_elapsed_params.len() == 1
+        && time_elapsed_params[0].name == "start"
+        && time_elapsed_params[0].type == "int"
         && ctx_methods.len() == 2
         && ctx_fields.len() == 3
         && reflect::docs(context_type) == "Standard host context object for deterministic time, events, and logging."
@@ -493,9 +493,9 @@ fn main(ctx, player) {
         && functions.any(|function| reflect::id(function) == reflect::id(reward_function))
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")
-        && functions.any(|function| reflect::name(function) == "ctx::now"
+        && functions.any(|function| reflect::name(function) == "time::now"
             && reflect::returns(function) == "int")
-        && functions.any(|function| reflect::name(function) == "ctx::elapsed_since"
+        && functions.any(|function| reflect::name(function) == "time::elapsed_since"
             && reflect::returns(function) == "int")
         && functions.any(|function| reflect::name(function) == "math::max"
             && reflect::attr(function, "stdlib") == "math")

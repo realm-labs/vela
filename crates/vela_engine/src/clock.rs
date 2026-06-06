@@ -7,48 +7,48 @@ use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionEntry, NativeFunctionId, TypeHint,
 };
 
-pub const CTX_NOW_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0002);
-pub const CTX_TICK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0003);
-pub const CTX_ELAPSED_SINCE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0004);
+pub const TIME_NOW_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0002);
+pub const TIME_TICK_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0003);
+pub const TIME_ELAPSED_SINCE_FUNCTION_ID: NativeFunctionId = FunctionId::new(0xff00_0004);
 
-pub(crate) fn context_module_desc() -> ModuleDesc {
-    ModuleDesc::new("ctx")
-        .docs("Deterministic context helpers.")
-        .attr("stdlib", "context")
-        .attr("domain", "context")
+pub(crate) fn time_module_desc() -> ModuleDesc {
+    ModuleDesc::new("time")
+        .docs("Deterministic time helpers.")
+        .attr("stdlib", "time")
+        .attr("domain", "time")
 }
 
-pub(crate) fn context_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry; 3] {
+pub(crate) fn time_clock_functions(now: i64, tick: i64) -> [NativeFunctionEntry; 3] {
     [
         NativeFunctionEntry::new(
-            NativeFunctionDesc::new("ctx::now", CTX_NOW_FUNCTION_ID)
+            NativeFunctionDesc::new("time::now", TIME_NOW_FUNCTION_ID)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::time())
                 .access(FunctionAccess::public().reflect_callable(true))
-                .docs("Returns the configured deterministic context timestamp."),
-            move |args| context_value("ctx::now", now, args),
+                .docs("Returns the configured deterministic timestamp."),
+            move |args| time_value("time::now", now, args),
         ),
         NativeFunctionEntry::new(
-            NativeFunctionDesc::new("ctx::tick", CTX_TICK_FUNCTION_ID)
+            NativeFunctionDesc::new("time::tick", TIME_TICK_FUNCTION_ID)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::time())
                 .access(FunctionAccess::public().reflect_callable(true))
-                .docs("Returns the configured deterministic context tick."),
-            move |args| context_value("ctx::tick", tick, args),
+                .docs("Returns the configured deterministic tick."),
+            move |args| time_value("time::tick", tick, args),
         ),
         NativeFunctionEntry::new(
-            NativeFunctionDesc::new("ctx::elapsed_since", CTX_ELAPSED_SINCE_FUNCTION_ID)
+            NativeFunctionDesc::new("time::elapsed_since", TIME_ELAPSED_SINCE_FUNCTION_ID)
                 .param("start", TypeHint::Int)
                 .returns(TypeHint::Int)
                 .effects(EffectSet::time())
                 .access(FunctionAccess::public().reflect_callable(true))
-                .docs("Returns deterministic context time elapsed since start."),
+                .docs("Returns deterministic time elapsed since start."),
             move |args| elapsed_since(now, args),
         ),
     ]
 }
 
-fn context_value(name: &str, value: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
+fn time_value(name: &str, value: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
     if args.is_empty() {
         return Ok(OwnedValue::Int(value));
     }
@@ -67,7 +67,7 @@ fn elapsed_since(now: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
     if args.len() != 1 {
         return Err(VmError {
             kind: VmErrorKind::ArityMismatch {
-                name: "ctx::elapsed_since".to_owned(),
+                name: "time::elapsed_since".to_owned(),
                 expected: 1,
                 actual: args.len(),
             },
@@ -79,7 +79,7 @@ fn elapsed_since(now: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
     let OwnedValue::Int(start) = args[0] else {
         return Err(VmError {
             kind: VmErrorKind::TypeMismatch {
-                operation: "ctx::elapsed_since",
+                operation: "time::elapsed_since",
             },
             source_span: None,
             call_stack: Default::default(),
@@ -88,7 +88,7 @@ fn elapsed_since(now: i64, args: &[OwnedValue]) -> VmResult<OwnedValue> {
 
     now.checked_sub(start).map(OwnedValue::Int).ok_or(VmError {
         kind: VmErrorKind::TypeMismatch {
-            operation: "ctx::elapsed_since",
+            operation: "time::elapsed_since",
         },
         source_span: None,
         call_stack: Default::default(),

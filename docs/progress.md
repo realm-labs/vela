@@ -60,8 +60,8 @@ through M20 cache work before debugger/DAP work and Cranelift JIT.
 - Reflection for types, fields, methods, variants, traits, modules, functions,
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
-  strings, Option/Result helpers and propagation, math, context time/event/log
-  helpers, controlled random capability gating, lambda TypeFacts, and
+  strings, Option/Result helpers and propagation, math, deterministic time,
+  context event/log helpers, controlled random capability gating, lambda TypeFacts, and
   domain-neutral helpers.
 - Engine registration for host types, native functions, context helpers,
   standard natives, capability profiles, reflection permissions, compiler options, hot-reload

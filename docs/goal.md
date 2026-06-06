@@ -397,8 +397,8 @@ complete enough and moves broad diagnostics polish to M16
 
 ### M13: Standard Library And Language Conveniences
 
-Goal: common host-boundary business logic is compact, readable, deterministic, and
-permission-aware.
+Goal: common host-boundary business logic is compact, readable,
+deterministic, and capability-aware.
 
 Scope:
 
@@ -410,8 +410,8 @@ string APIs needed for business scripts and diagnostics
 Option and Result as dynamic enums
 ? operator lowering for Option/Result propagation
 math::max/min/clamp/floor/ceil/abs
-controlled random through permissions or context
-ctx::now, ctx::tick, logging, event emit helpers
+controlled random through the random capability
+time::now, time::tick, context logging, event emit helpers
 stdlib metadata for TypeFacts without user-visible generics
 ```
 
@@ -420,7 +420,7 @@ Acceptance:
 ```text
 collection methods work with lambdas and preserve dynamic values
 ? propagates None and Err through script functions
-random and wall-clock APIs require explicit permissions
+random and time APIs require explicit capabilities
 domain-specific rule scripts are readable without custom native glue
 stdlib methods expose analysis facts for lambda parameter hints
 ```
@@ -429,7 +429,7 @@ Checkpoint:
 
 ```text
 cargo test covers array, map, set, string, Option, Result, math, context,
-random/time permission, and lambda callback behavior
+random/time capability, and lambda callback behavior
 example host demos use stdlib helpers without custom glue for domain rules
 docs/progress.md names the next missing stdlib family or marks M13 complete enough
 ```
@@ -470,8 +470,8 @@ Checkpoint:
 
 ```text
 cargo test covers EngineBuilder registration, compile_file/compile_dir,
-Runtime::call, native descriptors, stable ID rejection, permissioned native
-calls, signature conversion, and derive macro schema parity
+Runtime::call, native descriptors, stable ID rejection, capability-gated
+native calls, signature conversion, and derive macro schema parity
 docs/progress.md names the next missing embedding surface or marks M14 complete
 enough
 ```

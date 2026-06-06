@@ -123,12 +123,12 @@ math::abs
 math::random  # only with the random capability
 ```
 
-Time should come from host context, not direct system time:
+Time should come from host-provided deterministic time, not direct system time:
 
 ```rust
-ctx::now()
-ctx::tick()
-ctx::elapsed_since(start)
+time::now()
+time::tick()
+time::elapsed_since(start)
 ```
 
 ## Embedding API

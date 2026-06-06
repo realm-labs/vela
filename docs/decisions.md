@@ -250,7 +250,12 @@ failures should use VM diagnostics rather than `Result::Err`.
 
 Array, map, set, string, range, math, context, random, and other
 domain-neutral helpers are deterministic unless an Engine-installed
-permissioned native explicitly provides controlled nondeterminism.
+capability-gated native explicitly provides controlled nondeterminism.
+
+Host-provided deterministic time belongs to the `time` stdlib module
+(`time::now`, `time::tick`, `time::elapsed_since`). `ctx` remains available for
+host-registered context objects, fields, methods, events, and logging examples,
+but it is not the builtin time module namespace.
 
 ### Reflection Permissions
 

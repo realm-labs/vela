@@ -1,3 +1,0 @@
-fn main() {
-    return ctx::elapsed_since(1699999990) + ctx::tick();
-}

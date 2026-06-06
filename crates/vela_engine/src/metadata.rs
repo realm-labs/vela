@@ -100,7 +100,7 @@ pub(crate) fn inject_standard_native_metadata(registry: &mut TypeRegistry) {
 
 fn native_module_desc(module_name: &str) -> ModuleDesc {
     match module_name {
-        "ctx" => crate::clock::context_module_desc(),
+        "time" => crate::clock::time_module_desc(),
         _ => ModuleDesc::new(module_name),
     }
 }

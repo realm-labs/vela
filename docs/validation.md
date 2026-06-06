@@ -14,7 +14,7 @@ script:
 ```bash
 cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/context_event.vela
-cargo run -p vela_cli -- examples/game_server_demo/scripts/context_clock.vela
+cargo run -p vela_cli -- examples/game_server_demo/scripts/time_clock.vela
 cargo run -p vela_cli -- examples/game_server_demo/scripts/gameplay_helpers.vela
 cargo run -p vela_cli -- --allow-random examples/game_server_demo/scripts/random_allowed.vela
 cargo run -p vela_cli -- --allow-random examples/game_server_demo/scripts/random_reflect_allowed.vela

@@ -96,9 +96,9 @@ fn context_event_demo_runs_through_cli() {
 }
 
 #[test]
-fn context_clock_demo_runs_through_cli() {
+fn time_clock_demo_runs_through_cli() {
     assert_eq!(
-        run_demo("context_clock.vela"),
+        run_demo("time_clock.vela"),
         "result=Int(52) level=Int(9) patches=0\n"
     );
 }

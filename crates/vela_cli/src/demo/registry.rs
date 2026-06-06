@@ -20,7 +20,7 @@ pub(crate) fn demo_engine(ids: DemoIds, options: DemoEngineOptions) -> EngineRes
         .capability(Capability::HostWrite)
         .capability(Capability::EventEmit)
         .capability(Capability::Time)
-        .with_context_clock(1_700_000_000, 42)
+        .with_time_clock(1_700_000_000, 42)
         .with_controlled_random(7)
         .reflection_policy(ReflectPolicy::all())
         .register_script_host::<Player>()

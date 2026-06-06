@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn math_set_and_context_functions_expose_return_facts() {
+fn math_set_and_time_functions_expose_return_facts() {
     assert_eq!(
         stdlib_function_fact("math::max", &[TypeFact::Int, TypeFact::Int])
             .expect("max fact")
@@ -123,20 +123,20 @@ fn math_set_and_context_functions_expose_return_facts() {
         TypeFact::set(TypeFact::String)
     );
     assert_eq!(
-        stdlib_function_fact("ctx::now", &[])
-            .expect("ctx.now fact")
+        stdlib_function_fact("time::now", &[])
+            .expect("time::now fact")
             .returns,
         TypeFact::Int
     );
     assert_eq!(
-        stdlib_function_fact("ctx::tick", &[])
-            .expect("ctx.tick fact")
+        stdlib_function_fact("time::tick", &[])
+            .expect("time::tick fact")
             .returns,
         TypeFact::Int
     );
     assert_eq!(
-        stdlib_function_fact("ctx::elapsed_since", &[TypeFact::Int])
-            .expect("ctx.elapsed_since fact")
+        stdlib_function_fact("time::elapsed_since", &[TypeFact::Int])
+            .expect("time::elapsed_since fact")
             .returns,
         TypeFact::Int
     );
@@ -223,15 +223,15 @@ fn function_completion_facts_enumerate_global_api_surface() {
     assert!(
         facts
             .iter()
-            .any(|fact| fact.name == "ctx::now" && fact.returns == TypeFact::Int)
+            .any(|fact| fact.name == "time::now" && fact.returns == TypeFact::Int)
     );
     assert!(
         facts
             .iter()
-            .any(|fact| fact.name == "ctx::tick" && fact.returns == TypeFact::Int)
+            .any(|fact| fact.name == "time::tick" && fact.returns == TypeFact::Int)
     );
     assert!(facts.iter().any(|fact| {
-        fact.name == "ctx::elapsed_since"
+        fact.name == "time::elapsed_since"
             && fact.params == [TypeFact::Int]
             && fact.returns == TypeFact::Int
     }));

@@ -495,7 +495,7 @@ fn global_completions_include_stdlib_functions() {
         TypeFact::function(vec![TypeFact::Int, TypeFact::Int], TypeFact::Int),
     )));
     assert!(completions.contains(&CompletionItem::new(
-        "ctx::elapsed_since",
+        "time::elapsed_since",
         CompletionKind::Function,
         TypeFact::function(vec![TypeFact::Int], TypeFact::Int),
     )));

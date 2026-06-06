@@ -144,9 +144,9 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::Int, TypeFact::Int],
             TypeFact::Int,
         ),
-        StdlibFunctionFact::new("ctx::now", Vec::new(), TypeFact::Int),
-        StdlibFunctionFact::new("ctx::tick", Vec::new(), TypeFact::Int),
-        StdlibFunctionFact::new("ctx::elapsed_since", vec![TypeFact::Int], TypeFact::Int),
+        StdlibFunctionFact::new("time::now", Vec::new(), TypeFact::Int),
+        StdlibFunctionFact::new("time::tick", Vec::new(), TypeFact::Int),
+        StdlibFunctionFact::new("time::elapsed_since", vec![TypeFact::Int], TypeFact::Int),
         StdlibFunctionFact::new(
             "set::from_array",
             vec![TypeFact::array(TypeFact::Any)],
@@ -349,7 +349,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::Int,
             ))
         }
-        "ctx::now" | "ctx::tick" => {
+        "time::now" | "time::tick" => {
             expect_len(args, 0)?;
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
@@ -357,10 +357,10 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::Int,
             ))
         }
-        "ctx::elapsed_since" => {
+        "time::elapsed_since" => {
             expect_len(args, 1)?;
             Some(StdlibFunctionFact::new(
-                "ctx::elapsed_since",
+                "time::elapsed_since",
                 args.to_vec(),
                 TypeFact::Int,
             ))
@@ -574,9 +574,9 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "math::pow" => Some("math::pow"),
         "math::sqrt" => Some("math::sqrt"),
         "math::sign" => Some("math::sign"),
-        "ctx::now" => Some("ctx::now"),
-        "ctx::tick" => Some("ctx::tick"),
-        "ctx::elapsed_since" => Some("ctx::elapsed_since"),
+        "time::now" => Some("time::now"),
+        "time::tick" => Some("time::tick"),
+        "time::elapsed_since" => Some("time::elapsed_since"),
         _ => None,
     }
 }

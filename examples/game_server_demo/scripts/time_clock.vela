@@ -1,0 +1,3 @@
+fn main() {
+    return time::elapsed_since(1699999990) + time::tick();
+}
