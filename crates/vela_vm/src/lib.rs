@@ -38,6 +38,7 @@ mod script_function_calls;
 mod script_method_calls;
 mod script_methods;
 mod script_object;
+mod script_object_construction;
 mod set_methods;
 mod small_storage;
 mod stdlib;
@@ -68,7 +69,8 @@ use ranges::RangeValue;
 pub(crate) use reflection_values::{value_from_reflect, value_to_reflect};
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
 use runtime_checks::{expect_int, is_truthy, validate_jump};
-use script_object::ScriptFields;
+#[cfg(test)]
+pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
 use vela_bytecode::{CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register};
