@@ -86,6 +86,7 @@ scalar_branch_loop          VM dispatch, arithmetic, branches, range for-in
 script_call_small_args      script function calls with one- and two-argument calls
 stdlib_collections          array, map, set, Option, and stdlib method dispatch
 host_patch_tx               HostRef reads, nested HostPath writes, PatchTx overlay
+managed_heap_host_read_conversion host aggregate reads into managed heap values
 gameplay_monster_kill       demo monster kill workflow with HostPath, PatchTx, stdlib callbacks, and host methods
 managed_heap_materialization records, enums, strings, Option helpers, heap mode
 gc_pacing                   safe-point GC under managed heap allocation pressure
@@ -2984,6 +2985,38 @@ The candidate was not accepted because the focused row regressed in repeated
 quick runs. The existing iterator path remains in place; future
 `map.values().sum()` work should look for a broader fused map-value aggregate
 strategy rather than a local collection rewrite.
+
+### 2026-06-06 M19 Managed Heap Host Read Conversion Benchmark Checkpoint
+
+This checkpoint adds `managed_heap_host_read_conversion`, a focused host
+managed-heap benchmark for the opposite direction of the existing host write
+conversion row. The workload preloads host map, record, and enum aggregates,
+then scripts read those host fields into managed heap values and exercise map
+indexing, array join/len, record field reads, enum pattern matching, and
+HostRef path access. It gives future `host_to_value` optimization work a
+direct timing surface without changing runtime behavior.
+
+Validation:
+
+```bash
+cargo test -p vela_vm managed_heap_host_execution -- --nocapture
+cargo bench -p vela_vm --bench baseline managed_heap_host_read_conversion -- --quick
+```
+
+New benchmark baseline:
+
+| Benchmark | Mode | Quick mean ns | Checksum |
+|---|---|---:|---:|
+| managed_heap_host_read_conversion | host_managed_heap_read_conversion | 1132979 | 17265630408876357444 |
+
+Checkpoint notes:
+
+```text
+Checksums stayed stable. This row is benchmark coverage rather than an accepted
+runtime optimization; it separates host aggregate read conversion from
+PatchTx-heavy host writes so future host boundary work can be measured more
+directly.
+```
 
 ## Targets
 

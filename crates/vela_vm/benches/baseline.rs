@@ -175,6 +175,9 @@ enum CompiledWorkload {
     HostPatchTx {
         program: Box<Program>,
     },
+    HostManagedHeapReadConversion {
+        program: Box<Program>,
+    },
     HostManagedHeapPatchTx {
         program: Box<Program>,
     },
@@ -210,6 +213,10 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             ..
         }
         | CompiledWorkload::Function {
+            mode: ExecutionMode::HostManagedHeapReadConversion,
+            ..
+        }
+        | CompiledWorkload::Function {
             mode: ExecutionMode::GameplayHost,
             ..
         }
@@ -218,6 +225,9 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             ..
         } => unreachable!("host workloads compile to programs"),
         CompiledWorkload::HostPatchTx { program } => run_host_patch_tx(vm, program),
+        CompiledWorkload::HostManagedHeapReadConversion { program } => {
+            run_managed_heap_host_read_conversion(vm, program)
+        }
         CompiledWorkload::HostManagedHeapPatchTx { program } => {
             run_managed_heap_host_conversion(vm, program)
         }
@@ -227,28 +237,33 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
 
 fn compile_workload(workload: &Workload) -> Result<CompiledWorkload, String> {
     match workload.mode {
-        ExecutionMode::HostPatchTx | ExecutionMode::HostManagedHeapPatchTx => {
-            compile_program_source_with_options(
-                SourceId::new(1),
-                workload.source,
-                &CompilerOptions::new()
-                    .with_host_field("level", LEVEL_FIELD)
-                    .with_host_field("exp", EXP_FIELD)
-                    .with_host_field("inventory", INVENTORY_FIELD)
-                    .with_host_field("gold", GOLD_FIELD)
-                    .with_host_field("rewards", REWARDS_FIELD),
-            )
-            .map(|program| match workload.mode {
-                ExecutionMode::HostPatchTx => CompiledWorkload::HostPatchTx {
+        ExecutionMode::HostPatchTx
+        | ExecutionMode::HostManagedHeapReadConversion
+        | ExecutionMode::HostManagedHeapPatchTx => compile_program_source_with_options(
+            SourceId::new(1),
+            workload.source,
+            &CompilerOptions::new()
+                .with_host_field("level", LEVEL_FIELD)
+                .with_host_field("exp", EXP_FIELD)
+                .with_host_field("inventory", INVENTORY_FIELD)
+                .with_host_field("gold", GOLD_FIELD)
+                .with_host_field("rewards", REWARDS_FIELD),
+        )
+        .map(|program| match workload.mode {
+            ExecutionMode::HostPatchTx => CompiledWorkload::HostPatchTx {
+                program: Box::new(program),
+            },
+            ExecutionMode::HostManagedHeapPatchTx => CompiledWorkload::HostManagedHeapPatchTx {
+                program: Box::new(program),
+            },
+            ExecutionMode::HostManagedHeapReadConversion => {
+                CompiledWorkload::HostManagedHeapReadConversion {
                     program: Box::new(program),
-                },
-                ExecutionMode::HostManagedHeapPatchTx => CompiledWorkload::HostManagedHeapPatchTx {
-                    program: Box::new(program),
-                },
-                _ => unreachable!("only host patch modes are handled here"),
-            })
-            .map_err(|error| format!("{error:?}"))
-        }
+                }
+            }
+            _ => unreachable!("only host patch modes are handled here"),
+        })
+        .map_err(|error| format!("{error:?}")),
         ExecutionMode::GameplayHost => compile_program_source_with_options(
             SourceId::new(1),
             workload.source,
@@ -413,6 +428,74 @@ fn run_managed_heap_host_conversion(
     Ok(OwnedValue::Int(
         value_checksum(&value) as i64
             + patch_count as i64
+            + host_map_len(&adapter, level_path)?
+            + host_record_len(&adapter, exp_path)?
+            + host_enum_field_len(&adapter, damage_path)?,
+    ))
+}
+
+fn run_managed_heap_host_read_conversion(
+    vm: &Vm,
+    program: &Program,
+) -> Result<OwnedValue, Box<dyn Error>> {
+    let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
+    let level_path = HostPath::new(player).field(LEVEL_FIELD);
+    let exp_path = HostPath::new(player).field(EXP_FIELD);
+    let damage_path = HostPath::new(player)
+        .field(INVENTORY_FIELD)
+        .field(GOLD_FIELD);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_value(
+        level_path.clone(),
+        HostValue::Map(BTreeMap::from([
+            ("class".to_owned(), HostValue::String("mage".to_owned())),
+            ("score".to_owned(), HostValue::Int(3)),
+            (
+                "tags".to_owned(),
+                HostValue::Array(vec![
+                    HostValue::String("quest".to_owned()),
+                    HostValue::String("raid".to_owned()),
+                    HostValue::String("daily".to_owned()),
+                ]),
+            ),
+        ])),
+    );
+    adapter.insert_value(
+        exp_path.clone(),
+        HostValue::Record {
+            type_name: "Reward".to_owned(),
+            fields: BTreeMap::from([
+                ("item_id".to_owned(), HostValue::String("gold".to_owned())),
+                ("count".to_owned(), HostValue::Int(5)),
+            ]),
+        },
+    );
+    adapter.insert_value(
+        damage_path.clone(),
+        HostValue::Enum {
+            enum_name: "Damage".to_owned(),
+            variant: "Physical".to_owned(),
+            fields: BTreeMap::from([("amount".to_owned(), HostValue::Int(7))]),
+        },
+    );
+    let mut tx = PatchTx::new();
+    let mut budget = ExecutionBudget::unbounded();
+    let value = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            tx: &mut tx,
+        };
+        vm.run_program_with_host_managed_heap_and_budget(
+            program,
+            "main",
+            &[OwnedValue::HostRef(player)],
+            &mut host,
+            &mut budget,
+        )?
+    };
+    Ok(OwnedValue::Int(
+        value_checksum(&value) as i64
+            + tx.patches().len() as i64
             + host_map_len(&adapter, level_path)?
             + host_record_len(&adapter, exp_path)?
             + host_enum_field_len(&adapter, damage_path)?,
@@ -649,6 +732,7 @@ impl ExecutionMode {
             Self::ScriptProgram => "script_program",
             Self::ManagedHeap => "managed_heap",
             Self::HostPatchTx => "host_patch_tx",
+            Self::HostManagedHeapReadConversion => "host_managed_heap_read_conversion",
             Self::HostManagedHeapPatchTx => "host_managed_heap_patch_tx",
             Self::GameplayHost => "gameplay_host",
             Self::GcPacing => "gc_pacing",

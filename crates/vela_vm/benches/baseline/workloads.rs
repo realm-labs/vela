@@ -10,6 +10,7 @@ pub(crate) enum ExecutionMode {
     ScriptProgram,
     ManagedHeap,
     HostPatchTx,
+    HostManagedHeapReadConversion,
     HostManagedHeapPatchTx,
     GameplayHost,
     GcPacing,
@@ -576,6 +577,49 @@ fn main(player) {
         player.exp = Reward { item_id: "gold", count: tick + 1 };
         player.inventory.gold = Damage::Physical { amount: tick + 2 };
         total += player.level.len();
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "managed_heap_host_read_conversion",
+        mode: ExecutionMode::HostManagedHeapReadConversion,
+        source: r#"
+struct Reward {
+    item_id,
+    count,
+}
+
+enum Damage {
+    Physical { amount }
+}
+
+fn main(player) {
+    let total = 0;
+    for tick in 0..48 {
+        let state = player.level;
+        let reward = player.exp;
+        let damage = player.inventory.gold;
+        if state["class"] != "mage"
+            || state["tags"].join(".") != "quest.raid.daily"
+            || reward.item_id != "gold"
+        {
+            return 0;
+        }
+        match damage {
+            Damage::Physical { amount } => {
+                total += state["score"]
+                    + state["tags"].len()
+                    + reward.count
+                    + amount
+                    + tick
+                    - tick;
+            }
+            _ => {
+                return 0;
+            }
+        }
     }
     return total;
 }
