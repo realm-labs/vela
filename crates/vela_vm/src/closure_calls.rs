@@ -4,7 +4,7 @@ use vela_bytecode::{CodeObject, InstructionOffset, Program, Register};
 use vela_common::Span;
 
 use crate::heap::HeapValue;
-use crate::runtime_checks::expect_closure;
+use crate::runtime_checks::expect_closure_ref;
 use crate::value::ClosureValue;
 use crate::{
     CallFrame, ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, SmallStorage, Value,
@@ -61,14 +61,21 @@ pub(crate) fn dispatch_closure_call(
     frame: &mut CallFrame,
     call: ClosureCall<'_>,
 ) -> VmResult<()> {
-    let closure = expect_closure(frame.read(call.callee)?, heap.as_deref(), "closure call")?;
+    let (code, captures) = {
+        let closure =
+            expect_closure_ref(frame.read(call.callee)?, heap.as_deref(), "closure call")?;
+        let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |value| {
+            Ok::<_, VmError>(*value)
+        })?;
+        (Arc::clone(&closure.code), captures)
+    };
     let values = script_call_args_from_registers(frame, call.args)?;
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
     let result = vm.execute_call(
         ExecutionCall {
-            code: &closure.code,
+            code: &code,
             program,
-            captures: &closure.captures,
+            captures: captures.as_slice(),
             args: values.as_slice(),
             call_site: call.call_site,
             call_site_offset: Some(call.call_site_offset),

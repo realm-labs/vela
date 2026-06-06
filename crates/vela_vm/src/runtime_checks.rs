@@ -13,14 +13,14 @@ pub(crate) fn expect_host_ref(value: &Value, operation: &'static str) -> VmResul
     }
 }
 
-pub(crate) fn expect_closure(
+pub(crate) fn expect_closure_ref<'heap>(
     value: &Value,
-    heap: Option<&HeapExecution<'_>>,
+    heap: Option<&'heap HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<ClosureValue> {
+) -> VmResult<&'heap ClosureValue> {
     match value {
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::Closure(closure)) => Ok(closure.clone()),
+            Some(HeapValue::Closure(closure)) => Ok(closure),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),

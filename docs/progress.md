@@ -129,10 +129,11 @@ Cranelift JIT.
   Script function dispatch is being isolated behind a focused call boundary so
   later resolved-target work does not grow the main VM loop or change current
   hot-reload rename semantics. Closure creation and invocation now have a
-  focused VM boundary that preserves capture materialization, protected roots,
-  and call-site offsets. Higher-order callback dispatch now reuses the shared
-  execution-call descriptor and materializes closure captures through inline
-  small storage instead of cloning the full closure value on each callback.
+  focused VM boundary that preserves protected roots and call-site offsets
+  while materializing common capture counts through inline small storage.
+  Higher-order callback dispatch now reuses the shared execution-call
+  descriptor and borrows closure metadata instead of cloning the full closure
+  value for each callback.
   Script array/map/range construction, record/enum construction, and script
   field reads/writes now route through focused script aggregate/object
   boundaries while preserving current name fallback, small-field construction,
