@@ -238,6 +238,22 @@ Precompiled `.vbc` bytecode artifacts improve startup, deployment validation, an
 reload/load latency. They do not by themselves improve the execution speed of
 an already-loaded function, because that function already runs as bytecode.
 
+### Phase 2.5: Cache-Ready Architecture Prep
+
+```text
+resolved call operands for native, stdlib, script, method, and callback paths
+focused VM dispatch modules for host access, script calls, stdlib/method calls, and callback-heavy paths
+HostPath and PatchTx reusable path keys or direct adapter thunk boundaries
+borrowed Value views at native and stdlib boundaries where semantics allow
+verified-bytecode invariants for future unchecked register and operand access
+version-owned profile metadata for hot bytecode offsets and later cache invalidation
+```
+
+This phase must happen before inline-cache implementation. Its purpose is to
+remove architectural friction, not to add cache state. It keeps diagnostics,
+reflection names, and fallback paths intact while moving hot execution operands
+toward IDs, slots, or resolved targets.
+
 ### Phase 3: Inline Cache And Specialization
 
 ```text

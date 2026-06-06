@@ -302,40 +302,21 @@ impl Vm {
                     }
                 }
                 InstructionKind::CallFunction { dst, name, args } => {
-                    let program = program.ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownFunction { name: name.clone() })
-                    })?;
-                    let function = program.function(name).ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownFunction { name: name.clone() })
-                    })?;
-                    let values = script_call_args_from_call_arguments(&frame, args)?;
-                    let protected_root_len = heap
-                        .as_deref_mut()
-                        .map(|heap| heap.push_frame_roots(&frame));
-                    let result = self.execute_call(
-                        ExecutionCall {
-                            code: function,
-                            program: Some(program),
-                            captures: &[],
-                            args: values.as_slice(),
+                    script_function_calls::dispatch_script_function_call(
+                        self,
+                        program,
+                        &mut host,
+                        &mut heap,
+                        &mut budget,
+                        &mut frame,
+                        script_function_calls::ScriptFunctionCall {
+                            dst: *dst,
+                            name,
+                            args,
                             call_site: instruction.span,
-                            call_site_offset: Some(instruction_offset),
+                            call_site_offset: instruction_offset,
                         },
-                        host.as_deref_mut(),
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    );
-                    if let (Some(heap), Some(protected_root_len)) =
-                        (heap.as_deref_mut(), protected_root_len)
-                    {
-                        heap.truncate_protected_roots(protected_root_len);
-                    }
-                    let result = store_value_in_heap_if_needed(
-                        result?,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
                     )?;
-                    frame.write(*dst, result)?;
                 }
                 InstructionKind::MakeClosure {
                     dst,
@@ -417,7 +398,9 @@ impl Vm {
                             },
                         )?;
                     } else {
-                        let values = script_call_args_from_call_arguments(&frame, args)?;
+                        let values = script_function_calls::script_call_args_from_call_arguments(
+                            &frame, args,
+                        )?;
                         dispatch_call_method(
                             self,
                             program,
@@ -459,7 +442,9 @@ impl Vm {
                             },
                         )?;
                     } else {
-                        let values = script_call_args_from_call_arguments(&frame, args)?;
+                        let values = script_function_calls::script_call_args_from_call_arguments(
+                            &frame, args,
+                        )?;
                         dispatch_call_method_id(
                             self,
                             program,
@@ -1202,17 +1187,6 @@ fn native_call_args_from_registers(
 ) -> VmResult<SmallStorage<OwnedValue>> {
     SmallStorage::try_from_slice_map(registers, 4, |register| {
         value_to_owned(frame.read(*register)?, heap)
-    })
-}
-
-#[inline]
-fn script_call_args_from_call_arguments(
-    frame: &CallFrame,
-    args: &[CallArgument],
-) -> VmResult<SmallStorage<Value>> {
-    SmallStorage::try_from_slice_map(args, 4, |arg| match arg {
-        CallArgument::Register(register) => Ok(*frame.read(*register)?),
-        CallArgument::Missing => Ok(Value::Missing),
     })
 }
 

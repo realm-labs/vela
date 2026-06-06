@@ -689,11 +689,15 @@ Scope:
 ```text
 lower hot call sites from names to stable IDs, slots, or resolved call targets
 split bytecode diagnostics metadata from hot operands where practical
+move hot dispatch families into focused modules instead of growing the main VM loop
 prepare method dispatch for receiver-shape/type + MethodId direct lookup
 prepare native and stdlib calls for ID-based lookup and borrowed Value views
+prepare script function calls for resolved targets without changing hot-reload rename semantics
 prepare HostPath and PatchTx hot paths for reusable path keys and direct adapter thunks
+prepare callback and closure calls to reduce avoidable argument materialization
 keep record/enum heap values compatible with shape + slot fast paths
 define verified-bytecode invariants needed for unchecked register access later
+define version-owned profile metadata for hot bytecode offsets before cache state exists
 document which host, reflection, GC, budget, and hot-reload checks remain mandatory slow-path boundaries
 ```
 
@@ -702,6 +706,8 @@ Acceptance:
 ```text
 script, native, stdlib, method, and host-boundary hot paths have ID/slot/cache-ready representations
 name strings remain available for diagnostics, reflection, and source reports, not hot dispatch
+main execution loop delegates host access, script calls, stdlib/method dispatch, and callback-heavy paths through focused boundaries
+verified-bytecode invariants are documented and tested before unchecked register or cache fast paths are introduced
 no preparatory change bypasses PatchTx, ExecutionBudget, GC roots, reflection policy, or hot-reload ABI checks
 benchmarks identify which remaining costs belong to M20 cache work versus later JIT work
 ```
@@ -709,8 +715,8 @@ benchmarks identify which remaining costs belong to M20 cache work versus later 
 Checkpoint:
 
 ```text
-cargo test covers resolved-call and slot/path fast-path equivalence with generic fallback
-cargo bench records interpreter-only before/after rows for each accepted prep family
+cargo test covers resolved-call, focused-dispatch, slot/path-key, and verified-bytecode fallback equivalence
+cargo bench records interpreter-only before/after rows for each accepted prep family and keeps IC-disabled baselines separate
 docs/progress.md marks M19.5 complete before M20 inline-cache work becomes the active focus
 ```
 

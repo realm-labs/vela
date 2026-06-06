@@ -31,6 +31,7 @@ mod reflection;
 mod reflection_values;
 mod runtime_checks;
 mod script_builtin_methods;
+mod script_function_calls;
 mod script_methods;
 mod script_object;
 mod set_methods;
@@ -74,9 +75,7 @@ use script_methods::{
 use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use try_propagation::{TryPropagation, try_propagate_value};
-use vela_bytecode::{
-    CallArgument, CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register,
-};
+use vela_bytecode::{CodeObject, Constant, InstructionKind, InstructionOffset, Program, Register};
 use vela_common::{FunctionId, Span, SymbolInterner};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::tx::PatchTx;
