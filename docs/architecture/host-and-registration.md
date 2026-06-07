@@ -177,6 +177,12 @@ script objects, not Rust host state and not `HostRef` roots. Runtime global
 roots are retained across calls and included in GC roots during calls.
 Missing runtime instances are runtime errors.
 
+For non-global script values returned from calls, Rust can choose
+`Runtime::call_value` to keep the returned aggregate as a runtime-managed
+`VelaValue`. That value can be passed back to later calls on the same runtime
+without `OwnedValue` materialization; explicit `value_to_owned` creates a
+detached Rust boundary copy when needed.
+
 Globals do not reintroduce module-level `let` or mutable static
 initialization. A script function may construct a value and return it to Rust;
 Rust can then insert that returned `OwnedValue` as the runtime instance for a

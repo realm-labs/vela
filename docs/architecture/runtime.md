@@ -88,6 +88,13 @@ HeapValue   non-moving script heap object referenced by GcRef
 HostValue   host-adapter boundary value copied across ScriptStateAdapter
 ```
 
+The engine embedding layer also exposes `VelaValue`, a runtime-managed handle
+to a `Value` pinned in a specific `Runtime`'s persistent heap roots. Hosts use
+it when a script return value should be passed back to later script calls
+without materializing an `OwnedValue`. `VelaValue` cannot cross runtime
+instances; Rust must explicitly materialize through `value_to_owned` when it
+needs a heap-detached copy.
+
 The runtime slot stays compact and is guarded by tests to remain at or below
 32 bytes on 64-bit targets:
 

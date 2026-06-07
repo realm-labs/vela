@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use vela_bytecode::Program;
 use vela_common::{GlobalSlot, HostObjectId, SourceId};
@@ -33,8 +34,14 @@ use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 
-#[derive(Clone)]
+mod call_args;
+
+pub use call_args::CallArgs;
+
+use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
+
 pub struct Runtime {
+    id: u64,
     engine: Engine,
     program: Program,
     hot_reload: Option<HotReloadRuntime>,
@@ -42,11 +49,18 @@ pub struct Runtime {
     script_globals: RuntimeScriptGlobalStore,
 }
 
+static NEXT_RUNTIME_ID: AtomicU64 = AtomicU64::new(1);
+
+fn next_runtime_id() -> u64 {
+    NEXT_RUNTIME_ID.fetch_add(1, Ordering::Relaxed)
+}
+
 impl Runtime {
     #[must_use]
     pub fn new(engine: Engine, program: Program) -> Self {
         let global_names = program.global_names().to_vec();
         Self {
+            id: next_runtime_id(),
             engine,
             program,
             hot_reload: None,
@@ -62,6 +76,7 @@ impl Runtime {
         let program = version.to_program();
         let global_names = program.global_names().to_vec();
         Self {
+            id: next_runtime_id(),
             engine,
             program,
             hot_reload: Some(HotReloadRuntime::new(version)),
@@ -307,6 +322,16 @@ impl Runtime {
         self.call_with_adapter(entry, args, options, &mut adapter)
     }
 
+    pub fn call_value(
+        &mut self,
+        entry: &str,
+        args: CallArgs<'_>,
+        options: CallOptions,
+    ) -> VmResult<VelaValue> {
+        let mut adapter = EmptyStateAdapter;
+        self.call_value_with_adapter(entry, args, options, &mut adapter)
+    }
+
     pub fn call_with_adapter(
         &mut self,
         entry: &str,
@@ -317,6 +342,22 @@ impl Runtime {
         let mut access = HostAccess::new();
         let value = self.call_args_raw(entry, &mut args, options, adapter, &mut access)?;
         Ok(CallOutput { value })
+    }
+
+    pub fn call_value_with_adapter(
+        &mut self,
+        entry: &str,
+        mut args: CallArgs<'_>,
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+    ) -> VmResult<VelaValue> {
+        let mut access = HostAccess::new();
+        self.call_value_args_raw(entry, &mut args, options, adapter, &mut access)
+    }
+
+    pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
+        self.check_vela_value_runtime(value)?;
+        persistent_value_to_owned(&value.value, &mut self.script_globals.heap)
     }
 
     pub fn call_raw(
@@ -371,11 +412,50 @@ impl Runtime {
         access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let resolved = self.resolve_call_args(entry, args)?;
-        let mut adapter = CallArgsAdapter {
-            args,
-            fallback: adapter,
-        };
+        let mut adapter = CallArgsAdapter::new(args, adapter);
         self.call_raw(entry, &resolved, options, &mut adapter, access)
+    }
+
+    pub fn call_value_args_raw(
+        &mut self,
+        entry: &str,
+        args: &mut CallArgs<'_>,
+        options: CallOptions,
+        adapter: &mut dyn ScriptStateAdapter,
+        access: &mut HostAccess,
+    ) -> VmResult<VelaValue> {
+        let mut budget = options.budget();
+        let resolved = self.resolve_call_value_args(entry, args, &mut budget)?;
+        let mut adapter = CallArgsAdapter::new(args, adapter);
+        let mut adapter = GlobalStoreAdapter {
+            globals: Rc::clone(&self.globals),
+            fallback: &mut adapter,
+        };
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access,
+            script_globals: Some(&self.script_globals.values),
+        };
+        let vm = if let Some(hot_reload) = &self.hot_reload {
+            let current = hot_reload.current();
+            self.engine
+                .into_vm_for_program_with_abi(&self.program, current.abi())
+        } else {
+            self.engine.into_vm_for_program(&self.program)
+        };
+        let roots = self.script_globals.roots();
+        let result = vm.run_program_runtime_with_host_persistent_heap_and_budget(
+            &self.program,
+            entry,
+            &resolved,
+            &mut host,
+            PersistentHeapExecution {
+                heap: &mut self.script_globals.heap,
+                roots: &roots,
+            },
+            &mut budget,
+        )?;
+        Ok(self.script_globals.retain(self.id, result))
     }
 
     pub fn call_raw_at_event_end_safe_point(
@@ -413,6 +493,39 @@ impl Runtime {
             call_stack: Default::default(),
         })?;
         args.resolve(entry, &code.params, &code.param_defaults)
+    }
+
+    fn resolve_call_value_args(
+        &mut self,
+        entry: &str,
+        args: &CallArgs<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Vec<Value>> {
+        let (params, param_defaults) = {
+            let code = self.program.function(entry).ok_or_else(|| VmError {
+                kind: VmErrorKind::UnknownFunction {
+                    name: entry.to_owned(),
+                },
+                source_span: None,
+                call_stack: Default::default(),
+            })?;
+            (code.params.clone(), code.param_defaults.clone())
+        };
+        args.resolve_values(
+            entry,
+            &params,
+            &param_defaults,
+            self.id,
+            &mut self.script_globals.heap,
+            budget,
+        )
+    }
+
+    fn check_vela_value_runtime(&self, value: &VelaValue) -> VmResult<()> {
+        if value.runtime_id == self.id {
+            return Ok(());
+        }
+        Err(call_args_type_error("VelaValue belongs to another Runtime"))
     }
 
     fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
@@ -483,12 +596,106 @@ impl AsRef<OwnedValue> for CallOutput {
     }
 }
 
-pub struct CallArgs<'a> {
-    entries: Vec<CallArg<'a>>,
-    next_direct_object_id: u64,
+pub struct VelaValue {
+    runtime_id: u64,
+    value: Value,
+    root_id: u64,
+    roots: Rc<RefCell<RuntimeValueRoots>>,
 }
 
-const DIRECT_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
+impl VelaValue {
+    const fn runtime_id(&self) -> u64 {
+        self.runtime_id
+    }
+
+    const fn value(&self) -> Value {
+        self.value
+    }
+}
+
+impl Clone for VelaValue {
+    fn clone(&self) -> Self {
+        self.roots.borrow_mut().clone_root(self.root_id);
+        Self {
+            runtime_id: self.runtime_id,
+            value: self.value,
+            root_id: self.root_id,
+            roots: Rc::clone(&self.roots),
+        }
+    }
+}
+
+impl Drop for VelaValue {
+    fn drop(&mut self) {
+        self.roots.borrow_mut().release(self.root_id);
+    }
+}
+
+impl std::fmt::Debug for VelaValue {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("VelaValue")
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
+impl PartialEq for VelaValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.runtime_id == other.runtime_id && self.value == other.value
+    }
+}
+
+#[derive(Debug, Default)]
+struct RuntimeValueRoots {
+    next_id: u64,
+    values: BTreeMap<u64, RuntimeValueRoot>,
+}
+
+#[derive(Debug)]
+struct RuntimeValueRoot {
+    value: Value,
+    refs: usize,
+}
+
+impl RuntimeValueRoots {
+    fn retain(roots: &Rc<RefCell<Self>>, runtime_id: u64, value: Value) -> VelaValue {
+        let mut roots_mut = roots.borrow_mut();
+        let root_id = roots_mut.next_id;
+        roots_mut.next_id = roots_mut.next_id.saturating_add(1);
+        roots_mut
+            .values
+            .insert(root_id, RuntimeValueRoot { value, refs: 1 });
+        drop(roots_mut);
+        VelaValue {
+            runtime_id,
+            value,
+            root_id,
+            roots: Rc::clone(roots),
+        }
+    }
+
+    fn clone_root(&mut self, root_id: u64) {
+        if let Some(root) = self.values.get_mut(&root_id) {
+            root.refs = root.refs.saturating_add(1);
+        }
+    }
+
+    fn release(&mut self, root_id: u64) {
+        let Some(root) = self.values.get_mut(&root_id) else {
+            return;
+        };
+        root.refs = root.refs.saturating_sub(1);
+        if root.refs == 0 {
+            self.values.remove(&root_id);
+        }
+    }
+
+    fn values(&self) -> impl Iterator<Item = Value> + '_ {
+        self.values.values().map(|root| root.value)
+    }
+}
+
 const GLOBAL_HOST_OBJECT_ID_BASE: u64 = 1 << 62;
 
 pub struct RuntimeGlobalStore {
@@ -591,6 +798,7 @@ struct HostGlobalBinding {
 pub struct RuntimeScriptGlobalStore {
     heap: ScriptHeap,
     values: ScriptGlobalValues,
+    retained_values: Rc<RefCell<RuntimeValueRoots>>,
 }
 
 impl RuntimeScriptGlobalStore {
@@ -604,6 +812,7 @@ impl RuntimeScriptGlobalStore {
         Self {
             heap: ScriptHeap::default(),
             values: ScriptGlobalValues::with_layout(names),
+            retained_values: Rc::new(RefCell::new(RuntimeValueRoots::default())),
         }
     }
 
@@ -643,8 +852,14 @@ impl RuntimeScriptGlobalStore {
         self.insert(name.to_owned(), value)
     }
 
+    fn retain(&mut self, runtime_id: u64, value: Value) -> VelaValue {
+        RuntimeValueRoots::retain(&self.retained_values, runtime_id, value)
+    }
+
     fn roots(&self) -> Vec<Value> {
-        self.values.values().collect()
+        let mut roots = self.values.values().collect::<Vec<_>>();
+        roots.extend(self.retained_values.borrow().values());
+        roots
     }
 
     fn collect(&mut self) {
@@ -731,387 +946,6 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
             }
         }
         self.fallback.call_method(path, method, args)
-    }
-}
-
-impl Default for CallArgs<'_> {
-    fn default() -> Self {
-        Self {
-            entries: Vec::new(),
-            next_direct_object_id: DIRECT_HOST_OBJECT_ID_BASE,
-        }
-    }
-}
-
-impl<'a> CallArgs<'a> {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub fn from_positional(args: impl IntoIterator<Item = OwnedValue>) -> Self {
-        Self {
-            entries: args.into_iter().map(CallArg::Positional).collect(),
-            next_direct_object_id: DIRECT_HOST_OBJECT_ID_BASE,
-        }
-    }
-
-    pub fn push(&mut self, value: impl Into<OwnedValue>) -> &mut Self {
-        self.entries.push(CallArg::Positional(value.into()));
-        self
-    }
-
-    pub fn push_value(
-        &mut self,
-        name: impl Into<String>,
-        value: impl Into<OwnedValue>,
-    ) -> &mut Self {
-        self.entries.push(CallArg::Named {
-            name: name.into(),
-            value: value.into(),
-        });
-        self
-    }
-
-    pub fn push_host_handle(
-        &mut self,
-        name: impl Into<String>,
-        host_ref: vela_host::path::HostRef,
-    ) -> &mut Self {
-        self.push_value(name, OwnedValue::HostRef(host_ref))
-    }
-
-    pub fn push_host_ref<T>(&mut self, name: impl Into<String>, value: &'a T) -> &mut Self
-    where
-        T: ScriptHostObject + 'a,
-    {
-        let host_ref = self.next_direct_host_ref(value.host_type_id());
-        self.entries.push(CallArg::NamedHost {
-            name: name.into(),
-            host_ref,
-            binding: HostArgBinding::Shared(value),
-        });
-        self
-    }
-
-    pub fn push_host_mut<T>(&mut self, name: impl Into<String>, value: &'a mut T) -> &mut Self
-    where
-        T: ScriptHostObject + 'a,
-    {
-        let host_ref = self.next_direct_host_ref(value.host_type_id());
-        self.entries.push(CallArg::NamedHost {
-            name: name.into(),
-            host_ref,
-            binding: HostArgBinding::Mutable(value),
-        });
-        self
-    }
-
-    #[must_use]
-    pub fn with(mut self, value: impl Into<OwnedValue>) -> Self {
-        self.push(value);
-        self
-    }
-
-    #[must_use]
-    pub fn with_value(mut self, name: impl Into<String>, value: impl Into<OwnedValue>) -> Self {
-        self.push_value(name, value);
-        self
-    }
-
-    #[must_use]
-    pub fn with_host_handle(
-        mut self,
-        name: impl Into<String>,
-        host_ref: vela_host::path::HostRef,
-    ) -> Self {
-        self.push_host_handle(name, host_ref);
-        self
-    }
-
-    #[must_use]
-    pub fn with_host_ref<T>(mut self, name: impl Into<String>, value: &'a T) -> Self
-    where
-        T: ScriptHostObject + 'a,
-    {
-        self.push_host_ref(name, value);
-        self
-    }
-
-    #[must_use]
-    pub fn with_host_mut<T>(mut self, name: impl Into<String>, value: &'a mut T) -> Self
-    where
-        T: ScriptHostObject + 'a,
-    {
-        self.push_host_mut(name, value);
-        self
-    }
-
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-
-    fn resolve(
-        &self,
-        entry: &str,
-        params: &[String],
-        param_defaults: &[bool],
-    ) -> VmResult<Vec<OwnedValue>> {
-        match self.mode()? {
-            CallArgsMode::Empty | CallArgsMode::Positional => {
-                Ok(self.entries.iter().map(CallArg::owned_value).collect())
-            }
-            CallArgsMode::Named => self.resolve_named(entry, params, param_defaults),
-        }
-    }
-
-    fn mode(&self) -> VmResult<CallArgsMode> {
-        let mut has_positional = false;
-        let mut has_named = false;
-        for entry in &self.entries {
-            match entry {
-                CallArg::Positional(_) => has_positional = true,
-                CallArg::Named { .. } | CallArg::NamedHost { .. } => has_named = true,
-            }
-        }
-        match (has_positional, has_named) {
-            (false, false) => Ok(CallArgsMode::Empty),
-            (true, false) => Ok(CallArgsMode::Positional),
-            (false, true) => Ok(CallArgsMode::Named),
-            (true, true) => Err(call_args_type_error(
-                "mixed positional and named call arguments",
-            )),
-        }
-    }
-
-    fn resolve_named(
-        &self,
-        entry: &str,
-        params: &[String],
-        param_defaults: &[bool],
-    ) -> VmResult<Vec<OwnedValue>> {
-        let mut values = BTreeMap::new();
-        for (index, arg) in self.entries.iter().enumerate() {
-            let Some(name) = arg.name() else {
-                continue;
-            };
-            if !params.iter().any(|param| param == name) {
-                return Err(call_args_type_error("unknown named call argument"));
-            }
-            if values.insert(name.to_owned(), index).is_some() {
-                return Err(call_args_type_error("duplicate named call argument"));
-            }
-        }
-
-        let mut resolved = Vec::with_capacity(params.len());
-        for (index, param) in params.iter().enumerate() {
-            if let Some(arg_index) = values.remove(param) {
-                resolved.push(self.entries[arg_index].owned_value());
-            } else if param_defaults.get(index).copied().unwrap_or(false) {
-                resolved.push(OwnedValue::Missing);
-            } else {
-                return Err(VmError {
-                    kind: VmErrorKind::ArityMismatch {
-                        name: entry.to_owned(),
-                        expected: params.len(),
-                        actual: self.entries.len(),
-                    },
-                    source_span: None,
-                    call_stack: Default::default(),
-                });
-            }
-        }
-        Ok(resolved)
-    }
-
-    fn next_direct_host_ref(&mut self, type_id: vela_common::HostTypeId) -> HostRef {
-        let object_id = HostObjectId::new(self.next_direct_object_id);
-        self.next_direct_object_id = self.next_direct_object_id.saturating_add(1);
-        HostRef::new(type_id, object_id, 1)
-    }
-}
-
-impl From<Vec<OwnedValue>> for CallArgs<'_> {
-    fn from(value: Vec<OwnedValue>) -> Self {
-        Self::from_positional(value)
-    }
-}
-
-enum CallArg<'a> {
-    Positional(OwnedValue),
-    Named {
-        name: String,
-        value: OwnedValue,
-    },
-    NamedHost {
-        name: String,
-        host_ref: HostRef,
-        binding: HostArgBinding<'a>,
-    },
-}
-
-impl CallArg<'_> {
-    fn owned_value(&self) -> OwnedValue {
-        match self {
-            Self::Positional(value) | Self::Named { value, .. } => value.clone(),
-            Self::NamedHost { host_ref, .. } => OwnedValue::HostRef(*host_ref),
-        }
-    }
-
-    fn name(&self) -> Option<&str> {
-        match self {
-            Self::Positional(_) => None,
-            Self::Named { name, .. } | Self::NamedHost { name, .. } => Some(name),
-        }
-    }
-}
-
-enum HostArgBinding<'a> {
-    Shared(&'a dyn ScriptHostObject),
-    Mutable(&'a mut dyn ScriptHostObject),
-}
-
-struct CallArgsAdapter<'call, 'args> {
-    args: &'call mut CallArgs<'args>,
-    fallback: &'call mut dyn ScriptStateAdapter,
-}
-
-impl<'call, 'args> CallArgsAdapter<'call, 'args> {
-    fn direct_binding<'s>(&'s self, path: &HostPath) -> Option<&'s HostArgBinding<'args>> {
-        for entry in &self.args.entries {
-            if let CallArg::NamedHost {
-                host_ref, binding, ..
-            } = entry
-                && *host_ref == path.root
-            {
-                return Some(binding);
-            }
-        }
-        None
-    }
-
-    fn direct_binding_mut<'s>(
-        &'s mut self,
-        path: &HostPath,
-    ) -> Option<&'s mut HostArgBinding<'args>> {
-        for entry in &mut self.args.entries {
-            if let CallArg::NamedHost {
-                host_ref, binding, ..
-            } = entry
-                && *host_ref == path.root
-            {
-                return Some(binding);
-            }
-        }
-        None
-    }
-
-    fn direct_access_error(path: &HostPath, action: &'static str) -> HostError {
-        HostError {
-            kind: HostErrorKind::PermissionDenied {
-                path: path.clone(),
-                action,
-            },
-            source_span: None,
-        }
-    }
-}
-
-impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
-        match self.direct_binding(path) {
-            Some(HostArgBinding::Shared(object)) => object.read_host_path(path),
-            Some(HostArgBinding::Mutable(object)) => object.read_host_path(path),
-            None => self.fallback.read_path(path),
-        }
-    }
-
-    fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
-        match self.direct_binding_mut(path) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(path, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.write_host_path(path, value),
-            None => self.fallback.write_path(path, value),
-        }
-    }
-
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        match self.direct_binding_mut(path) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(path, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.remove_host_path(path),
-            None => self.fallback.remove_path(path),
-        }
-    }
-
-    fn call_method(
-        &mut self,
-        path: &HostPath,
-        method: vela_common::HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
-        match self.direct_binding_mut(path) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(path, "call")),
-            Some(HostArgBinding::Mutable(object)) => object.call_host_method(path, method, args),
-            None => self.fallback.call_method(path, method, args),
-        }
-    }
-}
-
-struct EmptyStateAdapter;
-
-impl ScriptStateAdapter for EmptyStateAdapter {
-    fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
-            source_span: None,
-        })
-    }
-
-    fn write_path(&mut self, path: &HostPath, _value: HostValue) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
-            source_span: None,
-        })
-    }
-
-    fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath { path: path.clone() },
-            source_span: None,
-        })
-    }
-
-    fn call_method(
-        &mut self,
-        _path: &HostPath,
-        method: vela_common::HostMethodId,
-        _args: &[HostValue],
-    ) -> HostResult<HostValue> {
-        Err(HostError {
-            kind: HostErrorKind::UnsupportedMethod { method },
-            source_span: None,
-        })
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum CallArgsMode {
-    Empty,
-    Positional,
-    Named,
-}
-
-fn call_args_type_error(operation: &'static str) -> VmError {
-    VmError {
-        kind: VmErrorKind::TypeMismatch { operation },
-        source_span: None,
-        call_stack: Default::default(),
     }
 }
 

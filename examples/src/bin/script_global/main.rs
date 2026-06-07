@@ -26,13 +26,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     runtime.insert_global(STATE_GLOBAL, initial_state)?;
 
-    let first_tick = runtime
-        .call(
-            "handle_tick",
-            CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(5)]),
-            CallOptions::unbounded(),
-        )?
-        .into_value();
+    let first_tick = runtime.call_value(
+        "handle_tick",
+        CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(5)]),
+        CallOptions::unbounded(),
+    )?;
 
     runtime.set_global(
         STATE_GLOBAL,
@@ -46,27 +44,37 @@ fn main() -> Result<(), Box<dyn Error>> {
         }),
     )?;
 
-    let second_tick = runtime
-        .call(
-            "handle_tick",
-            CallArgs::from_positional([OwnedValue::Int(1), OwnedValue::Int(3)]),
-            CallOptions::unbounded(),
-        )?
-        .into_value();
-    let state_name = runtime
-        .call("state_name", CallArgs::new(), CallOptions::unbounded())?
-        .into_value();
-    let tick_count = runtime
-        .call("tick_count", CallArgs::new(), CallOptions::unbounded())?
-        .into_value();
+    let second_tick = runtime.call_value(
+        "handle_tick",
+        CallArgs::from_positional([OwnedValue::Int(1), OwnedValue::Int(3)]),
+        CallOptions::unbounded(),
+    )?;
+    let state_name = runtime.call_value("state_name", CallArgs::new(), CallOptions::unbounded())?;
+    let tick_count = runtime.call_value("tick_count", CallArgs::new(), CallOptions::unbounded())?;
+    let state_snapshot =
+        runtime.call_value("snapshot_state", CallArgs::new(), CallOptions::unbounded())?;
+    let projected_score = runtime.call_value(
+        "projected_score",
+        CallArgs::new()
+            .with_vela_value(state_snapshot)
+            .with(OwnedValue::Int(4)),
+        CallOptions::unbounded(),
+    )?;
     let final_state = runtime
         .global(STATE_GLOBAL)?
         .expect("state global should exist");
+
+    let first_tick = runtime.value_to_owned(&first_tick)?;
+    let second_tick = runtime.value_to_owned(&second_tick)?;
+    let state_name = runtime.value_to_owned(&state_name)?;
+    let tick_count = runtime.value_to_owned(&tick_count)?;
+    let projected_score = runtime.value_to_owned(&projected_score)?;
 
     assert_eq!(first_tick, OwnedValue::Int(9));
     assert_eq!(second_tick, OwnedValue::Int(27));
     assert_eq!(state_name, OwnedValue::String("rust-updated".to_owned()));
     assert_eq!(tick_count, OwnedValue::Int(8));
+    assert_eq!(projected_score, OwnedValue::Int(31));
     assert_eq!(final_state.field("level"), Some(&OwnedValue::Int(11)));
     assert_eq!(final_state.field("total_gold"), Some(&OwnedValue::Int(8)));
     assert_eq!(
@@ -78,7 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!(
         "script_global first={first_tick:?} second={second_tick:?} name={state_name:?} \
-         final_level={:?} final_gold={:?} ticks={tick_count:?}",
+         projected={projected_score:?} final_level={:?} final_gold={:?} ticks={tick_count:?}",
         final_state
             .field("level")
             .expect("level field should exist"),

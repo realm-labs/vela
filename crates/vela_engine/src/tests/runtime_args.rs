@@ -413,6 +413,99 @@ fn read_name() {
 }
 
 #[test]
+fn runtime_call_value_returns_runtime_managed_value_that_can_be_passed_back() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = compile_program_source_with_options(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    gold: Int,
+    xp: Int,
+}
+
+fn make_reward() {
+    return Reward { gold: 7, xp: 3 };
+}
+
+fn reward_score(reward, bonus) {
+    return reward.gold + reward.xp + bonus;
+}
+"#,
+        &engine.compiler_options(),
+    )
+    .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let reward = runtime
+        .call_value("make_reward", CallArgs::new(), CallOptions::unbounded())
+        .expect("reward should be returned as runtime value");
+    let score = runtime
+        .call_value(
+            "reward_score",
+            CallArgs::new()
+                .with_vela_value(reward.clone())
+                .with(OwnedValue::Int(5)),
+            CallOptions::unbounded(),
+        )
+        .expect("runtime value should pass back without owned materialization");
+
+    assert_eq!(runtime.value_to_owned(&score), Ok(OwnedValue::Int(15)));
+    assert_eq!(
+        script_record_field(
+            &runtime
+                .value_to_owned(&reward)
+                .expect("runtime value can materialize on demand"),
+            "gold",
+        ),
+        Some(&OwnedValue::Int(7))
+    );
+}
+
+#[test]
+fn runtime_call_value_rejects_values_from_another_runtime() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let source = r#"
+struct Reward {
+    gold: Int,
+}
+
+fn make_reward() {
+    return Reward { gold: 7 };
+}
+
+fn read_reward(reward) {
+    return reward.gold;
+}
+"#;
+    let program_a =
+        compile_program_source_with_options(SourceId::new(1), source, &engine.compiler_options())
+            .expect("program should compile");
+    let program_b =
+        compile_program_source_with_options(SourceId::new(2), source, &engine.compiler_options())
+            .expect("program should compile");
+    let mut runtime_a = Runtime::new(engine.clone(), program_a);
+    let mut runtime_b = Runtime::new(engine, program_b);
+
+    let reward = runtime_a
+        .call_value("make_reward", CallArgs::new(), CallOptions::unbounded())
+        .expect("runtime value should be created");
+    let error = runtime_b
+        .call_value(
+            "read_reward",
+            CallArgs::new().with_vela_value(reward),
+            CallOptions::unbounded(),
+        )
+        .expect_err("runtime values must not cross runtime heaps");
+
+    assert!(matches!(
+        error.kind,
+        VmErrorKind::TypeMismatch {
+            operation: "VelaValue belongs to another Runtime",
+        }
+    ));
+}
+
+#[test]
 fn runtime_call_args_accept_positional_values() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = compile_program_source_with_options(

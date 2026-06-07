@@ -25,3 +25,11 @@ fn state_name() {
 fn tick_count() {
     return state.stats.handled_ticks;
 }
+
+fn snapshot_state() {
+    return state;
+}
+
+fn projected_score(snapshot, bonus) {
+    return snapshot.level + snapshot.total_gold + snapshot.stats.handled_ticks + bonus;
+}

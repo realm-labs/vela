@@ -200,6 +200,24 @@ state adapter can pass an existing low-level handle with
 `OwnedValue` for ordinary use. Most call sites do not need to construct or pass
 a `HostAccess` explicitly.
 
+When the host wants to keep a returned script aggregate under VM management and
+pass it back to another script call without materializing a detached copy, it
+uses `Runtime::call_value`:
+
+```rust
+let reward = runtime.call_value("make_reward", CallArgs::new(), options)?;
+let score = runtime.call_value(
+    "score_reward",
+    CallArgs::new().with_vela_value(reward.clone()),
+    options,
+)?;
+let owned_score = runtime.value_to_owned(&score)?;
+```
+
+`VelaValue` belongs to the `Runtime` that returned it. It can be cloned and
+passed back to calls on that same runtime; Rust calls `value_to_owned` only
+when it needs an owned, heap-detached value.
+
 ### Hot Reload
 
 ```rust

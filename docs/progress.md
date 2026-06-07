@@ -73,6 +73,8 @@ Cranelift JIT.
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
   module-level `global` declarations backed by persistent Rust-defined host objects
   or Runtime-owned script values with Rust `OwnedValue` construction/update APIs,
+  runtime-managed `VelaValue` call returns that can be passed back to later calls
+  on the same runtime without owned materialization,
   direct host object method dispatch with receiver paths, unified concrete host
   type specs, host index capability metadata, typed host path arguments,
   string-key host path segments, hot-reload policies, derive-generated host

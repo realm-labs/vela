@@ -109,7 +109,7 @@ modules.
 
 Engine embedding APIs, including `Runtime::call`, `args!`, prelude exports,
 registered native functions, typed native conversion traits, and callable native
-methods, use `OwnedValue` at the public Rust boundary. VM execution frames,
+methods, use `OwnedValue` at the ordinary Rust boundary. VM execution frames,
 closures, iterators, heap containers, and internal method dispatch use runtime
 `Value`; the engine installs explicit conversion bridges when registering
 native functions into a VM. Public VM program entrypoints use `OwnedValue`;
@@ -119,6 +119,17 @@ benchmark harnesses. Public program entrypoints convert `OwnedValue` through a
 temporary script heap and materialize the return before dropping that heap, so
 they do not depend on `Value` retaining owned aggregate variants as a boundary
 representation.
+
+Runtime embedding has two return-value surfaces. `Runtime::call` is the common
+API and returns a materialized `CallOutput`/`OwnedValue`. `Runtime::call_value`
+returns a runtime-managed `VelaValue` pinned as a persistent runtime heap root.
+Hosts can pass a `VelaValue` back into later calls on the same `Runtime` without
+materializing or copying the script aggregate, and can explicitly call
+`value_to_owned` when Rust needs a detached representation. A `VelaValue`
+belongs to the `Runtime` that created it; passing it to another runtime is a
+runtime type error. `VelaValue` is still script VM state, not Rust host state,
+and it does not expose real Rust references or place Rust objects under script
+GC.
 
 The compiler may replace a multi-instruction source-level lowering with one
 semantics-equivalent bytecode instruction, such as `Truthy` for dynamic
@@ -205,6 +216,9 @@ explicit constructors such as `OwnedValue::record` and convenience macros such
 as `owned_record!` for nested heterogeneous values. The public runtime methods
 use short embedding names such as `insert_global`, `set_global`, `global`, and
 `update_global`; host-object globals keep their explicit host-specific API.
+Rust can also keep a returned script aggregate as `VelaValue` and pass it back
+to script calls on the same runtime; conversion to `OwnedValue` is explicit
+when Rust needs to inspect or mutate a detached copy.
 The VM receives script globals as a concrete runtime value map rather than an
 extension trait, because there is only one runtime-owned script global store.
 Declared globals compile to `GlobalSlot` operands for the runtime hot path;

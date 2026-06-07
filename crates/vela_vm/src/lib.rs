@@ -572,6 +572,40 @@ impl Vm {
         result
     }
 
+    pub fn run_program_runtime_with_host_persistent_heap_and_budget(
+        &self,
+        program: &Program,
+        entry: &str,
+        args: &[Value],
+        host: &mut HostExecution<'_>,
+        persistent: PersistentHeapExecution<'_, '_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        let code = program_entry(program, entry)?;
+        let mut heap_execution = HeapExecution::new(persistent.heap);
+        heap_execution.protect_values(persistent.roots);
+        heap_execution.protect_values(args);
+        let result = self.execute(
+            code,
+            Some(program),
+            args,
+            Some(host),
+            Some(&mut heap_execution),
+            Some(budget),
+        );
+        let result = result?;
+        let mut roots = Vec::new();
+        persistent
+            .roots
+            .iter()
+            .for_each(|value| value.trace_heap_refs(&mut roots));
+        result.trace_heap_refs(&mut roots);
+        heap_execution
+            .heap
+            .collect_full_with_budget(&roots, Some(budget));
+        Ok(result)
+    }
+
     pub fn run_program_with_host_managed_heap_and_budget(
         &self,
         program: &Program,
