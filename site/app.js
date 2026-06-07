@@ -121,23 +121,27 @@ function markdownToHtml(markdown) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const html = [];
   let inCode = false;
+  let codeLanguage = "";
+  let codeLines = [];
   let inList = false;
 
   for (const line of lines) {
     if (line.startsWith("```")) {
       if (inCode) {
-        html.push("</code></pre>");
+        html.push(renderCodeBlock(codeLines.join("\n"), codeLanguage));
         inCode = false;
+        codeLanguage = "";
+        codeLines = [];
       } else {
         closeList();
-        html.push("<pre><code>");
         inCode = true;
+        codeLanguage = line.slice(3).trim();
       }
       continue;
     }
 
     if (inCode) {
-      html.push(`${escapeHtml(line)}\n`);
+      codeLines.push(line);
       continue;
     }
 
@@ -165,6 +169,9 @@ function markdownToHtml(markdown) {
   }
 
   closeList();
+  if (inCode) {
+    html.push(renderCodeBlock(codeLines.join("\n"), codeLanguage));
+  }
   return html.join("");
 
   function closeList() {
@@ -172,6 +179,44 @@ function markdownToHtml(markdown) {
       html.push("</ul>");
       inList = false;
     }
+  }
+}
+
+function renderCodeBlock(code, language) {
+  const lang = language || "text";
+  const highlighted = lang === "vela" ? highlightVela(code) : escapeHtml(code);
+  return `
+    <figure class="code-card">
+      <figcaption><span>${escapeHtml(lang)}</span></figcaption>
+      <pre><code class="language-${escapeHtml(lang)}">${highlighted}</code></pre>
+    </figure>`;
+}
+
+function highlightVela(code) {
+  const placeholders = [];
+  let escaped = escapeHtml(code);
+  escaped = escaped.replace(/(&quot;(?:\\.|[^&])*?&quot;)/g, (match) =>
+    stash(`<span class="tok-string">${match}</span>`),
+  );
+  escaped = escaped.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
+  escaped = escaped.replace(
+    /\b(struct|enum|trait|impl|for|fn|let|return|if|else|match|true|false|null|global)\b/g,
+    '<span class="tok-keyword">$1</span>',
+  );
+  escaped = escaped.replace(
+    /\b(Int|Float|Bool|String|None|Option|Result)\b/g,
+    '<span class="tok-type">$1</span>',
+  );
+  escaped = escaped.replace(/\b([a-zA-Z_][\w]*)\s*(?=\()/g, '<span class="tok-call">$1</span>');
+  return placeholders.reduce(
+    (text, value, index) => text.replace(`__VELA_TOKEN_${index}__`, value),
+    escaped,
+  );
+
+  function stash(value) {
+    const index = placeholders.length;
+    placeholders.push(value);
+    return `__VELA_TOKEN_${index}__`;
   }
 }
 

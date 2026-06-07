@@ -10,8 +10,10 @@
   --accent-strong: #0b5f59;
   --warn: #b45309;
   --error: #b91c1c;
-  --code: #0f172a;
-  --code-text: #dbeafe;
+  --code: #0b1220;
+  --code-panel: #101a2c;
+  --code-line: #24324a;
+  --code-text: #dce7f7;
 }
 
 * {
@@ -217,8 +219,13 @@ pre {
   padding: 34px;
 }
 
+.doc-view {
+  container-type: inline-size;
+}
+
 .doc-view h1 {
   font-size: 42px;
+  letter-spacing: 0;
 }
 
 .doc-view h2 {
@@ -233,18 +240,85 @@ pre {
   color: #334155;
   font-size: 16px;
   line-height: 1.75;
+  max-width: 780px;
 }
 
-.doc-view code {
+.doc-view p code,
+.doc-view li code {
   background: #e8edf4;
   border-radius: 4px;
   color: #0f172a;
   padding: 2px 5px;
 }
 
-.doc-view pre {
-  line-height: 1.6;
-  padding: 18px;
+.code-card {
+  background: var(--code);
+  border: 1px solid #17243a;
+  border-radius: 10px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+  margin: 28px 0;
+  max-width: 980px;
+  overflow: hidden;
+}
+
+.code-card figcaption {
+  align-items: center;
+  background: #111c2f;
+  border-bottom: 1px solid var(--code-line);
+  display: flex;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 0 16px;
+}
+
+.code-card figcaption span {
+  color: #93a4bc;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.doc-view .code-card pre {
+  background: var(--code-panel);
+  border-radius: 0;
+  color: var(--code-text);
+  font-size: 14px;
+  line-height: 1.75;
+  margin: 0;
+  padding: 22px;
+  tab-size: 4;
+}
+
+.doc-view .code-card code {
+  background: transparent;
+  border-radius: 0;
+  color: inherit;
+  display: block;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  min-width: max-content;
+  padding: 0;
+}
+
+.tok-keyword {
+  color: #67e8f9;
+}
+
+.tok-type {
+  color: #fbbf24;
+}
+
+.tok-string {
+  color: #86efac;
+}
+
+.tok-number {
+  color: #c4b5fd;
+}
+
+.tok-call {
+  color: #f0abfc;
 }
 
 .playground-toolbar {
