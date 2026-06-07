@@ -32,7 +32,7 @@ fn main() {
     let tags = set::from_array(["daily", "vip", "daily"]);
     let total = rewards["gold"] + rewards["xp"];
 
-    if tags.has("vip") && rewards.has_key("gem") {
+    if tags.has("vip") && rewards.has("gem") {
         return total + tags.len();
     }
     return total;
