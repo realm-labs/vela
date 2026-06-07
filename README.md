@@ -5,6 +5,11 @@ host-owned business logic. Game server scripting is the main proving ground,
 but the core language, standard library, runtime, and embedding contracts are
 domain-neutral.
 
+Read the hosted docs or try the browser playground:
+
+- [Documentation](https://realm-labs.github.io/vela/#/en/overview)
+- [Playground](https://realm-labs.github.io/vela/#/playground)
+
 Scripts can read and mutate Rust-owned state with natural syntax while the
 runtime keeps the boundary explicit:
 
@@ -142,6 +147,8 @@ through `vela_examples`, not directly through `vela_cli`.
 
 The static site under `site/` contains bilingual documentation and a browser
 playground backed by `vela_playground_wasm`.
+
+Hosted site: <https://realm-labs.github.io/vela/>
 
 Local playground build:
 
