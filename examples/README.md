@@ -8,6 +8,9 @@ cargo run -p vela_examples --bin level_up
 cargo run -p vela_examples --bin monster_kill_reward
 cargo run -p vela_examples --bin hot_reload_function_swap
 cargo run -p vela_examples --bin host_type_methods
+cargo run -p vela_examples --bin script_global
+cargo run -p vela_examples --bin serde_value
+cargo run -p vela_examples --bin io_stdlib
 ```
 
 Each example directory keeps the Rust entrypoint and script source together:
@@ -31,6 +34,14 @@ The Rust side uses `#[derive(ScriptHost)]` for field/path bindings and
 `#[script_methods]` for `&self` / `&mut self` host methods. Script-visible
 fields participate in direct host path access by default, so the example does
 not hand-write `ScriptHostObject` or `PathSegment` dispatch.
+
+Other useful embedding examples:
+
+- `script_global`: persistent VM-managed globals that Rust can read and update.
+- `serde_value`: snapshot-style serde conversion between Rust structs/enums and
+  Vela owned values.
+- `native_function`: script calls into Rust native functions.
+- `io_stdlib`: opt-in stdout plus sandboxed file I/O capability checks.
 
 Expected-error examples such as `random_permission_denied` and
 `hot_reload_function_swap_invalid` validate the expected diagnostic and then
