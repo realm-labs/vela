@@ -444,6 +444,19 @@ paths inside the configured sandbox root. Ordinary filesystem failures return
 script-visible `Result::Err(IoError)` values; capability failures and runtime
 type errors remain VM diagnostics.
 
+### Public Docs And Playground
+
+Public documentation lives in `site/docs/{en,zh}` as bilingual Markdown, and
+the GitHub Pages site is static HTML/CSS/JS without a frontend build system.
+The browser playground uses a dedicated `vela_playground_wasm` crate compiled to
+`wasm32-unknown-unknown`; Pages generates `site/pkg` with `wasm-bindgen` during
+deployment rather than committing generated browser bindings.
+
+The playground WASM boundary returns stable JSON strings for compile/run
+results and diagnostics. It enables standard natives plus controlled time and
+random capabilities, but does not expose host mutation, filesystem I/O, or host
+state in the browser sandbox.
+
 ### Debugger Support
 
 Debugger support is a post-MVP runtime and Debug Adapter Protocol capability,

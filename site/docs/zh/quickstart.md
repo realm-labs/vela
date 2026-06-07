@@ -1,0 +1,51 @@
+# 快速开始
+
+最快的体验方式是打开浏览器 playground。选择一个示例，编辑脚本，然后运行 `main` 函数。
+
+## 最小脚本
+
+```vela
+fn main() {
+    let rewards = { "gold": 10, "xp": 25 };
+    return rewards["gold"] + rewards["xp"];
+}
+```
+
+## Record 和 Method
+
+```vela
+struct DamageResult {
+    actor: String,
+    applied: Int,
+}
+
+trait DamageSummary {
+    fn score(self, bonus) -> Int;
+}
+
+impl DamageSummary for DamageResult {
+    fn score(self, bonus) -> Int {
+        return self.applied + bonus;
+    }
+}
+
+fn main() {
+    let result = DamageResult {
+        actor: "knight",
+        applied: 42,
+    };
+    return result.score(8);
+}
+```
+
+## CLI 形态
+
+CLI 是最终的脚本执行入口，类似 Lua 用户直接执行 `.lua` 文件。
+
+```bash
+cargo run -p vela_cli -- examples/src/bin/level_up/level_up.vela
+```
+
+## 嵌入形态
+
+Rust host 编译源码得到 program，创建 runtime，然后用明确的参数和执行预算调用脚本入口。需要让脚本修改 Rust 持久状态时，使用 host handle 或注册 global。
