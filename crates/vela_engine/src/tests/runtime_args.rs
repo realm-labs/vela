@@ -15,7 +15,7 @@ use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
-use crate::runtime::{CallArgs, CallOptions, Runtime};
+use crate::runtime::{CallArgs, CallOptions, Runtime, VelaValue};
 
 use super::player_type;
 
@@ -30,6 +30,14 @@ fn direct_player(level: i64) -> DirectPlayer {
         level,
         inventory: BTreeMap::new(),
     }
+}
+
+#[test]
+fn runtime_and_runtime_values_are_send() {
+    fn assert_send<T: Send>() {}
+
+    assert_send::<Runtime>();
+    assert_send::<VelaValue>();
 }
 
 fn direct_player_type() -> TypeDesc {

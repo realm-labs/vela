@@ -162,6 +162,9 @@ too many state writes in a single event
 Vela is a single-threaded scripting language from the script author's point of
 view. A single `Runtime` executes one script call at a time on one OS thread,
 with one VM stack, one active `HostAccess`, and one script heap/GC context.
+`Runtime` is `Send` so a host can move it into an actor or worker thread, but
+the runtime API still requires mutable access for execution and does not make a
+single runtime concurrently callable.
 
 The language does not expose:
 
@@ -199,6 +202,10 @@ do not let native functions store borrowed Value references after a call
 do not expose host locks, atomics, or thread handles to scripts
 do not mutate the same host object set concurrently through multiple runtimes
 ```
+
+Runtime-managed `VelaValue` handles are also `Send` and may be moved with host
+messages, but they remain bound to the runtime that created them. Passing a
+`VelaValue` to another runtime is a runtime type error.
 
 Data crossing host threads must be copied, serialized, or represented by stable
 host handles such as `HostRef`. Cross-thread conflict resolution, ordering,

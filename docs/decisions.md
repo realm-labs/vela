@@ -131,6 +131,13 @@ runtime type error. `VelaValue` is still script VM state, not Rust host state,
 and it does not expose real Rust references or place Rust objects under script
 GC.
 
+`Runtime` and `VelaValue` are `Send` so hosts can move a runtime and retained
+script values into worker or actor threads. They are not a concurrent execution
+model: script calls still require mutable runtime access, and one runtime must
+not be called concurrently. Persistent host globals stored inside a runtime
+therefore require `Send`; call-scoped direct host references remain local to
+that invocation.
+
 The compiler may replace a multi-instruction source-level lowering with one
 semantics-equivalent bytecode instruction, such as `Truthy` for dynamic
 truthiness coercion. Execution budgets are charged against the emitted bytecode

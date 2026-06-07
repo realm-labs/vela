@@ -1,9 +1,8 @@
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::Path;
-use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use vela_bytecode::Program;
 use vela_common::{GlobalSlot, HostObjectId, SourceId};
@@ -45,7 +44,7 @@ pub struct Runtime {
     engine: Engine,
     program: Program,
     hot_reload: Option<HotReloadRuntime>,
-    globals: Rc<RefCell<RuntimeGlobalStore>>,
+    globals: RuntimeGlobalStore,
     script_globals: RuntimeScriptGlobalStore,
 }
 
@@ -64,9 +63,7 @@ impl Runtime {
             engine,
             program,
             hot_reload: None,
-            globals: Rc::new(RefCell::new(RuntimeGlobalStore::with_global_layout(
-                &global_names,
-            ))),
+            globals: RuntimeGlobalStore::with_global_layout(&global_names),
             script_globals: RuntimeScriptGlobalStore::with_global_layout(&global_names),
         }
     }
@@ -80,9 +77,7 @@ impl Runtime {
             engine,
             program,
             hot_reload: Some(HotReloadRuntime::new(version)),
-            globals: Rc::new(RefCell::new(RuntimeGlobalStore::with_global_layout(
-                &global_names,
-            ))),
+            globals: RuntimeGlobalStore::with_global_layout(&global_names),
             script_globals: RuntimeScriptGlobalStore::with_global_layout(&global_names),
         }
     }
@@ -99,20 +94,20 @@ impl Runtime {
 
     fn set_global_layout_from_program(&mut self) {
         let names = self.program.global_names();
-        self.globals.borrow_mut().set_global_layout(names);
+        self.globals.set_global_layout(names);
         self.script_globals.set_global_layout(names);
     }
 
     pub fn insert_host_global<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
     where
-        T: ScriptHostObject + 'static,
+        T: ScriptHostObject + Send + 'static,
     {
-        self.globals.borrow_mut().insert_host(name, value)
+        self.globals.insert_host(name, value)
     }
 
     #[must_use]
     pub fn host_global_ref(&self, name: &str) -> Option<HostRef> {
-        self.globals.borrow().host_ref(name)
+        self.globals.host_ref(name)
     }
 
     pub fn insert_global(
@@ -370,7 +365,7 @@ impl Runtime {
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
         let mut adapter = GlobalStoreAdapter {
-            globals: Rc::clone(&self.globals),
+            globals: &mut self.globals,
             fallback: adapter,
         };
         let mut host = HostExecution {
@@ -428,7 +423,7 @@ impl Runtime {
         let resolved = self.resolve_call_value_args(entry, args, &mut budget)?;
         let mut adapter = CallArgsAdapter::new(args, adapter);
         let mut adapter = GlobalStoreAdapter {
-            globals: Rc::clone(&self.globals),
+            globals: &mut self.globals,
             fallback: &mut adapter,
         };
         let mut host = HostExecution {
@@ -600,7 +595,7 @@ pub struct VelaValue {
     runtime_id: u64,
     value: Value,
     root_id: u64,
-    roots: Rc<RefCell<RuntimeValueRoots>>,
+    roots: Arc<Mutex<RuntimeValueRoots>>,
 }
 
 impl VelaValue {
@@ -615,19 +610,25 @@ impl VelaValue {
 
 impl Clone for VelaValue {
     fn clone(&self) -> Self {
-        self.roots.borrow_mut().clone_root(self.root_id);
+        self.roots
+            .lock()
+            .expect("runtime value roots mutex poisoned")
+            .clone_root(self.root_id);
         Self {
             runtime_id: self.runtime_id,
             value: self.value,
             root_id: self.root_id,
-            roots: Rc::clone(&self.roots),
+            roots: Arc::clone(&self.roots),
         }
     }
 }
 
 impl Drop for VelaValue {
     fn drop(&mut self) {
-        self.roots.borrow_mut().release(self.root_id);
+        self.roots
+            .lock()
+            .expect("runtime value roots mutex poisoned")
+            .release(self.root_id);
     }
 }
 
@@ -659,8 +660,8 @@ struct RuntimeValueRoot {
 }
 
 impl RuntimeValueRoots {
-    fn retain(roots: &Rc<RefCell<Self>>, runtime_id: u64, value: Value) -> VelaValue {
-        let mut roots_mut = roots.borrow_mut();
+    fn retain(roots: &Arc<Mutex<Self>>, runtime_id: u64, value: Value) -> VelaValue {
+        let mut roots_mut = roots.lock().expect("runtime value roots mutex poisoned");
         let root_id = roots_mut.next_id;
         roots_mut.next_id = roots_mut.next_id.saturating_add(1);
         roots_mut
@@ -671,7 +672,7 @@ impl RuntimeValueRoots {
             runtime_id,
             value,
             root_id,
-            roots: Rc::clone(roots),
+            roots: Arc::clone(roots),
         }
     }
 
@@ -744,7 +745,7 @@ impl RuntimeGlobalStore {
 
     pub fn insert_host<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
     where
-        T: ScriptHostObject + 'static,
+        T: ScriptHostObject + Send + 'static,
     {
         let name = name.into();
         let host_ref = HostRef::new(
@@ -791,14 +792,14 @@ impl RuntimeGlobalStore {
 
 struct HostGlobalBinding {
     host_ref: HostRef,
-    object: Box<dyn ScriptHostObject>,
+    object: Box<dyn ScriptHostObject + Send>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct RuntimeScriptGlobalStore {
     heap: ScriptHeap,
     values: ScriptGlobalValues,
-    retained_values: Rc<RefCell<RuntimeValueRoots>>,
+    retained_values: Arc<Mutex<RuntimeValueRoots>>,
 }
 
 impl RuntimeScriptGlobalStore {
@@ -812,7 +813,7 @@ impl RuntimeScriptGlobalStore {
         Self {
             heap: ScriptHeap::default(),
             values: ScriptGlobalValues::with_layout(names),
-            retained_values: Rc::new(RefCell::new(RuntimeValueRoots::default())),
+            retained_values: Arc::new(Mutex::new(RuntimeValueRoots::default())),
         }
     }
 
@@ -858,7 +859,12 @@ impl RuntimeScriptGlobalStore {
 
     fn roots(&self) -> Vec<Value> {
         let mut roots = self.values.values().collect::<Vec<_>>();
-        roots.extend(self.retained_values.borrow().values());
+        roots.extend(
+            self.retained_values
+                .lock()
+                .expect("runtime value roots mutex poisoned")
+                .values(),
+        );
         roots
     }
 
@@ -872,14 +878,13 @@ impl RuntimeScriptGlobalStore {
 }
 
 struct GlobalStoreAdapter<'call> {
-    globals: Rc<RefCell<RuntimeGlobalStore>>,
+    globals: &'call mut RuntimeGlobalStore,
     fallback: &'call mut dyn ScriptStateAdapter,
 }
 
 impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
     fn global_ref(&self, name: &str) -> HostResult<HostRef> {
         self.globals
-            .borrow()
             .host_ref(name)
             .or_else(|| self.fallback.global_ref(name).ok())
             .ok_or_else(|| HostError {
@@ -892,7 +897,6 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
 
     fn global_ref_by_slot(&self, slot: GlobalSlot, name: &str) -> HostResult<HostRef> {
         self.globals
-            .borrow()
             .host_ref_by_slot(slot)
             .or_else(|| self.fallback.global_ref_by_slot(slot, name).ok())
             .ok_or_else(|| HostError {
@@ -904,31 +908,22 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
     }
 
     fn read_path(&self, path: &HostPath) -> HostResult<HostValue> {
-        {
-            let globals = self.globals.borrow();
-            if let Some(global) = globals.binding(path) {
-                return global.object.read_host_path(path);
-            }
+        if let Some(global) = self.globals.binding(path) {
+            return global.object.read_host_path(path);
         }
         self.fallback.read_path(path)
     }
 
     fn write_path(&mut self, path: &HostPath, value: HostValue) -> HostResult<()> {
-        {
-            let mut globals = self.globals.borrow_mut();
-            if let Some(global) = globals.binding_mut(path) {
-                return global.object.write_host_path(path, value);
-            }
+        if let Some(global) = self.globals.binding_mut(path) {
+            return global.object.write_host_path(path, value);
         }
         self.fallback.write_path(path, value)
     }
 
     fn remove_path(&mut self, path: &HostPath) -> HostResult<()> {
-        {
-            let mut globals = self.globals.borrow_mut();
-            if let Some(global) = globals.binding_mut(path) {
-                return global.object.remove_host_path(path);
-            }
+        if let Some(global) = self.globals.binding_mut(path) {
+            return global.object.remove_host_path(path);
         }
         self.fallback.remove_path(path)
     }
@@ -939,11 +934,8 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
         method: vela_common::HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        {
-            let mut globals = self.globals.borrow_mut();
-            if let Some(global) = globals.binding_mut(path) {
-                return global.object.call_host_method(path, method, args);
-            }
+        if let Some(global) = self.globals.binding_mut(path) {
+            return global.object.call_host_method(path, method, args);
         }
         self.fallback.call_method(path, method, args)
     }

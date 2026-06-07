@@ -167,7 +167,10 @@ Rust-defined globals are represented as persistent host objects in the
 runtime's global store. Loading a Rust-defined global produces a `HostRef`
 root, and script field reads, writes, method calls, and keyed paths then use
 the same `HostPath` and write-through `HostAccess` path as call-boundary host
-handles.
+handles. Because a `Runtime` may be moved to a worker thread, persistent host
+global objects must be `Send`. Direct call-boundary `with_host_ref` and
+`with_host_mut` bindings are scoped to the call and do not impose this
+persistent-global requirement.
 
 Vela-defined script-value globals use the same declaration surface but are
 stored in the runtime's persistent script heap. Rust inserts, reads, replaces,
