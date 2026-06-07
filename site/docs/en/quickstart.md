@@ -23,12 +23,12 @@ fn main() {
 
 ```vela
 struct DamageResult {
-    actor: String,
-    applied: Int,
+    actor: string,
+    applied: int,
 }
 
 impl DamageResult {
-    fn score(self, bonus) -> Int {
+    fn score(self, bonus) -> int {
         return self.applied + bonus;
     }
 }

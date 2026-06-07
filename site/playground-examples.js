@@ -3,9 +3,9 @@ window.VELA_PLAYGROUND_EXAMPLES = [
     title: "Level reward",
     entry: "main",
     source: `struct Reward {
-    enabled: Bool,
-    base: Int,
-    multiplier: Int,
+    enabled: bool,
+    base: int,
+    multiplier: int,
 }
 
 fn score_reward(reward) {
@@ -42,12 +42,12 @@ fn main() {
     title: "Methods",
     entry: "main",
     source: `struct DamageResult {
-    actor: String,
-    applied: Int,
+    actor: string,
+    applied: int,
 }
 
 impl DamageResult {
-    fn score(self, bonus) -> Int {
+    fn score(self, bonus) -> int {
         return self.applied + bonus;
     }
 }

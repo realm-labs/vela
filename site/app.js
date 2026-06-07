@@ -409,13 +409,8 @@ const VELA_KEYWORDS = new Set([
 ]);
 
 const VELA_TYPES = new Set([
-  "Bool",
-  "Float",
-  "Int",
-  "None",
   "Option",
   "Result",
-  "String",
   "bool",
   "float",
   "int",

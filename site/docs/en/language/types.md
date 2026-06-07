@@ -6,11 +6,11 @@ Vela is dynamically typed at runtime, with type metadata used by analysis, diagn
 
 Common scalar values are:
 
-- `Null`
-- `Bool`
-- `Int`
-- `Float`
-- `String`
+- `null`
+- `bool`
+- `int`
+- `float`
+- `string`
 
 ```vela
 let enabled = true;
@@ -25,13 +25,13 @@ Script records and enums are first-class values managed by the VM.
 
 ```vela
 struct Damage {
-    amount: Int,
-    source: String,
+    amount: int,
+    source: string,
 }
 
 enum Check {
-    Pass { score: Int },
-    Fail { reason: String },
+    Pass { score: int },
+    Fail { reason: string },
 }
 ```
 

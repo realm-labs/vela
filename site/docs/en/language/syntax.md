@@ -6,13 +6,13 @@ Vela uses a compact Rust-like syntax without being Rust. The language is dynamic
 
 ```vela
 struct Reward {
-    item: String,
-    amount: Int,
+    item: string,
+    amount: int,
 }
 
 enum RewardResult {
-    Granted { item: String, amount: Int },
-    Denied { reason: String },
+    Granted { item: string, amount: int },
+    Denied { reason: string },
 }
 
 fn grant(reward) {
@@ -42,7 +42,7 @@ let score = if reward.amount > 0 {
 Type hints are metadata for diagnostics, reflection, and ABI checks. They are not script-language generics.
 
 ```vela
-fn preview(reward: Reward) -> Int {
+fn preview(reward: Reward) -> int {
     return reward.amount;
 }
 ```

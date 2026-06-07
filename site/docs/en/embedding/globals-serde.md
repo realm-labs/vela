@@ -6,8 +6,8 @@ Vela supports module-level `global` declarations backed by persistent runtime st
 
 ```vela
 struct ServerState {
-    level: Int,
-    total_gold: Int,
+    level: int,
+    total_gold: int,
 }
 
 global state: ServerState;

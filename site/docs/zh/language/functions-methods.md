@@ -18,11 +18,11 @@ fn main() {
 
 ```vela
 struct DamageResult {
-    applied: Int,
+    applied: int,
 }
 
 impl DamageResult {
-    fn score(self, bonus) -> Int {
+    fn score(self, bonus) -> int {
         return self.applied + bonus;
     }
 }
@@ -32,7 +32,7 @@ impl DamageResult {
 
 ```vela
 trait DamageSummary {
-    fn score(self, bonus) -> Int;
+    fn score(self, bonus) -> int;
 }
 
 impl DamageSummary for DamageResult {}

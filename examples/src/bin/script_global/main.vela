@@ -1,11 +1,11 @@
 struct ServerStats {
-    handled_ticks: Int,
+    handled_ticks: int,
 }
 
 struct ServerState {
-    level: Int,
-    name: String,
-    total_gold: Int,
+    level: int,
+    name: string,
+    total_gold: int,
     stats: ServerStats,
 }
 

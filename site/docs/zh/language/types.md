@@ -6,11 +6,11 @@ Vela 在运行时是动态类型，类型元数据主要用于分析、诊断和
 
 常见标量值包括：
 
-- `Null`
-- `Bool`
-- `Int`
-- `Float`
-- `String`
+- `null`
+- `bool`
+- `int`
+- `float`
+- `string`
 
 ```vela
 let enabled = true;
@@ -25,13 +25,13 @@ let name = "knight";
 
 ```vela
 struct Damage {
-    amount: Int,
-    source: String,
+    amount: int,
+    source: string,
 }
 
 enum Check {
-    Pass { score: Int },
-    Fail { reason: String },
+    Pass { score: int },
+    Fail { reason: string },
 }
 ```
 

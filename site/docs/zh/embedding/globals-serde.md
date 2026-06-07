@@ -6,8 +6,8 @@ Vela 支持模块级 `global` 声明，并由 runtime 持久存储支持。
 
 ```vela
 struct ServerState {
-    level: Int,
-    total_gold: Int,
+    level: int,
+    total_gold: int,
 }
 
 global state: ServerState;
