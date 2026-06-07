@@ -379,7 +379,7 @@ input {
   gap: 8px;
 }
 
-.editor-pane span,
+.editor-pane > span,
 .output-header span {
   color: var(--muted);
   font-size: 13px;
@@ -441,6 +441,7 @@ input {
   overflow: auto;
   position: relative;
   resize: vertical;
+  -webkit-text-fill-color: transparent;
   z-index: 1;
 }
 
