@@ -105,10 +105,11 @@ Cranelift JIT.
   `OwnedValue` constructor/macro updates, and later script reads of the same
   persistent value. A standalone I/O stdlib example covers stdout plus
   sandboxed file read/write.
-- A GitHub Pages site source exists under `site/`, with bilingual Markdown
-  docs and a browser playground backed by the `vela_playground_wasm` wrapper.
-  The Pages workflow builds the WASM target, generates `wasm-bindgen` browser
-  bindings, and deploys the static artifact.
+- A GitHub Pages site source exists under `site/`, with book-style bilingual
+  Markdown docs, current-language sidebar navigation, and a browser playground
+  backed by the `vela_playground_wasm` wrapper. The Pages workflow builds the
+  WASM target, generates `wasm-bindgen` browser bindings, and deploys the
+  static artifact.
 - A parser fuzz target exists under `fuzz/` and can be compile-checked even
   when the local machine has not installed `cargo-fuzz`.
 - Current benchmark rules, baseline summaries, and M19 exit conclusions live in

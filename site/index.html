@@ -21,8 +21,8 @@
         <a href="https://github.com/realm-labs/vela" id="repo-link">GitHub</a>
       </nav>
       <div class="language-switch" aria-label="Language">
-        <a href="#/en/overview">EN</a>
-        <a href="#/zh/overview">中文</a>
+        <a id="lang-en" href="#/en/overview">EN</a>
+        <a id="lang-zh" href="#/zh/overview">中文</a>
       </div>
     </header>
 
@@ -50,22 +50,7 @@
       </section>
 
       <div class="layout">
-        <aside class="sidebar" aria-label="Documentation navigation">
-          <div class="nav-group">
-            <span>English</span>
-            <a href="#/en/overview">Overview</a>
-            <a href="#/en/quickstart">Quickstart</a>
-            <a href="#/en/host-bridge">Host Bridge</a>
-            <a href="#/en/hot-reload">Hot Reload</a>
-          </div>
-          <div class="nav-group">
-            <span>中文</span>
-            <a href="#/zh/overview">概览</a>
-            <a href="#/zh/quickstart">快速开始</a>
-            <a href="#/zh/host-bridge">Host 边界</a>
-            <a href="#/zh/hot-reload">热更新</a>
-          </div>
-        </aside>
+        <aside id="sidebar" class="sidebar" aria-label="Documentation navigation"></aside>
 
         <article id="doc-view" class="doc-view" aria-live="polite"></article>
 

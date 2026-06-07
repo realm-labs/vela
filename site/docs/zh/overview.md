@@ -24,3 +24,13 @@ Vela 是一个用 Rust 实现的 Hot Reload First 动态脚本语言。它面向
 当前原型已经具备解析、字节码编译、VM 执行、HostAccess、反射、标准 native、脚本 global、serde snapshot、缓存函数句柄和独立 embedding 示例。
 
 可以在 playground 中体验 record、map、set、method、标准库 helper 和运行时诊断。
+
+## 文档结构
+
+这个站点按小型语言书组织：
+
+- 指南章节介绍项目形态和快速开始。
+- 语言章节介绍 Vela 语法和值模型。
+- 嵌入章节介绍 Rust 集成、host access、native 函数、global、反射和热更新。
+
+Playground 是浏览器沙箱，适合体验语言、诊断、record、collection 和 script method。需要修改 Rust host 状态的例子放在独立 Rust examples 中，因为它们依赖 host adapter 注册。

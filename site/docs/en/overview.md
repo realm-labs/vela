@@ -24,3 +24,13 @@ The language is intentionally not dynamic Rust and not a Lua clone. It keeps a s
 The current prototype already supports parsing, bytecode compilation, VM execution, host access, reflection, standard native functions, script-owned globals, serde snapshots, cached function handles, and standalone embedding examples.
 
 Use the playground to try script-owned data, records, maps, sets, methods, standard helpers, and runtime diagnostics in the browser.
+
+## Book Layout
+
+This site is organized like a small language book:
+
+- Guide chapters explain the project shape and quickstart loop.
+- Language chapters describe Vela syntax and runtime values.
+- Embedding chapters describe Rust integration, host access, native functions, globals, reflection, and hot reload.
+
+The playground is intentionally sandboxed. It is useful for language experiments, diagnostics, records, collections, and script methods. Host-owned Rust state examples remain in the standalone Rust examples because they require registered host adapters.

@@ -1,12 +1,90 @@
 import init, { compile_script, run_script } from "./pkg/vela_playground_wasm.js";
 
 const docs = {
-  en: ["overview", "quickstart", "host-bridge", "hot-reload"],
-  zh: ["overview", "quickstart", "host-bridge", "hot-reload"],
+  en: {
+    label: "English",
+    fallback: "overview",
+    groups: [
+      {
+        title: "Guide",
+        pages: [
+          ["overview", "Overview"],
+          ["quickstart", "Quickstart"],
+          ["playground", "Playground"],
+        ],
+      },
+      {
+        title: "Language",
+        pages: [
+          ["language/syntax", "Syntax"],
+          ["language/types", "Types And Values"],
+          ["language/control-flow", "Control Flow"],
+          ["language/functions-methods", "Functions And Methods"],
+          ["language/collections", "Collections"],
+          ["language/modules", "Modules"],
+        ],
+      },
+      {
+        title: "Embedding",
+        pages: [
+          ["embedding/runtime", "Runtime API"],
+          ["embedding/native-functions", "Native Functions"],
+          ["embedding/host-bridge", "Host Bridge"],
+          ["embedding/globals-serde", "Globals And Serde"],
+          ["reflection", "Reflection"],
+          ["hot-reload", "Hot Reload"],
+        ],
+      },
+    ],
+  },
+  zh: {
+    label: "中文",
+    fallback: "overview",
+    groups: [
+      {
+        title: "指南",
+        pages: [
+          ["overview", "概览"],
+          ["quickstart", "快速开始"],
+          ["playground", "Playground"],
+        ],
+      },
+      {
+        title: "语言",
+        pages: [
+          ["language/syntax", "语法"],
+          ["language/types", "类型和值"],
+          ["language/control-flow", "控制流"],
+          ["language/functions-methods", "函数和方法"],
+          ["language/collections", "集合"],
+          ["language/modules", "模块"],
+        ],
+      },
+      {
+        title: "嵌入",
+        pages: [
+          ["embedding/runtime", "Runtime API"],
+          ["embedding/native-functions", "Native 函数"],
+          ["embedding/host-bridge", "Host 边界"],
+          ["embedding/globals-serde", "Global 和 Serde"],
+          ["reflection", "反射"],
+          ["hot-reload", "热更新"],
+        ],
+      },
+    ],
+  },
+};
+
+const docAliases = {
+  "host-bridge": "embedding/host-bridge",
 };
 
 const docView = document.querySelector("#doc-view");
 const playgroundView = document.querySelector("#playground-view");
+const sidebar = document.querySelector("#sidebar");
+const langEn = document.querySelector("#lang-en");
+const langZh = document.querySelector("#lang-zh");
+const docsLink = document.querySelector('[data-i18n="docs"]');
 const exampleSelect = document.querySelector("#example-select");
 const sourceEditor = document.querySelector("#source-editor");
 const entryInput = document.querySelector("#entry-input");
@@ -55,22 +133,59 @@ async function boot() {
 
 function route() {
   const hash = window.location.hash || "#/en/overview";
-  const [, first, second] = hash.split("/");
-  document.querySelectorAll(".nav-group a").forEach((link) => {
-    link.classList.toggle("active", link.getAttribute("href") === hash);
-  });
+  const [, first, ...slugParts] = hash.split("/");
+  const currentSlug = docAliases[slugParts.join("/")] || slugParts.join("/") || "overview";
 
   if (first === "playground") {
     docView.hidden = true;
     playgroundView.hidden = false;
+    renderSidebar("en", "playground");
+    updateLanguageLinks("en", "playground");
     return;
   }
 
   const lang = docs[first] ? first : "en";
-  const slug = docs[lang].includes(second) ? second : "overview";
+  const slug = pageExists(lang, currentSlug) ? currentSlug : docs[lang].fallback;
   docView.hidden = false;
   playgroundView.hidden = true;
+  renderSidebar(lang, slug);
+  updateLanguageLinks(lang, slug);
   renderDoc(lang, slug);
+}
+
+function pageExists(lang, slug) {
+  return docs[lang].groups.some((group) => group.pages.some(([page]) => page === slug));
+}
+
+function renderSidebar(lang, activeSlug) {
+  const current = docs[lang];
+  const fragment = document.createDocumentFragment();
+  for (const group of current.groups) {
+    const section = document.createElement("div");
+    section.className = "nav-group";
+    const title = document.createElement("span");
+    title.textContent = group.title;
+    section.append(title);
+    for (const [slug, label] of group.pages) {
+      const link = document.createElement("a");
+      link.href = slug === "playground" ? "#/playground" : `#/${lang}/${slug}`;
+      link.textContent = label;
+      link.classList.toggle("active", slug === activeSlug);
+      section.append(link);
+    }
+    fragment.append(section);
+  }
+  sidebar.replaceChildren(fragment);
+}
+
+function updateLanguageLinks(lang, slug) {
+  const targetSlug = slug === "playground" ? "overview" : slug;
+  langEn.href = `#/en/${pageExists("en", targetSlug) ? targetSlug : docs.en.fallback}`;
+  langZh.href = `#/zh/${pageExists("zh", targetSlug) ? targetSlug : docs.zh.fallback}`;
+  docsLink.href = `#/${lang}/${docs[lang].fallback}`;
+  langEn.classList.toggle("active", lang === "en");
+  langZh.classList.toggle("active", lang === "zh");
+  document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
 }
 
 async function renderDoc(lang, slug) {
@@ -123,7 +238,7 @@ function markdownToHtml(markdown) {
   let inCode = false;
   let codeLanguage = "";
   let codeLines = [];
-  let inList = false;
+  let listType = null;
 
   for (const line of lines) {
     if (line.startsWith("```")) {
@@ -155,11 +270,11 @@ function markdownToHtml(markdown) {
       closeList();
       html.push(`<h3>${inlineMarkdown(line.slice(4))}</h3>`);
     } else if (line.startsWith("- ")) {
-      if (!inList) {
-        html.push("<ul>");
-        inList = true;
-      }
+      openList("ul");
       html.push(`<li>${inlineMarkdown(line.slice(2))}</li>`);
+    } else if (/^\d+\.\s+/.test(line)) {
+      openList("ol");
+      html.push(`<li>${inlineMarkdown(line.replace(/^\d+\.\s+/, ""))}</li>`);
     } else if (line.trim() === "") {
       closeList();
     } else {
@@ -175,10 +290,19 @@ function markdownToHtml(markdown) {
   return html.join("");
 
   function closeList() {
-    if (inList) {
-      html.push("</ul>");
-      inList = false;
+    if (listType) {
+      html.push(`</${listType}>`);
+      listType = null;
     }
+  }
+
+  function openList(type) {
+    if (listType === type) {
+      return;
+    }
+    closeList();
+    html.push(`<${type}>`);
+    listType = type;
   }
 }
 

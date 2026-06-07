@@ -102,6 +102,12 @@ button {
   padding: 10px 12px;
 }
 
+.language-switch a.active {
+  background: #e6f4f1;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 .button,
 button {
   background: white;
@@ -182,26 +188,31 @@ pre {
 .sidebar {
   position: sticky;
   top: 96px;
+  max-height: calc(100vh - 116px);
+  overflow: auto;
+  padding-right: 6px;
 }
 
 .nav-group {
   border-top: 1px solid var(--line);
   display: grid;
-  gap: 8px;
-  padding: 16px 0;
+  gap: 4px;
+  padding: 18px 0;
 }
 
 .nav-group span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+  margin-bottom: 6px;
   text-transform: uppercase;
 }
 
 .nav-group a {
   border-radius: 6px;
   color: var(--text);
-  padding: 8px 10px;
+  font-size: 14px;
+  padding: 7px 10px;
 }
 
 .nav-group a.active,

@@ -17,3 +17,15 @@ Hosts decide when to check or apply pending reloads. Game servers usually do thi
 ## Playground Scope
 
 The browser playground focuses on compile and run feedback. Full hot-reload staging is demonstrated in the standalone Rust examples because it depends on host runtime policy and version management.
+
+## Typical Host Loop
+
+```rust
+runtime.stage_hot_reload_update_file("scripts/logic.vela")?;
+
+if let Some(report) = runtime.check_reload_at_tick_boundary()? {
+    println!("{report:?}");
+}
+```
+
+Rejected updates keep the current version active. Accepted updates rebuild runtime metadata so future calls enter the new code.
