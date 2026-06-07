@@ -67,6 +67,11 @@ fn game_server_examples_run() {
             env!("CARGO_BIN_EXE_native_function"),
             "native_function_result=Int(45) final_level=16\n",
         ),
+        (
+            env!("CARGO_BIN_EXE_script_global"),
+            "script_global first=Int(8) second=Int(19) name=String(\"rust-updated\") \
+             final_level=Int(11) final_gold=Int(8)\n",
+        ),
     ];
 
     for (bin, expected) in cases {

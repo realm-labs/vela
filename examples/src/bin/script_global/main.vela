@@ -1,0 +1,25 @@
+struct ServerState {
+    level: Int,
+    name: String,
+    total_gold: Int,
+}
+
+global state: ServerState;
+
+fn make_state() {
+    return ServerState {
+        level: 1,
+        name: "boot",
+        total_gold: 0,
+    };
+}
+
+fn handle_tick(level_gain, gold_gain) {
+    state.level += level_gain;
+    state.total_gold += gold_gain;
+    return state.level + state.total_gold;
+}
+
+fn state_name() {
+    return state.name;
+}
