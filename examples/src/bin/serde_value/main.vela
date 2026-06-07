@@ -1,0 +1,25 @@
+struct DamageActor {
+    name: String,
+    level: Int,
+}
+
+struct DamageEvent {
+    actor: DamageActor,
+    amount: Int,
+    multiplier: Int,
+    reason: String,
+}
+
+struct DamageResult {
+    actor_name: String,
+    applied: Int,
+    label: String,
+}
+
+fn handle_damage(event) {
+    return DamageResult {
+        actor_name: event.actor.name,
+        applied: event.amount * event.multiplier + event.actor.level,
+        label: event.reason,
+    };
+}

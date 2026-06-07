@@ -72,6 +72,10 @@ fn game_server_examples_run() {
             "script_global first=Int(9) second=Int(27) name=String(\"rust-updated\") \
              projected=Int(31) final_level=Int(11) final_gold=Int(8) ticks=Int(8)\n",
         ),
+        (
+            env!("CARGO_BIN_EXE_serde_value"),
+            "serde_value actor=player-1001 applied=34 label=slash original_amount=9\n",
+        ),
     ];
 
     for (bin, expected) in cases {

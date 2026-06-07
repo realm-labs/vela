@@ -200,6 +200,27 @@ state adapter can pass an existing low-level handle with
 `OwnedValue` for ordinary use. Most call sites do not need to construct or pass
 a `HostAccess` explicitly.
 
+With the `serde` feature enabled, hosts can pass ordinary Rust data as
+script-owned values without registering it as host state:
+
+```rust
+#[derive(Serialize, Deserialize)]
+struct DamageEvent {
+    amount: i64,
+}
+
+let args = CallArgs::new().with_serde_value("event", &event)?;
+let output = runtime.call("handle_damage", args, CallOptions::unbounded())?;
+let result: DamageResult = from_owned_value(output.value())?;
+```
+
+Serde struct values become Vela records so scripts can use dot field access.
+Serde enum values become Vela enum values. This path copies data into the VM;
+it is intended for messages, configs, snapshots, and results. It does not
+mutate the original Rust struct when scripts write to the script value.
+Write-through Rust state should still be passed with `with_host_ref`,
+`with_host_mut`, or adapter-backed host handles.
+
 When the host wants to keep a returned script aggregate under VM management and
 pass it back to another script call without materializing a detached copy, it
 uses `Runtime::call_value`:

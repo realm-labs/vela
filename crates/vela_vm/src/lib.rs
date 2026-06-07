@@ -40,6 +40,10 @@ mod script_method_calls;
 mod script_methods;
 mod script_object;
 mod script_object_construction;
+#[cfg(feature = "serde")]
+pub mod serde;
+#[cfg(all(test, feature = "serde"))]
+mod serde_tests;
 mod set_methods;
 mod small_storage;
 mod stdlib;

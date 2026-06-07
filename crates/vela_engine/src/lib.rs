@@ -25,5 +25,8 @@ pub mod standard;
 pub mod typed;
 mod validation;
 
+#[cfg(feature = "serde")]
+pub use vela_vm::serde;
+
 #[cfg(test)]
 mod tests;

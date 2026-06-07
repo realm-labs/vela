@@ -131,6 +131,16 @@ runtime type error. `VelaValue` is still script VM state, not Rust host state,
 and it does not expose real Rust references or place Rust objects under script
 GC.
 
+With the `serde` feature enabled, Rust structs and enums that implement serde
+traits can cross the ordinary script-owned value boundary explicitly through
+`to_owned_value`, `from_owned_value`, and `CallArgs::with_serde_value`. This
+path serializes Rust data into Vela-owned records, enums, arrays, maps, sets,
+and scalars. It is a snapshot/data-transfer path for messages, configs, and
+return values, not a host-state binding: script mutation of the value does not
+write back to the original Rust object unless Rust deserializes a returned value
+and applies it itself. Host state that must be mutated in place still uses
+`HostRef`, `HostPath`, `PathProxy`, and `HostAccess`.
+
 `Runtime` and `VelaValue` are `Send` so hosts can move a runtime and retained
 script values into worker or actor threads. They are not a concurrent execution
 model: script calls still require mutable runtime access, and one runtime must

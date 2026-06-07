@@ -73,6 +73,8 @@ Cranelift JIT.
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
   module-level `global` declarations backed by persistent Rust-defined host objects
   or Runtime-owned script values with Rust `OwnedValue` construction/update APIs,
+  feature-gated serde conversion between Rust structs/enums and script-owned
+  `OwnedValue` records/enums for snapshot-style arguments and results,
   runtime-managed `VelaValue` call returns that can be passed back to later calls
   on the same runtime without owned materialization, `Send` Runtime and
   `VelaValue` handles for worker/actor ownership transfer,

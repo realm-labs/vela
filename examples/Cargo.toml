@@ -5,9 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
 vela_bytecode = { path = "../crates/vela_bytecode" }
 vela_common = { path = "../crates/vela_common" }
-vela_engine = { path = "../crates/vela_engine" }
+vela_engine = { path = "../crates/vela_engine", features = ["serde"] }
 vela_hot_reload = { path = "../crates/vela_hot_reload" }
 vela_host = { path = "../crates/vela_host" }
 vela_macros = { path = "../crates/vela_macros" }

@@ -58,6 +58,16 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    #[cfg(feature = "serde")]
+    pub fn push_serde<T>(&mut self, value: &T) -> VmResult<&mut Self>
+    where
+        T: serde::Serialize + ?Sized,
+    {
+        self.entries
+            .push(CallArg::Positional(vela_vm::serde::to_owned_value(value)?));
+        Ok(self)
+    }
+
     pub fn push_vela_value(&mut self, value: VelaValue) -> &mut Self {
         self.entries.push(CallArg::PositionalValue(value));
         self
@@ -73,6 +83,18 @@ impl<'a> CallArgs<'a> {
             value: value.into(),
         });
         self
+    }
+
+    #[cfg(feature = "serde")]
+    pub fn push_serde_value<T>(&mut self, name: impl Into<String>, value: &T) -> VmResult<&mut Self>
+    where
+        T: serde::Serialize + ?Sized,
+    {
+        self.entries.push(CallArg::Named {
+            name: name.into(),
+            value: vela_vm::serde::to_owned_value(value)?,
+        });
+        Ok(self)
     }
 
     pub fn push_named_vela_value(
@@ -127,6 +149,15 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    #[cfg(feature = "serde")]
+    pub fn with_serde<T>(mut self, value: &T) -> VmResult<Self>
+    where
+        T: serde::Serialize + ?Sized,
+    {
+        self.push_serde(value)?;
+        Ok(self)
+    }
+
     #[must_use]
     pub fn with_vela_value(mut self, value: VelaValue) -> Self {
         self.push_vela_value(value);
@@ -137,6 +168,15 @@ impl<'a> CallArgs<'a> {
     pub fn with_value(mut self, name: impl Into<String>, value: impl Into<OwnedValue>) -> Self {
         self.push_value(name, value);
         self
+    }
+
+    #[cfg(feature = "serde")]
+    pub fn with_serde_value<T>(mut self, name: impl Into<String>, value: &T) -> VmResult<Self>
+    where
+        T: serde::Serialize + ?Sized,
+    {
+        self.push_serde_value(name, value)?;
+        Ok(self)
     }
 
     #[must_use]

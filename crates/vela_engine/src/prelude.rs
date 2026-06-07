@@ -54,4 +54,6 @@ pub use vela_reflect::registry::{
     TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
 };
 pub use vela_vm::owned_value::OwnedValue;
+#[cfg(feature = "serde")]
+pub use vela_vm::serde::{from_owned_value, to_owned_value};
 pub use vela_vm::{owned_array, owned_enum, owned_map, owned_record, owned_set};
