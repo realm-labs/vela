@@ -100,6 +100,14 @@ Arity, type hints, default values, and native Rust signatures do not create
 overload sets. Resolver, reflection, native registration, and hot-reload ABI
 logic should model each function name as a single callable.
 
+Script methods may be declared as inherent type methods with
+`impl Type { ... }` or as protocol methods with `impl Trait for Type { ... }`.
+Inherent script method IDs are derived from the fully qualified receiver type
+and method name. Trait method IDs remain derived from the fully qualified trait
+and method name. A receiver type may not have two script methods with the same
+name, even if one comes from an inherent impl and another comes from a trait
+impl.
+
 ### Runtime And Heap
 
 The VM is a register bytecode interpreter. Execution budgets cover

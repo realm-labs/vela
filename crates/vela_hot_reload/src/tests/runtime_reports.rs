@@ -354,6 +354,41 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
 }
 
 #[test]
+fn program_version_exposes_inherent_script_method_metadata() {
+    let initial = compile_initial_modules_with_abi_and_options(
+        &inherent_script_method_module_sources(),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+    .expect("compile initial modules");
+    let runtime = HotReloadRuntime::new(initial);
+    let current = runtime.current();
+    let function_name = "game::main.__impl.game::main::Player.bonus";
+
+    assert!(current.function_names().any(|name| name == function_name));
+
+    let method = current
+        .script_method("game::main::Player", "bonus")
+        .expect("compiled inherent script method should be visible");
+    assert_eq!(method.function, function_name);
+    assert_eq!(
+        current.script_method_by_id("game::main::Player", method.id),
+        Some(method)
+    );
+    assert_eq!(
+        current
+            .script_method_function_by_id("game::main::Player", method.id)
+            .as_ref()
+            .map(|function| function.name.as_str()),
+        Some(function_name)
+    );
+    assert_eq!(
+        Vm::new().run_program(&current.to_program(), "game::main::main", &[]),
+        Ok(OwnedValue::Int(12))
+    );
+}
+
+#[test]
 fn hot_update_exposes_read_only_preflight_metadata() {
     let initial = compile_initial_modules_with_abi_and_options(
         &script_method_module_sources(),
@@ -415,6 +450,43 @@ fn hot_update_exposes_read_only_preflight_metadata() {
         metadata
             .module_id(&ModulePath::from_qualified("game::main"))
             .is_some()
+    );
+}
+
+#[test]
+fn hot_update_exposes_inherent_script_method_metadata() {
+    let initial = compile_initial_modules_with_abi_and_options(
+        &inherent_script_method_module_sources(),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+    .expect("compile initial modules");
+    let runtime = HotReloadRuntime::new(initial);
+    let update = compile_update_modules_with_abi_and_options_and_policy(
+        &runtime.current(),
+        &inherent_script_method_module_sources_with_bonus("self.level + amount + 1"),
+        runtime.current().abi().clone(),
+        &CompilerOptions::default(),
+        &HotReloadPolicy::default(),
+    )
+    .expect("compile update");
+
+    assert_eq!(
+        update.changed_function_names().collect::<Vec<_>>(),
+        [
+            "game::main.__impl.game::main::Player.bonus",
+            "game::main::main"
+        ]
+    );
+    let method = update
+        .script_method("game::main::Player", "bonus")
+        .expect("compiled inherent script method should be visible from update");
+    assert_eq!(
+        update
+            .script_method_function_by_id("game::main::Player", method.id)
+            .as_ref()
+            .map(|function| function.name.as_str()),
+        Some("game::main.__impl.game::main::Player.bonus")
     );
 }
 
@@ -796,6 +868,33 @@ trait BonusSource {{ fn bonus(self, amount) -> int; }}
 struct Player {{ level: int }}
 
 impl BonusSource for Player {{
+    fn bonus(self, amount) -> int {{
+        return {bonus_expression};
+    }}
+}}
+
+fn main() {{
+    let player = Player {{ level: 7 }};
+    return player.bonus(5);
+}}
+"#,
+        ),
+    )]
+}
+
+fn inherent_script_method_module_sources() -> Vec<ModuleSource> {
+    inherent_script_method_module_sources_with_bonus("self.level + amount")
+}
+
+fn inherent_script_method_module_sources_with_bonus(bonus_expression: &str) -> Vec<ModuleSource> {
+    vec![ModuleSource::new(
+        SourceId::new(1),
+        ModulePath::from_qualified("game::main"),
+        format!(
+            r#"
+struct Player {{ level: int }}
+
+impl Player {{
     fn bonus(self, amount) -> int {{
         return {bonus_expression};
     }}

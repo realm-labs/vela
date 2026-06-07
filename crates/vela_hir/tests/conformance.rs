@@ -138,7 +138,12 @@ fn core_language_fixture_resolves() {
     let impl_metadata = graph
         .impl_metadata(impl_decl.id)
         .expect("impl metadata should exist");
-    assert_eq!(impl_metadata.trait_path, ["Scored"]);
+    assert_eq!(
+        impl_metadata.kind,
+        vela_hir::type_hint::ImplMetadataKind::Trait {
+            trait_path: vec!["Scored".to_owned()]
+        }
+    );
     assert_eq!(impl_metadata.target_path, ["Reward"]);
     assert_eq!(impl_metadata.methods[0].name, "score");
 

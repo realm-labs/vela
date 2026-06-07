@@ -6,14 +6,18 @@ mod schema_diagnostics;
 mod validation;
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::ast::{Block, FunctionItem, ItemKind, Param, SourceFile, TraitMethod, Visibility};
+use vela_syntax::ast::{
+    Block, FunctionItem, ImplKind, ItemKind, Param, SourceFile, TraitMethod, Visibility,
+};
 use vela_syntax::parser::parse_source;
 
 pub use model::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModulePath,
     ModuleSource, ResolvedImport,
 };
-use names::{closest_name, impl_declaration_name, import_binding_name};
+use names::{
+    closest_name, import_binding_name, inherent_impl_declaration_name, trait_impl_declaration_name,
+};
 
 use crate::attributes::{HirAttribute, attrs_from_syntax};
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
@@ -250,7 +254,14 @@ impl ModuleGraph {
                     );
                 }
                 ItemKind::Impl(impl_item) => {
-                    let name = impl_declaration_name(&impl_item.trait_path, &impl_item.target_path);
+                    let name = match &impl_item.kind {
+                        ImplKind::Inherent => {
+                            inherent_impl_declaration_name(&impl_item.target_path)
+                        }
+                        ImplKind::Trait { trait_path } => {
+                            trait_impl_declaration_name(trait_path, &impl_item.target_path)
+                        }
+                    };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,

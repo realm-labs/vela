@@ -46,11 +46,7 @@ fn main() {
     applied: Int,
 }
 
-trait DamageSummary {
-    fn score(self, bonus) -> Int;
-}
-
-impl DamageSummary for DamageResult {
+impl DamageResult {
     fn score(self, bonus) -> Int {
         return self.applied + bonus;
     }

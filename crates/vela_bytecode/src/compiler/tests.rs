@@ -20,6 +20,14 @@ fn stable_test_trait_method_id(trait_name: &str, method_name: &str) -> MethodId 
     ))
 }
 
+fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodId {
+    MethodId::new(vela_common::stable_id(
+        "inherent_method",
+        type_name,
+        method_name,
+    ))
+}
+
 #[test]
 fn compiler_boundary_rejects_invalid_program_bytecode() {
     let mut code = CodeObject::new("main", 1);

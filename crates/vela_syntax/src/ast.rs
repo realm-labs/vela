@@ -128,9 +128,15 @@ pub struct TraitMethod {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImplItem {
-    pub trait_path: Vec<String>,
+    pub kind: ImplKind,
     pub target_path: Vec<String>,
     pub methods: Vec<ImplMethod>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ImplKind {
+    Inherent,
+    Trait { trait_path: Vec<String> },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

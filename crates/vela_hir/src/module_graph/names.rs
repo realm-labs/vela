@@ -11,7 +11,11 @@ pub(super) fn closest_name(
         .filter(|candidate| candidate_distance(wanted, candidate) <= 3)
 }
 
-pub(super) fn impl_declaration_name(trait_path: &[String], target_path: &[String]) -> String {
+pub(super) fn inherent_impl_declaration_name(target_path: &[String]) -> String {
+    format!("impl {}", target_path.join("::"))
+}
+
+pub(super) fn trait_impl_declaration_name(trait_path: &[String], target_path: &[String]) -> String {
     format!(
         "impl {} for {}",
         trait_path.join("::"),

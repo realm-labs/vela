@@ -75,6 +75,33 @@ fn main() {
 }
 
 #[test]
+fn runs_compiled_inherent_script_impl_method_dispatch() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { level: int }
+
+impl Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(5);
+}
+"#,
+    )
+    .expect("compile inherent script impl method dispatch");
+
+    assert_eq!(
+        Vm::new().run_program(&program, "main", &[]),
+        Ok(OwnedValue::Int(12))
+    );
+}
+
+#[test]
 fn runs_compiled_script_method_named_and_default_args() {
     let program = compile_program_source(
         SourceId::new(1),

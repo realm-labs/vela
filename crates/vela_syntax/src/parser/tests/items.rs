@@ -116,10 +116,39 @@ impl Damageable for Player {
     let ItemKind::Impl(impl_item) = &parsed.items[7].kind else {
         panic!("expected impl item");
     };
-    assert_eq!(impl_item.trait_path, ["Damageable"]);
+    assert_eq!(
+        impl_item.kind,
+        ImplKind::Trait {
+            trait_path: vec!["Damageable".to_owned()]
+        }
+    );
     assert_eq!(impl_item.target_path, ["Player"]);
     assert_eq!(impl_item.methods.len(), 1);
     assert_eq!(impl_item.methods[0].function.name, "damage");
+}
+
+#[test]
+fn parses_inherent_impl_methods() {
+    let parsed = parse_source(
+        source_id(),
+        r#"
+struct Player { level }
+impl Player {
+    fn bonus(self, amount) {
+        return self.level + amount;
+    }
+}
+"#,
+    );
+
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let ItemKind::Impl(impl_item) = &parsed.items[1].kind else {
+        panic!("expected impl item");
+    };
+    assert_eq!(impl_item.kind, ImplKind::Inherent);
+    assert_eq!(impl_item.target_path, ["Player"]);
+    assert_eq!(impl_item.methods.len(), 1);
+    assert_eq!(impl_item.methods[0].function.name, "bonus");
 }
 
 #[test]

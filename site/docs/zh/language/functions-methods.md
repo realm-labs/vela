@@ -21,15 +21,21 @@ struct DamageResult {
     applied: Int,
 }
 
-trait DamageSummary {
-    fn score(self, bonus) -> Int;
-}
-
-impl DamageSummary for DamageResult {
+impl DamageResult {
     fn score(self, bonus) -> Int {
         return self.applied + bonus;
     }
 }
+```
+
+当多个类型需要共享协议或默认方法体时，再使用 trait：
+
+```vela
+trait DamageSummary {
+    fn score(self, bonus) -> Int;
+}
+
+impl DamageSummary for DamageResult {}
 ```
 
 ## Host Method

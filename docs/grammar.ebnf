@@ -109,7 +109,7 @@ trait_decl      = "trait", ws, IDENT, ws, "{", line_ws,
 trait_item      = { attribute, line_ws }, "fn", ws, IDENT, ws, parameter_list,
                   ws, [ return_type, ws ], ( block | item_term ) ;
 
-impl_decl       = "impl", ws, path, ws, "for", ws, path, ws, "{", line_ws,
+impl_decl       = "impl", ws, path, ws, [ "for", ws, path, ws ], "{", line_ws,
                   { impl_item, line_ws }, "}" ;
 impl_item       = { attribute, line_ws }, function_decl ;
 

@@ -21,15 +21,22 @@ struct DamageResult {
     applied: Int,
 }
 
-trait DamageSummary {
-    fn score(self, bonus) -> Int;
-}
-
-impl DamageSummary for DamageResult {
+impl DamageResult {
     fn score(self, bonus) -> Int {
         return self.applied + bonus;
     }
 }
+```
+
+Traits are available when several types should share a protocol or a default
+method body:
+
+```vela
+trait DamageSummary {
+    fn score(self, bonus) -> Int;
+}
+
+impl DamageSummary for DamageResult {}
 ```
 
 ## Host Methods

@@ -1,6 +1,47 @@
 use super::*;
 
 #[test]
+fn compiler_registers_inherent_impl_methods_as_script_dispatch_targets() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Player { level: int }
+impl Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+fn main() {
+    return Player { level: 7 }.bonus(5);
+}
+"#,
+    )
+    .expect("inherent impl method should compile as hidden dispatch target");
+    let method = program
+        .script_method("Player", "bonus")
+        .expect("script inherent method dispatch target");
+    assert_eq!(method.params, ["self", "amount"]);
+    let method_id = stable_test_inherent_method_id("main::Player", "bonus");
+    assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
+    assert_eq!(
+        program
+            .script_method_by_id("Player", method_id)
+            .expect("script method by stable id")
+            .params,
+        ["self", "amount"]
+    );
+    let main = program.function("main").expect("main function");
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        InstructionKind::CallMethodId {
+            method_id: lowered,
+            ..
+        } if lowered == method_id
+    )));
+    assert!(program.function("bonus").is_none());
+}
+
+#[test]
 fn compiler_registers_impl_methods_as_script_dispatch_targets() {
     let program = compile_program_source(
         SourceId::new(1),
@@ -41,6 +82,70 @@ fn main() {
     )));
     assert!(program.function("bonus").is_none());
 }
+
+#[test]
+fn compiler_specializes_module_inherent_method_calls_by_method_id() {
+    let program = compile_module_sources(&[
+        ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game::model"),
+            r#"
+pub struct Player { level: int }
+impl Player {
+    fn bonus(self, amount) -> int {
+        return self.level + amount;
+    }
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_qualified("game::combat"),
+            r#"
+use game::model::Player
+pub fn main(player: Player) {
+    return player.bonus(5);
+}
+"#,
+        ),
+    ])
+    .expect("module inherent method should specialize by method id");
+    let method_id = stable_test_inherent_method_id("game::model::Player", "bonus");
+    let main = program
+        .function("game::combat::main")
+        .expect("game::combat::main function");
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        InstructionKind::CallMethodId {
+            method_id: lowered,
+            ..
+        } if lowered == method_id
+    )));
+}
+
+#[test]
+fn compiler_rejects_duplicate_receiver_script_methods() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+trait BonusSource { fn bonus(self) -> int; }
+struct Player { level: int }
+impl Player {
+    fn bonus(self) -> int { return self.level; }
+}
+impl BonusSource for Player {
+    fn bonus(self) -> int { return self.level; }
+}
+"#,
+    )
+    .expect_err("duplicate receiver methods should be rejected");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["hir::duplicate_script_method"]
+    );
+}
+
 #[test]
 fn compiler_lowers_named_and_default_script_method_args() {
     let program = compile_program_source(

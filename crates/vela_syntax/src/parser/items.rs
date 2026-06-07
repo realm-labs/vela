@@ -1,4 +1,5 @@
 use super::*;
+use crate::ast::ImplKind;
 
 impl Parser {
     pub(super) fn parse_item(&mut self) -> Option<Item> {
@@ -220,14 +221,21 @@ impl Parser {
     }
 
     pub(super) fn parse_impl_item(&mut self) -> Option<ImplItem> {
-        let trait_path = self.parse_static_path();
-        if trait_path.is_empty() {
-            self.error_here("expected impl trait path");
+        let first_path = self.parse_static_path();
+        if first_path.is_empty() {
+            self.error_here("expected impl path");
         }
-        if self.eat_keyword(Keyword::For).is_none() {
-            self.error_here("expected `for` in impl declaration");
-        }
-        let target_path = self.parse_static_path();
+        let (kind, target_path) = if self.eat_keyword(Keyword::For).is_some() {
+            let target_path = self.parse_static_path();
+            (
+                ImplKind::Trait {
+                    trait_path: first_path,
+                },
+                target_path,
+            )
+        } else {
+            (ImplKind::Inherent, first_path)
+        };
         if target_path.is_empty() {
             self.error_here("expected impl target path");
         }
@@ -236,7 +244,7 @@ impl Parser {
         if self.eat_symbol(Symbol::LBrace).is_none() {
             self.error_here("expected impl body");
             return Some(ImplItem {
-                trait_path,
+                kind,
                 target_path,
                 methods,
             });
@@ -256,7 +264,7 @@ impl Parser {
 
         self.eat_symbol(Symbol::RBrace);
         Some(ImplItem {
-            trait_path,
+            kind,
             target_path,
             methods,
         })

@@ -4,8 +4,8 @@ use vela_common::MethodId;
 use vela_hir::binding::BindingMap;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
-use vela_hir::type_hint::{FunctionSignature, ImplMetadata};
-use vela_syntax::ast::{Block, ImplItem, ItemKind, Param, SourceFile, TraitItem};
+use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
+use vela_syntax::ast::{Block, ImplItem, ImplKind, ItemKind, Param, SourceFile, TraitItem};
 
 pub(super) struct ScriptImplMethod<'ast> {
     pub(super) target_type: String,
@@ -36,10 +36,15 @@ pub(super) fn source_methods<'ast>(
                 return Vec::new();
             };
             let target_type = local_target_name(&impl_metadata.target_path);
-            let trait_item =
-                trait_declaration(graph, declaration.module, &impl_metadata.trait_path)
-                    .and_then(|declaration| graph.trait_shape(declaration))
-                    .zip(syntax_trait_item(parsed, &impl_metadata.trait_path));
+            let trait_item = impl_metadata
+                .trait_path()
+                .and_then(|trait_path| trait_declaration(graph, declaration.module, trait_path))
+                .and_then(|declaration| graph.trait_shape(declaration))
+                .zip(
+                    impl_metadata
+                        .trait_path()
+                        .and_then(|trait_path| syntax_trait_item(parsed, trait_path)),
+                );
             collect_methods(
                 graph,
                 module_path,
@@ -71,15 +76,17 @@ pub(super) fn module_methods<'ast>(
                 return Vec::new();
             };
             let target_type = module_target_name(module_path, &impl_metadata.target_path);
-            let Some(trait_declaration) =
-                trait_declaration(graph, declaration.module, &impl_metadata.trait_path)
+            let Some(trait_path) = impl_metadata.trait_path() else {
+                return collect_methods(graph, module_path, impl_metadata, item, None, target_type);
+            };
+            let Some(trait_declaration) = trait_declaration(graph, declaration.module, trait_path)
             else {
                 return collect_methods(graph, module_path, impl_metadata, item, None, target_type);
             };
             let trait_item = graph
                 .declaration(trait_declaration)
                 .and_then(|declaration| parsed.get(&declaration.module))
-                .and_then(|source| syntax_trait_item(source, &impl_metadata.trait_path))
+                .and_then(|source| syntax_trait_item(source, trait_path))
                 .zip(graph.trait_shape(trait_declaration))
                 .map(|(item, shape)| (shape, item));
             collect_methods(
@@ -115,14 +122,11 @@ fn collect_methods<'ast>(
             let bindings = graph.impl_method_bindings(method_metadata.node)?;
             let symbol = method_symbol(
                 module_path,
-                &impl_metadata.trait_path,
+                impl_metadata,
                 &target_type,
                 &method_metadata.name,
             );
-            let method_id = stable_trait_method_id(
-                &trait_method_owner_name(module_path, &impl_metadata.trait_path),
-                &method_metadata.name,
-            );
+            let method_id = stable_method_id(module_path, impl_metadata, &method_metadata.name);
             Some(ScriptImplMethod {
                 target_type: target_type.clone(),
                 method_name: method_metadata.name.clone(),
@@ -171,14 +175,11 @@ fn collect_default_methods<'ast>(
             let bindings = graph.trait_default_method_bindings(node)?;
             let symbol = method_symbol(
                 module_path,
-                &impl_metadata.trait_path,
+                impl_metadata,
                 target_type,
                 &method_metadata.name,
             );
-            let method_id = stable_trait_method_id(
-                &trait_method_owner_name(module_path, &impl_metadata.trait_path),
-                &method_metadata.name,
-            );
+            let method_id = stable_method_id(module_path, impl_metadata, &method_metadata.name);
             Some(ScriptImplMethod {
                 target_type: target_type.to_owned(),
                 method_name: method_metadata.name.clone(),
@@ -201,9 +202,24 @@ fn syntax_impl_item<'ast>(
         let ItemKind::Impl(item) = &item.kind else {
             return None;
         };
-        (item.trait_path == metadata.trait_path && item.target_path == metadata.target_path)
+        (impl_kind_matches(&item.kind, &metadata.kind) && item.target_path == metadata.target_path)
             .then_some(item)
     })
+}
+
+fn impl_kind_matches(item: &ImplKind, metadata: &ImplMetadataKind) -> bool {
+    match (item, metadata) {
+        (ImplKind::Inherent, ImplMetadataKind::Inherent) => true,
+        (
+            ImplKind::Trait {
+                trait_path: item_trait,
+            },
+            ImplMetadataKind::Trait {
+                trait_path: metadata_trait,
+            },
+        ) => item_trait == metadata_trait,
+        _ => false,
+    }
 }
 
 fn syntax_trait_item<'ast>(parsed: &'ast SourceFile, path: &[String]) -> Option<&'ast TraitItem> {
@@ -268,19 +284,55 @@ fn module_target_name(module_path: Option<&ModulePath>, path: &[String]) -> Stri
 
 fn method_symbol(
     module_path: Option<&ModulePath>,
-    trait_path: &[String],
+    impl_metadata: &ImplMetadata,
     target_type: &str,
     method: &str,
 ) -> String {
     let prefix = module_path
         .filter(|path| !path.segments().is_empty())
         .map_or_else(String::new, |path| format!("{}.", path.join()));
-    format!(
-        "{prefix}__impl.{}.for.{}.{}",
-        trait_path.join("::"),
-        target_type,
-        method
-    )
+    match &impl_metadata.kind {
+        ImplMetadataKind::Inherent => format!("{prefix}__impl.{}.{}", target_type, method),
+        ImplMetadataKind::Trait { trait_path } => {
+            format!(
+                "{prefix}__impl.{}.for.{}.{}",
+                trait_path.join("::"),
+                target_type,
+                method
+            )
+        }
+    }
+}
+
+fn stable_method_id(
+    module_path: Option<&ModulePath>,
+    impl_metadata: &ImplMetadata,
+    method_name: &str,
+) -> MethodId {
+    match &impl_metadata.kind {
+        ImplMetadataKind::Inherent => stable_inherent_method_id(
+            &target_owner_name(module_path, &impl_metadata.target_path),
+            method_name,
+        ),
+        ImplMetadataKind::Trait { trait_path } => stable_trait_method_id(
+            &trait_method_owner_name(module_path, trait_path),
+            method_name,
+        ),
+    }
+}
+
+fn target_owner_name(module_path: Option<&ModulePath>, target_path: &[String]) -> String {
+    if target_path.len() != 1 {
+        return target_path.join("::");
+    }
+    let Some(module_path) = module_path else {
+        return target_path[0].clone();
+    };
+    if module_path.segments().is_empty() {
+        target_path[0].clone()
+    } else {
+        format!("{}::{}", module_path.join(), target_path[0])
+    }
 }
 
 fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[String]) -> String {
@@ -303,4 +355,25 @@ fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
         trait_name,
         method_name,
     ))
+}
+
+fn stable_inherent_method_id(type_name: &str, method_name: &str) -> MethodId {
+    MethodId::new(vela_common::stable_id(
+        "inherent_method",
+        type_name,
+        method_name,
+    ))
+}
+
+trait ImplMetadataExt {
+    fn trait_path(&self) -> Option<&[String]>;
+}
+
+impl ImplMetadataExt for ImplMetadata {
+    fn trait_path(&self) -> Option<&[String]> {
+        match &self.kind {
+            ImplMetadataKind::Inherent => None,
+            ImplMetadataKind::Trait { trait_path } => Some(trait_path),
+        }
+    }
 }

@@ -423,7 +423,12 @@ impl Damageable for Player {
         Some(DeclarationKind::Impl)
     );
     let metadata = graph.impl_metadata(impl_decl).expect("impl metadata");
-    assert_eq!(metadata.trait_path, ["Damageable"]);
+    assert_eq!(
+        metadata.kind,
+        ImplMetadataKind::Trait {
+            trait_path: vec!["Damageable".to_owned()]
+        }
+    );
     assert_eq!(metadata.target_path, ["Player"]);
     assert_eq!(metadata.methods.len(), 1);
     let method = &metadata.methods[0];
@@ -460,6 +465,45 @@ impl Damageable for Player {
         Some("int")
     );
     assert!(bindings.expression_count() >= 3);
+}
+
+#[test]
+fn lowers_inherent_impl_metadata_and_method_bindings() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::combat",
+        r#"
+struct Player { level: int }
+impl Player {
+    fn bonus(self, amount: int) -> int {
+        let total: int = self.level + amount;
+        return total;
+    }
+}
+"#,
+    ));
+    let declarations = graph.module(module).expect("module declarations");
+    let impl_decl = declarations.get("impl Player").expect("impl declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let metadata = graph.impl_metadata(impl_decl).expect("impl metadata");
+    assert_eq!(metadata.kind, ImplMetadataKind::Inherent);
+    assert_eq!(metadata.target_path, ["Player"]);
+    assert_eq!(metadata.methods.len(), 1);
+    let method = &metadata.methods[0];
+    assert_eq!(method.name, "bonus");
+    assert_eq!(
+        method.signature.params[1]
+            .type_hint
+            .as_ref()
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("int")
+    );
+    let bindings = graph
+        .impl_method_bindings(method.node)
+        .expect("impl method bindings");
+    assert_eq!(bindings.locals_named("total").len(), 1);
 }
 
 #[test]

@@ -157,12 +157,17 @@ fn snapshot_file(file: &SourceFile) -> String {
                     .map(|method| method.function.name.as_str())
                     .collect::<Vec<_>>()
                     .join(", ");
-                writeln!(
-                    out,
-                    "impl {} for {}({methods})",
-                    impl_item.trait_path.join("::"),
-                    impl_item.target_path.join("::")
-                )
+                match &impl_item.kind {
+                    ImplKind::Inherent => {
+                        writeln!(out, "impl {}({methods})", impl_item.target_path.join("::"))
+                    }
+                    ImplKind::Trait { trait_path } => writeln!(
+                        out,
+                        "impl {} for {}({methods})",
+                        trait_path.join("::"),
+                        impl_item.target_path.join("::")
+                    ),
+                }
                 .expect("write syntax snapshot");
             }
         }

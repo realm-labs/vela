@@ -5,7 +5,8 @@ use vela_common::{Diagnostic, Span};
 use crate::binding::{BindingMap, LocalBindingKind};
 use crate::ids::{HirDeclId, ModuleId};
 use crate::type_hint::{
-    EnumShape, EnumVariantFieldsHint, FunctionSignature, HirTypeHint, ImplMetadata, StructShape,
+    EnumShape, EnumVariantFieldsHint, FunctionSignature, HirTypeHint, ImplMetadata,
+    ImplMetadataKind, StructShape,
 };
 
 use super::names::{candidate_distance, import_binding_name};
@@ -21,7 +22,35 @@ pub(super) fn validate_once(graph: &mut ModuleGraph) {
     for module in &graph.modules {
         diagnostics.extend(schema_reference_diagnostics_for_module(graph, module.id));
     }
+    diagnostics.extend(duplicate_script_method_diagnostics(graph));
     graph.diagnostics.extend(diagnostics);
+}
+
+fn duplicate_script_method_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
+    let mut methods: BTreeMap<(String, String), Span> = BTreeMap::new();
+    let mut diagnostics = Vec::new();
+    for declaration in graph.declarations.values() {
+        let Some(metadata) = graph.impl_metadata.get(&declaration.id) else {
+            continue;
+        };
+        let receiver = qualified_path_name(graph, declaration, &metadata.target_path);
+        for method in &metadata.methods {
+            let key = (receiver.clone(), method.name.clone());
+            if let Some(previous_span) = methods.insert(key, method.span) {
+                diagnostics.push(
+                    Diagnostic::error(format!(
+                        "duplicate script method `{}.{}`",
+                        receiver, method.name
+                    ))
+                    .with_code("hir::duplicate_script_method")
+                    .with_span(method.span)
+                    .with_label(previous_span, "previous method is here")
+                    .with_label(method.span, "duplicate method is here"),
+                );
+            }
+        }
+    }
+    diagnostics
 }
 
 fn schema_reference_diagnostics_for_module(
@@ -150,13 +179,15 @@ fn impl_schema_diagnostics(
     candidates: &[SchemaCandidate],
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
-    diagnostics.extend(schema_path_diagnostics(
-        &metadata.trait_path,
-        span,
-        candidates,
-        Some(&[DeclarationKind::Trait]),
-        "trait",
-    ));
+    if let ImplMetadataKind::Trait { trait_path } = &metadata.kind {
+        diagnostics.extend(schema_path_diagnostics(
+            trait_path,
+            span,
+            candidates,
+            Some(&[DeclarationKind::Trait]),
+            "trait",
+        ));
+    }
     diagnostics.extend(schema_path_diagnostics(
         &metadata.target_path,
         span,
@@ -273,6 +304,20 @@ fn insert_schema_candidate(
         kind: metadata.kind,
         span: metadata.span,
     });
+}
+
+fn qualified_path_name(graph: &ModuleGraph, owner: &super::Declaration, path: &[String]) -> String {
+    if path.len() != 1 {
+        return path.join("::");
+    }
+    let Some(module_path) = graph.module_path(owner.module) else {
+        return path[0].clone();
+    };
+    if module_path.segments().is_empty() {
+        path[0].clone()
+    } else {
+        format!("{}::{}", module_path.join(), path[0])
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

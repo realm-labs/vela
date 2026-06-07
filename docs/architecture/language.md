@@ -185,6 +185,7 @@ Traits are runtime capabilities or protocols, not Rust traits.
 Supported:
 
 ```text
+inherent impl methods on script types
 trait method declarations
 trait default methods
 host type implementations

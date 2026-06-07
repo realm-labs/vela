@@ -1,12 +1,12 @@
-use vela_common::{FieldId, MethodId, Span, TypeId, VariantId};
+use vela_common::{FieldId, HostMethodId, MethodId, Span, TypeId, VariantId};
 use vela_hir::attributes::{HirAttribute, schema_id_attr};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 
 use crate::modules::DeclOrigin;
 use crate::registry::{
-    FieldDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
-    TypeKind, TypeRegistry, VariantDesc,
+    FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
+    TypeKey, TypeKind, TypeRegistry, VariantDesc,
 };
 use crate::script_attrs::ReflectedScriptAttrs;
 
@@ -42,6 +42,9 @@ impl TypeRegistry {
                             ))
                         },
                     );
+                    for method in inherent_methods_for_type(graph, declaration) {
+                        desc = desc.method(method);
+                    }
                     apply_type_attrs(&mut desc, graph.declaration_attrs(declaration.id));
                     self.register(desc);
                 }
@@ -92,6 +95,9 @@ impl TypeRegistry {
                             desc.variant(variant_desc)
                         },
                     );
+                    for method in inherent_methods_for_type(graph, declaration) {
+                        desc = desc.method(method);
+                    }
                     apply_type_attrs(&mut desc, graph.declaration_attrs(declaration.id));
                     self.register(desc);
                 }
@@ -135,7 +141,10 @@ impl TypeRegistry {
             let Some(metadata) = graph.impl_metadata(declaration.id) else {
                 continue;
             };
-            let trait_name = qualified_path_name(graph, declaration, &metadata.trait_path);
+            let vela_hir::type_hint::ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+                continue;
+            };
+            let trait_name = qualified_path_name(graph, declaration, trait_path);
             let target_name = qualified_path_name(graph, declaration, &metadata.target_path);
             let trait_desc = self
                 .trait_by_name(&trait_name)
@@ -146,6 +155,36 @@ impl TypeRegistry {
             }
         }
     }
+}
+
+fn inherent_methods_for_type(
+    graph: &ModuleGraph,
+    type_declaration: &Declaration,
+) -> Vec<MethodDesc> {
+    let type_name = qualified_type_name(graph, type_declaration);
+    graph
+        .declarations()
+        .filter(|declaration| declaration.kind == DeclarationKind::Impl)
+        .filter_map(|declaration| {
+            let metadata = graph.impl_metadata(declaration.id)?;
+            (metadata.kind == vela_hir::type_hint::ImplMetadataKind::Inherent
+                && qualified_path_name(graph, declaration, &metadata.target_path) == type_name)
+                .then_some(metadata)
+        })
+        .flat_map(|metadata| {
+            metadata.methods.iter().map(|method| {
+                apply_method_signature(
+                    MethodDesc::new(
+                        stable_inherent_host_method_id(&type_name, &method.name),
+                        method.name.clone(),
+                    )
+                    .origin(DeclOrigin::Script)
+                    .source_span(method.span),
+                    &method.signature,
+                )
+            })
+        })
+        .collect()
 }
 
 fn apply_type_attrs(desc: &mut TypeDesc, attrs: &[vela_hir::attributes::HirAttribute]) {
@@ -214,6 +253,24 @@ fn apply_trait_method_signature(
     mut desc: TraitMethodDesc,
     signature: &vela_hir::type_hint::FunctionSignature,
 ) -> TraitMethodDesc {
+    for param in &signature.params {
+        let mut param_desc =
+            MethodParamDesc::new(param.name.clone()).defaulted(param.default_value_span.is_some());
+        if let Some(type_hint) = &param.type_hint {
+            param_desc = param_desc.type_hint(type_hint.display());
+        }
+        desc = desc.param(param_desc);
+    }
+    if let Some(return_type) = &signature.return_type {
+        desc = desc.return_type(return_type.display());
+    }
+    desc
+}
+
+fn apply_method_signature(
+    mut desc: MethodDesc,
+    signature: &vela_hir::type_hint::FunctionSignature,
+) -> MethodDesc {
     for param in &signature.params {
         let mut param_desc =
             MethodParamDesc::new(param.name.clone()).defaulted(param.default_value_span.is_some());
@@ -395,6 +452,14 @@ fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
     MethodId::new(vela_common::stable_id(
         "trait_method",
         trait_name,
+        method_name,
+    ))
+}
+
+fn stable_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMethodId {
+    HostMethodId::new(vela_common::stable_id(
+        "inherent_method",
+        type_name,
         method_name,
     ))
 }
@@ -750,6 +815,53 @@ enum QuestProgress {
 
         assert_ne!(original_reward.schema_hash, changed_reward.schema_hash);
         assert_ne!(original_progress.schema_hash, changed_progress.schema_hash);
+    }
+
+    #[test]
+    fn registers_inherent_script_methods_on_type_metadata() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game::combat"),
+            r#"
+struct Player { level: int }
+impl Player {
+    fn bonus(self, amount: int) -> int {
+        return self.level + amount;
+    }
+}
+"#,
+        ));
+        let mut registry = TypeRegistry::new();
+
+        registry.register_script_types(&graph);
+
+        let player = registry
+            .type_by_name("game::combat::Player")
+            .expect("Player type metadata");
+        assert_eq!(
+            player
+                .methods
+                .iter()
+                .map(|method| method.name.as_str())
+                .collect::<Vec<_>>(),
+            ["bonus"]
+        );
+        let method = &player.methods[0];
+        assert_eq!(
+            method.id,
+            stable_inherent_host_method_id("game::combat::Player", "bonus")
+        );
+        assert_eq!(method.origin, DeclOrigin::Script);
+        assert_eq!(method.return_type.as_deref(), Some("int"));
+        assert_eq!(
+            method
+                .params
+                .iter()
+                .map(|param| (param.name.as_str(), param.type_hint.as_deref()))
+                .collect::<Vec<_>>(),
+            [("self", None), ("amount", Some("int"))]
+        );
     }
 
     #[test]

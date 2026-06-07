@@ -1,5 +1,5 @@
 use super::*;
-use crate::ast::{BinaryOp, ExprKind, Literal, StmtKind};
+use crate::ast::{BinaryOp, ExprKind, ImplKind, Literal, StmtKind};
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, TokenKind};
 use std::fmt::Write as _;
