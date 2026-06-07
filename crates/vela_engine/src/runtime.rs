@@ -355,6 +355,23 @@ impl Runtime {
         persistent_value_to_owned(&value.value, &mut self.script_globals.heap)
     }
 
+    #[cfg(feature = "serde")]
+    pub fn from_value<T>(&self, value: &VelaValue) -> VmResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        self.check_vela_value_runtime(value)?;
+        vela_vm::serde::from_runtime_value(&value.value, &self.script_globals.heap)
+    }
+
+    #[cfg(feature = "serde")]
+    pub fn global_as<T>(&self, name: &str) -> VmResult<Option<T>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        self.script_globals.value_as(name)
+    }
+
     pub fn call_raw(
         &mut self,
         entry: &str,
@@ -913,6 +930,17 @@ impl RuntimeScriptGlobalStore {
             return Ok(None);
         };
         persistent_value_to_owned(&value, &mut self.heap).map(Some)
+    }
+
+    #[cfg(feature = "serde")]
+    pub fn value_as<T>(&self, name: &str) -> VmResult<Option<T>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let Some(value) = self.values.get(name) else {
+            return Ok(None);
+        };
+        vela_vm::serde::from_runtime_value(&value, &self.heap).map(Some)
     }
 
     pub fn update(&mut self, name: &str, update: impl FnOnce(&mut OwnedValue)) -> VmResult<()> {

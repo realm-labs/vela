@@ -129,7 +129,10 @@ materializing or copying the script aggregate, and can explicitly call
 belongs to the `Runtime` that created it; passing it to another runtime is a
 runtime type error. `VelaValue` is still script VM state, not Rust host state,
 and it does not expose real Rust references or place Rust objects under script
-GC.
+GC. With the `serde` feature enabled, `Runtime::from_value` deserializes a
+`VelaValue` directly from runtime `Value` plus heap state, so Rust can decode
+script-owned results into structs/enums/scalars without first constructing a
+detached `OwnedValue`.
 
 With the `serde` feature enabled, Rust structs and enums that implement serde
 traits can cross the ordinary script-owned value boundary explicitly through
@@ -235,8 +238,8 @@ the same runtime. Rust-side construction supports explicit constructors such as
 `OwnedValue::record`, convenience macros such as `owned_record!`, and serde
 struct/enum conversion. `VelaValue` insertion attaches the runtime-managed value
 as a global root without first materializing a detached `OwnedValue`. The other
-public runtime methods remain `set_global`, `global`, and `update_global`;
-host-object globals keep their explicit host-specific API.
+public runtime methods remain `set_global`, `global`, `global_as`, and
+`update_global`; host-object globals keep their explicit host-specific API.
 The VM receives script globals as a concrete runtime value map rather than an
 extension trait, because there is only one runtime-owned script global store.
 Declared globals compile to `GlobalSlot` operands for the runtime hot path;

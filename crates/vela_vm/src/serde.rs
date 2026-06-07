@@ -15,6 +15,9 @@ use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::owned_value::OwnedValue;
 use crate::script_object::ScriptFields;
 
+mod runtime_value;
+pub use runtime_value::from_runtime_value;
+
 const OPERATION: &str = "serde owned value conversion";
 
 #[derive(Debug)]

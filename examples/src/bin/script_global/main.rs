@@ -52,39 +52,29 @@ fn main() -> Result<(), Box<dyn Error>> {
         CallOptions::unbounded(),
     )?;
     runtime.insert_global(STATE_GLOBAL, state_snapshot)?;
-    let final_state = runtime
-        .global(STATE_GLOBAL)?
+    let final_state: ServerState = runtime
+        .global_as(STATE_GLOBAL)?
         .expect("state global should exist");
 
-    let first_tick = runtime.value_to_owned(&first_tick)?;
-    let second_tick = runtime.value_to_owned(&second_tick)?;
-    let state_name = runtime.value_to_owned(&state_name)?;
-    let tick_count = runtime.value_to_owned(&tick_count)?;
-    let projected_score = runtime.value_to_owned(&projected_score)?;
+    let first_tick: i64 = runtime.from_value(&first_tick)?;
+    let second_tick: i64 = runtime.from_value(&second_tick)?;
+    let state_name: String = runtime.from_value(&state_name)?;
+    let tick_count: i64 = runtime.from_value(&tick_count)?;
+    let projected_score: i64 = runtime.from_value(&projected_score)?;
 
-    assert_eq!(first_tick, OwnedValue::Int(9));
-    assert_eq!(second_tick, OwnedValue::Int(27));
-    assert_eq!(state_name, OwnedValue::String("rust-updated".to_owned()));
-    assert_eq!(tick_count, OwnedValue::Int(8));
-    assert_eq!(projected_score, OwnedValue::Int(31));
-    assert_eq!(final_state.field("level"), Some(&OwnedValue::Int(11)));
-    assert_eq!(final_state.field("total_gold"), Some(&OwnedValue::Int(8)));
-    assert_eq!(
-        final_state
-            .field("stats")
-            .and_then(|stats| stats.field("handled_ticks")),
-        Some(&OwnedValue::Int(8))
-    );
+    assert_eq!(first_tick, 9);
+    assert_eq!(second_tick, 27);
+    assert_eq!(state_name, "rust-updated");
+    assert_eq!(tick_count, 8);
+    assert_eq!(projected_score, 31);
+    assert_eq!(final_state.level, 11);
+    assert_eq!(final_state.total_gold, 8);
+    assert_eq!(final_state.stats.handled_ticks, 8);
 
     println!(
-        "script_global first={first_tick:?} second={second_tick:?} name={state_name:?} \
-         projected={projected_score:?} final_level={:?} final_gold={:?} ticks={tick_count:?}",
-        final_state
-            .field("level")
-            .expect("level field should exist"),
-        final_state
-            .field("total_gold")
-            .expect("total_gold field should exist")
+        "script_global first={first_tick} second={second_tick} name={state_name} \
+         projected={projected_score} final_level={} final_gold={} ticks={tick_count}",
+        final_state.level, final_state.total_gold
     );
 
     Ok(())

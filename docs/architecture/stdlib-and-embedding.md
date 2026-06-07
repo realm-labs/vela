@@ -249,11 +249,16 @@ let score = runtime.call_value(
     options,
 )?;
 let owned_score = runtime.value_to_owned(&score)?;
+let typed_score: Score = runtime.from_value(&score)?;
 ```
 
 `VelaValue` belongs to the `Runtime` that returned it. It can be cloned and
 passed back to calls on that same runtime; Rust calls `value_to_owned` only
-when it needs an owned, heap-detached value.
+when it needs an owned, heap-detached value. With the `serde` feature enabled,
+`Runtime::from_value` can deserialize a `VelaValue` directly from the runtime
+heap into a Rust struct, enum, or scalar without first materializing an
+`OwnedValue`. VM-managed globals have the same typed read surface through
+`Runtime::global_as`.
 
 ### Hot Reload
 

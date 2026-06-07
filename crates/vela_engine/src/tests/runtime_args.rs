@@ -465,20 +465,37 @@ fn read_name() {
         .insert_global("main::state", &state)
         .expect("serde global should insert through unified API");
 
-    let level = runtime
-        .call(
+    let level_value = runtime
+        .call_value(
             "bump",
             CallArgs::from_positional([OwnedValue::Int(4)]),
             CallOptions::unbounded(),
         )
         .expect("bump should run");
-    let name = runtime
-        .call("read_name", CallArgs::new(), CallOptions::unbounded())
+    let name_value = runtime
+        .call_value("read_name", CallArgs::new(), CallOptions::unbounded())
         .expect("read name should run");
+    let level: i64 = runtime
+        .from_value(&level_value)
+        .expect("level value should deserialize directly");
+    let name: String = runtime
+        .from_value(&name_value)
+        .expect("name value should deserialize directly");
+    let global: SerdeServerState = runtime
+        .global_as("main::state")
+        .expect("script global should deserialize directly")
+        .expect("script global should exist");
 
     assert_eq!(state.level, 5);
-    assert_eq!(level.into_value(), OwnedValue::Int(9));
-    assert_eq!(name.into_value(), OwnedValue::String("serde".to_owned()));
+    assert_eq!(level, 9);
+    assert_eq!(name, "serde");
+    assert_eq!(
+        global,
+        SerdeServerState {
+            level: 9,
+            name: "serde".to_owned()
+        }
+    );
 }
 
 #[test]

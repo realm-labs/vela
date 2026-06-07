@@ -186,7 +186,9 @@ For non-global script values returned from calls, Rust can choose
 `Runtime::call_value` to keep the returned aggregate as a runtime-managed
 `VelaValue`. That value can be passed back to later calls on the same runtime
 without `OwnedValue` materialization; explicit `value_to_owned` creates a
-detached Rust boundary copy when needed.
+detached Rust boundary copy when needed. With the `serde` feature enabled,
+`from_value` and `global_as` deserialize runtime-managed script values directly
+from the runtime heap without first constructing an `OwnedValue`.
 
 Globals do not reintroduce module-level `let` or mutable static
 initialization. A script function may construct a value and return it to Rust;
