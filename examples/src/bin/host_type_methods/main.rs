@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!(
         "script_result={:?} final_count={} score={} reward_calls={}",
-        output.value(),
+        runtime.value_to_owned(&output)?,
         player.gold_count(),
         scores.value(1001),
         rewards.grant_count() + player.reward_sink_grant_count()

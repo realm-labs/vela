@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -312,19 +311,9 @@ impl Runtime {
         entry: &str,
         args: CallArgs<'_>,
         options: CallOptions,
-    ) -> VmResult<CallOutput> {
-        let mut adapter = EmptyStateAdapter;
-        self.call_with_adapter(entry, args, options, &mut adapter)
-    }
-
-    pub fn call_value(
-        &mut self,
-        entry: &str,
-        args: CallArgs<'_>,
-        options: CallOptions,
     ) -> VmResult<VelaValue> {
         let mut adapter = EmptyStateAdapter;
-        self.call_value_with_adapter(entry, args, options, &mut adapter)
+        self.call_with_adapter(entry, args, options, &mut adapter)
     }
 
     pub fn call_with_adapter(
@@ -333,21 +322,9 @@ impl Runtime {
         mut args: CallArgs<'_>,
         options: CallOptions,
         adapter: &mut dyn ScriptStateAdapter,
-    ) -> VmResult<CallOutput> {
-        let mut access = HostAccess::new();
-        let value = self.call_args_raw(entry, &mut args, options, adapter, &mut access)?;
-        Ok(CallOutput { value })
-    }
-
-    pub fn call_value_with_adapter(
-        &mut self,
-        entry: &str,
-        mut args: CallArgs<'_>,
-        options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
     ) -> VmResult<VelaValue> {
         let mut access = HostAccess::new();
-        self.call_value_args_raw(entry, &mut args, options, adapter, &mut access)
+        self.call_runtime_args(entry, &mut args, options, adapter, &mut access)
     }
 
     pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
@@ -428,7 +405,7 @@ impl Runtime {
         self.call_raw(entry, &resolved, options, &mut adapter, access)
     }
 
-    pub fn call_value_args_raw(
+    fn call_runtime_args(
         &mut self,
         entry: &str,
         args: &mut CallArgs<'_>,
@@ -437,7 +414,7 @@ impl Runtime {
         access: &mut HostAccess,
     ) -> VmResult<VelaValue> {
         let mut budget = options.budget();
-        let resolved = self.resolve_call_value_args(entry, args, &mut budget)?;
+        let resolved = self.resolve_call_runtime_args(entry, args, &mut budget)?;
         let mut adapter = CallArgsAdapter::new(args, adapter);
         let mut adapter = GlobalStoreAdapter {
             globals: &mut self.globals,
@@ -507,7 +484,7 @@ impl Runtime {
         args.resolve(entry, &code.params, &code.param_defaults)
     }
 
-    fn resolve_call_value_args(
+    fn resolve_call_runtime_args(
         &mut self,
         entry: &str,
         args: &CallArgs<'_>,
@@ -569,42 +546,6 @@ impl Runtime {
             *program = version.to_program();
         }
         Some(report)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct CallOutput {
-    value: OwnedValue,
-}
-
-impl CallOutput {
-    #[must_use]
-    pub const fn new(value: OwnedValue) -> Self {
-        Self { value }
-    }
-
-    #[must_use]
-    pub const fn value(&self) -> &OwnedValue {
-        &self.value
-    }
-
-    #[must_use]
-    pub fn into_value(self) -> OwnedValue {
-        self.value
-    }
-}
-
-impl Deref for CallOutput {
-    type Target = OwnedValue;
-
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-
-impl AsRef<OwnedValue> for CallOutput {
-    fn as_ref(&self) -> &OwnedValue {
-        &self.value
     }
 }
 

@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let args = CallArgs::new().with_serde_value("event", &event)?;
     let output = runtime.call("handle_damage", args, CallOptions::unbounded())?;
-    let result: DamageResult = from_owned_value(output.value())?;
+    let result: DamageResult = runtime.from_value(&output)?;
 
     assert_eq!(event.amount, 9);
     assert_eq!(

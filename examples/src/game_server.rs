@@ -121,7 +121,8 @@ fn run_script_with_options(path: &Path, options: DemoRunOptions) -> Result<(), B
             &mut host_state.adapter,
         )
         .map_err(|error| crate::diagnostics::render_vm_error(path, &error))?;
-    host_state.print_result(output.into_value())
+    let output = runtime.value_to_owned(&output)?;
+    host_state.print_result(output)
 }
 
 pub fn hot_reload_engine() -> EngineResult<Engine> {

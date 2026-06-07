@@ -399,7 +399,7 @@ impl CallArg<'_> {
             Self::Positional(value) | Self::Named { value, .. } => Ok(value.clone()),
             Self::NamedHost { host_ref, .. } => Ok(OwnedValue::HostRef(*host_ref)),
             Self::PositionalValue(_) | Self::NamedValue { .. } => Err(call_args_type_error(
-                "runtime VelaValue arguments require Runtime::call_value",
+                "runtime VelaValue arguments require Runtime::call",
             )),
         }
     }

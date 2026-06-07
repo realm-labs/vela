@@ -182,13 +182,13 @@ VM-managed script objects, not Rust host state and not `HostRef` roots. Runtime
 global roots are retained across calls and included in GC roots during calls.
 Missing runtime instances are runtime errors.
 
-For non-global script values returned from calls, Rust can choose
-`Runtime::call_value` to keep the returned aggregate as a runtime-managed
-`VelaValue`. That value can be passed back to later calls on the same runtime
-without `OwnedValue` materialization; explicit `value_to_owned` creates a
-detached Rust boundary copy when needed. With the `serde` feature enabled,
-`from_value` and `global_as` deserialize runtime-managed script values directly
-from the runtime heap without first constructing an `OwnedValue`.
+For non-global script values returned from calls, `Runtime::call` returns a
+runtime-managed `VelaValue`. That value can be passed back to later calls on
+the same runtime without `OwnedValue` materialization; explicit
+`value_to_owned` creates a detached Rust boundary copy when needed. With the
+`serde` feature enabled, `from_value` and `global_as` deserialize
+runtime-managed script values directly from the runtime heap without first
+constructing an `OwnedValue`.
 
 Globals do not reintroduce module-level `let` or mutable static
 initialization. A script function may construct a value and return it to Rust;
@@ -263,9 +263,10 @@ mutate aliases inside the same call; they still never receive real `&T` or
 handle whose mutations write through immediately through `HostAccess`. Hosts that
 already store state behind their own adapter should pass existing handles with
 `with_host_handle` and use `runtime.call_with_adapter` with that adapter.
-The high-level direct call result dereferences to the returned `OwnedValue`;
-hosts that need diagnostics should derive them from their own adapter or
-domain-level instrumentation.
+The high-level direct call result is a runtime-managed `VelaValue`; hosts
+materialize it only when they need a detached Rust boundary value. Hosts that
+need diagnostics should derive them from their own adapter or domain-level
+instrumentation.
 
 ## Rust Host Macros
 

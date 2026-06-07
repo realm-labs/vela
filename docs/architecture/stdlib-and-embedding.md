@@ -196,8 +196,10 @@ state adapter can pass an existing low-level handle with
 `CallArgs::with_host_handle("name", host_ref)` and call
 `runtime.call_with_adapter` with that adapter.
 
-`call` returns `CallOutput`, which dereferences to the returned
-`OwnedValue` for ordinary use. Most call sites do not need to construct or pass
+`call` returns a runtime-managed `VelaValue`. Hosts can pass it back to later
+calls without materializing a detached copy, decode it with `from_value` when
+the `serde` feature is enabled, or explicitly call `value_to_owned` when Rust
+needs an owned boundary value. Most call sites do not need to construct or pass
 a `HostAccess` explicitly.
 
 With the `serde` feature enabled, hosts can pass ordinary Rust data as
@@ -211,7 +213,7 @@ struct DamageEvent {
 
 let args = CallArgs::new().with_serde_value("event", &event)?;
 let output = runtime.call("handle_damage", args, CallOptions::unbounded())?;
-let result: DamageResult = from_owned_value(output.value())?;
+let result: DamageResult = runtime.from_value(&output)?;
 ```
 
 Serde struct values become Vela records so scripts can use dot field access.
@@ -237,13 +239,12 @@ serialized into script-owned records/enums, and a `VelaValue` from the same
 runtime is attached as a global root without first materializing an
 `OwnedValue`.
 
-When the host wants to keep a returned script aggregate under VM management and
-pass it back to another script call without materializing a detached copy, it
-uses `Runtime::call_value`:
+Returned script aggregates stay under VM management by default and can be
+passed back to another script call without materializing a detached copy:
 
 ```rust
-let reward = runtime.call_value("make_reward", CallArgs::new(), options)?;
-let score = runtime.call_value(
+let reward = runtime.call("make_reward", CallArgs::new(), options)?;
+let score = runtime.call(
     "score_reward",
     CallArgs::new().with_vela_value(reward.clone()),
     options,

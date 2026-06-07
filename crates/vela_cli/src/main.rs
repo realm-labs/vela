@@ -49,6 +49,6 @@ fn run_script(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
             CallOptions::new(10_000, 1024 * 1024, 64),
         )
         .map_err(|error| diagnostics::render_vm_error(path, &error))?;
-    println!("{:?}", output.value());
+    println!("{:?}", runtime.value_to_owned(&output)?);
     Ok(())
 }

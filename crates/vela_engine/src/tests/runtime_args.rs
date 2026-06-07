@@ -254,7 +254,7 @@ fn main() {
         .expect("runtime call should run");
 
     assert_eq!(runtime.host_global_ref("main::state"), Some(global));
-    assert_eq!(result.into_value(), OwnedValue::Int(11));
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Int(11)));
 }
 
 #[test]
@@ -292,7 +292,7 @@ fn main() {
         )
         .expect("runtime call should run");
 
-    assert_eq!(result.into_value(), OwnedValue::Int(9));
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Int(9)));
     assert_eq!(fallback.global_ref_by_slot_calls.get(), 0);
     assert_eq!(fallback.global_ref_calls.get(), 0);
 }
@@ -362,8 +362,7 @@ fn read_name() {
 
     let state = runtime
         .call("make_state", CallArgs::new(), CallOptions::unbounded())
-        .expect("factory should run")
-        .into_value();
+        .expect("factory should run");
     runtime
         .insert_global("main::state", state)
         .expect("script global should insert");
@@ -383,8 +382,8 @@ fn read_name() {
         )
         .expect("second bump should run");
 
-    assert_eq!(first.into_value(), OwnedValue::Int(7));
-    assert_eq!(second.into_value(), OwnedValue::Int(10));
+    assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Int(7)));
+    assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Int(10)));
     assert_eq!(
         script_record_field(
             &runtime
@@ -418,8 +417,14 @@ fn read_name() {
         .call("read_name", CallArgs::new(), CallOptions::unbounded())
         .expect("read name should run");
 
-    assert_eq!(after_rust_update.into_value(), OwnedValue::Int(41));
-    assert_eq!(name.into_value(), OwnedValue::String("boot".to_owned()));
+    assert_eq!(
+        runtime.value_to_owned(&after_rust_update),
+        Ok(OwnedValue::Int(41))
+    );
+    assert_eq!(
+        runtime.value_to_owned(&name),
+        Ok(OwnedValue::String("boot".to_owned()))
+    );
 }
 
 #[cfg(feature = "serde")]
@@ -466,14 +471,14 @@ fn read_name() {
         .expect("serde global should insert through unified API");
 
     let level_value = runtime
-        .call_value(
+        .call(
             "bump",
             CallArgs::from_positional([OwnedValue::Int(4)]),
             CallOptions::unbounded(),
         )
         .expect("bump should run");
     let name_value = runtime
-        .call_value("read_name", CallArgs::new(), CallOptions::unbounded())
+        .call("read_name", CallArgs::new(), CallOptions::unbounded())
         .expect("read name should run");
     let level: i64 = runtime
         .from_value(&level_value)
@@ -525,7 +530,7 @@ fn read_level() {
     let mut runtime = Runtime::new(engine, program);
 
     let state = runtime
-        .call_value("make_state", CallArgs::new(), CallOptions::unbounded())
+        .call("make_state", CallArgs::new(), CallOptions::unbounded())
         .expect("factory should return runtime-managed value");
     runtime
         .insert_global("main::state", state)
@@ -534,11 +539,11 @@ fn read_level() {
     let level = runtime
         .call("read_level", CallArgs::new(), CallOptions::unbounded())
         .expect("read level should run");
-    assert_eq!(level.into_value(), OwnedValue::Int(11));
+    assert_eq!(runtime.value_to_owned(&level), Ok(OwnedValue::Int(11)));
 }
 
 #[test]
-fn runtime_call_value_returns_runtime_managed_value_that_can_be_passed_back() {
+fn runtime_call_returns_runtime_managed_value_that_can_be_passed_back() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = compile_program_source_with_options(
         SourceId::new(1),
@@ -562,10 +567,10 @@ fn reward_score(reward, bonus) {
     let mut runtime = Runtime::new(engine, program);
 
     let reward = runtime
-        .call_value("make_reward", CallArgs::new(), CallOptions::unbounded())
+        .call("make_reward", CallArgs::new(), CallOptions::unbounded())
         .expect("reward should be returned as runtime value");
     let score = runtime
-        .call_value(
+        .call(
             "reward_score",
             CallArgs::new()
                 .with_vela_value(reward.clone())
@@ -587,7 +592,7 @@ fn reward_score(reward, bonus) {
 }
 
 #[test]
-fn runtime_call_value_rejects_values_from_another_runtime() {
+fn runtime_call_rejects_values_from_another_runtime() {
     let engine = Engine::builder().build().expect("engine should build");
     let source = r#"
 struct Reward {
@@ -612,10 +617,10 @@ fn read_reward(reward) {
     let mut runtime_b = Runtime::new(engine, program_b);
 
     let reward = runtime_a
-        .call_value("make_reward", CallArgs::new(), CallOptions::unbounded())
+        .call("make_reward", CallArgs::new(), CallOptions::unbounded())
         .expect("runtime value should be created");
     let error = runtime_b
-        .call_value(
+        .call(
             "read_reward",
             CallArgs::new().with_vela_value(reward),
             CallOptions::unbounded(),
@@ -788,7 +793,7 @@ fn main(player: Player, amount) {
         )
         .expect("runtime direct host args should run");
 
-    assert_eq!(&*output, &OwnedValue::Int(13));
+    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(13)));
     assert_eq!(player.level, 13);
 }
 
@@ -823,7 +828,7 @@ fn main(player: Player, amount) {
         )
         .expect("runtime direct map path should run");
 
-    assert_eq!(&*output, &OwnedValue::Int(7));
+    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(7)));
     assert_eq!(player.inventory.get("gold"), Some(&7));
 }
 
@@ -856,13 +861,13 @@ fn main(player: Player) {
         )
         .expect("runtime direct host methods should run");
 
-    assert_eq!(&*output, &OwnedValue::Int(16));
+    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(16)));
     assert_eq!(player.level, 11);
     assert_eq!(player.inventory.get("gold"), Some(&5));
 }
 
 #[test]
-fn runtime_call_returns_value_like_output() {
+fn runtime_call_returns_runtime_value() {
     let engine = Engine::builder()
         .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
@@ -891,7 +896,7 @@ fn main(player: Player, amount) {
         )
         .expect("runtime direct call should run");
 
-    assert_eq!(&*output, &OwnedValue::Int(13));
+    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Int(13)));
     assert_eq!(player.level, 13);
 }
 

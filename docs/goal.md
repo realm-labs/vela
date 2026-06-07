@@ -994,7 +994,7 @@ fn invoice_payment_updates_account_through_host_access() {
 
     assert_eq!(state.account(account).balance, 110);
     assert_eq!(state.account(account).status, "preferred");
-    assert_eq!(*output, OwnedValue::Int(110));
+    assert_eq!(runtime.value_to_owned(&output).unwrap(), OwnedValue::Int(110));
 }
 ```
 

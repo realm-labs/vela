@@ -17,8 +17,7 @@ pub use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 pub use crate::runtime::{
-    CallArgs, CallOptions, CallOutput, EventCallSafePointReport, IntoGlobalValue, Runtime,
-    VelaValue,
+    CallArgs, CallOptions, EventCallSafePointReport, IntoGlobalValue, Runtime, VelaValue,
 };
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};

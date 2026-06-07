@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     runtime.insert_global(STATE_GLOBAL, &initial_state)?;
 
-    let first_tick = runtime.call_value(
+    let first_tick = runtime.call(
         "handle_tick",
         CallArgs::from_positional([OwnedValue::Int(2), OwnedValue::Int(5)]),
         CallOptions::unbounded(),
@@ -35,16 +35,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     runtime.set_global(STATE_GLOBAL, &rust_updated_state)?;
 
-    let second_tick = runtime.call_value(
+    let second_tick = runtime.call(
         "handle_tick",
         CallArgs::from_positional([OwnedValue::Int(1), OwnedValue::Int(3)]),
         CallOptions::unbounded(),
     )?;
-    let state_name = runtime.call_value("state_name", CallArgs::new(), CallOptions::unbounded())?;
-    let tick_count = runtime.call_value("tick_count", CallArgs::new(), CallOptions::unbounded())?;
+    let state_name = runtime.call("state_name", CallArgs::new(), CallOptions::unbounded())?;
+    let tick_count = runtime.call("tick_count", CallArgs::new(), CallOptions::unbounded())?;
     let state_snapshot =
-        runtime.call_value("snapshot_state", CallArgs::new(), CallOptions::unbounded())?;
-    let projected_score = runtime.call_value(
+        runtime.call("snapshot_state", CallArgs::new(), CallOptions::unbounded())?;
+    let projected_score = runtime.call(
         "projected_score",
         CallArgs::new()
             .with_vela_value(state_snapshot.clone())

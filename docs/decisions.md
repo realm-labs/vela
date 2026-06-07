@@ -107,9 +107,11 @@ convenience modules may expose `OwnedValue` when it is part of normal host
 ergonomics, but internal runtime slot types should remain under their owning VM
 modules.
 
-Engine embedding APIs, including `Runtime::call`, `args!`, prelude exports,
-registered native functions, typed native conversion traits, and callable native
-methods, use `OwnedValue` at the ordinary Rust boundary. VM execution frames,
+Engine embedding APIs use explicit boundary types. `CallArgs`, `args!`,
+prelude exports, registered native functions, typed native conversion traits,
+and callable native methods use `OwnedValue` when values cross as detached Rust
+data. `Runtime::call` returns a runtime-managed `VelaValue` so hosts can keep
+script aggregates on the persistent VM heap by default. VM execution frames,
 closures, iterators, heap containers, and internal method dispatch use runtime
 `Value`; the engine installs explicit conversion bridges when registering
 native functions into a VM. Public VM program entrypoints use `OwnedValue`;
@@ -120,10 +122,9 @@ temporary script heap and materialize the return before dropping that heap, so
 they do not depend on `Value` retaining owned aggregate variants as a boundary
 representation.
 
-Runtime embedding has two return-value surfaces. `Runtime::call` is the common
-API and returns a materialized `CallOutput`/`OwnedValue`. `Runtime::call_value`
+Runtime embedding has one high-level return-value surface. `Runtime::call`
 returns a runtime-managed `VelaValue` pinned as a persistent runtime heap root.
-Hosts can pass a `VelaValue` back into later calls on the same `Runtime` without
+Hosts can pass that value back into later calls on the same `Runtime` without
 materializing or copying the script aggregate, and can explicitly call
 `value_to_owned` when Rust needs a detached representation. A `VelaValue`
 belongs to the `Runtime` that created it; passing it to another runtime is a
@@ -215,11 +216,11 @@ wrappers such as `TypedHostRef<T>` and `TypedHostMut<T>`, which store
 `HostPath` only and never expose Rust references to scripts.
 
 High-level embedding calls construct `HostAccess` internally and return a
-`CallOutput` that dereferences to the script return `OwnedValue`. Host mutation
-counting is not part of the default host boundary; hosts that need diagnostics
-should instrument their adapter or domain operations directly.
+runtime-managed `VelaValue`. Host mutation counting is not part of the default
+host boundary; hosts that need diagnostics should instrument their adapter or
+domain operations directly.
 The shortest runtime method name, `Runtime::call`, is reserved for this common
-high-level `CallArgs -> CallOutput` path. Lower-level entrypoints that expose
+high-level `CallArgs -> VelaValue` path. Lower-level entrypoints that expose
 adapter or `HostAccess` internals use explicit names such as `call_with_adapter`,
 `call_raw`, and `call_args_raw`.
 

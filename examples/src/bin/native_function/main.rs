@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!(
         "native_function_result={:?} final_level={}",
-        output.value(),
+        runtime.value_to_owned(&output)?,
         player.level
     );
     Ok(())

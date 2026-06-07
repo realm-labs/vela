@@ -16,6 +16,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         CallOptions::new(10_000, 1024 * 1024, 64),
     )?;
 
-    println!("module_result={:?}", output.value());
+    println!("module_result={:?}", runtime.value_to_owned(&output)?);
     Ok(())
 }
