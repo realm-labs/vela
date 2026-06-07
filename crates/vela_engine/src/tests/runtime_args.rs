@@ -255,7 +255,7 @@ fn read_name() {
         .expect("factory should run")
         .into_value();
     runtime
-        .insert_script_global("main::state", state)
+        .insert_global("main::state", state)
         .expect("script global should insert");
 
     let first = runtime
@@ -278,7 +278,7 @@ fn read_name() {
     assert_eq!(
         script_record_field(
             &runtime
-                .script_global("main::state")
+                .global("main::state")
                 .expect("script global should materialize")
                 .expect("script global should exist"),
             "level",
@@ -287,7 +287,7 @@ fn read_name() {
     );
 
     runtime
-        .update_script_global("main::state", |value| {
+        .update_global("main::state", |value| {
             let OwnedValue::Record { fields, .. } = value else {
                 panic!("state should remain a record");
             };

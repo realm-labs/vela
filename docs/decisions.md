@@ -202,9 +202,11 @@ script-value globals use the same declaration surface but are stored as
 persistent VM heap roots owned by `Runtime`; Rust constructs, reads, replaces,
 or updates them through `OwnedValue` APIs. Rust-side construction supports both
 explicit constructors such as `OwnedValue::record` and convenience macros such
-as `owned_record!` for nested heterogeneous values. There is no special
-`global.vela` file, top-level mutable initialization, or script-owned Rust
-state under GC.
+as `owned_record!` for nested heterogeneous values. The public runtime methods
+use short embedding names such as `insert_global`, `set_global`, `global`, and
+`update_global`; host-object globals keep their explicit host-specific API.
+There is no special `global.vela` file, top-level mutable initialization, or
+script-owned Rust state under GC.
 
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy

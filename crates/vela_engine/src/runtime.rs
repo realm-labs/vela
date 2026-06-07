@@ -87,7 +87,7 @@ impl Runtime {
         self.globals.borrow().host_ref(name)
     }
 
-    pub fn insert_script_global(
+    pub fn insert_global(
         &mut self,
         name: impl Into<String>,
         value: impl Into<OwnedValue>,
@@ -95,19 +95,19 @@ impl Runtime {
         self.script_globals.insert(name, value.into())
     }
 
-    pub fn set_script_global(
+    pub fn set_global(
         &mut self,
         name: impl Into<String>,
         value: impl Into<OwnedValue>,
     ) -> VmResult<()> {
-        self.insert_script_global(name, value)
+        self.insert_global(name, value)
     }
 
-    pub fn script_global(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
+    pub fn global(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
         self.script_globals.value(name)
     }
 
-    pub fn update_script_global(
+    pub fn update_global(
         &mut self,
         name: &str,
         update: impl FnOnce(&mut OwnedValue),

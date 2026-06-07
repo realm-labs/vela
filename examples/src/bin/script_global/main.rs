@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             ),
         ],
     );
-    runtime.insert_script_global(STATE_GLOBAL, initial_state)?;
+    runtime.insert_global(STATE_GLOBAL, initial_state)?;
 
     let first_tick = runtime
         .call(
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         )?
         .into_value();
 
-    runtime.set_script_global(
+    runtime.set_global(
         STATE_GLOBAL,
         owned_record!("ServerState", {
             "level" => 10,
@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .call("tick_count", CallArgs::new(), CallOptions::unbounded())?
         .into_value();
     let final_state = runtime
-        .script_global(STATE_GLOBAL)?
+        .global(STATE_GLOBAL)?
         .expect("state global should exist");
 
     assert_eq!(first_tick, OwnedValue::Int(9));
