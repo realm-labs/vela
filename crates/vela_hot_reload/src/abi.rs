@@ -252,6 +252,8 @@ impl FunctionAbi {
                 function.effects.emits_events,
                 function.effects.reads_time,
                 function.effects.uses_random,
+                function.effects.reads_io,
+                function.effects.writes_io,
                 function.effects.reads_reflection,
                 function.effects.writes_reflection,
                 function.effects.calls_reflection,
@@ -520,6 +522,8 @@ impl MethodAbi {
                 method.effects.emits_events,
                 method.effects.reads_time,
                 method.effects.uses_random,
+                method.effects.reads_io,
+                method.effects.writes_io,
                 method.effects.reads_reflection,
                 method.effects.writes_reflection,
                 method.effects.calls_reflection,
@@ -796,6 +800,8 @@ pub struct EffectAbi {
     pub emits_events: bool,
     pub reads_time: bool,
     pub uses_random: bool,
+    pub reads_io: bool,
+    pub writes_io: bool,
     pub reads_reflection: bool,
     pub writes_reflection: bool,
     pub calls_reflection: bool,
@@ -804,32 +810,44 @@ pub struct EffectAbi {
 impl EffectAbi {
     #[must_use]
     pub const fn pure() -> Self {
-        Self::new(false, false, false, false, false, false, false, false)
+        Self::new(
+            false, false, false, false, false, false, false, false, false, false,
+        )
     }
 
     #[must_use]
     pub const fn host_read() -> Self {
-        Self::new(true, false, false, false, false, false, false, false)
+        Self::new(
+            true, false, false, false, false, false, false, false, false, false,
+        )
     }
 
     #[must_use]
     pub const fn host_write() -> Self {
-        Self::new(true, true, false, false, false, false, false, false)
+        Self::new(
+            true, true, false, false, false, false, false, false, false, false,
+        )
     }
 
     #[must_use]
     pub const fn event_emit() -> Self {
-        Self::new(false, false, true, false, false, false, false, false)
+        Self::new(
+            false, false, true, false, false, false, false, false, false, false,
+        )
     }
 
     #[must_use]
     pub const fn time() -> Self {
-        Self::new(false, false, false, true, false, false, false, false)
+        Self::new(
+            false, false, false, true, false, false, false, false, false, false,
+        )
     }
 
     #[must_use]
     pub const fn random() -> Self {
-        Self::new(false, false, false, false, true, false, false, false)
+        Self::new(
+            false, false, false, false, true, false, false, false, false, false,
+        )
     }
 
     #[must_use]
@@ -840,6 +858,8 @@ impl EffectAbi {
         emits_events: bool,
         reads_time: bool,
         uses_random: bool,
+        reads_io: bool,
+        writes_io: bool,
         reads_reflection: bool,
         writes_reflection: bool,
         calls_reflection: bool,
@@ -850,6 +870,8 @@ impl EffectAbi {
             emits_events,
             reads_time,
             uses_random,
+            reads_io,
+            writes_io,
             reads_reflection,
             writes_reflection,
             calls_reflection,

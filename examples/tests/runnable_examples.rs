@@ -68,6 +68,10 @@ fn game_server_examples_run() {
             "native_function_result=Int(45) final_level=16\n",
         ),
         (
+            env!("CARGO_BIN_EXE_io_stdlib"),
+            "hello from fs\nio_stdlib len=Int(13) output=done\n",
+        ),
+        (
             env!("CARGO_BIN_EXE_script_global"),
             "script_global first=9 second=27 name=rust-updated \
              projected=31 final_level=11 final_gold=8 ticks=8\n",

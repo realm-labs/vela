@@ -5,18 +5,22 @@ pub enum Capability {
     EventEmit,
     Time,
     Random,
+    IoRead,
+    IoWrite,
     ReflectionRead,
     ReflectionWrite,
     ReflectionCall,
 }
 
 impl Capability {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::HostRead,
         Self::HostWrite,
         Self::EventEmit,
         Self::Time,
         Self::Random,
+        Self::IoRead,
+        Self::IoWrite,
         Self::ReflectionRead,
         Self::ReflectionWrite,
         Self::ReflectionCall,
@@ -30,6 +34,8 @@ impl Capability {
             Self::EventEmit => "event_emit",
             Self::Time => "time",
             Self::Random => "random",
+            Self::IoRead => "io_read",
+            Self::IoWrite => "io_write",
             Self::ReflectionRead => "reflection_read",
             Self::ReflectionWrite => "reflection_write",
             Self::ReflectionCall => "reflection_call",

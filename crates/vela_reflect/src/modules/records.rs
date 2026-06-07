@@ -89,6 +89,8 @@ fn function_effects_record(desc: &FunctionDesc) -> ReflectValue {
                 "uses_random".to_owned(),
                 bool_value(desc.effects.uses_random),
             ),
+            ("reads_io".to_owned(), bool_value(desc.effects.reads_io)),
+            ("writes_io".to_owned(), bool_value(desc.effects.writes_io)),
             (
                 "reads_reflection".to_owned(),
                 bool_value(desc.effects.reads_reflection),

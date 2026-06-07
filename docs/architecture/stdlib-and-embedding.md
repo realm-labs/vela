@@ -131,6 +131,34 @@ time::tick()
 time::elapsed_since(start)
 ```
 
+### IO And Filesystem
+
+I/O is not part of the always-on VM standard natives. Embedders opt in through
+engine registration and capabilities:
+
+```rust
+let engine = Engine::builder()
+    .with_standard_natives()
+    .capability(Capability::IoRead)
+    .capability(Capability::IoWrite)
+    .with_stdio()
+    .with_fs_io("scripts/data")
+    .build()?;
+```
+
+The minimal I/O surface is:
+
+```text
+io::println(value)              -> Result::Ok(null) | Result::Err(IoError)
+fs::read_to_string(path)        -> Result::Ok(string) | Result::Err(IoError)
+fs::write_string(path, text)    -> Result::Ok(null) | Result::Err(IoError)
+```
+
+`fs::*` paths are resolved relative to the configured sandbox root. Absolute
+paths and parent-directory escapes are rejected. Runtime permission denial,
+type mismatch, and budget exhaustion remain VM diagnostics; ordinary filesystem
+failures are script-visible `Result::Err(IoError)` values.
+
 ## Embedding API
 
 ### Engine

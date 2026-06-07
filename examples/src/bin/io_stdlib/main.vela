@@ -1,0 +1,6 @@
+fn main() {
+    let input = result::unwrap_or(fs::read_to_string("input.txt"), "missing");
+    io::println(input);
+    fs::write_string("output.txt", "done");
+    return input.len();
+}

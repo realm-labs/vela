@@ -66,8 +66,9 @@ Cranelift JIT.
   attributes, permissions, controlled reads/writes/calls, and candidate spans.
 - Standard library runtime and analysis coverage for arrays, maps, sets,
   strings, Option/Result helpers and propagation, math, deterministic time,
-  context event/log helpers, controlled random capability gating, lambda TypeFacts, and
-  domain-neutral helpers.
+  context event/log helpers, controlled random capability gating, opt-in
+  stdio and sandboxed filesystem helpers with `io_read`/`io_write`
+  capability gating, lambda TypeFacts, and domain-neutral helpers.
 - Engine registration for host types, native functions, context helpers,
   standard natives, capability profiles, reflection permissions, compiler options, dynamic
   `CallArgs`, direct call-boundary `&T`/`&mut T` host object bindings,
@@ -102,7 +103,8 @@ Cranelift JIT.
   receiver method calls, and typed host path arguments. A standalone script
   global example covers VM-owned global initialization, script mutation, Rust
   `OwnedValue` constructor/macro updates, and later script reads of the same
-  persistent value.
+  persistent value. A standalone I/O stdlib example covers stdout plus
+  sandboxed file read/write.
 - A parser fuzz target exists under `fuzz/` and can be compile-checked even
   when the local machine has not installed `cargo-fuzz`.
 - Current benchmark rules, baseline summaries, and M19 exit conclusions live in

@@ -99,6 +99,8 @@ pub struct EffectSet {
     pub emits_events: bool,
     pub reads_time: bool,
     pub uses_random: bool,
+    pub reads_io: bool,
+    pub writes_io: bool,
     pub reads_reflection: bool,
     pub writes_reflection: bool,
     pub calls_reflection: bool,
@@ -113,6 +115,8 @@ impl EffectSet {
             emits_events: false,
             reads_time: false,
             uses_random: false,
+            reads_io: false,
+            writes_io: false,
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
@@ -127,6 +131,8 @@ impl EffectSet {
             emits_events: false,
             reads_time: false,
             uses_random: false,
+            reads_io: false,
+            writes_io: false,
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
@@ -141,6 +147,8 @@ impl EffectSet {
             emits_events: false,
             reads_time: false,
             uses_random: false,
+            reads_io: false,
+            writes_io: false,
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
@@ -155,6 +163,8 @@ impl EffectSet {
             emits_events: true,
             reads_time: false,
             uses_random: false,
+            reads_io: false,
+            writes_io: false,
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
@@ -169,6 +179,8 @@ impl EffectSet {
             emits_events: false,
             reads_time: true,
             uses_random: false,
+            reads_io: false,
+            writes_io: false,
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
@@ -183,6 +195,40 @@ impl EffectSet {
             emits_events: false,
             reads_time: false,
             uses_random: true,
+            reads_io: false,
+            writes_io: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn io_read() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_io: true,
+            writes_io: false,
+            reads_reflection: false,
+            writes_reflection: false,
+            calls_reflection: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn io_write() -> Self {
+        Self {
+            reads_host: false,
+            writes_host: false,
+            emits_events: false,
+            reads_time: false,
+            uses_random: false,
+            reads_io: false,
+            writes_io: true,
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
@@ -196,6 +242,8 @@ impl EffectSet {
             (self.emits_events, Capability::EventEmit),
             (self.reads_time, Capability::Time),
             (self.uses_random, Capability::Random),
+            (self.reads_io, Capability::IoRead),
+            (self.writes_io, Capability::IoWrite),
             (self.reads_reflection, Capability::ReflectionRead),
             (self.writes_reflection, Capability::ReflectionWrite),
             (self.calls_reflection, Capability::ReflectionCall),

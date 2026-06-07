@@ -252,6 +252,8 @@ fn effect_set_record(effects: &MethodEffectSet) -> ReflectValue {
             ("emits_events".to_owned(), bool_value(effects.emits_events)),
             ("reads_time".to_owned(), bool_value(effects.reads_time)),
             ("uses_random".to_owned(), bool_value(effects.uses_random)),
+            ("reads_io".to_owned(), bool_value(effects.reads_io)),
+            ("writes_io".to_owned(), bool_value(effects.writes_io)),
             (
                 "reads_reflection".to_owned(),
                 bool_value(effects.reads_reflection),

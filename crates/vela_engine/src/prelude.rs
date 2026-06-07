@@ -8,6 +8,7 @@ pub use crate::builder::EngineBuilder;
 pub use crate::context::NativeCallContext;
 pub use crate::engine::Engine;
 pub use crate::host_type::HostTypeSpec;
+pub use crate::io::FsSandbox;
 pub use crate::method::NativeMethodDesc;
 pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,

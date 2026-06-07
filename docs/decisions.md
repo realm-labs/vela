@@ -435,6 +435,15 @@ state such as Player, Monster, Context, or permission-denial fixtures. Host
 world demos belong in `vela_examples`; `vela_cli <script.vela>` compiles the
 file, runs `main()` with no host arguments, and prints the returned value.
 
+### Opt-In IO Stdlib
+
+I/O is an Engine-side native stdlib extension, not a VM-default primitive.
+Embedders must opt in with `with_stdio()` and/or `with_fs_io(root)` and grant
+`io_read`/`io_write` capabilities. Filesystem helpers operate only on relative
+paths inside the configured sandbox root. Ordinary filesystem failures return
+script-visible `Result::Err(IoError)` values; capability failures and runtime
+type errors remain VM diagnostics.
+
 ### Debugger Support
 
 Debugger support is a post-MVP runtime and Debug Adapter Protocol capability,

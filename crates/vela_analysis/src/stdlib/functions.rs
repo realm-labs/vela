@@ -148,6 +148,21 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         StdlibFunctionFact::new("time::tick", Vec::new(), TypeFact::Int),
         StdlibFunctionFact::new("time::elapsed_since", vec![TypeFact::Int], TypeFact::Int),
         StdlibFunctionFact::new(
+            "io::println",
+            vec![TypeFact::Any],
+            TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
+        ),
+        StdlibFunctionFact::new(
+            "fs::read_to_string",
+            vec![TypeFact::String],
+            TypeFact::result(TypeFact::String, TypeFact::record("IoError")),
+        ),
+        StdlibFunctionFact::new(
+            "fs::write_string",
+            vec![TypeFact::String, TypeFact::String],
+            TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
+        ),
+        StdlibFunctionFact::new(
             "set::from_array",
             vec![TypeFact::array(TypeFact::Any)],
             TypeFact::set(TypeFact::Any),
@@ -363,6 +378,30 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 "time::elapsed_since",
                 args.to_vec(),
                 TypeFact::Int,
+            ))
+        }
+        "io::println" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "io::println",
+                args.to_vec(),
+                TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
+            ))
+        }
+        "fs::read_to_string" => {
+            expect_len(args, 1)?;
+            Some(StdlibFunctionFact::new(
+                "fs::read_to_string",
+                args.to_vec(),
+                TypeFact::result(TypeFact::String, TypeFact::record("IoError")),
+            ))
+        }
+        "fs::write_string" => {
+            expect_len(args, 2)?;
+            Some(StdlibFunctionFact::new(
+                "fs::write_string",
+                args.to_vec(),
+                TypeFact::result(TypeFact::Null, TypeFact::record("IoError")),
             ))
         }
         "set::from_array" => {

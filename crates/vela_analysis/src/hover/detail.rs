@@ -81,6 +81,8 @@ fn function_effect_detail(effects: &FunctionEffectSet) -> String {
         ("emits_events", effects.emits_events),
         ("reads_time", effects.reads_time),
         ("uses_random", effects.uses_random),
+        ("reads_io", effects.reads_io),
+        ("writes_io", effects.writes_io),
         ("reads_reflection", effects.reads_reflection),
         ("writes_reflection", effects.writes_reflection),
         ("calls_reflection", effects.calls_reflection),
@@ -94,6 +96,8 @@ fn method_effect_detail(effects: &MethodEffectSet) -> String {
         ("emits_events", effects.emits_events),
         ("reads_time", effects.reads_time),
         ("uses_random", effects.uses_random),
+        ("reads_io", effects.reads_io),
+        ("writes_io", effects.writes_io),
         ("reads_reflection", effects.reads_reflection),
         ("writes_reflection", effects.writes_reflection),
         ("calls_reflection", effects.calls_reflection),
@@ -130,6 +134,12 @@ fn function_capability_detail(effects: &FunctionEffectSet) -> String {
     }
     if effects.uses_random {
         capabilities.push("random");
+    }
+    if effects.reads_io {
+        capabilities.push("io_read");
+    }
+    if effects.writes_io {
+        capabilities.push("io_write");
     }
     if effects.reads_reflection {
         capabilities.push("reflection_read");

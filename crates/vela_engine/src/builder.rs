@@ -38,6 +38,8 @@ pub struct EngineBuilder {
     standard_natives: bool,
     time_clock: bool,
     controlled_random: bool,
+    stdio: bool,
+    fs_io: bool,
 }
 
 impl EngineBuilder {
@@ -168,6 +170,21 @@ impl EngineBuilder {
         self.time_clock = true;
         self.native_functions
             .extend(crate::clock::time_clock_functions(now, tick));
+        self
+    }
+
+    #[must_use]
+    pub fn with_stdio(mut self) -> Self {
+        self.stdio = true;
+        self.native_functions.extend(crate::io::stdio_functions());
+        self
+    }
+
+    #[must_use]
+    pub fn with_fs_io(mut self, root: impl Into<std::path::PathBuf>) -> Self {
+        self.fs_io = true;
+        self.native_functions
+            .extend(crate::io::fs_functions(crate::io::FsSandbox::new(root)));
         self
     }
 
@@ -307,7 +324,9 @@ impl EngineBuilder {
         let module_options = validation::ModuleValidationOptions::default()
             .include_standard_modules(self.standard_natives)
             .include_time_module(self.time_clock)
-            .include_math_module(self.controlled_random);
+            .include_math_module(self.controlled_random)
+            .include_io_module(self.stdio)
+            .include_fs_module(self.fs_io);
         validation::validate_modules(&self.modules, module_options)?;
         validation::validate_native_functions(
             &self.native_functions,

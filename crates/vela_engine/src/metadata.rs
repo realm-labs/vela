@@ -101,6 +101,8 @@ pub(crate) fn inject_standard_native_metadata(registry: &mut TypeRegistry) {
 fn native_module_desc(module_name: &str) -> ModuleDesc {
     match module_name {
         "time" => crate::clock::time_module_desc(),
+        "io" => crate::io::io_module_desc(),
+        "fs" => crate::io::fs_module_desc(),
         _ => ModuleDesc::new(module_name),
     }
 }
@@ -144,6 +146,8 @@ fn reflect_effects(effects: &crate::native::EffectSet) -> MethodEffectSet {
         emits_events: effects.emits_events,
         reads_time: effects.reads_time,
         uses_random: effects.uses_random,
+        reads_io: effects.reads_io,
+        writes_io: effects.writes_io,
         reads_reflection: effects.reads_reflection,
         writes_reflection: effects.writes_reflection,
         calls_reflection: effects.calls_reflection,
@@ -163,6 +167,8 @@ fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffec
         emits_events: effects.emits_events,
         reads_time: effects.reads_time,
         uses_random: effects.uses_random,
+        reads_io: effects.reads_io,
+        writes_io: effects.writes_io,
         reads_reflection: effects.reads_reflection,
         writes_reflection: effects.writes_reflection,
         calls_reflection: effects.calls_reflection,

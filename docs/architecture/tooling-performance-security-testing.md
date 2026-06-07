@@ -90,6 +90,8 @@ known enum -> variant completion and match pattern hints
 unknown dynamic value -> degrade to Any
 reflect with non-constant field name -> degrade to Any
 reflect with constant field name and known schema -> resolve normally
+io/fs stdlib effects -> require explicit io_read/io_write capabilities
+fs stdlib paths -> stay relative to the configured sandbox root
 ```
 
 LSP feature mapping:

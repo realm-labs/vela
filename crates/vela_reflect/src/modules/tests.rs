@@ -283,6 +283,14 @@ fn module_function_queries_return_records_and_candidates() {
                     ReflectValue::Host(HostValue::Bool(false))
                 ),
                 (
+                    "reads_io".to_owned(),
+                    ReflectValue::Host(HostValue::Bool(false))
+                ),
+                (
+                    "writes_io".to_owned(),
+                    ReflectValue::Host(HostValue::Bool(false))
+                ),
+                (
                     "reads_reflection".to_owned(),
                     ReflectValue::Host(HostValue::Bool(false))
                 ),

@@ -15,6 +15,8 @@ pub(crate) struct ModuleValidationOptions {
     include_standard_modules: bool,
     include_time_module: bool,
     include_math_module: bool,
+    include_io_module: bool,
+    include_fs_module: bool,
 }
 
 impl ModuleValidationOptions {
@@ -30,6 +32,16 @@ impl ModuleValidationOptions {
 
     pub(crate) const fn include_math_module(mut self, include: bool) -> Self {
         self.include_math_module = include;
+        self
+    }
+
+    pub(crate) const fn include_io_module(mut self, include: bool) -> Self {
+        self.include_io_module = include;
+        self
+    }
+
+    pub(crate) const fn include_fs_module(mut self, include: bool) -> Self {
+        self.include_fs_module = include;
         self
     }
 }
@@ -49,6 +61,12 @@ pub(crate) fn validate_modules(
     }
     if options.include_math_module && !options.include_standard_modules {
         validate_module_desc(&ModuleDesc::new("math"), &mut names)?;
+    }
+    if options.include_io_module {
+        validate_module_desc(&crate::io::io_module_desc(), &mut names)?;
+    }
+    if options.include_fs_module {
+        validate_module_desc(&crate::io::fs_module_desc(), &mut names)?;
     }
     for module in modules {
         validate_module_desc(module, &mut names)?;

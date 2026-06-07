@@ -3,6 +3,7 @@ use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey};
 
 mod context;
 mod host_methods;
+mod io;
 mod native;
 mod random;
 mod reflection;
